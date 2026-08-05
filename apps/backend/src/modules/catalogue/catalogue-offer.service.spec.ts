@@ -25,6 +25,7 @@ import { In } from 'typeorm';
 
 import { AiCreditService } from '../ai-copilot/services/ai-credit.service';
 import { OpenAIClient } from '../ai-copilot/openai/openai.client';
+import { ClustersService } from '../clusters/clusters.service';
 
 describe('CatalogueOfferService', () => {
   let service: CatalogueOfferService;
@@ -37,6 +38,7 @@ describe('CatalogueOfferService', () => {
   let itemRepo: any;
   let aiCreditService: any;
   let openAiClient: any;
+  let clustersService: any;
 
   const mockOffer = {
     id: 'offer-1',
@@ -120,6 +122,9 @@ describe('CatalogueOfferService', () => {
       isAvailable: jest.fn().mockReturnValue(false),
       analyze: jest.fn(),
     };
+    clustersService = {
+      invalidateForBranch: jest.fn().mockResolvedValue(undefined),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -144,6 +149,7 @@ describe('CatalogueOfferService', () => {
         },
         { provide: AiCreditService, useValue: aiCreditService },
         { provide: OpenAIClient, useValue: openAiClient },
+        { provide: ClustersService, useValue: clustersService },
       ],
     }).compile();
 
@@ -389,7 +395,10 @@ describe('CatalogueOfferService', () => {
       openAiClient.isAvailable.mockReturnValue(false);
 
       const result = await service.generateTerms(
-        { title: 'Free Delivery Deal', description: 'Includes free delivery on orders' },
+        {
+          title: 'Free Delivery Deal',
+          description: 'Includes free delivery on orders',
+        },
         'biz-1',
       );
 

@@ -19,6 +19,7 @@ import { AllowPending } from '../../common/decorators/allow-pending.decorator';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { BranchesService } from '../branches/branches.service';
 import { Branch } from '../branches/entities/branch.entity';
+import { ClustersService } from '../clusters/clusters.service';
 
 @ApiTags('Device Taps')
 @Controller('tap')
@@ -31,6 +32,7 @@ export class DeviceTapController {
     private readonly formsService: FormsService,
     private readonly qrThriveService: QrThriveService,
     private readonly branchesService: BranchesService,
+    private readonly clustersService: ClustersService,
   ) {}
 
   @Public()
@@ -261,6 +263,11 @@ export class DeviceTapController {
       );
     }
 
+    // Discovery gateway: expose the cluster this branch belongs to
+    const cluster = deviceWithRelations.branch.clusterId
+      ? await this.clustersService.getClusterForBranch(branchId)
+      : null;
+
     return {
       device: {
         id: deviceWithRelations.id,
@@ -285,6 +292,7 @@ export class DeviceTapController {
         formAppearanceColor: deviceWithRelations.branch.formAppearanceColor,
       },
       qrThriveCodes,
+      cluster,
       business: {
         id: deviceWithRelations.branch.business.id,
         name: deviceWithRelations.branch.business.name,
