@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { resetSessionData } from '@/lib/sessionReset';
 
 // Cookie helpers for middleware auth sync
 const setAuthCookie = (token: string) => {
@@ -93,7 +94,10 @@ export const useAuthStore = create<AuthState>()(
 
       login: (userData: User, access_token: string) => {
         console.log('[AUTH] login() called', { email: userData?.email, role: userData?.role });       
-        
+       
+        // Wipe any previous session/business caches to prevent cross-account data leaks
+        resetSessionData().catch(() => {});
+       
         // Clear chat history on login to ensure fresh session
         try {
           import('./chatStore').then((module) => {
@@ -131,6 +135,10 @@ export const useAuthStore = create<AuthState>()(
 
       signup: (userData: User, access_token: string) => {
         console.log('[AUTH] signup() called', { email: userData?.email });
+       
+        // Wipe any previous session/business caches before activating the new account
+        resetSessionData().catch(() => {});
+       
         if (userData?.role) {
           userData.role = userData.role.toLowerCase() as UserRole;
         }
@@ -185,23 +193,8 @@ export const useAuthStore = create<AuthState>()(
           console.error('Error clearing chat history during logout', e);
         }
 
-        // 3. Clear QR-Thrive store
-        try {
-          import('./useQrThriveStore').then((module) => {
-            if (module.useQrThriveStore) {
-              module.useQrThriveStore.getState().clear();
-              console.log('[AUTH] QR-Thrive store cleared');
-            }
-          }).catch(err => console.error('Failed to clear QR-Thrive store:', err));
-        } catch (e) {
-          console.error('Error clearing QR-Thrive store during logout', e);
-        }
-
-        // 4. Explicitly purge local storage keys
-        if (typeof window !== 'undefined') {
-          localStorage.removeItem('chat-history');
-          localStorage.removeItem('vemtap-chat-storage');
-        }
+        // 3. Wipe all session/business caches (query cache, offline DB, persisted stores)
+        resetSessionData().catch(() => {});
 
         set({ 
           user: null, 
@@ -210,15 +203,6 @@ export const useAuthStore = create<AuthState>()(
           activeBranchId: null 
         });
         clearAuthCookie();
-        
-        // Clear persistent local storage
-        if (typeof window !== 'undefined') {
-          localStorage.removeItem('auth-storage-v2');
-          localStorage.removeItem('business-storage');
-          localStorage.removeItem('chat-history'); // Directly clear the persist key
-          localStorage.removeItem('business-forms-storage-v1'); // Clear forms as well to be safe
-          localStorage.removeItem('qr-thrive-storage'); // Clear QR-Thrive storage
-        }
       },
 
 
