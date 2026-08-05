@@ -3,7 +3,6 @@ import { PartnershipsService } from './partnerships.service';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Partnership, PartnershipStatus } from './entities/partnership.entity';
 import { BranchesService } from '../branches/branches.service';
-import { Repository } from 'typeorm';
 import { User, UserRole } from '../users/entities/user.entity';
 import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import { BusinessStatus } from '../businesses/entities/business.entity';
@@ -177,6 +176,48 @@ describe('PartnershipsService', () => {
       );
 
       expect(result).toEqual({ id: 'part-1' });
+    });
+  });
+
+  describe('getInvitations', () => {
+    const user = { id: 'user-1', role: UserRole.OWNER } as User;
+
+    it('should throw ForbiddenException if the business is not active', async () => {
+      mockBranchesService.findById.mockResolvedValue({
+        id: 'branch-1',
+        businessId: 'bus-1',
+        business: { status: BusinessStatus.PENDING },
+      });
+
+      await expect(
+        service.getInvitations({ branchId: 'branch-1' }, user),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('should throw ForbiddenException if the branch has no business', async () => {
+      mockBranchesService.findById.mockResolvedValue({
+        id: 'branch-1',
+        businessId: null,
+        business: null,
+      });
+
+      await expect(
+        service.getInvitations({ branchId: 'branch-1' }, user),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('should not call branch access check when business is not active', async () => {
+      mockBranchesService.findById.mockResolvedValue({
+        id: 'branch-1',
+        businessId: 'bus-1',
+        business: { status: BusinessStatus.SUSPENDED },
+      });
+
+      await expect(
+        service.getInvitations({ branchId: 'branch-1' }, user),
+      ).rejects.toThrow(ForbiddenException);
+
+      expect(mockBranchesService.checkBranchAccess).not.toHaveBeenCalled();
     });
   });
 });

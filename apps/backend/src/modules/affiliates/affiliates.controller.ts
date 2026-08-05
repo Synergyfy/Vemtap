@@ -31,6 +31,7 @@ import { AffiliatePerformanceDto } from './dto/affiliate-performance.dto';
 import { LeaderboardEntryDto } from './dto/leaderboard-entry.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
+import { BusinessVerifiedGuard } from '../../common/guards/business-verified.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { Public } from '../../common/decorators/public.decorator';
 import { UserRole } from '../users/entities/user.entity';
@@ -42,7 +43,7 @@ import { AffiliateWithdrawalRequest } from './entities/withdrawal-request.entity
 
 @ApiTags('Affiliates')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, BusinessVerifiedGuard)
 @Controller('affiliates')
 export class AffiliatesController {
   constructor(

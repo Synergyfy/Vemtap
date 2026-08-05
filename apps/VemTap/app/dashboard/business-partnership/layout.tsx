@@ -52,8 +52,9 @@ export default function BusinessPartnershipLayout({ children }: { children: Reac
                     </div>
                 </div>
 
-                {children}
-
+                <PartnershipVerificationGuard>
+                    {children}
+                </PartnershipVerificationGuard>
 
                 {/* Floating Action Button */}
                 <button

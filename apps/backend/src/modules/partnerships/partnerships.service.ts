@@ -295,7 +295,13 @@ export class PartnershipsService {
 
   async getInvitations(query: PartnershipQueryDto, user: User) {
     const { branchId, type, status, page = 1, limit = 10 } = query;
-    const skip = (page - 1) * limit;
+
+    const branch = await this.branchesService.findById(branchId, ['business']);
+    if (branch?.business?.status !== BusinessStatus.ACTIVE) {
+      throw new ForbiddenException(
+        'Your business is not verified by admin. You cannot access partnership services until approved.',
+      );
+    }
 
     const hasAccess = await this.branchesService.checkBranchAccess(
       user,
