@@ -61,6 +61,12 @@ const FEATURE_ID_MAP: Record<string, string> = {
     'peak times': 'analytics-peak-times',
     'get customers': 'discovery',
     'business partnership': 'business-partnership',
+    // Leaf nav items whose labels must resolve to the canonical feature id used by
+    // mapPlanToConfig / mapConfigToPlanDto / getPlanFieldUpdates (otherwise the
+    // admin permission toggle falls through to the default case and never saves).
+    'marketing kit': 'marketing-kit',
+    'my business qr': 'business-qr',
+    'forms': 'forms',
 };
 
 // Label→ID for parent nav items (used as fallback featureId)

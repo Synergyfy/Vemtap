@@ -85,13 +85,36 @@ export type PublicBranchResponse = {
 };
 
 export type PublicReward = {
-    id?: string;
-    name?: string;
-    description?: string;
-    rewardType?: string;
-    pointCost?: number;
-    value?: number;
-    validityDays?: number;
-    imageUrls?: string[];
-    isActive?: boolean;
+    id: string;
+    name: string;
+    description: string;
+    pointsRequired: number;
+    category: string;
+    audienceType: string;
+    coverImage?: string | null;
+    galleryImages?: string[] | null;
+    totalQuantity: number;
+    remainingQuantity: number;
+    isActive: boolean;
+    expiryDate: string;
+    businessId: string;
+    branchId: string;
+    templateId?: string | null;
+    createdAt?: string;
+    updatedAt?: string;
+};
+
+export type PublicRewardsResponse = {
+    data: PublicReward[];
+    total: number;
+    page: number;
+    limit: number;
+};
+
+export type EarnVisitorPointsResponse = {
+    success: boolean;
+    pointsEarned: number;
+    newBalance: number;
+    message: string;
+    customer: { id: string; uniqueCode: string };
 };

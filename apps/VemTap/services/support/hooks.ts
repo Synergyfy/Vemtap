@@ -76,6 +76,25 @@ export const useSendSupportMessage = (ticketId: string, isAdmin: boolean = false
   });
 };
 
+export interface TicketAttachmentInput {
+  url: string;
+  name: string;
+  mimeType: string;
+  size: number;
+}
+
+export const useAddTicketAttachments = (ticketId: string) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: { attachments: TicketAttachmentInput[]; message?: string }) =>
+      api.post(`/support/tickets/${ticketId}/attachments`, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['support-ticket', ticketId] });
+      queryClient.invalidateQueries({ queryKey: ['user-support-tickets'] });
+    },
+  });
+};
+
 export const useUpdateTicketStatus = (ticketId: string) => {
   const queryClient = useQueryClient();
   return useMutation({
