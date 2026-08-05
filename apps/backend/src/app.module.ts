@@ -64,6 +64,7 @@ import { LegalComplianceModule } from './modules/legal-compliance/legal-complian
 import { AiCopilotModule } from './modules/ai-copilot/ai-copilot.module';
 import { FeedbackModule } from './modules/feedback/feedback.module';
 import { KnowledgeBaseModule } from './modules/knowledge-base/knowledge-base.module';
+import { ClustersModule } from './modules/clusters/clusters.module';
 
 @Module({
   imports: [
@@ -182,6 +183,7 @@ import { KnowledgeBaseModule } from './modules/knowledge-base/knowledge-base.mod
     AiCopilotModule,
     FeedbackModule,
     KnowledgeBaseModule,
+    ClustersModule,
     StatusModule,
     ScheduleModule.forRoot(),
   ],
