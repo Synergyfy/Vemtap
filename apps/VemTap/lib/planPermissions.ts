@@ -301,6 +301,7 @@ export function mapPlanToConfig(plan: PricingPlan): PlanPermissionConfig {
         features['business-qr'] = { level: plan.businessQrEnabled ? 'yes' : 'no' };
         features['marketing-kit'] = getPerm(!!plan.marketingKitEnabled, plan.marketingKitLimit);
         features['discovery'] = { level: plan.discoveryEnabled ? 'yes' : 'no' };
+        features['business-partnership'] = features['discovery']; // Nav-tree alias
         features['settings'] = { level: 'yes' };
         features['profile'] = { level: 'yes' };
         features['subscription'] = { level: 'yes' };
