@@ -1,29 +1,48 @@
 import { api } from '@/lib/api';
-import { Product, ProductDetail, ProductsResponse, MarketplaceOrder, MarketplaceQuote } from '@/types/marketplace';
+import { Product, ProductDetail, ProductsResponse, ProductReview, ProductReviewsResponse, MarketplaceOrder, MarketplaceQuote } from '@/types/marketplace';
+
+export type ProductSortBy = 'createdAt' | 'price' | 'name' | 'rating' | 'moq';
+export type ProductSortOrder = 'ASC' | 'DESC';
 
 export const fetchProducts = async (
     page: number = 1,
-    limit: number = 8,
+    limit: number = 9,
     category: string = 'All Products',
     priceRange: [number, number] = [0, 1000000],
     brands: string[] = [],
-    searchQuery: string = ''
+    searchQuery: string = '',
+    sortBy: ProductSortBy = 'createdAt',
+    sortOrder: ProductSortOrder = 'DESC'
 ): Promise<ProductsResponse> => {
-    // The current backend doesn't support pagination, filtering, or search directly in the findAllPublished endpoint
-    // We'll fetch all and filter in memory for now, or update the backend if possible.
-    // However, for "integrating endpoints", I should at least call the real endpoint.
+    const query = new URLSearchParams();
+    query.set('page', String(page));
+    query.set('limit', String(limit));
+    query.set('sortBy', sortBy);
+    query.set('sortOrder', sortOrder);
 
-    // Fetch all published products
-    const allProducts: any[] = await api.get('/products');
+    // Category filter (matched by product type id, name, or slug on the backend)
+    const categoryFilter = category !== 'All Products' ? category
+        : brands.length === 1 ? brands[0]
+        : undefined;
+    if (categoryFilter) query.set('category', categoryFilter);
+
+    if (priceRange[0] > 0) query.set('minPrice', String(priceRange[0]));
+    if (priceRange[1] < 1000000) query.set('maxPrice', String(priceRange[1]));
+    if (searchQuery.trim()) query.set('search', searchQuery.trim());
+
+    const response = await api.get(`/products?${query.toString()}`);
 
     // Map backend product to frontend Product interface
-    const mappedProducts: Product[] = allProducts.map(p => ({
+    const mappedProducts: Product[] = (response.data || []).map((p: any) => ({
         id: p.id,
         sku: p.sku || '',
         name: p.name,
         brand: p.productType?.name || 'VemTap',
         category: p.productType?.name || 'NFC Hardware',
-        rating: p.rating || 5,
+        productType: p.productType,
+        productTypeId: p.productTypeId,
+        rating: p.rating ?? 5,
+        reviewCount: p.reviewCount ?? 0,
         price: Number(p.price),
         originalPrice: null,
         image: Array.isArray(p.images) && p.images.length > 0 ? p.images[0] : "/assets/nfc/Card NFC Plate White.avif",
@@ -32,31 +51,13 @@ export const fetchProducts = async (
         tagColor: p.tagColor || 'bg-emerald-500',
         action: p.requestQuoteThreshold ? 'quote' : 'cart',
         moq: p.moq || 1,
-        status: p.isPublished ? 'Published' : 'Unpublished'
+        status: 'Published'
     }));
 
-    // Apply filtering (same as mock implementation but on real data)
-    const filtered = mappedProducts.filter(p => {
-        const matchesCategory = category === 'All Products' || p.category === category;
-        const matchesPrice = p.price >= priceRange[0] && p.price <= priceRange[1];
-        const matchesBrand = brands.length === 0 || (p.brand ? brands.includes(p.brand) : false);
-        const matchesSearch = searchQuery === '' ||
-            p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            p.description.toLowerCase().includes(searchQuery.toLowerCase());
-
-        return matchesCategory && matchesPrice && matchesBrand && matchesSearch;
-    });
-
-    const totalCount = filtered.length;
-    const totalPages = Math.ceil(totalCount / limit);
-    const start = (page - 1) * limit;
-    const end = start + limit;
-    const paginatedProducts = filtered.slice(start, end);
-
     return {
-        products: paginatedProducts,
-        totalPages,
-        totalCount
+        products: mappedProducts,
+        totalPages: response.totalPages || Math.ceil((response.total || mappedProducts.length) / limit),
+        totalCount: response.total ?? mappedProducts.length
     };
 };
 
@@ -78,7 +79,7 @@ export const fetchProductDetail = async (id: string): Promise<ProductDetail | nu
 
         return {
             id: p.id,
-            sku: `VEM-${p.id.toUpperCase().split('-')[0]}`,
+            sku: p.sku || undefined,
             name: p.name,
             brand: p.productType?.name || p.tag || 'VemTap',
             price: Number(p.price),
@@ -90,7 +91,7 @@ export const fetchProductDetail = async (id: string): Promise<ProductDetail | nu
             tagColor: p.tagColor || 'bg-zinc-800',
             specifications,
             documents: [],
-            relatedProducts: [], // Can be fetched if there's a related endpoint
+            relatedProducts: [],
             features: [],
             tieredPricing: p.priceTiers?.map((t: any) => ({
                 minQuantity: Number(t.min),
@@ -98,14 +99,25 @@ export const fetchProductDetail = async (id: string): Promise<ProductDetail | nu
                 price: t.price
             })) || [{ minQuantity: p.moq || 1, maxQuantity: undefined, price: Number(p.price) }],
             moq: p.moq || 1,
-            rating: p.rating || 5,
-            reviews: undefined,
+            rating: p.rating ?? 5,
+            reviews: p.reviewCount ?? 0,
             howToSteps: p.howToSteps || []
         };
     } catch (e) {
         console.error('Error fetching product detail', e);
         return null;
     }
+};
+
+export const fetchProductReviews = async (productId: string, page: number = 1, limit: number = 10): Promise<ProductReviewsResponse> => {
+    const query = new URLSearchParams();
+    query.set('page', String(page));
+    query.set('limit', String(limit));
+    return await api.get(`/products/${productId}/reviews?${query.toString()}`);
+};
+
+export const submitProductReview = async (productId: string, data: { rating: number; comment: string; name?: string }) => {
+    return await api.post(`/products/${productId}/reviews`, data);
 };
 
 export const requestQuote = async (productId: string, data: any) => {
@@ -135,3 +147,5 @@ export const rejectQuote = async (quoteId: string) => {
 export const negotiateQuote = async (quoteId: string, data: { priceOffered: number, message?: string }) => {
     return await api.post(`/products/quotes/${quoteId}/negotiate`, data);
 };
+
+export type { ProductReview };

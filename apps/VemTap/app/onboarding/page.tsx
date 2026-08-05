@@ -1335,7 +1335,12 @@ function SubscriptionStep({ data, onNext }: { data: Partial<OnboardingData>, onN
     const [billingCycle, setBillingCycle] = useState<'monthly' | 'quarterly' | 'yearly'>('monthly');
     const [selectedPlan, setSelectedPlan] = useState(data.planId || '');
     const { data: plans = [], isLoading: plansLoading } = usePricingPlans();
-    const activePlans = plans.filter((p: PricingPlan) => p.isActive);
+    const activePlans = plans
+        .filter((p: PricingPlan) => p.isActive)
+        .sort((a: PricingPlan, b: PricingPlan) => {
+            const rank = (p: PricingPlan) => p.isFree ? 0 : ((p.monthlyPrice || 0) === 0 ? Number.MAX_SAFE_INTEGER : (p.monthlyPrice || 0));
+            return rank(a) - rank(b);
+        });
 
     const getPrice = (plan: PricingPlan) => {
         if (plan.isFree) return 0;
