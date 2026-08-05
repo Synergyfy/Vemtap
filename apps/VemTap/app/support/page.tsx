@@ -41,14 +41,16 @@ export default function SupportPage() {
             status: "Online Now",
             value: "Available 24/7",
             icon: "forum",
-            buttonLabel: "Start Chat"
+            buttonLabel: "Start Chat",
+            link: "#"
         },
         {
             title: "Email Support",
             status: "Avg. response: 2h",
             value: "support@vemtap.com",
             icon: "alternate_email",
-            buttonLabel: "Send Message"
+            buttonLabel: "Send Message",
+            link: "mailto:support@vemtap.com"
         },
         {
             title: "Help Center",

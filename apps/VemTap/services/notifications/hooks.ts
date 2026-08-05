@@ -75,3 +75,50 @@ export const useRegisterVisitorPushToken = () => {
         },
     });
 };
+
+export interface NotificationPreferences {
+    push: boolean;
+    email: boolean;
+    sms: boolean;
+    marketing: boolean;
+    orderUpdates: boolean;
+    loyalty: boolean;
+    support: boolean;
+    rewardAlerts: boolean;
+    activityDigest: boolean;
+    smsSecurity: boolean;
+}
+
+export const useNotificationPreferences = () => {
+    return useQuery<NotificationPreferences, Error>({
+        queryKey: ['notification-preferences'],
+        queryFn: async () => {
+            const res = await api.get('/notifications/preferences');
+            return {
+                push: true,
+                email: true,
+                sms: true,
+                marketing: true,
+                orderUpdates: true,
+                loyalty: true,
+                support: true,
+                rewardAlerts: true,
+                activityDigest: true,
+                smsSecurity: false,
+                ...(res || {}),
+            };
+        },
+    });
+};
+
+export const useUpdateNotificationPreferences = () => {
+    const queryClient = useQueryClient();
+    return useMutation<void, Error, Partial<NotificationPreferences>>({
+        mutationFn: async (prefs) => {
+            await api.patch('/notifications/preferences', prefs);
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['notification-preferences'] });
+        },
+    });
+};

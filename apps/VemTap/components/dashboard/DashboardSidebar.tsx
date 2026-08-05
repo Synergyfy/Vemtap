@@ -197,10 +197,8 @@ export default function DashboardSidebar({ children }: SidebarProps) {
         }
     });
 
-    const handleLogout = () => {
-        queryClient.clear();
-        if (typeof window !== 'undefined') localStorage.clear();
-        logout();
+    const handleLogout = async () => {
+        await logout();
         router.push('/login');
     };
 
@@ -279,7 +277,7 @@ export default function DashboardSidebar({ children }: SidebarProps) {
 
             {/* Sidebar */}
             <aside className={`
-                fixed inset-y-0 left-0 z-70 bg-white border-r border-gray-200 flex flex-col transition-all duration-300 lg:static 
+                fixed inset-y-0 left-0 z-[250] bg-white border-r border-gray-200 flex flex-col transition-all duration-300 lg:static
                 ${isMobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
                 ${isCollapsed ? 'w-20' : 'w-72'}
             `}>

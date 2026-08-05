@@ -38,9 +38,6 @@ export default function MarketplacePage() {
         businessName: '',
         notes: ''
     });
-    const [showOTPStep, setShowOTPStep] = useState(false);
-    const [otp, setOtp] = useState('');
-    const [isCreatingAccount, setIsCreatingAccount] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     // React Query
@@ -114,29 +111,6 @@ export default function MarketplacePage() {
             toast.error(error.message || 'Failed to submit quote request');
         } finally {
             setIsSubmitting(false);
-        }
-    };
-
-    const handleOTPVerify = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (otp.length === 6) {
-            toast.success('Account verified successfully!');
-            setIsQuoteModalOpen(false);
-            setIsSuccessModalOpen(true);
-            setShowOTPStep(false);
-            setOtp('');
-            setQuoteFormData({
-                firstName: '',
-                lastName: '',
-                email: '',
-                phone: '',
-                quantity: '',
-                location: '',
-                businessName: '',
-                notes: ''
-            });
-        } else {
-            toast.error('Please enter a valid 6-digit OTP');
         }
     };
 
@@ -325,91 +299,60 @@ export default function MarketplacePage() {
                         <div className="absolute inset-0 bg-black/40 backdrop-blur-sm transition-opacity" onClick={() => setIsQuoteModalOpen(false)}></div>
                         <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-4xl overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col md:flex-row">
                             {/* Signup Suggestion Side Panel */}
-                            {!user && !showOTPStep && (
+                            {!user && (
                                 <div className="w-full md:w-80 bg-primary/5 p-8 border-b md:border-b-0 md:border-r border-primary/10 flex flex-col justify-center">
                                     <div className="w-12 h-12 bg-primary/10 text-primary rounded-xl flex items-center justify-center mb-6">
                                         <Star size={24} className="fill-primary" />
                                     </div>
                                     <h4 className="font-display font-bold text-xl text-text-main mb-3">Save your quotes</h4>
                                     <p className="text-sm text-text-secondary mb-8 leading-relaxed">
-                                        We'll create an account for you automatically. Track your bulk requests, get faster responses, and access exclusive member pricing.
+                                        Create an account to track your bulk requests, get faster responses, and access exclusive member pricing.
                                     </p>
-                                    <div className="bg-white/50 border border-primary/20 rounded-lg p-4">
-                                        <p className="text-[10px] text-gray-600 font-bold uppercase tracking-wider mb-2">What happens next:</p>
-                                        <ul className="space-y-2 text-xs text-text-secondary">
-                                            <li className="flex items-start gap-2">
-                                                <CheckCircle2 size={14} className="text-primary mt-0.5 shrink-0" />
-                                                <span>Account created instantly</span>
-                                            </li>
-                                            <li className="flex items-start gap-2">
-                                                <CheckCircle2 size={14} className="text-primary mt-0.5 shrink-0" />
-                                                <span>OTP sent to your email</span>
-                                            </li>
-                                            <li className="flex items-start gap-2">
-                                                <CheckCircle2 size={14} className="text-primary mt-0.5 shrink-0" />
-                                                <span>Quote submitted automatically</span>
-                                            </li>
-                                        </ul>
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* OTP Verification Side Panel */}
-                            {!user && showOTPStep && (
-                                <div className="w-full md:w-80 bg-primary/5 p-8 border-b md:border-b-0 md:border-r border-primary/10 flex flex-col justify-center">
-                                    <div className="w-12 h-12 bg-primary/10 text-primary rounded-xl flex items-center justify-center mb-6">
-                                        <Star size={24} className="fill-primary" />
-                                    </div>
-                                    <h4 className="font-display font-bold text-xl text-text-main mb-3">Almost there!</h4>
-                                    <p className="text-sm text-text-secondary mb-8 leading-relaxed">
-                                        We've sent a 6-digit verification code to <strong>{quoteFormData.email}</strong>. Enter it below to complete your quote request.
-                                    </p>
-                                    <div className="bg-white/50 border border-primary/20 rounded-lg p-4">
-                                        <p className="text-[10px] text-gray-600 font-bold uppercase tracking-wider mb-2">Check your inbox</p>
-                                        <p className="text-xs text-text-secondary">
-                                            The code should arrive within a few seconds. Don't forget to check your spam folder.
-                                        </p>
-                                    </div>
+                                    <Link
+                                        href="/get-started"
+                                        className="w-full py-3 bg-white border border-primary text-primary font-bold text-center hover:bg-primary hover:text-white transition-all text-sm rounded-2xl"
+                                    >
+                                        Create Account
+                                    </Link>
+                                    <p className="text-[10px] text-gray-400 mt-4 text-center font-bold uppercase tracking-wider font-display">Takes less than 1 minute</p>
                                 </div>
                             )}
 
                             <div className="flex-1">
-                                {!showOTPStep ? (
-                                    <>
-                                        <div className="p-6 border-b border-gray-100 flex items-center justify-between">
-                                            <div>
-                                                <h3 className="font-display font-bold text-xl text-text-main">Request Quote</h3>
-                                                <p className="text-sm text-text-secondary">Bulk pricing for {selectedQuoteProduct.name}</p>
-                                            </div>
-                                            <button onClick={() => setIsQuoteModalOpen(false)} className="p-2 hover:bg-gray-100 rounded-lg transition-colors text-gray-500">
-                                                <X size={20} />
-                                            </button>
+                                    <div className="p-6 border-b border-gray-100 flex items-center justify-between">
+                                        <div>
+                                            <h3 className="font-display font-bold text-xl text-text-main">Request Quote</h3>
+                                            <p className="text-sm text-text-secondary">Bulk pricing for {selectedQuoteProduct.name}</p>
                                         </div>
-                                        <form onSubmit={handleQuoteSubmit} className="p-6 space-y-4">
-                                            <div className="grid grid-cols-2 gap-4">
-                                                <div>
-                                                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">First Name</label>
-                                                    <input
-                                                        type="text"
-                                                        placeholder="John"
-                                                        value={quoteFormData.firstName}
-                                                        onChange={(e) => setQuoteFormData({ ...quoteFormData, firstName: e.target.value })}
-                                                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 outline-none font-medium"
-                                                        required
-                                                    />
-                                                </div>
-                                                <div>
-                                                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Last Name</label>
-                                                    <input
-                                                        type="text"
-                                                        placeholder="Doe"
-                                                        value={quoteFormData.lastName}
-                                                        onChange={(e) => setQuoteFormData({ ...quoteFormData, lastName: e.target.value })}
-                                                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 outline-none font-medium"
-                                                        required
-                                                    />
-                                                </div>
+                                        <button onClick={() => setIsQuoteModalOpen(false)} className="p-2 hover:bg-gray-100 rounded-lg transition-colors text-gray-500">
+                                            <X size={20} />
+                                        </button>
+                                    </div>
+                                    <form onSubmit={handleQuoteSubmit} className="p-6 space-y-4">
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div>
+                                                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">First Name</label>
+                                                <input
+                                                    type="text"
+                                                    placeholder="John"
+                                                    value={quoteFormData.firstName}
+                                                    onChange={(e) => setQuoteFormData({ ...quoteFormData, firstName: e.target.value })}
+                                                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 outline-none font-medium"
+                                                    required
+                                                />
                                             </div>
+                                            <div>
+                                                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Last Name</label>
+                                                <input
+                                                    type="text"
+                                                    placeholder="Doe"
+                                                    value={quoteFormData.lastName}
+                                                    onChange={(e) => setQuoteFormData({ ...quoteFormData, lastName: e.target.value })}
+                                                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 outline-none font-medium"
+                                                    required
+                                                />
+                                            </div>
+                                        </div>
                                             <div className="grid grid-cols-2 gap-4">
                                                 <div>
                                                     <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Email Address</label>
@@ -496,46 +439,6 @@ export default function MarketplacePage() {
                                                 </button>
                                             </div>
                                         </form>
-                                    </>
-                                ) : (
-                                    <>
-                                        <div className="p-6 border-b border-gray-100 flex items-center justify-between">
-                                            <div>
-                                                <h3 className="font-display font-bold text-xl text-text-main">Verify Your Email</h3>
-                                                <p className="text-sm text-text-secondary">Enter the 6-digit code we sent you</p>
-                                            </div>
-                                            <button onClick={() => {
-                                                setIsQuoteModalOpen(false);
-                                                setShowOTPStep(false);
-                                            }} className="p-2 hover:bg-gray-100 rounded-lg transition-colors text-gray-500">
-                                                <X size={20} />
-                                            </button>
-                                        </div>
-                                        <form onSubmit={handleOTPVerify} className="p-6 space-y-6">
-                                            <div>
-                                                <label className="block text-xs font-bold text-gray-500 uppercase mb-3 text-center">Verification Code</label>
-                                                <input
-                                                    type="text"
-                                                    placeholder="000000"
-                                                    maxLength={6}
-                                                    value={otp}
-                                                    onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
-                                                    className="w-full px-4 py-4 bg-gray-50 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none font-bold text-2xl text-center tracking-widest"
-                                                    required
-                                                />
-                                                <p className="text-xs text-text-secondary text-center mt-3">
-                                                    Didn't receive the code? <button type="button" className="text-primary font-bold hover:underline">Resend</button>
-                                                </p>
-                                            </div>
-                                            <button
-                                                type="submit"
-                                                className="w-full py-4 bg-primary text-white font-bold rounded-2xl hover:bg-primary-hover shadow-lg shadow-primary/20 transition-all active:scale-[0.98]"
-                                            >
-                                                Verify & Submit Quote
-                                            </button>
-                                        </form>
-                                    </>
-                                )}
                             </div>
                         </div>
                     </div>

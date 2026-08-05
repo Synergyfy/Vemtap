@@ -2,6 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
+import { useAdminNotifications } from '@/services/discovery/hooks';
 import { 
     Bell, MessageSquare, Mail, Smartphone,
     CheckCircle2, XCircle, Clock, Eye,
@@ -10,40 +11,19 @@ import {
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
-const MOCK_LOGS = [
-    {
-        id: 'NOT-001',
-        recipient: 'John Doe',
-        business: 'Fashion Hub',
-        channel: 'Push',
-        status: 'Delivered',
-        openRate: 'Opened',
-        date: '2026-06-13 10:01',
-        content: '15% off lunch at The Grill House...'
-    },
-    {
-        id: 'NOT-002',
-        recipient: 'Sarah Smith',
-        business: 'Supermarket Plus',
-        channel: 'SMS',
-        status: 'Sent',
-        openRate: 'N/A',
-        date: '2026-06-13 09:45',
-        content: 'Get a free wash & style at Sharp Cuts...'
-    },
-    {
-        id: 'NOT-003',
-        recipient: 'Mike Ross',
-        business: 'The Grill House',
-        channel: 'Email',
-        status: 'Delivered',
-        openRate: 'Unopened',
-        date: '2026-06-13 08:30',
-        content: 'BOGO Smoothie at Juice Paradise...'
-    }
-];
-
 export default function DiscoveryNotificationsPage() {
+    const { data, isLoading } = useAdminNotifications({ limit: 100 });
+    const logs = (data?.data || []).map((n: any) => ({
+        id: n.id,
+        recipient: n.recipient,
+        business: n.business,
+        channel: n.channel,
+        status: n.status,
+        openRate: n.openStatus,
+        date: n.date,
+        content: n.content,
+    }));
+
     return (
         <div className="p-8">
             <Link href="/admin/discovery/dashboard" className="inline-flex items-center gap-1.5 text-xs font-bold text-text-secondary hover:text-text-main transition-colors mb-6">
@@ -107,7 +87,13 @@ export default function DiscoveryNotificationsPage() {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-50 text-sm">
-                            {MOCK_LOGS.map((log) => (
+                            {isLoading ? (
+                                Array.from({ length: 5 }).map((_, i) => (
+                                    <tr key={i} className="animate-pulse">
+                                        <td colSpan={6} className="px-6 py-4 bg-gray-50/50 h-16"></td>
+                                    </tr>
+                                ))
+                            ) : logs.map((log) => (
                                 <tr key={log.id} className="hover:bg-gray-50/50 transition-colors group">
                                     <td className="px-6 py-4">
                                         <div>

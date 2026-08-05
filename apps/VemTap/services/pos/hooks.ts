@@ -182,3 +182,20 @@ export const usePosCustomerDetail = (id: string) =>
     queryFn: () => posApi.getCustomer(id),
     enabled: !!id,
   });
+
+export const useCashDrop = () => {
+  const queryClient = useQueryClient();
+  return useMutation<{ id: string; amount: number; reason: string; createdAt: string }, Error, { amount: number; reason: string }>({
+    mutationFn: (dto) => posApi.cashDrop(dto),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: posKeys.register.status });
+      queryClient.invalidateQueries({ queryKey: posKeys.dashboard.main() });
+    },
+  });
+};
+
+export const useZReport = () =>
+  useQuery<{ openingCash: number; totalSales: number; cashSales: number; cardSales: number; totalCashDrops: number; expectedCashInDrawer: number; transactionCount: number; sessionStartedAt: string }, Error>({
+    queryKey: ['pos-z-report'],
+    queryFn: () => posApi.getZReport(),
+  });

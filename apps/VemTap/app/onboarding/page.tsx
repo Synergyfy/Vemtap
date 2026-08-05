@@ -669,7 +669,7 @@ function DetailsStep({ data, onNext, refCode }: { data: Partial<OnboardingData>,
                 const profile = await api.get('/users/profile');
                 const token = useAuthStore.getState().access_token;
                 if (token) {
-                    useAuthStore.getState().login(profile, token);
+                    await useAuthStore.getState().login(profile, token);
                 }
             } catch (err) {
                 console.error('Failed to sync user profile after business creation:', err);
@@ -1373,6 +1373,22 @@ function SubscriptionStep({ data, onNext }: { data: Partial<OnboardingData>, onN
         return null;
     };
 
+    const isCustomPricePlan = (plan: PricingPlan) => !plan.isFree && plan.monthlyPrice === 0;
+
+    const handleEnterpriseInquiry = () => {
+        const subject = encodeURIComponent('Enterprise Plan Inquiry - Vemtap');
+        const body = encodeURIComponent(
+            'Hi Vemtap Team,\n\n' +
+            'I would like to learn more about the Enterprise plan and discuss a custom pricing solution for my business.\n\n' +
+            'Please get in touch with details on:\n' +
+            '- Custom pricing options\n' +
+            '- Enterprise features & limits\n' +
+            '- Onboarding process\n\n' +
+            'Thank you.'
+        );
+        window.open(`mailto:support@vemtap.com?subject=${subject}&body=${body}`, '_self');
+    };
+
     const handleSelectPlan = (planId: string, isTrial: boolean) => {
         setSelectedPlan(planId);
         onNext({ planId, billingCycle, isTrial });
@@ -1478,6 +1494,10 @@ function SubscriptionStep({ data, onNext }: { data: Partial<OnboardingData>, onN
                                             <div className="px-3 py-1 rounded-full bg-emerald-50 text-emerald-600 text-[9px] font-black uppercase tracking-widest shrink-0">
                                                 Free Forever
                                             </div>
+                                        ) : isCustomPricePlan(plan) ? (
+                                            <div className="px-3 py-1 rounded-full bg-purple-50 text-purple-600 text-[9px] font-black uppercase tracking-widest shrink-0 border border-purple-200">
+                                                Custom Pricing
+                                            </div>
                                         ) : trialDays > 0 && (
                                             <div className="flex items-center gap-1 px-3 py-1 rounded-full bg-amber-500/10 text-amber-600 text-[9px] font-black uppercase tracking-widest shrink-0 border border-amber-500/20">
                                                 <Zap size={11} className="fill-amber-500 text-amber-500" />
@@ -1490,6 +1510,8 @@ function SubscriptionStep({ data, onNext }: { data: Partial<OnboardingData>, onN
                                     <div className={`flex items-baseline gap-1 ${isSelected && isPopular ? 'text-white' : 'text-text-main'}`}>
                                         {plan.isFree ? (
                                             <span className="text-3xl sm:text-4xl font-black">Free</span>
+                                        ) : isCustomPricePlan(plan) ? (
+                                            <span className="text-3xl sm:text-4xl font-black tracking-tight">Custom</span>
                                         ) : (
                                             <>
                                                 <span className="text-3xl sm:text-4xl font-black tracking-tight">₦{price.toLocaleString()}</span>
@@ -1555,7 +1577,15 @@ function SubscriptionStep({ data, onNext }: { data: Partial<OnboardingData>, onN
 
                                 {/* Action Buttons */}
                                 <div className="p-6 sm:p-7 bg-white border-t border-gray-100 space-y-2.5 mt-auto">
-                                    {trialDays > 0 && !plan.isFree ? (
+                                    {isCustomPricePlan(plan) ? (
+                                        <button
+                                            onClick={handleEnterpriseInquiry}
+                                            className="w-full py-4 rounded-2xl text-[10px] font-black uppercase tracking-[0.15em] transition-all active:scale-[0.98] flex items-center justify-center gap-2 cursor-pointer bg-gradient-to-r from-purple-600 to-indigo-600 text-white hover:from-purple-700 hover:to-indigo-700 shadow-lg shadow-purple-500/20"
+                                        >
+                                            <Mail size={14} />
+                                            Chat With Sales
+                                        </button>
+                                    ) : trialDays > 0 && !plan.isFree ? (
                                         <>
                                             <button
                                                 onClick={() => handleSelectPlan(plan.id, true)}
@@ -1734,22 +1764,7 @@ function PaymentStep({ data, onNext }: { data: Partial<OnboardingData>, onNext: 
 
         const publicKey = process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY;
         if (!publicKey || publicKey.includes('placeholder')) {
-            setIsProcessing(true);
-            try {
-                await subscribe.mutateAsync({
-                    planId: plan!.id,
-                    billingPeriod: billingCycle,
-                    businessId: user?.businessId,
-                    isTrial: isTrialMode,
-                    paymentReference: `mock-ref-${Date.now()}`,
-                });
-                setIsProcessing(false);
-                setIsSuccess(true);
-                setTimeout(() => onNext({}), 2000);
-            } catch (err: any) {
-                toast.error(err?.message || 'Failed to activate subscription');
-                setIsProcessing(false);
-            }
+            toast.error('Payment gateway not configured. Please contact support.');
             return;
         }
 

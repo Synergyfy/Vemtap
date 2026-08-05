@@ -63,7 +63,7 @@ export default function DashboardMobileNav({ onOpenSidebar }: DashboardMobileNav
 
     return (
         <div
-            className="lg:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-lg border-t border-gray-100 z-50 shadow-[0_-8px_30px_rgb(0,0,0,0.06)]"
+            className="lg:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-lg border-t border-gray-100 z-[250] shadow-[0_-8px_30px_rgb(0,0,0,0.06)]"
             style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
         >
             <div className="flex justify-around items-center h-20 px-2">

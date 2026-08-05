@@ -70,7 +70,7 @@ export default function UnifiedCartPage() {
             await api.post('/catalogue/orders/bulk-checkout', payload);
             toast.success('All orders placed successfully!');
             clearAllCarts();
-            router.push('/customer/orders');
+            router.push('/customer/dashboard/orders');
         } catch (error: any) {
             toast.error(error.message || 'Bulk checkout failed');
         } finally {

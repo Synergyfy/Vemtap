@@ -341,7 +341,7 @@ export default function BusinessProfilePage() {
                 applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
             });
 
-            await api.post('/notifications/push/register', {
+            await api.post('/notifications/push-token', {
                 token: JSON.stringify(subscription),
                 isUser: user?.role === 'customer',
             });

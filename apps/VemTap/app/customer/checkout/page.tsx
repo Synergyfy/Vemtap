@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { useCatalogueItem, useCatalogueOfferDetails } from '@/services/catalogue/hooks';
+import { useCatalogueItem, useCatalogueOfferDetails, CatalogueOffer } from '@/services/catalogue/hooks';
 import { useAuthStore } from '@/store/useAuthStore';
 import { api } from '@/lib/api';
 import toast from 'react-hot-toast';
@@ -26,8 +26,9 @@ export default function SingleCheckoutPage() {
     const [isProcessing, setIsProcessing] = useState(false);
 
     const { data: item, isLoading: itemLoading } = useCatalogueItem(itemId || '', branchId || undefined);
-    // Note: If it's an offer, we'd need another hook or check, but let's focus on items for now 
-    // or handle offer if the ID looks like one. For simplicity, we'll check item first.
+    const { data: offer, isLoading: offerLoading } = useCatalogueOfferDetails(itemId || '');
+    const isLoading = itemLoading || (offerLoading && !item);
+    const checkoutItem: CatalogueOffer | any = item || offer;
 
     if (!branchId || !itemId) {
         return (
@@ -40,7 +41,7 @@ export default function SingleCheckoutPage() {
     }
 
     const handlePlaceOrder = async () => {
-        if (!item) return;
+        if (!checkoutItem) return;
         setIsProcessing(true);
         try {
             const payload = {
@@ -49,15 +50,14 @@ export default function SingleCheckoutPage() {
                 phone: user?.phone || '',
                 email: user?.email || '',
                 branchId,
-                items: [{
-                    itemId: item.id,
-                    quantity: 1
-                }]
+                items: checkoutItem?.itemType
+                    ? [{ itemId: checkoutItem.id, quantity: 1 }]
+                    : [{ offerId: checkoutItem.id, quantity: 1 }],
             };
 
             await api.post('/catalogue/orders', payload);
             toast.success('Order placed successfully!');
-            router.push('/customer/orders');
+            router.push('/customer/dashboard/orders');
         } catch (error: any) {
             toast.error(error.message || 'Failed to place order');
         } finally {
@@ -65,8 +65,11 @@ export default function SingleCheckoutPage() {
         }
     };
 
-    if (itemLoading) return <div className="min-h-screen bg-slate-50 flex items-center justify-center"><Spinner /></div>;
-    if (!item) return <div className="p-8 text-center">Item not found</div>;
+    const displayPrice = checkoutItem?.price ?? checkoutItem?.calculatedPrice ?? checkoutItem?.fixedPrice ?? checkoutItem?.discountValue ?? 0;
+    const displayPoints = checkoutItem?.loyaltyPoints ?? 0;
+
+    if (isLoading) return <div className="min-h-screen bg-slate-50 flex items-center justify-center"><Spinner /></div>;
+    if (!checkoutItem) return <div className="p-8 text-center">Item not found</div>;
 
     return (
         <div className="min-h-screen bg-slate-50 pb-32">
@@ -83,8 +86,8 @@ export default function SingleCheckoutPage() {
                 <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden p-6">
                     <div className="flex gap-4 mb-6">
                         <div className="size-24 rounded-2xl bg-slate-100 flex-shrink-0 overflow-hidden border border-slate-200">
-                            {item.mainImage ? (
-                                <img src={item.mainImage} alt="" className="size-full object-cover" />
+                            {checkoutItem.mainImage ? (
+                                <img src={checkoutItem.mainImage} alt="" className="size-full object-cover" />
                             ) : (
                                 <div className="size-full flex items-center justify-center text-slate-300">
                                     <ShoppingBag size={32} />
@@ -92,13 +95,13 @@ export default function SingleCheckoutPage() {
                             )}
                         </div>
                         <div className="flex-1 min-w-0">
-                            <h3 className="text-lg font-black text-slate-900 truncate">{item.name}</h3>
-                            <p className="text-xs text-slate-500 mt-1 line-clamp-2">{item.shortDescription}</p>
+                            <h3 className="text-lg font-black text-slate-900 truncate">{checkoutItem.name}</h3>
+                            <p className="text-xs text-slate-500 mt-1 line-clamp-2">{checkoutItem.shortDescription || checkoutItem.description}</p>
                             <div className="mt-2 flex items-center gap-2">
-                                <span className="text-xl font-black text-primary">₦{item.price.toLocaleString()}</span>
-                                {item.loyaltyPoints && (
+                                <span className="text-xl font-black text-primary">₦{displayPrice.toLocaleString()}</span>
+                                {displayPoints > 0 && (
                                     <span className="text-[10px] font-bold text-amber-600 bg-amber-50 px-2 py-1 rounded-lg">
-                                        +{item.loyaltyPoints} Points
+                                        +{displayPoints} Points
                                     </span>
                                 )}
                             </div>
@@ -108,7 +111,7 @@ export default function SingleCheckoutPage() {
                     <div className="space-y-4 pt-6 border-t border-slate-100">
                         <div className="flex justify-between items-center text-sm">
                             <span className="text-slate-500 font-bold">Subtotal</span>
-                            <span className="text-slate-900 font-black">₦{item.price.toLocaleString()}</span>
+                            <span className="text-slate-900 font-black">₦{displayPrice.toLocaleString()}</span>
                         </div>
                         <div className="flex justify-between items-center text-sm">
                             <span className="text-slate-500 font-bold">Delivery</span>
@@ -116,7 +119,7 @@ export default function SingleCheckoutPage() {
                         </div>
                         <div className="flex justify-between items-center pt-4 border-t border-slate-100">
                             <span className="text-lg font-black text-slate-900">Total</span>
-                            <span className="text-lg font-black text-primary">₦{item.price.toLocaleString()}</span>
+                            <span className="text-lg font-black text-primary">₦{displayPrice.toLocaleString()}</span>
                         </div>
                     </div>
                 </div>

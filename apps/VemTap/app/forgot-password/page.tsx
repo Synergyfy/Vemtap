@@ -5,10 +5,27 @@ import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import AuthSidePanel from '@/components/auth/AuthSidePanel';
 import Logo from '@/components/brand/Logo';
+import { api } from '@/lib/api';
+import { toast } from 'react-hot-toast';
+import Spinner from '@/components/ui/Spinner';
 
 export default function ForgotPasswordPage() {
     const [submitted, setSubmitted] = useState(false);
     const [email, setEmail] = useState('');
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
+    const handleSubmit = async () => {
+        if (!email || isSubmitting) return;
+        setIsSubmitting(true);
+        try {
+            await api.post('/auth/password-reset/request', { email });
+            setSubmitted(true);
+        } catch (err: any) {
+            toast.error(err?.message || 'Failed to send recovery link. Please try again.');
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
 
     return (
         <div className="h-screen bg-white flex overflow-hidden font-sans">
@@ -49,11 +66,16 @@ export default function ForgotPasswordPage() {
                                         </div>
 
                                         <button
-                                            onClick={() => setSubmitted(true)}
-                                            className="w-full h-12 bg-primary text-white font-bold rounded-xl shadow-lg shadow-primary/20 hover:bg-primary-hover transition-all flex items-center justify-center gap-2 text-sm mt-4"
+                                            onClick={handleSubmit}
+                                            disabled={!email || isSubmitting}
+                                            className="w-full h-12 bg-primary text-white font-bold rounded-xl shadow-lg shadow-primary/20 hover:bg-primary-hover transition-all flex items-center justify-center gap-2 text-sm mt-4 disabled:opacity-60 disabled:cursor-not-allowed"
                                         >
-                                            Send Recovery Link
-                                            <span className="material-icons-round text-lg">send</span>
+                                            {isSubmitting ? <Spinner size="sm" /> : (
+                                                <>
+                                                    Send Recovery Link
+                                                    <span className="material-icons-round text-lg">send</span>
+                                                </>
+                                            )}
                                         </button>
 
                                         <Link href="/login" className="flex items-center justify-center gap-2 text-primary text-[11px] font-black uppercase tracking-widest hover:underline pt-2">

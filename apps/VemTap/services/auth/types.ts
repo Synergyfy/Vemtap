@@ -40,6 +40,12 @@ export interface AuthResponse {
 export interface LoginRequest {
     email: string;
     password: string;
+    twoFactorCode?: string;
+}
+
+export interface TwoFactorSetupResponse {
+    secret: string;
+    otpauthUrl: string;
 }
 
 export interface RegisterRequest {

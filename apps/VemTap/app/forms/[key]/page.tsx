@@ -88,7 +88,7 @@ export default function PublicBusinessFormPage() {
             });
 
             if (authResponse?.access_token) {
-                useAuthStore.getState().login(authResponse.user, authResponse.access_token);
+                await useAuthStore.getState().login(authResponse.user, authResponse.access_token);
             }
 
             const payload = buildAnswerPayload(pendingAnswers);

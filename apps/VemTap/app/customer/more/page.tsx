@@ -62,8 +62,8 @@ export default function CustomerMorePage() {
         }
     };
 
-    const handleLogout = () => {
-        logout();
+    const handleLogout = async () => {
+        await logout();
         router.push('/login');
     };
 
