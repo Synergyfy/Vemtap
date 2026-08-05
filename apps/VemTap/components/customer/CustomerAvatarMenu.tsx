@@ -45,9 +45,9 @@ export default function CustomerAvatarMenu() {
         setIsOpen(false);
     }, [pathname]);
 
-    const handleLogout = () => {
+    const handleLogout = async () => {
         setIsOpen(false);
-        logout();
+        await logout();
         router.push('/login');
     };
 

@@ -76,9 +76,9 @@ export interface AuthState {
   isAuthenticated: boolean;
   activeBranchId: string | null; // Globally selected branch for filtering
 
-  login: (userData: User, access_token: string) => void;
-  signup: (userData: User, access_token: string) => void;
-  logout: () => void;
+  login: (userData: User, access_token: string) => Promise<void>;
+  signup: (userData: User, access_token: string) => Promise<void>;
+  logout: () => Promise<void>;
   setActiveBranch: (branchId: string | null) => void;
   updateUser: (updates: Partial<User>) => Promise<{ success: boolean; error?: string }>;
   subscribe: (planId: SubscriptionPlan) => Promise<{ success: boolean; error?: string }>;
@@ -92,11 +92,16 @@ export const useAuthStore = create<AuthState>()(
       isAuthenticated: false,
       activeBranchId: null,
 
-      login: (userData: User, access_token: string) => {
+      login: async (userData: User, access_token: string) => {
         console.log('[AUTH] login() called', { email: userData?.email, role: userData?.role });       
        
-        // Wipe any previous session/business caches to prevent cross-account data leaks
-        resetSessionData().catch(() => {});
+        // Wipe any previous session/business caches BEFORE activating the new
+        // session so the dashboard never paints the previous account's data.
+        try {
+          await resetSessionData();
+        } catch (e) {
+          console.error('Failed to reset session data on login:', e);
+        }
        
         // Clear chat history on login to ensure fresh session
         try {
@@ -133,11 +138,15 @@ export const useAuthStore = create<AuthState>()(
         console.log('[AUTH] Login complete, isAuthenticated:', true, 'Active Branch:', branchIdToSet);
       },
 
-      signup: (userData: User, access_token: string) => {
+      signup: async (userData: User, access_token: string) => {
         console.log('[AUTH] signup() called', { email: userData?.email });
        
         // Wipe any previous session/business caches before activating the new account
-        resetSessionData().catch(() => {});
+        try {
+          await resetSessionData();
+        } catch (e) {
+          console.error('Failed to reset session data on signup:', e);
+        }
        
         if (userData?.role) {
           userData.role = userData.role.toLowerCase() as UserRole;
@@ -157,7 +166,7 @@ export const useAuthStore = create<AuthState>()(
       },
 
 
-      logout: () => {
+      logout: async () => {
         console.log('[AUTH] 🚪 logout() called');
         
         // 1. Clear Google Session if it exists
@@ -194,7 +203,11 @@ export const useAuthStore = create<AuthState>()(
         }
 
         // 3. Wipe all session/business caches (query cache, offline DB, persisted stores)
-        resetSessionData().catch(() => {});
+        try {
+          await resetSessionData();
+        } catch (e) {
+          console.error('Failed to reset session data on logout:', e);
+        }
 
         set({ 
           user: null, 
