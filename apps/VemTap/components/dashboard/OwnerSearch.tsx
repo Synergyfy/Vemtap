@@ -204,7 +204,7 @@ export default function OwnerSearch() {
     }, [selectedIndex]);
 
     // Handle selection execution
-    const handleSelect = (item: SearchResult) => {
+    const handleSelect = async (item: SearchResult) => {
         // Subscription check for locked premium features
         if (item.feature && isFeatureLocked(item.feature)) {
             setUpgradeModal({
@@ -218,11 +218,7 @@ export default function OwnerSearch() {
 
         if (item.type === 'action') {
             if (item.actionType === 'logout') {
-                queryClient.clear();
-                if (typeof window !== 'undefined') {
-                    localStorage.clear();
-                }
-                logout();
+                await logout();
                 router.push('/login');
             } else if (item.actionType === 'exit-sudo') {
                 // Exit impersonation mode by reloading to the admin dashboard

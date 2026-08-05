@@ -669,7 +669,7 @@ function DetailsStep({ data, onNext, refCode }: { data: Partial<OnboardingData>,
                 const profile = await api.get('/users/profile');
                 const token = useAuthStore.getState().access_token;
                 if (token) {
-                    useAuthStore.getState().login(profile, token);
+                    await useAuthStore.getState().login(profile, token);
                 }
             } catch (err) {
                 console.error('Failed to sync user profile after business creation:', err);

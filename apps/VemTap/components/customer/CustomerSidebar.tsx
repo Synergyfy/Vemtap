@@ -107,8 +107,8 @@ export default function CustomerSidebar({ children }: CustomerSidebarProps) {
     const readNotificationMutation = useMarkAsRead();
     const readAllMutation = useMarkAllAsRead();
 
-    const handleLogout = () => {
-        logout();
+    const handleLogout = async () => {
+        await logout();
         router.push('/login');
     };
 

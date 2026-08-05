@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Search, UserPlus, X, User, Check, ScanLine, Smartphone, Mail, CreditCard, WifiOff } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -93,15 +94,15 @@ export function CustomerSelectorModal({ isOpen, onClose, onSelectCustomer, selec
 
   if (!isOpen) return null;
 
-  return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm"  />
+  return createPortal(
+    <div className="fixed inset-0 z-[300] flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm z-0"  />
 
       <motion.div
         initial={{ opacity: 0, scale: 0.95, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 20 }}
-        className="bg-white rounded-[32px] shadow-2xl w-full max-w-lg relative overflow-hidden flex flex-col max-h-[90vh]"
+        className="bg-white rounded-[32px] shadow-2xl w-full max-w-lg relative overflow-hidden flex flex-col max-h-[90vh] z-10"
       >
         <div className="flex items-center justify-between p-6 border-b border-gray-100 shrink-0">
           <div>
@@ -312,6 +313,7 @@ export function CustomerSelectorModal({ isOpen, onClose, onSelectCustomer, selec
           )}
         </div>
       </motion.div>
-    </div>
+    </div>,
+    document.body
   );
 }

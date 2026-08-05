@@ -9,7 +9,9 @@ export const useMyBusiness = (enabled = true) => {
     const isCustomer = user?.role?.toLowerCase() === 'customer';
 
     return useQuery<Business, Error>({
-        queryKey: ['my-business'],
+        // Scope the key to the current business so a stale cache entry from a
+        // previous account can never be served on a different account.
+        queryKey: ['my-business', user?.businessId ?? user?.id],
         queryFn: async () => {
             const data = await api.get('/businesses/my-business');
             return data;

@@ -197,10 +197,8 @@ export default function DashboardSidebar({ children }: SidebarProps) {
         }
     });
 
-    const handleLogout = () => {
-        queryClient.clear();
-        if (typeof window !== 'undefined') localStorage.clear();
-        logout();
+    const handleLogout = async () => {
+        await logout();
         router.push('/login');
     };
 
