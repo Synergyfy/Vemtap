@@ -30,6 +30,12 @@ Tools designed to keep customers coming back:
 - **Analytics**: Cross-platform data visualization and reporting.
 - **KYC & Verification**: Managing partner and agent trust.
 
+### 6. Market Clusters (Discovery Gateway)
+- **Clusters**: Admin-created geographic market areas (Banex, Apo Zone E, etc.). Each has a `uniqueCode` that acts as its QR code identifier (frontend renders the QR; no image stored).
+- **Cluster QRs**: Scanning one shows active deals from **all** member branches (fair time-based rotation). QRs can be activated/deactivated by admins.
+- **Branch QRs**: Also act as discovery gateways — the tap context exposes the branch's cluster.
+- **Backend module**: `apps/backend/src/modules/clusters` (service, controller, cache service, entities, DTOs).
+
 ---
 
 ## Technical Highlights

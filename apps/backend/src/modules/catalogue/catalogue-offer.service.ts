@@ -34,6 +34,7 @@ import { RequestClaimOtpDto, VerifyClaimDto } from './dto/claim.dto';
 import { CACHE_MANAGER, type Cache } from '@nestjs/cache-manager';
 import { AiCreditService } from '../ai-copilot/services/ai-credit.service';
 import { OpenAIClient } from '../ai-copilot/openai/openai.client';
+import { ClustersService } from '../clusters/clusters.service';
 
 @Injectable()
 export class CatalogueOfferService {
@@ -56,6 +57,7 @@ export class CatalogueOfferService {
     @Inject(AiCreditService)
     private readonly aiCreditService: AiCreditService,
     @Inject(OpenAIClient) private readonly openAiClient: OpenAIClient,
+    private readonly clustersService: ClustersService,
   ) {}
 
   async createOffer(dto: CreateCatalogueOfferDto, businessId: string) {
@@ -913,6 +915,8 @@ export class CatalogueOfferService {
           await (this.cacheManager as any).reset();
         }
       }
+
+      await this.clustersService.invalidateForBranch(branchId);
     } catch (error) {
       this.logger.error(`Failed to clear offers cache: ${error.message}`);
     }

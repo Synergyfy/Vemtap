@@ -13,6 +13,7 @@ import { User } from '../../users/entities/user.entity';
 import { Visit } from '../../visitors/entities/visit.entity';
 import { Campaign } from '../../campaigns/entities/campaign.entity';
 import type { MessageCampaign } from '../../messaging/entities/message-campaign.entity';
+import { Cluster } from '../../clusters/entities/cluster.entity';
 
 import { ApiProperty } from '@nestjs/swagger';
 import { generateUniqueCode } from '../../../common/utils/random.util';
@@ -87,6 +88,20 @@ export class Branch extends AbstractBaseEntity {
 
   @Column({ type: 'varchar', nullable: true, length: 500 })
   mainQrShortUrl: string | null;
+
+  @ApiProperty({
+    example: null,
+    description: 'Cluster this branch is assigned to (market area)',
+  })
+  @Index('idx_branches_cluster')
+  @Column({ type: 'uuid', nullable: true })
+  clusterId: string | null;
+
+  @ManyToOne(() => Cluster, (cluster) => cluster.branches, {
+    onDelete: 'SET NULL',
+  })
+  @JoinColumn({ name: 'clusterId' })
+  cluster: Cluster;
 
   @ApiProperty({
     example: '#2563EB',
