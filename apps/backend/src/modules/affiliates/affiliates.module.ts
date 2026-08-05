@@ -13,7 +13,7 @@ import { VemtapAffiliateAgentsService } from './vemtap-affiliate-agents.service'
 import { User } from '../users/entities/user.entity';
 import { SettingsModule } from '../settings/settings.module';
 import { NotificationsModule } from '../notifications/notifications.module';
-import { forwardRef } from '@nestjs/common';
+import { BusinessesModule } from '../businesses/businesses.module';
 
 @Module({
   imports: [
@@ -29,6 +29,7 @@ import { forwardRef } from '@nestjs/common';
     SettingsModule,
     NotificationsModule,
     ExternalAffiliateModule,
+    BusinessesModule,
   ],
   controllers: [AffiliatesController],
   providers: [AffiliatesService, VemtapAffiliateAgentsService],

@@ -66,7 +66,7 @@ export function KycSettingsView() {
 
   const currentTier = getCurrentTier();
   const status = business?.status || 'pending';
-  const isVerified = status === 'APPROVED';
+  const isVerified = status === 'active';
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -94,10 +94,10 @@ export function KycSettingsView() {
           <div className={cn(
             "px-4 py-2 rounded-xl border text-[10px] font-black uppercase tracking-widest shrink-0",
             isVerified ? "bg-emerald-50 text-emerald-600 border-emerald-100" :
-            status === 'REJECTED' ? "bg-red-50 text-red-600 border-red-100" :
+            status === 'suspended' ? "bg-red-50 text-red-600 border-red-100" :
             "bg-amber-50 text-amber-600 border-amber-100"
           )}>
-            {isVerified ? 'Verified' : status === 'REJECTED' ? 'Rejected' : status === 'SUSPENDED' ? 'Suspended' : 'Pending'}
+            {isVerified ? 'Verified' : status === 'suspended' ? 'Suspended' : 'Pending'}
           </div>
         </div>
 
