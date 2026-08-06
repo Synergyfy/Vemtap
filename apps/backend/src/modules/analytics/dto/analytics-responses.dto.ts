@@ -91,28 +91,6 @@ export class TrafficByEntranceDto {
   count: string;
 }
 
-export class VisitDurationDistributionDto {
-  @ApiProperty({ example: 'Short' })
-  label: string;
-
-  @ApiProperty({ example: '< 15m' })
-  time: string;
-
-  @ApiProperty({ example: '24%' })
-  p: string;
-}
-
-export class VisitDurationDto {
-  @ApiProperty({ example: '45 Minutes' })
-  averageStay: string;
-
-  @ApiProperty({ example: '+12%' })
-  trendText: string;
-
-  @ApiProperty({ type: [VisitDurationDistributionDto] })
-  distribution: VisitDurationDistributionDto[];
-}
-
 export class FootfallAnalyticsResponseDto {
   @ApiProperty({ type: [AnalyticsStatDto] })
   stats: AnalyticsStatDto[];
@@ -122,9 +100,6 @@ export class FootfallAnalyticsResponseDto {
 
   @ApiProperty({ type: [TrafficByEntranceDto] })
   trafficByEntrance: TrafficByEntranceDto[];
-
-  @ApiProperty({ type: VisitDurationDto })
-  visitDuration: VisitDurationDto;
 }
 
 export class WeeklyDataDto {
@@ -142,8 +117,9 @@ export class SmartSuggestionDto {
   @ApiProperty({
     example:
       'Based on your peak times (Saturdays between 6pm - 8pm), we suggest adding **2 additional staff** members during this window.',
+    required: false,
   })
-  recommendation: string;
+  recommendation?: string;
 }
 
 export class PeakTimesAnalyticsResponseDto {
@@ -155,8 +131,8 @@ export class PeakTimesAnalyticsResponseDto {
   })
   hoursLabels: string[];
 
-  @ApiProperty({ type: SmartSuggestionDto })
-  smartSuggestion: SmartSuggestionDto;
+  @ApiProperty({ type: SmartSuggestionDto, nullable: true })
+  smartSuggestion: SmartSuggestionDto | null;
 }
 
 export class MonthlyGrowthDto {
