@@ -63,6 +63,31 @@ export interface ClusterQrCode {
     createdAt: string;
 }
 
+/** What scanning a specific QR should show. Mock only — the backend does not
+ *  yet model per-QR deal configuration (see BACKEND_GAPS). */
+export interface ClusterQrConfig {
+    /** 'all' = show the cluster's whole deal feed; 'custom' = only curated offers. */
+    mode: 'all' | 'custom';
+    /** Curated offer ids (used when mode === 'custom'). */
+    offerIds: string[];
+    /** Max number of deals rotated/shown on this QR. */
+    slotCount: number;
+}
+
+/** A QR's scannable code is stable forever; what it *lands on* is dynamic.
+ *  'default' points to the cluster's main page; 'custom' redirects to a chosen
+ *  URL, optionally only until `expiresAt` then falls back to default. Mock only
+ *  — the backend does not yet model dynamic destinations (see BACKEND_GAPS). */
+export interface ClusterQrDynamic {
+    qrCodeId: string;
+    /** 'default' = stable cluster scan page; 'custom' = redirect to `url`. */
+    mode: 'default' | 'custom';
+    /** Destination when mode === 'custom'. */
+    url: string | null;
+    /** Override end time (ISO). After this, behaviour returns to 'default'. */
+    expiresAt: string | null;
+}
+
 export interface CreateClusterDto {
     name: string;
     description?: string;
@@ -136,6 +161,10 @@ interface MockDb {
     pinnedByCluster: Record<string, string[]>;
     /** keyed by backend cluster id. */
     realClusters?: Record<string, RealClusterMeta>;
+    /** keyed by QR code id. Mock per-QR deal config. */
+    qrConfigs?: Record<string, ClusterQrConfig>;
+    /** keyed by QR code id. Mock per-QR dynamic destination. */
+    qrDynamics?: Record<string, ClusterQrDynamic>;
 }
 
 const STORAGE_KEY = 'vemtap_clusters_mock_v1';
@@ -145,6 +174,13 @@ const uid = () =>
     Math.random().toString(36).slice(2, 8);
 
 const nowIso = () => new Date().toISOString();
+
+const DEFAULT_QR_DYNAMIC = (qrCodeId: string): ClusterQrDynamic => ({
+    qrCodeId,
+    mode: 'default',
+    url: null,
+    expiresAt: null,
+});
 
 const distanceKm = (lat1: number, lng1: number, lat2: number, lng2: number) => {
     const R = 6371;
@@ -522,15 +558,15 @@ const toRichCluster = (b: BBackendCluster): Cluster => ({
     state: '',
     city: '',
     area: '',
-    latitude: b.latitude,
-    longitude: b.longitude,
-    radiusM: b.radiusMeters,
+    latitude: b.latitude != null ? Number(b.latitude) : null,
+    longitude: b.longitude != null ? Number(b.longitude) : null,
+    radiusM: b.radiusMeters != null ? Number(b.radiusMeters) : null,
     isActive: b.isActive,
     uniqueCode: b.uniqueCode,
     qrUrl: `https://vemtap.com/c/${b.uniqueCode}`,
     qrCodesCount: b.qrIsActive ? 1 : 0,
-    totalScans: b.scanCount,
-    autoMatchedOffersCount: b.activeOfferCount,
+    totalScans: Number(b.scanCount) || 0,
+    autoMatchedOffersCount: Number(b.activeOfferCount) || 0,
     pinnedOffersCount: 0,
     createdAt: b.createdAt,
     updatedAt: b.createdAt,
@@ -771,8 +807,100 @@ export const adminClustersApi = {
         const db = loadDb();
         await delay();
         db.qrCodes = db.qrCodes.filter(q => !(q.clusterId === clusterId && q.id === qrId));
+        if (db.qrConfigs) delete db.qrConfigs[qrId];
         saveDb(db);
         return { success: true };
+    },
+
+    // -> Create a single QR code (with a per-QR config) — MOCK
+    // BACKEND GAP: per-QR deal configuration has no backend endpoint yet.
+    createQrCode: async (clusterId: string) => {
+        const db = loadDb();
+        await delay();
+        const origin = typeof window !== 'undefined' ? window.location.origin : '';
+        const code = `CLU-${Math.random().toString(36).slice(2, 6).toUpperCase()}${Math.floor(10 + Math.random() * 90)}`;
+        const qr: ClusterQrCode = {
+            id: uid(),
+            clusterId,
+            code,
+            scanUrl: `${origin}/tap/clusters/${code}`,
+            isActive: true,
+            totalScans: 0,
+            createdAt: nowIso(),
+        };
+        db.qrCodes.push(qr);
+        db.qrConfigs = db.qrConfigs || {};
+        db.qrConfigs[qr.id] = { mode: 'all', offerIds: [], slotCount: 12 };
+        saveDb(db);
+        return qr;
+    },
+
+    // -> Get the per-QR deal config — MOCK
+    getQrConfig: async (qrCodeId: string): Promise<ClusterQrConfig> => {
+        const db = loadDb();
+        await delay();
+        return db.qrConfigs?.[qrCodeId] || { mode: 'all', offerIds: [], slotCount: 12 };
+    },
+
+    // -> Save the per-QR deal config — MOCK
+    saveQrConfig: async (qrCodeId: string, config: ClusterQrConfig): Promise<ClusterQrConfig> => {
+        const db = loadDb();
+        await delay();
+        db.qrConfigs = db.qrConfigs || {};
+        db.qrConfigs[qrCodeId] = config;
+        saveDb(db);
+        return config;
+    },
+
+    // -> Deal options available to configure a QR with — MOCK
+    // BACKEND GAP: picks from all mock offers; the backend should scope the
+    // offer pool per cluster (see Cluster deals gap above).
+    getQrOfferOptions: async (): Promise<ClusterOfferRow[]> => {
+        const db = loadDb();
+        await delay();
+        return db.offers.map(o => toOfferRow(db, o, ''));
+    },
+
+    // ------------------------------------------------------------------
+    // Dynamic QR destinations — MOCK
+    // BACKEND GAP: QR codes are static artifacts today. To support dynamic
+    // redirects the backend would need a per-QR "destination" + "valid_until"
+    // on the QR record (or a small lookup table keyed by scan code) plus a
+    // redirect rule when a scanned code resolves. See BACKEND_GAPS.
+    // ------------------------------------------------------------------
+
+    getQrDynamic: async (qrCodeId: string): Promise<ClusterQrDynamic> => {
+        const db = loadDb();
+        await delay();
+        const cfg = db.qrDynamics?.[qrCodeId] || DEFAULT_QR_DYNAMIC(qrCodeId);
+        if (cfg.mode === 'custom' && cfg.expiresAt && Date.parse(cfg.expiresAt) <= Date.now()) {
+            const reset: ClusterQrDynamic = { qrCodeId, mode: 'default', url: null, expiresAt: null };
+            db.qrDynamics = db.qrDynamics || {};
+            db.qrDynamics[qrCodeId] = reset;
+            saveDb(db);
+            return reset;
+        }
+        return cfg;
+    },
+
+    setDynamicToDefault: async (qrCodeId: string): Promise<ClusterQrDynamic> => {
+        const db = loadDb();
+        await delay();
+        const reset: ClusterQrDynamic = { qrCodeId, mode: 'default', url: null, expiresAt: null };
+        db.qrDynamics = db.qrDynamics || {};
+        db.qrDynamics[qrCodeId] = reset;
+        saveDb(db);
+        return reset;
+    },
+
+    setDynamicUrl: async (qrCodeId: string, url: string, expiresAt?: string | null): Promise<ClusterQrDynamic> => {
+        const db = loadDb();
+        await delay();
+        const cfg: ClusterQrDynamic = { qrCodeId, mode: 'custom', url, expiresAt: expiresAt || null };
+        db.qrDynamics = db.qrDynamics || {};
+        db.qrDynamics[qrCodeId] = cfg;
+        saveDb(db);
+        return cfg;
     },
 
     // -> GET /admin/clusters/:id/offers  =>  { autoMatched, pinned, total }
@@ -965,6 +1093,32 @@ export const BACKEND_GAPS = [
         suggestedRoutes: [
             'GET /admin/clusters/:id/offers',
             'PATCH /admin/clusters/:id/offers/:offerId',
+        ],
+    },
+    {
+        feature: 'Per-QR deal configuration',
+        ui: 'Each QR code has its own "Configure" flow choosing which deals it serves (all cluster deals vs a curated subset + slot count).',
+        missing: [
+            'GET  /admin/clusters/:id/qr-codes/:qrId/config  -> { mode: "all" | "custom", offerIds[], slotCount }',
+            'PUT  /admin/clusters/:id/qr-codes/:qrId/config  { mode, offerIds?, slotCount }',
+            'deals endpoint for the picker: GET /admin/clusters/:id/offers (shared with pin/unpin gap)',
+        ],
+        suggestedRoutes: [
+            'GET /admin/clusters/:id/qr-codes/:qrId/config',
+            'PUT /admin/clusters/:id/qr-codes/:qrId/config',
+        ],
+    },
+    {
+        feature: 'Dynamic QR destination',
+        ui: 'Each QR keeps a stable scan code but its destination can be switched from the cluster page to a custom URL, optionally only until a chosen time, then restored to default.',
+        missing: [
+            'QR record fields: destinationUrl?, validUntil? (null = indefinite; after it, resolve to default)',
+            'Redirect rule on the scanned code resolver: if destinationUrl is set and unexpired, land there; else land on the cluster page',
+        ],
+        suggestedRoutes: [
+            'GET  /public/scan/:code  ->  redirect target (default or current destination)',
+            'PUT  /admin/clusters/:id/qr-codes/:qrId/destination  { url?, validUntil? }',
+            'DELETE /admin/clusters/:id/qr-codes/:qrId/destination  → restore default',
         ],
     },
     {

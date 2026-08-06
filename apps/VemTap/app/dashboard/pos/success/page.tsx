@@ -4,13 +4,45 @@ import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { usePosStore } from '@/store/usePosStore';
 import { usePosLoyaltyStore } from '@/store/usePosLoyaltyStore';
-import { CheckCircle2, ArrowLeft, WifiOff } from 'lucide-react';
+import { CheckCircle2, ArrowLeft, WifiOff, Printer, Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useActiveBranch } from '@/hooks/useActiveBranch';
 import { useMyBusiness } from '@/services/businesses/hooks';
 import { useBranches } from '@/services/branches/hooks';
 import Receipt from '@/components/dashboard/pos/shared/Receipt';
 import { usePosSettingsStore } from '@/store/usePosSettingsStore';
+import toast from 'react-hot-toast';
+import { triggerReceiptPrint, connectThermalPrinter, disconnectThermalPrinter, isThermalPrinterConnected } from '@/lib/pos/escPosPrinter';
+import type { PrintReceiptData } from '@/lib/pos/escPosPrinter';
+import type { PosSaleResponse } from '@/services/pos/types';
+
+function buildPrintData(
+  sale: PosSaleResponse,
+  settings: { businessName: string; businessAddress: string; phoneNumber: string },
+): PrintReceiptData {
+  return {
+    receiptNumber: sale.receiptNumber,
+    businessName: settings.businessName || 'Vemtap',
+    address: settings.businessAddress || undefined,
+    phone: settings.phoneNumber || undefined,
+    date: new Date(sale.createdAt).toLocaleString(),
+    cashierName: sale.cashierName,
+    customerName: sale.customer ? `${sale.customer.firstName} ${sale.customer.lastName}`.trim() : undefined,
+    items: sale.items.map((i) => ({
+      name: i.productName,
+      quantity: i.quantity,
+      price: i.unitPrice,
+      total: i.totalPrice,
+    })),
+    subtotal: sale.subtotal,
+    discount: sale.discountAmount,
+    tax: sale.tax,
+    grandTotal: sale.total,
+    paymentMethod: sale.paymentMethod,
+    amountPaid: sale.amountPaid,
+    change: sale.change,
+  };
+}
 
 export default function POSSuccessScreen() {
   const router = useRouter();
@@ -54,6 +86,46 @@ export default function POSSuccessScreen() {
   useEffect(() => {
     setHydrated(true);
   }, []);
+
+  // Auto-print the receipt after each sale when enabled in POS settings.
+  const autoPrintedRef = React.useRef<string | null>(null);
+  const [printerConnected, setPrinterConnected] = useState<boolean>(() => isThermalPrinterConnected());
+  const [connectingPrinter, setConnectingPrinter] = useState(false);
+
+  const handleConnectPrinter = async () => {
+    setConnectingPrinter(true);
+    try {
+      const kind = await connectThermalPrinter();
+      if (kind) {
+        setPrinterConnected(true);
+        toast.success('Thermal printer connected');
+      } else {
+        toast.error('No printer selected or browser not supported');
+      }
+    } catch {
+      toast.error('Could not connect to printer');
+    } finally {
+      setConnectingPrinter(false);
+    }
+  };
+
+  const handleDisconnectPrinter = async () => {
+    await disconnectThermalPrinter();
+    setPrinterConnected(false);
+    toast('Thermal printer disconnected');
+  };
+
+  useEffect(() => {
+    if (!hydrated || !lastCompletedSale) return;
+    if (!posSettings.autoPrintReceipt) return;
+    if (autoPrintedRef.current === lastCompletedSale.id) return;
+    autoPrintedRef.current = lastCompletedSale.id;
+    // Wait for the receipt DOM to mount, then send it to the printer.
+    const timer = setTimeout(() => {
+      void triggerReceiptPrint(buildPrintData(lastCompletedSale, posSettings));
+    }, 450);
+    return () => clearTimeout(timer);
+  }, [hydrated, lastCompletedSale, posSettings]);
 
   if (!hydrated) return null;
 
@@ -99,6 +171,16 @@ export default function POSSuccessScreen() {
 
   return (
     <div className="min-h-screen bg-gray-50/50 flex flex-col">
+      {/* Print only the receipt when auto-print (or browser print) is triggered. */}
+      <style>{`
+        @media print {
+          body * { visibility: hidden; }
+          #pos-print-area, #pos-print-area * { visibility: visible; }
+          #pos-print-area { position: absolute; left: 0; top: 0; width: 100%; }
+          #pos-print-area img { max-width: 48px; max-height: 48px; }
+        }
+      `}</style>
+
       {/* Top bar with back button */}
       <div className="sticky top-0 z-10 bg-white border-b border-gray-100 px-4 py-3 flex items-center gap-3">
         <button
@@ -159,11 +241,44 @@ export default function POSSuccessScreen() {
           transition={{ delay: 0.2, type: "spring", bounce: 0.4 }}
           className="w-full lg:w-[380px] shrink-0"
         >
+          {/* Thermal printer connection */}
+          <div className="mb-3 flex items-center justify-between bg-white border border-gray-100 rounded-2xl px-4 py-3 shadow-sm">
+            <div className="flex items-center gap-2.5">
+              <div className={`size-9 rounded-xl flex items-center justify-center ${printerConnected ? 'bg-emerald-50' : 'bg-gray-100'}`}>
+                <Printer size={16} className={printerConnected ? 'text-emerald-500' : 'text-gray-400'} />
+              </div>
+              <div>
+                <p className="text-[11px] font-black text-gray-900">Thermal Printer</p>
+                <p className="text-[9px] font-bold text-gray-400">
+                  {printerConnected ? 'Connected — auto-print sends to this printer' : 'Not connected — prints via browser dialog'}
+                </p>
+              </div>
+            </div>
+            {printerConnected ? (
+              <button
+                onClick={handleDisconnectPrinter}
+                className="text-[10px] font-black uppercase tracking-widest text-amber-600 hover:text-amber-700 px-3 py-2 rounded-xl bg-amber-50 hover:bg-amber-100 transition-all active:scale-95"
+              >
+                Disconnect
+              </button>
+            ) : (
+              <button
+                onClick={handleConnectPrinter}
+                disabled={connectingPrinter}
+                className="text-[10px] font-black uppercase tracking-widest text-emerald-600 hover:text-emerald-700 px-3 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 transition-all active:scale-95 disabled:opacity-50"
+              >
+                {connectingPrinter ? <Loader2 size={14} className="animate-spin" /> : 'Connect'}
+              </button>
+            )}
+          </div>
+
           <div className="bg-white shadow-2xl rounded-sm overflow-hidden border border-gray-100 relative">
             <div className="absolute top-0 inset-x-0 h-2 bg-repeat-x" style={{ backgroundImage: 'radial-gradient(circle at 4px 0px, transparent 4px, white 5px)', backgroundSize: '8px 8px' }} />
 
             <div className="p-6 pt-10 pb-8">
-              <Receipt data={receiptData} showActions />
+              <div id="pos-print-area">
+                <Receipt data={receiptData} showActions />
+              </div>
             </div>
 
             <div className="absolute bottom-0 inset-x-0 h-2 bg-repeat-x" style={{ backgroundImage: 'radial-gradient(circle at 4px 8px, transparent 4px, white 5px)', backgroundSize: '8px 8px' }} />

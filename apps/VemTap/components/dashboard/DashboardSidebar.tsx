@@ -391,11 +391,14 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                                                         </button>
                                                         {!isCollapsed && isMenuExpanded && (
                                                             <div className="ml-9 space-y-1 border-l border-gray-100 pl-4 py-1">
-                                                                 {item.submenu.filter(sub => {
+                                                                 {item.submenu.filter((sub, idx) => {
                                                                      if (isOwnerOrAdmin) return true;
-                                                                     if (userPermissions.includes(item.permission!)) return true;
                                                                      const subKey = `${item.permission}:${sub.label.toLowerCase().replace(/\s+/g, '-')}`;
-                                                                     return userPermissions.includes(subKey);
+                                                                     if (userPermissions.includes(subKey)) return true;
+                                                                     // Fallback: if user has parent permission but no sub-permissions,
+                                                                     // show only the first item (main page) as default.
+                                                                     if (userPermissions.includes(item.permission!) && idx === 0) return true;
+                                                                     return false;
                                                                  }).map((sub, idx) => (
                                                                      <Link 
                                                                           key={idx}

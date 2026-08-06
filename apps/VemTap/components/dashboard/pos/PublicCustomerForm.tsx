@@ -15,15 +15,20 @@ export default function PublicCustomerForm({ isOpen, onSubmit, onClose }: Public
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
-  const [errors, setErrors] = useState<{ name?: string; phone?: string }>({});
+  const [errors, setErrors] = useState<{ name?: string; phone?: string; email?: string }>({});
 
   const handleSubmit = () => {
-    const newErrors: { name?: string; phone?: string } = {};
+    const trimmedEmail = email.trim();
+    const newErrors: { name?: string; phone?: string; email?: string } = {};
     if (!name.trim()) newErrors.name = 'Name is required';
     if (!phone.trim()) newErrors.phone = 'Phone number is required';
+    // Email is optional — only validate its format if the customer typed one.
+    if (trimmedEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
+      newErrors.email = 'Enter a valid email or leave it blank';
+    }
     setErrors(newErrors);
     if (Object.keys(newErrors).length > 0) return;
-    onSubmit({ name: name.trim(), phone: phone.trim(), email: email.trim() || undefined });
+    onSubmit({ name: name.trim(), phone: phone.trim(), email: trimmedEmail || undefined });
   };
 
   return (
@@ -89,16 +94,23 @@ export default function PublicCustomerForm({ isOpen, onSubmit, onClose }: Public
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-[10px] font-black uppercase tracking-widest text-gray-500">Email Address</label>
+                <label className="text-[10px] font-black uppercase tracking-widest text-gray-500">Email Address <span className="text-gray-400">(optional)</span></label>
                 <div className="relative">
                   <Mail size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
                   <input
+                    type="email"
+                    inputMode="email"
+                    autoComplete="email"
                     value={email}
                     onChange={e => setEmail(e.target.value)}
                     placeholder="e.g. john@example.com"
-                    className="w-full h-12 pl-10 pr-4 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm outline-none focus:bg-white focus:border-[#066CF4] focus:ring-2 focus:ring-[#066CF4]/10 transition-all"
+                    className={cn(
+                      "w-full h-12 pl-10 pr-4 bg-gray-50 border rounded-xl font-bold text-sm outline-none transition-all",
+                      errors.email ? "border-red-500" : "border-gray-200 focus:bg-white focus:border-[#066CF4] focus:ring-2 focus:ring-[#066CF4]/10"
+                    )}
                   />
                 </div>
+                {errors.email && <p className="text-[10px] text-red-500 font-bold">{errors.email}</p>}
               </div>
 
               <button
