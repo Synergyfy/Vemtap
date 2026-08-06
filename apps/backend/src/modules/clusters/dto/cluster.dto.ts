@@ -6,12 +6,14 @@ import {
   IsInt,
   IsBoolean,
   IsUUID,
+  IsEnum,
   Min,
   Max,
   MaxLength,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ClusterType } from '../entities/cluster.entity';
 
 export class AddBranchDto {
   @ApiProperty({ example: 'uuid-of-branch' })
@@ -26,6 +28,44 @@ export class CreateClusterDto {
   @IsNotEmpty()
   @MaxLength(120)
   name: string;
+
+  @ApiPropertyOptional({
+    enum: ClusterType,
+    example: ClusterType.MARKET,
+    default: ClusterType.MARKET,
+  })
+  @IsOptional()
+  @IsEnum(ClusterType)
+  type?: ClusterType;
+
+  @ApiPropertyOptional({ example: 'uuid-of-parent-cluster' })
+  @IsOptional()
+  @IsUUID()
+  parentId?: string;
+
+  @ApiPropertyOptional({ example: 'Nigeria' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  country?: string;
+
+  @ApiPropertyOptional({ example: 'FCT' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  state?: string;
+
+  @ApiPropertyOptional({ example: 'Abuja' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  city?: string;
+
+  @ApiPropertyOptional({ example: 'Banex' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  area?: string;
 
   @ApiPropertyOptional({ example: 'Market deals around Banex Plaza' })
   @IsOptional()
@@ -70,6 +110,43 @@ export class UpdateClusterDto {
   @IsNotEmpty()
   @MaxLength(120)
   name?: string;
+
+  @ApiPropertyOptional({
+    enum: ClusterType,
+    example: ClusterType.MARKET,
+  })
+  @IsOptional()
+  @IsEnum(ClusterType)
+  type?: ClusterType;
+
+  @ApiPropertyOptional({ example: 'uuid-of-parent-cluster' })
+  @IsOptional()
+  @IsUUID()
+  parentId?: string;
+
+  @ApiPropertyOptional({ example: 'Nigeria' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  country?: string;
+
+  @ApiPropertyOptional({ example: 'FCT' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  state?: string;
+
+  @ApiPropertyOptional({ example: 'Abuja' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  city?: string;
+
+  @ApiPropertyOptional({ example: 'Banex' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  area?: string;
 
   @ApiPropertyOptional({ example: 'Market deals around Banex Plaza' })
   @IsOptional()

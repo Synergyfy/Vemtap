@@ -13,6 +13,12 @@ import {
 import { RewardCategory } from '../entities/reward-template.entity';
 import { RewardAudienceType } from '../entities/reward.entity';
 
+export enum ManualEarnSource {
+  MANUAL_AWARD = 'manual_award',
+  PROMOTION = 'promotion',
+  COMPENSATION = 'compensation',
+}
+
 export class CreateRewardTemplateDto {
   @ApiProperty()
   @IsString()
@@ -197,4 +203,42 @@ export class BranchIdParamDto {
   @ApiProperty()
   @IsUUID()
   branchId: string;
+}
+
+export class ManualEarnPointsDto {
+  @ApiProperty({
+    description: 'Loyalty profile (customer user) to credit',
+  })
+  @IsUUID()
+  userId: string;
+
+  @ApiProperty({ example: 500, description: 'Points to award' })
+  @IsNumber()
+  @Min(1)
+  points: number;
+
+  @ApiPropertyOptional({
+    enum: ManualEarnSource,
+    default: ManualEarnSource.MANUAL_AWARD,
+  })
+  @IsOptional()
+  @IsEnum(ManualEarnSource)
+  source?: ManualEarnSource;
+
+  @ApiPropertyOptional({ description: 'Related reward program ID' })
+  @IsOptional()
+  @IsUUID()
+  rewardId?: string;
+
+  @ApiPropertyOptional({
+    description: 'Staff member performing the award (defaults to the caller)',
+  })
+  @IsOptional()
+  @IsUUID()
+  awardedBy?: string;
+
+  @ApiPropertyOptional({ description: 'Audit trail note' })
+  @IsOptional()
+  @IsString()
+  notes?: string;
 }

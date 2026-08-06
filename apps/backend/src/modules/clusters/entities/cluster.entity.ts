@@ -1,14 +1,79 @@
-import { Entity, Column, Index, OneToMany, BeforeInsert } from 'typeorm';
+import {
+  Entity,
+  Column,
+  Index,
+  OneToMany,
+  ManyToOne,
+  JoinColumn,
+  BeforeInsert,
+} from 'typeorm';
 import { AbstractBaseEntity } from '../../../common/entities/base.entity';
 import { Branch } from '../../branches/entities/branch.entity';
 import { ApiProperty } from '@nestjs/swagger';
 import { generateUniqueCode } from '../../../common/utils/random.util';
+
+export enum ClusterType {
+  COUNTRY = 'country',
+  STATE = 'state',
+  MARKET = 'market',
+  BUILDING = 'building',
+  CUSTOM = 'custom',
+}
 
 @Entity('clusters')
 export class Cluster extends AbstractBaseEntity {
   @ApiProperty({ example: 'Banex Market', description: 'Cluster display name' })
   @Column()
   name: string;
+
+  @ApiProperty({
+    enum: ClusterType,
+    example: ClusterType.MARKET,
+    description: 'Level of the cluster in the hierarchy',
+    default: ClusterType.MARKET,
+  })
+  @Index('idx_clusters_type')
+  @Column({
+    type: 'simple-enum',
+    enum: ClusterType,
+    default: ClusterType.MARKET,
+  })
+  type: ClusterType;
+
+  @ApiProperty({
+    description:
+      'Parent cluster in the hierarchy (e.g. a market under a state)',
+    nullable: true,
+  })
+  @Index('idx_clusters_parent')
+  @Column({ type: 'uuid', nullable: true })
+  parentId: string;
+
+  @ManyToOne(() => Cluster, (cluster) => cluster.children, {
+    nullable: true,
+    onDelete: 'SET NULL',
+  })
+  @JoinColumn({ name: 'parentId' })
+  parent: Cluster;
+
+  @OneToMany(() => Cluster, (cluster) => cluster.parent)
+  children: Cluster[];
+
+  @ApiProperty({ example: 'Nigeria', nullable: true })
+  @Column({ nullable: true })
+  country: string;
+
+  @ApiProperty({ example: 'FCT', nullable: true })
+  @Column({ nullable: true })
+  state: string;
+
+  @ApiProperty({ example: 'Abuja', nullable: true })
+  @Column({ nullable: true })
+  city: string;
+
+  @ApiProperty({ example: 'Banex', nullable: true })
+  @Column({ nullable: true })
+  area: string;
 
   @ApiProperty({
     example: 'CL-9XZ7KL2PQ',

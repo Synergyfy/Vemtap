@@ -3,7 +3,8 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { ClustersService } from './clusters.service';
-import { Cluster } from './entities/cluster.entity';
+import { Cluster, ClusterType } from './entities/cluster.entity';
+import { ClusterOffer } from './entities/cluster-offer.entity';
 import { Branch } from '../branches/entities/branch.entity';
 import { CatalogueOffer } from '../catalogue/entities/catalogue-offer.entity';
 import { CatalogueOfferClaim } from '../catalogue/entities/catalogue-offer-claim.entity';
@@ -48,6 +49,16 @@ describe('ClustersService', () => {
 
   const offerRepo = {
     createQueryBuilder: jest.fn(),
+    findOne: jest.fn(),
+    find: jest.fn(),
+  };
+
+  const clusterOfferRepo = {
+    find: jest.fn(),
+    findOne: jest.fn(),
+    create: jest.fn(),
+    save: jest.fn(),
+    remove: jest.fn(),
   };
 
   const claimRepo = {
@@ -97,11 +108,20 @@ describe('ClustersService', () => {
       id: 'cluster-new',
       ...data,
     }));
+    clusterOfferRepo.find.mockResolvedValue([]);
+    clusterOfferRepo.create.mockImplementation((data: any) => ({
+      id: 'cluster-offer-new',
+      ...data,
+    }));
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         ClustersService,
         { provide: getRepositoryToken(Cluster), useValue: clusterRepo },
+        {
+          provide: getRepositoryToken(ClusterOffer),
+          useValue: clusterOfferRepo,
+        },
         { provide: getRepositoryToken(Branch), useValue: branchRepo },
         { provide: getRepositoryToken(CatalogueOffer), useValue: offerRepo },
         {
@@ -344,6 +364,29 @@ describe('ClustersService', () => {
       }
     });
 
+    it('ranks pinned offers first regardless of the active sort', async () => {
+      const o1 = makeOffer('o1', 'b1', '2026-01-05');
+      o1.calculatedPrice = 50;
+      const o2 = makeOffer('o2', 'b2', '2026-01-04');
+      o2.calculatedPrice = 250;
+      const qb = buildQb();
+      qb.getMany.mockResolvedValue([o1, o2]);
+      offerRepo.createQueryBuilder.mockReturnValue(qb);
+      clusterOfferRepo.find.mockResolvedValue([
+        { offerId: 'o2', pinnedAt: new Date('2026-01-10') },
+      ]);
+
+      const result = await service.getClusterDeals('CL-ABC123DEF', {
+        sortBy: ClusterDealsSortBy.PRICE_ASC,
+      });
+
+      expect(result.data.map((d: any) => d.id)).toEqual(['o2', 'o1']);
+      expect(clusterOfferRepo.find).toHaveBeenCalledWith({
+        where: { clusterId: 'cl-1', isPinned: true },
+        select: ['offerId', 'pinnedAt'],
+      });
+    });
+
     it('rotates which branch leads across buckets', async () => {
       // Find two buckets whose rotation offsets differ
       const memberCount = 2;
@@ -529,6 +572,136 @@ describe('ClustersService', () => {
     });
   });
 
+  describe('admin offers (auto-match + pin/unpin)', () => {
+    const makeOffer = (id: string, branchId: string) => ({
+      id,
+      branchId,
+      branch: { id: branchId, name: `Branch ${branchId}` },
+      business: { id: 'biz', name: 'Biz' },
+      name: `Offer ${id}`,
+      description: '',
+      longDescription: null,
+      terms: [],
+      pricingType: 'sum',
+      discountValue: null,
+      fixedPrice: null,
+      calculatedPrice: 100,
+      mainImage: null,
+      galleryImages: [],
+      startDate: new Date('2026-01-01'),
+      endDate: new Date('2026-12-31'),
+      status: 'active',
+      views: 0,
+      visits: 0,
+      quantity: 10,
+      maxClaimsPerCustomer: 1,
+      claimCodePrefix: null,
+      offerType: null,
+      audience: null,
+      audienceTarget: null,
+      createdAt: new Date('2026-01-05'),
+      businessId: 'biz',
+    });
+
+    it('throws NotFoundException for an unknown cluster', async () => {
+      clusterRepo.findOne.mockResolvedValue(null);
+      await expect(service.getClusterOffers('cl-nope', {})).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+
+    it('returns autoMatched offers and pinned offers with totals', async () => {
+      clusterRepo.findOne.mockResolvedValue({ id: 'cl-1' });
+      const qb = buildQb();
+      qb.getMany.mockResolvedValue([
+        makeOffer('o1', 'b1'),
+        makeOffer('o2', 'b2'),
+      ]);
+      offerRepo.createQueryBuilder.mockReturnValue(qb);
+      clusterOfferRepo.find.mockResolvedValue([
+        { offerId: 'o2', pinnedAt: new Date('2026-01-10') },
+      ]);
+      offerRepo.find.mockResolvedValue([makeOffer('o2', 'b2')]);
+
+      const result = await service.getClusterOffers('cl-1', {});
+
+      expect(result.autoMatched.map((d: any) => d.id)).toEqual(['o1', 'o2']);
+      expect(result.pinned.map((d: any) => d.id)).toEqual(['o2']);
+      expect(result.total).toBe(2);
+      expect(offerRepo.find).toHaveBeenCalledWith(
+        expect.objectContaining({ relations: ['branch', 'business'] }),
+      );
+    });
+
+    it('pins an offer (upsert) and invalidates the cluster cache', async () => {
+      clusterRepo.findOne.mockResolvedValue({
+        id: 'cl-1',
+        uniqueCode: 'CL-ABC123DEF',
+      });
+      offerRepo.findOne.mockResolvedValue({ id: 'o1' });
+      clusterOfferRepo.findOne.mockResolvedValue(null);
+
+      const result = await service.setOfferPinned(
+        'cl-1',
+        'o1',
+        { pinned: true },
+        'admin-1',
+      );
+
+      expect(result).toEqual({
+        pinned: true,
+        offerId: 'o1',
+        clusterId: 'cl-1',
+      });
+      expect(clusterOfferRepo.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          clusterId: 'cl-1',
+          offerId: 'o1',
+          isPinned: true,
+          pinnedBy: 'admin-1',
+        }),
+      );
+      expect(clusterCache.invalidateCluster).toHaveBeenCalledWith(
+        'CL-ABC123DEF',
+      );
+    });
+
+    it('unpins an offer by removing its row and invalidates the cache', async () => {
+      clusterRepo.findOne.mockResolvedValue({
+        id: 'cl-1',
+        uniqueCode: 'CL-ABC123DEF',
+      });
+      offerRepo.findOne.mockResolvedValue({ id: 'o1' });
+      const existing = { id: 'co-1', clusterId: 'cl-1', offerId: 'o1' };
+      clusterOfferRepo.findOne.mockResolvedValue(existing);
+
+      const result = await service.setOfferPinned(
+        'cl-1',
+        'o1',
+        { pinned: false },
+        'admin-1',
+      );
+
+      expect(result.pinned).toBe(false);
+      expect(clusterOfferRepo.remove).toHaveBeenCalledWith(existing);
+      expect(clusterCache.invalidateCluster).toHaveBeenCalledWith(
+        'CL-ABC123DEF',
+      );
+    });
+
+    it('throws NotFoundException when pinning an unknown offer', async () => {
+      clusterRepo.findOne.mockResolvedValue({
+        id: 'cl-1',
+        uniqueCode: 'CL-ABC123DEF',
+      });
+      offerRepo.findOne.mockResolvedValue(null);
+
+      await expect(
+        service.setOfferPinned('cl-1', 'o-nope', { pinned: true }, 'admin-1'),
+      ).rejects.toThrow(NotFoundException);
+    });
+  });
+
   describe('list', () => {
     it('returns clusters with branch and active offer stats', async () => {
       const qb = buildQb();
@@ -537,6 +710,12 @@ describe('ClustersService', () => {
           {
             id: 'cl-1',
             name: 'Banex Market',
+            type: ClusterType.MARKET,
+            parentId: null,
+            country: 'Nigeria',
+            state: 'FCT',
+            city: 'Abuja',
+            area: 'Banex',
             uniqueCode: 'CL-ABC123DEF',
             description: null,
             latitude: 9.0,
@@ -563,6 +742,14 @@ describe('ClustersService', () => {
       expect(result.data[0].branchCount).toBe(2);
       expect(result.data[0].activeOfferCount).toBe(3);
       expect(result.data[0].qrIsActive).toBe(true);
+      expect(result.data[0]).toMatchObject({
+        type: ClusterType.MARKET,
+        parentId: null,
+        country: 'Nigeria',
+        state: 'FCT',
+        city: 'Abuja',
+        area: 'Banex',
+      });
     });
   });
 });
