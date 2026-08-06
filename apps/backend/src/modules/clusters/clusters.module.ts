@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Cluster } from './entities/cluster.entity';
+import { ClusterOffer } from './entities/cluster-offer.entity';
 import { Branch } from '../branches/entities/branch.entity';
 import { CatalogueOffer } from '../catalogue/entities/catalogue-offer.entity';
 import { CatalogueOfferClaim } from '../catalogue/entities/catalogue-offer-claim.entity';
@@ -15,6 +16,7 @@ import { ClusterCacheService } from './cluster-cache.service';
   imports: [
     TypeOrmModule.forFeature([
       Cluster,
+      ClusterOffer,
       Branch,
       CatalogueOffer,
       CatalogueOfferClaim,

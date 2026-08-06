@@ -1,13 +1,21 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class EnablePostgisAndAddBranchLocation20260622121023 implements MigrationInterface {
-  name = 'EnablePostgisAndAddBranchLocation20260622121023';
+export class EnablePostgisAndAddBranchLocation1782130223000 implements MigrationInterface {
+  name = 'EnablePostgisAndAddBranchLocation1782130223000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`CREATE EXTENSION IF NOT EXISTS "postgis"`);
 
     await queryRunner.query(
-      `ALTER TABLE "branches" ADD COLUMN "location" geography(Point, 4326)`,
+      `ALTER TABLE "branches" ADD COLUMN IF NOT EXISTS "latitude" numeric(10,7) NULL`,
+    );
+
+    await queryRunner.query(
+      `ALTER TABLE "branches" ADD COLUMN IF NOT EXISTS "longitude" numeric(10,7) NULL`,
+    );
+
+    await queryRunner.query(
+      `ALTER TABLE "branches" ADD COLUMN IF NOT EXISTS "location" geography(Point, 4326)`,
     );
 
     await queryRunner.query(
@@ -15,7 +23,7 @@ export class EnablePostgisAndAddBranchLocation20260622121023 implements Migratio
     );
 
     await queryRunner.query(
-      `CREATE INDEX "idx_branches_location" ON "branches" USING GIST ("location")`,
+      `CREATE INDEX IF NOT EXISTS "idx_branches_location" ON "branches" USING GIST ("location")`,
     );
 
     await queryRunner.query(`
@@ -31,6 +39,10 @@ export class EnablePostgisAndAddBranchLocation20260622121023 implements Migratio
       END;
       $$ LANGUAGE plpgsql
     `);
+
+    await queryRunner.query(
+      `DROP TRIGGER IF EXISTS trg_branches_location ON branches`,
+    );
 
     await queryRunner.query(`
       CREATE TRIGGER trg_branches_location

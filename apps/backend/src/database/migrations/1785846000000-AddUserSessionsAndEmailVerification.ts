@@ -1,7 +1,7 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class AddUserSessionsAndEmailVerification20260804122000 implements MigrationInterface {
-  name = 'AddUserSessionsAndEmailVerification20260804122000';
+export class AddUserSessionsAndEmailVerification1785846000000 implements MigrationInterface {
+  name = 'AddUserSessionsAndEmailVerification1785846000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`ALTER TABLE "users" ADD "emailVerified" boolean NOT NULL DEFAULT false`);

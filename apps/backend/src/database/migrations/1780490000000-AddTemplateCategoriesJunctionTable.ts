@@ -1,7 +1,7 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class AddTemplateCategoriesJunctionTable20260603111945 implements MigrationInterface {
-  name = 'AddTemplateCategoriesJunctionTable20260603111945';
+export class AddTemplateCategoriesJunctionTable1780490000000 implements MigrationInterface {
+  name = 'AddTemplateCategoriesJunctionTable1780490000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(

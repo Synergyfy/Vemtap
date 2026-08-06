@@ -7,7 +7,8 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
-import { Cluster } from './entities/cluster.entity';
+import { Cluster, ClusterType } from './entities/cluster.entity';
+import { ClusterOffer } from './entities/cluster-offer.entity';
 import { Branch } from '../branches/entities/branch.entity';
 import {
   CatalogueOffer,
@@ -32,6 +33,10 @@ import {
   AdminClusterQueryDto,
   AutoAssignClustersDto,
 } from './dto/cluster.dto';
+import {
+  ClusterOffersQueryDto,
+  SetClusterOfferPinnedDto,
+} from './dto/cluster-offer.dto';
 
 const ROTATION_BUCKET_MS = 15 * 60 * 1000;
 const MAX_OFFERS_FETCH = 1000;
@@ -51,6 +56,8 @@ export class ClustersService {
   constructor(
     @InjectRepository(Cluster)
     private readonly clusterRepository: Repository<Cluster>,
+    @InjectRepository(ClusterOffer)
+    private readonly clusterOfferRepository: Repository<ClusterOffer>,
     @InjectRepository(Branch)
     private readonly branchRepository: Repository<Branch>,
     @InjectRepository(CatalogueOffer)
@@ -191,16 +198,21 @@ export class ClustersService {
     return result;
   }
 
-  private async computeDeals(cluster: Cluster, query: ClusterDealsQueryDto) {
-    const page = Number(query.page ?? 1);
-    const limit = Number(query.limit ?? 10);
-    const sortBy = query.sortBy ?? ClusterDealsSortBy.FAIR;
-
+  /**
+   * Base query for offers that auto-match a cluster: active offers from member
+   * branches that have opted into the discovery network. Shared by the public
+   * deals feed and the admin auto-match list.
+   */
+  private buildOfferQuery(
+    clusterId: string,
+    search?: string,
+    categoryId?: string,
+  ) {
     const qb = this.offerRepository
       .createQueryBuilder('offer')
       .leftJoinAndSelect('offer.branch', 'branch')
       .leftJoinAndSelect('offer.business', 'business')
-      .where('branch.clusterId = :clusterId', { clusterId: cluster.id })
+      .where('branch.clusterId = :clusterId', { clusterId })
       .andWhere('offer.status = :status', {
         status: CatalogueOfferStatus.ACTIVE,
       })
@@ -213,7 +225,6 @@ export class ClustersService {
         allowPromotions: true,
       });
 
-    const { search, categoryId } = query;
     if (search) {
       qb.andWhere(
         '(offer.name ILIKE :search OR offer.description ILIKE :search OR business.name ILIKE :search)',
@@ -224,6 +235,15 @@ export class ClustersService {
       qb.andWhere('business.categoryId = :categoryId', { categoryId });
     }
 
+    return qb;
+  }
+
+  private async computeDeals(cluster: Cluster, query: ClusterDealsQueryDto) {
+    const page = Number(query.page ?? 1);
+    const limit = Number(query.limit ?? 10);
+    const sortBy = query.sortBy ?? ClusterDealsSortBy.FAIR;
+
+    const qb = this.buildOfferQuery(cluster.id, query.search, query.categoryId);
     let reference: {
       lat: number;
       lng: number;
@@ -272,6 +292,15 @@ export class ClustersService {
       };
     }
 
+    const pinned = await this.clusterOfferRepository.find({
+      where: { clusterId: cluster.id, isPinned: true },
+      select: ['offerId', 'pinnedAt'],
+    });
+    const pinnedIds = new Set(pinned.map((p) => p.offerId));
+    const pinnedAt = new Map(
+      pinned.map((p) => [p.offerId, p.pinnedAt ?? p.createdAt]),
+    );
+
     // Ordering
     let seed: number | null = null;
     let bucket: number | null = null;
@@ -294,6 +323,10 @@ export class ClustersService {
       const getDist = (o: any) => Number(o.distanceMeters ?? Infinity);
       const dir = sortBy === ClusterDealsSortBy.DISTANCE_ASC ? 1 : -1;
       offers.sort((a, b) => (getDist(a) - getDist(b)) * dir);
+    }
+
+    if (pinnedIds.size > 0) {
+      offers = this.orderPinnedFirst(offers, pinnedIds, pinnedAt);
     }
 
     const start = (page - 1) * limit;
@@ -344,6 +377,27 @@ export class ClustersService {
       if (rankDiff !== 0) return rankDiff;
       return b.createdAt.getTime() - a.createdAt.getTime();
     });
+  }
+
+  /**
+   * Pinned offers always lead the ordering (oldest pin first, then newest
+   * offer) regardless of the active sort, so admin-curated deals stay on top.
+   */
+  private orderPinnedFirst(
+    offers: CatalogueOffer[],
+    pinnedIds: Set<string>,
+    pinnedAt: Map<string, Date>,
+  ): CatalogueOffer[] {
+    const pinned = offers
+      .filter((o) => pinnedIds.has(o.id))
+      .sort((a, b) => {
+        const aAt = pinnedAt.get(a.id)?.getTime() ?? 0;
+        const bAt = pinnedAt.get(b.id)?.getTime() ?? 0;
+        if (aAt !== bAt) return aAt - bAt;
+        return b.createdAt.getTime() - a.createdAt.getTime();
+      });
+    const rest = offers.filter((o) => !pinnedIds.has(o.id));
+    return [...pinned, ...rest];
   }
 
   private referenceFromCluster(cluster: Cluster) {
@@ -522,6 +576,12 @@ export class ClustersService {
         return {
           id: cluster.id,
           name: cluster.name,
+          type: cluster.type,
+          parentId: cluster.parentId,
+          country: cluster.country,
+          state: cluster.state,
+          city: cluster.city,
+          area: cluster.area,
           uniqueCode: cluster.uniqueCode,
           description: cluster.description,
           latitude: cluster.latitude,
@@ -561,9 +621,25 @@ export class ClustersService {
       ],
     });
 
+    const parent = cluster.parentId
+      ? await this.clusterRepository.findOne({
+          where: { id: cluster.parentId },
+          select: ['id', 'name', 'type'],
+        })
+      : null;
+
     return {
       id: cluster.id,
       name: cluster.name,
+      type: cluster.type,
+      parentId: cluster.parentId,
+      parent: parent
+        ? { id: parent.id, name: parent.name, type: parent.type }
+        : null,
+      country: cluster.country,
+      state: cluster.state,
+      city: cluster.city,
+      area: cluster.area,
       uniqueCode: cluster.uniqueCode,
       description: cluster.description,
       latitude: cluster.latitude,
@@ -593,8 +669,21 @@ export class ClustersService {
     if (dto.latitude == null || dto.longitude == null) {
       throw new BadRequestException('latitude and longitude are required');
     }
+    if (dto.parentId) {
+      const parent = await this.clusterRepository.findOne({
+        where: { id: dto.parentId },
+        select: ['id'],
+      });
+      if (!parent) throw new NotFoundException('Parent cluster not found');
+    }
     const cluster = this.clusterRepository.create({
       name: dto.name,
+      type: dto.type ?? ClusterType.MARKET,
+      parentId: dto.parentId,
+      country: dto.country,
+      state: dto.state,
+      city: dto.city,
+      area: dto.area,
       description: dto.description,
       latitude: dto.latitude,
       longitude: dto.longitude,
@@ -611,10 +700,118 @@ export class ClustersService {
     const cluster = await this.clusterRepository.findOne({ where: { id } });
     if (!cluster) throw new NotFoundException('Cluster not found');
 
+    if (dto.parentId === cluster.id) {
+      throw new BadRequestException('A cluster cannot be its own parent');
+    }
+    if (dto.parentId) {
+      const parent = await this.clusterRepository.findOne({
+        where: { id: dto.parentId },
+        select: ['id'],
+      });
+      if (!parent) throw new NotFoundException('Parent cluster not found');
+    }
+
     Object.assign(cluster, dto);
     const saved = await this.clusterRepository.save(cluster);
     await this.clusterCache.invalidateCluster(saved.uniqueCode);
     return this.getDetail(saved.id);
+  }
+
+  // ------------------------------------------------------------------
+  // Admin: offers (auto-match + pin/unpin)
+  // ------------------------------------------------------------------
+  async getClusterOffers(clusterId: string, query: ClusterOffersQueryDto) {
+    const cluster = await this.clusterRepository.findOne({
+      where: { id: clusterId },
+      select: ['id'],
+    });
+    if (!cluster) throw new NotFoundException('Cluster not found');
+
+    const qb = this.buildOfferQuery(clusterId, query.search, query.categoryId);
+    qb.orderBy('offer.createdAt', 'DESC');
+    const offers = await qb.getMany();
+    const autoMatched = await Promise.all(
+      offers.map((offer) => this.mapDeal(offer)),
+    );
+
+    const pinnedRows = await this.clusterOfferRepository.find({
+      where: { clusterId, isPinned: true },
+      order: { pinnedAt: 'ASC' },
+    });
+
+    let pinned: any[] = [];
+    if (pinnedRows.length > 0) {
+      const pinnedOfferIds = pinnedRows.map((row) => row.offerId);
+      const pinnedOffers = await this.offerRepository.find({
+        where: { id: In(pinnedOfferIds) },
+        relations: ['branch', 'business'],
+      });
+      const pinnedById = new Map(pinnedOffers.map((o) => [o.id, o]));
+      pinned = (
+        await Promise.all(
+          pinnedRows.map(async (row) => {
+            const offer = pinnedById.get(row.offerId);
+            if (!offer) return null;
+            const deal = await this.mapDeal(offer);
+            return { ...deal, pinnedAt: row.pinnedAt ?? row.createdAt };
+          }),
+        )
+      ).filter(Boolean);
+    }
+
+    return {
+      autoMatched,
+      pinned,
+      total: autoMatched.length,
+    };
+  }
+
+  async setOfferPinned(
+    clusterId: string,
+    offerId: string,
+    dto: SetClusterOfferPinnedDto,
+    adminId: string,
+  ) {
+    const cluster = await this.clusterRepository.findOne({
+      where: { id: clusterId },
+      select: ['id', 'uniqueCode'],
+    });
+    if (!cluster) throw new NotFoundException('Cluster not found');
+
+    const offer = await this.offerRepository.findOne({
+      where: { id: offerId },
+      select: ['id'],
+    });
+    if (!offer) throw new NotFoundException('Offer not found');
+
+    const existing = await this.clusterOfferRepository.findOne({
+      where: { clusterId, offerId },
+    });
+
+    if (dto.pinned) {
+      if (existing) {
+        existing.isPinned = true;
+        existing.pinnedBy = adminId;
+        existing.pinnedAt = new Date();
+        await this.clusterOfferRepository.save(existing);
+      } else {
+        await this.clusterOfferRepository.save(
+          this.clusterOfferRepository.create({
+            clusterId,
+            offerId,
+            isPinned: true,
+            pinnedBy: adminId,
+            pinnedAt: new Date(),
+          }),
+        );
+      }
+    } else if (existing) {
+      await this.clusterOfferRepository.remove(existing);
+    }
+
+    await this.clusterCache.invalidateCluster(cluster.uniqueCode);
+
+    return { pinned: dto.pinned, offerId, clusterId };
   }
 
   async remove(id: string) {
@@ -786,11 +983,7 @@ export class ClustersService {
   // ------------------------------------------------------------------
   private async incrementScan(uniqueCode: string): Promise<void> {
     try {
-      await this.clusterRepository.increment(
-        { uniqueCode },
-        'scanCount',
-        1,
-      );
+      await this.clusterRepository.increment({ uniqueCode }, 'scanCount', 1);
     } catch (err) {
       this.logger.warn(
         `Failed to increment scanCount for cluster ${uniqueCode}: ${err.message}`,

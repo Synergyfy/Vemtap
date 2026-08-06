@@ -1,9 +1,9 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class AddCatalogueOfferDeliveryAndLongDesc20260731063500
+export class AddCatalogueOfferDeliveryAndLongDesc1785500000000
   implements MigrationInterface
 {
-  name = 'AddCatalogueOfferDeliveryAndLongDesc20260731063500';
+  name = 'AddCatalogueOfferDeliveryAndLongDesc1785500000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(

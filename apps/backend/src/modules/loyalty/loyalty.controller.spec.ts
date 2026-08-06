@@ -13,6 +13,7 @@ describe('LoyaltyController', () => {
     getPointLogs: jest.fn(),
     getBusinessPointLogs: jest.fn(),
     givePoints: jest.fn(),
+    earnManualPoints: jest.fn(),
     generatePointCode: jest.fn(),
     usePointCode: jest.fn(),
     createTemplate: jest.fn(),
@@ -83,6 +84,19 @@ describe('LoyaltyController', () => {
       const dto = { uniqueCode: 'code-1', points: 10, businessId: 'biz-1' };
       await controller.givePoints(mockReq as any, dto as any);
       expect(service.givePoints).toHaveBeenCalledWith(mockUser, dto);
+    });
+  });
+
+  describe('earnManualPoints', () => {
+    it('delegates with the caller, branchId query and dto', async () => {
+      const req = { user: { id: 'u1', role: UserRole.OWNER } };
+      const dto = { userId: 'customer-1', points: 500 };
+      await controller.earnManualPoints(req as any, 'b1', dto as any);
+      expect(service.earnManualPoints).toHaveBeenCalledWith(
+        req.user,
+        'b1',
+        dto,
+      );
     });
   });
 

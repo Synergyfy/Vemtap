@@ -5,7 +5,7 @@ export class MakeMainImageOptional1782291592500 implements MigrationInterface {
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(
-      `DROP INDEX "public"."IDX_catalogue_items_barcode"`,
+      `DROP INDEX IF EXISTS "public"."IDX_catalogue_items_barcode"`,
     );
     await queryRunner.query(
       `CREATE TABLE "stock_count_items" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "createdAt" TIMESTAMP NOT NULL DEFAULT now(), "updatedAt" TIMESTAMP NOT NULL DEFAULT now(), "deletedAt" TIMESTAMP, "sessionId" uuid NOT NULL, "itemId" uuid NOT NULL, "itemName" character varying NOT NULL, "itemSku" character varying, "itemCategory" character varying, "itemBarcode" character varying, "systemQuantity" integer, "countedQuantity" integer, "variance" integer, "varianceValue" numeric(14,2), "unitCost" numeric(12,2), "notes" text, CONSTRAINT "PK_742cd8289e4c1459cfa1ad06e4e" PRIMARY KEY ("id"))`,
