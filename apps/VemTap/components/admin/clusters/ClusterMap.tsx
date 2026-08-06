@@ -12,6 +12,7 @@ interface ClusterMapProps {
     showSearch?: boolean;
     center?: google.maps.LatLngLiteral;
     markerPosition?: google.maps.LatLngLiteral;
+    radiusMeters?: number | null;
     onMarkerDrag?: (lat: number, lng: number) => void;
 }
 
@@ -62,7 +63,7 @@ function createSelectedMarkerIcon(bg: string, label: string, size: number = 44):
     return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
 }
 
-export default function ClusterMap({ clusters, selectedCluster, onSelectCluster, showSearch = true, center: centerProp, markerPosition, onMarkerDrag }: ClusterMapProps) {
+export default function ClusterMap({ clusters, selectedCluster, onSelectCluster, showSearch = true, center: centerProp, markerPosition, radiusMeters, onMarkerDrag }: ClusterMapProps) {
     const { isLoaded, loadError } = useJsApiLoader({
         googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '',
     });
@@ -106,6 +107,14 @@ export default function ClusterMap({ clusters, selectedCluster, onSelectCluster,
         }
     }, [selectedCluster]);
 
+    // Re-center when the form's pin moves (search selection, my-location, etc.)
+    useEffect(() => {
+        if (markerPosition && mapRef.current) {
+            mapRef.current.panTo(markerPosition);
+            mapRef.current.setZoom(radiusMeters && radiusMeters > 0 ? 14 : 15);
+        }
+    }, [markerPosition, radiusMeters]);
+
     if (loadError) {
         return (
             <div className="w-full h-full rounded-3xl bg-gray-50 flex items-center justify-center text-gray-400 text-sm">
@@ -133,21 +142,32 @@ export default function ClusterMap({ clusters, selectedCluster, onSelectCluster,
         >
             {/* Draggable marker for form modal */}
             {markerPosition && onMarkerDrag && (
-                <MarkerF
-                    position={markerPosition}
-                    draggable
-                    onDragEnd={(e) => {
-                        if (e.latLng) {
-                            onMarkerDrag(e.latLng.lat(), e.latLng.lng());
-                        }
-                    }}
-                    icon={{
-                        url: createSelectedMarkerIcon('#EF4444', '📍', 40),
-                        scaledSize: new google.maps.Size(40, 50),
-                        anchor: new google.maps.Size(20, 50),
-                    }}
-                    zIndex={9999}
-                />
+                <React.Fragment>
+                    <MarkerF
+                        position={markerPosition}
+                        draggable
+                        onDragEnd={(e) => {
+                            if (e.latLng) {
+                                onMarkerDrag(e.latLng.lat(), e.latLng.lng());
+                            }
+                        }}
+                        icon={createSelectedMarkerIcon('#EF4444', '📍', 40)}
+                        zIndex={9999}
+                    />
+                    {radiusMeters && radiusMeters > 0 && (
+                        <CircleF
+                            center={markerPosition}
+                            radius={radiusMeters}
+                            options={{
+                                fillColor: '#EF4444',
+                                fillOpacity: 0.08,
+                                strokeColor: '#EF4444',
+                                strokeOpacity: 0.35,
+                                strokeWeight: 2,
+                            }}
+                        />
+                    )}
+                </React.Fragment>
             )}
 
             {clustersWithCoords.map(({ c, ll }) => {

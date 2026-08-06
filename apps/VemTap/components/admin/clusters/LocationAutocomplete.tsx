@@ -1,122 +1,156 @@
 'use client';
 
 import React, { useRef, useEffect, useState, useCallback } from 'react';
-import { useJsApiLoader } from '@react-google-maps/api';
-import { MapPin, X, Loader2 } from 'lucide-react';
+import { MapPin, X, Loader2, Navigation } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface LocationAutocompleteProps {
     label: string;
     value: string;
-    onChange: (value: string, place?: google.maps.places.PlaceResult) => void;
+    onChange: (value: string, place?: NominatimResult) => void;
     placeholder: string;
-    type?: 'country' | 'state' | 'city' | 'area';
-    countryRestrict?: string;
     className?: string;
     disabled?: boolean;
+    showLabel?: boolean;
+    icon?: React.ReactNode;
 }
 
-const typeToTypes: Record<string, string[]> = {
-    country: ['(regions)'],
-    state: ['(regions)'],
-    city: ['(cities)'],
-    area: ['geocode'],
-};
+/** What we pass back to ClusterFormModal — enough to extract lat/lng + address components. */
+export interface NominatimResult {
+    place_id: number;
+    display_name: string;
+    lat: string;
+    lon: string;
+    address: Record<string, string>;
+}
+
+interface NominatimRaw {
+    place_id: number;
+    display_name: string;
+    lat: string;
+    lon: string;
+    address?: Record<string, string>;
+}
 
 export function LocationAutocomplete({
     label,
     value,
     onChange,
     placeholder,
-    type = 'city',
-    countryRestrict,
     className,
     disabled,
+    showLabel = true,
+    icon,
 }: LocationAutocompleteProps) {
-    const { isLoaded } = useJsApiLoader({
-        googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '',
-    });
-
     const inputRef = useRef<HTMLInputElement>(null);
-    const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
-    const [selectedPlace, setSelectedPlace] = useState<google.maps.places.PlaceResult | null>(null);
+    const containerRef = useRef<HTMLDivElement>(null);
+    const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const abortRef = useRef<AbortController | null>(null);
+    const [results, setResults] = useState<NominatimResult[]>([]);
+    const [open, setOpen] = useState(false);
+    const [loading, setLoading] = useState(false);
+    const [selected, setSelected] = useState<NominatimResult | null>(null);
 
-    // Initialize Google Places Autocomplete
+    // Close on outside click
     useEffect(() => {
-        if (!isLoaded || !inputRef.current || autocompleteRef.current) return;
-        if (!window.google?.maps?.places?.Autocomplete) return;
-
-        const autocomplete = new window.google.maps.places.Autocomplete(inputRef.current, {
-            fields: ['place_id', 'name', 'formatted_address', 'geometry', 'address_components', 'types'],
-            componentRestrictions: countryRestrict ? { country: countryRestrict } : undefined,
-            types: typeToTypes[type],
-        });
-
-        autocompleteRef.current = autocomplete;
-
-        const listener = autocomplete.addListener('place_changed', () => {
-            const place = autocomplete.getPlace();
-            if (place?.geometry?.location) {
-                setSelectedPlace(place);
-                onChange(place.formatted_address || place.name || value, place);
+        const handler = (e: MouseEvent) => {
+            if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+                setOpen(false);
             }
-        });
-
-        return () => {
-            if (listener) google.maps.event.removeListener(listener);
-            autocomplete.unbindAll();
-            autocompleteRef.current = null;
         };
-    }, [isLoaded, type, countryRestrict, onChange, value]);
+        document.addEventListener('mousedown', handler);
+        return () => document.removeEventListener('mousedown', handler);
+    }, []);
+
+    const fetchResults = useCallback(async (query: string) => {
+        if (abortRef.current) abortRef.current.abort();
+        if (!query.trim() || query.trim().length < 2) {
+            setResults([]);
+            setOpen(false);
+            return;
+        }
+        const controller = new AbortController();
+        abortRef.current = controller;
+        setLoading(true);
+        try {
+            const res = await fetch(`/api/places/search?q=${encodeURIComponent(query.trim())}`, { signal: controller.signal });
+            const data: NominatimRaw[] = await res.json();
+            const mapped: NominatimResult[] = data.map(d => ({
+                place_id: d.place_id,
+                display_name: d.display_name,
+                lat: d.lat,
+                lon: d.lon,
+                address: d.address || {},
+            }));
+            setResults(mapped);
+            setOpen(mapped.length > 0);
+        } catch {
+            // Aborted or network error — just show nothing
+        } finally {
+            setLoading(false);
+        }
+    }, []);
 
     const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-        onChange(e.target.value);
-        setSelectedPlace(null);
+        const v = e.target.value;
+        onChange(v);
+        setSelected(null);
+        if (debounceRef.current) clearTimeout(debounceRef.current);
+        debounceRef.current = setTimeout(() => fetchResults(v), 300);
+    }, [onChange, fetchResults]);
+
+    const handleSelect = useCallback((result: NominatimResult) => {
+        setSelected(result);
+        onChange(result.display_name, result);
+        setOpen(false);
+        setResults([]);
     }, [onChange]);
 
     const handleClear = useCallback((e: React.MouseEvent) => {
         e.stopPropagation();
         onChange('');
-        setSelectedPlace(null);
+        setSelected(null);
+        setResults([]);
+        setOpen(false);
         inputRef.current?.focus();
     }, [onChange]);
 
-    const getDisplayLabel = (place: google.maps.places.PlaceResult) => {
-        if (!place) return value;
-        const parts: string[] = [];
-        if (place.address_components) {
-            for (const component of place.address_components) {
-                if (component.types.includes('country')) parts.unshift(component.long_name);
-                else if (component.types.includes('administrative_area_level_1')) parts.push(component.long_name);
-                else if (component.types.includes('locality')) parts.push(component.long_name);
-                else if (component.types.includes('sublocality_level_1')) parts.push(component.long_name);
-            }
-        }
-        return parts.length > 0 ? parts.join(', ') : place.formatted_address || place.name || value;
+    const shortLabel = (name: string) => {
+        const parts = name.split(',').map(s => s.trim());
+        return parts.length > 1 ? `${parts[0]}, ${parts[1]}` : name;
     };
 
     return (
-        <div className={cn('relative', className)}>
-            <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1 mb-1.5 block">
-                {label}
-            </label>
+        <div ref={containerRef} className={cn('relative', className)}>
+            {showLabel && (
+                <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1 mb-1.5 block">
+                    {label}
+                </label>
+            )}
             <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-400">
-                    <MapPin size={16} />
+                    {icon || <MapPin size={16} />}
                 </div>
                 <input
                     ref={inputRef}
                     type="text"
                     value={value}
                     onChange={handleInputChange}
-                    placeholder={!isLoaded ? 'Loading maps...' : placeholder}
-                    disabled={disabled || !isLoaded}
+                    onFocus={() => { if (results.length) setOpen(true); }}
+                    placeholder={placeholder}
+                    disabled={disabled}
+                    autoComplete="off"
                     className={cn(
-                        "w-full h-12 pl-12 pr-10 bg-gray-50 border border-gray-100 rounded-xl text-sm font-bold focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none",
-                        (disabled || !isLoaded) && "opacity-50 cursor-not-allowed"
+                        "w-full h-12 pl-12 pr-10 bg-gray-50 border border-gray-100 rounded-xl text-sm font-bold focus:bg-white focus:ring-4 focus:ring-primary/10 focus:border-primary/30 transition-all outline-none",
+                        disabled && "opacity-50 cursor-not-allowed"
                     )}
                 />
-                {value && (
+                {loading && (
+                    <div className="absolute inset-y-0 right-3 flex items-center">
+                        <Loader2 size={16} className="animate-spin text-primary" />
+                    </div>
+                )}
+                {!loading && value && (
                     <button
                         type="button"
                         onClick={handleClear}
@@ -126,15 +160,40 @@ export function LocationAutocomplete({
                         <X size={16} />
                     </button>
                 )}
-                {!isLoaded && (
-                    <div className="absolute inset-y-0 right-3 flex items-center">
-                        <Loader2 size={16} className="animate-spin text-gray-400" />
-                    </div>
-                )}
             </div>
-            {selectedPlace && (
+
+            {open && results.length > 0 && (
+                <div className="absolute z-50 mt-1.5 w-full bg-white rounded-xl shadow-xl border border-gray-100 max-h-64 overflow-y-auto custom-scrollbar">
+                    {results.map((r) => (
+                        <button
+                            key={r.place_id}
+                            type="button"
+                            onClick={() => handleSelect(r)}
+                            className="w-full text-left px-4 py-3 hover:bg-gray-50 flex items-start gap-2.5 transition-colors"
+                        >
+                            <MapPin size={15} className="text-gray-300 shrink-0 mt-0.5" />
+                            <div className="min-w-0">
+                                <p className="text-[13px] font-medium text-gray-700 leading-snug truncate">
+                                    {shortLabel(r.display_name)}
+                                </p>
+                                <p className="text-[10px] text-gray-400 font-medium mt-0.5 truncate">
+                                    {r.display_name}
+                                </p>
+                            </div>
+                        </button>
+                    ))}
+                </div>
+            )}
+
+            {open && !loading && results.length === 0 && value.trim().length >= 2 && (
+                <div className="absolute z-50 mt-1.5 w-full bg-white rounded-xl shadow-xl border border-gray-100 px-4 py-3">
+                    <p className="text-xs text-gray-400 font-medium">No matching places found.</p>
+                </div>
+            )}
+
+            {selected && (
                 <p className="mt-1.5 text-[10px] font-medium text-primary flex items-center gap-1">
-                    <MapPin size={10} /> {getDisplayLabel(selectedPlace)}
+                    <Navigation size={10} /> {shortLabel(selected.display_name)}
                 </p>
             )}
         </div>

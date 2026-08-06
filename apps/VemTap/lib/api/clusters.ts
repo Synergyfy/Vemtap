@@ -49,6 +49,8 @@ export interface Cluster {
     totalScans: number;
     autoMatchedOffersCount: number;
     pinnedOffersCount: number;
+    /** Populated by GET /admin/clusters/:id only. */
+    branches?: ClusterBranch[];
     createdAt: string;
     updatedAt: string;
 }
@@ -120,6 +122,18 @@ export interface ClusterOfferRow {
     matchReason?: string;
 }
 
+export interface ClusterBranch {
+    id: string;
+    name: string;
+    uniqueCode?: string;
+    username?: string;
+    logoUrl?: string | null;
+    address?: string | null;
+    city?: string | null;
+    state?: string | null;
+    isActive?: boolean;
+}
+
 export interface ClusterOffersResponse {
     autoMatched: ClusterOfferRow[];
     pinned: ClusterOfferRow[];
@@ -174,6 +188,12 @@ const uid = () =>
     Math.random().toString(36).slice(2, 8);
 
 const nowIso = () => new Date().toISOString();
+
+/** Public app origin — env-driven so local dev links point at localhost instead
+ *  of the production domain. Order: NEXT_PUBLIC_APP_URL → window origin → prod. */
+const getAppBaseUrl = () =>
+    process.env.NEXT_PUBLIC_APP_URL ||
+    (typeof window !== 'undefined' ? window.location.origin : 'https://vemtap.com');
 
 const DEFAULT_QR_DYNAMIC = (qrCodeId: string): ClusterQrDynamic => ({
     qrCodeId,
@@ -533,6 +553,12 @@ export const searchMockDeals = (query: string) => {
 interface BBackendCluster {
     id: string;
     name: string;
+    type: ClusterType;
+    parentId: string | null;
+    country: string | null;
+    state: string | null;
+    city: string | null;
+    area: string | null;
     uniqueCode: string;
     description: string | null;
     latitude: number | null;
@@ -546,24 +572,23 @@ interface BBackendCluster {
     createdAt: string;
 }
 
-/** Map a real backend cluster into the rich UI model. The backend has no
- *  hierarchy/type/pinning yet, so those default lower — see BACKEND_GAPS. */
+/** Map a real backend cluster into the rich UI model. */
 const toRichCluster = (b: BBackendCluster): Cluster => ({
     id: b.id,
     name: b.name,
     description: b.description || '',
-    type: 'market',
-    parentId: null,
-    country: '',
-    state: '',
-    city: '',
-    area: '',
+    type: b.type || 'market',
+    parentId: b.parentId ?? null,
+    country: b.country || '',
+    state: b.state || '',
+    city: b.city || '',
+    area: b.area || '',
     latitude: b.latitude != null ? Number(b.latitude) : null,
     longitude: b.longitude != null ? Number(b.longitude) : null,
     radiusM: b.radiusMeters != null ? Number(b.radiusMeters) : null,
     isActive: b.isActive,
     uniqueCode: b.uniqueCode,
-    qrUrl: `https://vemtap.com/c/${b.uniqueCode}`,
+    qrUrl: `${getAppBaseUrl()}/c/${b.uniqueCode}`,
     qrCodesCount: b.qrIsActive ? 1 : 0,
     totalScans: Number(b.scanCount) || 0,
     autoMatchedOffersCount: Number(b.activeOfferCount) || 0,
@@ -572,11 +597,15 @@ const toRichCluster = (b: BBackendCluster): Cluster => ({
     updatedAt: b.createdAt,
 });
 
-/** Convert the rich UI dto to the backend Create/Update payload. The backend
- *  only accepts: name, description, latitude, longitude, radiusMeters,
- *  isActive, qrIsActive. (Hierarchy fields have no backend column — see gaps.) */
+/** Convert the rich UI dto to the backend Create/Update payload. */
 const toBackendPayload = (data: Partial<CreateClusterDto>) => ({
     name: data.name,
+    type: data.type,
+    parentId: data.parentId ?? undefined,
+    country: data.country || undefined,
+    state: data.state || undefined,
+    city: data.city || undefined,
+    area: data.area || undefined,
     description: data.description,
     latitude: data.latitude ?? undefined,
     longitude: data.longitude ?? undefined,
@@ -597,7 +626,7 @@ export const adminClustersApi = {
             items.forEach(b => {
                 db.realClusters![b.id] = {
                     uniqueCode: b.uniqueCode,
-                    qrUrl: `https://vemtap.com/c/${b.uniqueCode}`,
+                    qrUrl: `${getAppBaseUrl()}/c/${b.uniqueCode}`,
                     isActive: b.qrIsActive && b.isActive,
                     totalScans: b.scanCount,
                 };
@@ -626,8 +655,14 @@ export const adminClustersApi = {
     // -> GET /admin/clusters/:id
     get: async (id: string) => {
         try {
-            const b = await api.get(`/admin/clusters/${id}`);
-            return toRichCluster(b as BBackendCluster);
+            const b = await api.get(`/admin/clusters/${id}`) as BBackendCluster & {
+                branches?: Array<{ id: string; name: string; uniqueCode?: string; username?: string; logoUrl?: string | null; address?: string | null; city?: string | null; state?: string | null; isActive?: boolean }>;
+            };
+            const cluster = toRichCluster(b);
+            if (b.branches) {
+                cluster.branches = b.branches;
+            }
+            return cluster;
         } catch {
             const db = loadDb();
             await delay();
@@ -702,18 +737,24 @@ export const adminClustersApi = {
         }
     },
 
-    // -> Real backend (added for parity; not yet surfaced in the former UI):
-    //    POST /admin/clusters/auto-assign
-    runningAutoAssign: async (payload: { dryRun?: boolean }) => {
-        return api.post('/admin/clusters/auto-assign', payload);
+    // -> POST /admin/clusters/auto-assign
+    autoAssign: async (dryRun = false) => {
+        return api.post('/admin/clusters/auto-assign', { dryRun }) as Promise<{
+            dryRun: boolean;
+            totalCandidates: number;
+            assigned: number;
+            assignments: Array<{ branchId: string; clusterId: string | null }>;
+        }>;
     },
-    //    POST /admin/clusters/:id/branches
-    addBranchToBackend: async (id: string, branchId: string) => {
-        return api.post(`/admin/clusters/${id}/branches`, { branchId });
+
+    // -> POST /admin/clusters/:id/branches
+    addBranch: async (clusterId: string, branchId: string) => {
+        return api.post(`/admin/clusters/${clusterId}/branches`, { branchId }) as Promise<{ success: boolean }>;
     },
-    //    DELETE /admin/clusters/:id/branches/:branchId
-    removeBranchFromBackend: async (id: string, branchId: string) => {
-        return api.delete(`/admin/clusters/${id}/branches/${branchId}`);
+
+    // -> DELETE /admin/clusters/:id/branches/:branchId
+    removeBranch: async (clusterId: string, branchId: string) => {
+        return api.delete(`/admin/clusters/${clusterId}/branches/${branchId}`) as Promise<{ success: boolean }>;
     },
 
     // -> GET /admin/clusters/:id/qr-codes
@@ -904,42 +945,69 @@ export const adminClustersApi = {
     },
 
     // -> GET /admin/clusters/:id/offers  =>  { autoMatched, pinned, total }
-    // BACKEND GAP: no admin endpoint lists a cluster's auto-matched/pinned
-    // offers, and the backend auto-assigns BRANCHES (not offers). This modal
-    // keeps the former local auto-match engine as a demo until parity exists.
     listOffers: async (clusterId: string): Promise<ClusterOffersResponse> => {
-        const db = loadDb();
-        await delay();
-        const cluster = db.clusters.find(c => c.id === clusterId);
-        if (!cluster) return { autoMatched: [], pinned: [], total: 0 };
+        try {
+            const res = await api.get(`/admin/clusters/${clusterId}/offers`, { params: { limit: 100 } });
+            const body = (res || {}) as { autoMatched?: ClusterDeal[]; pinned?: ClusterDeal[]; total?: number };
+            const mapDeal = (d: ClusterDeal): ClusterOfferRow => ({
+                id: d.id,
+                name: d.name,
+                description: d.description || '',
+                businessName: d.business?.name || '',
+                businessSlug: d.business?.name || d.businessId || '',
+                mainImage: d.mainImage,
+                isTrending: d.isTrending,
+                state: d.branch?.state || '',
+                city: d.branch?.city || '',
+                matchReason: 'pinned manually',
+            });
+            const autoMatched = (body.autoMatched || []).map(d => ({ ...mapDeal(d), matchReason: 'auto-matched' }));
+            const pinned = (body.pinned || []).map(mapDeal);
+            return {
+                autoMatched,
+                pinned,
+                total: body.total ?? autoMatched.length + pinned.length,
+            };
+        } catch {
+            // Local fallback when the backend is unreachable.
+            const db = loadDb();
+            await delay();
+            const cluster = db.clusters.find(c => c.id === clusterId);
+            if (!cluster) return { autoMatched: [], pinned: [], total: 0 };
 
-        const { autoMatched, matchReason } = computeMatchedOffers(db, cluster);
-        const pinnedIds = db.pinnedByCluster[clusterId] || [];
-        const pinned = pinnedIds
-            .map(id => db.offers.find(o => o.id === id))
-            .filter((o): o is MockOffer => !!o)
-            .map(o => toOfferRow(db, o, 'pinned manually'));
+            const { autoMatched, matchReason } = computeMatchedOffers(db, cluster);
+            const pinnedIds = db.pinnedByCluster[clusterId] || [];
+            const pinned = pinnedIds
+                .map(id => db.offers.find(o => o.id === id))
+                .filter((o): o is MockOffer => !!o)
+                .map(o => toOfferRow(db, o, 'pinned manually'));
 
-        return {
-            autoMatched: autoMatched.map(o => toOfferRow(db, o, matchReason[o.id])),
-            pinned,
-            total: autoMatched.length + pinned.length,
-        };
+            return {
+                autoMatched: autoMatched.map(o => toOfferRow(db, o, matchReason[o.id])),
+                pinned,
+                total: autoMatched.length + pinned.length,
+            };
+        }
     },
 
     // -> PATCH /admin/clusters/:id/offers/:offerId  =>  { pinned: boolean }
-    // BACKEND GAP: no pin/unpin endpoint. Local demo behaviour only.
     setOfferPinned: async (clusterId: string, offerId: string, pinned: boolean) => {
-        const db = loadDb();
-        await delay();
-        const list = db.pinnedByCluster[clusterId] || (db.pinnedByCluster[clusterId] = []);
-        if (pinned && !list.includes(offerId)) {
-            list.push(offerId);
-        } else if (!pinned) {
-            db.pinnedByCluster[clusterId] = list.filter(id => id !== offerId);
+        try {
+            const res = await api.patch(`/admin/clusters/${clusterId}/offers/${offerId}`, { pinned });
+            return { pinned: res?.pinned ?? pinned };
+        } catch {
+            // Local fallback when the backend is unreachable.
+            const db = loadDb();
+            await delay();
+            const list = db.pinnedByCluster[clusterId] || (db.pinnedByCluster[clusterId] = []);
+            if (pinned && !list.includes(offerId)) {
+                list.push(offerId);
+            } else if (!pinned) {
+                db.pinnedByCluster[clusterId] = list.filter(id => id !== offerId);
+            }
+            saveDb(db);
+            return { pinned };
         }
-        saveDb(db);
-        return { pinned };
     },
 };
 
@@ -1125,7 +1193,7 @@ export const BACKEND_GAPS = [
         feature: 'Branch membership management UI',
         ui: 'Admin should add/remove branches and run auto-assign from the UI.',
         missing: [
-            '(Supported in backend — see below)',
+            '(Implemented — see admin clusters page with Branches modal + Auto-Assign button)',
         ],
         suggestedRoutes: [],
     },

@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Edit2, QrCode, Tag, Trash2, Globe, Map as MapIcon, Store, Building2, Layers, MapPin, FolderTree, X, Sparkles, Pin, Scissors } from 'lucide-react';
+import { Edit2, QrCode, Tag, Trash2, Globe, Map as MapIcon, Store, Building2, Layers, MapPin, FolderTree, X, Sparkles, Pin, Scissors, Users } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { Cluster, ClusterType } from '@/lib/api/clusters';
 
@@ -11,6 +11,7 @@ interface ClusterMapOverlayProps {
     onEdit: () => void;
     onQr: () => void;
     onDeals: () => void;
+    onBranches: () => void;
     onDelete: () => void;
     onClose: () => void;
 }
@@ -29,6 +30,7 @@ export default function ClusterMapOverlay({
     onEdit,
     onQr,
     onDeals,
+    onBranches,
     onDelete,
     onClose,
 }: ClusterMapOverlayProps) {
@@ -101,6 +103,12 @@ export default function ClusterMapOverlay({
                             className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest text-text-secondary hover:text-primary hover:bg-primary/5 border border-gray-100 transition-all"
                         >
                             <Tag size={13} /> Deals
+                        </button>
+                        <button
+                            onClick={onBranches}
+                            className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest text-text-secondary hover:text-blue-600 hover:bg-blue-50 border border-gray-100 transition-all"
+                        >
+                            <Users size={13} /> Branches
                         </button>
                         <button
                             onClick={onQr}
