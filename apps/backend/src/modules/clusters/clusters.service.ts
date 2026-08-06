@@ -7,6 +7,9 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
+import { InjectQueue } from '@nestjs/bullmq';
+import { Queue } from 'bullmq';
+import { Cron } from '@nestjs/schedule';
 import { Cluster, ClusterType } from './entities/cluster.entity';
 import { ClusterOffer } from './entities/cluster-offer.entity';
 import { Branch } from '../branches/entities/branch.entity';
@@ -32,7 +35,13 @@ import {
   UpdateClusterDto,
   AdminClusterQueryDto,
   AutoAssignClustersDto,
+  AutoAssignScope,
 } from './dto/cluster.dto';
+import {
+  CLUSTER_AUTO_ASSIGN_QUEUE,
+  CLUSTER_AUTO_ASSIGN_JOB_ID,
+  ClusterAutoAssignJobData,
+} from './cluster-auto-assign.constants';
 import {
   ClusterOffersQueryDto,
   SetClusterOfferPinnedDto,
@@ -66,6 +75,8 @@ export class ClustersService {
     private readonly claimRepository: Repository<CatalogueOfferClaim>,
     private readonly clusterCache: ClusterCacheService,
     private readonly configService: ConfigService,
+    @InjectQueue(CLUSTER_AUTO_ASSIGN_QUEUE)
+    private readonly autoAssignQueue: Queue,
   ) {}
 
   // ------------------------------------------------------------------
@@ -887,79 +898,171 @@ export class ClustersService {
   // Admin: auto-assign
   // ------------------------------------------------------------------
   async autoAssign(dto: AutoAssignClustersDto) {
-    const clusters = await this.clusterRepository.find({
-      where: { isActive: true },
-    });
-    const geoClusters = clusters.filter(
-      (c) => c.latitude != null && c.longitude != null,
+    const scope = dto.scope ?? AutoAssignScope.UNASSIGNED;
+
+    if (dto.async && !dto.dryRun) {
+      return this.enqueueAutoAssign(scope);
+    }
+
+    return this.runAutoAssign(scope, dto.dryRun ?? false);
+  }
+
+  // Enqueues a single background job. The fixed jobId means BullMQ dedups
+  // concurrent/queued runs regardless of whether the trigger was the cron,
+  // an admin, or a deployment restart.
+  private async enqueueAutoAssign(scope: AutoAssignScope) {
+    const job = await this.autoAssignQueue.add(
+      'auto-assign',
+      { scope } satisfies ClusterAutoAssignJobData,
+      {
+        jobId: CLUSTER_AUTO_ASSIGN_JOB_ID,
+        removeOnComplete: true,
+        attempts: 3,
+        backoff: { type: 'exponential', delay: 5_000 },
+      },
     );
+    return { enqueued: true, jobId: job.id };
+  }
 
-    const unassignedBranches = await this.branchRepository
-      .createQueryBuilder('branch')
-      .where('branch.clusterId IS NULL')
-      .andWhere('branch.latitude IS NOT NULL')
-      .andWhere('branch.longitude IS NOT NULL')
-      .getMany();
+  @Cron('*/15 * * * *')
+  async backfillUnassignedBranches() {
+    await this.enqueueAutoAssign(AutoAssignScope.UNASSIGNED);
+  }
 
-    const assignments: { branchId: string; clusterId: string | null }[] = [];
+  @Cron('0 * * * *')
+  async reassignClustersInBackground() {
+    await this.enqueueAutoAssign(AutoAssignScope.ALL);
+  }
 
-    for (const branch of unassignedBranches) {
-      let nearest: Cluster | null = null;
-      let nearestDistance: number | null = null;
-
-      for (const cluster of geoClusters) {
-        const row: any = await this.branchRepository.manager
-          .createQueryBuilder()
-          .select(
-            `ST_Distance(ST_SetSRID(ST_MakePoint(:lng, :lat), 4326)::geography, cluster.location)`,
-            'distance',
+  async runAutoAssign(
+    scope: AutoAssignScope,
+    dryRun: boolean,
+  ): Promise<{
+    dryRun: boolean;
+    scope: AutoAssignScope;
+    totalCandidates: number;
+    assigned: number;
+    reassigned: number;
+    assignments?: {
+      branchId: string;
+      clusterId: string | null;
+      previousClusterId?: string | null;
+      distanceMeters?: number | null;
+    }[];
+  }> {
+    // The nearest-covering-cluster lookup is a LATERAL join, which TypeORM's
+    // QueryBuilder cannot express — hence this static, parameter-free raw query.
+    // COALESCE on location covers clusters created before the PostGIS trigger
+    // kept clusters.location in sync with latitude/longitude.
+    const scopeFilter =
+      scope === AutoAssignScope.ALL ? '' : 'AND b."clusterId" IS NULL';
+    const sql = `
+      SELECT
+        b."id" AS "branchId",
+        b."clusterId" AS "currentClusterId",
+        c."id" AS "clusterId",
+        ST_Distance(
+          COALESCE(c."location", ST_SetSRID(ST_MakePoint(c."longitude"::float8, c."latitude"::float8), 4326)::geography),
+          ST_SetSRID(ST_MakePoint(b."longitude"::float8, b."latitude"::float8), 4326)::geography
+        ) AS "distanceMeters"
+      FROM "branches" b
+      LEFT JOIN LATERAL (
+        SELECT c2."id", c2."location", c2."longitude", c2."latitude"
+        FROM "clusters" c2
+        WHERE c2."isActive" = true
+          AND c2."latitude" IS NOT NULL
+          AND c2."longitude" IS NOT NULL
+          AND ST_DWithin(
+            COALESCE(c2."location", ST_SetSRID(ST_MakePoint(c2."longitude"::float8, c2."latitude"::float8), 4326)::geography),
+            ST_SetSRID(ST_MakePoint(b."longitude"::float8, b."latitude"::float8), 4326)::geography,
+            c2."radiusMeters"
           )
-          .from(Cluster, 'cluster')
-          .where('cluster.id = :clusterId', { clusterId: cluster.id })
-          .andWhere(
-            `ST_DWithin(cluster.location, ST_SetSRID(ST_MakePoint(:lng, :lat), 4326)::geography, :radius)`,
-            { radius: cluster.radiusMeters },
-          )
-          .setParameters({
-            lng: Number(branch.longitude),
-            lat: Number(branch.latitude),
-          })
-          .getRawOne();
+        ORDER BY ST_Distance(
+          COALESCE(c2."location", ST_SetSRID(ST_MakePoint(c2."longitude"::float8, c2."latitude"::float8), 4326)::geography),
+          ST_SetSRID(ST_MakePoint(b."longitude"::float8, b."latitude"::float8), 4326)::geography
+        ) ASC
+        LIMIT 1
+      ) c ON true
+      WHERE b."latitude" IS NOT NULL
+        AND b."longitude" IS NOT NULL
+        ${scopeFilter}
+    `;
 
-        if (row && row.distance != null) {
-          const distance = Number(row.distance);
-          if (nearestDistance == null || distance < nearestDistance) {
-            nearestDistance = distance;
-            nearest = cluster;
-          }
-        }
+    const rows: {
+      branchId: string;
+      currentClusterId: string | null;
+      clusterId: string | null;
+      distanceMeters: number | null;
+    }[] = await this.branchRepository.manager.query(sql);
+
+    const assignments: {
+      branchId: string;
+      clusterId: string | null;
+      previousClusterId?: string | null;
+      distanceMeters?: number | null;
+    }[] = [];
+
+    for (const row of rows) {
+      const distanceMeters =
+        row.distanceMeters != null ? Number(row.distanceMeters) : null;
+
+      if (scope === AutoAssignScope.UNASSIGNED) {
+        assignments.push({
+          branchId: row.branchId,
+          clusterId: row.clusterId,
+          distanceMeters,
+        });
+        continue;
       }
 
+      // Reassign scope: never unassign. Only move a branch when a different
+      // covering cluster is strictly closer than its current one.
+      if (!row.clusterId) continue;
+      if (row.clusterId === row.currentClusterId) continue;
+
       assignments.push({
-        branchId: branch.id,
-        clusterId: nearest?.id ?? null,
+        branchId: row.branchId,
+        clusterId: row.clusterId,
+        previousClusterId: row.currentClusterId,
+        distanceMeters,
       });
     }
 
-    if (dto.dryRun) {
+    const committed = assignments.filter((a) => a.clusterId);
+    const reassigned = assignments.filter((a) => a.previousClusterId).length;
+
+    if (dryRun) {
       return {
         dryRun: true,
-        totalCandidates: unassignedBranches.length,
-        assigned: assignments.filter((a) => a.clusterId).length,
+        scope,
+        totalCandidates: rows.length,
+        assigned: committed.length,
+        reassigned,
         assignments,
       };
     }
 
-    for (const assignment of assignments) {
-      if (!assignment.clusterId) continue;
-      await this.branchRepository.update(
-        { id: assignment.branchId },
-        { clusterId: assignment.clusterId },
+    const UPDATE_CHUNK = 50;
+    for (let i = 0; i < committed.length; i += UPDATE_CHUNK) {
+      await Promise.all(
+        committed
+          .slice(i, i + UPDATE_CHUNK)
+          .map((a) =>
+            this.branchRepository.update(
+              { id: a.branchId },
+              { clusterId: a.clusterId },
+            ),
+          ),
       );
     }
 
     const affectedClusterIds = [
-      ...new Set(assignments.map((a) => a.clusterId).filter(Boolean)),
+      ...new Set(
+        assignments
+          .map((a) => [a.clusterId, a.previousClusterId])
+          .flat()
+          .filter(Boolean),
+      ),
     ];
     if (affectedClusterIds.length > 0) {
       const affected = await this.clusterRepository.find({
@@ -973,8 +1076,10 @@ export class ClustersService {
 
     return {
       dryRun: false,
-      totalCandidates: unassignedBranches.length,
-      assigned: assignments.filter((a) => a.clusterId).length,
+      scope,
+      totalCandidates: rows.length,
+      assigned: committed.length,
+      reassigned,
     };
   }
 

@@ -4,15 +4,15 @@ export class AddOfflineSyncToPosSales1782645960000 implements MigrationInterface
   name = 'AddOfflineSyncToPosSales1782645960000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`ALTER TABLE "pos_sales" ADD "clientRef" uuid`);
+    await queryRunner.query(`ALTER TABLE "pos_sales" ADD COLUMN IF NOT EXISTS "clientRef" uuid`);
     await queryRunner.query(
-      `ALTER TABLE "pos_sales" ADD "orderedAt" TIMESTAMP DEFAULT now()`,
+      `ALTER TABLE "pos_sales" ADD COLUMN IF NOT EXISTS "orderedAt" TIMESTAMP DEFAULT now()`,
     );
     await queryRunner.query(
-      `CREATE UNIQUE INDEX "IDX_pos_sales_business_client_ref" ON "pos_sales" ("businessId", "clientRef") WHERE "clientRef" IS NOT NULL`,
+      `CREATE UNIQUE INDEX IF NOT EXISTS "IDX_pos_sales_business_client_ref" ON "pos_sales" ("businessId", "clientRef") WHERE "clientRef" IS NOT NULL`,
     );
     await queryRunner.query(
-      `CREATE INDEX "IDX_pos_sales_ordered_at" ON "pos_sales" ("orderedAt")`,
+      `CREATE INDEX IF NOT EXISTS "IDX_pos_sales_ordered_at" ON "pos_sales" ("orderedAt")`,
     );
     // Backfill orderedAt with createdAt for existing sales
     await queryRunner.query(
