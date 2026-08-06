@@ -13,6 +13,10 @@ interface LocationAutocompleteProps {
     disabled?: boolean;
     showLabel?: boolean;
     icon?: React.ReactNode;
+    /** Legacy (Google Places) prop — accepted for compatibility, unused by Nominatim. */
+    type?: string;
+    /** Legacy (Google Places) prop — accepted for compatibility, unused by Nominatim. */
+    countryRestrict?: string;
 }
 
 /** What we pass back to ClusterFormModal — enough to extract lat/lng + address components. */
