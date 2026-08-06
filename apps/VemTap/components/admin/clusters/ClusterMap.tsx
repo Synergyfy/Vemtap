@@ -9,6 +9,10 @@ interface ClusterMapProps {
     clusters: Cluster[];
     selectedCluster: Cluster | null;
     onSelectCluster: (cluster: Cluster) => void;
+    showSearch?: boolean;
+    center?: google.maps.LatLngLiteral;
+    markerPosition?: google.maps.LatLngLiteral;
+    onMarkerDrag?: (lat: number, lng: number) => void;
 }
 
 const defaultCenter = { lat: 6.5244, lng: 3.3792 };
@@ -58,7 +62,7 @@ function createSelectedMarkerIcon(bg: string, label: string, size: number = 44):
     return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
 }
 
-export default function ClusterMap({ clusters, selectedCluster, onSelectCluster }: ClusterMapProps) {
+export default function ClusterMap({ clusters, selectedCluster, onSelectCluster, showSearch = true, center: centerProp, markerPosition, onMarkerDrag }: ClusterMapProps) {
     const { isLoaded, loadError } = useJsApiLoader({
         googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '',
     });
@@ -77,14 +81,16 @@ export default function ClusterMap({ clusters, selectedCluster, onSelectCluster 
         .map(c => ({ c, ll: toLatLng(c) }))
         .filter((x): x is { c: Cluster; ll: google.maps.LatLngLiteral } => !!x.ll);
 
-    const mapCenter = selectedCluster?.latitude && selectedCluster?.longitude
-        ? (toLatLng(selectedCluster) || defaultCenter)
-        : clustersWithCoords.length > 0
-            ? {
-                lat: clustersWithCoords.reduce((sum, x) => sum + x.ll.lat, 0) / clustersWithCoords.length,
-                lng: clustersWithCoords.reduce((sum, x) => sum + x.ll.lng, 0) / clustersWithCoords.length,
-            }
-            : defaultCenter;
+    const mapCenter = centerProp
+        ? centerProp
+        : selectedCluster?.latitude && selectedCluster?.longitude
+            ? (toLatLng(selectedCluster) || defaultCenter)
+            : clustersWithCoords.length > 0
+                ? {
+                    lat: clustersWithCoords.reduce((sum, x) => sum + x.ll.lat, 0) / clustersWithCoords.length,
+                    lng: clustersWithCoords.reduce((sum, x) => sum + x.ll.lng, 0) / clustersWithCoords.length,
+                }
+                : defaultCenter;
 
     const onMapLoad = useCallback((map: google.maps.Map) => {
         mapRef.current = map;
@@ -121,10 +127,29 @@ export default function ClusterMap({ clusters, selectedCluster, onSelectCluster 
         <GoogleMap
             mapContainerStyle={{ width: '100%', height: '100%' }}
             center={mapCenter}
-            zoom={selectedCluster ? 13 : clustersWithCoords.length > 0 ? 11 : 6}
+            zoom={markerPosition ? 15 : selectedCluster ? 13 : clustersWithCoords.length > 0 ? 11 : 6}
             onLoad={onMapLoad}
             options={mapOptions}
         >
+            {/* Draggable marker for form modal */}
+            {markerPosition && onMarkerDrag && (
+                <MarkerF
+                    position={markerPosition}
+                    draggable
+                    onDragEnd={(e) => {
+                        if (e.latLng) {
+                            onMarkerDrag(e.latLng.lat(), e.latLng.lng());
+                        }
+                    }}
+                    icon={{
+                        url: createSelectedMarkerIcon('#EF4444', '📍', 40),
+                        scaledSize: new google.maps.Size(40, 50),
+                        anchor: new google.maps.Size(20, 50),
+                    }}
+                    zIndex={9999}
+                />
+            )}
+
             {clustersWithCoords.map(({ c, ll }) => {
                 const isSelected = c.id === selectedCluster?.id;
                 const colors = TYPE_COLORS[c.type];

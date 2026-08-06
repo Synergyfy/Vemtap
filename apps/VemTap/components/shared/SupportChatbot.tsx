@@ -438,7 +438,7 @@ export default function SupportChatbot() {
         <div className="font-sans">
             <AnimatePresence>
                 {!isOpen && isVisible && (
-                    <motion.button
+                    <motion.div
                         initial={{ scale: 0, opacity: 0 }}
                         animate={{ scale: 1, opacity: 1 }}
                         exit={{ scale: 0, opacity: 0 }}
@@ -461,7 +461,7 @@ className="fixed bottom-6 right-6 z-60 hidden md:block"
                                 </button>
                             </div>
                         </Draggable>
-                    </motion.button>
+                    </motion.div>
                 )}
             </AnimatePresence>
 

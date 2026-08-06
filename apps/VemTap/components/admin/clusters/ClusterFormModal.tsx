@@ -1,12 +1,14 @@
 'use client';
 
-import React, { useState } from 'react';
-import { X, Globe, Map as MapIcon, Store, Building2, Layers, Save, Loader2, MapPin } from 'lucide-react';
+import React, { useState, useCallback } from 'react';
+import { X, Globe, Map as MapIcon, Store, Building2, Layers, Save, Loader2, MapPin, RotateCcw } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import { cn } from '@/lib/utils';
 import { adminClustersApi } from '@/lib/api/clusters';
 import type { Cluster, ClusterType, CreateClusterDto } from '@/lib/api/clusters';
+import { LocationAutocomplete } from './LocationAutocomplete';
+import ClusterMap from './ClusterMap';
 
 interface ClusterFormModalProps {
     open: boolean;
@@ -55,10 +57,9 @@ const fromCluster = (cluster: Cluster): CreateClusterDto => ({
 });
 
 export default function ClusterFormModal({ open, cluster, clusters, onClose, onSaved }: ClusterFormModalProps) {
-    // The parent passes a changing `key`, so this component remounts (and resets
-    // its form) on every open. This avoids stale prop-to-state synchronisation.
     const [form, setForm] = useState<CreateClusterDto>(() => (cluster ? fromCluster(cluster) : emptyForm()));
     const [saving, setSaving] = useState(false);
+    const [mapKey, setMapKey] = useState(0);
 
     if (!open) return null;
 
@@ -91,7 +92,46 @@ export default function ClusterFormModal({ open, cluster, clusters, onClose, onS
         }
     };
 
-    const set = (patch: Partial<CreateClusterDto>) => setForm(prev => ({ ...prev, ...patch }));
+    const set = useCallback((patch: Partial<CreateClusterDto>) => {
+        setForm(prev => ({ ...prev, ...patch }));
+    }, []);
+
+    const handleCountryChange = useCallback((value: string, place?: google.maps.places.PlaceResult) => {
+        set({ country: value, state: '', city: '', area: '', latitude: null, longitude: null });
+    }, [set]);
+
+    const handleStateChange = useCallback((value: string, place?: google.maps.places.PlaceResult) => {
+        set({ state: value, city: '', area: '' });
+        if (place?.geometry?.location) {
+            const loc = place.geometry.location;
+            set({ latitude: loc.lat(), longitude: loc.lng() });
+        }
+    }, [set]);
+
+    const handleCityChange = useCallback((value: string, place?: google.maps.places.PlaceResult) => {
+        set({ city: value, area: '' });
+        if (place?.geometry?.location) {
+            const loc = place.geometry.location;
+            set({ latitude: loc.lat(), longitude: loc.lng() });
+        }
+    }, [set]);
+
+    const handleAreaChange = useCallback((value: string, place?: google.maps.places.PlaceResult) => {
+        set({ area: value });
+        if (place?.geometry?.location) {
+            const loc = place.geometry.location;
+            set({ latitude: loc.lat(), longitude: loc.lng(), radiusM: 1000 });
+        }
+    }, [set]);
+
+    const handleMapPinChange = useCallback((lat: number, lng: number) => {
+        set({ latitude: lat, longitude: lng });
+    }, [set]);
+
+    const handleResetLocation = useCallback(() => {
+        set({ latitude: null, longitude: null, radiusM: null, country: '', state: '', city: '', area: '' });
+        setMapKey(prev => prev + 1);
+    }, [set]);
 
     const inputClass = "w-full h-12 bg-gray-50 border border-gray-100 rounded-xl px-4 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none";
     const labelClass = "text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1";
@@ -177,74 +217,112 @@ export default function ClusterFormModal({ open, cluster, clusters, onClose, onS
                                 </select>
                             </div>
 
-                            <div className="space-y-2">
-                                <label className={labelClass}>Country</label>
-                                <input
-                                    type="text"
-                                    value={form.country || ''}
-                                    onChange={(e) => set({ country: e.target.value })}
-                                    placeholder="e.g. Nigeria"
-                                    className={inputClass}
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <label className={labelClass}>State</label>
-                                <input
-                                    type="text"
-                                    value={form.state || ''}
-                                    onChange={(e) => set({ state: e.target.value })}
-                                    placeholder="e.g. Lagos"
-                                    className={inputClass}
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <label className={labelClass}>City / LGA</label>
-                                <input
-                                    type="text"
-                                    value={form.city || ''}
-                                    onChange={(e) => set({ city: e.target.value })}
-                                    placeholder="e.g. Eti-Osa"
-                                    className={inputClass}
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <label className={labelClass}>Area / Building (Optional)</label>
-                                <input
-                                    type="text"
-                                    value={form.area || ''}
-                                    onChange={(e) => set({ area: e.target.value })}
-                                    placeholder="e.g. Lekki Phase 1"
-                                    className={inputClass}
-                                />
-                            </div>
+                            {/* Location Section with Map */}
+                            <div className="md:col-span-2 space-y-4">
+                                <div className="flex items-center justify-between">
+                                    <label className={labelClass}>
+                                        <MapPin size={11} className="inline" /> Location
+                                    </label>
+                                    <button
+                                        type="button"
+                                        onClick={handleResetLocation}
+                                        className="flex items-center gap-1.5 text-[10px] font-medium text-gray-400 hover:text-gray-600 transition-colors"
+                                    >
+                                        <RotateCcw size={10} /> Reset
+                                    </button>
+                                </div>
 
-                            <div className="md:col-span-2 space-y-3 pt-2">
-                                <label className={cn(labelClass, "flex items-center gap-1.5")}>
-                                    <MapPin size={11} />
-                                    GPS Coordinates (Optional)
-                                </label>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <LocationAutocomplete
+                                        label="Country"
+                                        value={form.country || ''}
+                                        onChange={handleCountryChange}
+                                        placeholder="e.g. Nigeria"
+                                        type="country"
+                                        className="flex-1"
+                                    />
+                                    <LocationAutocomplete
+                                        label="State"
+                                        value={form.state || ''}
+                                        onChange={handleStateChange}
+                                        placeholder="e.g. Lagos"
+                                        type="state"
+                                        countryRestrict={form.country ? undefined : 'ng'}
+                                        className="flex-1"
+                                    />
+                                    <LocationAutocomplete
+                                        label="City / LGA"
+                                        value={form.city || ''}
+                                        onChange={handleCityChange}
+                                        placeholder="e.g. Eti-Osa"
+                                        type="city"
+                                        countryRestrict={form.country ? undefined : 'ng'}
+                                        className="flex-1"
+                                    />
+                                    <LocationAutocomplete
+                                        label="Area / Building"
+                                        value={form.area || ''}
+                                        onChange={handleAreaChange}
+                                        placeholder="e.g. Lekki Phase 1"
+                                        type="area"
+                                        countryRestrict={form.country ? undefined : 'ng'}
+                                        className="flex-1"
+                                    />
+                                </div>
+
+                                {/* Interactive Map */}
+                                <div className="relative h-48 rounded-xl overflow-hidden border border-gray-100 bg-gray-50">
+                                    <ClusterMap
+                                        key={mapKey}
+                                        clusters={[]}
+                                        selectedCluster={null}
+                                        onSelectCluster={() => {}}
+                                        showSearch={false}
+                                        center={form.latitude && form.longitude ? { lat: form.latitude, lng: form.longitude } : undefined}
+                                        markerPosition={form.latitude && form.longitude ? { lat: form.latitude, lng: form.longitude } : undefined}
+                                        onMarkerDrag={handleMapPinChange}
+                                    />
+                                    {form.latitude && form.longitude && (
+                                        <div className="absolute bottom-2 left-2 right-2 flex items-center gap-2">
+                                            <div className="flex-1 bg-white/90 backdrop-blur rounded-lg px-3 py-1.5 text-[10px] font-medium text-gray-600 truncate">
+                                                {form.latitude.toFixed(4)}, {form.longitude.toFixed(4)}
+                                                {form.radiusM ? ` • ${(form.radiusM / 1000).toFixed(1)}km radius` : ''}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+
                                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                                    <input
-                                        type="number"
-                                        value={form.latitude ?? ''}
-                                        onChange={(e) => set({ latitude: e.target.value === '' ? null : Number(e.target.value) })}
-                                        placeholder="Latitude"
-                                        className={inputClass}
-                                    />
-                                    <input
-                                        type="number"
-                                        value={form.longitude ?? ''}
-                                        onChange={(e) => set({ longitude: e.target.value === '' ? null : Number(e.target.value) })}
-                                        placeholder="Longitude"
-                                        className={inputClass}
-                                    />
-                                    <input
-                                        type="number"
-                                        value={form.radiusM ?? ''}
-                                        onChange={(e) => set({ radiusM: e.target.value === '' ? null : Number(e.target.value) })}
-                                        placeholder="Radius (m) e.g. 2000"
-                                        className={inputClass}
-                                    />
+                                    <div className="space-y-1.5">
+                                        <label className={labelClass}>Latitude</label>
+                                        <input
+                                            type="number"
+                                            value={form.latitude ?? ''}
+                                            onChange={(e) => set({ latitude: e.target.value === '' ? null : Number(e.target.value) })}
+                                            placeholder="Latitude"
+                                            className={inputClass}
+                                        />
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <label className={labelClass}>Longitude</label>
+                                        <input
+                                            type="number"
+                                            value={form.longitude ?? ''}
+                                            onChange={(e) => set({ longitude: e.target.value === '' ? null : Number(e.target.value) })}
+                                            placeholder="Longitude"
+                                            className={inputClass}
+                                        />
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <label className={labelClass}>Radius (m)</label>
+                                        <input
+                                            type="number"
+                                            value={form.radiusM ?? ''}
+                                            onChange={(e) => set({ radiusM: e.target.value === '' ? null : Number(e.target.value) })}
+                                            placeholder="e.g. 2000"
+                                            className={inputClass}
+                                        />
+                                    </div>
                                 </div>
                                 <p className="text-[10px] font-medium text-text-secondary leading-snug ml-1">
                                     When set, auto-matching also includes offers within this radius of the point.
