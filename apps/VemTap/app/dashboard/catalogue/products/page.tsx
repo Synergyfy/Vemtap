@@ -9,6 +9,7 @@ import { useCatalogueItems, useDeleteCatalogueItem, CatalogueItem } from '@/serv
 import { useActiveBranch } from '@/hooks/useActiveBranch';
 import toast from 'react-hot-toast';
 import ProductModal from '@/components/dashboard/catalogue/ProductModal';
+import AddProductMethodModal from '@/components/dashboard/catalogue/AddProductMethodModal';
 import PageLockWrapper from '@/components/dashboard/PageLockWrapper';
 import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
@@ -27,6 +28,7 @@ export default function ProductsPage() {
 
     const deleteMutation = useDeleteCatalogueItem();
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isMethodOpen, setIsMethodOpen] = useState(false);
     const [selectedProduct, setSelectedProduct] = useState<CatalogueItem | null>(null);
     const [openMenuId, setOpenMenuId] = useState<string | null>(null);
 
@@ -64,6 +66,15 @@ export default function ProductsPage() {
     };
 
     const handleAdd = () => {
+        setIsMethodOpen(true);
+    };
+
+    const handleSelectMethod = (method: 'manual' | 'bulk' | 'barcode') => {
+        setIsMethodOpen(false);
+        if (method === 'bulk') {
+            router.push('/dashboard/catalogue/import');
+            return;
+        }
         setSelectedProduct(null);
         setIsModalOpen(true);
     };
@@ -135,7 +146,7 @@ export default function ProductsPage() {
                 const finalPrice = hasDiscount
                     ? (item.discountType === 'percentage'
                         ? Number(item.price) - (Number(item.price) * (Number(item.discountValue) / 100))
-                        : Number(item.discountValue))
+                        : Number(item.price) - Number(item.discountValue))
                     : Number(item.price);
                 return (
                     <div className="flex flex-col">
@@ -321,6 +332,12 @@ export default function ProductsPage() {
                         </div>
                     </div>
                 )}
+
+                <AddProductMethodModal
+                    isOpen={isMethodOpen}
+                    onSelectMethod={handleSelectMethod}
+                    onClose={() => setIsMethodOpen(false)}
+                />
 
                 <ProductModal
                     isOpen={isModalOpen}

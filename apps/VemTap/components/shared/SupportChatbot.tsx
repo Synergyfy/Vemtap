@@ -204,12 +204,6 @@ export default function SupportChatbot() {
         scrollToBottom();
     }, [history, isLoading, isTyping]);
 
-    // Hide floating chatbot inside the authenticated dashboard
-    // (placed after all hooks to satisfy the Rules of Hooks)
-    if (pathname?.startsWith('/dashboard') || pathname?.startsWith('/dashboard/')) {
-        return null;
-    }
-
     const getContext = () => {
         let context = "General Dashboard";
         if (pathname?.includes('messaging')) context = "Message Management";
