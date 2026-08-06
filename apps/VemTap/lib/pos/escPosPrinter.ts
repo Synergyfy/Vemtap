@@ -1,6 +1,7 @@
 /**
  * ESC/POS Thermal Printer & Cash Drawer Utility
- * Supports USB, WebSerial, ESC/POS Bluetooth/Network stream payloads, and Cash Drawer Kick Pulse.
+ * Supports USB (WebSerial/WebUSB) thermal printers and falls back to the
+ * standard browser print dialog when no thermal printer is connected.
  */
 
 export interface PrintReceiptData {
@@ -95,21 +96,147 @@ export function generateEscPosCommands(data: PrintReceiptData): Uint8Array {
   return new Uint8Array(chunks);
 }
 
+// ---------------------------------------------------------------------------
+// Thermal printer connection (WebSerial first, then WebUSB)
+// ---------------------------------------------------------------------------
+
+interface SerialWriter {
+  write(data: Uint8Array): Promise<void>;
+  releaseLock(): void;
+}
+
+interface SerialPortHandle {
+  writable: { getWriter(): SerialWriter };
+  open(options: Record<string, unknown>): Promise<void>;
+  close(): Promise<void>;
+}
+
+interface UsbEndpoint {
+  direction: string;
+  type: string;
+  endpointNumber: number;
+}
+
+interface UsbInterface {
+  alternate?: { endpoints?: UsbEndpoint[] };
+}
+
+interface UsbDeviceHandle {
+  open(): Promise<void>;
+  close(): Promise<void>;
+  selectConfiguration(value: number): Promise<void>;
+  claimInterface(interfaceNumber: number): Promise<void>;
+  transferOut(endpointNumber: number, bytes: Uint8Array): Promise<void>;
+  configuration?: { interfaces?: UsbInterface[] };
+}
+
+interface NavigatorPrinterApis {
+  serial?: { requestPort(): Promise<SerialPortHandle> };
+  usb?: { requestDevice(options: { filters: { vendorId?: number }[] }): Promise<UsbDeviceHandle> };
+}
+
+let activePort: SerialPortHandle | null = null;
+let activeUsbDevice: UsbDeviceHandle | null = null;
+
+export function isThermalPrinterConnected(): boolean {
+  return !!activePort || !!activeUsbDevice;
+}
+
 /**
- * Triggers browser print or sends ESC/POS command stream if WebUSB is connected
+ * Opens a connection to a USB thermal printer.
+ * - Uses the Web Serial API (most USB thermal printers expose a CDC serial port).
+ * - Falls back to WebUSB (bulk OUT endpoint) when serial is unavailable.
+ * Returns 'serial', 'usb', or null if the user cancelled / browser unsupported.
  */
-export async function triggerReceiptPrint(data: PrintReceiptData) {
-  if (typeof window !== 'undefined' && 'navigator' in window && (navigator as any).usb) {
+export async function connectThermalPrinter(): Promise<'serial' | 'usb' | null> {
+  const nav = navigator as unknown as NavigatorPrinterApis;
+
+  if (nav.serial?.requestPort) {
     try {
-      // Future WebUSB / Bluetooth direct print hook capability
-      console.log('WebUSB ready for ESC/POS receipt streaming');
-    } catch (e) {
-      console.warn('WebUSB connection fallback to standard print dialog', e);
+      const port = await nav.serial.requestPort();
+      await port.open({ baudRate: 9600 });
+      activePort = port;
+      return 'serial';
+    } catch {
+      // User cancelled or the port failed to open — try WebUSB as a fallback.
+      activePort = null;
     }
   }
 
-  // Fallback to standard window.print()
-  if (typeof window !== 'undefined') {
-    window.print();
+  if (nav.usb?.requestDevice) {
+    try {
+      const device = await nav.usb.requestDevice({ filters: [] });
+      await device.open();
+      try {
+        await device.selectConfiguration(1);
+      } catch { /* some devices keep configuration 1 by default */ }
+      await device.claimInterface(0);
+      activeUsbDevice = device;
+      return 'usb';
+    } catch {
+      activeUsbDevice = null;
+    }
   }
+
+  return null;
+}
+
+export async function disconnectThermalPrinter(): Promise<void> {
+  if (activePort) {
+    try {
+      await activePort.close();
+    } catch { /* ignore */ }
+    activePort = null;
+  }
+  if (activeUsbDevice) {
+    try {
+      await activeUsbDevice.close();
+    } catch { /* ignore */ }
+    activeUsbDevice = null;
+  }
+}
+
+async function writeEscPos(bytes: Uint8Array): Promise<boolean> {
+  if (activePort) {
+    const writer = activePort.writable.getWriter();
+    try {
+      await writer.write(bytes);
+    } finally {
+      writer.releaseLock();
+    }
+    return true;
+  }
+
+  if (activeUsbDevice) {
+    let endpointNumber = 1;
+    try {
+      const iface = activeUsbDevice.configuration?.interfaces?.[0];
+      const endpoint = iface?.alternate?.endpoints?.find(
+        (e) => e.direction === 'out' && e.type === 'bulk',
+      );
+      if (endpoint) endpointNumber = endpoint.endpointNumber;
+    } catch { /* keep default endpoint 1 */ }
+    await activeUsbDevice.transferOut(endpointNumber, bytes);
+    return true;
+  }
+
+  return false;
+}
+
+/**
+ * Prints a receipt to the connected thermal printer, or falls back to the
+ * standard browser print dialog when no thermal printer is connected.
+ */
+export async function triggerReceiptPrint(data: PrintReceiptData): Promise<void> {
+  if (typeof window === 'undefined') return;
+
+  const bytes = generateEscPosCommands(data);
+  try {
+    const sent = await writeEscPos(bytes);
+    if (sent) return;
+  } catch (e) {
+    console.warn('ESC/POS write failed, falling back to print dialog', e);
+  }
+
+  window.print();
 }

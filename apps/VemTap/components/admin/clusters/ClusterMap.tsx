@@ -66,14 +66,23 @@ export default function ClusterMap({ clusters, selectedCluster, onSelectCluster 
     const mapRef = useRef<google.maps.Map | null>(null);
     const [hoveredCluster, setHoveredCluster] = useState<Cluster | null>(null);
 
-    const clustersWithCoords = clusters.filter(c => c.latitude && c.longitude);
+    const toLatLng = (c: Cluster): google.maps.LatLngLiteral | null => {
+        const lat = Number(c.latitude);
+        const lng = Number(c.longitude);
+        if (!c.latitude || !c.longitude || Number.isNaN(lat) || Number.isNaN(lng)) return null;
+        return { lat, lng };
+    };
+
+    const clustersWithCoords = clusters
+        .map(c => ({ c, ll: toLatLng(c) }))
+        .filter((x): x is { c: Cluster; ll: google.maps.LatLngLiteral } => !!x.ll);
 
     const mapCenter = selectedCluster?.latitude && selectedCluster?.longitude
-        ? { lat: selectedCluster.latitude, lng: selectedCluster.longitude }
+        ? (toLatLng(selectedCluster) || defaultCenter)
         : clustersWithCoords.length > 0
             ? {
-                lat: clustersWithCoords.reduce((sum, c) => sum + (c.latitude || 0), 0) / clustersWithCoords.length,
-                lng: clustersWithCoords.reduce((sum, c) => sum + (c.longitude || 0), 0) / clustersWithCoords.length,
+                lat: clustersWithCoords.reduce((sum, x) => sum + x.ll.lat, 0) / clustersWithCoords.length,
+                lng: clustersWithCoords.reduce((sum, x) => sum + x.ll.lng, 0) / clustersWithCoords.length,
             }
             : defaultCenter;
 
@@ -82,9 +91,12 @@ export default function ClusterMap({ clusters, selectedCluster, onSelectCluster 
     }, []);
 
     useEffect(() => {
-        if (selectedCluster?.latitude && selectedCluster?.longitude && mapRef.current) {
-            mapRef.current.panTo({ lat: selectedCluster.latitude, lng: selectedCluster.longitude });
-            mapRef.current.setZoom(selectedCluster.radiusM ? 14 : 12);
+        if (selectedCluster && mapRef.current) {
+            const ll = toLatLng(selectedCluster);
+            if (ll) {
+                mapRef.current.panTo(ll);
+                mapRef.current.setZoom(selectedCluster.radiusM ? 14 : 12);
+            }
         }
     }, [selectedCluster]);
 
@@ -113,7 +125,7 @@ export default function ClusterMap({ clusters, selectedCluster, onSelectCluster 
             onLoad={onMapLoad}
             options={mapOptions}
         >
-            {clustersWithCoords.map(c => {
+            {clustersWithCoords.map(({ c, ll }) => {
                 const isSelected = c.id === selectedCluster?.id;
                 const colors = TYPE_COLORS[c.type];
                 const Icon = TYPE_ICONS[c.type];
@@ -123,7 +135,7 @@ export default function ClusterMap({ clusters, selectedCluster, onSelectCluster 
                 return (
                     <React.Fragment key={c.id}>
                         <MarkerF
-                            position={{ lat: c.latitude!, lng: c.longitude! }}
+                            position={ll}
                             icon={{
                                 url: isSelected
                                     ? createSelectedMarkerIcon(colors.marker, label)
@@ -135,10 +147,10 @@ export default function ClusterMap({ clusters, selectedCluster, onSelectCluster 
                             onClick={() => onSelectCluster(c)}
                         />
 
-                        {isSelected && c.radiusM && c.latitude && c.longitude && (
+                        {isSelected && c.radiusM && (
                             <CircleF
-                                center={{ lat: c.latitude, lng: c.longitude }}
-                                radius={c.radiusM}
+                                center={ll}
+                                radius={Number(c.radiusM)}
                                 options={{
                                     fillColor: colors.marker,
                                     fillOpacity: 0.08,
@@ -149,9 +161,9 @@ export default function ClusterMap({ clusters, selectedCluster, onSelectCluster 
                             />
                         )}
 
-                        {isSelected && c.latitude && c.longitude && (
+                        {isSelected && (
                             <InfoWindowF
-                                position={{ lat: c.latitude, lng: c.longitude }}
+                                position={ll}
                                 onCloseClick={() => onSelectCluster(c)}
                                 options={{ pixelOffset: new google.maps.Size(0, -48), maxWidth: 220 }}
                             >
@@ -175,7 +187,7 @@ export default function ClusterMap({ clusters, selectedCluster, onSelectCluster 
                                         </span>
                                     </div>
                                     {c.radiusM && (
-                                        <p className="text-[10px] text-gray-400 mt-1">Radius: {(c.radiusM / 1000).toFixed(1)} km</p>
+                                        <p className="text-[10px] text-gray-400 mt-1">Radius: {(Number(c.radiusM) / 1000).toFixed(1)} km</p>
                                     )}
                                 </div>
                             </InfoWindowF>
@@ -186,7 +198,7 @@ export default function ClusterMap({ clusters, selectedCluster, onSelectCluster 
 
             {hoveredCluster && !selectedCluster && hoveredCluster.latitude && hoveredCluster.longitude && (
                 <InfoWindowF
-                    position={{ lat: hoveredCluster.latitude, lng: hoveredCluster.longitude }}
+                    position={{ lat: Number(hoveredCluster.latitude), lng: Number(hoveredCluster.longitude) }}
                     onCloseClick={() => setHoveredCluster(null)}
                     options={{ pixelOffset: new google.maps.Size(0, -36), maxWidth: 180 }}
                 >

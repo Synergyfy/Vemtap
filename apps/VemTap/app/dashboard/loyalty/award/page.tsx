@@ -75,24 +75,12 @@ export default function AwardPointsPage() {
         }
 
         try {
-            const pointsToAward = customPoints > 0 ? customPoints : (selectedProgram?.pointCost || 0);
-            
-            // In a real app, you might have a bulk earn points API. 
-            // For now, we'll iterate or assume the backend handles multiple userIds if supported.
-            // Based on loyaltyApi.ts, it seems to take a single userId.
-            
             let successCount = 0;
             for (const userId of selectedCustomerIds) {
                 const response = await earnPoints({
                     userId,
                     branchId: activeBranchId || user?.branchId || '',
-                    isVisit: false,
-                    metadata: {
-                        source: 'manual_award',
-                        rewardId: selectedProgramId,
-                        points: pointsToAward,
-                        awardedBy: user?.id
-                    }
+                    isVisit: false
                 });
                 if (response.success) successCount++;
             }
