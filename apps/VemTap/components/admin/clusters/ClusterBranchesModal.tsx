@@ -16,7 +16,7 @@ interface ClusterBranchesModalProps {
 }
 
 interface AutoAssignPreview {
-    dryRun: true;
+    dryRun: boolean;
     totalCandidates: number;
     assigned: number;
     assignments: Array<{ branchId: string; clusterId: string | null }>;
