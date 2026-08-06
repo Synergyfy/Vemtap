@@ -178,8 +178,8 @@ export default function NewVisitorsPage() {
     return (
         <div className="p-4 md:p-8">
             <PageHeader
-                title="New Visitors"
-                description="Identify and welcome your first-time customers"
+                title="New Customers"
+                description="First-time customers who have visited your business"
                 actions={
                     <button
                         onClick={handleSendWelcomeMessage}
@@ -244,7 +244,7 @@ export default function NewVisitorsPage() {
                 emptyState={
                     <EmptyState
                         icon="person_add"
-                        title="Your first new visitor is just around the corner"
+                        title="Your first new customer is just around the corner"
                         description="Every returning customer was once a new visitor. Keep your welcome messages ready!"
                     />
                 }

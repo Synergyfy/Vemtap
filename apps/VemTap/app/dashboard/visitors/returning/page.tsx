@@ -145,8 +145,8 @@ export default function ReturningVisitorsPage() {
     return (
         <div className="p-4 md:p-8">
             <PageHeader
-                title="Returning Visitors"
-                description="Monitor loyalty and reward your repeat customers"
+                title="Returning Customers"
+                description="Repeat customers who have visited more than once"
                 actions={
                     <button
                         onClick={handleSendMessageToAll}
@@ -215,7 +215,7 @@ export default function ReturningVisitorsPage() {
                 emptyState={
                     <EmptyState
                         icon="loop"
-                        title="No returning visitors yet"
+                        title="No returning customers yet"
                         description="Focus on your welcome messages to encourage customers to return to your business."
                     />
                 }

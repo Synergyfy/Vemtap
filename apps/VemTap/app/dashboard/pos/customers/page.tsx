@@ -43,8 +43,8 @@ export default function CustomersDirectory() {
   return (
     <div className="max-w-7xl mx-auto h-full flex flex-col pt-4 px-4 md:px-0 pb-24">
       <POSPageHeader
-        title="Customer Directory"
-        subtitle={customers.length > 0 ? `${customers.length} total customers` : 'Manage loyalty, history, and CRM'}
+        title="POS Purchase History"
+        subtitle={customers.length > 0 ? `${customers.length} customers with transactions` : 'View customers who have made POS purchases'}
       />
 
       {/* Search */}

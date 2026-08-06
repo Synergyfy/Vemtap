@@ -66,6 +66,7 @@ export default function PlanPermissionsTab({ plans, isLoading }: PlanPermissions
                 return {
                     catalogueEnabled: level !== 'no',
                     maxCatalogueItems: level === 'yes' ? -1 : (level === 'limited' ? (limit ?? 50) : null),
+                    maxCatalogueOffers: level === 'yes' ? -1 : (level === 'limited' ? (limit ?? 50) : null),
                 };
             case 'inventory':
                 return {

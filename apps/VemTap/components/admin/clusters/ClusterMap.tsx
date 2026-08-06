@@ -9,6 +9,11 @@ interface ClusterMapProps {
     clusters: Cluster[];
     selectedCluster: Cluster | null;
     onSelectCluster: (cluster: Cluster) => void;
+    showSearch?: boolean;
+    center?: google.maps.LatLngLiteral;
+    markerPosition?: google.maps.LatLngLiteral;
+    radiusMeters?: number | null;
+    onMarkerDrag?: (lat: number, lng: number) => void;
 }
 
 const defaultCenter = { lat: 6.5244, lng: 3.3792 };
@@ -58,7 +63,7 @@ function createSelectedMarkerIcon(bg: string, label: string, size: number = 44):
     return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
 }
 
-export default function ClusterMap({ clusters, selectedCluster, onSelectCluster }: ClusterMapProps) {
+export default function ClusterMap({ clusters, selectedCluster, onSelectCluster, showSearch = true, center: centerProp, markerPosition, radiusMeters, onMarkerDrag }: ClusterMapProps) {
     const { isLoaded, loadError } = useJsApiLoader({
         googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '',
     });
@@ -77,14 +82,16 @@ export default function ClusterMap({ clusters, selectedCluster, onSelectCluster 
         .map(c => ({ c, ll: toLatLng(c) }))
         .filter((x): x is { c: Cluster; ll: google.maps.LatLngLiteral } => !!x.ll);
 
-    const mapCenter = selectedCluster?.latitude && selectedCluster?.longitude
-        ? (toLatLng(selectedCluster) || defaultCenter)
-        : clustersWithCoords.length > 0
-            ? {
-                lat: clustersWithCoords.reduce((sum, x) => sum + x.ll.lat, 0) / clustersWithCoords.length,
-                lng: clustersWithCoords.reduce((sum, x) => sum + x.ll.lng, 0) / clustersWithCoords.length,
-            }
-            : defaultCenter;
+    const mapCenter = centerProp
+        ? centerProp
+        : selectedCluster?.latitude && selectedCluster?.longitude
+            ? (toLatLng(selectedCluster) || defaultCenter)
+            : clustersWithCoords.length > 0
+                ? {
+                    lat: clustersWithCoords.reduce((sum, x) => sum + x.ll.lat, 0) / clustersWithCoords.length,
+                    lng: clustersWithCoords.reduce((sum, x) => sum + x.ll.lng, 0) / clustersWithCoords.length,
+                }
+                : defaultCenter;
 
     const onMapLoad = useCallback((map: google.maps.Map) => {
         mapRef.current = map;
@@ -99,6 +106,14 @@ export default function ClusterMap({ clusters, selectedCluster, onSelectCluster 
             }
         }
     }, [selectedCluster]);
+
+    // Re-center when the form's pin moves (search selection, my-location, etc.)
+    useEffect(() => {
+        if (markerPosition && mapRef.current) {
+            mapRef.current.panTo(markerPosition);
+            mapRef.current.setZoom(radiusMeters && radiusMeters > 0 ? 14 : 15);
+        }
+    }, [markerPosition, radiusMeters]);
 
     if (loadError) {
         return (
@@ -121,10 +136,40 @@ export default function ClusterMap({ clusters, selectedCluster, onSelectCluster 
         <GoogleMap
             mapContainerStyle={{ width: '100%', height: '100%' }}
             center={mapCenter}
-            zoom={selectedCluster ? 13 : clustersWithCoords.length > 0 ? 11 : 6}
+            zoom={markerPosition ? 15 : selectedCluster ? 13 : clustersWithCoords.length > 0 ? 11 : 6}
             onLoad={onMapLoad}
             options={mapOptions}
         >
+            {/* Draggable marker for form modal */}
+            {markerPosition && onMarkerDrag && (
+                <React.Fragment>
+                    <MarkerF
+                        position={markerPosition}
+                        draggable
+                        onDragEnd={(e) => {
+                            if (e.latLng) {
+                                onMarkerDrag(e.latLng.lat(), e.latLng.lng());
+                            }
+                        }}
+                        icon={createSelectedMarkerIcon('#EF4444', '📍', 40)}
+                        zIndex={9999}
+                    />
+                    {radiusMeters && radiusMeters > 0 && (
+                        <CircleF
+                            center={markerPosition}
+                            radius={radiusMeters}
+                            options={{
+                                fillColor: '#EF4444',
+                                fillOpacity: 0.08,
+                                strokeColor: '#EF4444',
+                                strokeOpacity: 0.35,
+                                strokeWeight: 2,
+                            }}
+                        />
+                    )}
+                </React.Fragment>
+            )}
+
             {clustersWithCoords.map(({ c, ll }) => {
                 const isSelected = c.id === selectedCluster?.id;
                 const colors = TYPE_COLORS[c.type];
