@@ -82,6 +82,7 @@ describe('CustomerMessagingController', () => {
         dto.content,
         mockUser.id,
         dto.replyToId,
+        undefined,
       );
     });
   });

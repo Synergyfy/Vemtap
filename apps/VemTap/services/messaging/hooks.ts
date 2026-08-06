@@ -18,7 +18,9 @@ import {
     TriggerType,
     ActionType,
     AutomationLog,
-    AutomationPerformance
+    AutomationPerformance,
+    ChannelSettings,
+    UpdateChannelSettingsPayload
 } from './types';
 
 import { BusinessCredit } from '@/lib/api/credit-plans';
@@ -505,7 +507,16 @@ export const useAutomationPerformance = (branchId?: string, startDate?: string, 
             const params = new URLSearchParams(contextParams);
             if (startDate) params.append('startDate', startDate);
             if (endDate) params.append('endDate', endDate);
-            return await api.get(`/messaging/automations/performance?${params.toString()}`);
+            const raw = await api.get(`/messaging/automations/performance?${params.toString()}`);
+            // Normalise backend field names → frontend AutomationPerformance type
+            return {
+                totalMessagesSent: raw?.totalMessagesSent ?? 0,
+                totalReplies: raw?.totalRepliesReceived ?? raw?.totalReplies ?? 0,
+                replyRate: raw?.replyRate ?? 0,
+                loyaltyPointsIssued: raw?.loyaltyPointsIssued ?? 0,
+                topAutomations: raw?.topAutomations ?? [],
+                dailyStats: raw?.dailyStats ?? [],
+            } as AutomationPerformance;
         },
         enabled: isAuthenticated,
         staleTime: STALE_TIME,
@@ -617,3 +628,48 @@ export const useRemoveSegmentMembers = () => {
         },
     });
 };
+
+// ─── Channel Settings ─────────────────────────────────────────────────────────
+
+export const useChannelSettings = (branchId?: string) => {
+    const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+    return useQuery<ChannelSettings, Error>({
+        queryKey: ['messaging', 'channel-settings', branchId || 'global'],
+        queryFn: async () => {
+            const params = new URLSearchParams();
+            if (branchId) params.append('branchId', branchId);
+            const queryString = params.toString();
+            const url = `/messaging/channel-settings${queryString ? `?${queryString}` : ''}`;
+            return await api.get(url);
+        },
+        enabled: isAuthenticated,
+        staleTime: STALE_TIME,
+        gcTime: GC_TIME,
+    });
+};
+
+export const useUpdateChannelSettings = () => {
+    const queryClient = useQueryClient();
+    return useMutation<ChannelSettings, Error, UpdateChannelSettingsPayload>({
+        mutationFn: async (payload) => {
+            return await api.patch('/messaging/channel-settings', payload);
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['messaging', 'channel-settings'] });
+        },
+    });
+};
+
+export const useGenerateDnsRecords = () => {
+    const queryClient = useQueryClient();
+    return useMutation<ChannelSettings, Error, { domain?: string; branchId?: string }>({
+        mutationFn: async (payload) => {
+            return await api.post('/messaging/channel-settings/generate-dns-records', payload);
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['messaging', 'channel-settings'] });
+        },
+    });
+};
+
+

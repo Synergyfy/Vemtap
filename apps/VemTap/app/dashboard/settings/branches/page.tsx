@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, Suspense, useEffect } from 'react';
+import dynamic from 'next/dynamic';
 import { usePathname } from 'next/navigation';
 import PageHeader from '@/components/dashboard/PageHeader';
 import { 
@@ -11,13 +12,15 @@ import { toast } from 'react-hot-toast';
 import { useCustomerFlowStore } from '@/store/useCustomerFlowStore';
 import { useMyBusiness } from '@/services/businesses/hooks';
 
-import { useBranches, useCreateBranch, useDeleteBranch, useUpdateBranch } from '@/services/branches/hooks';
+import { useBranches, useCreateBranch, useDeleteBranch, useUpdateBranch, useRequestDeleteBranchOtp } from '@/services/branches/hooks';
 import { Branch } from '@/services/branches/types';
 import { Loader2 } from 'lucide-react';
 import { useSubscriptionStore } from '@/store/useSubscriptionStore';
 import UsageIndicator from '@/components/dashboard/UsageIndicator';
 import UpgradeModal from '@/components/dashboard/UpgradeModal';
 import PageLockWrapper from '@/components/dashboard/PageLockWrapper';
+
+const LocationSetupModal = dynamic(() => import('@/components/dashboard/branches/LocationSetupModal'), { ssr: false });
 
 function BranchesContent() {
     const pathname = usePathname();
@@ -28,6 +31,7 @@ function BranchesContent() {
     const createBranchMutation = useCreateBranch();
     const updateBranchMutation = useUpdateBranch();
     const deleteBranchMutation = useDeleteBranch();
+    const requestOtpMutation = useRequestDeleteBranchOtp();
 
     const branches = branchesData || [];
     const businessName = business?.name || storeName;
@@ -47,6 +51,7 @@ function BranchesContent() {
     const [branchToDelete, setBranchToDelete] = useState<Branch | null>(null);
     const [otp, setOtp] = useState('');
     const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+    const [locationSetupFor, setLocationSetupFor] = useState<'create' | 'edit' | null>(null);
 
     // Close upgrade modal on navigation
     useEffect(() => {
@@ -77,6 +82,8 @@ function BranchesContent() {
             address: newBranch.address,
             phone: newBranch.phone,
             officialEmail: newBranch.officialEmail,
+            latitude: newBranch.latitude,
+            longitude: newBranch.longitude,
         }, {
             onSuccess: () => {
                 setIsCreateModalOpen(false);
@@ -107,6 +114,8 @@ function BranchesContent() {
                 address: branchToEdit.address,
                 phone: branchToEdit.phone,
                 officialEmail: branchToEdit.officialEmail,
+                latitude: branchToEdit.latitude,
+                longitude: branchToEdit.longitude,
             }
         }, {
             onSuccess: () => {
@@ -126,8 +135,17 @@ function BranchesContent() {
     };
 
     const handleConfirmDelete = () => {
+        if (!branchToDelete) return;
         setIsDeleteModalOpen(false);
         setIsOtpModalOpen(true);
+        requestOtpMutation.mutate(branchToDelete.id, {
+            onSuccess: (res) => {
+                toast.success(res.message || 'Verification code sent for branch deletion');
+            },
+            onError: () => {
+                toast.error('Failed to request verification code');
+            }
+        });
     };
 
     const handleVerifyOtp = () => {
@@ -136,23 +154,18 @@ function BranchesContent() {
             return;
         }
 
-        // Mock OTP verification (123456 is the mock code)
-        if (otp === '123456') {
-            if (branchToDelete) {
-                deleteBranchMutation.mutate(branchToDelete.id, {
-                    onSuccess: () => {
-                        toast.success('Branch deleted successfully');
-                        setIsOtpModalOpen(false);
-                        setBranchToDelete(null);
-                        setOtp('');
-                    },
-                    onError: () => {
-                        toast.error('Failed to delete branch');
-                    }
-                });
-            }
-        } else {
-            toast.error('Invalid OTP. Please try again.');
+        if (branchToDelete) {
+            deleteBranchMutation.mutate({ id: branchToDelete.id, otp }, {
+                onSuccess: () => {
+                    toast.success('Branch deleted successfully');
+                    setIsOtpModalOpen(false);
+                    setBranchToDelete(null);
+                    setOtp('');
+                },
+                onError: (err: any) => {
+                    toast.error(err?.message || 'Failed to delete branch');
+                }
+            });
         }
     };
 
@@ -286,7 +299,7 @@ function BranchesContent() {
                 {/* Create Branch Modal */}
                 {isCreateModalOpen && (
                     <div className="fixed inset-0 z-100 flex items-center justify-center p-4">
-                        <div className="absolute inset-0 bg-text-main/40 backdrop-blur-sm" onClick={() => setIsCreateModalOpen(false)} />
+                        <div className="absolute inset-0 bg-text-main/40 backdrop-blur-sm"  />
                         <div className="relative bg-white rounded-[2.5rem] w-full max-w-xl p-10 shadow-2xl animate-in zoom-in-95 duration-200">
                             <h3 className="text-3xl font-display font-bold text-text-main mb-2">Add New Branch</h3>
                             <p className="text-text-secondary text-base mb-10 font-medium">Create a new location for {storeName}.</p>
@@ -305,13 +318,23 @@ function BranchesContent() {
                                     </div>
                                     <div className="space-y-2">
                                         <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Full Address <span className="text-red-500">*</span></label>
-                                        <input
-                                            type="text"
-                                            value={newBranch.address}
-                                            onChange={(e) => setNewBranch({ ...newBranch, address: e.target.value })}
-                                            placeholder="Enter complete physical address"
-                                            className="w-full h-14 bg-gray-50 border border-gray-200 rounded-2xl px-5 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none"
-                                        />
+                                        <div className="relative">
+                                            <input
+                                                type="text"
+                                                value={newBranch.address}
+                                                onChange={(e) => setNewBranch({ ...newBranch, address: e.target.value })}
+                                                placeholder="Enter complete physical address"
+                                                className="w-full h-14 bg-gray-50 border border-gray-200 rounded-2xl pl-5 pr-14 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none"
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => setLocationSetupFor('create')}
+                                                title="Set location coordinates"
+                                                className="absolute right-2 top-1/2 -translate-y-1/2 size-10 rounded-xl bg-gray-100 hover:bg-primary/10 hover:text-primary transition-all flex items-center justify-center text-gray-400"
+                                            >
+                                                <MapPin size={18} />
+                                            </button>
+                                        </div>
                                     </div>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <div className="space-y-2">
@@ -319,7 +342,7 @@ function BranchesContent() {
                                             <input
                                                 type="tel"
                                                 value={newBranch.phone}
-                                                onChange={(e) => setNewBranch({ ...newBranch, phone: e.target.value })}
+                                                onChange={(e) => setNewBranch({ ...newBranch, phone: e.target.value.replace(/\D/g, '') })}
                                                 placeholder="+234 801 234 5678"
                                                 className="w-full h-14 bg-gray-50 border border-gray-200 rounded-2xl px-5 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none"
                                             />
@@ -338,7 +361,7 @@ function BranchesContent() {
                                 </div>
                             </div>
 
-                        <div className="grid grid-cols-2 gap-4 pt-8">
+                            <div className="grid grid-cols-2 gap-4 pt-8">
                             <button
                                 onClick={() => setIsCreateModalOpen(false)}
                                 className="h-14 bg-gray-100 text-text-main font-bold rounded-2xl hover:bg-gray-200 transition-all"
@@ -361,7 +384,7 @@ function BranchesContent() {
             {/* Edit Branch Modal */}
             {isEditModalOpen && branchToEdit && (
                 <div className="fixed inset-0 z-100 flex items-center justify-center p-4">
-                    <div className="absolute inset-0 bg-text-main/40 backdrop-blur-sm" onClick={() => setIsEditModalOpen(false)} />
+                    <div className="absolute inset-0 bg-text-main/40 backdrop-blur-sm"  />
                     <div className="relative bg-white rounded-[2.5rem] w-full max-w-xl p-10 shadow-2xl animate-in zoom-in-95 duration-200">
                         <h3 className="text-3xl font-display font-bold text-text-main mb-2">Edit Branch</h3>
                         <p className="text-text-secondary text-base mb-10 font-medium">Update details for {resolveBranchName(branchToEdit)}.</p>
@@ -380,13 +403,23 @@ function BranchesContent() {
                                 </div>
                                 <div className="space-y-2">
                                     <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Full Address <span className="text-red-500">*</span></label>
-                                    <input
-                                        type="text"
-                                        value={branchToEdit.address}
-                                        onChange={(e) => setBranchToEdit({ ...branchToEdit, address: e.target.value })}
-                                        placeholder="Enter complete physical address"
-                                        className="w-full h-14 bg-gray-50 border border-gray-200 rounded-2xl px-5 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none"
-                                    />
+                                    <div className="relative">
+                                        <input
+                                            type="text"
+                                            value={branchToEdit.address}
+                                            onChange={(e) => setBranchToEdit({ ...branchToEdit, address: e.target.value })}
+                                            placeholder="Enter complete physical address"
+                                            className="w-full h-14 bg-gray-50 border border-gray-200 rounded-2xl pl-5 pr-14 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none"
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => setLocationSetupFor('edit')}
+                                            title="Set location coordinates"
+                                            className="absolute right-2 top-1/2 -translate-y-1/2 size-10 rounded-xl bg-gray-100 hover:bg-primary/10 hover:text-primary transition-all flex items-center justify-center text-gray-400"
+                                        >
+                                            <MapPin size={18} />
+                                        </button>
+                                    </div>
                                 </div>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div className="space-y-2">
@@ -394,7 +427,7 @@ function BranchesContent() {
                                         <input
                                             type="tel"
                                             value={branchToEdit.phone || ''}
-                                            onChange={(e) => setBranchToEdit({ ...branchToEdit, phone: e.target.value })}
+                                            onChange={(e) => setBranchToEdit({ ...branchToEdit, phone: e.target.value.replace(/\D/g, '') })}
                                             placeholder="+234 801 234 5678"
                                             className="w-full h-14 bg-gray-50 border border-gray-200 rounded-2xl px-5 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none"
                                         />
@@ -414,29 +447,29 @@ function BranchesContent() {
                         </div>
 
                         <div className="grid grid-cols-2 gap-4 pt-8">
-                            <button
-                                onClick={() => setIsEditModalOpen(false)}
-                                className="h-14 bg-gray-100 text-text-main font-bold rounded-2xl hover:bg-gray-200 transition-all"
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                onClick={handleUpdateBranch}
-                                disabled={updateBranchMutation.isPending}
-                                className="h-14 bg-primary text-white font-bold rounded-2xl hover:bg-primary-hover shadow-xl shadow-primary/20 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
-                            >
-                                {updateBranchMutation.isPending ? <Loader2 size={20} className="animate-spin" /> : <Edit2 size={20} />}
-                                Save Changes
-                            </button>
+                                    <button
+                                        onClick={() => setIsEditModalOpen(false)}
+                                        className="h-14 bg-gray-100 text-text-main font-bold rounded-2xl hover:bg-gray-200 transition-all"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        onClick={handleUpdateBranch}
+                                        disabled={updateBranchMutation.isPending}
+                                        className="h-14 bg-primary text-white font-bold rounded-2xl hover:bg-primary-hover shadow-xl shadow-primary/20 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                                    >
+                                        {updateBranchMutation.isPending ? <Loader2 size={20} className="animate-spin" /> : <Edit2 size={20} />}
+                                        Save Changes
+                                    </button>
+                                </div>
+                            </div>
                         </div>
-                    </div>
-                </div>
             )}
 
             {/* Delete Confirmation Modal */}
             {isDeleteModalOpen && branchToDelete && (
                 <div className="fixed inset-0 z-100 flex items-center justify-center p-4">
-                    <div className="absolute inset-0 bg-text-main/40 backdrop-blur-sm" onClick={() => setIsDeleteModalOpen(false)} />
+                    <div className="absolute inset-0 bg-text-main/40 backdrop-blur-sm"  />
                     <div className="relative bg-white rounded-[2.5rem] w-full max-w-md p-10 shadow-2xl animate-in zoom-in-95 duration-200 text-center">
                         <div className="size-20 rounded-3xl bg-red-50 text-red-500 flex items-center justify-center mx-auto mb-6">
                             <Trash2 size={40} />
@@ -467,7 +500,7 @@ function BranchesContent() {
             {/* OTP Verification Modal */}
             {isOtpModalOpen && (
                 <div className="fixed inset-0 z-100 flex items-center justify-center p-4">
-                    <div className="absolute inset-0 bg-text-main/40 backdrop-blur-sm" onClick={() => setIsOtpModalOpen(false)} />
+                    <div className="absolute inset-0 bg-text-main/40 backdrop-blur-sm"  />
                     <div className="relative bg-white rounded-[2.5rem] w-full max-w-md p-10 shadow-2xl animate-in zoom-in-95 duration-200">
                         <div className="flex items-center justify-between mb-8">
                             <div>
@@ -481,7 +514,7 @@ function BranchesContent() {
 
                         <div className="space-y-6">
                             <div className="space-y-2">
-                                <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1 text-center block">Verification Code (Mock: 123456)</label>
+                                <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1 text-center block">Enter 6-Digit Verification Code</label>
                                 <input
                                     type="text"
                                     placeholder="000000"
@@ -507,6 +540,20 @@ function BranchesContent() {
                     </div>
                 </div>
             )}
+
+                <LocationSetupModal
+                    isOpen={locationSetupFor !== null}
+                    onClose={() => setLocationSetupFor(null)}
+                    addressHint={locationSetupFor === 'create' ? newBranch.address : branchToEdit?.address}
+                    onLocationSet={(lat, lng) => {
+                        if (locationSetupFor === 'create') {
+                            setNewBranch(prev => ({ ...prev, latitude: lat, longitude: lng }));
+                        } else if (locationSetupFor === 'edit' && branchToEdit) {
+                            setBranchToEdit({ ...branchToEdit, latitude: lat, longitude: lng });
+                        }
+                        setLocationSetupFor(null);
+                    }}
+                />
 
                 <UpgradeModal 
                     isOpen={showUpgradeModal} 

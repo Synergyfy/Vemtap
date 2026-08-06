@@ -19,6 +19,7 @@ import { AllowPending } from '../../common/decorators/allow-pending.decorator';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { BranchesService } from '../branches/branches.service';
 import { Branch } from '../branches/entities/branch.entity';
+import { ClustersService } from '../clusters/clusters.service';
 
 @ApiTags('Device Taps')
 @Controller('tap')
@@ -31,6 +32,7 @@ export class DeviceTapController {
     private readonly formsService: FormsService,
     private readonly qrThriveService: QrThriveService,
     private readonly branchesService: BranchesService,
+    private readonly clustersService: ClustersService,
   ) {}
 
   @Public()
@@ -38,7 +40,8 @@ export class DeviceTapController {
   @Get('context/:code')
   @ApiOperation({
     summary: 'Get device and business context for a tap',
-    description: 'Retrieves the full UBL (User Business Landing) context for a device tap. Returns device info, branch details, product/service counts, QR-Thrive codes, and business info. This is the core endpoint that powers the customer-facing portal.',
+    description:
+      'Retrieves the full UBL (User Business Landing) context for a device tap. Returns device info, branch details, product/service counts, QR-Thrive codes, and business info. This is the core endpoint that powers the customer-facing portal.',
   })
   @ApiResponse({
     status: 200,
@@ -85,7 +88,10 @@ export class DeviceTapController {
     },
   })
   @ApiResponse({ status: 404, description: 'Device not found' })
-  @ApiResponse({ status: 400, description: 'Device is not linked to any branch' })
+  @ApiResponse({
+    status: 400,
+    description: 'Device is not linked to any branch',
+  })
   async getContext(@Param('code') code: string) {
     return this.getDeviceContext(code);
   }
@@ -172,7 +178,9 @@ export class DeviceTapController {
     // Find branch by username
     const branch = await this.branchesService.findByUsername(username);
     if (!branch) {
-      throw new NotFoundException(`Branch with username "${username}" not found`);
+      throw new NotFoundException(
+        `Branch with username "${username}" not found`,
+      );
     }
 
     // Get first active device for this branch
@@ -203,9 +211,10 @@ export class DeviceTapController {
 
       if (branch) {
         const devices = await this.devicesService.findAllByBranch(branch.id);
-        const mainDevice = devices.find(d => d.isMain) || devices[0];
+        const mainDevice = devices.find((d) => d.isMain) || devices[0];
         if (mainDevice) {
-          deviceWithRelations = await this.devicesService.findByCodeWithRelations(mainDevice.code);
+          deviceWithRelations =
+            await this.devicesService.findByCodeWithRelations(mainDevice.code);
         }
       }
     }
@@ -241,15 +250,23 @@ export class DeviceTapController {
 
     // Fetch QR-Thrive metadata if ublSequence has external IDs
     let qrThriveCodes: any[] = [];
-    const ublSequence = deviceWithRelations.branch.engagement?.ublSequence || [];
-    const externalQrIds = ublSequence.filter((id: string) => !id.startsWith('system:'));
-    
+    const ublSequence =
+      deviceWithRelations.branch.engagement?.ublSequence || [];
+    const externalQrIds = ublSequence.filter(
+      (id: string) => !id.startsWith('system:'),
+    );
+
     if (externalQrIds.length > 0) {
       qrThriveCodes = await this.qrThriveService.getPublicQRCodesForBranch(
         branchId,
         externalQrIds,
       );
     }
+
+    // Discovery gateway: expose the cluster this branch belongs to
+    const cluster = deviceWithRelations.branch.clusterId
+      ? await this.clustersService.getClusterForBranch(branchId)
+      : null;
 
     return {
       device: {
@@ -275,6 +292,7 @@ export class DeviceTapController {
         formAppearanceColor: deviceWithRelations.branch.formAppearanceColor,
       },
       qrThriveCodes,
+      cluster,
       business: {
         id: deviceWithRelations.branch.business.id,
         name: deviceWithRelations.branch.business.name,

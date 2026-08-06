@@ -33,6 +33,10 @@ import {
 } from './dto/responses.dto';
 import { LocalAuthGuard } from './guards/local-auth.guard';
 import { User, UserRole } from '../users/entities/user.entity';
+import { TwoFactorCodeDto } from './dto/two-factor.dto';
+import { VerifyEmailDto } from './dto/verify-email.dto';
+import { RolesGuard } from '../../common/guards/roles.guard';
+import { Roles } from '../../common/decorators/roles.decorator';
 
 @ApiTags('auth')
 @Controller('auth')
@@ -78,6 +82,45 @@ export class AuthController {
   })
   async login(@Body() loginDto: LoginDto) {
     return this.authService.login(loginDto);
+  }
+
+  @Post('email-verification/send')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF, UserRole.AGENT, UserRole.CUSTOMER)
+  @ApiOperation({ summary: 'Send an email verification code to the current user' })
+  async sendEmailVerification(@Request() req: { user: User }) {
+    return this.authService.sendVerificationEmail(req.user.id);
+  }
+
+  @Post('email-verification/verify')
+  @Public()
+  @ApiOperation({ summary: 'Verify an email address with a verification code' })
+  async verifyEmail(@Body() dto: VerifyEmailDto) {
+    return this.authService.verifyEmail(dto);
+  }
+
+  @Post('2fa/setup')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF, UserRole.AGENT, UserRole.CUSTOMER)
+  @ApiOperation({ summary: 'Start two-factor authentication setup' })
+  async setupTwoFactor(@Request() req: { user: User }) {
+    return this.authService.setupTwoFactor(req.user.id);
+  }
+
+  @Post('2fa/confirm')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF, UserRole.AGENT, UserRole.CUSTOMER)
+  @ApiOperation({ summary: 'Confirm and enable two-factor authentication' })
+  async confirmTwoFactor(@Request() req: { user: User }, @Body() dto: TwoFactorCodeDto) {
+    return this.authService.confirmTwoFactor(req.user.id, dto);
+  }
+
+  @Post('2fa/disable')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF, UserRole.AGENT, UserRole.CUSTOMER)
+  @ApiOperation({ summary: 'Disable two-factor authentication' })
+  async disableTwoFactor(@Request() req: { user: User }, @Body() dto: TwoFactorCodeDto) {
+    return this.authService.disableTwoFactor(req.user.id, dto);
   }
 
   @Public()

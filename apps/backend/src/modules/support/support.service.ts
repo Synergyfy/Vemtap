@@ -1,8 +1,13 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Between, Not, IsNull, FindOptionsWhere } from 'typeorm';
 import {
   SupportTicket,
+  TicketPriority,
   TicketStatus,
   TicketType,
 } from './entities/support-ticket.entity';
@@ -12,9 +17,11 @@ import { CreateTicketDto } from './dto/create-ticket.dto';
 import { User, UserRole } from '../users/entities/user.entity';
 import { AgentStatsDto } from './dto/agent-stats.dto';
 import { UpdateAgentProfileDto } from './dto/update-agent-profile.dto';
+import { AddTicketAttachmentsDto } from './dto/ticket-attachment.dto';
 
 import { SupportGateway } from './support.gateway';
 import { ConversationContextService } from './conversation-context.service';
+import { paginateWithCursor } from '../../common/utils/cursor-pagination.util';
 
 @Injectable()
 export class SupportService {
@@ -134,6 +141,7 @@ export class SupportService {
       subject: dto.subject,
       category: dto.category,
       status: TicketStatus.PENDING,
+      priority: dto.priority ?? TicketPriority.NORMAL,
       type: TicketType.TICKET,
     });
     await this.ticketRepository.save(ticket);
@@ -151,17 +159,37 @@ export class SupportService {
     return ticket;
   }
 
-  async findAll(userId: string, page: number = 1, limit: number = 10) {
-    const [data, total] = await this.ticketRepository.findAndCount({
-      where: { userId },
-      order: { createdAt: 'DESC' },
-      skip: (page - 1) * limit,
-      take: limit,
+  async findAll(
+    userId: string,
+    page: number = 1,
+    limit: number = 10,
+    cursor?: string,
+  ) {
+    const qb = this.ticketRepository
+      .createQueryBuilder('ticket')
+      .where('ticket.userId = :userId', { userId });
+
+    const result = await paginateWithCursor({
+      queryBuilder: qb,
+      cursor,
+      page,
+      limit,
+      sortField: 'createdAt',
+      sortOrder: 'DESC',
+      entityAlias: 'ticket',
     });
 
     return {
-      data,
-      meta: { total, page, lastPage: Math.ceil(total / limit) },
+      data: result.data,
+      cursor: result.cursor,
+      nextCursor: result.nextCursor,
+      prevCursor: result.prevCursor,
+      hasNextPage: result.hasNextPage,
+      meta: {
+        total: result.total,
+        page: result.page,
+        lastPage: result.meta.lastPage,
+      },
     };
   }
 
@@ -203,6 +231,78 @@ export class SupportService {
     this.supportGateway.emitNewMessage(ticket.id, savedMessage);
 
     return savedMessage;
+  }
+
+  async addAttachments(
+    ticketId: string,
+    userId: string,
+    dto: AddTicketAttachmentsDto,
+  ): Promise<TicketMessage> {
+    if (!dto.attachments?.length) {
+      throw new BadRequestException('At least one attachment is required');
+    }
+
+    const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB per file
+    const MAX_TOTAL_SIZE = 25 * 1024 * 1024; // 25 MB total
+
+    let totalSize = 0;
+    for (const file of dto.attachments) {
+      const actualSize = this.estimateAttachmentSize(file.url, file.size);
+      if (actualSize > MAX_FILE_SIZE) {
+        throw new BadRequestException(
+          `File "${file.name}" exceeds the 10 MB per-file limit`,
+        );
+      }
+      totalSize += actualSize;
+    }
+    if (totalSize > MAX_TOTAL_SIZE) {
+      throw new BadRequestException(
+        'Total attachment size exceeds the 25 MB limit',
+      );
+    }
+
+    const ticket = await this.findOne(ticketId, userId);
+
+    const message = this.messageRepository.create({
+      ticketId: ticket.id,
+      senderId: userId,
+      senderRole: 'CUSTOMER',
+      message: dto.message?.trim() || '<attachment>',
+      attachments: dto.attachments,
+    });
+
+    if (
+      ticket.status === TicketStatus.RESOLVED ||
+      ticket.status === TicketStatus.CANCELLED
+    ) {
+      ticket.status = TicketStatus.IN_PROGRESS;
+      await this.ticketRepository.save(ticket);
+      await this.logActivity(ticket.id, 'Ticket reopened', 'Customer');
+    }
+
+    const savedMessage = await this.messageRepository.save(message);
+
+    this.supportGateway.emitNewMessage(ticket.id, savedMessage);
+
+    return savedMessage;
+  }
+
+  private estimateAttachmentSize(url: string, reportedSize: number): number {
+    // For base64 data URLs, compute the real decoded byte length so a spoofed
+    // `size` field can't bypass the upload limits. Remote URLs are trusted
+    // metadata (size is not verifiable without downloading).
+    if (url.startsWith('data:')) {
+      const commaIndex = url.indexOf(',');
+      if (commaIndex >= 0) {
+        const b64 = url.slice(commaIndex + 1);
+        const padding = b64.endsWith('==') ? 2 : b64.endsWith('=') ? 1 : 0;
+        return Math.max(
+          reportedSize,
+          Math.floor((b64.length * 3) / 4) - padding,
+        );
+      }
+    }
+    return reportedSize;
   }
 
   // --- Agent Methods ---
@@ -250,18 +350,37 @@ export class SupportService {
     type: TicketType,
     page: number = 1,
     limit: number = 10,
+    cursor?: string,
   ) {
-    const [data, total] = await this.ticketRepository.findAndCount({
-      where: { assignedToId: agentId, type },
-      relations: ['user'],
-      order: { updatedAt: 'DESC' },
-      skip: (page - 1) * limit,
-      take: limit,
+    const qb = this.ticketRepository
+      .createQueryBuilder('ticket')
+      .leftJoinAndSelect('ticket.user', 'user')
+      .where('ticket.assignedToId = :agentId AND ticket.type = :type', {
+        agentId,
+        type,
+      });
+
+    const result = await paginateWithCursor({
+      queryBuilder: qb,
+      cursor,
+      page,
+      limit,
+      sortField: 'updatedAt',
+      sortOrder: 'DESC',
+      entityAlias: 'ticket',
     });
 
     return {
-      data,
-      meta: { total, page, lastPage: Math.ceil(total / limit) },
+      data: result.data,
+      cursor: result.cursor,
+      nextCursor: result.nextCursor,
+      prevCursor: result.prevCursor,
+      hasNextPage: result.hasNextPage,
+      meta: {
+        total: result.total,
+        page: result.page,
+        lastPage: result.meta.lastPage,
+      },
     };
   }
 
@@ -360,18 +479,41 @@ export class SupportService {
     await this.activityRepository.save(activity);
   }
 
-  async findAllAgents(page: number = 1, limit: number = 10) {
-    const [data, total] = await this.userRepository.findAndCount({
-      where: { role: UserRole.AGENT },
-      select: ['id', 'firstName', 'lastName', 'email', 'status', 'lastActive'],
-      skip: (page - 1) * limit,
-      take: limit,
-      order: { createdAt: 'DESC' },
+  async findAllAgents(page: number = 1, limit: number = 10, cursor?: string) {
+    const qb = this.userRepository
+      .createQueryBuilder('user')
+      .select([
+        'user.id',
+        'user.firstName',
+        'user.lastName',
+        'user.email',
+        'user.status',
+        'user.lastActive',
+        'user.createdAt',
+      ])
+      .where('user.role = :role', { role: UserRole.AGENT });
+
+    const result = await paginateWithCursor({
+      queryBuilder: qb,
+      cursor,
+      page,
+      limit,
+      sortField: 'createdAt',
+      sortOrder: 'DESC',
+      entityAlias: 'user',
     });
 
     return {
-      data,
-      meta: { total, page, lastPage: Math.ceil(total / limit) },
+      data: result.data,
+      cursor: result.cursor,
+      nextCursor: result.nextCursor,
+      prevCursor: result.prevCursor,
+      hasNextPage: result.hasNextPage,
+      meta: {
+        total: result.total,
+        page: result.page,
+        lastPage: result.meta.lastPage,
+      },
     };
   }
 
@@ -382,24 +524,46 @@ export class SupportService {
     isAssigned?: boolean,
     page: number = 1,
     limit: number = 10,
+    cursor?: string,
   ) {
-    const where: FindOptionsWhere<SupportTicket> = {};
-    if (type) where.type = type;
-    if (isAssigned !== undefined) {
-      where.assignedToId = isAssigned ? Not(IsNull()) : IsNull();
+    const qb = this.ticketRepository
+      .createQueryBuilder('ticket')
+      .leftJoinAndSelect('ticket.user', 'user')
+      .leftJoinAndSelect('ticket.assignedTo', 'assignedTo');
+
+    if (type) {
+      qb.andWhere('ticket.type = :type', { type });
     }
 
-    const [data, total] = await this.ticketRepository.findAndCount({
-      where,
-      relations: ['user', 'assignedTo'],
-      order: { createdAt: 'DESC' },
-      skip: (page - 1) * limit,
-      take: limit,
+    if (isAssigned !== undefined) {
+      if (isAssigned) {
+        qb.andWhere('ticket.assignedToId IS NOT NULL');
+      } else {
+        qb.andWhere('ticket.assignedToId IS NULL');
+      }
+    }
+
+    const result = await paginateWithCursor({
+      queryBuilder: qb,
+      cursor,
+      page,
+      limit,
+      sortField: 'createdAt',
+      sortOrder: 'DESC',
+      entityAlias: 'ticket',
     });
 
     return {
-      data,
-      meta: { total, page, lastPage: Math.ceil(total / limit) },
+      data: result.data,
+      cursor: result.cursor,
+      nextCursor: result.nextCursor,
+      prevCursor: result.prevCursor,
+      hasNextPage: result.hasNextPage,
+      meta: {
+        total: result.total,
+        page: result.page,
+        lastPage: result.meta.lastPage,
+      },
     };
   }
 

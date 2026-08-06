@@ -1,27 +1,38 @@
 "use client";
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, Suspense } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { 
     Mail, Lock, Eye, EyeOff, ArrowRight,
     ShieldCheck, 
     Zap, AlertCircle
 } from 'lucide-react';
-import { useGoogleLogin } from '@react-oauth/google';
+import { GoogleLogin } from '@react-oauth/google';
 import Logo from '@/components/brand/Logo';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/store/useAuthStore';
+import { getFirstPermittedDashboardRoute, isRouteAllowed } from '@/lib/utils/nav-filter';
 
 const isEmail = (v: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim());
 const isPhone = (v: string) => /^[\+\d][\d\s\-\(\)]{7,20}$/.test(v.trim());
 const isValidIdentifier = (v: string) => isEmail(v) || isPhone(v);
 
 export default function LoginPage() {
+    return (
+        <Suspense>
+            <LoginPageContent />
+        </Suspense>
+    );
+}
+
+function LoginPageContent() {
     const router = useRouter();
+    const searchParams = useSearchParams();
+    const redirectTo = searchParams.get('redirect');
     const storeLogin = useAuthStore((s) => s.login);
     const [showPassword, setShowPassword] = useState(false);
     const [isLoggingIn, setIsLoggingIn] = useState(false);
@@ -31,6 +42,9 @@ export default function LoginPage() {
     });
     const [fieldErrors, setFieldErrors] = useState<{ email?: string; password?: string }>({});
     const [generalError, setGeneralError] = useState<string | null>(null);
+    const [requires2FA, setRequires2FA] = useState(false);
+    const [twoFACode, setTwoFACode] = useState('');
+    const [pendingLogin, setPendingLogin] = useState<{ identifier: string; password: string } | null>(null);
 
     const validate = () => {
         const errors: { email?: string; password?: string } = {};
@@ -52,20 +66,36 @@ export default function LoginPage() {
         return Object.keys(errors).length === 0;
     };
 
-    const routeAfterLogin = useCallback((role: string, businessId?: string, isNewUser?: boolean) => {
+    const routeAfterLogin = useCallback((role: string, businessId?: string, isNewUser?: boolean, permissions: string[] = []) => {
         const normalizedRole = role?.toLowerCase();
+        const isOwnerOrAdmin = normalizedRole === 'owner' || normalizedRole === 'admin';
+        const landing = getFirstPermittedDashboardRoute(normalizedRole, permissions);
+
+        // Only honor ?redirect= when the user can actually access the target.
+        // Otherwise fall through to the topmost page of their permission set.
+        if (redirectTo) {
+            const redirectAllowed =
+                !redirectTo.startsWith('/dashboard') ||
+                isOwnerOrAdmin ||
+                isRouteAllowed(redirectTo, normalizedRole, permissions, isOwnerOrAdmin);
+            if (redirectAllowed) {
+                router.push(redirectTo);
+                return;
+            }
+        }
+
         if (normalizedRole === 'admin') {
             router.push('/admin');
         } else if (normalizedRole === 'owner' && (!businessId || isNewUser)) {
             router.push('/onboarding');
         } else if (businessId && (normalizedRole === 'owner' || normalizedRole === 'manager' || normalizedRole === 'staff')) {
-            router.push('/dashboard');
+            router.push(landing ?? '/dashboard');
         } else if (normalizedRole === 'customer') {
             router.push('/customer/dashboard');
         } else {
-            router.push('/dashboard');
+            router.push(landing ?? '/dashboard');
         }
-    }, [router]);
+    }, [router, redirectTo]);
 
     const handleGoogleSuccess = useCallback(async (credentialResponse: any) => {
         if (!credentialResponse?.credential) {
@@ -82,8 +112,8 @@ export default function LoginPage() {
                 setGeneralError('Invalid response from server');
                 return;
             }
-            storeLogin(response.user, response.access_token);
-            routeAfterLogin(response.user.role, response.user.businessId, response.isNewUser);
+            await storeLogin(response.user, response.access_token);
+            routeAfterLogin(response.user.role, response.user.businessId, response.isNewUser, response.user.permissions || []);
         } catch (err: any) {
             const message = err?.message || 'Google sign-in failed. Please try again.';
             setGeneralError(message);
@@ -92,13 +122,7 @@ export default function LoginPage() {
         }
     }, [storeLogin, routeAfterLogin]);
 
-    const googleLogin = useGoogleLogin({
-        onSuccess: handleGoogleSuccess,
-        onError: () => {
-            setGeneralError('Google sign-in was cancelled or failed. Please try again.');
-        },
-        flow: 'implicit',
-    });
+
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -113,16 +137,46 @@ export default function LoginPage() {
                 password: formData.password,
             });
 
+            if (response?.requiresTwoFactor) {
+                setRequires2FA(true);
+                setPendingLogin({ identifier: formData.email.trim(), password: formData.password });
+                setIsLoggingIn(false);
+                return;
+            }
+
             if (!response?.user || !response?.access_token) {
                 setGeneralError('Invalid response from server');
                 return;
             }
 
-            storeLogin(response.user, response.access_token);
-            routeAfterLogin(response.user.role, response.user.businessId, response.isNewUser);
+            await storeLogin(response.user, response.access_token);
+            routeAfterLogin(response.user.role, response.user.businessId, response.isNewUser, response.user.permissions || []);
         } catch (err: any) {
             const message = err?.message || 'Invalid email, phone number or password';
             setGeneralError(message);
+        } finally {
+            setIsLoggingIn(false);
+        }
+    };
+
+    const handle2FASubmit = async () => {
+        setGeneralError(null);
+        if (twoFACode.length !== 6 || !pendingLogin) return;
+        setIsLoggingIn(true);
+        try {
+            const response = await api.post('/auth/login', {
+                identifier: pendingLogin.identifier,
+                password: pendingLogin.password,
+                twoFactorCode: twoFACode,
+            });
+            if (!response?.user || !response?.access_token) {
+                setGeneralError('Invalid 2FA code');
+                return;
+            }
+            await storeLogin(response.user, response.access_token);
+            routeAfterLogin(response.user.role, response.user.businessId, response.isNewUser, response.user.permissions || []);
+        } catch (err: any) {
+            setGeneralError(err?.message || 'Invalid 2FA code');
         } finally {
             setIsLoggingIn(false);
         }
@@ -191,8 +245,50 @@ export default function LoginPage() {
                     )}
 
                     <form onSubmit={handleSubmit} className="space-y-6">
-                        <div className="space-y-2">
-                            <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-4">Email or Phone Number</label>
+                        {requires2FA ? (
+                            <>
+                                <div className="text-center mb-4">
+                                    <div className="w-14 h-14 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-3">
+                                        <ShieldCheck size={28} className="text-primary" />
+                                    </div>
+                                    <h3 className="font-bold text-gray-900">Two-Factor Authentication</h3>
+                                    <p className="text-sm text-gray-400 mt-1">Enter the 6-digit code from your authenticator app</p>
+                                </div>
+                                <div className="space-y-2">
+                                    <input
+                                        type="text"
+                                        value={twoFACode}
+                                        onChange={(e) => {
+                                            setTwoFACode(e.target.value.replace(/\D/g, '').slice(0, 6));
+                                            if (generalError) setGeneralError(null);
+                                        }}
+                                        placeholder="000000"
+                                        autoFocus
+                                        className="w-full h-16 bg-gray-50 border-2 border-transparent rounded-2xl outline-none font-bold text-lg text-center tracking-[0.4em] focus:ring-2 focus:ring-[#066CF4]/10 transition-all"
+                                    />
+                                </div>
+                                <Button
+                                    type="button"
+                                    disabled={isLoggingIn || twoFACode.length !== 6}
+                                    onClick={handle2FASubmit}
+                                    className="w-full h-16 bg-[#066CF4] text-white font-black uppercase tracking-[0.2em] text-xs rounded-2xl shadow-xl shadow-blue-500/20 active:scale-95 transition-all flex items-center justify-center gap-3"
+                                >
+                                    {isLoggingIn ? (
+                                        <div className="size-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                    ) : (
+                                        'Verify Code'
+                                    )}
+                                </Button>
+                                <button
+                                    type="button"
+                                    onClick={() => { setRequires2FA(false); setTwoFACode(''); setPendingLogin(null); }}
+                                    className="w-full text-sm font-bold text-gray-400 hover:text-[#066CF4] transition-colors"
+                                >Back to login</button>
+                            </>
+                        ) : (
+                            <>
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-4">Email or Phone Number</label>
                             <div className="relative">
                                 <Mail className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-300" size={18} />
                                 <input
@@ -270,6 +366,8 @@ export default function LoginPage() {
                                 'Login To Dashboard'
                             )}
                         </Button>
+                        </>
+                        )}
                     </form>
 
                     <div className="mt-10">
@@ -278,19 +376,31 @@ export default function LoginPage() {
                             <span className="relative px-4 bg-white text-[10px] font-black uppercase tracking-widest text-gray-300">Or continue with</span>
                         </div>
                         
-                        <Button
-                            variant="outline"
-                            disabled={isLoggingIn}
-                            onClick={() => googleLogin()}
-                            className="w-full h-16 rounded-2xl border-gray-100 font-bold text-sm flex items-center justify-center gap-3 hover:bg-gray-50"
-                        >
+                        <div className="relative w-full h-16 rounded-2xl border-2 border-gray-100 font-bold text-sm flex items-center justify-center gap-3 hover:bg-gray-50 transition-all cursor-pointer overflow-hidden">
                             <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" className="size-5" alt="Google" />
                             {isLoggingIn ? (
                                 <div className="size-4 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin" />
                             ) : (
                                 'Sign in with Google'
                             )}
-                        </Button>
+                            
+                            {!isLoggingIn && (
+                                <div className="absolute inset-0 opacity-0 cursor-pointer overflow-hidden rounded-2xl">
+                                    <GoogleLogin
+                                        onSuccess={handleGoogleSuccess}
+                                        onError={() => {
+                                            setGeneralError('Google sign-in was cancelled or failed. Please try again.');
+                                        }}
+                                        useOneTap={false}
+                                        auto_select={false}
+                                        theme="outline"
+                                        size="large"
+                                        shape="rectangular"
+                                        width="400px"
+                                    />
+                                </div>
+                            )}
+                        </div>
                     </div>
 
                     {/* Sign Up Link */}

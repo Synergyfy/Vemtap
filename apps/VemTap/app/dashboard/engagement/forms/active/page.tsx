@@ -279,7 +279,7 @@ export default function ActiveFormsPage() {
 
                                     {activeItems.length === 0 ? (
                                         <div className="rounded-xl border border-dashed border-gray-200 bg-gray-50 p-5 text-xs text-gray-500 text-center">
-                                            No items in sequence. Add items below to build your UBL page.
+                                            Start building your customer experience. Add items to create your page.
                                         </div>
                                     ) : (
                                         <DraggableButtonList
@@ -449,7 +449,7 @@ export default function ActiveFormsPage() {
                                                 <span className="text-[7px] font-black uppercase tracking-widest text-slate-400">Instant Service</span>
                                             </div>
                                             <p className="text-center text-[7px] font-medium text-slate-400">
-                                                Powered by <span className="font-bold" style={{ color: brandColor }}>VemTap</span>
+                                                Powered by <span className="font-bold" style={{ color: brandColor }}>{previewBusinessName}</span>
                                             </p>
                                         </div>
                                     </PhoneFrame>
@@ -462,7 +462,7 @@ export default function ActiveFormsPage() {
 
             {/* Sequence Warning Modal */}
             {sequenceWarning && (
-                <div className="fixed inset-0 z-[100] bg-black/40 flex items-center justify-center p-4" onClick={() => setSequenceWarning(null)}>
+                <div className="fixed inset-0 z-[100] bg-black/40 flex items-center justify-center p-4" >
                     <div
                         className="w-full max-w-md rounded-2xl bg-white shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200"
                         onClick={(e) => e.stopPropagation()}

@@ -6,9 +6,10 @@ import { cn } from "@/lib/utils"
 
 interface DropdownMenuProps {
   children: React.ReactNode
+  className?: string
 }
 
-export function DropdownMenu({ children }: DropdownMenuProps) {
+export function DropdownMenu({ children, className }: DropdownMenuProps) {
   const [open, setOpen] = React.useState(false)
   const containerRef = React.useRef<HTMLDivElement>(null)
 
@@ -23,7 +24,7 @@ export function DropdownMenu({ children }: DropdownMenuProps) {
   }, [])
 
   return (
-    <div className="relative inline-block" ref={containerRef}>
+    <div className={cn("relative inline-block", className)} ref={containerRef}>
       {React.Children.map(children, child => {
         if (React.isValidElement(child)) {
           if ((child.type as any).displayName === "DropdownMenuTrigger") {
@@ -47,7 +48,16 @@ export function DropdownMenu({ children }: DropdownMenuProps) {
   )
 }
 
-export function DropdownMenuTrigger({ children, onClick }: { children: React.ReactNode, onClick?: () => void }) {
+export function DropdownMenuTrigger({ children, onClick, asChild }: { children: React.ReactNode, onClick?: () => void, asChild?: boolean }) {
+  if (asChild && React.isValidElement(children)) {
+    const childElement = children as React.ReactElement<any>;
+    return React.cloneElement(childElement, {
+        onClick: (e: any) => {
+            if (onClick) onClick();
+            if (childElement.props.onClick) childElement.props.onClick(e);
+        }
+    });
+  }
   return <div onClick={onClick} className="cursor-pointer">{children}</div>
 }
 DropdownMenuTrigger.displayName = "DropdownMenuTrigger"
@@ -59,7 +69,7 @@ export function DropdownMenuContent({ children, onClose, className, align = "end
       animate={{ opacity: 1, scale: 1, y: 0 }}
       exit={{ opacity: 0, scale: 0.95, y: 10 }}
       className={cn(
-        "absolute z-50 min-w-[8rem] overflow-hidden rounded-2xl border border-gray-100 bg-white p-1 shadow-xl",
+        "absolute z-[400] min-w-[8rem] overflow-hidden rounded-2xl border border-gray-100 bg-white p-1 shadow-xl",
         align === "end" ? "right-0" : "left-0",
         className
       )}
@@ -95,3 +105,10 @@ export function DropdownMenuItem({ children, onClick, className }: { children: R
   )
 }
 DropdownMenuItem.displayName = "DropdownMenuItem"
+
+export function DropdownMenuSeparator({ className }: { className?: string }) {
+  return (
+    <div className={cn("-mx-1 my-1 h-px bg-gray-100", className)} />
+  )
+}
+DropdownMenuSeparator.displayName = "DropdownMenuSeparator"

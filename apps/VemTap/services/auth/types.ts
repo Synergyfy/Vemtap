@@ -2,7 +2,7 @@ export interface RequestOwnerOtpRequest {
     firstName?: string;
     lastName?: string;
     email: string;
-    phone: string;
+    phone?: string;
     role: 'Owner';
 }
 
@@ -11,7 +11,7 @@ export interface RegisterOwnerRequest {
     password?: string;
     firstName?: string;
     lastName?: string;
-    businessName: string;
+    businessName?: string;
     businessLogo?: string;
     categoryId?: string;
     subcategoryId?: string;
@@ -40,6 +40,12 @@ export interface AuthResponse {
 export interface LoginRequest {
     email: string;
     password: string;
+    twoFactorCode?: string;
+}
+
+export interface TwoFactorSetupResponse {
+    secret: string;
+    otpauthUrl: string;
 }
 
 export interface RegisterRequest {

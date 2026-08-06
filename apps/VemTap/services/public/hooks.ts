@@ -1,7 +1,12 @@
 
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
-import { PublicBusinessResponse, PublicBranchResponse, PublicReward } from './types';
+import {
+    EarnVisitorPointsResponse,
+    PublicBusinessResponse,
+    PublicBranchResponse,
+    PublicRewardsResponse,
+} from './types';
 
 export const usePublicBusiness = (code: string, enabled = true) => {
     return useQuery<PublicBusinessResponse, Error>({
@@ -25,15 +30,67 @@ export const usePublicBranch = (code: string, enabled = true) => {
     });
 };
 
-export const usePublicRewards = (businessId: string, enabled = true) => {
-    return useQuery<PublicReward[], Error>({
-        queryKey: ['public', 'rewards', businessId],
+export interface PublicRewardsQuery {
+    branchId?: string;
+    branchCode?: string;
+    businessId?: string;
+    search?: string;
+    newest?: boolean;
+    oldest?: boolean;
+    lowestQuantity?: boolean;
+    highestQuantity?: boolean;
+    aboutToExpire?: boolean;
+    highestPoints?: boolean;
+    lowestPoints?: boolean;
+    page?: number;
+    limit?: number;
+}
+
+const REWARD_SORT_FLAGS = [
+    'newest',
+    'oldest',
+    'lowestQuantity',
+    'highestQuantity',
+    'aboutToExpire',
+    'highestPoints',
+    'lowestPoints',
+] as const;
+
+export const usePublicRewards = (params: PublicRewardsQuery = {}, enabled = true) => {
+    const { branchId, branchCode, businessId, search, page, limit, ...rest } = params;
+    return useQuery<PublicRewardsResponse, Error>({
+        queryKey: ['public', 'rewards', params],
         queryFn: async () => {
-            const response = await api.get(`/public/loyalty/rewards?businessId=${businessId}`);
-            // Assuming the API returns an array of rewards under a `data` property 
-            // or as the main response, and that only active rewards are returned.
-            return Array.isArray(response) ? response : response?.data || [];
+            const query = new URLSearchParams();
+            if (branchId) query.set('branchId', branchId);
+            if (branchCode) query.set('branchCode', branchCode);
+            if (businessId) query.set('businessId', businessId);
+            if (search) query.set('search', search);
+            if (page !== undefined) query.set('page', String(page));
+            if (limit !== undefined) query.set('limit', String(limit));
+            for (const flag of REWARD_SORT_FLAGS) {
+                if (rest[flag]) query.set(flag, 'true');
+            }
+            return await api.get(`/public/loyalty/rewards?${query.toString()}`);
         },
-        enabled: enabled && !!businessId,
+        enabled: enabled && !!(branchId || branchCode || businessId),
+    });
+};
+
+export interface EarnVisitorPointsInput {
+    email?: string;
+    phone?: string;
+    firstName?: string;
+    lastName?: string;
+    branchId?: string;
+    branchCode?: string;
+    isVisit?: boolean;
+}
+
+export const useEarnVisitorPoints = () => {
+    return useMutation<EarnVisitorPointsResponse, Error, EarnVisitorPointsInput>({
+        mutationFn: async (payload) => {
+            return await api.post('/loyalty/visitor/points/earn', payload);
+        },
     });
 };

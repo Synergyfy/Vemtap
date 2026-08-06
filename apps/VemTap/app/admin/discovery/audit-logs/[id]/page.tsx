@@ -2,7 +2,6 @@
 
 import React from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import DiscoveryNav from '@/components/admin/discovery/DiscoveryNav';
 import { 
     ChevronLeft, History, User, Activity, 
     ShieldCheck, Clock, ArrowRight, Lock,
@@ -11,36 +10,35 @@ import {
     Eye, LayoutGrid, Smartphone
 } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { useAdminAuditLog } from '@/services/discovery/hooks';
 
 export default function DiscoveryAuditLogDetailPage() {
     const { id } = useParams();
     const router = useRouter();
+    const { data: log, isLoading } = useAdminAuditLog(id as string);
 
-    // Mock details
-    const log = {
-        id,
-        admin: 'Admin Sarah',
-        action: 'Approved Offer',
-        module: 'Offer Management',
-        target: '15% Lunch Discount',
-        business: 'The Grill House',
-        status: 'Success',
-        date: '2026-06-13 12:45:12',
-        ip: '192.168.1.45',
-        device: 'Chrome on MacOS (Ventura)',
-        changes: {
-            before: {
-                status: 'Pending',
-                approvedBy: null,
-                activationDate: null
-            },
-            after: {
-                status: 'Active',
-                approvedBy: 'sarah.admin@vemtap.com',
-                activationDate: '2026-06-13T12:45:12Z'
-            }
-        }
-    };
+    if (isLoading) {
+        return (
+            <div className="p-8">
+                <div className="animate-pulse space-y-6">
+                    <div className="h-4 w-40 bg-gray-200 rounded" />
+                    <div className="flex items-center gap-5">
+                        <div className="size-20 rounded-3xl bg-gray-100" />
+                        <div className="space-y-3">
+                            <div className="h-6 w-48 bg-gray-200 rounded" />
+                            <div className="h-4 w-64 bg-gray-100 rounded" />
+                        </div>
+                    </div>
+                    <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+                        <div className="xl:col-span-2 h-64 bg-gray-100 rounded-3xl" />
+                        <div className="h-64 bg-gray-100 rounded-3xl" />
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    if (!log) return null;
 
     return (
         <div className="p-8">

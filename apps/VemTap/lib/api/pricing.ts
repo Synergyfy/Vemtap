@@ -1,4 +1,4 @@
-﻿import { api } from '@/lib/api';
+import { api } from '@/lib/api';
 import { PricingPlan } from '@/types/pricing';
 
 type CreatePricingPlanInput = Omit<PricingPlan, 'id' | 'quarterlyPrice' | 'yearlyPrice'>;
@@ -24,22 +24,42 @@ const normalizePlan = (raw: any): PricingPlan => ({
     emailCredits: toNumber(raw?.emailCredits),
     messagingEnabled: Boolean(raw?.messagingEnabled),
     teamMembersEnabled: Boolean(raw?.teamMembersEnabled),
-    teamMembersLimit: toNumber(raw?.teamMembersLimit),
+    teamMembersLimit: raw?.teamMembersLimit !== undefined && raw?.teamMembersLimit !== null ? toNumber(raw.teamMembersLimit) : null,
     loyaltyEnabled: Boolean(raw?.loyaltyEnabled),
-    loyaltyLimit: toNumber(raw?.loyaltyLimit),
+    loyaltyLimit: raw?.loyaltyLimit !== undefined && raw?.loyaltyLimit !== null ? toNumber(raw.loyaltyLimit) : null,
     branchesEnabled: Boolean(raw?.branchesEnabled),
-    branchLimit: toNumber(raw?.branchLimit),
+    branchLimit: raw?.branchLimit !== undefined && raw?.branchLimit !== null ? toNumber(raw.branchLimit) : null,
     analyticsEnabled: Boolean(raw?.analyticsEnabled),
     analyticsLevel: raw?.analyticsLevel === 'advanced' || raw?.analyticsLevel === 'none' ? raw.analyticsLevel : 'basic',
     catalogueEnabled: Boolean(raw?.catalogueEnabled),
-    maxCatalogueItems: toNumber(raw?.maxCatalogueItems),
-    maxCatalogueCategories: toNumber(raw?.maxCatalogueCategories),
-    maxCatalogueOffers: toNumber(raw?.maxCatalogueOffers),
+    maxCatalogueItems: raw?.maxCatalogueItems !== undefined && raw?.maxCatalogueItems !== null ? toNumber(raw.maxCatalogueItems) : null,
+    maxCatalogueCategories: raw?.maxCatalogueCategories !== undefined && raw?.maxCatalogueCategories !== null ? toNumber(raw.maxCatalogueCategories) : null,
+    maxCatalogueOffers: raw?.maxCatalogueOffers !== undefined && raw?.maxCatalogueOffers !== null ? toNumber(raw.maxCatalogueOffers) : null,
     automationsEnabled: Boolean(raw?.automationsEnabled),
-    maxAutomations: toNumber(raw?.maxAutomations),
+    maxAutomations: raw?.maxAutomations !== undefined && raw?.maxAutomations !== null ? toNumber(raw.maxAutomations) : null,
     isActive: raw?.isActive ?? true,
     description: String(raw?.description ?? ''),
     isPopular: Boolean(raw?.isPopular),
+    inventoryEnabled: Boolean(raw?.inventoryEnabled),
+    inventoryLimit: raw?.inventoryLimit !== undefined && raw?.inventoryLimit !== null ? toNumber(raw.inventoryLimit) : null,
+    posEnabled: Boolean(raw?.posEnabled),
+    posTerminalLimit: raw?.posTerminalLimit !== undefined && raw?.posTerminalLimit !== null ? toNumber(raw.posTerminalLimit) : null,
+    visitorsEnabled: Boolean(raw?.visitorsEnabled),
+    inAppChatEnabled: Boolean(raw?.inAppChatEnabled),
+    formsEnabled: Boolean(raw?.formsEnabled),
+    formsLimit: raw?.formsLimit !== undefined && raw?.formsLimit !== null ? toNumber(raw.formsLimit) : null,
+    businessQrEnabled: Boolean(raw?.businessQrEnabled),
+    marketingKitEnabled: Boolean(raw?.marketingKitEnabled),
+    marketingKitLimit: raw?.marketingKitLimit !== undefined && raw?.marketingKitLimit !== null ? toNumber(raw.marketingKitLimit) : null,
+    discoveryEnabled: Boolean(raw?.discoveryEnabled),
+    staffRolesEnabled: Boolean(raw?.staffRolesEnabled),
+    staffRolesLimit: raw?.staffRolesLimit !== undefined && raw?.staffRolesLimit !== null ? toNumber(raw.staffRolesLimit) : null,
+    activityLogEnabled: Boolean(raw?.activityLogEnabled),
+    qrCodesEnabled: Boolean(raw?.qrCodesEnabled),
+    qrCodesLimit: raw?.qrCodesLimit !== undefined && raw?.qrCodesLimit !== null ? toNumber(raw.qrCodesLimit) : null,
+    aiCopilotEnabled: Boolean(raw?.aiCopilotEnabled),
+    aiCredits: raw?.aiCredits !== undefined && raw?.aiCredits !== null ? toNumber(raw.aiCredits) : 0,
+    permissionsConfiguredAt: raw?.permissionsConfiguredAt ? String(raw.permissionsConfiguredAt) : null,
 });
 
 const toPlanPayload = (plan: Partial<PricingPlan>) => {
@@ -54,7 +74,13 @@ const toPlanPayload = (plan: Partial<PricingPlan>) => {
         'analyticsEnabled', 'analyticsLevel', 'catalogueEnabled',
         'maxCatalogueItems', 'maxCatalogueCategories', 'maxCatalogueOffers',
         'automationsEnabled', 'maxAutomations',
-        'isActive', 'description', 'isPopular', 'qrThrivePlanId'
+        'isActive', 'description', 'isPopular', 'qrThrivePlanId',
+        'inventoryEnabled', 'inventoryLimit', 'posEnabled', 'posTerminalLimit',
+        'visitorsEnabled', 'inAppChatEnabled', 'formsEnabled', 'formsLimit',
+        'businessQrEnabled', 'marketingKitEnabled', 'marketingKitLimit',
+        'discoveryEnabled', 'staffRolesEnabled', 'staffRolesLimit',
+        'activityLogEnabled', 'qrCodesEnabled', 'qrCodesLimit',
+        'aiCopilotEnabled', 'aiCredits'
     ];
 
     fields.forEach(field => {
@@ -66,6 +92,8 @@ const toPlanPayload = (plan: Partial<PricingPlan>) => {
                 payload[field] = val;
             } else if (field === 'analyticsLevel' || field === 'name' || field === 'currency' || field === 'description' || field === 'qrThrivePlanId') {
                 payload[field] = val;
+            } else if (val === null) {
+                payload[field] = null;
             } else {
                 payload[field] = toNumber(val);
             }
@@ -98,4 +126,12 @@ export const updatePricingPlan = async (plan: Partial<PricingPlan> & { id: strin
 
 export const deletePricingPlan = async (id: string): Promise<void> => {
     await api.delete(`/plans/admin/${id}`);
+};
+
+export const updatePlanPermissions = async (
+    planId: string,
+    permissions: Partial<PricingPlan>
+): Promise<PricingPlan> => {
+    const response = await api.put(`/plans/admin/${planId}/permissions`, toPlanPayload(permissions));
+    return normalizePlan(response);
 };

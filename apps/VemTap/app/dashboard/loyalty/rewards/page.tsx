@@ -8,10 +8,12 @@ import { useRewards, useCreateReward, useUpdateReward, useDeleteReward, useLoyal
 import { Reward, CreateRewardRequest, UpdateRewardRequest } from '@/services/loyalty/types';
 import { notify } from '@/lib/notify';
 import { useActiveBranch } from '@/hooks/useActiveBranch';
+import { useSubscriptionStore } from '@/store/useSubscriptionStore';
 
 export default function RewardManagementPage() {
     const { activeBranchId } = useActiveBranch();
     const { data: rewards, isLoading } = useRewards();
+    const capabilities = useSubscriptionStore((s) => s.capabilities);
     const createMutation = useCreateReward();
     const updateMutation = useUpdateReward();
     const deleteMutation = useDeleteReward();
@@ -19,6 +21,14 @@ export default function RewardManagementPage() {
     const applyTemplateMutation = useApplyLoyaltyTemplate();
 
     const handleCreate = async (reward: any) => {
+        const loyaltyCap = capabilities?.capabilities?.loyaltyPrograms;
+        if (loyaltyCap && loyaltyCap.enabled && loyaltyCap.limit !== 'unlimited' && loyaltyCap.limit !== -1) {
+            const currentCount = rewards?.length || 0;
+            if (currentCount >= (loyaltyCap.limit as number)) {
+                throw new Error(`You have reached the limit for loyalty programs (${loyaltyCap.limit}). Remove existing rewards or upgrade your plan.`);
+            }
+        }
+
         const expiryDateStr = new Date(Date.now() + (reward.validityDays || 30) * 24 * 60 * 60 * 1000).toISOString();
         const mainImage = reward.imageUrls && reward.imageUrls.length > 0 ? reward.imageUrls[0] : '';
         const gallery = reward.imageUrls && reward.imageUrls.length > 1 ? reward.imageUrls.slice(1) : [];
@@ -37,6 +47,7 @@ export default function RewardManagementPage() {
         if (reward.templateId) dto.templateId = reward.templateId;
         if (mainImage) dto.coverImage = mainImage;
         if (gallery.length > 0) dto.galleryImages = gallery;
+        if (reward.offerId) dto.offerId = reward.offerId;
 
         await createMutation.mutateAsync(dto);
         notify.success('Reward structured successfully');
@@ -60,6 +71,7 @@ export default function RewardManagementPage() {
         if (mainImage) dto.coverImage = mainImage;
         if (gallery.length > 0) dto.galleryImages = gallery;
         if (activeBranchId) dto.branchId = activeBranchId;
+        if (updates.offerId !== undefined) dto.offerId = updates.offerId || null;
 
         await updateMutation.mutateAsync({ id, updates: dto });
         notify.success('Reward updated successfully');

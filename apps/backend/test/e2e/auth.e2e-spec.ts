@@ -127,6 +127,27 @@ describe('Auth & Notifications (e2e)', () => {
       });
   });
 
+  it('/auth/check-status (POST) - should return exists:true for existing user', async () => {
+    return request(app.getHttpServer())
+      .post('/api/v1/auth/check-status')
+      .send({ identifier: testEmail })
+      .expect(201)
+      .expect((res) => {
+        expect(res.body.exists).toBe(true);
+        expect(res.body.role).toBe('Owner');
+      });
+  });
+
+  it('/auth/check-status (POST) - should return exists:false for unknown', async () => {
+    return request(app.getHttpServer())
+      .post('/api/v1/auth/check-status')
+      .send({ identifier: `nonexistent-${timestamp}@example.com` })
+      .expect(201)
+      .expect((res) => {
+        expect(res.body.exists).toBe(false);
+      });
+  });
+
   it('/auth/login (POST) - phone number', async () => {
     const phone =
       '+1' + Math.floor(1000000000 + Math.random() * 9000000000).toString();
@@ -168,6 +189,165 @@ describe('Auth & Notifications (e2e)', () => {
       .expect((res) => {
         expect(res.body.access_token).toBeDefined();
       });
+  });
+
+  it('Customer visitor signup flow: OTP → register → checkStatus', async () => {
+    const visitorEmail = `visitor-${Date.now()}@example.com`;
+
+    // 1. Send OTP
+    await request(app.getHttpServer())
+      .post('/api/v1/auth/otp/send')
+      .send({ email: visitorEmail })
+      .expect(201);
+
+    // 2. Verify OTP
+    const otpRecord = await otpRepository.findOne({
+      where: { email: visitorEmail },
+      order: { createdAt: 'DESC' },
+    });
+    await request(app.getHttpServer())
+      .post('/api/v1/auth/otp/verify')
+      .send({ email: visitorEmail, code: otpRecord.code })
+      .expect(200);
+
+    // 3. Register (customer - no businessName)
+    const registerRes = await request(app.getHttpServer())
+      .post('/api/v1/auth/register')
+      .send({
+        firstName: 'Visitor',
+        lastName: 'User',
+        email: visitorEmail,
+        password: 'Password123!',
+      })
+      .expect(201);
+    expect(registerRes.body.access_token).toBeDefined();
+    expect(registerRes.body.isNewUser).toBe(true);
+
+    // 4. Check status should show new user
+    const statusRes = await request(app.getHttpServer())
+      .post('/api/v1/auth/check-status')
+      .send({ identifier: visitorEmail })
+      .expect(201);
+    expect(statusRes.body.exists).toBe(true);
+    expect(statusRes.body.role).toBe('Customer');
+  });
+
+  it('Customer completeCustomerSetup: should update email for dummy-email user', async () => {
+    const dummyEmail = `dummy-${Date.now()}@vemtap.dummy`;
+    const realEmail = `real-${Date.now()}@example.com`;
+
+    // Register with dummy email
+    await request(app.getHttpServer())
+      .post('/api/v1/auth/otp/send')
+      .send({ email: dummyEmail })
+      .expect(201);
+
+    const otpRecord = await otpRepository.findOne({
+      where: { email: dummyEmail },
+      order: { createdAt: 'DESC' },
+    });
+    await request(app.getHttpServer())
+      .post('/api/v1/auth/otp/verify')
+      .send({ email: dummyEmail, code: otpRecord.code })
+      .expect(200);
+
+    const registerRes = await request(app.getHttpServer())
+      .post('/api/v1/auth/register')
+      .send({
+        firstName: 'Dummy',
+        lastName: 'User',
+        email: dummyEmail,
+        password: 'Password123!',
+      })
+      .expect(201);
+    const token = registerRes.body.access_token;
+
+    // Complete setup: update to real email
+    await request(app.getHttpServer())
+      .post('/api/v1/auth/customer/complete-setup')
+      .send({ identifier: dummyEmail, email: realEmail })
+      .expect(201);
+
+    // Login with new email
+    const loginRes = await request(app.getHttpServer())
+      .post('/api/v1/auth/login')
+      .send({ identifier: realEmail, password: 'Password123!' })
+      .expect(200);
+    expect(loginRes.body.access_token).toBeDefined();
+  });
+
+  it('Full owner registration flow: OTP → registerOwner (all details) → login → checkStatus', async () => {
+    const ownerEmail = `fullowner-${Date.now()}@example.com`;
+    const ownerPhone =
+      '+1' + Math.floor(1000000000 + Math.random() * 9000000000).toString();
+
+    // 1. Request Owner OTP
+    await request(app.getHttpServer())
+      .post('/api/v1/auth/register/owner/request-otp')
+      .send({
+        firstName: 'Full',
+        lastName: 'Owner',
+        email: ownerEmail,
+        phone: ownerPhone,
+        role: 'Owner',
+      })
+      .expect(200);
+
+    // 2. Verify OTP
+    const otpRecord = await otpRepository.findOne({
+      where: { email: ownerEmail },
+      order: { createdAt: 'DESC' },
+    });
+    await request(app.getHttpServer())
+      .post('/api/v1/auth/otp/verify')
+      .send({ email: ownerEmail, code: otpRecord.code })
+      .expect(200);
+
+    // 3. Register Owner with all details
+    const registerRes = await request(app.getHttpServer())
+      .post('/api/v1/auth/register/owner')
+      .send({
+        email: ownerEmail,
+        password: 'OwnerPass123!',
+        firstName: 'Full',
+        lastName: 'Owner',
+        businessName: 'Full Owner Business',
+        categoryId: categoryId,
+        subcategoryId: subcategoryId,
+        visitors: '250',
+        goals: ['Sales', 'Branding'],
+        officialEmail: ownerEmail,
+        businessNumber: ownerPhone,
+        businessAddress: '123 Main St',
+        businessWebsite: 'https://fullowner.com',
+        whatsappNumber: ownerPhone,
+      })
+      .expect(201)
+      .expect((res) => {
+        expect(res.body.user.email).toEqual(ownerEmail);
+        expect(res.body.user.status).toEqual('Active');
+        expect(res.body.user.role).toEqual('Owner');
+        expect(res.body.access_token).toBeDefined();
+        expect(res.body.isNewUser).toBe(true);
+      });
+
+    // 4. Login
+    const loginRes = await request(app.getHttpServer())
+      .post('/api/v1/auth/login')
+      .send({
+        identifier: ownerEmail,
+        password: 'OwnerPass123!',
+      })
+      .expect(200);
+    expect(loginRes.body.access_token).toBeDefined();
+
+    // 5. Check status
+    const statusRes = await request(app.getHttpServer())
+      .post('/api/v1/auth/check-status')
+      .send({ identifier: ownerEmail })
+      .expect(201);
+    expect(statusRes.body.exists).toBe(true);
+    expect(statusRes.body.role).toBe('Owner');
   });
 
   it('should allow resuming registration for PENDING users', async () => {

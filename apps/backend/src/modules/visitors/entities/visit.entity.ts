@@ -4,6 +4,7 @@ import { User } from '../../users/entities/user.entity';
 import { Device } from '../../devices/entities/device.entity';
 import { Branch } from '../../branches/entities/branch.entity';
 import { CatalogueOrder } from '../../catalogue-orders/entities/catalogue-order.entity';
+import { ApiProperty } from '@nestjs/swagger';
 
 @Entity('visits')
 export class Visit extends AbstractBaseEntity {
@@ -57,7 +58,7 @@ export class Visit extends AbstractBaseEntity {
     default: 'portal',
     nullable: true,
   })
-  visitType: 'portal' | 'patronage';
+  visitType: 'portal' | 'patronage' | 'chat';
 
   /**
    * A unique token minted per browser session on the frontend.
@@ -78,4 +79,28 @@ export class Visit extends AbstractBaseEntity {
   /** Stored for device fingerprinting / fraud detection. */
   @Column({ type: 'text', nullable: true })
   userAgent: string;
+
+  @ApiProperty({
+    example: 'uuid-string',
+    description: 'ID of the partner branch that referred this customer',
+    nullable: true,
+  })
+  @Column({ type: 'uuid', nullable: true })
+  referredByBranchId: string | null;
+
+  @ManyToOne(() => Branch, { onDelete: 'SET NULL', nullable: true })
+  @JoinColumn({ name: 'referredByBranchId' })
+  referredByBranch: Branch;
+
+  @ApiProperty({
+    example: 'uuid-string',
+    description: 'ID of the Catalogue Offer (Promotion) that drove this visit',
+    nullable: true,
+  })
+  @Column({ type: 'uuid', nullable: true })
+  catalogueOfferId: string | null;
+
+  @ManyToOne('CatalogueOffer', { onDelete: 'SET NULL', nullable: true })
+  @JoinColumn({ name: 'catalogueOfferId' })
+  catalogueOffer: any;
 }

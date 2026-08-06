@@ -23,11 +23,14 @@ import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
 import { UserStatusGuard } from './common/guards/user-status.guard';
 import { RolesGuard } from './common/guards/roles.guard';
 import { SubscriptionGuard } from './modules/subscriptions/guards/subscription.guard';
+import { CapabilityGuard } from './modules/subscriptions/guards/capability.guard';
 import { SettingsModule } from './modules/settings/settings.module';
 import { BranchesModule } from './modules/branches/branches.module';
+import { PartnershipsModule } from './modules/partnerships/partnerships.module';
 import { LoyaltyModule } from './modules/loyalty/loyalty.module';
 import { SupportModule } from './modules/support/support.module';
 import { SystemModule } from './modules/system/system.module';
+import { StatusModule } from './modules/status/status.module';
 import { MessagingModule } from './modules/messaging/messaging.module';
 import { FormsModule } from './modules/forms/forms.module';
 import { CategoriesModule } from './modules/categories/categories.module';
@@ -41,8 +44,10 @@ import { CatalogueOrderModule } from './modules/catalogue-orders/catalogue-order
 import { BusinessProfilingModule } from './modules/business-profiling/business-profiling.module';
 import { AffiliatesModule } from './modules/affiliates/affiliates.module';
 import { TrainingModule } from './modules/training/training.module';
+import { DiscoveryModule } from './modules/discovery/discovery.module';
 import { QrThriveModule } from './modules/qr-thrive/qr-thrive.module';
 import { BannersModule } from './modules/banners/banners.module';
+import { BusinessDashboardModule } from './modules/business-dashboard/business-dashboard.module';
 import { MarketingAssetsModule } from './modules/marketing-assets/marketing-assets.module';
 import { FosCoreModule } from './modules/fos-core/fos-core.module';
 import { FosDashboardModule } from './modules/fos-dashboard/fos-dashboard.module';
@@ -53,6 +58,13 @@ import { FosRevenueAnalyticsModule } from './modules/fos-revenue-analytics/fos-r
 
 import { dataSourceOptions } from './database/data-source';
 import { CatalogueCartModule } from './modules/catalogue-cart/catalogue-cart.module';
+import { PosModule } from './modules/pos/pos.module';
+import { InventoryCountingModule } from './modules/inventory-counting/inventory-counting.module';
+import { LegalComplianceModule } from './modules/legal-compliance/legal-compliance.module';
+import { AiCopilotModule } from './modules/ai-copilot/ai-copilot.module';
+import { FeedbackModule } from './modules/feedback/feedback.module';
+import { KnowledgeBaseModule } from './modules/knowledge-base/knowledge-base.module';
+import { ClustersModule } from './modules/clusters/clusters.module';
 
 @Module({
   imports: [
@@ -92,7 +104,7 @@ import { CatalogueCartModule } from './modules/catalogue-cart/catalogue-cart.mod
       useFactory: (config: ConfigService) => [
         {
           ttl: config.get<number>('THROTTLE_TTL', 60000),
-          limit: config.get<number>('THROTTLE_LIMIT', 10),
+          limit: config.get<number>('THROTTLE_LIMIT', 60),
         },
       ],
     }),
@@ -139,6 +151,7 @@ import { CatalogueCartModule } from './modules/catalogue-cart/catalogue-cart.mod
     SubscriptionsModule,
     SettingsModule,
     BranchesModule,
+    PartnershipsModule,
     LoyaltyModule,
     SupportModule,
     SystemModule,
@@ -153,8 +166,10 @@ import { CatalogueCartModule } from './modules/catalogue-cart/catalogue-cart.mod
     BusinessProfilingModule,
     AffiliatesModule,
     TrainingModule,
+    DiscoveryModule,
     QrThriveModule,
     BannersModule,
+    BusinessDashboardModule,
     MarketingAssetsModule,
     FosCoreModule,
     FosDashboardModule,
@@ -162,6 +177,14 @@ import { CatalogueCartModule } from './modules/catalogue-cart/catalogue-cart.mod
     FosFinancialPlanningModule,
     FosForecastingModule,
     FosRevenueAnalyticsModule,
+    PosModule,
+    InventoryCountingModule,
+    LegalComplianceModule,
+    AiCopilotModule,
+    FeedbackModule,
+    KnowledgeBaseModule,
+    ClustersModule,
+    StatusModule,
     ScheduleModule.forRoot(),
   ],
   controllers: [AppController],
@@ -194,6 +217,10 @@ import { CatalogueCartModule } from './modules/catalogue-cart/catalogue-cart.mod
     {
       provide: APP_GUARD,
       useClass: SubscriptionGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: CapabilityGuard,
     },
   ],
 })

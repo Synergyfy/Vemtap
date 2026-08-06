@@ -2,7 +2,6 @@
 
 import React from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import DiscoveryNav from '@/components/admin/discovery/DiscoveryNav';
 import { 
     ChevronLeft, Receipt, Store, Calendar, 
     CreditCard, DollarSign, Download, Share2,
@@ -10,29 +9,28 @@ import {
     Info, Building2, User, Activity
 } from 'lucide-react';
 import { motion } from 'framer-motion';
+import DiscoveryNav from '@/components/admin/discovery/DiscoveryNav';
+import { useAdminBillingDetail } from '@/services/discovery/hooks';
 
 export default function DiscoveryTransactionDetailPage() {
     const { id } = useParams();
     const router = useRouter();
+    const { data: tx, isLoading } = useAdminBillingDetail(id as string);
 
-    // Mock details
-    const tx = {
-        id,
-        business: 'Fashion Hub',
-        amount: 50000,
-        date: '2026-06-10 14:30',
-        status: 'Paid',
-        method: 'VemTap Wallet',
-        type: 'Campaign Budget Allocation',
-        description: '30-Day Summer Lookbook Boost (1.5km Radius)',
-        items: [
-            { desc: 'Base Network Placement', qty: 1, price: 15000 },
-            { desc: 'Radius Extension (+1km)', qty: 1, price: 10000 },
-            { desc: 'AI Targeting Optimization', qty: 1, price: 25000 },
-        ],
-        tax: 0,
-        total: 50000
-    };
+    if (isLoading) {
+        return (
+            <div className="p-8">
+                <DiscoveryNav current="/admin/discovery/billing" />
+                <div className="animate-pulse space-y-6">
+                    <div className="h-8 w-48 rounded bg-gray-100" />
+                    <div className="h-40 rounded-3xl bg-gray-100" />
+                    <div className="h-96 rounded-3xl bg-gray-100" />
+                </div>
+            </div>
+        );
+    }
+
+    if (!tx) return null;
 
     return (
         <div className="p-8">
@@ -78,7 +76,7 @@ export default function DiscoveryTransactionDetailPage() {
                             <div>
                                 <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary mb-2">Billed To</p>
                                 <h3 className="text-xl font-display font-bold text-text-main">{tx.business}</h3>
-                                <p className="text-sm text-text-secondary mt-1">Wuse 2, Abuja, Nigeria</p>
+                                <p className="text-sm text-text-secondary mt-1">{tx.description}</p>
                             </div>
                             <div className="text-right">
                                 <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary mb-2">Payment Info</p>
@@ -114,8 +112,8 @@ export default function DiscoveryTransactionDetailPage() {
                                 <span>₦{tx.amount.toLocaleString()}</span>
                             </div>
                             <div className="flex justify-between w-64 text-sm font-medium text-text-secondary">
-                                <span>Tax (VAT 0%)</span>
-                                <span>₦0</span>
+                                <span>Tax (VAT {tx.tax > 0 ? `${tx.tax}%` : '0%'})</span>
+                                <span>₦{tx.tax > 0 ? ((tx.total - tx.amount) / tx.amount * tx.amount).toLocaleString() : '0'}</span>
                             </div>
                             <div className="flex justify-between w-64 pt-4 border-t border-gray-50 mt-2">
                                 <span className="text-base font-black text-text-main uppercase tracking-widest">Total Amount</span>
@@ -138,8 +136,8 @@ export default function DiscoveryTransactionDetailPage() {
                                     <Activity size={20} />
                                 </div>
                                 <div>
-                                    <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Related Campaign</p>
-                                    <p className="text-sm font-bold text-text-main hover:text-primary cursor-pointer transition-colors">Summer Lookbook Boost</p>
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Description</p>
+                                    <p className="text-sm font-bold text-text-main">{tx.description}</p>
                                 </div>
                             </div>
                             <div className="flex items-center gap-4">
@@ -148,7 +146,7 @@ export default function DiscoveryTransactionDetailPage() {
                                 </div>
                                 <div>
                                     <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Business Profile</p>
-                                    <p className="text-sm font-bold text-text-main hover:text-primary cursor-pointer transition-colors">Fashion Hub</p>
+                                    <p className="text-sm font-bold text-text-main hover:text-primary cursor-pointer transition-colors">{tx.business}</p>
                                 </div>
                             </div>
                         </div>

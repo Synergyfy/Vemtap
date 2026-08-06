@@ -37,6 +37,7 @@ import { IdDto } from '../dto/id.dto';
 
 @ApiTags('Credit Top-up Plans')
 @ApiBearerAuth()
+@UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('credit-plans')
 export class CreditPlanController {
   constructor(
@@ -81,7 +82,6 @@ export class CreditPlanController {
   }
 
   @Post()
-  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
   @ApiOperation({
     summary: 'Create a new credit top-up plan (Admin only)',
@@ -99,10 +99,11 @@ export class CreditPlanController {
   }
 
   @Get()
+  @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF, UserRole.ADMIN)
   @ApiOperation({
     summary: 'Get all active credit plans',
     description:
-      'Retrieves all available credit top-up plans. Publicly accessible by authenticated users.',
+      'Retrieves all available credit top-up plans. Access: Authenticated users.',
   })
   @ApiResponse({
     status: 200,
@@ -114,7 +115,7 @@ export class CreditPlanController {
   }
 
   @Get('my-credits')
-  @UseGuards(JwtAuthGuard)
+  @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.ADMIN)
   @ApiOperation({
     summary: 'Get current credit balance for the user context',
     description:
@@ -134,7 +135,7 @@ export class CreditPlanController {
   }
 
   @Get('rates')
-  @UseGuards(JwtAuthGuard)
+  @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF, UserRole.ADMIN)
   @ApiOperation({
     summary: 'Get active per-credit rates for calculations',
     description: 'Retrieves SMS, WhatsApp, and Email credit purchase rates.',
@@ -144,6 +145,7 @@ export class CreditPlanController {
   }
 
   @Get(':id')
+  @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF, UserRole.ADMIN)
   @ApiOperation({
     summary: 'Get a specific credit plan detail',
     description:
@@ -161,7 +163,7 @@ export class CreditPlanController {
   }
 
   @Post('custom/purchase')
-  @UseGuards(JwtAuthGuard)
+  @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.ADMIN)
   @ApiOperation({
     summary: 'Purchase custom credits',
     description:
@@ -185,11 +187,12 @@ export class CreditPlanController {
       customPurchaseDto.smsAmount,
       customPurchaseDto.whatsappAmount,
       customPurchaseDto.emailAmount,
+      customPurchaseDto.aiAmount || 0,
     );
   }
 
   @Post(':id/purchase')
-  @UseGuards(JwtAuthGuard)
+  @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.ADMIN)
   @ApiOperation({
     summary: 'Purchase a credit plan top-up',
     description:
@@ -216,7 +219,6 @@ export class CreditPlanController {
   }
 
   @Patch(':id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
   @ApiOperation({
     summary: 'Update a credit plan (Admin only)',
@@ -237,7 +239,6 @@ export class CreditPlanController {
   }
 
   @Delete(':id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
   @ApiOperation({
     summary: 'Deactivate a credit plan (Admin only)',

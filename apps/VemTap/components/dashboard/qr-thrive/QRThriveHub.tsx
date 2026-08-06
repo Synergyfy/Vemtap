@@ -14,8 +14,11 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import { useQrThriveStore } from '@/store/useQrThriveStore';
+import { useQrThriveStats, useQrThriveCodes } from '@/services/qr-thrive/hooks';
+import toast from 'react-hot-toast';
 
 export function QRThriveOverviewHeader() {
+    const { setView } = useQrThriveStore();
     return (
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
             <div>
@@ -25,10 +28,10 @@ export function QRThriveOverviewHeader() {
                 </p>
             </div>
             <div className="flex items-center gap-3">
-                <Button variant="ghost" size="icon" className="rounded-full hover:bg-gray-100">
+                <Button variant="ghost" size="icon" onClick={() => setView('create')} className="rounded-full hover:bg-gray-100">
                     <Plus size={22} className="text-gray-600" />
                 </Button>
-                <Button variant="ghost" size="icon" className="rounded-full hover:bg-gray-100">
+                <Button variant="ghost" size="icon" onClick={() => setView('analytics')} className="rounded-full hover:bg-gray-100">
                     <BarChart3 size={22} className="text-gray-600" />
                 </Button>
             </div>
@@ -37,13 +40,14 @@ export function QRThriveOverviewHeader() {
 }
 
 export function QRThriveMetrics() {
-    const stats = [
-        { label: 'QR Experiences', value: '42', icon: QrCode, color: 'text-blue-600', bg: 'bg-blue-50' },
-        { label: 'Total Scans', value: '18.2k', icon: Scan, color: 'text-emerald-600', bg: 'bg-emerald-50' },
-        { label: 'Active QRs', value: '35', icon: Activity, color: 'text-purple-600', bg: 'bg-purple-50' },
-        { label: 'Conversions', value: '2.4k', icon: Users, color: 'text-amber-600', bg: 'bg-amber-50' },
-        { label: 'Engagement', value: '68%', icon: TrendingUp, color: 'text-rose-600', bg: 'bg-rose-50' },
-    ];
+    const { data: statsData } = useQrThriveStats();
+    const stats = statsData ? [
+        { label: 'QR Experiences', value: statsData.totalQrCodes?.toLocaleString() || '0', icon: QrCode, color: 'text-blue-600', bg: 'bg-blue-50' },
+        { label: 'Total Scans', value: statsData.totalScans ? `${(statsData.totalScans / 1000).toFixed(1)}k` : '0', icon: Scan, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+        { label: 'Scans (24h)', value: statsData.scansLast24h?.toLocaleString() || '0', icon: Activity, color: 'text-purple-600', bg: 'bg-purple-50' },
+        { label: 'Unique Visitors', value: statsData.uniqueVisitors?.toLocaleString() || '0', icon: Users, color: 'text-amber-600', bg: 'bg-amber-50' },
+        { label: 'Countries', value: Object.keys(statsData.countryDist || {}).length.toString(), icon: TrendingUp, color: 'text-rose-600', bg: 'bg-rose-50' },
+    ] : [];
 
     return (
         <div className="flex gap-4 overflow-x-auto no-scrollbar pb-4 -mx-4 px-4 md:mx-0 md:px-0">
@@ -73,7 +77,7 @@ export function QRThriveQuickActions() {
         { label: 'Create New QR', icon: Plus, action: () => setView('create'), color: 'bg-[#066CF4] text-white' },
         { label: 'View Analytics', icon: BarChart3, action: () => setView('analytics'), color: 'bg-white text-gray-900' },
         { label: 'Manage QRs', icon: List, action: () => setView('manage'), color: 'bg-white text-gray-900' },
-        { label: 'Download Assets', icon: Download, action: () => {}, color: 'bg-white text-gray-900' },
+        { label: 'Download Assets', icon: Download, action: () => toast.success('Marketing assets bundle is being prepared for download...'), color: 'bg-white text-gray-900' },
     ];
 
     return (
@@ -146,6 +150,12 @@ export function QRThriveCategoriesGrid() {
 }
 
 export function QRThriveLeaderboard() {
+    const { data: codes = [] } = useQrThriveCodes();
+    
+    if (codes.length === 0) return null;
+
+    const topQr = [...codes].sort((a, b) => (b.scans || 0) - (a.scans || 0))[0];
+
     return (
         <div className="rounded-[40px] bg-gray-900 p-10 text-white relative overflow-hidden shadow-2xl">
             <div className="absolute top-0 right-0 w-64 h-64 bg-[#066CF4]/20 rounded-full blur-3xl -mr-32 -mt-32" />
@@ -158,16 +168,22 @@ export function QRThriveLeaderboard() {
                         </div>
                         <h3 className="text-xl font-black uppercase tracking-widest">Top Performing QR</h3>
                     </div>
-                    <h2 className="text-3xl font-black mb-2">Summer Menu 2024</h2>
-                    <p className="text-sm font-medium text-white/50 mb-8 max-w-sm">Generating 4x more scans than average. High conversion to orders in Victoria Island.</p>
+                    <h2 className="text-3xl font-black mb-2">{topQr.name || 'Unnamed QR'}</h2>
+                    <p className="text-sm font-medium text-white/50 mb-8 max-w-sm">
+                        {topQr.description || `Generating high engagement. Check analytics for detailed conversion metrics.`}
+                    </p>
                     
                     <div className="flex gap-8">
                         <div>
-                            <p className="text-2xl font-black">4.2k</p>
+                            <p className="text-2xl font-black">
+                                {topQr.scans >= 1000 ? `${(topQr.scans / 1000).toFixed(1)}k` : topQr.scans}
+                            </p>
                             <p className="text-[9px] font-black uppercase tracking-widest text-white/40">Total Scans</p>
                         </div>
                         <div className="border-l border-white/10 pl-8">
-                            <p className="text-2xl font-black text-emerald-400">82%</p>
+                            <p className="text-2xl font-black text-emerald-400">
+                                {topQr.scans > 0 ? '100%' : '0%'}
+                            </p>
                             <p className="text-[9px] font-black uppercase tracking-widest text-white/40">Conversion</p>
                         </div>
                     </div>
@@ -175,9 +191,11 @@ export function QRThriveLeaderboard() {
 
                 <div className="relative p-6 bg-white rounded-[40px] shadow-2xl rotate-3">
                     <QrCode size={120} className="text-gray-900" />
-                    <div className="absolute -bottom-4 -left-4 bg-emerald-500 text-white px-4 py-2 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl">
-                        Trending 🔥
-                    </div>
+                    {topQr.scans > 100 && (
+                        <div className="absolute -bottom-4 -left-4 bg-emerald-500 text-white px-4 py-2 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl">
+                            Trending 🔥
+                        </div>
+                    )}
                 </div>
             </div>
         </div>

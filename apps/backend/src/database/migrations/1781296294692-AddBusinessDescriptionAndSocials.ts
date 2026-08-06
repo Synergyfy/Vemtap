@@ -5,35 +5,29 @@ export class AddBusinessDescriptionAndSocials1781296294692 implements MigrationI
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(
-      `ALTER TABLE "businesses" ADD "description" text`,
+      `ALTER TABLE "businesses" ADD COLUMN IF NOT EXISTS "description" text`,
     );
     await queryRunner.query(
-      `ALTER TABLE "businesses" ADD "socials" json`,
+      `ALTER TABLE "businesses" ADD COLUMN IF NOT EXISTS "socials" json`,
     );
     await queryRunner.query(
-      `ALTER TABLE "businesses" ADD "openingHours" json`,
+      `ALTER TABLE "businesses" ADD COLUMN IF NOT EXISTS "openingHours" json`,
     );
     await queryRunner.query(
-      `ALTER TABLE "businesses" ADD "timezone" character varying`,
+      `ALTER TABLE "businesses" ADD COLUMN IF NOT EXISTS "timezone" character varying`,
     );
     await queryRunner.query(
-      `ALTER TABLE "businesses" ADD "isVisible" boolean DEFAULT true`,
+      `ALTER TABLE "businesses" ADD COLUMN IF NOT EXISTS "isVisible" boolean DEFAULT true`,
     );
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(
-      `ALTER TABLE "businesses" DROP COLUMN "isVisible"`,
-    );
-    await queryRunner.query(
-      `ALTER TABLE "businesses" DROP COLUMN "timezone"`,
-    );
+    await queryRunner.query(`ALTER TABLE "businesses" DROP COLUMN "isVisible"`);
+    await queryRunner.query(`ALTER TABLE "businesses" DROP COLUMN "timezone"`);
     await queryRunner.query(
       `ALTER TABLE "businesses" DROP COLUMN "openingHours"`,
     );
-    await queryRunner.query(
-      `ALTER TABLE "businesses" DROP COLUMN "socials"`,
-    );
+    await queryRunner.query(`ALTER TABLE "businesses" DROP COLUMN "socials"`);
     await queryRunner.query(
       `ALTER TABLE "businesses" DROP COLUMN "description"`,
     );

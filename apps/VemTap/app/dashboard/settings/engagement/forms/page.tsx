@@ -1263,7 +1263,7 @@ export default function EngagementFormsBuilderPage() {
                         </div>
 
                         <div className="rounded-xl border border-slate-200 bg-white/80 px-3 py-2 text-center text-[8px] font-medium text-slate-400">
-                          Powered by <span className="font-bold" style={{ color: brandColor }}>VemTap</span>
+                          Powered by <span className="font-bold" style={{ color: brandColor }}>{myBusiness?.name || 'VemTap'}</span>
                         </div>
                       </div>
                     </PhoneFrame>
@@ -1368,7 +1368,7 @@ export default function EngagementFormsBuilderPage() {
                       </div>
 
                       <div className="rounded-xl border border-slate-200 bg-white/80 px-3 py-2 text-center text-[8px] font-medium text-slate-400">
-                        Powered by <span className="font-bold" style={{ color: brandColor }}>VemTap</span>
+                        Powered by <span className="font-bold" style={{ color: brandColor }}>{myBusiness?.name || 'VemTap'}</span>
                       </div>
                     </div>
                   </PhoneFrame>
@@ -1384,7 +1384,7 @@ export default function EngagementFormsBuilderPage() {
 
       {/* ─── Share Explainer Modal ─── */}
       {shareExplainer && (
-        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4" onClick={() => setShareExplainer(null)}>
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4" >
           <div className="w-full max-w-sm rounded-2xl bg-white shadow-2xl p-6 space-y-5 animate-in fade-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-start justify-between gap-3">
               <div className="size-12 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
@@ -1410,7 +1410,7 @@ export default function EngagementFormsBuilderPage() {
 
       {/* ─── QR Code Modal ─── */}
       {shareForm && (
-        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4" onClick={() => setShareForm(null)}>
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4" >
           <div className="w-full max-w-sm rounded-2xl bg-white shadow-2xl p-6 space-y-5 animate-in fade-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-start justify-between gap-3">
               <div>
@@ -1434,7 +1434,7 @@ export default function EngagementFormsBuilderPage() {
 
       {/* ─── Delete Confirmation Modal ─── */}
       {deleteConfirm && (
-        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4" onClick={() => setDeleteConfirm(null)}>
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4" >
           <div className="w-full max-w-sm rounded-2xl bg-white shadow-2xl p-6 space-y-5 animate-in fade-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
             <div className="size-12 rounded-xl bg-red-50 text-red-600 flex items-center justify-center"><Trash2 size={24} /></div>
             <div>
@@ -1452,7 +1452,7 @@ export default function EngagementFormsBuilderPage() {
       )}
       {/* ─── Default Form Explainer Modal ─── */}
       {defaultFormExplainer && (
-        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4 transition-all" onClick={() => setDefaultFormExplainer(null)}>
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4 transition-all" >
           <div
             className="w-full max-w-md rounded-2xl bg-white shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200"
             onClick={(e) => e.stopPropagation()}
@@ -1531,7 +1531,7 @@ export default function EngagementFormsBuilderPage() {
       )}
       {/* ─── Disable Confirmation Modal ─── */}
       {disableConfirm && (
-        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4 transition-all" onClick={() => setDisableConfirm(null)}>
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4 transition-all" >
           <div
             className="w-full max-w-md rounded-2xl bg-white shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200"
             onClick={(e) => e.stopPropagation()}

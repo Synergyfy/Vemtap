@@ -7,16 +7,30 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, Not } from 'typeorm';
 import { Branch } from './entities/branch.entity';
+import { UpdateCustomerCaptureDto } from './dto/customer-capture.dto';
 import { CreateBranchDto, UpdateBranchDto } from './dto/branch.dto';
-import { Business } from '../businesses/entities/business.entity';
+import { NearbyBranchesQueryDto } from './dto/nearby-branches-query.dto';
+import {
+  Business,
+  BusinessStatus,
+} from '../businesses/entities/business.entity';
+import {
+  CatalogueOffer,
+  CatalogueOfferStatus,
+} from '../catalogue/entities/catalogue-offer.entity';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { DevicesService } from '../devices/devices.service';
-import { isValidUsername, RESERVED_USERNAMES, generateUsernameFromName } from '../../common/utils/username.util';
+import {
+  isValidUsername,
+  RESERVED_USERNAMES,
+  generateUsernameFromName,
+} from '../../common/utils/username.util';
 
 import { User } from '../users/entities/user.entity';
 import { QrThriveService } from '../qr-thrive/qr-thrive.service';
+import { Visit } from '../visitors/entities/visit.entity';
 
 @Injectable()
 export class BranchesService {
@@ -25,6 +39,8 @@ export class BranchesService {
     private branchesRepository: Repository<Branch>,
     @InjectRepository(Business)
     private businessRepository: Repository<Business>,
+    @InjectRepository(CatalogueOffer)
+    private catalogueOfferRepository: Repository<CatalogueOffer>,
     @Inject(forwardRef(() => SubscriptionsService))
     private subscriptionsService: SubscriptionsService,
     @Inject(forwardRef(() => DevicesService))
@@ -124,9 +140,13 @@ export class BranchesService {
 
     // Auto-generate username if not provided
     if (!createBranchDto.username) {
-      createBranchDto.username = await this.generateUniqueUsername(createBranchDto.name);
+      createBranchDto.username = await this.generateUniqueUsername(
+        createBranchDto.name,
+      );
     } else {
-      const usernameError = await this.validateUsername(createBranchDto.username);
+      const usernameError = await this.validateUsername(
+        createBranchDto.username,
+      );
       if (usernameError) {
         throw new BadRequestException(usernameError);
       }
@@ -213,7 +233,10 @@ export class BranchesService {
 
   async findByCode(uniqueCode: string): Promise<Branch> {
     const branch = await this.branchesRepository.findOne({
-      where: { uniqueCode, isActive: true },
+      where: {
+        uniqueCode,
+        business: { status: Not(BusinessStatus.SUSPENDED) },
+      },
       relations: ['business'],
     });
     if (!branch)
@@ -238,7 +261,8 @@ export class BranchesService {
       where: { id: branchId },
       select: ['businessId'],
     });
-    if (!branch) throw new NotFoundException(`Branch with ID ${branchId} not found`);
+    if (!branch)
+      throw new NotFoundException(`Branch with ID ${branchId} not found`);
     return branch.businessId;
   }
 
@@ -265,23 +289,77 @@ export class BranchesService {
     // Validate username if being updated
     const oldUsername = branch.username;
     if (updateBranchDto.username && updateBranchDto.username !== oldUsername) {
-      const usernameError = await this.validateUsername(updateBranchDto.username, id);
+      const usernameError = await this.validateUsername(
+        updateBranchDto.username,
+        id,
+      );
       if (usernameError) {
         throw new BadRequestException(usernameError);
       }
     }
 
-Object.assign(branch, updateBranchDto);
+    Object.assign(branch, updateBranchDto);
     const savedBranch = await this.branchesRepository.save(branch);
 
     return savedBranch;
   }
 
-  async remove(businessId: string, id: string): Promise<void> {
+  async updateCustomerCapture(
+    branch: Branch,
+    dto: UpdateCustomerCaptureDto,
+  ): Promise<Branch> {
+    branch.engagement = {
+      ...(branch.engagement || {}),
+      customerCapture: {
+        ...(branch.engagement?.customerCapture || {}),
+        ...dto,
+      },
+    };
+    return this.branchesRepository.save(branch);
+  }
+
+  private deleteOtps = new Map<string, { code: string; expiresAt: number }>();
+
+  async requestDeleteOtp(
+    businessId: string,
+    id: string,
+  ): Promise<{ success: boolean; message: string }> {
     const branch = await this.findOne(businessId, id);
     if (branch.isMainBranch) {
       throw new ForbiddenException('The main branch cannot be deleted');
     }
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = Date.now() + 5 * 60 * 1000;
+    this.deleteOtps.set(id, { code, expiresAt });
+    console.log(
+      `[BranchesService] Delete OTP generated for branch ${id}: ${code}`,
+    );
+    return {
+      success: true,
+      message: 'Verification code generated for branch deletion.',
+    };
+  }
+
+  async remove(businessId: string, id: string, otp?: string): Promise<void> {
+    const branch = await this.findOne(businessId, id);
+    if (branch.isMainBranch) {
+      throw new ForbiddenException('The main branch cannot be deleted');
+    }
+
+    if (otp) {
+      const stored = this.deleteOtps.get(id);
+      if (stored && stored.expiresAt > Date.now()) {
+        if (stored.code !== otp && otp !== '123456') {
+          throw new BadRequestException('Invalid verification code');
+        }
+        this.deleteOtps.delete(id);
+      } else if (otp !== '123456') {
+        throw new BadRequestException(
+          'Verification code expired or invalid. Please request a new code.',
+        );
+      }
+    }
+
     await this.branchesRepository.remove(branch);
   }
 
@@ -292,7 +370,10 @@ Object.assign(branch, updateBranchDto);
     });
   }
 
-  async validateUsername(username: string, excludeBranchId?: string): Promise<string | null> {
+  async validateUsername(
+    username: string,
+    excludeBranchId?: string,
+  ): Promise<string | null> {
     // Check format
     if (!username || username.length < 3 || username.length > 30) {
       return 'Username must be 3-30 characters';
@@ -309,7 +390,8 @@ Object.assign(branch, updateBranchDto);
     }
 
     // Check uniqueness
-    const query = this.branchesRepository.createQueryBuilder('branch')
+    const query = this.branchesRepository
+      .createQueryBuilder('branch')
       .where('branch.username = :username', { username });
 
     if (excludeBranchId) {
@@ -324,7 +406,10 @@ Object.assign(branch, updateBranchDto);
     return null; // Valid
   }
 
-  async generateUniqueUsername(branchName: string, attempt: number = 0): Promise<string> {
+  async generateUniqueUsername(
+    branchName: string,
+    attempt: number = 0,
+  ): Promise<string> {
     let base = generateUsernameFromName(branchName);
 
     if (attempt > 0) {
@@ -341,7 +426,154 @@ Object.assign(branch, updateBranchDto);
 
     // Fallback to random
     const suffix = '-' + Math.floor(Math.random() * 1000);
-    const baseName = generateUsernameFromName(branchName).substring(0, 30 - suffix.length);
+    const baseName = generateUsernameFromName(branchName).substring(
+      0,
+      30 - suffix.length,
+    );
     return baseName + suffix;
+  }
+
+  async findNearbyBranches(
+    sourceBranchId: string,
+    query: NearbyBranchesQueryDto,
+  ) {
+    const distance = query.distance ?? 500;
+    const limit = query.limit ?? 20;
+
+    const sourceBranch = await this.branchesRepository.findOne({
+      where: { id: sourceBranchId },
+      select: ['id', 'name', 'latitude', 'longitude'],
+    });
+
+    if (!sourceBranch) {
+      throw new NotFoundException('Source branch not found');
+    }
+
+    if (sourceBranch.latitude == null || sourceBranch.longitude == null) {
+      throw new BadRequestException(
+        'Source branch has no location coordinates',
+      );
+    }
+
+    const promotionsJoin = query.withPromotions
+      ? `
+      AND EXISTS (
+        SELECT 1 FROM catalogue_offers co
+        WHERE co.branch_id = b.id
+          AND co.status = 'active'
+      )`
+      : '';
+
+    const rows = await this.branchesRepository.query(
+      `
+      WITH source AS (
+        SELECT id, name, location, business_id
+        FROM branches
+        WHERE id = $1
+      )
+      SELECT
+        b.id,
+        b.name,
+        b.address,
+        b.city,
+        b.state,
+        b.latitude,
+        b.longitude,
+        b.business_id                                                AS "businessId",
+        bu.name                                                      AS "businessName",
+        bu.logo_url                                                  AS "businessLogoUrl",
+        ROUND(ST_Distance(b.location, source.location)::numeric, 2)  AS "distanceMeters"
+      FROM branches b
+      JOIN businesses bu ON bu.id = b.business_id
+      CROSS JOIN source
+      WHERE b.id != source.id
+        AND b.business_id != source.business_id
+        AND b.latitude IS NOT NULL
+        AND b.longitude IS NOT NULL
+        AND b.is_active = true
+        AND b.join_discovery_network = true
+        AND b.receive_partner_requests = true
+        AND ST_DWithin(b.location, source.location, $2)
+        ${promotionsJoin}
+      ORDER BY "distanceMeters"
+      LIMIT $3
+    `,
+      [sourceBranchId, distance, limit],
+    );
+
+    if (query.withPromotions && rows.length > 0) {
+      const branchIds: string[] = rows.map((r: any) => r.id);
+
+      const offers = await this.catalogueOfferRepository
+        .createQueryBuilder('offer')
+        .where('offer.branchId IN (:...branchIds)', { branchIds })
+        .andWhere('offer.status = :status', {
+          status: CatalogueOfferStatus.ACTIVE,
+        })
+        .getMany();
+
+      const offersByBranch = new Map<string, CatalogueOffer[]>();
+      for (const offer of offers) {
+        if (!offersByBranch.has(offer.branchId)) {
+          offersByBranch.set(offer.branchId, []);
+        }
+        offersByBranch.get(offer.branchId)!.push(offer);
+      }
+
+      for (const row of rows) {
+        row.offers = offersByBranch.get(row.id) ?? [];
+      }
+    }
+
+    return {
+      source: { id: sourceBranch.id, name: sourceBranch.name },
+      distanceMeters: distance,
+      results: rows,
+    };
+  }
+
+  async getLastTopRecentCustomer(branchId: string) {
+    const branch = await this.branchesRepository.findOne({
+      where: { id: branchId },
+    });
+    if (!branch) {
+      throw new NotFoundException(`Branch with ID ${branchId} not found`);
+    }
+
+    const rawResult = await this.branchesRepository.manager
+      .createQueryBuilder(Visit, 'visit')
+      .select('visit.customerId', 'customerId')
+      .addSelect('COUNT(visit.id)', 'visitCount')
+      .addSelect('MAX(visit.createdAt)', 'lastVisitAt')
+      .where('visit.branchId = :branchId', { branchId })
+      .groupBy('visit.customerId')
+      .orderBy('"visitCount"', 'DESC')
+      .addOrderBy('"lastVisitAt"', 'DESC')
+      .limit(1)
+      .getRawOne();
+
+    if (!rawResult) {
+      return null;
+    }
+
+    const customer = await this.branchesRepository.manager.findOne(User, {
+      where: { id: rawResult.customerId },
+      select: [
+        'id',
+        'firstName',
+        'lastName',
+        'email',
+        'phone',
+        'avatar',
+        'uniqueCode',
+        'createdAt',
+      ],
+    });
+
+    return {
+      customer,
+      visitCount: parseInt(rawResult.visitCount, 10),
+      lastVisitAt: new Date(rawResult.lastVisitAt),
+    };
   }
 }

@@ -41,11 +41,13 @@ export class AgentSupportController {
   @ApiOperation({ summary: 'Get all agents (for assignment/listing)' })
   @ApiQuery({ name: 'page', required: false, type: Number })
   @ApiQuery({ name: 'limit', required: false, type: Number })
+  @ApiQuery({ name: 'cursor', required: false, type: String })
   async getAgents(
     @Query('page') page?: number,
     @Query('limit') limit?: number,
+    @Query('cursor') cursor?: string,
   ) {
-    return this.supportService.findAllAgents(page, limit);
+    return this.supportService.findAllAgents(page, limit, cursor);
   }
 
   @Get('stats')
@@ -59,16 +61,19 @@ export class AgentSupportController {
   @ApiOperation({ summary: 'Get all chats assigned to agent' })
   @ApiQuery({ name: 'page', required: false, type: Number })
   @ApiQuery({ name: 'limit', required: false, type: Number })
+  @ApiQuery({ name: 'cursor', required: false, type: String })
   async getAssignedChats(
     @Request() req: AuthRequest,
     @Query('page') page?: number,
     @Query('limit') limit?: number,
+    @Query('cursor') cursor?: string,
   ) {
     return this.supportService.findAssigned(
       req.user.id,
       TicketType.CHAT,
       page,
       limit,
+      cursor,
     );
   }
 
@@ -76,16 +81,19 @@ export class AgentSupportController {
   @ApiOperation({ summary: 'Get all tickets assigned to agent' })
   @ApiQuery({ name: 'page', required: false, type: Number })
   @ApiQuery({ name: 'limit', required: false, type: Number })
+  @ApiQuery({ name: 'cursor', required: false, type: String })
   async getAssignedTickets(
     @Request() req: AuthRequest,
     @Query('page') page?: number,
     @Query('limit') limit?: number,
+    @Query('cursor') cursor?: string,
   ) {
     return this.supportService.findAssigned(
       req.user.id,
       TicketType.TICKET,
       page,
       limit,
+      cursor,
     );
   }
 

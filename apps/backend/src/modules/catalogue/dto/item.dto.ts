@@ -9,6 +9,7 @@ import {
   IsArray,
   IsBoolean,
   Min,
+  ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import {
@@ -40,10 +41,10 @@ export class CreateCatalogueItemDto {
   @IsString()
   description: string;
 
-  @ApiProperty({ example: 'https://image.com/main.jpg' })
-  @IsNotEmpty()
+  @ApiPropertyOptional({ example: 'https://image.com/main.jpg' })
+  @IsOptional()
   @IsString()
-  mainImage: string;
+  mainImage?: string;
 
   @ApiPropertyOptional({ example: ['https://image.com/1.jpg'] })
   @IsOptional()
@@ -88,6 +89,50 @@ export class CreateCatalogueItemDto {
   @Min(0)
   stockQuantity?: number;
 
+  @ApiPropertyOptional({ example: 'VMT0001' })
+  @IsOptional()
+  @IsString()
+  barcode?: string;
+
+  @ApiPropertyOptional({ example: 500 })
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  @Min(0)
+  costPrice?: number;
+
+  @ApiPropertyOptional({ example: 10 })
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  @Min(0)
+  minStock?: number;
+
+  @ApiPropertyOptional({ example: 'House Made' })
+  @IsOptional()
+  @IsString()
+  brand?: string;
+
+  @ApiPropertyOptional({ example: '500 g' })
+  @IsOptional()
+  @IsString()
+  weight?: string;
+
+  @ApiPropertyOptional({ example: '10x15x5 cm' })
+  @IsOptional()
+  @IsString()
+  dimensions?: string;
+
+  @ApiPropertyOptional({ example: [{ type: 'size', value: 'large' }] })
+  @IsOptional()
+  variants?: { type: string; value: string }[];
+
+  @ApiPropertyOptional({ example: ['burger', 'beef'] })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  tags?: string[];
+
   @ApiPropertyOptional({ example: true })
   @IsOptional()
   @IsBoolean()
@@ -99,6 +144,18 @@ export class CreateCatalogueItemDto {
   @Type(() => Number)
   @Min(0)
   loyaltyPoints?: number;
+
+  @ApiPropertyOptional({ example: true })
+  @IsOptional()
+  @IsBoolean()
+  enableLoyaltyPoints?: boolean;
+
+  @ApiPropertyOptional({ example: 10 })
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  @Min(0)
+  loyaltyPointsValue?: number;
 
   @ApiProperty({ example: 'uuid-of-branch' })
   @IsNotEmpty()
@@ -181,6 +238,50 @@ export class UpdateCatalogueItemDto {
 
   @ApiPropertyOptional()
   @IsOptional()
+  @IsString()
+  barcode?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  @Min(0)
+  costPrice?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  @Min(0)
+  minStock?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  brand?: string;
+
+  @ApiPropertyOptional({ example: '500 g' })
+  @IsOptional()
+  @IsString()
+  weight?: string;
+
+  @ApiPropertyOptional({ example: '10x15x5 cm' })
+  @IsOptional()
+  @IsString()
+  dimensions?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  variants?: { type: string; value: string }[];
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  tags?: string[];
+
+  @ApiPropertyOptional()
+  @IsOptional()
   @IsBoolean()
   allowBackOrder?: boolean;
 
@@ -190,6 +291,18 @@ export class UpdateCatalogueItemDto {
   @Type(() => Number)
   @Min(0)
   loyaltyPoints?: number;
+
+  @ApiPropertyOptional({ example: true })
+  @IsOptional()
+  @IsBoolean()
+  enableLoyaltyPoints?: boolean;
+
+  @ApiPropertyOptional({ example: 10 })
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  @Min(0)
+  loyaltyPointsValue?: number;
 
   @ApiPropertyOptional({
     description: 'If provided, the edit will be isolated to this branch',
@@ -264,3 +377,63 @@ export class CatalogueQueryDto {
   @IsEnum(['newest', 'oldest', 'most_popular', 'price_asc', 'price_desc'])
   sortBy?: string = 'newest';
 }
+
+export class BulkImportItemRowDto {
+  @ApiProperty({ example: 'Example Product' })
+  @IsNotEmpty()
+  @IsString()
+  name: string;
+
+  @ApiProperty({ example: 99.99 })
+  @IsNotEmpty()
+  @IsNumber()
+  @Type(() => Number)
+  @Min(0)
+  price: number;
+
+  @ApiPropertyOptional({ example: 'Short description...' })
+  @IsOptional()
+  @IsString()
+  shortDescription?: string;
+
+  @ApiPropertyOptional({ example: 'Full description...' })
+  @IsOptional()
+  @IsString()
+  description?: string;
+
+  @ApiPropertyOptional({ example: 'Electronics' })
+  @IsOptional()
+  @IsString()
+  category?: string;
+
+  @ApiPropertyOptional({ example: 50 })
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  @Min(0)
+  stockQuantity?: number;
+
+  @ApiPropertyOptional({ example: 'EXMP-001' })
+  @IsOptional()
+  @IsString()
+  sku?: string;
+
+  @ApiPropertyOptional({ example: '1234567890123' })
+  @IsOptional()
+  @IsString()
+  barcode?: string;
+}
+
+export class BulkImportItemsDto {
+  @ApiPropertyOptional({ example: 'uuid-of-branch' })
+  @IsOptional()
+  @IsUUID()
+  branchId?: string;
+
+  @ApiProperty({ type: [BulkImportItemRowDto] })
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => BulkImportItemRowDto)
+  items: BulkImportItemRowDto[];
+}
+

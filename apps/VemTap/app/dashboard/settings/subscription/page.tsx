@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import PageHeader from '@/components/dashboard/PageHeader';
 import { useAuthStore } from '@/store/useAuthStore';
 import Link from 'next/link';
@@ -14,7 +14,7 @@ import SuccessModal from '@/components/dashboard/SuccessModal';
 import TrialCountdown from '@/components/dashboard/TrialCountdown';
 import toast from 'react-hot-toast';
 import { PricingPlan } from '@/types/pricing';
-import { Crown, ShieldCheck, CheckCircle2, Loader2, Sparkles, Box, Zap, ShoppingCart, Plus, TrendingUp } from 'lucide-react';
+import { Crown, ShieldCheck, CheckCircle2, Loader2, Sparkles, Box, Zap, ShoppingCart, Plus, TrendingUp, Coins, Mail } from 'lucide-react';
 import { useAddOns, usePurchaseAddOn, useMyActiveAddOns, useBundleDiscounts } from '@/services/addons/hooks';
 
 import { useSubscriptionStore } from '@/store/useSubscriptionStore';
@@ -43,14 +43,21 @@ export default function DashboardPricingPage() {
         return base + visitorCost + tagCost;
     };
 
-    const { activeSubscription: subscription, fetchSubscriptionData, isLoading: subLoading } = useSubscriptionStore();
+    const { activeSubscription: subscription, capabilities, refreshSubscriptionData, isLoading: subLoading } = useSubscriptionStore();
     const subscribeMutation = useSubscribe();
+
+    // Always refetch the latest subscription on mount so the page never
+    // renders a stale persisted plan after an upgrade/downgrade
+    useEffect(() => {
+        refreshSubscriptionData();
+    }, [refreshSubscriptionData]);
     const { data: addons = [], isLoading: addonsLoading } = useAddOns();
     const { data: myActiveAddons = [], isLoading: myAddonsLoading } = useMyActiveAddOns();
     const { data: discountRules = [] } = useBundleDiscounts();
     const purchaseAddOnMutation = usePurchaseAddOn();
 
     const isLoading = plansLoading || subLoading || addonsLoading;
+    const hasSubscriptionData = Boolean(capabilities);
     const freePlan = plans.find((p: PricingPlan) => p.isFree);
     
     // Robust active plan detection
@@ -107,7 +114,7 @@ export default function DashboardPricingPage() {
             }, {
                 onSuccess: () => {
                     toast.success(trialDays > 0 ? `Started ${trialDays}-Day Free Trial!` : 'Switched to Free plan!');
-                    fetchSubscriptionData();
+                    refreshSubscriptionData();
                     setTimeout(() => {
                         router.push('/dashboard/business-link');
                     }, 100);
@@ -199,7 +206,7 @@ export default function DashboardPricingPage() {
         };
     };
 
-    if (isLoading) return (
+    if (isLoading && !hasSubscriptionData) return (
         <div className="flex items-center justify-center min-h-[400px] text-center">
             <div>
                 <Loader2 className="animate-spin mx-auto text-primary" size={32} />
@@ -218,6 +225,16 @@ export default function DashboardPricingPage() {
                         <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 border border-primary/20">
                             <Crown size={12} className="text-primary" />
                             <span className="text-[10px] font-black uppercase tracking-widest text-primary">{activePlanName}</span>
+                            {activePlan?.badge && (
+                                <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${
+                                    activePlan.badge === 'free' ? 'bg-green-100 text-green-700' :
+                                    activePlan.badge === 'silver' ? 'bg-gray-100 text-gray-700' :
+                                    activePlan.badge === 'gold' ? 'bg-yellow-100 text-yellow-700' :
+                                    'bg-purple-100 text-purple-700'
+                                }`}>
+                                    {activePlan.badge.charAt(0).toUpperCase() + activePlan.badge.slice(1)}
+                                </span>
+                            )}
                         </div>
                         {showTrialCountdown && <TrialCountdown trialEndDate={effectiveTrialEndDate} />}
                         <button
@@ -252,6 +269,16 @@ export default function DashboardPricingPage() {
                     <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-primary/10 text-primary rounded-full text-[10px] font-black uppercase tracking-widest mb-4">
                         <Crown size={12} />
                         {showFreeTrialHeader ? 'Limited Time Offer' : 'Current Plan'}
+                        {activePlan?.badge && (
+                            <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${
+                                activePlan.badge === 'free' ? 'bg-green-100 text-green-700' :
+                                activePlan.badge === 'silver' ? 'bg-gray-100 text-gray-700' :
+                                activePlan.badge === 'gold' ? 'bg-yellow-100 text-yellow-700' :
+                                'bg-purple-100 text-purple-700'
+                            }`}>
+                                {activePlan.badge.charAt(0).toUpperCase() + activePlan.badge.slice(1)}
+                            </span>
+                        )}
                     </div>
                     <h2 className="text-3xl md:text-5xl font-display font-black text-text-main tracking-tight mb-4">
                         {showFreeTrialHeader ? 'Keep Full Access Before Trial Ends' : `You are on ${activePlanName}`}
@@ -312,6 +339,20 @@ export default function DashboardPricingPage() {
                             Upgrade Before Trial Ends
                         </button>
                     )}
+                    <a
+                        href="#addons-section"
+                        className="h-11 px-6 bg-white text-emerald-600 border border-emerald-300 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-emerald-50 transition-all flex items-center justify-center gap-2"
+                    >
+                        <Zap size={14} />
+                        Power-Ups
+                    </a>
+                    <a
+                        href="#credits-section"
+                        className="h-11 px-6 bg-white text-amber-600 border border-amber-300 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-amber-50 transition-all flex items-center justify-center gap-2"
+                    >
+                        <Coins size={14} />
+                        Credit Packs
+                    </a>
                 </div>
             </div>
 
@@ -368,9 +409,19 @@ export default function DashboardPricingPage() {
                             )}
 
                             <div className="mb-6">
-                                <div className="flex items-center justify-between mb-2">
+                                <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
                                     <h3 className="text-xl font-display font-bold text-text-main">
                                         {plan.name}
+                                        {plan.badge && (
+                                            <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${
+                                                plan.badge === 'free' ? 'bg-green-100 text-green-700' :
+                                                plan.badge === 'silver' ? 'bg-gray-100 text-gray-700' :
+                                                plan.badge === 'gold' ? 'bg-yellow-100 text-yellow-700' :
+                                                'bg-purple-100 text-purple-700'
+                                            }`}>
+                                                {plan.badge.charAt(0).toUpperCase() + plan.badge.slice(1)}
+                                            </span>
+                                        )}
                                     </h3>
                                     {isCurrent && (
                                         <span className={`${highlight ? 'bg-white text-primary' : 'bg-primary text-white'} text-[8px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest`}>
@@ -638,172 +689,112 @@ export default function DashboardPricingPage() {
             )}
 
             {/* Add-ons Section */}
-            <div className="mt-20">
+            <div id="addons-section" className="mt-20">
                 <div className="flex items-center justify-between mb-8">
                     <div>
                         <h3 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-3">
                             <Sparkles className="text-primary" />
                             Business Power-Ups
                         </h3>
-                        <p className="text-sm font-medium text-slate-500 mt-1">Supercharge your business with targeted add-ons.</p>
+                        <p className="text-sm font-medium text-slate-500 mt-1">Extend your plan with extra capabilities.</p>
+                    </div>
+                    <Link
+                        href="/dashboard/settings/subscription/manage"
+                        className="h-11 px-6 bg-slate-900 text-white rounded-xl font-black text-xs uppercase tracking-widest hover:bg-slate-800 transition-all flex items-center gap-2 shadow-lg"
+                    >
+                        <Zap size={14} />
+                        Manage Add-ons
+                    </Link>
+                </div>
+
+                {myActiveAddons.length > 0 && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {(() => {
+                            const groupedAddons = (myActiveAddons || []).reduce((acc: any[], ba: any) => {
+                                const existing = acc.find((a: any) => a.addon.id === ba.addon.id);
+                                if (existing) {
+                                    existing.quantity = (existing.quantity || 1) + (ba.quantity || 1);
+                                    if (ba.expiresAt && existing.expiresAt && new Date(ba.expiresAt).getTime() > new Date(existing.expiresAt).getTime()) {
+                                        existing.expiresAt = ba.expiresAt;
+                                    }
+                                } else {
+                                    acc.push({ ...ba, quantity: ba.quantity || 1 });
+                                }
+                                return acc;
+                            }, [] as any[]);
+
+                            return groupedAddons.slice(0, 3).map((ba) => {
+                                const addon = ba.addon;
+                                const totalLimit = (addon.additionalLimit || 0) * (ba.quantity || 1);
+                                return (
+                                    <div key={ba.id} className="group relative flex flex-col p-6 rounded-[2rem] bg-emerald-50/30 border border-emerald-100 shadow-sm overflow-hidden">
+                                        <div className="absolute top-0 right-0 p-4 opacity-10">
+                                            {addon.type === 'RESOURCE' ? <Box size={64} className="text-emerald-500" /> : <Zap size={64} className="text-emerald-500" />}
+                                        </div>
+                                        <div className="mb-4">
+                                            <div className="flex items-center justify-between gap-2 mb-3">
+                                                <div className="size-10 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center">
+                                                    {addon.type === 'RESOURCE' ? <Box size={20} /> : <Zap size={20} />}
+                                                </div>
+                                                <span className="px-2 py-0.5 bg-emerald-500 text-white text-[8px] font-black rounded-full uppercase tracking-widest">x{ba.quantity || 1}</span>
+                                            </div>
+                                            <h4 className="text-sm font-black text-slate-900">{addon.name}</h4>
+                                            {addon.additionalLimit && (
+                                                <span className="text-[10px] font-bold text-emerald-600">+{totalLimit} {addon.targetCapability?.replace(/Limit|s$/i, '') || 'Units'}</span>
+                                            )}
+                                        </div>
+                                    </div>
+                                );
+                            });
+                        })()}
+                        {myActiveAddons.length > 3 && (
+                            <div className="flex items-center justify-center p-6 rounded-[2rem] border border-dashed border-slate-200 bg-white">
+                                <p className="text-xs font-bold text-slate-400">+{myActiveAddons.length - 3} more active</p>
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {myActiveAddons.length === 0 && (
+                    <div className="text-center py-12 bg-white rounded-2xl border border-dashed border-slate-200">
+                        <div className="size-12 rounded-xl bg-slate-50 flex items-center justify-center mx-auto mb-3">
+                            <Sparkles size={24} className="text-slate-300" />
+                        </div>
+                        <p className="text-sm font-bold text-slate-500">No active Power-Ups</p>
+                        <p className="text-xs text-slate-400 mt-1">Visit the manage page to browse and purchase add-ons.</p>
+                    </div>
+                )}
+            </div>
+
+            {/* Credit Packs Section */}
+            <div id="credits-section" className="mt-20">
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-200 rounded-[2rem] p-8">
+                    <div>
+                        <h3 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-3 mb-2">
+                            <Coins className="text-amber-500" />
+                            Credit Packs
+                        </h3>
+                        <p className="text-sm font-medium text-slate-600 max-w-xl">
+                            Top up AI analysis credits, SMS, Email, and WhatsApp messaging credits for your business.
+                        </p>
+                    </div>
+                    <div className="flex gap-3 shrink-0">
+                        <a
+                            href="/dashboard/ai"
+                            className="h-12 px-8 bg-amber-500 text-white rounded-xl font-black text-xs uppercase tracking-widest hover:bg-amber-600 transition-all flex items-center gap-2 shadow-lg shadow-amber-500/20"
+                        >
+                            <Sparkles size={16} />
+                            AI Credit
+                        </a>
+                        <a
+                            href="/dashboard/messaging/credits"
+                            className="h-12 px-6 bg-white text-slate-700 border border-slate-200 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-slate-50 transition-all flex items-center gap-2"
+                        >
+                            <Mail size={16} />
+                            SMS/Email Credit
+                        </a>
                     </div>
                 </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {addons.filter(a => a.isActive).map((addon) => {
-                        const isSelected = selectedAddons.some(a => a.id === addon.id);
-                        return (
-                            <div 
-                                key={addon.id}
-                                onClick={() => {
-                                    if (isSelected) {
-                                        setSelectedAddons(prev => prev.filter(a => a.id !== addon.id));
-                                    } else {
-                                        setSelectedAddons(prev => [...prev, addon]);
-                                    }
-                                }}
-                                className={`group relative flex flex-col p-6 rounded-[2rem] border transition-all duration-300 overflow-hidden cursor-pointer ${
-                                    isSelected 
-                                        ? 'bg-primary/5 border-primary shadow-2xl shadow-primary/10 ring-2 ring-primary ring-offset-2' 
-                                        : 'bg-white border-slate-200 shadow-xl hover:shadow-2xl'
-                                }`}
-                            >
-                                <div className={`absolute top-4 right-4 z-10 size-6 rounded-full border-2 flex items-center justify-center transition-all ${
-                                    isSelected ? 'bg-primary border-primary text-white' : 'border-slate-200 bg-white'
-                                }`}>
-                                    {isSelected && <CheckCircle2 size={14} />}
-                                </div>
-
-                                <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                                    {addon.type === 'RESOURCE' ? <Box size={64} /> : <Zap size={64} />}
-                                </div>
-
-                                <div className="mb-6">
-                                    <div className={`size-12 rounded-2xl flex items-center justify-center mb-4 ${
-                                        addon.type === 'RESOURCE' ? 'bg-blue-50 text-blue-600' : 'bg-amber-50 text-amber-600'
-                                    }`}>
-                                        {addon.type === 'RESOURCE' ? <Box size={24} /> : <Zap size={24} />}
-                                    </div>
-                                    <h4 className="text-lg font-black text-slate-900 tracking-tight">{addon.name}</h4>
-                                    {addon.type === 'RESOURCE' && addon.additionalLimit && (
-                                       <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-50 text-emerald-600 rounded-full mt-3 border border-emerald-100 shadow-sm transition-transform group-hover:scale-105">
-                                           <TrendingUp size={10} strokeWidth={3} />
-                                           <span className="text-[10px] font-black uppercase tracking-widest">
-                                               + {addon.additionalLimit} {addon.targetCapability?.replace(/Limit|s$/i, '') || 'Units'}s Boost
-                                           </span>
-                                       </div>
-                                    )}
-                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">
-                                        {addon.type === 'RESOURCE' ? 'Resource Pack' : 'Premium Service'}
-                                    </p>
-                                </div>
-
-                                <p className="text-xs font-medium text-slate-500 leading-relaxed mb-6 flex-1">
-                                    {addon.description}
-                                </p>
-
-                                <div className="mt-auto">
-                                    <div className="flex items-end gap-1 mb-6">
-                                        <span className="text-2xl font-black text-slate-900">₦{addon.price.toLocaleString()}</span>
-                                        <span className="text-[10px] font-bold text-slate-400 mb-1">/mo</span>
-                                    </div>
-
-                                    <button
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            if (!isOwner) {
-                                                toast.error('Only business owners can purchase add-ons');
-                                                return;
-                                            }
-                                            if (!subscription) {
-                                                toast.error('Please subscribe to a plan first');
-                                                return;
-                                            }
-                                            
-                                            if (isSelected) {
-                                                setSelectedAddons(prev => prev.filter(a => a.id !== addon.id));
-                                            } else {
-                                                setSelectedAddons(prev => [...prev, addon]);
-                                            }
-                                        }}
-                                        className={`w-full h-11 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all flex items-center justify-center gap-2 ${
-                                            isSelected 
-                                                ? 'bg-primary text-white hover:bg-primary-hover' 
-                                                : 'bg-slate-900 text-white hover:bg-slate-800'
-                                        }`}
-                                    >
-                                        {isSelected ? (
-                                            <>
-                                                <CheckCircle2 size={14} />
-                                                Selected
-                                            </>
-                                        ) : (
-                                            <>
-                                                <ShoppingCart size={14} />
-                                                Select Power-Up
-                                            </>
-                                        )}
-                                    </button>
-                                </div>
-                            </div>
-                        );
-                    })}
-                </div>
-
-                {selectedAddons.length > 0 && (() => {
-                    const rawTotal = selectedAddons.reduce((sum, a) => sum + Number(a.price || 0), 0);
-                    const count = selectedAddons.length;
-                    const rule = discountRules
-                        .filter(r => r.isActive && count >= r.minQuantity && (!r.maxQuantity || count <= r.maxQuantity))
-                        .sort((a, b) => b.minQuantity - a.minQuantity)[0];
-                    const discountPercent = rule ? rule.discountPercent : 0;
-                    const savings = rawTotal * (discountPercent / 100);
-                    const finalTotal = rawTotal - savings;
-
-                    return (
-                        <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 animate-in fade-in slide-in-from-bottom-8 duration-500">
-                            <div className="bg-slate-900 text-white px-8 py-4 rounded-3xl shadow-2xl flex items-center gap-8 border border-white/10 backdrop-blur-xl">
-                                <div>
-                                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-0.5">
-                                        {count} Power-Up{count > 1 ? 's' : ''} Selected
-                                    </p>
-                                    <div className="flex items-baseline gap-2">
-                                        <p className="text-lg font-black tracking-tight text-white">
-                                            ₦{finalTotal.toLocaleString()}
-                                        </p>
-                                        {savings > 0 && (
-                                            <span className="text-[10px] font-bold text-emerald-400">
-                                                Saved ₦{savings.toLocaleString()}
-                                            </span>
-                                        )}
-                                    </div>
-                                </div>
-                                <div className="w-px h-8 bg-white/10" />
-                                <button
-                                    onClick={() => {
-                                        if (!isOwner) return;
-                                        setIsAddonModalOpen(true);
-                                    }}
-                                    className="h-12 px-8 bg-primary text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-primary-hover transition-all flex items-center gap-2 shadow-xl shadow-primary/20"
-                                >
-                                    <ShoppingCart size={16} />
-                                    Checkout Bundle
-                                    {discountPercent > 0 && (
-                                        <span className="ml-1 px-1.5 py-0.5 bg-white/20 rounded text-[8px]">
-                                            -{discountPercent}%
-                                        </span>
-                                    )}
-                                </button>
-                                <button
-                                    onClick={() => setSelectedAddons([])}
-                                    className="size-12 rounded-2xl flex items-center justify-center text-slate-400 hover:text-white hover:bg-white/5 transition-all"
-                                >
-                                    <Plus size={20} className="rotate-45" />
-                                </button>
-                            </div>
-                        </div>
-                    );
-                })()}
             </div>
 
             {checkoutPlan && (
@@ -823,7 +814,7 @@ export default function DashboardPricingPage() {
                             title: "Subscription Active!",
                             message: `You have successfully subscribed to the ${checkoutPlan.name} plan. Your business is now powered up!`
                         });
-                        fetchSubscriptionData();
+                        refreshSubscriptionData();
                     }}
                 />
             )}
@@ -843,7 +834,7 @@ export default function DashboardPricingPage() {
                             title: "Power-Up Activated!",
                             message: `Your selected Power-Ups have been successfully added to your account and are now active.`
                         });
-                        fetchSubscriptionData();
+                        refreshSubscriptionData();
                     }}
                 />
             )}

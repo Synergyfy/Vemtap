@@ -23,16 +23,19 @@ export interface InviteStaffRequest {
     phone?: string;
     firstName: string;
     lastName: string;
-    role: UserRole;
+    role: string;
     branchId: string;
     jobTitle?: string;
     permissions?: string[];
 }
 
 export interface UpdateStaffRequest {
+    name?: string;
     firstName?: string;
     lastName?: string;
-    role?: UserRole;
+    role?: string;
+    email?: string;
+    jobTitle?: string;
     branchId?: string;
     permissions?: string[];
     status?: 'Active' | 'Inactive' | 'Suspended';

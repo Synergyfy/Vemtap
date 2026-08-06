@@ -26,7 +26,7 @@ export function ContentStep() {
                     engagement: engagementSettings
                 }
             });
-            toast.success('Content settings saved successfully');
+            toast.success("Great! Your customer experience is set up and ready to welcome them.");
         } catch (error) {
             console.error('Failed to save content', error);
             toast.error('Failed to save content settings');

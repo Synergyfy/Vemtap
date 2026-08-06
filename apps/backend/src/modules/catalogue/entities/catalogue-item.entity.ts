@@ -5,6 +5,7 @@ import {
   JoinColumn,
   ManyToMany,
   JoinTable,
+  Index,
 } from 'typeorm';
 import { AbstractBaseEntity } from '../../../common/entities/base.entity';
 import { Business } from '../../businesses/entities/business.entity';
@@ -17,6 +18,8 @@ export enum CatalogueItemStatus {
   INACTIVE = 'inactive',
   OUT_OF_STOCK = 'out_of_stock',
   SUSPENDED = 'suspended',
+  LOW_STOCK = 'low_stock',
+  ARCHIVED = 'archived',
 }
 
 export enum CatalogueItemType {
@@ -56,16 +59,16 @@ export class CatalogueItem extends AbstractBaseEntity {
   @Column({ type: 'text' })
   description: string;
 
-  @ApiProperty({ example: 'https://image.com/main.jpg' })
-  @Column()
-  mainImage: string;
+  @ApiProperty({ example: 'https://image.com/main.jpg', nullable: true })
+  @Column({ type: 'varchar', nullable: true })
+  mainImage?: string | null;
 
   @ApiProperty({
     example: ['https://image.com/1.jpg', 'https://image.com/2.jpg'],
     nullable: true,
   })
   @Column({ type: 'jsonb', nullable: true })
-  galleryImages: string[];
+  galleryImages?: string[] | null;
 
   @ManyToOne(() => Business, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'businessId' })
@@ -138,6 +141,48 @@ export class CatalogueItem extends AbstractBaseEntity {
   @Column({ type: 'int', nullable: true })
   stockQuantity: number;
 
+  @ApiProperty({ example: 'VMT0001', nullable: true })
+  @Column({ nullable: true })
+  @Index()
+  barcode: string;
+
+  @ApiProperty({ example: 500, nullable: true })
+  @Column({
+    type: 'decimal',
+    precision: 12,
+    scale: 2,
+    nullable: true,
+    transformer: {
+      to: (v: number) => v,
+      from: (v: string) => (v ? parseFloat(v) : null),
+    },
+  })
+  costPrice: number | null;
+
+  @ApiProperty({ example: 10, nullable: true })
+  @Column({ type: 'int', nullable: true })
+  minStock: number | null;
+
+  @ApiProperty({ example: 'House Made', nullable: true })
+  @Column({ nullable: true })
+  brand: string;
+
+  @ApiProperty({ example: '500 g', nullable: true })
+  @Column({ nullable: true })
+  weight: string;
+
+  @ApiProperty({ example: '10x15x5 cm', nullable: true })
+  @Column({ nullable: true })
+  dimensions: string;
+
+  @ApiProperty({ example: [{ type: 'size', value: 'large' }], nullable: true })
+  @Column({ type: 'jsonb', nullable: true })
+  variants: { type: string; value: string }[];
+
+  @ApiProperty({ example: ['burger', 'beef'], nullable: true })
+  @Column({ type: 'simple-array', nullable: true })
+  tags: string[];
+
   @ApiProperty({ example: true })
   @Column({ default: true })
   allowBackOrder: boolean;
@@ -149,6 +194,14 @@ export class CatalogueItem extends AbstractBaseEntity {
   @ApiProperty({ example: 10, nullable: true })
   @Column({ type: 'int', nullable: true })
   loyaltyPoints: number | null;
+
+  @ApiProperty({ example: true })
+  @Column({ default: false })
+  enableLoyaltyPoints: boolean;
+
+  @ApiProperty({ example: 10, nullable: true })
+  @Column({ type: 'int', nullable: true })
+  loyaltyPointsValue: number | null;
 
   @ApiProperty({ example: 'Policy violation', nullable: true })
   @Column({ type: 'text', nullable: true })

@@ -9,6 +9,9 @@ import {
 import { Business } from '../../businesses/entities/business.entity';
 import { PaymentsService } from '../../payments/payments.service';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { SettingsService } from '../../settings/settings.service';
+import { BundleDiscountsService } from './bundle-discounts.service';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
 
 describe('AddonsService', () => {
   let service: AddonsService;
@@ -73,8 +76,14 @@ describe('AddonsService', () => {
   };
 
   const mockAddonRepository = {
-    create: jest.fn().mockImplementation((dto) => ({ ...dto, id: 'new-addon-id' })),
-    save: jest.fn().mockImplementation((entity) => Promise.resolve({ ...entity, id: entity.id || 'new-addon-id' })),
+    create: jest
+      .fn()
+      .mockImplementation((dto) => ({ ...dto, id: 'new-addon-id' })),
+    save: jest
+      .fn()
+      .mockImplementation((entity) =>
+        Promise.resolve({ ...entity, id: entity.id || 'new-addon-id' }),
+      ),
     find: jest.fn(),
     findOne: jest.fn(),
     findBy: jest.fn(),
@@ -83,7 +92,11 @@ describe('AddonsService', () => {
 
   const mockBusinessAddonRepository = {
     create: jest.fn().mockImplementation((dto) => dto),
-    save: jest.fn().mockImplementation((entity) => Promise.resolve({ ...entity, id: 'new-ba-id' })),
+    save: jest
+      .fn()
+      .mockImplementation((entity) =>
+        Promise.resolve({ ...entity, id: 'new-ba-id' }),
+      ),
     find: jest.fn(),
     findOne: jest.fn(),
     findBy: jest.fn(),
@@ -102,14 +115,32 @@ describe('AddonsService', () => {
     recordPayment: jest.fn().mockResolvedValue({}),
   };
 
+  const mockSettingsService = {};
+  const mockBundleDiscountsService = {
+    getActiveDiscounts: jest.fn().mockResolvedValue([]),
+  };
+  const mockCache = { del: jest.fn(), get: jest.fn(), set: jest.fn() };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         AddonsService,
         { provide: getRepositoryToken(AddOn), useValue: mockAddonRepository },
-        { provide: getRepositoryToken(BusinessAddOn), useValue: mockBusinessAddonRepository },
-        { provide: getRepositoryToken(Business), useValue: mockBusinessRepository },
+        {
+          provide: getRepositoryToken(BusinessAddOn),
+          useValue: mockBusinessAddonRepository,
+        },
+        {
+          provide: getRepositoryToken(Business),
+          useValue: mockBusinessRepository,
+        },
         { provide: PaymentsService, useValue: mockPaymentsService },
+        { provide: SettingsService, useValue: mockSettingsService },
+        {
+          provide: BundleDiscountsService,
+          useValue: mockBundleDiscountsService,
+        },
+        { provide: CACHE_MANAGER, useValue: mockCache },
       ],
     }).compile();
 
@@ -126,7 +157,11 @@ describe('AddonsService', () => {
 
   describe('create', () => {
     it('should create a new add-on', async () => {
-      const dto = { name: 'New Add-on', type: AddOnType.RESOURCE, price: 10000 };
+      const dto = {
+        name: 'New Add-on',
+        type: AddOnType.RESOURCE,
+        price: 10000,
+      };
       const savedEntity = {
         id: 'new-addon-id',
         name: 'New Add-on',
@@ -192,7 +227,10 @@ describe('AddonsService', () => {
   describe('update', () => {
     it('should update an add-on', async () => {
       mockAddonRepository.findOne.mockResolvedValue({ ...mockAddon });
-      mockAddonRepository.save.mockResolvedValue({ ...mockAddon, name: 'Updated Name' });
+      mockAddonRepository.save.mockResolvedValue({
+        ...mockAddon,
+        name: 'Updated Name',
+      });
       const result = await service.update('addon-1', { name: 'Updated Name' });
       expect(result.name).toBe('Updated Name');
     });
@@ -201,7 +239,10 @@ describe('AddonsService', () => {
   describe('remove', () => {
     it('should soft-delete add-on by setting isActive=false', async () => {
       mockAddonRepository.findOne.mockResolvedValue({ ...mockAddon });
-      mockAddonRepository.save.mockResolvedValue({ ...mockAddon, isActive: false });
+      mockAddonRepository.save.mockResolvedValue({
+        ...mockAddon,
+        isActive: false,
+      });
       await service.remove('addon-1');
       expect(mockAddonRepository.save).toHaveBeenCalledWith(
         expect.objectContaining({ isActive: false }),
@@ -212,14 +253,22 @@ describe('AddonsService', () => {
   describe('purchaseAddons', () => {
     it('should throw BadRequestException if no addonIds provided', async () => {
       await expect(
-        service.purchaseAddons({ addonIds: [], paymentReference: 'TRF_123' } as any, 'b1', 'u1'),
+        service.purchaseAddons(
+          { addonIds: [], paymentReference: 'TRF_123' } as any,
+          'b1',
+          'u1',
+        ),
       ).rejects.toThrow(BadRequestException);
     });
 
     it('should throw NotFoundException if addons not found', async () => {
       mockAddonRepository.findBy.mockResolvedValue([]);
       await expect(
-        service.purchaseAddons({ addonIds: ['non-existent'] } as any, 'b1', 'u1'),
+        service.purchaseAddons(
+          { addonIds: ['non-existent'] } as any,
+          'b1',
+          'u1',
+        ),
       ).rejects.toThrow(NotFoundException);
     });
 
@@ -282,7 +331,11 @@ describe('AddonsService', () => {
     it('should sum multiple add-ons of same capability', async () => {
       mockBusinessAddonRepository.find.mockResolvedValue([
         mockBusinessAddon,
-        { ...mockBusinessAddon, id: 'ba-2', addon: { ...mockAddon, id: 'addon-2', additionalLimit: 5 } },
+        {
+          ...mockBusinessAddon,
+          id: 'ba-2',
+          addon: { ...mockAddon, id: 'addon-2', additionalLimit: 5 },
+        },
       ]);
       const result = await service.getAddonCapabilities('b1');
       expect(result['branches']).toBe(8);

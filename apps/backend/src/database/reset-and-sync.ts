@@ -7,7 +7,7 @@ async function resetAndSync() {
     ...dataSourceOptions,
     synchronize: true, // Force sync for a clean reset
     dropSchema: false, // We drop it manually below
-  } as any);
+  });
 
   await ds.initialize();
 

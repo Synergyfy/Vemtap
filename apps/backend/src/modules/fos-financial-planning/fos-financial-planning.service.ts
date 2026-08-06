@@ -74,8 +74,7 @@ export class FosFinancialPlanningService {
     );
 
     const targetRevenue = Number(target.targetRevenue);
-    const targetProfit =
-      targetRevenue * (Number(target.profitMargin) / 100);
+    const targetProfit = targetRevenue * (Number(target.profitMargin) / 100);
 
     const achievedRevenuePercentage =
       targetRevenue > 0
@@ -116,7 +115,11 @@ export class FosFinancialPlanningService {
     ) => {
       let currentBiz = businesses;
       let totalProfit = 0;
-      const monthlyBreakdown: { month: number; businesses: number; profit: number }[] = [];
+      const monthlyBreakdown: {
+        month: number;
+        businesses: number;
+        profit: number;
+      }[] = [];
 
       for (let i = 1; i <= months; i++) {
         currentBiz =

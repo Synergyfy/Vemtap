@@ -10,7 +10,7 @@ import {
     Palette, Frame, Image as ImageIcon, CheckCircle2, Phone,
     FileText, Image, Video, User, SmartphoneNfc, Music, 
     Building2, UtensilsCrossed, Link2, Ticket, Wifi,
-    Mail, X, ArrowRight, HelpCircle, Trash2, Copy, Download, Lock, Edit2,
+    Mail, X, ArrowRight, ArrowLeft, HelpCircle, Trash2, Copy, Download, Lock, Edit2,
     WifiOff, Star
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -126,7 +126,7 @@ export default function ExploreQRThrivePage() {
         setStoreView(newView === 'list' ? 'manage' : newView);
     };
 
-    const { isProvisioned, isProvisioning, provisionError } = useQrThriveProvisioningStatus();
+    const { isProvisioned, isProvisioning, provisionError, setProvisioned, setProvisioning, setProvisionError } = useQrThriveStore();
     const provisionMutation = useProvisionQrThriveUser();
     const { data: subscriptionData, isPending: isCheckingSubscription } = useSubscriptionIncludesQrThrive();
     
@@ -278,6 +278,20 @@ export default function ExploreQRThrivePage() {
         setQrDesign(mainQrCode.design || DEFAULT_QR_DESIGN);
         setQrFrame(mainQrCode.frame || DEFAULT_QR_FRAME);
         setQrLogo(mainQrCode.logo);
+        handleSetView('edit');
+        setStep('type');
+        setIsLocked(false);
+    };
+
+    const handleEditCode = (qr: any) => {
+        if (!qr) return;
+        setSelectedQrId(qr.id);
+        setSelectedType((qr.type || 'url') as QRType);
+        setQrData(qr.data || { type: 'url', url: 'https://qrthrive.com' });
+        setQrName(qr.name || '');
+        setQrDesign(qr.design || DEFAULT_QR_DESIGN);
+        setQrFrame(qr.frame || DEFAULT_QR_FRAME);
+        setQrLogo(qr.logo);
         handleSetView('edit');
         setStep('type');
         setIsLocked(false);
@@ -435,13 +449,15 @@ export default function ExploreQRThrivePage() {
     const handleProvision = async () => {
         try {
             await provisionMutation.mutateAsync();
+            setProvisioned(true);
             toast.success('QRThrive account activated!');
         } catch (error: any) {
+            setProvisionError(error?.message || 'Failed to activate QRThrive');
             toast.error(error?.message || 'Failed to activate QRThrive');
         }
     };
 
-    if (isProvisioning || provisionMutation.isPending) {
+    if (provisionMutation.isPending) {
         return (
             <div className="flex flex-col items-center justify-center min-h-[600px]">
                 <Loader2 className="w-12 h-12 text-blue-600 animate-spin mb-4" />
@@ -659,7 +675,40 @@ export default function ExploreQRThrivePage() {
     }
 
     return (
-        <div className="min-h-screen bg-slate-50 flex flex-col font-sans">
+        <div className="min-h-screen bg-slate-50 flex flex-col font-sans relative">
+            {/* Coming Soon Overlay */}
+            <div className="absolute inset-0 z-[9999] flex items-center justify-center bg-black/30 backdrop-blur-md p-4">
+                <div className="max-w-lg w-full bg-white rounded-3xl shadow-2xl p-8 md:p-10 text-center">
+                    <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg shadow-blue-200">
+                        <Zap className="w-8 h-8 text-white" />
+                    </div>
+                    <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-3">QRThrive is Coming Soon</h2>
+                    <p className="text-gray-500 leading-relaxed mb-6">
+                        QRThrive lets you create dynamic QR codes, track real-time scan analytics, 
+                        design custom-branded frames, build landing pages, and manage everything 
+                        from a single dashboard. We're putting the final touches on it and will 
+                        notify you as soon as it's ready.
+                    </p>
+                    <div className="bg-gray-50 rounded-2xl p-5 space-y-3 text-left">
+                        {[
+                            'Dynamic QR codes with editable destinations',
+                            'Real-time scan analytics & device insights',
+                            'Custom frames, colors, and logo branding',
+                            'Built-in landing page builder',
+                            'SSO dashboard for your team',
+                        ].map((feature, i) => (
+                            <div key={i} className="flex items-start gap-3">
+                                <div className="w-5 h-5 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center shrink-0 mt-0.5">
+                                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                    </svg>
+                                </div>
+                                <span className="text-sm font-medium text-gray-700">{feature}</span>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </div>
             <div className="max-w-7xl mx-auto w-full p-4 lg:p-10">
                 
                 {view === 'hub' && (
@@ -675,24 +724,26 @@ export default function ExploreQRThrivePage() {
                 {view === 'analytics' && <QRThriveAnalyticsView />}
 
                 {view === 'list' && (
-                    <QRThriveManagementView codes={codes || []} />
+                    <QRThriveManagementView codes={codes || []} onEdit={handleEditCode} />
                 )}
 
                 {(view === 'create' || view === 'edit') && (
                     <>
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
-                        <PageHeader 
-                            title={view === 'edit' ? "Edit QR Code" : "Create QR Experience"} 
-                            description="Configure your custom dynamic QR journey"
-                        />
-                        
-                        <div className="flex items-center gap-3">
+                        <div className="flex flex-col items-start gap-1">
                             <button 
                                 onClick={() => handleSetView('hub')}
-                                className="px-6 py-3.5 bg-white border border-slate-200 text-slate-600 rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-2 hover:bg-slate-50 transition-all shadow-sm"
+                                className="text-[10px] font-black uppercase tracking-widest text-gray-500 hover:text-gray-900 -ml-3 mb-2 flex items-center gap-2 transition-colors bg-transparent border-0 cursor-pointer"
                             >
-                                Hub Overview
+                                <ArrowLeft size={14} /> Back to Hub
                             </button>
+                            <PageHeader 
+                                title={view === 'edit' ? "Edit QR Code" : "Create QR Experience"} 
+                                description="Configure your custom dynamic QR journey"
+                            />
+                        </div>
+                        
+                        <div className="flex items-center gap-3">
                             <button 
                                 onClick={() => handleSetView('list')}
                                 className="px-6 py-3.5 bg-slate-100 text-slate-600 rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-2 hover:bg-slate-200 transition-all border border-slate-200"

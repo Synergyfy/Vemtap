@@ -5,10 +5,32 @@ import { SupportTicket, TicketStatus } from './entities/support-ticket.entity';
 import { TicketMessage } from './entities/ticket-message.entity';
 import { TicketActivity } from './entities/ticket-activity.entity';
 import { User } from '../users/entities/user.entity';
+import { SupportGateway } from './support.gateway';
+import { ConversationContextService } from './conversation-context.service';
 import { NotFoundException } from '@nestjs/common';
 
 describe('SupportService', () => {
   let service: SupportService;
+
+  const createMockQueryBuilder = (
+    items: any[] = [],
+    totalCount: number = items.length,
+  ) => {
+    const qb: any = {
+      where: jest.fn().mockReturnThis(),
+      andWhere: jest.fn().mockReturnThis(),
+      leftJoinAndSelect: jest.fn().mockReturnThis(),
+      select: jest.fn().mockReturnThis(),
+      orderBy: jest.fn().mockReturnThis(),
+      addOrderBy: jest.fn().mockReturnThis(),
+      skip: jest.fn().mockReturnThis(),
+      take: jest.fn().mockReturnThis(),
+      clone: jest.fn().mockImplementation(() => qb),
+      getCount: jest.fn().mockResolvedValue(totalCount),
+      getMany: jest.fn().mockResolvedValue(items),
+    };
+    return qb;
+  };
 
   const mockTicketRepository = {
     find: jest.fn(),
@@ -17,6 +39,9 @@ describe('SupportService', () => {
     create: jest.fn(),
     save: jest.fn(),
     count: jest.fn(),
+    createQueryBuilder: jest
+      .fn()
+      .mockImplementation(() => createMockQueryBuilder()),
   };
 
   const mockMessageRepository = {
@@ -33,6 +58,9 @@ describe('SupportService', () => {
     findOne: jest.fn(),
     findAndCount: jest.fn(),
     save: jest.fn(),
+    createQueryBuilder: jest
+      .fn()
+      .mockImplementation(() => createMockQueryBuilder()),
   };
 
   beforeEach(async () => {
@@ -57,6 +85,29 @@ describe('SupportService', () => {
           provide: getRepositoryToken(User),
           useValue: mockUserRepository,
         },
+        {
+          provide: SupportGateway,
+          useValue: {
+            emitTicketUpdate: jest.fn(),
+            emitNewMessage: jest.fn(),
+            emitTicketStatusUpdate: jest.fn(),
+          },
+        },
+        {
+          provide: ConversationContextService,
+          useValue: {
+            getOrCreateContext: jest.fn().mockResolvedValue({
+              id: 'conv-1',
+              messages: [],
+              context: {},
+              userResponses: {},
+            }),
+            addMessage: jest.fn().mockResolvedValue(undefined),
+            addUserResponse: jest.fn().mockResolvedValue(undefined),
+            getRecentMessages: jest.fn().mockResolvedValue([]),
+            clearContext: jest.fn().mockResolvedValue(undefined),
+          },
+        },
       ],
     }).compile();
 
@@ -70,12 +121,14 @@ describe('SupportService', () => {
   describe('findAllAdmin', () => {
     it('should return paginated tickets', async () => {
       const tickets = [{ id: '1' }, { id: '2' }];
-      mockTicketRepository.findAndCount.mockResolvedValue([tickets, 2]);
+      mockTicketRepository.createQueryBuilder.mockImplementationOnce(() =>
+        createMockQueryBuilder(tickets, 2),
+      );
 
       const result = await service.findAllAdmin();
       expect(result.data).toEqual(tickets);
       expect(result.meta.total).toBe(2);
-      expect(mockTicketRepository.findAndCount).toHaveBeenCalled();
+      expect(mockTicketRepository.createQueryBuilder).toHaveBeenCalled();
     });
   });
 
@@ -123,6 +176,87 @@ describe('SupportService', () => {
       expect(result).toEqual(message);
       expect(ticket.status).toBe(TicketStatus.IN_PROGRESS);
       expect(mockTicketRepository.save).toHaveBeenCalled();
+    });
+  });
+
+  describe('addAttachments', () => {
+    it('persists a message carrying validated attachments', async () => {
+      const ticket = { id: '1', status: TicketStatus.PENDING };
+      const message = {
+        id: 'm1',
+        ticketId: '1',
+        message: '<attachment>',
+        attachments: [
+          {
+            url: 'data:image/png;base64,AAAA',
+            name: 'receipt.png',
+            mimeType: 'image/png',
+            size: 2048,
+          },
+        ],
+      };
+
+      mockTicketRepository.findOne.mockResolvedValue(ticket);
+      mockMessageRepository.create.mockReturnValue(message);
+      mockMessageRepository.save.mockResolvedValue(message);
+
+      const result = await service.addAttachments('1', 'user1', {
+        attachments: message.attachments,
+      });
+
+      expect(result).toEqual(message);
+      expect(mockMessageRepository.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          senderRole: 'CUSTOMER',
+          attachments: expect.arrayContaining([
+            expect.objectContaining({ mimeType: 'image/png' }),
+          ]),
+        }),
+      );
+    });
+
+    it('rejects attachments exceeding the per-file size limit', async () => {
+      mockTicketRepository.findOne.mockResolvedValue({
+        id: '1',
+        status: TicketStatus.PENDING,
+      });
+
+      await expect(
+        service.addAttachments('1', 'user1', {
+          attachments: [
+            {
+              url: 'x',
+              name: 'big.bin',
+              mimeType: 'application/octet-stream',
+              size: 11 * 1024 * 1024,
+            },
+          ],
+        }),
+      ).rejects.toThrow('10 MB per-file limit');
+    });
+
+    it('enforces limits against the real decoded size of a data URL', async () => {
+      // A data URL whose decoded payload is ~10.5MB, regardless of the spoofed
+      // tiny `size` field (14MB base64 * 3/4 ≈ 10.5MB decoded).
+      const bigBase64 = 'x'.repeat(14 * 1024 * 1024);
+      await expect(
+        service.addAttachments('1', 'user1', {
+          attachments: [
+            {
+              url: `data:application/octet-stream;base64,${bigBase64}`,
+              name: 'sneaky.bin',
+              mimeType: 'application/octet-stream',
+              size: 10,
+            },
+          ],
+        }),
+      ).rejects.toThrow('10 MB per-file limit');
+    });
+
+    it('rejects empty attachment lists', async () => {
+      await expect(
+        service.addAttachments('1', 'user1', { attachments: [] }),
+      ).rejects.toThrow('At least one attachment is required');
     });
   });
 });

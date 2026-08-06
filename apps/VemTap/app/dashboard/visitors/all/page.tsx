@@ -11,9 +11,13 @@ import { ArrowLeft, Plus } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import Spinner from '@/components/ui/Spinner';
+import { useSearchParams } from 'next/navigation';
 
 export default function AllCustomersPage() {
-    const { data: paginatedData, isLoading } = useVisitors();
+    const searchParams = useSearchParams();
+    const segmentId = searchParams.get('segmentId') || undefined;
+
+    const { data: paginatedData, isLoading } = useVisitors(undefined, { segmentId });
     const visitors = paginatedData?.data || [];
 
     if (isLoading) {
@@ -36,19 +40,7 @@ export default function AllCustomersPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {visitors.length > 0 ? visitors.map((v) => (
                     <CRMCustomerCard key={v.id} customer={v} />
-                )) : (
-                    // Mock data if empty
-                    [1, 2, 3, 4, 5, 6].map(i => (
-                        <CRMCustomerCard key={i} customer={{
-                            id: `${i}`,
-                            name: `Customer ${i}`,
-                            phone: '+234 800 000 0000',
-                            email: `customer${i}@example.com`,
-                            status: i % 3 === 0 ? 'VIP' : 'Active',
-                            lastActivity: '3 days ago'
-                        }} />
-                    ))
-                )}
+                )) : null}
             </div>
 
             <div className="mt-12 flex justify-center">

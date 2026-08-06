@@ -14,8 +14,17 @@ export interface ChatMessage {
  * to ensure privacy and reduce client-side complexity.
  */
 export async function generateChatResponse(messages: ChatMessage[], context?: string): Promise<string> {
-  const lastMessage = messages[messages.length - 1].content;
+  if (!messages || messages.length === 0) {
+    return "Hello! How can I help you today?";
+  }
+
+  const lastMsg = messages[messages.length - 1];
+  const lastMessage = lastMsg?.content || '';
   
+  if (!lastMessage.trim()) {
+    return "Hello! How can I help you today?";
+  }
+
   // 1. Try to find in Knowledge Base directly
   const kbContent = searchKnowledgeBase(lastMessage);
   if (kbContent) {
@@ -38,5 +47,5 @@ export async function generateChatResponse(messages: ChatMessage[], context?: st
   }
 
   // 3. Ultimate Fallback
-  return "I'm currently in basic mode and couldn't find a specific answer to that. For detailed assistance, please reach out to our support team at support@vemtap.io. We're here to help!";
+  return "Sorry, I can't answer this for now. Can I connect you to a human agent?";
 }

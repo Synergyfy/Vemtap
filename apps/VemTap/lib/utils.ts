@@ -5,6 +5,11 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
+export function resolveBannerText(text?: string, vars: Record<string, string> = {}): string {
+  if (!text) return text || '';
+  return text.replace(/\{(\w+)\}/g, (match, key) => (key in vars && vars[key] ? vars[key] : match));
+}
+
 export const PASSWORD_REQUIREMENTS = [
   { label: 'At least 8 characters', regex: /.{8,}/ },
   { label: 'At least one uppercase letter', regex: /[A-Z]/ },

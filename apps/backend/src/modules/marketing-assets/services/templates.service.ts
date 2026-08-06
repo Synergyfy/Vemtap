@@ -3,8 +3,8 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In } from 'typeorm';
 import { MarketingTemplate } from '../entities/marketing-template.entity';
 import { MarketingCategory } from '../entities/marketing-category.entity';
-import { CreateTemplateDto } from '../dto/create-template.dto';
-import { UpdateTemplateDto } from '../dto/update-template.dto';
+import { CreateMarketingTemplateDto } from '../dto/create-template.dto';
+import { UpdateMarketingTemplateDto } from '../dto/update-template.dto';
 import { AuditLogService } from './audit-log.service';
 import { User } from '../../users/entities/user.entity';
 
@@ -18,11 +18,16 @@ export class TemplatesService {
     private readonly auditLogService: AuditLogService,
   ) {}
 
-  async create(createDto: CreateTemplateDto, user?: User): Promise<MarketingTemplate> {
+  async create(
+    createDto: CreateMarketingTemplateDto,
+    user?: User,
+  ): Promise<MarketingTemplate> {
     const { categoryIds, ...rest } = createDto;
     const template = this.templateRepo.create(rest);
     if (categoryIds && categoryIds.length > 0) {
-      template.categories = await this.categoryRepo.findBy({ id: In(categoryIds) });
+      template.categories = await this.categoryRepo.findBy({
+        id: In(categoryIds),
+      });
     }
     const saved = await this.templateRepo.save(template);
     if (user) {
@@ -38,8 +43,14 @@ export class TemplatesService {
     return this.findOne(saved.id);
   }
 
-  async findAll(category?: string, type?: string, activeOnly = true, categoryIds?: string[]): Promise<MarketingTemplate[]> {
-    const query = this.templateRepo.createQueryBuilder('template')
+  async findAll(
+    category?: string,
+    type?: string,
+    activeOnly = true,
+    categoryIds?: string[],
+  ): Promise<MarketingTemplate[]> {
+    const query = this.templateRepo
+      .createQueryBuilder('template')
       .leftJoinAndSelect('template.categories', 'categories');
 
     if (activeOnly) {
@@ -49,7 +60,12 @@ export class TemplatesService {
       query.andWhere('template.category = :category', { category });
     }
     if (categoryIds && categoryIds.length > 0) {
-      query.innerJoin('marketing_template_categories', 'mtc', 'mtc."templateId" = template.id')
+      query
+        .innerJoin(
+          'marketing_template_categories',
+          'mtc',
+          'mtc."templateId" = template.id',
+        )
         .andWhere('mtc."categoryId" IN (:...categoryIds)', { categoryIds });
     }
     if (type) {
@@ -70,12 +86,18 @@ export class TemplatesService {
     return template;
   }
 
-  async update(id: string, updateDto: UpdateTemplateDto, user?: User): Promise<MarketingTemplate> {
+  async update(
+    id: string,
+    updateDto: UpdateMarketingTemplateDto,
+    user?: User,
+  ): Promise<MarketingTemplate> {
     const template = await this.findOne(id);
     const { categoryIds, ...rest } = updateDto;
     Object.assign(template, rest);
     if (categoryIds !== undefined) {
-      template.categories = await this.categoryRepo.findBy({ id: In(categoryIds) });
+      template.categories = await this.categoryRepo.findBy({
+        id: In(categoryIds),
+      });
     }
     const saved = await this.templateRepo.save(template);
     if (user) {

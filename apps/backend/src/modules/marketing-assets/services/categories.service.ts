@@ -1,10 +1,14 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { MarketingCategory } from '../entities/marketing-category.entity';
 import { MarketingTemplate } from '../entities/marketing-template.entity';
-import { CreateCategoryDto } from '../dto/create-category.dto';
-import { UpdateCategoryDto } from '../dto/update-category.dto';
+import { CreateMarketingCategoryDto } from '../dto/create-category.dto';
+import { UpdateMarketingCategoryDto } from '../dto/update-category.dto';
 
 @Injectable()
 export class CategoriesService {
@@ -15,8 +19,13 @@ export class CategoriesService {
     private readonly templateRepo: Repository<MarketingTemplate>,
   ) {}
 
-  async create(dto: CreateCategoryDto): Promise<MarketingCategory> {
-    const slug = dto.slug || dto.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+  async create(dto: CreateMarketingCategoryDto): Promise<MarketingCategory> {
+    const slug =
+      dto.slug ||
+      dto.name
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/(^-|-$)/g, '');
     const category = this.categoryRepo.create({ ...dto, slug });
     return this.categoryRepo.save(category);
   }
@@ -28,7 +37,7 @@ export class CategoriesService {
       order: { sortOrder: 'ASC', name: 'ASC' },
       relations: ['templates'],
     });
-    return categories.map(c => ({
+    return categories.map((c) => ({
       ...c,
       templateCount: c.templates?.length || 0,
       templates: undefined,
@@ -46,10 +55,13 @@ export class CategoriesService {
     return category;
   }
 
-  async update(id: string, dto: UpdateCategoryDto): Promise<MarketingCategory> {
+  async update(id: string, dto: UpdateMarketingCategoryDto): Promise<MarketingCategory> {
     const category = await this.findOne(id);
     if (dto.name && !dto.slug) {
-      (dto as any).slug = dto.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+      (dto as any).slug = dto.name
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/(^-|-$)/g, '');
     }
     Object.assign(category, dto);
     return this.categoryRepo.save(category);

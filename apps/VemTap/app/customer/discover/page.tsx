@@ -1,177 +1,344 @@
 'use client';
 
-import React, { useState } from 'react';
-import { 
-    Search, 
-    MessageCircle, 
-    Star, 
-    MapPin, 
-    ChevronRight,
-    Filter,
-    ArrowLeft,
-    Lock
-} from 'lucide-react';
-import { useRouter } from 'next/navigation';
-import { useChatStore } from '@/store/chatStore';
+import React, { useState, useMemo, useEffect } from 'react';
+import { motion } from 'framer-motion';
+import { Search, TrendingUp, Sparkles, MapPin, X, Loader2, AlertCircle } from 'lucide-react';
+import CategoryDropdown from '@/components/promotions/CategoryStep';
+import TrendingSection from '@/components/promotions/TrendingSection';
+import PromotionCard from '@/components/promotions/PromotionCard';
+import LocationModal from '@/components/promotions/LocationModal';
+import { usePublicOffers } from '@/services/deals/hooks';
+import type { DealOffer } from '@/services/deals/types';
+import type { Promotion, PromotionBusiness } from '@/lib/promotions';
+import type { MockPromotion } from '@/lib/mock/promotions';
+import type { GeolocationCoordinates } from '@/lib/geolocation';
 
-const businesses = [
-    { 
-        id: '1', 
-        name: 'VemTap Café', 
-        category: 'Food & Drink', 
-        rating: 4.8, 
-        reviews: 124, 
-        location: 'Downtown, Miami', 
-        logo: null,
-        description: 'Premium coffee and pastries in a modern atmosphere.'
-    },
-    { 
-        id: '2', 
-        name: 'Lumina Tech', 
-        category: 'Electronics', 
-        rating: 4.9, 
-        reviews: 89, 
-        location: 'Silicon Valley Area', 
-        logo: null,
-        description: 'Next-generation tech solutions and gadgets.'
-    },
-    { 
-        id: '3', 
-        name: 'Green Leaf Spa', 
-        category: 'Wellness', 
-        rating: 4.7, 
-        reviews: 210, 
-        location: 'Beachside, FL', 
-        logo: null,
-        description: 'Holistic wellness and relaxation therapies.'
-    },
-];
+function toPromotionBusiness(business?: DealOffer['business']): PromotionBusiness {
+    return {
+        id: business?.id || '',
+        name: business?.name || 'Unknown Business',
+        slug: business?.slug || '',
+        logo: business?.logo || '',
+        photos: business?.photos || [],
+        categoryId: business?.categoryId || '',
+        categoryName: business?.categoryName || '',
+        address: business?.address || '',
+        hours: business?.hours || [],
+        rating: business?.rating || 0,
+        totalReviews: business?.totalReviews || 0,
+    };
+}
 
-export default function BusinessDiscoveryPage() {
-    const router = useRouter();
-    const [searchTerm, setSearchTerm] = useState('');
+function toPromotion(offer: DealOffer): Promotion {
+    const discountPercent = offer.pricingType === 'percentage_discount' && offer.discountValue
+        ? offer.discountValue : undefined;
+    const discountAmount = offer.pricingType === 'fixed_discount_price' && offer.discountValue
+        ? offer.discountValue : undefined;
+    const originalPrice = discountPercent
+        ? Math.round(offer.calculatedPrice / (1 - (discountPercent || 0) / 100))
+        : discountAmount
+            ? offer.calculatedPrice + discountAmount
+            : offer.calculatedPrice;
 
-    const filteredBusinesses = businesses.filter(b => 
-        b.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        b.category.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    return {
+        id: offer.id,
+        business: toPromotionBusiness(offer.business),
+        title: offer.name,
+        description: offer.description,
+        longDescription: offer.longDescription || offer.description,
+        terms: offer.terms || [],
+        discountPercent,
+        discountAmount,
+        originalPrice,
+        dealPrice: offer.calculatedPrice,
+        image: offer.mainImage || '',
+        startDate: offer.startDate || '',
+        endDate: offer.endDate || '',
+        claimedCount: offer.claimedCount,
+        maxClaims: offer.maxClaims,
+        isTrending: offer.isTrending || false,
+    };
+}
+
+function toMockPromotion(p: Promotion): MockPromotion {
+    return {
+        id: p.id,
+        name: p.title,
+        description: p.description,
+        longDescription: p.longDescription,
+        terms: p.terms,
+        businessName: p.business.name,
+        businessSlug: p.business.slug,
+        businessLogo: p.business.logo,
+        category: p.business.categoryName as MockPromotion['category'],
+        discountPercent: p.discountPercent,
+        discountAmount: p.discountAmount,
+        originalPrice: p.originalPrice,
+        dealPrice: p.dealPrice,
+        image: p.image,
+        startDate: p.startDate,
+        endDate: p.endDate,
+        audience: '',
+        location: p.business.address,
+        claimedCount: p.claimedCount,
+        maxClaims: p.maxClaims,
+    };
+}
+
+export default function CustomerDiscoverPage() {
+    const [search, setSearch] = useState('');
+    const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+    const [location, setLocation] = useState<GeolocationCoordinates | null>(null);
+    const [locationLabel, setLocationLabel] = useState('');
+    const [showLocationModal, setShowLocationModal] = useState(false);
+
+    const queryParams = useMemo(() => ({
+        search: search || undefined,
+        categoryId: selectedCategory || undefined,
+        lat: location?.lat,
+        lng: location?.lng,
+    }), [search, selectedCategory, location]);
+
+    const { data: offersData, isLoading, isError, refetch } = usePublicOffers(queryParams);
+
+    useEffect(() => {
+        const saved = localStorage.getItem('vemtap_user_location');
+        const savedLabel = localStorage.getItem('vemtap_user_location_label');
+        if (saved) {
+            try {
+                setLocation(JSON.parse(saved));
+                setLocationLabel(savedLabel || '');
+            } catch {
+                setShowLocationModal(true);
+            }
+        } else {
+            setShowLocationModal(true);
+        }
+    }, []);
+
+    const handleLocationSet = (coords: GeolocationCoordinates, label?: string) => {
+        setLocation(coords);
+        setLocationLabel(label || '');
+        localStorage.setItem('vemtap_user_location', JSON.stringify(coords));
+        if (label) localStorage.setItem('vemtap_user_location_label', label);
+    };
+
+    const handleClearLocation = () => {
+        setLocation(null);
+        setLocationLabel('');
+        localStorage.removeItem('vemtap_user_location');
+        localStorage.removeItem('vemtap_user_location_label');
+    };
+
+    const promotions = useMemo(() => {
+        if (!offersData?.data) return [];
+        return offersData.data
+            .filter(offer => offer.business && offer.business.id)
+            .map(toPromotion);
+    }, [offersData]);
+
+    const filteredPromotions = useMemo(() => {
+        if (!promotions.length) return [];
+        let result = promotions;
+        if (search.trim()) {
+            const q = search.toLowerCase();
+            result = result.filter(p =>
+                p.title.toLowerCase().includes(q) ||
+                p.business.name.toLowerCase().includes(q) ||
+                p.business.address.toLowerCase().includes(q) ||
+                p.description.toLowerCase().includes(q)
+            );
+        }
+        return result;
+    }, [promotions, search]);
+
+    const trendingPromotions = useMemo(() => {
+        return promotions
+            .filter(p => p.isTrending)
+            .sort((a, b) => b.claimedCount - a.claimedCount)
+            .slice(0, 5);
+    }, [promotions]);
 
     return (
-        <div className="relative min-h-[calc(100vh-6rem)]">
-            {/* Coming Soon Overlay */}
-            <div className="absolute inset-0 z-30 flex flex-col items-center justify-start pt-32 md:justify-center md:pt-0 backdrop-blur-sm bg-white/20 m-4 rounded-3xl">
-                <div className="bg-white p-8 rounded-[2rem] shadow-2xl shadow-slate-200/50 border border-slate-100 flex flex-col items-center text-center max-w-sm mx-4 transform transition-all hover:scale-105 duration-300">
-                    <div className="w-20 h-20 bg-slate-50 flex items-center justify-center rounded-2xl mb-6 shadow-inner">
-                        <Lock className="text-slate-400" size={32} />
-                    </div>
-                    <h2 className="text-2xl font-display font-black text-slate-900 mb-3 tracking-tight">Coming Soon</h2>
-                    <p className="text-slate-500 text-sm leading-relaxed font-medium">
-                        Find and message local businesses on VemTap.
-                    </p>
-                </div>
-            </div>
+        <div className="min-h-screen bg-[#f4f5f6] font-body text-text-main">
+            {/* Hero Section */}
+            <section className="bg-white border-b border-gray-100">
+                <div className="max-w-7xl mx-auto px-4 md:px-8 pt-6 pb-7 md:pt-10 md:pb-10">
+                    <div className="max-w-2xl">
+                        <motion.div
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className="inline-flex items-center gap-1.5 bg-primary/5 border border-primary/10 rounded-lg px-3 py-1 mb-3"
+                        >
+                            <Sparkles size={12} className="text-primary" />
+                            <span className="text-[10px] font-black text-primary uppercase tracking-widest">
+                                Explore Deals
+                            </span>
+                        </motion.div>
 
-            {/* Background Content */}
-            <div className="p-8 max-w-6xl mx-auto space-y-8 pointer-events-none select-none opacity-80">
-                {/* Header */}
-            <div className="flex items-center gap-4">
-                <button 
-                    onClick={() => router.back()}
-                    className="p-2 hover:bg-white rounded-xl border border-transparent hover:border-slate-200 transition-all text-slate-600"
-                >
-                    <ArrowLeft size={20} />
-                </button>
-                <div>
-                    <h1 className="text-3xl font-display font-black text-slate-900 tracking-tight">Discover</h1>
-                    <p className="text-slate-500 font-medium">Find and message local businesses on VemTap.</p>
-                </div>
-            </div>
+                        <motion.h1
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 0.05 }}
+                            className="text-2xl md:text-4xl font-headline font-black text-gray-900 tracking-tight leading-tight"
+                        >
+                            Discover the best deals
+                            <br />
+                            <span className="text-primary">near you</span>
+                        </motion.h1>
 
-            {/* Search and Filters */}
-            <div className="flex flex-col md:flex-row gap-4">
-                <div className="relative flex-1">
-                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
-                    <input 
-                        type="text" 
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        placeholder="Search for businesses, categories, or services..."
-                        className="w-full pl-12 pr-4 py-4 bg-white border border-slate-100 rounded-2xl shadow-sm focus:ring-2 focus:ring-vemtap/20 transition-all text-sm font-medium"
-                    />
-                </div>
-                <button className="flex items-center gap-2 px-6 py-4 bg-white border border-slate-100 rounded-2xl text-sm font-bold text-slate-700 hover:bg-slate-50 transition-all shadow-sm shrink-0">
-                    <Filter size={18} />
-                    Filters
-                </button>
-            </div>
+                        <motion.p
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 0.1 }}
+                            className="text-gray-500 font-medium text-sm md:text-base mt-2 max-w-lg"
+                        >
+                            Browse exclusive promotions from top businesses. Check VemTap before you shop.
+                        </motion.p>
 
-            {/* Results Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filteredBusinesses.map((biz) => (
-                    <div 
-                        key={biz.id} 
-                        className="bg-white rounded-4xl border border-slate-50 shadow-sm hover:shadow-xl hover:shadow-vemtap/5 transition-all group overflow-hidden flex flex-col"
-                    >
-                        <div className="p-6 flex-1">
-                            <div className="flex justify-between items-start mb-4">
-                                <div className="w-14 h-14 rounded-2xl bg-vemtap/5 flex items-center justify-center text-vemtap text-xl font-black border border-vemtap/10">
-                                    {biz.name.charAt(0)}
-                                </div>
-                                <div className="flex items-center gap-1 bg-amber-50 px-2 py-1 rounded-lg">
-                                    <Star size={14} className="fill-amber-400 text-amber-400" />
-                                    <span className="text-xs font-black text-amber-700">{biz.rating}</span>
-                                </div>
-                            </div>
-                            
-                            <h3 className="text-lg font-display font-black text-slate-900 mb-1">{biz.name}</h3>
-                            <p className="text-[10px] font-black text-vemtap uppercase tracking-widest mb-3">{biz.category}</p>
-                            
-                            <p className="text-sm text-slate-500 line-clamp-2 mb-4 leading-relaxed">
-                                {biz.description}
-                            </p>
-                            
-                            <div className="flex items-center gap-2 text-slate-400 mb-6">
+                        {!location && (
+                            <motion.button
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: 0.15 }}
+                                onClick={() => setShowLocationModal(true)}
+                                className="mt-3 inline-flex items-center gap-2 text-sm font-bold text-primary hover:underline"
+                            >
                                 <MapPin size={14} />
-                                <span className="text-xs font-bold">{biz.location}</span>
-                            </div>
+                                Set your location for nearby deals
+                            </motion.button>
+                        )}
+                    </div>
+                </div>
+            </section>
+
+            {/* Search + Filters */}
+            <section className="sticky top-0 z-30 bg-white/80 backdrop-blur-xl border-b border-gray-100">
+                <div className="max-w-7xl mx-auto px-4 md:px-8 py-3">
+                    <div className="flex flex-col sm:flex-row gap-3">
+                        <div className="relative flex-1">
+                            <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+                            <input
+                                type="text"
+                                value={search}
+                                onChange={(e) => setSearch(e.target.value)}
+                                placeholder="Search deals, businesses, or location..."
+                                className="w-full h-11 pl-11 pr-4 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/15 focus:border-primary/30 transition-all"
+                            />
                         </div>
 
-                        <div className="p-4 bg-slate-50/50 border-t border-slate-50">
-                            <button 
-                                onClick={() => {
-                                    const { setIsOpen, setIsVisible, addMessage, history } = useChatStore.getState();
-                                    if (history.length <= 1) { // Only initial greeting
-                                        addMessage({
-                                            role: 'assistant',
-                                            content: `Hi! 👋 You're interested in ${biz.name}? I can help you with that. What would you like to know?`
-                                        });
-                                    }
-                                    setIsVisible(true);
-                                    setIsOpen(true);
-                                }}
-                                className="w-full flex items-center justify-center gap-2 py-3 bg-white border border-slate-200 rounded-2xl text-sm font-black text-slate-700 group-hover:bg-vemtap group-hover:text-white group-hover:border-vemtap transition-all shadow-sm"
+                        <div className="w-full sm:w-64">
+                            <CategoryDropdown
+                                selected={selectedCategory}
+                                onSelect={setSelectedCategory}
+                            />
+                        </div>
+                    </div>
+
+                    {location && (
+                        <div className="flex items-center gap-2 mt-2">
+                            <div className="inline-flex items-center gap-2 bg-primary/5 border border-primary/10 rounded-full px-3 py-1.5">
+                                <MapPin size={12} className="text-primary" />
+                                <span className="text-[10px] font-bold text-primary">
+                                    {locationLabel || `${location.lat.toFixed(4)}, ${location.lng.toFixed(4)}`}
+                                </span>
+                                <button
+                                    onClick={handleClearLocation}
+                                    className="p-0.5 hover:bg-primary/10 rounded-full transition-colors"
+                                >
+                                    <X size={10} className="text-primary" />
+                                </button>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            </section>
+
+            {/* Main Content */}
+            <section className="max-w-7xl mx-auto px-4 md:px-8 py-5 pb-20">
+                <div className="space-y-5">
+                    {/* Loading */}
+                    {isLoading && (
+                        <div className="flex flex-col items-center justify-center py-16 space-y-4">
+                            <Loader2 size={28} className="animate-spin text-primary" />
+                            <p className="text-sm font-bold text-gray-400">Loading deals...</p>
+                        </div>
+                    )}
+
+                    {/* Error */}
+                    {isError && (
+                        <div className="flex flex-col items-center justify-center py-16 space-y-4">
+                            <AlertCircle size={28} className="text-amber-500" />
+                            <p className="text-sm font-bold text-gray-500">Failed to load deals</p>
+                            <button
+                                onClick={() => refetch()}
+                                className="text-xs font-black text-primary hover:underline"
                             >
-                                <MessageCircle size={18} />
-                                Chat Now
-                                <ChevronRight size={16} className="ml-1 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                Try again
                             </button>
                         </div>
-                    </div>
-                ))}
-            </div>
+                    )}
 
-            {filteredBusinesses.length === 0 && (
-                <div className="text-center py-20 space-y-4">
-                    <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto">
-                        <Search size={32} className="text-slate-200" />
-                    </div>
-                    <div>
-                        <h3 className="text-lg font-display font-black text-slate-900">No businesses found</h3>
-                        <p className="text-slate-500 text-sm">Try searching with a different term or category.</p>
-                    </div>
+                    {/* Data loaded */}
+                    {!isLoading && !isError && (
+                        <>
+                            {/* Trending */}
+                            {!selectedCategory && !search && trendingPromotions.length > 0 && (
+                                <TrendingSection promotions={trendingPromotions} />
+                            )}
+
+                            {/* Results header */}
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                    <TrendingUp size={14} className="text-primary" />
+                                    <span className="text-xs font-black text-gray-500 uppercase tracking-widest">
+                                        {filteredPromotions.length} {filteredPromotions.length === 1 ? 'deal' : 'deals'}
+                                        {selectedCategory && (
+                                            <> in <span className="text-primary">this category</span></>
+                                        )}
+                                    </span>
+                                </div>
+                                {filteredPromotions.length > 0 && (
+                                    <span className="text-[10px] font-bold text-gray-400">
+                                        Sorted by popularity
+                                    </span>
+                                )}
+                            </div>
+
+                            {/* Grid */}
+                            {filteredPromotions.length > 0 ? (
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 md:gap-5">
+                                    {filteredPromotions.map((promo, i) => (
+                                        <PromotionCard key={promo.id} promotion={toMockPromotion(promo)} index={i} />
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="py-16 text-center space-y-4">
+                                    <div className="w-14 h-14 mx-auto bg-gray-100 rounded-full flex items-center justify-center">
+                                        <Search size={22} className="text-gray-300" />
+                                    </div>
+                                    <p className="text-gray-400 font-bold text-sm">No deals found</p>
+                                    <p className="text-xs text-gray-300 font-medium">
+                                        Try a different search or category
+                                    </p>
+                                    <button
+                                        onClick={() => { setSelectedCategory(null); setSearch(''); }}
+                                        className="text-xs font-black text-primary hover:underline"
+                                    >
+                                        Clear all filters
+                                    </button>
+                                </div>
+                            )}
+                        </>
+                    )}
                 </div>
-            )}
-            </div>
+            </section>
+
+            <LocationModal
+                isOpen={showLocationModal}
+                onClose={() => setShowLocationModal(false)}
+                onLocationSet={handleLocationSet}
+            />
         </div>
     );
 }

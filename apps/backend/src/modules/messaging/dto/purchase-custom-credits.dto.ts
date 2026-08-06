@@ -1,5 +1,12 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsNotEmpty, IsUUID, IsNumber, Min } from 'class-validator';
+import {
+  IsString,
+  IsNotEmpty,
+  IsUUID,
+  IsNumber,
+  Min,
+  IsOptional,
+} from 'class-validator';
 
 export class PurchaseCustomCreditsDto {
   @ApiProperty({
@@ -41,4 +48,13 @@ export class PurchaseCustomCreditsDto {
   @IsNumber()
   @Min(0)
   emailAmount: number;
+
+  @ApiProperty({
+    example: 50,
+    description: 'Number of AI credits to purchase',
+  })
+  @IsNumber()
+  @IsOptional()
+  @Min(0)
+  aiAmount?: number;
 }

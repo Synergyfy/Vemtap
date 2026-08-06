@@ -1,63 +1,49 @@
 'use client';
 
 import React from 'react';
-import DiscoveryNav from '@/components/admin/discovery/DiscoveryNav';
+import Link from 'next/link';
 import { 
     ShieldAlert, ShieldCheck, AlertTriangle, Eye, 
     Search, Filter, Ban, MoreHorizontal, CheckCircle2,
-    Activity, Fingerprint, MousePointer2, Zap
+    Activity, Fingerprint, MousePointer2, Zap, ChevronLeft
 } from 'lucide-react';
+import { useAdminFraudAlerts } from '@/services/discovery/hooks';
 import { motion } from 'framer-motion';
-
-const MOCK_ALERTS = [
-    {
-        id: 'FRD-1024',
-        type: 'Self-Referral',
-        business: 'The Grill House',
-        customer: 'John Doe',
-        severity: 'High',
-        confidence: '98%',
-        status: 'Flagged',
-        date: '2026-06-13 11:20',
-        reason: 'Multiple referrals generated from same device ID within 5 minutes.'
-    },
-    {
-        id: 'FRD-1025',
-        type: 'Velocity Spiking',
-        business: 'Fashion Hub',
-        customer: 'Sarah Smith',
-        severity: 'Medium',
-        confidence: '85%',
-        status: 'Investigating',
-        date: '2026-06-13 10:45',
-        reason: 'Unusual referral redemption speed (under 30s) across locations.'
-    },
-    {
-        id: 'FRD-1026',
-        type: 'IP Mismatch',
-        business: 'Sharp Cuts',
-        customer: 'Mike Ross',
-        severity: 'Low',
-        confidence: '72%',
-        status: 'Resolved',
-        date: '2026-06-13 09:15',
-        reason: 'Offer click IP differs significantly from check-in IP.'
-    }
-];
+import DiscoveryNav from '@/components/admin/discovery/DiscoveryNav';
 
 export default function DiscoveryFraudPage() {
+    const { data: dashboard, isLoading } = useAdminFraudAlerts();
+
+    const stats = [
+        { label: 'Security Score', value: dashboard?.securityScore ?? '—', icon: ShieldCheck, color: 'text-emerald-500', bg: 'bg-emerald-50', sub: 'Healthy' },
+        { label: 'Active Alerts', value: dashboard?.activeAlerts ?? '—', icon: ShieldAlert, color: 'text-rose-500', bg: 'bg-rose-50', sub: '3 Critical' },
+        { label: 'Fraud Prevented', value: dashboard?.fraudPrevented ?? '—', icon: Zap, color: 'text-blue-500', bg: 'bg-blue-50', sub: 'Last 30 Days' },
+        { label: 'Suspicious Users', value: dashboard?.suspiciousUsers ?? '—', icon: Fingerprint, color: 'text-amber-500', bg: 'bg-amber-50', sub: 'Watchlist' },
+    ];
+
+    if (isLoading) {
+        return (
+            <div className="p-8">
+                <DiscoveryNav current="/admin/discovery/fraud" />
+                <div className="flex items-center justify-center py-32">
+                    <div className="flex items-center gap-3 text-text-secondary">
+                        <Activity className="animate-spin" size={20} />
+                        <span className="text-sm font-bold uppercase tracking-widest">Loading fraud dashboard…</span>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className="p-8">
-            <DiscoveryNav current="/admin/discovery/fraud" />
+            <Link href="/admin/discovery/dashboard" className="inline-flex items-center gap-1.5 text-xs font-bold text-text-secondary hover:text-text-main transition-colors mb-6">
+                <ChevronLeft size={14} /> Back to Discovery
+            </Link>
 
             {/* Risk Dashboard */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-                {[
-                    { label: 'Security Score', value: '98.2', icon: ShieldCheck, color: 'text-emerald-500', bg: 'bg-emerald-50', sub: 'Healthy' },
-                    { label: 'Active Alerts', value: '12', icon: ShieldAlert, color: 'text-rose-500', bg: 'bg-rose-50', sub: '3 Critical' },
-                    { label: 'Fraud Prevented', value: '₦420k', icon: Zap, color: 'text-blue-500', bg: 'bg-blue-50', sub: 'Last 30 Days' },
-                    { label: 'Suspicious Users', value: '45', icon: Fingerprint, color: 'text-amber-500', bg: 'bg-amber-50', sub: 'Watchlist' },
-                ].map((stat) => (
+                {stats.map((stat) => (
                     <div key={stat.label} className="bg-white rounded-3xl border border-gray-100 p-6 shadow-sm group">
                         <div className="flex justify-between items-start mb-4">
                             <div className={`p-3 rounded-2xl ${stat.bg} ${stat.color} group-hover:scale-110 transition-transform`}>
@@ -97,7 +83,7 @@ export default function DiscoveryFraudPage() {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-50 text-sm">
-                            {MOCK_ALERTS.map((alert) => (
+                            {dashboard?.alerts?.map((alert) => (
                                 <tr key={alert.id} className="hover:bg-gray-50/50 transition-colors group">
                                     <td className="px-6 py-4">
                                         <div>

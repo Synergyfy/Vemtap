@@ -2,7 +2,6 @@
 
 import React from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import DiscoveryNav from '@/components/admin/discovery/DiscoveryNav';
 import { 
     ChevronLeft, Store, MapPin, Calendar, Tag, 
     TrendingUp, Users, DollarSign, CheckCircle2, 
@@ -10,29 +9,34 @@ import {
     ShieldCheck, Bell, Activity, Clock, MoreHorizontal
 } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { useDiscoveryBusinessDetail } from '@/services/discovery/hooks';
 
 export default function BusinessDiscoveryDetailPage() {
     const { id } = useParams();
     const router = useRouter();
+    const { data: biz, isLoading, isError } = useDiscoveryBusinessDetail(id as string);
 
-    // Mock details
-    const biz = {
-        id,
-        name: 'The Grill House',
-        category: 'Restaurant & Dining',
-        location: 'Wuse 2, Abuja',
-        dateJoined: '2026-02-10',
-        status: 'Active',
-        plan: 'Premium',
-        stats: {
-            totalReferralsSent: 450,
-            totalReferralsRecv: 320,
-            completionRate: '72%',
-            attributedRevenue: 2450000,
-            activeOffers: 3,
-            sponsoredCampaigns: 2,
-        }
-    };
+    if (isLoading) {
+        return (
+            <div className="p-8 flex items-center justify-center min-h-[60vh]">
+                <div className="text-center space-y-4">
+                    <div className="size-10 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
+                    <p className="text-xs font-black uppercase tracking-widest text-text-secondary">Loading business details...</p>
+                </div>
+            </div>
+        );
+    }
+
+    if (isError || !biz) {
+        return (
+            <div className="p-8 flex items-center justify-center min-h-[60vh]">
+                <div className="text-center space-y-4">
+                    <p className="text-sm font-bold text-text-secondary">Failed to load business details.</p>
+                    <button onClick={() => router.back()} className="text-xs font-black uppercase text-primary hover:underline">Go Back</button>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="p-8">
@@ -76,10 +80,10 @@ export default function BusinessDiscoveryDetailPage() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
                 {[
-                    { label: 'Referrals Sent', value: biz.stats.totalReferralsSent, icon: MousePointerClick, color: 'text-blue-500', bg: 'bg-blue-50' },
-                    { label: 'Referrals Received', value: biz.stats.totalReferralsRecv, icon: Users, color: 'text-purple-500', bg: 'bg-purple-50' },
-                    { label: 'Network Revenue', value: `₦${biz.stats.attributedRevenue.toLocaleString()}`, icon: DollarSign, color: 'text-emerald-500', bg: 'bg-emerald-50' },
-                    { label: 'Completion Rate', value: biz.stats.completionRate, icon: CheckCircle2, color: 'text-amber-500', bg: 'bg-amber-50' },
+                    { label: 'Referrals Sent', value: biz.referralsSent ?? 0, icon: MousePointerClick, color: 'text-blue-500', bg: 'bg-blue-50' },
+                    { label: 'Referrals Received', value: biz.referralsReceived ?? 0, icon: Users, color: 'text-purple-500', bg: 'bg-purple-50' },
+                    { label: 'Network Revenue', value: `₦${(biz.revenueGenerated ?? 0).toLocaleString()}`, icon: DollarSign, color: 'text-emerald-500', bg: 'bg-emerald-50' },
+                    { label: 'Active Offers', value: biz.activeOffers ?? 0, icon: CheckCircle2, color: 'text-amber-500', bg: 'bg-amber-50' },
                 ].map((stat) => (
                     <div key={stat.label} className="bg-white rounded-3xl border border-gray-100 p-6 shadow-sm group">
                         <div className="p-3 rounded-2xl w-fit mb-4 bg-gray-50 text-text-secondary group-hover:bg-primary/5 group-hover:text-primary transition-all">

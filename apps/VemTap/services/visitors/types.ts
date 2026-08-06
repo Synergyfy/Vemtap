@@ -50,6 +50,23 @@ export interface PaginatedVisitorResponse {
     limit: number;
 }
 
+export interface ActivityFeedItem {
+    id: string;
+    type: 'registration' | 'visit' | 'order' | 'message' | string;
+    userName: string;
+    description: string;
+    timestamp: string;
+    branchId?: string;
+    metadata?: Record<string, any>;
+}
+
+export interface PaginatedActivityFeedResponse {
+    data: ActivityFeedItem[];
+    total: number;
+    page: number;
+    limit: number;
+}
+
 export interface Reward {
     id: string;
     branchId: string;
@@ -66,3 +83,14 @@ export interface Reward {
     createdAt?: string;
     updatedAt?: string;
 }
+
+export interface VisitorGrowthDataPoint {
+    name: string;
+    customers: number;
+}
+
+export interface VisitorGrowthResponse {
+    range: string;
+    data: VisitorGrowthDataPoint[];
+}
+

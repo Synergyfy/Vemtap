@@ -6,27 +6,68 @@ import {
     Search, Filter, FolderPlus, MoreVertical, 
     Trash2, Archive, Copy, Download, Edit3,
     Play, Pause, ChevronRight, LayoutGrid, List,
-    Check, X, Folder, ArrowRight, QrCode
+    Check, X, Folder, ArrowRight, QrCode, ArrowLeft
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import Modal from '@/components/ui/Modal';
 import { useQrThriveStore } from '@/store/useQrThriveStore';
+import { 
+    useQrThriveFolders, 
+    useCreateQrThriveFolder,
+    useDeleteQrThriveCode, 
+    useDuplicateQrThriveCode,
+    useSetQrThriveCodeStatus 
+} from '@/services/qr-thrive/hooks';
 
-export function QRThriveManagementView({ codes }: { codes: any[] }) {
-    const { folders, createFolder, setView } = useQrThriveStore();
+export function QRThriveManagementView({ codes, onEdit }: { codes: any[], onEdit?: (qr: any) => void }) {
+    const { setView } = useQrThriveStore();
+    const { data: folders = [] } = useQrThriveFolders();
     const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
     const [selectedFolder, setSelectedFolder] = useState<string | null>(null);
+    const [searchQuery, setSearchQuery] = useState('');
+    
+    // Folder creation state
+    const [isNewFolderModalOpen, setIsNewFolderModalOpen] = useState(false);
+    const [newFolderName, setNewFolderName] = useState('');
+
+    const deleteMutation = useDeleteQrThriveCode();
+    const duplicateMutation = useDuplicateQrThriveCode();
+    const statusMutation = useSetQrThriveCodeStatus();
+    const createFolderMutation = useCreateQrThriveFolder();
+
+    const handleCreateFolder = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!newFolderName.trim()) return;
+        createFolderMutation.mutate(
+            { data: { name: newFolderName, color: '#6366f1' } },
+            {
+                onSuccess: () => {
+                    setIsNewFolderModalOpen(false);
+                    setNewFolderName('');
+                }
+            }
+        );
+    };
+
+    const filteredCodes = codes.filter(code => {
+        const matchesFolder = selectedFolder ? code.folderId === selectedFolder : true;
+        const matchesSearch = searchQuery ? code.name.toLowerCase().includes(searchQuery.toLowerCase()) || code.type.toLowerCase().includes(searchQuery.toLowerCase()) : true;
+        return matchesFolder && matchesSearch;
+    });
 
     return (
         <div className="space-y-12">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-                <div>
+                <div className="flex flex-col items-start gap-1">
+                    <Button variant="ghost" size="sm" onClick={() => setView('hub')} className="text-[10px] font-black uppercase tracking-widest text-gray-500 hover:text-gray-900 -ml-3 mb-2 flex items-center gap-2">
+                        <ArrowLeft size={14} /> Back to Hub
+                    </Button>
                     <h2 className="text-3xl font-black text-gray-900 leading-tight">Manage QR Codes</h2>
                     <p className="text-sm font-medium text-gray-500 mt-1">Organize and optimize your dynamic experiences.</p>
                 </div>
                 <div className="flex items-center gap-3">
-                   <Button variant="ghost" onClick={() => setView('hub')} className="text-[10px] font-black uppercase tracking-widest text-gray-400">Back to Hub</Button>
                    <div className="flex bg-white p-1 rounded-xl border border-gray-100 shadow-sm">
                       <button 
                           onClick={() => setViewMode('grid')}
@@ -48,7 +89,12 @@ export function QRThriveManagementView({ codes }: { codes: any[] }) {
             <div className="space-y-6">
                 <div className="flex items-center justify-between">
                     <h3 className="text-sm font-black text-gray-400 uppercase tracking-[0.2em]">Folders</h3>
-                    <Button variant="ghost" size="sm" className="text-[10px] font-black uppercase tracking-widest text-[#066CF4]">
+                    <Button 
+                        onClick={() => setIsNewFolderModalOpen(true)}
+                        variant="ghost" 
+                        size="sm" 
+                        className="text-[10px] font-black uppercase tracking-widest text-[#066CF4]"
+                    >
                         <FolderPlus size={14} className="mr-2" /> New Folder
                     </Button>
                 </div>
@@ -68,7 +114,7 @@ export function QRThriveManagementView({ codes }: { codes: any[] }) {
                             <p className={cn("text-[9px] font-bold uppercase tracking-widest", selectedFolder === null ? "text-white/40" : "text-gray-400")}>{codes.length} Items</p>
                         </div>
                     </button>
-                    {folders.map((f) => (
+                    {folders?.map((f: any) => (
                         <button 
                             key={f.id}
                             onClick={() => setSelectedFolder(f.id)}
@@ -95,6 +141,8 @@ export function QRThriveManagementView({ codes }: { codes: any[] }) {
                     <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
                     <input 
                         type="text" 
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
                         placeholder="Search by name or type..."
                         className="w-full h-14 pl-14 pr-6 rounded-2xl bg-white border border-gray-100 shadow-sm focus:ring-2 focus:ring-[#066CF4]/10 outline-none font-bold text-sm transition-all"
                     />
@@ -114,27 +162,83 @@ export function QRThriveManagementView({ codes }: { codes: any[] }) {
                 "grid gap-6",
                 viewMode === 'grid' ? "grid-cols-1 md:grid-cols-2 lg:grid-cols-3" : "grid-cols-1"
             )}>
-                {codes.length > 0 ? codes.map((qr) => (
-                    <QRManagerCard key={qr.id} qr={qr} mode={viewMode} />
+                {filteredCodes.length > 0 ? filteredCodes.map((qr) => (
+                    <QRManagerCard 
+                        key={qr.id} 
+                        qr={qr} 
+                        mode={viewMode} 
+                        onEdit={() => onEdit?.(qr)}
+                        onDelete={() => deleteMutation.mutate({ qrId: qr.id })}
+                        onDuplicate={() => duplicateMutation.mutate({ qrId: qr.id })}
+                        onArchive={() => statusMutation.mutate({ qrId: qr.id, status: qr.status === 'active' ? 'archived' : 'active' })}
+                    />
                 )) : (
-                    // Mock data if empty
-                    [1, 2, 3, 4, 5, 6].map(i => (
-                        <QRManagerCard key={i} qr={{
-                            id: `${i}`,
-                            name: `Experience ${i}`,
-                            type: i % 2 === 0 ? 'Website' : 'Menu',
-                            scans: 124 * i,
-                            status: i % 3 === 0 ? 'Paused' : 'Active',
-                            date: 'Oct 24, 2024'
-                        }} mode={viewMode} />
-                    ))
+                    <div className="col-span-full py-20 text-center bg-white rounded-[40px] border border-dashed border-gray-200">
+                        <QrCode size={48} className="mx-auto mb-4 text-gray-200" />
+                        <h4 className="text-lg font-black text-gray-900 mb-2">No QR codes yet</h4>
+                        <p className="text-sm font-medium text-gray-400">Create your first QR experience to get started.</p>
+                    </div>
                 )}
             </div>
+
+            {/* CREATE FOLDER MODAL */}
+            <Modal
+                isOpen={isNewFolderModalOpen}
+                onClose={() => setIsNewFolderModalOpen(false)}
+                title="Create New Folder"
+                description="Organize your QR codes into folders."
+                size="sm"
+            >
+                <form onSubmit={handleCreateFolder} className="space-y-6">
+                    <div className="space-y-2">
+                        <label className="text-sm font-bold text-gray-700">Folder Name</label>
+                        <input
+                            type="text"
+                            value={newFolderName}
+                            onChange={(e) => setNewFolderName(e.target.value)}
+                            placeholder="e.g. Marketing Campaigns"
+                            className="w-full h-12 px-4 rounded-xl bg-gray-50 border border-gray-200 focus:bg-white focus:border-[#066CF4] focus:ring-2 focus:ring-[#066CF4]/20 outline-none transition-all"
+                            required
+                        />
+                    </div>
+                    <div className="flex gap-3 pt-2">
+                        <Button 
+                            type="button" 
+                            variant="outline" 
+                            onClick={() => setIsNewFolderModalOpen(false)}
+                            className="flex-1 rounded-xl"
+                        >
+                            Cancel
+                        </Button>
+                        <Button 
+                            type="submit" 
+                            disabled={createFolderMutation.isPending || !newFolderName.trim()}
+                            className="flex-1 rounded-xl bg-[#066CF4] text-white hover:bg-blue-600"
+                        >
+                            {createFolderMutation.isPending ? 'Creating...' : 'Create'}
+                        </Button>
+                    </div>
+                </form>
+            </Modal>
         </div>
     );
 }
 
-function QRManagerCard({ qr, mode }: { qr: any, mode: 'grid' | 'list' }) {
+function QRManagerCard({ 
+    qr, 
+    mode,
+    onEdit,
+    onDelete,
+    onDuplicate,
+    onArchive
+}: { 
+    qr: any, 
+    mode: 'grid' | 'list',
+    onEdit: () => void,
+    onDelete: () => void,
+    onDuplicate: () => void,
+    onArchive: () => void
+}) {
     if (mode === 'list') {
         return (
             <div className="group flex items-center gap-6 p-4 rounded-3xl bg-white border border-gray-100 shadow-sm hover:border-[#066CF4]/20 hover:shadow-xl transition-all">
@@ -158,9 +262,18 @@ function QRManagerCard({ qr, mode }: { qr: any, mode: 'grid' | 'list' }) {
                     </Badge>
                 </div>
                 <div className="flex items-center gap-2">
-                    <button className="size-10 rounded-xl bg-gray-50 text-gray-400 flex items-center justify-center hover:text-[#066CF4] transition-all"><Edit3 size={18} /></button>
+                    <button onClick={onEdit} className="size-10 rounded-xl bg-gray-50 text-gray-400 flex items-center justify-center hover:text-[#066CF4] transition-all"><Edit3 size={18} /></button>
                     <button className="size-10 rounded-xl bg-gray-50 text-gray-400 flex items-center justify-center hover:text-[#066CF4] transition-all"><Download size={18} /></button>
-                    <button className="size-10 rounded-xl bg-gray-50 text-gray-400 flex items-center justify-center hover:text-[#066CF4] transition-all"><MoreVertical size={18} /></button>
+                    <div className="relative group/menu">
+                        <button className="size-10 rounded-xl bg-gray-50 text-gray-400 flex items-center justify-center hover:text-[#066CF4] transition-all"><MoreVertical size={18} /></button>
+                        <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-2xl shadow-xl border border-gray-100 opacity-0 invisible group-hover/menu:opacity-100 group-hover/menu:visible transition-all z-10 py-2">
+                            <button onClick={onEdit} className="w-full px-4 py-2 text-left text-sm font-bold text-gray-700 hover:bg-gray-50 flex items-center"><Edit3 size={16} className="mr-3 text-gray-400" /> Edit Design</button>
+                            <button onClick={onDuplicate} className="w-full px-4 py-2 text-left text-sm font-bold text-gray-700 hover:bg-gray-50 flex items-center"><Copy size={16} className="mr-3 text-gray-400" /> Duplicate</button>
+                            <button onClick={onArchive} className="w-full px-4 py-2 text-left text-sm font-bold text-gray-700 hover:bg-gray-50 flex items-center"><Archive size={16} className="mr-3 text-gray-400" /> {qr.status === 'active' ? 'Archive' : 'Unarchive'}</button>
+                            <div className="h-px bg-gray-100 my-2 mx-4" />
+                            <button onClick={onDelete} className="w-full px-4 py-2 text-left text-sm font-bold text-red-600 hover:bg-red-50 flex items-center"><Trash2 size={16} className="mr-3 text-red-400" /> Delete</button>
+                        </div>
+                    </div>
                 </div>
             </div>
         );
@@ -175,13 +288,22 @@ function QRManagerCard({ qr, mode }: { qr: any, mode: 'grid' | 'list' }) {
                 <div className="flex flex-col items-end gap-2">
                     <Badge className={cn(
                         "border-none font-black text-[8px] uppercase px-3 py-1",
-                        qr.status === 'Active' ? "bg-emerald-50 text-emerald-600" : "bg-amber-50 text-amber-600"
+                        qr.status === 'active' ? "bg-emerald-50 text-emerald-600" : "bg-amber-50 text-amber-600"
                     )}>
                         {qr.status}
                     </Badge>
-                    <button className="size-10 rounded-xl bg-gray-50 text-gray-400 flex items-center justify-center hover:bg-gray-100 transition-colors">
-                        <MoreVertical size={18} />
-                    </button>
+                    <div className="relative group/menu">
+                        <button className="size-10 rounded-xl bg-gray-50 text-gray-400 flex items-center justify-center hover:bg-gray-100 transition-colors">
+                            <MoreVertical size={18} />
+                        </button>
+                        <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-2xl shadow-xl border border-gray-100 opacity-0 invisible group-hover/menu:opacity-100 group-hover/menu:visible transition-all z-10 py-2">
+                            <button onClick={onEdit} className="w-full px-4 py-2 text-left text-sm font-bold text-gray-700 hover:bg-gray-50 flex items-center"><Edit3 size={16} className="mr-3 text-gray-400" /> Edit Design</button>
+                            <button onClick={onDuplicate} className="w-full px-4 py-2 text-left text-sm font-bold text-gray-700 hover:bg-gray-50 flex items-center"><Copy size={16} className="mr-3 text-gray-400" /> Duplicate</button>
+                            <button onClick={onArchive} className="w-full px-4 py-2 text-left text-sm font-bold text-gray-700 hover:bg-gray-50 flex items-center"><Archive size={16} className="mr-3 text-gray-400" /> {qr.status === 'active' ? 'Archive' : 'Unarchive'}</button>
+                            <div className="h-px bg-gray-100 my-2 mx-4" />
+                            <button onClick={onDelete} className="w-full px-4 py-2 text-left text-sm font-bold text-red-600 hover:bg-red-50 flex items-center"><Trash2 size={16} className="mr-3 text-red-400" /> Delete</button>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -196,13 +318,15 @@ function QRManagerCard({ qr, mode }: { qr: any, mode: 'grid' | 'list' }) {
                     <p className="text-[8px] font-black uppercase tracking-widest text-gray-400">Scans</p>
                 </div>
                 <div className="text-center border-l border-gray-200">
-                    <p className="text-lg font-black text-[#066CF4]">82%</p>
+                    <p className="text-lg font-black text-[#066CF4]">
+                        {qr.scans > 0 ? ((qr.scans / (qr.scans + 10)) * 100).toFixed(0) : 0}%
+                    </p>
                     <p className="text-[8px] font-black uppercase tracking-widest text-gray-400">Conv.</p>
                 </div>
             </div>
 
             <div className="flex gap-2">
-                <Button className="flex-1 h-12 rounded-2xl bg-gray-900 text-white font-black text-[10px] uppercase tracking-widest group-hover:bg-[#066CF4] transition-all">
+                <Button onClick={onEdit} className="flex-1 h-12 rounded-2xl bg-gray-900 text-white font-black text-[10px] uppercase tracking-widest group-hover:bg-[#066CF4] transition-all">
                     Edit QR
                 </Button>
                 <Button variant="outline" size="icon" className="size-12 rounded-2xl border-gray-100 hover:text-[#066CF4] transition-all">

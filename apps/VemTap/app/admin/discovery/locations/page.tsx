@@ -1,30 +1,28 @@
 'use client';
 
 import React from 'react';
-import DiscoveryNav from '@/components/admin/discovery/DiscoveryNav';
-import { useDiscoveryBusinesses } from '@/services/discovery/hooks';
+import { useAdminLocations } from '@/services/discovery/hooks';
 import { 
-    Search, Filter, Map as MapIcon, ArrowUpRight, Target, Navigation, Eye
+    Search, Filter, Map as MapIcon, ArrowUpRight, Target, Navigation, Eye, ChevronLeft
 } from 'lucide-react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 
-const MOCK_LOCATIONS = [
-    { id: '1', name: 'Wuse 2', businesses: 45, offers: 120, referrals: 450, revenue: 1250000, growth: '+18%' },
-    { id: '2', name: 'Garki', businesses: 32, offers: 85, referrals: 310, revenue: 850000, growth: '+12%' },
-    { id: '3', name: 'Maitama', businesses: 28, offers: 64, referrals: 280, revenue: 1850000, growth: '+5%' },
-    { id: '4', name: 'Jabi', businesses: 15, offers: 40, referrals: 120, revenue: 420000, growth: '+25%' },
-];
-
 export default function DiscoveryLocationsPage() {
+    const { data, isLoading } = useAdminLocations({ limit: 100 });
+    const locations = data?.data || [];
+    const total = data?.meta?.total || 0;
+
     return (
         <div className="p-8">
-            <DiscoveryNav current="/admin/discovery/locations" />
+            <Link href="/admin/discovery/dashboard" className="inline-flex items-center gap-1.5 text-xs font-bold text-text-secondary hover:text-text-main transition-colors mb-6">
+                <ChevronLeft size={14} /> Back to Discovery
+            </Link>
 
             {/* Geographical Stats */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
                 {[
-                    { label: 'Active Locations', value: '12', sub: 'Cities/Districts', icon: MapIcon, color: 'text-blue-500', bg: 'bg-blue-50' },
+                    { label: 'Active Locations', value: total.toLocaleString(), sub: 'Cities/Districts', icon: MapIcon, color: 'text-blue-500', bg: 'bg-blue-50' },
                     { label: 'Top Location', value: 'Wuse 2', sub: '₦1.2M Revenue', icon: Target, color: 'text-emerald-500', bg: 'bg-emerald-50' },
                     { label: 'Hotspot Growth', value: '+24%', sub: 'Last 30 days', icon: ArrowUpRight, color: 'text-purple-500', bg: 'bg-purple-50' },
                     { label: 'Network Density', value: '8.4', sub: 'Biz per km²', icon: Navigation, color: 'text-amber-500', bg: 'bg-amber-50' },
@@ -65,7 +63,13 @@ export default function DiscoveryLocationsPage() {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-50 text-sm">
-                                {MOCK_LOCATIONS.map((loc) => (
+                                {isLoading ? (
+                                    Array.from({ length: 5 }).map((_, i) => (
+                                        <tr key={i} className="animate-pulse">
+                                            <td colSpan={6} className="px-6 py-4 bg-gray-50/50 h-16"></td>
+                                        </tr>
+                                    ))
+                                ) : locations.map((loc) => (
                                     <tr key={loc.id} className="hover:bg-gray-50/50 transition-colors group">
                                         <td className="px-6 py-4">
                                             <div className="flex items-center gap-3">

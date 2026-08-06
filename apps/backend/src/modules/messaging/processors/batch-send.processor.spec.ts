@@ -23,6 +23,13 @@ describe('BatchSendProcessor', () => {
     engineMock = {
       processSingleSend: jest.fn(),
       calculateCost: jest.fn().mockReturnValue(0.1),
+      hasPlaceholders: jest.fn().mockReturnValue(false),
+      resolvePlaceholders: jest
+        .fn()
+        .mockImplementation((c) => Promise.resolve(c)),
+      getOrCreateThread: jest.fn().mockResolvedValue({ id: 't1' }),
+      createMessage: jest.fn().mockResolvedValue({ id: 'm1' }),
+      queueIndividualSend: jest.fn(),
     };
 
     campaignMock = {
@@ -98,13 +105,23 @@ describe('BatchSendProcessor', () => {
         content: 'test text',
       });
 
+      engineMock.hasPlaceholders.mockReturnValue(true);
+
       // First customer succeeds, second customer fails
       userRepoMock.findOne
-        .mockResolvedValueOnce({ id: 'customer1', role: UserRole.CUSTOMER })
-        .mockResolvedValueOnce({ id: 'customer2', role: UserRole.CUSTOMER });
+        .mockResolvedValueOnce({
+          id: 'customer1',
+          role: UserRole.CUSTOMER,
+          phone: '+1234567890',
+        })
+        .mockResolvedValueOnce({
+          id: 'customer2',
+          role: UserRole.CUSTOMER,
+          phone: '+1234567891',
+        });
 
-      engineMock.processSingleSend
-        .mockResolvedValueOnce('msg1')
+      engineMock.queueIndividualSend
+        .mockResolvedValueOnce({ id: 'job1' })
         .mockRejectedValueOnce(new Error('Send failed'));
 
       const result = await processor.process(mockJob);

@@ -1,6 +1,8 @@
 import {
     Home, Store, Users, Nfc, CreditCard, BarChart, MessageSquare, Activity,
-    Settings, ShieldCheck, Gift, Package, FileText, Tag, Workflow, Eye, Zap, ClipboardList, Headset, Megaphone, Palette
+    Settings, ShieldCheck, Gift, Package, FileText, Tag, Workflow, Eye, Zap, ClipboardList, Headset, Megaphone, Palette,
+    Handshake, BookOpen, MapPin,
+    type LucideIcon
 } from 'lucide-react';
 
 export interface SubmenuItem {
@@ -12,7 +14,7 @@ export interface SubmenuItem {
 export interface MenuItem {
     id: string;
     label: string;
-    icon: any;
+    icon: LucideIcon;
     href?: string;
     submenu?: SubmenuItem[];
     permission?: string;
@@ -111,18 +113,25 @@ export const ADMIN_MENU_ITEMS: MenuItem[] = [
         id: 'discovery',
         label: 'Discovery Network',
         icon: Zap,
-        submenu: [
-            { label: 'Network Dashboard', href: '/admin/discovery/dashboard', keywords: ['discovery', 'stats', 'performance', 'overview'] },
-            { label: 'Discovery Businesses', href: '/admin/discovery/businesses', keywords: ['network', 'members', 'directory'] },
-            { label: 'Offer Management', href: '/admin/discovery/offers', keywords: ['promotions', 'deals', 'active', 'pending'] },
-            { label: 'Referral Tracking', href: '/admin/discovery/referrals', keywords: ['tracking', 'conversions', 'customer-flow'] },
-            { label: 'Attribution Engine', href: '/admin/discovery/attribution', keywords: ['roi', 'proof', 'revenue', 'source'] },
-            { label: 'Sponsored Placements', href: '/admin/discovery/sponsored', keywords: ['ads', 'featured', 'paid', 'campaigns'] },
-            { label: 'B2B Partnerships', href: '/admin/discovery/partnerships', keywords: ['collaboration', 'shared-customers', 'agreements'] },
-            { label: 'Network Settings', href: '/admin/discovery/settings', keywords: ['config', 'radius', 'limits', 'rules'] },
-        ],
+        href: '/admin/discovery/dashboard',
         permission: 'admin:all',
         keywords: ['discovery', 'network', 'referrals', 'attribution', 'partnerships', 'nearby']
+    },
+    {
+        id: 'clusters',
+        label: 'Cluster Management',
+        icon: MapPin,
+        href: '/admin/clusters',
+        permission: 'admin:all',
+        keywords: ['locations', 'zones', 'regions', 'clusters', 'qr', 'deals', 'groups', 'areas', 'markets']
+    },
+    {
+        id: 'business-partnership',
+        label: 'Business Partnership',
+        icon: Handshake,
+        href: '/admin/business-partnership',
+        permission: 'admin:all',
+        keywords: ['affiliates', 'partners', 'referrals', 'commissions', 'tiers', 'withdrawals', 'payouts']
     },
     {
         id: 'support',
@@ -158,7 +167,7 @@ export const ADMIN_MENU_ITEMS: MenuItem[] = [
     },
     {
         id: 'marketing-assets',
-        label: 'Marketing Assets',
+        label: 'Marketing Kit',
         icon: Palette,
         href: '/admin/marketing-assets',
         permission: 'admin:all',
@@ -222,7 +231,10 @@ export const ADMIN_MENU_ITEMS: MenuItem[] = [
         id: 'health',
         label: 'System Health',
         icon: Activity,
-        href: '/admin/health',
+        submenu: [
+            { label: 'Health Monitor', href: '/admin/health', keywords: ['monitor', 'cpu', 'memory', 'infrastructure', 'live'] },
+            { label: 'Status Page', href: '/admin/status', keywords: ['components', 'incidents', 'uptime', 'public', 'systems'] },
+        ],
         permission: 'admin:health',
         keywords: ['status', 'uptime', 'database', 'servers', 'monitoring', 'cpu']
     },
@@ -241,6 +253,14 @@ export const ADMIN_MENU_ITEMS: MenuItem[] = [
         href: '/admin/banners',
         permission: 'admin:settings',
         keywords: ['ads', 'announcements', 'marketing', 'headers', 'sliders']
+    },
+    {
+        id: 'knowledge-base',
+        label: 'Knowledge Base',
+        icon: BookOpen,
+        href: '/admin/knowledge-base',
+        permission: 'admin:all',
+        keywords: ['tutorial', 'docs', 'documentation', 'articles', 'help', 'kb', 'guides', 'content']
     },
     {
         id: 'settings',

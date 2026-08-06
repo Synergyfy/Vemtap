@@ -1,9 +1,9 @@
-import { IsEnum, IsInt, IsOptional, IsString, Min } from 'class-validator';
-import { Type } from 'class-transformer';
+import { IsEnum, IsOptional, IsString } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { UserRole, UserStatus } from '../entities/user.entity';
+import { PaginationQueryDto } from '../../../common/dto/pagination.dto';
 
-export class FindUsersAdminDto {
+export class FindUsersAdminDto extends PaginationQueryDto {
   @ApiPropertyOptional({ description: 'Search by name or email' })
   @IsOptional()
   @IsString()
@@ -21,18 +21,4 @@ export class FindUsersAdminDto {
   @IsOptional()
   @IsEnum(UserStatus)
   status?: UserStatus;
-
-  @ApiPropertyOptional({ description: 'Page number', default: 1 })
-  @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  @Min(1)
-  page?: number = 1;
-
-  @ApiPropertyOptional({ description: 'Items per page', default: 10 })
-  @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  @Min(1)
-  limit?: number = 10;
 }

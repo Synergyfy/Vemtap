@@ -71,7 +71,7 @@ export default function PeakTimesPage() {
                                 </div>
                                 <div className="space-y-4">
                                     {weeklyData.length === 0 ? (
-                                        <div className="text-sm text-text-secondary italic">No weekly data available yet.</div>
+                                        <div className="text-sm text-text-secondary italic">Start capturing customers to see weekly footfall patterns.</div>
                                     ) : (
                                         weeklyData.map((d, idx) => (
                                             <div key={idx} className="grid grid-cols-11 items-center">
@@ -116,7 +116,7 @@ export default function PeakTimesPage() {
                             <div className="h-64 flex items-end justify-between px-4 pb-4">
                                 {weeklyData.length === 0 ? (
                                     <div className="w-full h-full flex items-center justify-center text-sm text-text-secondary italic">
-                                        No busiest day data available yet.
+                                        Not enough data yet. Keep capturing customers and insights will appear.
                                     </div>
                                 ) : (
                                     weeklyData.map((d, idx) => {

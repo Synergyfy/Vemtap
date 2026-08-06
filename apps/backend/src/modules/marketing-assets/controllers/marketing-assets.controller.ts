@@ -22,7 +22,8 @@ import { CreateAssetDto } from '../dto/create-asset.dto';
 import { UpdateAssetDto } from '../dto/update-asset.dto';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../../common/guards/roles.guard';
-import { User } from '../../users/entities/user.entity';
+import { Roles } from '../../../common/decorators/roles.decorator';
+import { User, UserRole } from '../../users/entities/user.entity';
 import { MarketingAsset } from '../entities/marketing-asset.entity';
 
 interface RequestWithUser extends Request {
@@ -37,6 +38,7 @@ export class MarketingAssetsController {
   constructor(private readonly assetsService: AssetsService) {}
 
   @Post()
+  @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF, UserRole.ADMIN)
   @ApiOperation({ summary: 'Save a customized marketing asset' })
   @ApiResponse({ status: 201, type: MarketingAsset })
   create(@Req() req: RequestWithUser, @Body() createDto: CreateAssetDto) {
@@ -44,6 +46,7 @@ export class MarketingAssetsController {
   }
 
   @Get()
+  @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF, UserRole.ADMIN)
   @ApiOperation({ summary: 'Get all marketing assets for the active business' })
   @ApiResponse({ status: 200, type: [MarketingAsset] })
   findAll(
@@ -55,6 +58,7 @@ export class MarketingAssetsController {
   }
 
   @Get(':id')
+  @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF, UserRole.ADMIN)
   @ApiOperation({ summary: 'Get a specific marketing asset' })
   @ApiResponse({ status: 200, type: MarketingAsset })
   findOne(@Req() req: RequestWithUser, @Param('id') id: string) {
@@ -62,7 +66,10 @@ export class MarketingAssetsController {
   }
 
   @Patch(':id')
-  @ApiOperation({ summary: 'Update custom layout config for a marketing asset' })
+  @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF, UserRole.ADMIN)
+  @ApiOperation({
+    summary: 'Update custom layout config for a marketing asset',
+  })
   @ApiResponse({ status: 200, type: MarketingAsset })
   update(
     @Req() req: RequestWithUser,
@@ -73,6 +80,7 @@ export class MarketingAssetsController {
   }
 
   @Delete(':id')
+  @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF, UserRole.ADMIN)
   @ApiOperation({ summary: 'Delete (deactivate) a marketing asset' })
   @ApiResponse({ status: 204 })
   remove(@Req() req: RequestWithUser, @Param('id') id: string) {
@@ -80,6 +88,7 @@ export class MarketingAssetsController {
   }
 
   @Get(':id/versions')
+  @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF, UserRole.ADMIN)
   @ApiOperation({ summary: 'Get version history for a marketing asset' })
   @ApiResponse({ status: 200 })
   getVersions(@Req() req: RequestWithUser, @Param('id') id: string) {
@@ -87,7 +96,10 @@ export class MarketingAssetsController {
   }
 
   @Post(':id/restore/:versionId')
-  @ApiOperation({ summary: 'Restore a marketing asset to a prior version state' })
+  @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF, UserRole.ADMIN)
+  @ApiOperation({
+    summary: 'Restore a marketing asset to a prior version state',
+  })
   @ApiResponse({ status: 200, type: MarketingAsset })
   restoreVersion(
     @Req() req: RequestWithUser,

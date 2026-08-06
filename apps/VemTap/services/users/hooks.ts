@@ -147,3 +147,60 @@ export const useAdminDeleteUser = () => {
         },
     });
 };
+
+export const checkPhone = async (phone: string): Promise<{ exists: boolean; email?: string }> => {
+    return await api.get(`/users/public/check-phone?phone=${encodeURIComponent(phone)}`);
+};
+
+export const useCheckPhone = () => {
+    return useMutation<{ exists: boolean; email?: string }, Error, string>({
+        mutationFn: checkPhone,
+    });
+};
+
+// --- Linked Devices ---
+
+export interface LinkedDevice {
+    id: string;
+    deviceName: string;
+    platform: string;
+    userAgent: string;
+    ipAddress: string;
+    lastActiveAt: string;
+    revokedAt: string | null;
+    createdAt: string;
+}
+
+export const useLinkedDevices = () => {
+    return useQuery<LinkedDevice[], Error>({
+        queryKey: ['linked-devices'],
+        queryFn: async () => {
+            const res = await api.get('/users/linked-devices');
+            return Array.isArray(res) ? res : (res?.data || []);
+        },
+    });
+};
+
+export const useRenameDevice = () => {
+    const queryClient = useQueryClient();
+    return useMutation<void, Error, { id: string; deviceName: string }>({
+        mutationFn: async ({ id, deviceName }) => {
+            await api.patch(`/users/linked-devices/${id}`, { deviceName });
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['linked-devices'] });
+        },
+    });
+};
+
+export const useRevokeDevice = () => {
+    const queryClient = useQueryClient();
+    return useMutation<void, Error, string>({
+        mutationFn: async (id) => {
+            await api.delete(`/users/linked-devices/${id}`);
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['linked-devices'] });
+        },
+    });
+};

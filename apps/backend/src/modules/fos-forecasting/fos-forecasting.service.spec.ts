@@ -105,8 +105,22 @@ describe('FosForecastingService', () => {
     it('should save a forecast scenario', async () => {
       const dto = {
         scenarioName: 'Test Scenario',
-        parameters: { growthRate: 10, churnRate: 5, conversionRate: 15, period: 12 },
-        result: { summary: { projectedMrr: 1800000, mrrGrowthPercent: 44, totalProjectedProfit: 7200000, isDeclining: false, healthAlert: 'HEALTHY' as const }, monthlyData: [] },
+        parameters: {
+          growthRate: 10,
+          churnRate: 5,
+          conversionRate: 15,
+          period: 12,
+        },
+        result: {
+          summary: {
+            projectedMrr: 1800000,
+            mrrGrowthPercent: 44,
+            totalProjectedProfit: 7200000,
+            isDeclining: false,
+            healthAlert: 'HEALTHY' as const,
+          },
+          monthlyData: [],
+        },
       };
 
       const saved = {
@@ -136,8 +150,21 @@ describe('FosForecastingService', () => {
           id: 'forecast-1',
           scenarioName: 'Test',
           createdAt: new Date(),
-          parameters: { growthRate: 10, churnRate: 5, conversionRate: 15, period: 12 },
-          result: { summary: { projectedMrr: 1800000, mrrGrowthPercent: 44, totalProjectedProfit: 7200000, isDeclining: false, healthAlert: 'HEALTHY' } },
+          parameters: {
+            growthRate: 10,
+            churnRate: 5,
+            conversionRate: 15,
+            period: 12,
+          },
+          result: {
+            summary: {
+              projectedMrr: 1800000,
+              mrrGrowthPercent: 44,
+              totalProjectedProfit: 7200000,
+              isDeclining: false,
+              healthAlert: 'HEALTHY',
+            },
+          },
         },
       ];
 

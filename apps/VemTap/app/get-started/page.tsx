@@ -46,8 +46,6 @@ export default function GetStartedPage() {
     const [isLoading, setIsLoading] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
     const [isGoogleUser, setIsGoogleUser] = useState(false);
-
-    // Form State
     const [formData, setFormData] = useState({
         businessName: '',
         firstName: '',
@@ -56,7 +54,16 @@ export default function GetStartedPage() {
         phone: '',
         password: '',
         confirmPassword: '',
+        referralCode: '',
     });
+
+    const refCode = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('ref') : null;
+
+    useEffect(() => {
+        if (refCode) {
+            setFormData(p => ({ ...p, referralCode: refCode }));
+        }
+    }, []);
 
     // OTP verification states
     const [otpCode, setOtpCode] = useState('');
@@ -102,11 +109,7 @@ export default function GetStartedPage() {
         setError('');
         setIsLoading(true);
         try {
-            await requestOwnerOtp({
-                email: formData.email,
-                phone: formData.phone,
-                role: 'Owner'
-            });
+            await requestOwnerOtp({ email: formData.email, role: 'Owner' });
             setStep(2);
             setResendTimer(30);
             setResendDisabled(true);
@@ -137,11 +140,7 @@ export default function GetStartedPage() {
         setError('');
         setResendLoading(true);
         try {
-            await requestOwnerOtp({
-                email: formData.email,
-                phone: formData.phone,
-                role: 'Owner'
-            });
+            await requestOwnerOtp({ email: formData.email, role: 'Owner' });
             setResendTimer(30);
             setResendDisabled(true);
         } catch (err: any) {
@@ -173,13 +172,14 @@ export default function GetStartedPage() {
         setIsLoading(true);
         setError('');
         try {
-            const response = await registerOwner({
+            const ownerPayload: import('@/services/auth/types').RegisterOwnerRequest = {
                 email: formData.email,
-                businessNumber: formData.phone,
                 firstName: formData.firstName,
                 lastName: formData.lastName,
-                businessName: formData.businessName,
-            });
+                ...(formData.phone && formData.phone.trim().length > 0 ? { businessNumber: formData.phone.trim() } : {}),
+                ...(formData.referralCode ? { referralCode: formData.referralCode } : {}),
+            };
+            const response = await registerOwner(ownerPayload);
 
             login(response.user, response.access_token);
 
@@ -195,13 +195,15 @@ export default function GetStartedPage() {
         setError('');
         setIsLoading(true);
         try {
-            const response = await registerOwner({
+            const ownerPayload: import('@/services/auth/types').RegisterOwnerRequest = {
                 email: formData.email,
                 password: formData.password,
                 firstName: formData.firstName,
                 lastName: formData.lastName,
-                businessName: formData.businessName,
-            });
+                ...(formData.phone && formData.phone.trim().length > 0 ? { businessNumber: formData.phone.trim() } : {}),
+                ...(formData.referralCode ? { referralCode: formData.referralCode } : {}),
+            };
+            const response = await registerOwner(ownerPayload);
 
             // Log user in
             login(response.user, response.access_token);
@@ -216,116 +218,134 @@ export default function GetStartedPage() {
     };
 
     return (
-        <div className="min-h-screen bg-white flex flex-col lg:flex-row overflow-hidden">
-            {/* LEFT COLUMN: Visual Info */}
-            <div className="hidden lg:flex lg:w-[40%] bg-gray-900 items-center justify-center p-20 relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-80 h-80 bg-[#066CF4]/10 rounded-full blur-[100px]" />
-                <div className="absolute bottom-0 left-0 w-80 h-80 bg-white/5 rounded-full blur-[100px]" />
+        <div className="min-h-screen bg-slate-950/2 flex flex-col lg:flex-row overflow-x-hidden selection:bg-primary selection:text-white">
+            {/* LEFT COLUMN: Premium Visual Hero (Desktop) */}
+            <div className="hidden lg:flex lg:w-[42%] bg-slate-950 items-center justify-center p-16 lg:p-20 relative overflow-hidden text-white">
+                {/* Background Ambient Glow Effects */}
+                <div className="absolute top-0 right-0 w-96 h-96 bg-primary/20 rounded-full blur-[120px] pointer-events-none" />
+                <div className="absolute bottom-0 left-0 w-96 h-96 bg-blue-600/10 rounded-full blur-[120px] pointer-events-none" />
+                <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff05_1px,transparent_1px),linear-gradient(to_bottom,#ffffff05_1px,transparent_1px)] bg-[size:32px_32px] pointer-events-none" />
                 
-                <div className="relative z-10 text-white max-w-sm">
-                    <Link href="/">
-                        <Logo className="h-10 brightness-0 invert mb-16" />
+                <div className="relative z-10 max-w-md w-full space-y-12">
+                    <Link href="/" className="inline-block transition-transform hover:scale-105">
+                        <Logo className="h-10 brightness-0 invert" />
                     </Link>
-                    <Badge className="bg-[#066CF4] text-white border-none px-4 py-1.5 font-black uppercase tracking-widest mb-8">
-                        Join 2,000+ Businesses
-                    </Badge>
-                    <h2 className="text-5xl font-black tracking-tight leading-[1.1] mb-10">
-                        The Future Of <br /> Customer <br /> Engagement.
-                    </h2>
                     
-                    <div className="space-y-8">
+                    <div className="space-y-4">
+                        <Badge className="bg-primary/20 text-primary border border-primary/30 px-4 py-1.5 font-black uppercase tracking-[0.2em] text-[10px] rounded-full backdrop-blur-md">
+                            ⚡ Trusted by 2,000+ Businesses
+                        </Badge>
+                        <h2 className="text-4xl lg:text-5xl font-display font-black tracking-tight leading-[1.1] text-white">
+                            The Modern Standard For <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary via-blue-400 to-teal-300">Customer Growth.</span>
+                        </h2>
+                        <p className="text-slate-400 text-sm font-medium leading-relaxed">
+                            Turn one-time visitors into repeat loyal customers with instant QR registration, automated campaigns, and real-time analytics.
+                        </p>
+                    </div>
+                    
+                    <div className="space-y-6 pt-2">
                         {[
-                            { t: 'Capture', d: 'QR and NFC registration in 2 seconds.' },
-                            { t: 'Database', d: 'Auto-build your customer list.' },
-                            { t: 'Growth', d: 'Send smart automated messages.' }
+                            { title: '2-Second Capture', desc: 'Scan & register via QR and NFC without download app required.' },
+                            { title: 'Automated CRM', desc: 'Automatically segment customers & launch retention campaigns.' },
+                            { title: 'Multi-Branch POS', desc: 'Manage catalogue, orders, staff roles, and analytics seamlessly.' }
                         ].map((item, i) => (
-                            <div key={i} className="flex gap-4">
-                                <div className="size-6 rounded-full bg-white/10 flex items-center justify-center shrink-0">
-                                    <CheckCircle2 size={16} className="text-[#066CF4]" />
+                            <div key={i} className="flex gap-4 items-start p-4 rounded-2xl bg-white/[0.03] border border-white/[0.06] backdrop-blur-sm">
+                                <div className="size-7 rounded-xl bg-primary/20 text-primary flex items-center justify-center shrink-0 mt-0.5 border border-primary/30">
+                                    <CheckCircle2 size={16} strokeWidth={3} />
                                 </div>
-                                <div>
-                                    <p className="font-black text-sm uppercase tracking-widest mb-1">{item.t}</p>
-                                    <p className="text-white/40 text-xs font-medium">{item.d}</p>
+                                <div className="space-y-0.5">
+                                    <p className="font-black text-xs uppercase tracking-widest text-white">{item.title}</p>
+                                    <p className="text-slate-400 text-xs font-medium leading-relaxed">{item.desc}</p>
                                 </div>
                             </div>
                         ))}
                     </div>
 
-                    <div className="mt-20 pt-10 border-t border-white/5">
-                        <div className="flex items-center gap-4">
-                           <div className="flex -space-x-3">
-                              {[1, 2, 3, 4].map(i => <div key={i} className="size-8 rounded-full bg-gray-800 border-2 border-gray-900" />)}
-                           </div>
-                           <p className="text-[10px] font-black uppercase tracking-widest text-white/30">Loved by owners worldwide</p>
+                    <div className="pt-8 border-t border-white/10 flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            <div className="flex -space-x-3">
+                                {[1, 2, 3, 4].map(i => (
+                                    <div key={i} className="size-9 rounded-full bg-slate-800 border-2 border-slate-950 flex items-center justify-center text-[10px] font-black text-white/50">
+                                        V{i}
+                                    </div>
+                                ))}
+                            </div>
+                            <div>
+                                <p className="text-[11px] font-bold text-white">4.9 / 5 Rating</p>
+                                <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Owner Satisfaction</p>
+                            </div>
                         </div>
+                        <ShieldCheck size={24} className="text-primary/60" />
                     </div>
                 </div>
             </div>
 
-            {/* RIGHT COLUMN: Multi-step Form */}
-            <div className="flex-1 flex flex-col justify-center p-6 md:p-12 lg:p-24 bg-white relative">
-                <div className="max-w-md w-full mx-auto">
-                    {/* Mobile Logo */}
-                    <div className="lg:hidden flex justify-center mb-12">
+            {/* RIGHT COLUMN: Multi-step Signup Form */}
+            <div className="flex-1 flex flex-col justify-center p-6 md:p-12 lg:p-20 bg-white relative">
+                <div className="max-w-md w-full mx-auto space-y-8">
+                    {/* Mobile Brand Header */}
+                    <div className="lg:hidden flex flex-col items-center text-center space-y-3 mb-4">
                         <Link href="/">
-                            <Logo className="h-8" />
+                            <Logo className="h-9" />
                         </Link>
+                        <Badge variant="outline" className="bg-primary/5 border-primary/20 text-primary text-[9px] font-black uppercase tracking-widest px-3 py-1">
+                            Account Setup
+                        </Badge>
                     </div>
 
-                    {/* Progress Indicator */}
+                    {/* Stepper Header Bar */}
                     {step < 4 && (
-                        <div className="mb-12">
-                            <div className="flex items-center justify-between mb-4">
-                               <span className="text-[10px] font-black uppercase tracking-[0.2em] text-[#066CF4]">Step {step} of 3</span>
-                               <span className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-300">
-                                   {step === 1 ? 'Contact' : step === 2 ? 'Verify' : isGoogleUser ? 'Business' : 'Security'}
+                        <div className="space-y-3">
+                            <div className="flex items-center justify-between text-xs font-black uppercase tracking-widest">
+                                <span className="text-primary flex items-center gap-1.5">
+                                    <span className="size-2 rounded-full bg-primary animate-pulse" />
+                                    Step {step} of 3
+                                </span>
+                                <span className="text-text-secondary/60">
+                                    {step === 1 ? 'Contact Details' : step === 2 ? 'Email Verification' : isGoogleUser ? 'Business Profile' : 'Security Setup'}
                                 </span>
                             </div>
                             <div className="flex items-center gap-2">
                                 {[1, 2, 3].map((s) => (
-                                    <div key={s} className={`h-1.5 flex-1 rounded-full transition-all duration-500 ${s <= step ? 'bg-[#066CF4]' : 'bg-gray-100'}`}></div>
+                                    <div key={s} className={`h-2 flex-1 rounded-full transition-all duration-500 ${s <= step ? 'bg-primary shadow-sm shadow-primary/20' : 'bg-gray-100'}`} />
                                 ))}
                             </div>
                         </div>
                     )}
 
                     <AnimatePresence mode="wait">
-                        {/* STEP 1: Contact Info */}
+                        {/* STEP 1: Contact Email */}
                         {step === 1 && (
                             <motion.div key="step1" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-8">
-                                <div>
-                                    <h1 className="text-3xl font-black text-gray-900 tracking-tight leading-tight mb-2">
-                                        {isGoogleUser ? 'Enter Your Phone Number' : 'How Can We Reach You?'}
+                                <div className="space-y-2">
+                                    <h1 className="text-2xl sm:text-3xl font-display font-black text-text-main tracking-tight leading-tight">
+                                        {isGoogleUser ? 'Complete Registration' : 'Create Your VemTap Account'}
                                     </h1>
-                                    <p className="text-sm font-medium text-gray-400">
-                                        {isGoogleUser ? 'We need your phone number to complete your profile.' : 'Your contact info will be used for account verification.'}
+                                    <p className="text-sm font-medium text-text-secondary">
+                                        {isGoogleUser ? 'We verified your email with Google. Continue to complete profile.' : 'Get started free with your business email.'}
                                     </p>
                                 </div>
+
                                 <div className="space-y-6">
                                     {isGoogleUser ? (
                                         <>
-                                            <div className="space-y-2">
-                                                <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-4">Phone Number</label>
-                                                <div className="relative">
-                                                    <Smartphone className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-300" size={18} />
-                                                    <input 
-                                                        type="tel" 
-                                                        value={formData.phone} 
-                                                        onChange={(e) => setFormData({...formData, phone: e.target.value})} 
-                                                        placeholder="+234 ..." 
-                                                        className="w-full pl-14 pr-6 h-16 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-[#066CF4]/10 outline-none font-bold text-sm transition-all" 
-                                                    />
+                                            <div className="p-6 rounded-2xl bg-blue-50/80 border border-blue-100 text-center space-y-3">
+                                                <div className="size-14 bg-white rounded-2xl flex items-center justify-center mx-auto shadow-sm text-primary border border-blue-100">
+                                                    <Mail size={28} />
+                                                </div>
+                                                <div>
+                                                    <p className="text-[10px] font-black uppercase tracking-widest text-blue-500">Google Verified Email</p>
+                                                    <p className="text-base font-black text-text-main mt-0.5">{formData.email}</p>
                                                 </div>
                                             </div>
 
-                                            {error && <p className="text-red-500 text-xs font-semibold ml-4">{error}</p>}
+                                            {error && <p className="text-red-500 text-xs font-semibold px-2">{error}</p>}
 
                                             <Button 
                                                 onClick={() => setStep(3)} 
-                                                disabled={!formData.phone} 
-                                                className="w-full h-16 bg-[#066CF4] text-white font-black uppercase tracking-[0.2em] text-xs rounded-2xl shadow-xl shadow-blue-500/20 active:scale-95 transition-all flex items-center justify-center gap-3"
+                                                className="w-full h-14 bg-primary hover:bg-primary-hover text-white font-black uppercase tracking-[0.15em] text-xs rounded-2xl shadow-xl shadow-primary/20 transition-all flex items-center justify-center gap-3 cursor-pointer"
                                             >
-                                                Continue <ArrowRight size={16} />
+                                                Continue To Setup <ArrowRight size={16} />
                                             </Button>
                                         </>
                                     ) : (
@@ -337,46 +357,33 @@ export default function GetStartedPage() {
                                             />
 
                                             <div className="flex items-center gap-4">
-                                                <div className="flex-1 h-px bg-gray-200" />
-                                                <span className="text-[10px] font-black uppercase tracking-widest text-gray-300">Or</span>
-                                                <div className="flex-1 h-px bg-gray-200" />
+                                                <div className="flex-1 h-px bg-gray-100" />
+                                                <span className="text-[10px] font-black uppercase tracking-widest text-text-secondary/50">Or register with email</span>
+                                                <div className="flex-1 h-px bg-gray-100" />
                                             </div>
 
                                             <div className="space-y-2">
-                                                <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-4">Phone Number</label>
+                                                <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Business Email Address</label>
                                                 <div className="relative">
-                                                    <Smartphone className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-300" size={18} />
-                                                    <input 
-                                                        type="tel" 
-                                                        value={formData.phone} 
-                                                        onChange={(e) => setFormData({...formData, phone: e.target.value})} 
-                                                        placeholder="+234 ..." 
-                                                        className="w-full pl-14 pr-6 h-16 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-[#066CF4]/10 outline-none font-bold text-sm transition-all" 
-                                                    />
-                                                </div>
-                                            </div>
-                                            <div className="space-y-2">
-                                                <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-4">Email Address</label>
-                                                <div className="relative">
-                                                    <Mail className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-300" size={18} />
+                                                    <Mail className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
                                                     <input 
                                                         type="email" 
                                                         value={formData.email} 
                                                         onChange={(e) => setFormData({...formData, email: e.target.value})} 
-                                                        placeholder="name@business.com" 
-                                                        className="w-full pl-14 pr-6 h-16 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-[#066CF4]/10 outline-none font-bold text-sm transition-all" 
+                                                        placeholder="owner@yourbusiness.com" 
+                                                        className="w-full pl-13 pr-5 h-14 bg-gray-50/80 border border-gray-200/80 rounded-2xl focus:ring-4 focus:ring-primary/10 focus:border-primary focus:bg-white outline-none font-bold text-sm transition-all" 
                                                     />
                                                 </div>
                                             </div>
 
-                                            {error && <p className="text-red-500 text-xs font-semibold ml-4">{error}</p>}
+                                            {error && <p className="text-red-500 text-xs font-semibold px-2">{error}</p>}
 
                                             <Button 
                                                 onClick={handleStep2Submit} 
-                                                disabled={isLoading || !formData.phone || !formData.email} 
-                                                className="w-full h-16 bg-[#066CF4] text-white font-black uppercase tracking-[0.2em] text-xs rounded-2xl shadow-xl shadow-blue-500/20 active:scale-95 transition-all flex items-center justify-center gap-3"
+                                                disabled={isLoading || !formData.email} 
+                                                className="w-full h-14 bg-primary hover:bg-primary-hover text-white font-black uppercase tracking-[0.15em] text-xs rounded-2xl shadow-xl shadow-primary/20 transition-all flex items-center justify-center gap-3 cursor-pointer disabled:opacity-50"
                                             >
-                                                {isLoading ? <div className="size-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <>Send Verification Code <ArrowRight size={16} /></>}
+                                                {isLoading ? <div className="size-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <>Get Verification Code <ArrowRight size={16} /></>}
                                             </Button>
                                         </>
                                     )}
@@ -384,41 +391,46 @@ export default function GetStartedPage() {
                             </motion.div>
                         )}
 
-                        {/* STEP 2: OTP Verification */}
+                        {/* STEP 2: Verification OTP */}
                         {step === 2 && (
-                            <motion.div key="step2" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-8">
-                                <button onClick={handleBack} className="flex items-center gap-2 text-gray-400 hover:text-gray-900 transition-colors mb-4">
+                            <motion.div key="step2" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-6">
+                                <button onClick={handleBack} className="flex items-center gap-2 text-text-secondary hover:text-text-main transition-colors cursor-pointer">
                                     <ArrowLeft size={16} />
                                     <span className="text-[10px] font-black uppercase tracking-widest">Back</span>
                                 </button>
-                                <div>
-                                    <h1 className="text-3xl font-black text-gray-900 tracking-tight leading-tight mb-2">Verify Your Email</h1>
-                                    <p className="text-sm font-medium text-gray-400">We sent a 4-digit verification code to <span className="text-[#066CF4] font-bold">{formData.email}</span>.</p>
+
+                                <div className="space-y-2">
+                                    <h1 className="text-2xl sm:text-3xl font-display font-black text-text-main tracking-tight">Verify Your Email</h1>
+                                    <p className="text-sm font-medium text-text-secondary leading-relaxed">
+                                        We sent a 4-digit security code to <span className="text-primary font-bold">{formData.email}</span>.
+                                    </p>
                                 </div>
-                                <div className="space-y-6">
+
+                                <div className="space-y-6 pt-2">
                                     <div className="space-y-2">
-                                        <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-4">Verification Code</label>
+                                        <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">4-Digit Security Code</label>
                                         <div className="relative">
-                                            <ShieldCheck className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-300" size={18} />
+                                            <ShieldCheck className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
                                             <input 
                                                 type="text" 
                                                 maxLength={4}
                                                 value={otpCode} 
                                                 onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ''))} 
-                                                placeholder="e.g. 1234" 
-                                                className="w-full pl-14 pr-6 h-16 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-[#066CF4]/10 outline-none font-bold text-center tracking-[1em] text-lg transition-all" 
+                                                placeholder="1 2 3 4" 
+                                                className="w-full pl-13 pr-5 h-16 bg-gray-50/80 border border-gray-200/80 rounded-2xl focus:ring-4 focus:ring-primary/10 focus:border-primary focus:bg-white outline-none font-black text-center tracking-[0.8em] text-xl transition-all" 
+                                                autoFocus
                                             />
                                         </div>
                                     </div>
                                     
-                                    {error && <p className="text-red-500 text-xs font-semibold ml-4">{error}</p>}
+                                    {error && <p className="text-red-500 text-xs font-semibold px-2">{error}</p>}
 
                                     <Button 
                                         onClick={handleVerifyOtp} 
                                         disabled={otpLoading || otpCode.length !== 4} 
-                                        className="w-full h-16 bg-[#066CF4] text-white font-black uppercase tracking-[0.2em] text-xs rounded-2xl shadow-xl shadow-blue-500/20 active:scale-95 transition-all flex items-center justify-center gap-3"
+                                        className="w-full h-14 bg-primary hover:bg-primary-hover text-white font-black uppercase tracking-[0.15em] text-xs rounded-2xl shadow-xl shadow-primary/20 transition-all flex items-center justify-center gap-3 cursor-pointer disabled:opacity-50"
                                     >
-                                        {otpLoading ? <div className="size-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : 'Verify Code'}
+                                        {otpLoading ? <div className="size-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : 'Verify & Continue'}
                                     </Button>
 
                                     <div className="text-center pt-2">
@@ -426,138 +438,164 @@ export default function GetStartedPage() {
                                             type="button"
                                             onClick={handleResendOtp}
                                             disabled={resendDisabled || resendLoading}
-                                            className="text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-[#066CF4] disabled:opacity-50 transition-colors"
+                                            className="text-[11px] font-black uppercase tracking-widest text-text-secondary/70 hover:text-primary disabled:opacity-50 transition-colors cursor-pointer"
                                         >
-                                            {resendDisabled ? `Resend Code in ${resendTimer}s` : 'Resend Code'}
+                                            {resendDisabled ? `Resend Code in ${resendTimer}s` : 'Resend Verification Code'}
                                         </button>
                                     </div>
                                 </div>
                             </motion.div>
                         )}
 
-                        {/* STEP 3: Password / Security */}
+                        {/* STEP 3: Account Profile & Security */}
                         {step === 3 && (
-                            <motion.div key="step3" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-8">
-                                <button onClick={() => { if (isGoogleUser) { setStep(1); } else { handleBack(); } }} className="flex items-center gap-2 text-gray-400 hover:text-gray-900 transition-colors mb-4">
+                            <motion.div key="step3" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-6">
+                                <button onClick={() => { if (isGoogleUser) { setStep(1); } else { handleBack(); } }} className="flex items-center gap-2 text-text-secondary hover:text-text-main transition-colors cursor-pointer">
                                     <ArrowLeft size={16} />
                                     <span className="text-[10px] font-black uppercase tracking-widest">Back</span>
                                 </button>
-                                <div>
-                                    <h1 className="text-3xl font-black text-gray-900 tracking-tight leading-tight mb-2">{isGoogleUser ? 'Tell Us About Your Business' : 'Secure Your Account'}</h1>
-                                    <p className="text-sm font-medium text-gray-400">{isGoogleUser ? 'Just a few more details to get started.' : 'Set up your business details and password.'}</p>
+
+                                <div className="space-y-2">
+                                    <h1 className="text-2xl sm:text-3xl font-display font-black text-text-main tracking-tight">
+                                        {isGoogleUser ? 'Complete Your Profile' : 'Account Details & Security'}
+                                    </h1>
+                                    <p className="text-sm font-medium text-text-secondary">
+                                        {isGoogleUser ? 'Enter your name and details to setup account.' : 'Set up your name, business contact phone, and password.'}
+                                    </p>
                                 </div>
-                                <div className="space-y-6">
-                                    <div className="space-y-2">
-                                        <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-4">Business Name</label>
-                                        <div className="relative">
-                                            <Building2 className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-300" size={18} />
-                                            <input 
-                                                type="text" 
-                                                value={formData.businessName} 
-                                                onChange={(e) => setFormData({...formData, businessName: e.target.value})} 
-                                                placeholder="e.g. Blue Bottle Coffee" 
-                                                className="w-full pl-14 pr-6 h-16 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-[#066CF4]/10 outline-none font-bold text-sm transition-all" 
-                                            />
-                                        </div>
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div className="space-y-2">
-                                            <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-4">First Name</label>
+
+                                <div className="space-y-4">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                        <div className="space-y-1.5">
+                                            <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">First Name</label>
                                             <div className="relative">
-                                                <User className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-300" size={18} />
+                                                <User className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
                                                 <input 
                                                     type="text" 
                                                     value={formData.firstName} 
                                                     onChange={(e) => setFormData({...formData, firstName: e.target.value})} 
                                                     placeholder="First Name" 
-                                                    className="w-full pl-14 pr-6 h-16 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-[#066CF4]/10 outline-none font-bold text-sm transition-all" 
+                                                    className="w-full pl-11 pr-4 h-13 bg-gray-50/80 border border-gray-200/80 rounded-xl focus:ring-4 focus:ring-primary/10 focus:border-primary focus:bg-white outline-none font-bold text-sm transition-all" 
                                                 />
                                             </div>
                                         </div>
-                                        <div className="space-y-2">
-                                            <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-4">Last Name</label>
+                                        <div className="space-y-1.5">
+                                            <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Last Name</label>
                                             <div className="relative">
-                                                <User className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-300" size={18} />
+                                                <User className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
                                                 <input 
                                                     type="text" 
                                                     value={formData.lastName} 
                                                     onChange={(e) => setFormData({...formData, lastName: e.target.value})} 
                                                     placeholder="Last Name" 
-                                                    className="w-full pl-14 pr-6 h-16 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-[#066CF4]/10 outline-none font-bold text-sm transition-all" 
+                                                    className="w-full pl-11 pr-4 h-13 bg-gray-50/80 border border-gray-200/80 rounded-xl focus:ring-4 focus:ring-primary/10 focus:border-primary focus:bg-white outline-none font-bold text-sm transition-all" 
                                                 />
-                                                            </div>
-                                                        </div>
-                                                    </div>
-
-                                    {!isGoogleUser && (
-                                        <div className="border-t border-gray-100 pt-6">
-                                            <div className="space-y-2">
-                                                <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-4">Create Password</label>
-                                                <div className="relative">
-                                                    <Lock className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-300" size={18} />
-                                                    <input 
-                                                        type={showPassword ? 'text' : 'password'} 
-                                                        value={formData.password} 
-                                                        onChange={(e) => setFormData({...formData, password: e.target.value})} 
-                                                        placeholder="••••••••" 
-                                                        className="w-full pl-14 pr-14 h-16 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-[#066CF4]/10 outline-none font-bold text-sm transition-all" 
-                                                    />
-                                                    <button 
-                                                        type="button" 
-                                                        onClick={() => setShowPassword(!showPassword)} 
-                                                        className="absolute right-6 top-1/2 -translate-y-1/2 text-gray-300 hover:text-[#066CF4]"
-                                                    >
-                                                        {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                                                    </button>
-                                                </div>
-                                            </div>
-                                            <div className="space-y-2 mt-4">
-                                                <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-4">Confirm Password</label>
-                                                <div className="relative">
-                                                    <Lock className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-300" size={18} />
-                                                    <input 
-                                                        type="password" 
-                                                        value={formData.confirmPassword} 
-                                                        onChange={(e) => setFormData({...formData, confirmPassword: e.target.value})} 
-                                                        placeholder="••••••••" 
-                                                        className="w-full pl-14 pr-6 h-16 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-[#066CF4]/10 outline-none font-bold text-sm transition-all" 
-                                                    />
-                                                </div>
-                                            </div>
-
-                                            {/* Password strength checklist */}
-                                            <div className="space-y-2 px-6 py-4 bg-gray-50 rounded-2xl mt-4">
-                                                <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Password Requirements</p>
-                                                {[
-                                                    { label: 'Minimum 8 characters', pass: pwdRules.minLength },
-                                                    { label: 'At least 1 lowercase letter', pass: pwdRules.hasLowercase },
-                                                    { label: 'At least 1 uppercase letter', pass: pwdRules.hasUppercase },
-                                                    { label: 'At least 1 digit (0-9)', pass: pwdRules.hasNumber },
-                                                    { label: 'At least 1 special character', pass: pwdRules.hasSymbol },
-                                                ].map((rule, idx) => (
-                                                    <div key={idx} className="flex items-center gap-2 text-xs">
-                                                        {rule.pass ? (
-                                                            <Check size={14} className="text-emerald-500 shrink-0" />
-                                                        ) : (
-                                                            <div className="size-3.5 rounded-full border border-gray-300 shrink-0" />
-                                                        )}
-                                                        <span className={cn("font-medium transition-colors", rule.pass ? "text-emerald-600" : "text-gray-400")}>
-                                                            {rule.label}
-                                                        </span>
-                                                    </div>
-                                                ))}
                                             </div>
                                         </div>
+                                    </div>
+
+                                    {!isGoogleUser && (
+                                        <>
+                                            <div className="space-y-1.5">
+                                                <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Phone Number</label>
+                                                <div className="relative">
+                                                    <Smartphone className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+                                                    <input 
+                                                        type="tel" 
+                                                        value={formData.phone} 
+                                                        onChange={(e) => setFormData({...formData, phone: e.target.value.replace(/\D/g, '')})} 
+                                                        placeholder="WhatsApp / Phone Number" 
+                                                        className="w-full pl-11 pr-4 h-13 bg-gray-50/80 border border-gray-200/80 rounded-xl focus:ring-4 focus:ring-primary/10 focus:border-primary focus:bg-white outline-none font-bold text-sm transition-all" 
+                                                    />
+                                                </div>
+                                            </div>
+
+                                            <div className="space-y-1.5">
+                                                <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">
+                                                    Referral Code <span className="text-text-secondary/50 font-normal lowercase">(optional)</span>
+                                                </label>
+                                                <div className="relative">
+                                                    <Building2 className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+                                                    <input 
+                                                        type="text" 
+                                                        value={formData.referralCode} 
+                                                        onChange={(e) => setFormData({...formData, referralCode: e.target.value})} 
+                                                        placeholder="e.g. VEM-XXXXX" 
+                                                        className="w-full pl-11 pr-4 h-13 bg-gray-50/80 border border-gray-200/80 rounded-xl focus:ring-4 focus:ring-primary/10 focus:border-primary focus:bg-white outline-none font-bold text-sm transition-all uppercase" 
+                                                    />
+                                                </div>
+                                            </div>
+
+                                            <div className="pt-2 border-t border-gray-100 space-y-3">
+                                                <div className="space-y-1.5">
+                                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Create Password</label>
+                                                    <div className="relative">
+                                                        <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+                                                        <input 
+                                                            type={showPassword ? 'text' : 'password'} 
+                                                            value={formData.password} 
+                                                            onChange={(e) => setFormData({...formData, password: e.target.value})} 
+                                                            placeholder="••••••••" 
+                                                            className="w-full pl-11 pr-12 h-13 bg-gray-50/80 border border-gray-200/80 rounded-xl focus:ring-4 focus:ring-primary/10 focus:border-primary focus:bg-white outline-none font-bold text-sm transition-all" 
+                                                        />
+                                                        <button 
+                                                            type="button" 
+                                                            onClick={() => setShowPassword(!showPassword)} 
+                                                            className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-primary cursor-pointer"
+                                                        >
+                                                            {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                                                        </button>
+                                                    </div>
+                                                </div>
+
+                                                <div className="space-y-1.5">
+                                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Confirm Password</label>
+                                                    <div className="relative">
+                                                        <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+                                                        <input 
+                                                            type={showPassword ? 'text' : 'password'} 
+                                                            value={formData.confirmPassword} 
+                                                            onChange={(e) => setFormData({...formData, confirmPassword: e.target.value})} 
+                                                            placeholder="••••••••" 
+                                                            className="w-full pl-11 pr-12 h-13 bg-gray-50/80 border border-gray-200/80 rounded-xl focus:ring-4 focus:ring-primary/10 focus:border-primary focus:bg-white outline-none font-bold text-sm transition-all" 
+                                                        />
+                                                    </div>
+                                                </div>
+
+                                                {/* Password strength checklist */}
+                                                <div className="p-4 bg-gray-50/80 rounded-2xl border border-gray-100 space-y-1.5 mt-2">
+                                                    <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary/70 mb-2">Password Rules</p>
+                                                    {[
+                                                        { label: 'Minimum 8 characters', pass: pwdRules.minLength },
+                                                        { label: 'At least 1 lowercase letter', pass: pwdRules.hasLowercase },
+                                                        { label: 'At least 1 uppercase letter', pass: pwdRules.hasUppercase },
+                                                        { label: 'At least 1 digit (0-9)', pass: pwdRules.hasNumber },
+                                                        { label: 'At least 1 special character', pass: pwdRules.hasSymbol },
+                                                    ].map((rule, idx) => (
+                                                        <div key={idx} className="flex items-center gap-2 text-xs">
+                                                            {rule.pass ? (
+                                                                <Check size={13} className="text-emerald-500 shrink-0" strokeWidth={3} />
+                                                            ) : (
+                                                                <div className="size-3 rounded-full border border-gray-300 shrink-0" />
+                                                            )}
+                                                            <span className={cn("font-medium transition-colors text-[11px]", rule.pass ? "text-emerald-700 font-bold" : "text-text-secondary/60")}>
+                                                                {rule.label}
+                                                            </span>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        </>
                                     )}
 
-                                    {error && <p className="text-red-500 text-xs font-semibold ml-4">{error}</p>}
+                                    {error && <p className="text-red-500 text-xs font-semibold px-2">{error}</p>}
 
                                     <Button 
                                         onClick={isGoogleUser ? handleGoogleComplete : handleFinalSubmit} 
-                                        disabled={isLoading || !formData.businessName || !formData.firstName || !formData.lastName || (!isGoogleUser && (!formData.password || formData.password !== formData.confirmPassword || !isPasswordStrong))} 
-                                        className="w-full h-16 bg-[#066CF4] text-white font-black uppercase tracking-[0.2em] text-xs rounded-2xl shadow-xl shadow-blue-500/20 active:scale-95 transition-all flex items-center justify-center gap-3"
+                                        disabled={isLoading || !formData.firstName || !formData.lastName || (!isGoogleUser && (!formData.password || formData.password !== formData.confirmPassword || !isPasswordStrong))} 
+                                        className="w-full h-14 bg-primary hover:bg-primary-hover text-white font-black uppercase tracking-[0.15em] text-xs rounded-2xl shadow-xl shadow-primary/20 transition-all flex items-center justify-center gap-3 cursor-pointer disabled:opacity-50 mt-4"
                                     >
-                                        {isLoading ? <div className="size-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : (isGoogleUser ? 'Complete Setup' : 'Create My Account')}
+                                        {isLoading ? <div className="size-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : (isGoogleUser ? 'Complete Registration' : 'Create My Account & Start Onboarding')}
                                     </Button>
                                 </div>
                             </motion.div>
@@ -566,10 +604,10 @@ export default function GetStartedPage() {
 
                     {/* Login Link */}
                     {step < 4 && (
-                        <div className="mt-12 text-center">
-                           <p className="text-sm font-medium text-gray-400">
-                               Already have an account? <Link href="/login" className="text-[#066CF4] font-black uppercase tracking-widest text-[10px] ml-2 hover:underline">Sign In</Link>
-                           </p>
+                        <div className="pt-4 text-center">
+                            <p className="text-xs font-medium text-text-secondary">
+                                Already have a business account? <Link href="/login" className="text-primary font-black uppercase tracking-widest text-[10px] ml-1.5 hover:underline">Sign In Here</Link>
+                            </p>
                         </div>
                     )}
                 </div>

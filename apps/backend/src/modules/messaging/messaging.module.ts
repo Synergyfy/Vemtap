@@ -77,6 +77,10 @@ import { TwilioWebhookController } from './controllers/twilio.controller';
 import { MessagingGateway } from './messaging.gateway';
 import { JwtModule } from '@nestjs/jwt';
 
+import { MessagingChannelSetting } from './entities/messaging-channel-setting.entity';
+import { ChannelSettingsService } from './services/channel-settings.service';
+import { ChannelSettingsController } from './controllers/channel-settings.controller';
+
 @Module({
   imports: [
     TypeOrmModule.forFeature([
@@ -104,6 +108,7 @@ import { JwtModule } from '@nestjs/jwt';
       CreditTransaction,
       Segment,
       Subscription,
+      MessagingChannelSetting,
     ]),
     HttpModule,
     ContactsModule,
@@ -196,6 +201,7 @@ import { JwtModule } from '@nestjs/jwt';
     CreditPlanService,
     MessagingFlowService,
     ChatSettingsService,
+    ChannelSettingsService,
     MessagingHelperService,
     MessagingGateway,
   ],
@@ -203,6 +209,7 @@ import { JwtModule } from '@nestjs/jwt';
     MessagingController,
     CustomerMessagingController,
     ChatSettingsController,
+    ChannelSettingsController,
     FlowController,
     AdminFlowEngineController,
     TwilioWebhookController,
@@ -228,6 +235,7 @@ import { JwtModule } from '@nestjs/jwt';
     InHouseProvider,
     ProviderRouterService,
     MessagingFlowService,
+    ChannelSettingsService,
     MessagingHelperService,
     MessagingGateway,
   ],

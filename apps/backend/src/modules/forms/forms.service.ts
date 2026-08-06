@@ -23,6 +23,7 @@ import { BranchesService } from '../branches/branches.service';
 import { DevicesService } from '../devices/devices.service';
 import { FormTemplateStatsDto } from './dto/form-template-stats.dto';
 import { User } from '../users/entities/user.entity';
+import { paginateWithCursor } from '../../common/utils/cursor-pagination.util';
 import { Branch } from '../branches/entities/branch.entity';
 import { UpdateBranchFormSettingsDto } from './dto/update-branch-form-settings.dto';
 
@@ -158,27 +159,40 @@ export class FormsService {
     return this.formTemplatesRepository.save(template);
   }
 
-  async findAllTemplates(
-    query: FormTemplateQueryDto,
-  ): Promise<{ items: FormTemplate[]; total: number }> {
+  async findAllTemplates(query: FormTemplateQueryDto): Promise<{
+    items: FormTemplate[];
+    total: number;
+    cursor?: string | null;
+    nextCursor?: string | null;
+  }> {
     const { search, page = 1, limit = 10 } = query;
-    const skip = (page - 1) * limit;
+    const qb = this.formTemplatesRepository
+      .createQueryBuilder('template')
+      .leftJoinAndSelect('template.fields', 'fields');
 
-    const where: FindOptionsWhere<FormTemplate>[] = [];
     if (search) {
-      where.push({ name: Like(`%${search}%`) });
-      where.push({ description: Like(`%${search}%`) });
+      qb.andWhere(
+        '(template.name ILIKE :search OR template.description ILIKE :search)',
+        { search: `%${search}%` },
+      );
     }
 
-    const [items, total] = await this.formTemplatesRepository.findAndCount({
-      where: where.length > 0 ? where : undefined,
-      order: { createdAt: 'DESC' },
-      skip,
-      take: limit,
-      relations: ['fields'],
+    const result = await paginateWithCursor({
+      queryBuilder: qb,
+      cursor: (query as any)?.cursor || (query as any)?.nextCursor,
+      page,
+      limit,
+      sortField: 'createdAt',
+      sortOrder: 'DESC',
+      entityAlias: 'template',
     });
 
-    return { items, total };
+    return {
+      items: result.data,
+      total: result.total,
+      cursor: result.cursor,
+      nextCursor: result.nextCursor,
+    };
   }
 
   async findTemplateById(id: string): Promise<FormTemplate> {
@@ -320,34 +334,45 @@ export class FormsService {
   }
 
   // Admin Methods
-  async findAllForAdmin(
-    query: AdminFormQueryDto,
-  ): Promise<{ items: Form[]; total: number }> {
+  async findAllForAdmin(query: AdminFormQueryDto): Promise<{
+    items: Form[];
+    total: number;
+    cursor?: string | null;
+    nextCursor?: string | null;
+  }> {
     const { branchId, businessId, search, page = 1, limit = 10 } = query;
-    const skip = (page - 1) * limit;
+    const qb = this.formsRepository
+      .createQueryBuilder('form')
+      .leftJoinAndSelect('form.branch', 'branch')
+      .leftJoinAndSelect('branch.business', 'business')
+      .leftJoinAndSelect('form.creator', 'creator');
 
-    const where: FindOptionsWhere<Form>[] = [];
-
-    const baseWhere: FindOptionsWhere<Form> = {};
-    if (branchId) baseWhere.branchId = branchId;
-    if (businessId) baseWhere.businessId = businessId;
-
+    if (branchId) qb.andWhere('form.branchId = :branchId', { branchId });
+    if (businessId)
+      qb.andWhere('form.businessId = :businessId', { businessId });
     if (search) {
-      where.push({ ...baseWhere, title: Like(`%${search}%`) });
-      where.push({ ...baseWhere, description: Like(`%${search}%`) });
-    } else {
-      where.push(baseWhere);
+      qb.andWhere(
+        '(form.title ILIKE :search OR form.description ILIKE :search)',
+        { search: `%${search}%` },
+      );
     }
 
-    const [items, total] = await this.formsRepository.findAndCount({
-      where: where.length > 1 ? where : where[0],
-      relations: ['branch', 'branch.business', 'creator'],
-      order: { createdAt: 'DESC' },
-      skip,
-      take: limit,
+    const result = await paginateWithCursor({
+      queryBuilder: qb,
+      cursor: (query as any)?.cursor || (query as any)?.nextCursor,
+      page,
+      limit,
+      sortField: 'createdAt',
+      sortOrder: 'DESC',
+      entityAlias: 'form',
     });
 
-    return { items, total };
+    return {
+      items: result.data,
+      total: result.total,
+      cursor: result.cursor,
+      nextCursor: result.nextCursor,
+    };
   }
 
   async setAdminDisabledStatus(id: string, isDisabled: boolean, note?: string) {
@@ -421,7 +446,9 @@ export class FormsService {
     if (!form) throw new NotFoundException('Form not found');
 
     if (form.requiresAuth && !visitorId) {
-      throw new UnauthorizedException('Authentication is required to submit this form');
+      throw new UnauthorizedException(
+        'Authentication is required to submit this form',
+      );
     }
 
     const response = this.formResponsesRepository.create({

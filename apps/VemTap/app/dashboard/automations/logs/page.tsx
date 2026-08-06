@@ -12,6 +12,7 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { PageGuideButton, AICopilotButton } from '@/components/ai';
 
 export default function AutomationLogsPage() {
     const logs = [
@@ -23,7 +24,7 @@ export default function AutomationLogsPage() {
     ];
 
     return (
-        <div className="pb-32 md:pb-20 max-w-4xl mx-auto p-4 md:p-8">
+        <div className="pb-32 md:pb-20 max-w-7xl mx-auto p-4 md:p-8">
             <Link href="/dashboard/automations" className="inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-[#066CF4] transition-colors mb-6">
                 <ArrowLeft size={14} />
                 Back to Center
@@ -31,7 +32,7 @@ export default function AutomationLogsPage() {
 
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12">
                 <div>
-                    <h1 className="text-3xl font-black text-gray-900 leading-tight">Activity Logs</h1>
+                    <div className="flex items-center gap-2"><h1 className="text-3xl font-black text-gray-900 leading-tight">Activity Logs</h1><PageGuideButton /><AICopilotButton /></div>
                     <p className="text-sm font-medium text-gray-500 mt-1">
                         Track every automated action in real-time.
                     </p>

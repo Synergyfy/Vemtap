@@ -26,12 +26,16 @@ import {
   PaymentPurpose,
   PaymentStatus,
 } from '../payments/entities/payment.entity';
-import { SubscriptionCapabilities, AddOnCapabilityInfo } from './types/capabilities';
+import {
+  SubscriptionCapabilities,
+  AddOnCapabilityInfo,
+} from './types/capabilities';
 import { CreditService } from '../messaging/services/credit.service';
 import { CatalogueCategory } from '../catalogue/entities/catalogue-category.entity';
 import { CatalogueItem } from '../catalogue/entities/catalogue-item.entity';
 import { CatalogueOffer } from '../catalogue/entities/catalogue-offer.entity';
 import { AutomationRule } from '../messaging/entities/automation-rule.entity';
+import { Reward } from '../loyalty/entities/reward.entity';
 import { AffiliatesService } from '../affiliates/affiliates.service';
 import { ExternalAffiliateService } from '../affiliates/external-affiliate.service';
 import { QrThriveService } from '../qr-thrive/qr-thrive.service';
@@ -61,6 +65,8 @@ export class SubscriptionsService {
     private readonly catalogueOfferRepository: Repository<CatalogueOffer>,
     @InjectRepository(AutomationRule)
     private readonly automationRuleRepository: Repository<AutomationRule>,
+    @InjectRepository(Reward)
+    private readonly rewardRepository: Repository<Reward>,
     private readonly plansService: PlansService,
     private readonly paymentsService: PaymentsService,
     private readonly creditService: CreditService,
@@ -99,7 +105,9 @@ export class SubscriptionsService {
     return sub;
   }
 
-  async subscribeToFreePlan(businessId: string): Promise<{ subscription: Subscription; addOns?: any[] } | null> {
+  async subscribeToFreePlan(
+    businessId: string,
+  ): Promise<{ subscription: Subscription; addOns?: any[] } | null> {
     const freePlan = await this.plansService.findFreePlan();
     if (!freePlan) {
       this.logger.warn(
@@ -115,7 +123,42 @@ export class SubscriptionsService {
     });
   }
 
-  async subscribe(subscribeDto: SubscribeDto & { addonIds?: string[], addonQuantities?: number[] }): Promise<{ subscription: Subscription; addOns?: any[] }> {
+  async cancelSubscription(
+    businessId: string,
+  ): Promise<{ message: string; subscription: Subscription }> {
+    const sub = await this.subscriptionRepository.findOne({
+      where: {
+        businessId,
+        status: In([SubscriptionStatus.ACTIVE, SubscriptionStatus.TRIAL]),
+      },
+      relations: ['plan'],
+    });
+
+    if (!sub) {
+      throw new NotFoundException(
+        'No active or trial subscription found for this business',
+      );
+    }
+
+    sub.status = SubscriptionStatus.CANCELED;
+    const updatedSub = await this.subscriptionRepository.save(sub);
+
+    this.logger.log(
+      `Subscription ${sub.id} for business ${businessId} has been cancelled`,
+    );
+
+    return {
+      message: 'Subscription cancelled successfully',
+      subscription: updatedSub,
+    };
+  }
+
+  async subscribe(
+    subscribeDto: SubscribeDto & {
+      addonIds?: string[];
+      addonQuantities?: number[];
+    },
+  ): Promise<{ subscription: Subscription; addOns?: any[] }> {
     const {
       planId,
       businessId,
@@ -130,6 +173,12 @@ export class SubscriptionsService {
     const plan = await this.plansService.findOne(planId);
     if (!plan.isActive) {
       throw new BadRequestException('Selected plan is not active');
+    }
+
+    if (!plan.isFree && !plan.permissionsConfiguredAt && !isAdminOverride) {
+      throw new BadRequestException(
+        'This plan is not yet available for subscription. Permissions must be configured first.',
+      );
     }
 
     const business = await this.businessRepository.findOne({
@@ -153,7 +202,8 @@ export class SubscriptionsService {
     let paymentData: any = null;
 
     if (paymentReference) {
-      paymentData = await this.paymentsService.verifyTransaction(paymentReference);
+      paymentData =
+        await this.paymentsService.verifyTransaction(paymentReference);
       if (!paymentData) {
         throw new BadRequestException('Payment verification failed');
       }
@@ -253,14 +303,15 @@ export class SubscriptionsService {
 
     let purchasedAddOns: any[] = [];
     if (
-      (status === SubscriptionStatus.ACTIVE || status === SubscriptionStatus.TRIAL) &&
+      (status === SubscriptionStatus.ACTIVE ||
+        status === SubscriptionStatus.TRIAL) &&
       addons.length > 0
     ) {
       purchasedAddOns = await this.addonsService.purchasePlanWithAddons(
         addons,
         addonQuantities,
         business.id,
-        business.ownerId as string,
+        business.ownerId,
         paymentReference as string,
         paymentData,
       );
@@ -544,6 +595,9 @@ export class SubscriptionsService {
    * Retries with exponential backoff on failure (max 3 attempts).
    */
   async syncUserSubscriptionToQrThrive(businessId: string) {
+    if (!this.qrThriveService?.isQrThriveEnabled) {
+      return;
+    }
     try {
       const business = await this.businessRepository.findOne({
         where: { id: businessId },
@@ -561,7 +615,11 @@ export class SubscriptionsService {
       }
 
       if (qrThrivePlanId && business.owner) {
-        await this.retrySyncToQrThrive(businessId, business.owner, qrThrivePlanId);
+        await this.retrySyncToQrThrive(
+          businessId,
+          business.owner,
+          qrThrivePlanId,
+        );
       }
     } catch (error: any) {
       this.logger.error(
@@ -616,75 +674,119 @@ export class SubscriptionsService {
       where: { businessId },
     });
 
-    const usedLoyaltyPrograms = 0;
+    const usedLoyaltyPrograms = await this.rewardRepository.count({
+      where: { businessId },
+    });
 
-    const addonCapabilities = await this.addonsService.getAddonCapabilities(businessId);
-    const activeBusinessAddOns = await this.addonsService.getActiveBusinessAddons(businessId);
+    const addonCapabilities =
+      await this.addonsService.getAddonCapabilities(businessId);
+    const activeBusinessAddOns =
+      await this.addonsService.getActiveBusinessAddons(businessId);
 
-    const addOnsInfo: AddOnCapabilityInfo[] = activeBusinessAddOns.map((ba) => ({
-      id: ba.addon.id,
-      name: ba.addon.name,
-      type: ba.addon.type as 'RESOURCE' | 'SERVICE',
-      targetCapability: ba.metadata?.targetCapability ?? ba.addon.targetCapability ?? undefined,
-      additionalLimit: ba.metadata?.additionalLimit ?? ba.addon.additionalLimit ?? 0,
-      expiresAt: ba.expiresAt,
-      quantity: ba.quantity,
-    }));
+    const addOnsInfo: AddOnCapabilityInfo[] = activeBusinessAddOns.map(
+      (ba) => ({
+        id: ba.addon.id,
+        name: ba.addon.name,
+        type: ba.addon.type,
+        targetCapability:
+          ba.metadata?.targetCapability ??
+          ba.addon.targetCapability ??
+          undefined,
+        additionalLimit:
+          ba.metadata?.additionalLimit ?? ba.addon.additionalLimit ?? 0,
+        expiresAt: ba.expiresAt,
+        quantity: ba.quantity,
+      }),
+    );
 
-    const addonBranches = addonCapabilities['branches'] || addonCapabilities['branchLimit'] || 0;
-    const addonTeamMembers = addonCapabilities['teamMembers'] || addonCapabilities['teamMembersLimit'] || 0;
-    const addonAutomations = addonCapabilities['automations'] || addonCapabilities['automationsLimit'] || 0;
-    const addonCatalogueItems = addonCapabilities['catalogueItems'] || addonCapabilities['maxCatalogueItems'] || 0;
-    const addonCatalogueCategories = addonCapabilities['catalogueCategories'] || addonCapabilities['maxCatalogueCategories'] || 0;
-    const addonCatalogueOffers = addonCapabilities['catalogueOffers'] || addonCapabilities['maxCatalogueOffers'] || 0;
-    const addonLoyalty = addonCapabilities['loyalty'] || addonCapabilities['loyaltyPrograms'] || addonCapabilities['loyaltyLimit'] || 0;
+    const addonBranches =
+      addonCapabilities['branches'] || addonCapabilities['branchLimit'] || 0;
+    const addonTeamMembers =
+      addonCapabilities['teamMembers'] ||
+      addonCapabilities['teamMembersLimit'] ||
+      0;
+    const addonAutomations =
+      addonCapabilities['automations'] ||
+      addonCapabilities['automationsLimit'] ||
+      0;
+    const addonCatalogueItems =
+      addonCapabilities['catalogueItems'] ||
+      addonCapabilities['maxCatalogueItems'] ||
+      0;
+    const addonCatalogueCategories =
+      addonCapabilities['catalogueCategories'] ||
+      addonCapabilities['maxCatalogueCategories'] ||
+      0;
+    const addonCatalogueOffers =
+      addonCapabilities['catalogueOffers'] ||
+      addonCapabilities['maxCatalogueOffers'] ||
+      0;
+    const addonLoyalty =
+      addonCapabilities['loyalty'] ||
+      addonCapabilities['loyaltyPrograms'] ||
+      addonCapabilities['loyaltyLimit'] ||
+      0;
     const addonAnalytics = addonCapabilities['analytics'] || 0;
     const addonMessaging = addonCapabilities['messaging'] || 0;
 
-    const baseBranchLimit = plan.branchLimit === -1 ? 'unlimited' : (plan.branchLimit ?? 0);
-    const finalBranchLimit = typeof baseBranchLimit === 'number'
-      ? baseBranchLimit + addonBranches
-      : baseBranchLimit;
+    const baseBranchLimit =
+      plan.branchLimit === -1 ? 'unlimited' : (plan.branchLimit ?? 0);
+    const finalBranchLimit =
+      typeof baseBranchLimit === 'number'
+        ? baseBranchLimit + addonBranches
+        : baseBranchLimit;
 
-    const baseTeamLimit = plan.teamMembersLimit === -1 ? 'unlimited' : (plan.teamMembersLimit ?? 0);
-    const finalTeamLimit = typeof baseTeamLimit === 'number'
-      ? baseTeamLimit + addonTeamMembers
-      : baseTeamLimit;
+    const baseTeamLimit =
+      plan.teamMembersLimit === -1 ? 'unlimited' : (plan.teamMembersLimit ?? 0);
+    const finalTeamLimit =
+      typeof baseTeamLimit === 'number'
+        ? baseTeamLimit + addonTeamMembers
+        : baseTeamLimit;
 
-    const baseAutomationsLimit = plan.maxAutomations === -1 || plan.maxAutomations === null
-      ? 'unlimited'
-      : plan.maxAutomations;
-    const finalAutomationsLimit = typeof baseAutomationsLimit === 'number'
-      ? baseAutomationsLimit + addonAutomations
-      : baseAutomationsLimit;
+    const baseAutomationsLimit =
+      plan.maxAutomations === -1 ? 'unlimited' : (plan.maxAutomations ?? 0);
+    const finalAutomationsLimit =
+      typeof baseAutomationsLimit === 'number'
+        ? baseAutomationsLimit + addonAutomations
+        : baseAutomationsLimit;
 
-    const baseCatalogueItemsLimit = plan.maxCatalogueItems === -1 || plan.maxCatalogueItems === null
-      ? 'unlimited'
-      : plan.maxCatalogueItems;
-    const finalCatalogueItemsLimit = typeof baseCatalogueItemsLimit === 'number'
-      ? baseCatalogueItemsLimit + addonCatalogueItems
-      : baseCatalogueItemsLimit;
+    const baseCatalogueItemsLimit =
+      plan.maxCatalogueItems === -1
+        ? 'unlimited'
+        : (plan.maxCatalogueItems ?? 0);
+    const finalCatalogueItemsLimit =
+      typeof baseCatalogueItemsLimit === 'number'
+        ? baseCatalogueItemsLimit + addonCatalogueItems
+        : baseCatalogueItemsLimit;
 
-    const baseCatalogueCategoriesLimit = plan.maxCatalogueCategories === -1 || plan.maxCatalogueCategories === null
-      ? 'unlimited'
-      : plan.maxCatalogueCategories;
-    const finalCatalogueCategoriesLimit = typeof baseCatalogueCategoriesLimit === 'number'
-      ? baseCatalogueCategoriesLimit + addonCatalogueCategories
-      : baseCatalogueCategoriesLimit;
+    const baseCatalogueCategoriesLimit =
+      plan.maxCatalogueCategories === -1
+        ? 'unlimited'
+        : (plan.maxCatalogueCategories ?? 0);
+    const finalCatalogueCategoriesLimit =
+      typeof baseCatalogueCategoriesLimit === 'number'
+        ? baseCatalogueCategoriesLimit + addonCatalogueCategories
+        : baseCatalogueCategoriesLimit;
 
-    const baseCatalogueOffersLimit = plan.maxCatalogueOffers === -1 || plan.maxCatalogueOffers === null
-      ? 'unlimited'
-      : plan.maxCatalogueOffers;
-    const finalCatalogueOffersLimit = typeof baseCatalogueOffersLimit === 'number'
-      ? baseCatalogueOffersLimit + addonCatalogueOffers
-      : baseCatalogueOffersLimit;
+    const baseCatalogueOffersLimit =
+      plan.maxCatalogueOffers === -1
+        ? 'unlimited'
+        : (plan.maxCatalogueOffers ?? 0);
+    const finalCatalogueOffersLimit =
+      typeof baseCatalogueOffersLimit === 'number'
+        ? baseCatalogueOffersLimit + addonCatalogueOffers
+        : baseCatalogueOffersLimit;
 
     // Pre-calculate final enabled states to use consistently for remaining checks
     const teamMembersEnabled = plan.teamMembersEnabled || addonTeamMembers > 0;
     const loyaltyEnabled = plan.loyaltyEnabled || addonLoyalty > 0;
     const branchesEnabled = plan.branchesEnabled || addonBranches > 0;
     const automationsEnabled = plan.automationsEnabled || addonAutomations > 0;
-    const catalogueEnabled = plan.catalogueEnabled || addonCatalogueItems > 0 || addonCatalogueCategories > 0 || addonCatalogueOffers > 0;
+    const catalogueEnabled =
+      plan.catalogueEnabled ||
+      addonCatalogueItems > 0 ||
+      addonCatalogueCategories > 0 ||
+      addonCatalogueOffers > 0;
     const analyticsEnabled = plan.analyticsEnabled || addonAnalytics > 0;
     const messagingEnabled = plan.messagingEnabled || addonMessaging > 0;
 
@@ -703,7 +805,7 @@ export class SubscriptionsService {
             ? 0
             : finalTeamLimit === 'unlimited'
               ? 'unlimited'
-              : Math.max(0, (finalTeamLimit as number) - usedStaff),
+              : Math.max(0, finalTeamLimit - usedStaff),
         },
         tags: {
           enabled: true,
@@ -730,7 +832,7 @@ export class SubscriptionsService {
             ? 0
             : finalBranchLimit === 'unlimited'
               ? 'unlimited'
-              : Math.max(0, (finalBranchLimit as number) - usedBranches),
+              : Math.max(0, finalBranchLimit - usedBranches),
         },
         automations: {
           enabled: automationsEnabled,
@@ -740,12 +842,14 @@ export class SubscriptionsService {
             ? 0
             : finalAutomationsLimit === 'unlimited'
               ? 'unlimited'
-              : Math.max(0, (finalAutomationsLimit as number) - usedAutomations),
+              : Math.max(0, finalAutomationsLimit - usedAutomations),
         },
         analytics: {
           enabled: analyticsEnabled,
-          level: analyticsEnabled 
-            ? (plan.analyticsLevel === 'none' ? 'basic' : plan.analyticsLevel as 'basic' | 'advanced') 
+          level: analyticsEnabled
+            ? plan.analyticsLevel === 'none'
+              ? 'basic'
+              : (plan.analyticsLevel as 'basic' | 'advanced')
             : 'none',
         },
         messaging: {
@@ -759,7 +863,7 @@ export class SubscriptionsService {
             ? 0
             : finalCatalogueItemsLimit === 'unlimited'
               ? 'unlimited'
-              : Math.max(0, (finalCatalogueItemsLimit as number) - usedCatalogueItems),
+              : Math.max(0, finalCatalogueItemsLimit - usedCatalogueItems),
         },
         catalogueCategories: {
           enabled: catalogueEnabled,
@@ -769,7 +873,10 @@ export class SubscriptionsService {
             ? 0
             : finalCatalogueCategoriesLimit === 'unlimited'
               ? 'unlimited'
-              : Math.max(0, (finalCatalogueCategoriesLimit as number) - usedCatalogueCategories),
+              : Math.max(
+                  0,
+                  finalCatalogueCategoriesLimit - usedCatalogueCategories,
+                ),
         },
         catalogueOffers: {
           enabled: catalogueEnabled,
@@ -779,13 +886,106 @@ export class SubscriptionsService {
             ? 0
             : finalCatalogueOffersLimit === 'unlimited'
               ? 'unlimited'
-              : Math.max(0, (finalCatalogueOffersLimit as number) - usedCatalogueOffers),
+              : Math.max(0, finalCatalogueOffersLimit - usedCatalogueOffers),
+        },
+        inventory: {
+          enabled: plan.inventoryEnabled ?? false,
+          limit:
+            plan.inventoryLimit === -1
+              ? 'unlimited'
+              : (plan.inventoryLimit ?? 0),
+          used: 0,
+          remaining: !plan.inventoryEnabled
+            ? 0
+            : plan.inventoryLimit === -1
+              ? 'unlimited'
+              : (plan.inventoryLimit ?? 0),
+        },
+        pos: {
+          enabled: plan.posEnabled ?? false,
+          limit:
+            plan.posTerminalLimit === -1
+              ? 'unlimited'
+              : (plan.posTerminalLimit ?? 0),
+          used: 0,
+          remaining: !plan.posEnabled
+            ? 0
+            : plan.posTerminalLimit === -1
+              ? 'unlimited'
+              : (plan.posTerminalLimit ?? 0),
+        },
+        visitors: {
+          enabled: plan.visitorsEnabled ?? false,
+        },
+        inAppChat: {
+          enabled: plan.inAppChatEnabled ?? false,
+        },
+        forms: {
+          enabled: plan.formsEnabled ?? false,
+          limit: plan.formsLimit === -1 ? 'unlimited' : (plan.formsLimit ?? 0),
+          used: 0,
+          remaining: !plan.formsEnabled
+            ? 0
+            : plan.formsLimit === -1
+              ? 'unlimited'
+              : (plan.formsLimit ?? 0),
+        },
+        businessQr: {
+          enabled: plan.businessQrEnabled ?? false,
+        },
+        marketingKit: {
+          enabled: plan.marketingKitEnabled ?? false,
+          limit:
+            plan.marketingKitLimit === -1
+              ? 'unlimited'
+              : (plan.marketingKitLimit ?? 0),
+          used: 0,
+          remaining: !plan.marketingKitEnabled
+            ? 0
+            : plan.marketingKitLimit === -1
+              ? 'unlimited'
+              : (plan.marketingKitLimit ?? 0),
+        },
+        discovery: {
+          enabled: plan.discoveryEnabled ?? false,
+        },
+        staffRoles: {
+          enabled: plan.staffRolesEnabled ?? false,
+          limit:
+            plan.staffRolesLimit === -1
+              ? 'unlimited'
+              : (plan.staffRolesLimit ?? 0),
+          used: 0,
+          remaining: !plan.staffRolesEnabled
+            ? 0
+            : plan.staffRolesLimit === -1
+              ? 'unlimited'
+              : (plan.staffRolesLimit ?? 0),
+        },
+        activityLog: {
+          enabled: plan.activityLogEnabled ?? false,
+        },
+        qrCodes: {
+          enabled: plan.qrCodesEnabled ?? false,
+          limit:
+            plan.qrCodesLimit === -1 ? 'unlimited' : (plan.qrCodesLimit ?? 0),
+          used: 0,
+          remaining: !plan.qrCodesEnabled
+            ? 0
+            : plan.qrCodesLimit === -1
+              ? 'unlimited'
+              : (plan.qrCodesLimit ?? 0),
         },
         features: plan.features || [],
         credits: {
           sms: plan.smsCredits || 0,
           email: plan.emailCredits || 0,
           whatsapp: plan.whatsappCredits || 0,
+          ai: plan.aiCredits ?? 0,
+        },
+        aiCopilot: {
+          enabled: plan.aiCopilotEnabled ?? false,
+          credits: plan.aiCredits ?? 0,
         },
       },
       addOns: addOnsInfo,

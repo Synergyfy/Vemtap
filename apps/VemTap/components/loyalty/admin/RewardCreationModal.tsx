@@ -6,7 +6,7 @@ import {
     Plus, Trash2, Gift, Ticket, Save, X, 
     Image as ImageIcon2, HelpCircle, 
     Wallet, Package, Percent, ChevronDown, CheckCircle2, 
-    LucideIcon, Loader2, ChevronLeft, ChevronRight, Users, Zap
+    LucideIcon, Loader2, ChevronLeft, ChevronRight, Users, Zap, Search
 } from 'lucide-react';
 import Cropper, { Point, Area } from 'react-easy-crop';
 import useEmblaCarousel from 'embla-carousel-react';
@@ -16,6 +16,8 @@ import { cn } from '@/lib/utils';
 import { notify } from '@/lib/notify';
 import Tooltip from '@/components/ui/Tooltip';
 import { uploadToCloudinary } from '@/lib/cloudinary';
+import { useCatalogueOffersAdmin } from '@/services/catalogue/hooks';
+import { useActiveBranch } from '@/hooks/useActiveBranch';
 
 const CropperModal: React.FC<{
     image: string;
@@ -219,8 +221,13 @@ export const RewardCreationModal: React.FC<RewardCreationModalProps> = ({
     initialData, 
     defaultAudience = 'all' 
 }) => {
+    const { activeBranchId } = useActiveBranch();
+    const { data: availableOffers = [] } = useCatalogueOffersAdmin({ branchId: activeBranchId || undefined });
+
     const [isTypeOpen, setIsTypeOpen] = useState(false);
     const [isAudienceOpen, setIsAudienceOpen] = useState(false);
+    const [isOfferOpen, setIsOfferOpen] = useState(false);
+    const [offerSearchQuery, setOfferSearchQuery] = useState('');
     const [isSubmitted, setIsSubmitted] = useState(false);
     const [isUploading, setIsUploading] = useState(false);
     const [croppingImage, setCroppingImage] = useState<{ url: string, isGallery?: boolean } | null>(null);
@@ -239,7 +246,8 @@ export const RewardCreationModal: React.FC<RewardCreationModalProps> = ({
         totalAvailable: 0,
         isActive: true,
         imageUrls: [],
-        audienceTarget: defaultAudience
+        audienceTarget: defaultAudience,
+        offerId: undefined
     });
 
     useEffect(() => {
@@ -257,10 +265,12 @@ export const RewardCreationModal: React.FC<RewardCreationModalProps> = ({
                     totalAvailable: 0,
                     isActive: true,
                     imageUrls: [],
-                    audienceTarget: defaultAudience
+                    audienceTarget: defaultAudience,
+                    offerId: undefined
                 });
             }
             setIsSubmitted(false);
+            setOfferSearchQuery('');
             setLocalImageFile(null);
             setLocalGalleryFiles([]);
             setIsUploading(false);
@@ -352,7 +362,8 @@ export const RewardCreationModal: React.FC<RewardCreationModalProps> = ({
 
             const submissionData = { 
                 ...formData, 
-                imageUrls: finalImageUrls
+                imageUrls: finalImageUrls,
+                offerId: formData.offerId || undefined
             };
 
             if (initialData?.id && onUpdate) {
@@ -365,7 +376,7 @@ export const RewardCreationModal: React.FC<RewardCreationModalProps> = ({
             onClose();
         } catch (error) {
             if (toastId) notify.dismiss(toastId);
-            notify.error('Failed to save reward');
+            notify.error((error as any)?.message || 'Failed to save reward');
             console.error('Submit error:', error);
         } finally {
             setIsUploading(false);
@@ -692,6 +703,135 @@ export const RewardCreationModal: React.FC<RewardCreationModalProps> = ({
                                         {formData.totalAvailable === -1 
                                             ? "This reward will never run out of stock unless disabled manually." 
                                             : `Customers can redeem this a total of ${formData.totalAvailable} times.`}
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div className="space-y-6">
+                                <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Step 3: Linked Offer (optional)</h4>
+                                <div className="space-y-2 relative">
+                                    <label className="text-xs font-medium text-slate-700 ml-1">
+                                        Attach a promotion offer
+                                        <span className="text-slate-400 font-normal ml-1">(from Discovery / Promotions)</span>
+                                    </label>
+                                    {formData.offerId ? (
+                                        <div className="flex items-center gap-3 p-3 bg-primary/5 border border-primary/10 rounded-xl">
+                                            {(() => {
+                                                const selected = availableOffers.find(o => o.id === formData.offerId);
+                                                return (
+                                                    <>
+                                                        {selected?.mainImage ? (
+                                                            <img src={selected.mainImage} alt="" className="w-10 h-10 rounded-lg object-cover" />
+                                                        ) : (
+                                                            <div className="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center">
+                                                                <Zap className="w-5 h-5 text-slate-400" />
+                                                            </div>
+                                                        )}
+                                                        <div className="flex-1 min-w-0">
+                                                            <p className="text-sm font-bold text-slate-900 truncate">{selected?.name || 'Unknown Offer'}</p>
+                                                            <p className="text-[10px] text-slate-500 font-medium">{selected?.calculatedPrice ? `$${selected.calculatedPrice}` : ''}</p>
+                                                        </div>
+                                                        <button
+                                                            onClick={() => {
+                                                                setFormData({ ...formData, offerId: undefined });
+                                                                setOfferSearchQuery('');
+                                                            }}
+                                                            className="p-2 hover:bg-white rounded-lg transition-colors"
+                                                        >
+                                                            <X size={16} className="text-slate-400" />
+                                                        </button>
+                                                    </>
+                                                );
+                                            })()}
+                                        </div>
+                                    ) : (
+                                        <div className="relative">
+                                            <button
+                                                type="button"
+                                                onClick={() => setIsOfferOpen(!isOfferOpen)}
+                                                className="w-full h-12 px-5 bg-slate-50 border border-transparent rounded-xl flex items-center justify-between group hover:bg-slate-100 transition-all font-bold text-sm"
+                                            >
+                                                <div className="flex items-center gap-3">
+                                                    <Zap size={16} className="text-primary" />
+                                                    <span className="text-slate-500">Search and attach an offer...</span>
+                                                </div>
+                                                <ChevronDown size={16} className={cn("text-slate-400 transition-transform", isOfferOpen && "rotate-180")} />
+                                            </button>
+
+                                            <AnimatePresence>
+                                                {isOfferOpen && (
+                                                    <>
+                                                        <div className="fixed inset-0 z-10" onClick={() => { setIsOfferOpen(false); setOfferSearchQuery(''); }} />
+                                                        <motion.div
+                                                            initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                                                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                                                            exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                                                            className="absolute top-full left-0 right-0 mt-2 bg-white border border-slate-200 shadow-2xl rounded-2xl overflow-hidden z-20"
+                                                        >
+                                                            <div className="p-3 border-b border-slate-100">
+                                                                <div className="relative">
+                                                                    <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                                                                    <input
+                                                                        type="text"
+                                                                        value={offerSearchQuery}
+                                                                        onChange={(e) => setOfferSearchQuery(e.target.value)}
+                                                                        placeholder="Type to filter offers..."
+                                                                        className="w-full h-10 pl-9 pr-4 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium outline-none focus:border-primary/30 focus:ring-4 focus:ring-primary/5 transition-all"
+                                                                    />
+                                                                </div>
+                                                            </div>
+                                                            <div className="p-2 max-h-56 overflow-y-auto custom-scrollbar">
+                                                                {availableOffers.filter(o =>
+                                                                    o.name.toLowerCase().includes(offerSearchQuery.toLowerCase()) ||
+                                                                    (o.description || '').toLowerCase().includes(offerSearchQuery.toLowerCase())
+                                                                ).length > 0 ? (
+                                                                    availableOffers.filter(o =>
+                                                                        o.name.toLowerCase().includes(offerSearchQuery.toLowerCase()) ||
+                                                                        (o.description || '').toLowerCase().includes(offerSearchQuery.toLowerCase())
+                                                                    ).map((offer) => (
+                                                                        <button
+                                                                            key={offer.id}
+                                                                            type="button"
+                                                                            onClick={() => {
+                                                                                setFormData({ ...formData, offerId: offer.id });
+                                                                                setIsOfferOpen(false);
+                                                                                setOfferSearchQuery('');
+                                                                            }}
+                                                                            className="w-full flex items-center gap-3 p-3 rounded-xl transition-all text-left group hover:bg-slate-50 border border-transparent"
+                                                                        >
+                                                                            {offer.mainImage ? (
+                                                                                <img src={offer.mainImage} alt="" className="w-9 h-9 rounded-lg object-cover shrink-0" />
+                                                                            ) : (
+                                                                                <div className="w-9 h-9 bg-slate-100 rounded-lg flex items-center justify-center shrink-0">
+                                                                                    <Zap size={14} className="text-slate-400" />
+                                                                                </div>
+                                                                            )}
+                                                                            <div className="min-w-0 flex-1">
+                                                                                <p className="text-xs font-bold text-slate-900 truncate">{offer.name}</p>
+                                                                                <p className="text-[10px] text-slate-400 font-medium truncate">{offer.description || 'No description'}</p>
+                                                                            </div>
+                                                                            {offer.calculatedPrice ? (
+                                                                                <span className="text-[10px] font-black text-primary uppercase tracking-widest shrink-0">
+                                                                                    ${offer.calculatedPrice}
+                                                                                </span>
+                                                                            ) : null}
+                                                                        </button>
+                                                                    ))
+                                                                ) : (
+                                                                    <div className="flex flex-col items-center justify-center py-8">
+                                                                        <Zap size={24} className="text-slate-200 mb-2" />
+                                                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">No offers found</p>
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        </motion.div>
+                                                    </>
+                                                )}
+                                            </AnimatePresence>
+                                        </div>
+                                    )}
+                                    <p className="text-[10px] text-slate-400 font-medium ml-1">
+                                        Linking an offer lets customers claim this reward alongside a specific promotion. Backend field <code className="text-primary bg-primary/5 px-1 rounded">offerId</code> must be added to the Reward entity first.
                                     </p>
                                 </div>
                             </div>

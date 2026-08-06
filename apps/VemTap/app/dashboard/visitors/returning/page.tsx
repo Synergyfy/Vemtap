@@ -75,12 +75,7 @@ export default function ReturningVisitorsPage() {
         ...s,
         color: s.color as 'blue' | 'green' | 'purple' | 'red' | 'yellow',
         icon: s.icon === 'repeat' ? Repeat : s.icon === 'group' ? Users : s.icon === 'star' ? Star : AlertTriangle
-    })) : [
-        { label: 'Return Rate', value: '0%', icon: Repeat, color: 'blue' as const, trend: { value: '+0%', isUp: true } },
-        { label: 'Repeat Count', value: returningVisitors.length.toString(), icon: Users, color: 'green' as const, trend: { value: '+0%', isUp: true } },
-        { label: 'VIP Status', value: '0', icon: Star, color: 'yellow' as const, trend: { value: '+0%', isUp: true } },
-        { label: 'Churn Risk', value: '0', icon: AlertTriangle, color: 'red' as const, trend: { value: '-0', isUp: true } },
-    ];
+    })) : [];
 
     const getVisitorDisplayName = (visitor: Visitor) => {
         return visitor.name ||

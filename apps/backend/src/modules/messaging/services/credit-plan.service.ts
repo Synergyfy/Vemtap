@@ -39,9 +39,11 @@ export class CreditPlanService {
     smsAmount: number,
     whatsappAmount: number,
     emailAmount: number,
+    aiAmount: number = 0,
   ): Promise<BusinessCreditWallet> {
     // Idempotency: check if reference has already been processed
-    const existingPayment = await this.paymentsService.findByReference(reference);
+    const existingPayment =
+      await this.paymentsService.findByReference(reference);
     if (existingPayment) {
       this.logger.warn(
         `Idempotency triggered: Custom credit purchase for reference ${reference} has already been processed.`,
@@ -54,11 +56,18 @@ export class CreditPlanService {
     const priceSms = Number(settings.creditPriceSms) || 15;
     const priceWhatsapp = Number(settings.creditPriceWhatsapp) || 25;
     const priceEmail = Number(settings.creditPriceEmail) || 2;
+    const priceAi = Number(settings.creditPriceAi) || 50;
 
-    const expectedPrice = (smsAmount * priceSms) + (whatsappAmount * priceWhatsapp) + (emailAmount * priceEmail);
+    const expectedPrice =
+      smsAmount * priceSms +
+      whatsappAmount * priceWhatsapp +
+      emailAmount * priceEmail +
+      (aiAmount || 0) * priceAi;
 
     if (expectedPrice <= 0) {
-      throw new BadRequestException('Total custom purchase amount must be greater than zero.');
+      throw new BadRequestException(
+        'Total custom purchase amount must be greater than zero.',
+      );
     }
 
     const paymentData = await this.paymentsService.verifyTransaction(reference);
@@ -95,9 +104,11 @@ export class CreditPlanService {
         smsAmount,
         whatsappAmount,
         emailAmount,
+        aiAmount,
         priceSms,
         priceWhatsapp,
         priceEmail,
+        priceAi,
         isCustomPurchase: true,
       },
     });
@@ -129,6 +140,15 @@ export class CreditPlanService {
         `Custom Top-up: ${emailAmount} Email Credits`,
       );
     }
+    if (aiAmount > 0) {
+      await this.creditService.addCredits(
+        businessId,
+        Channel.AI,
+        aiAmount,
+        CreditTransactionType.CREDIT_TOPUP,
+        `Custom Top-up: ${aiAmount} AI Credits`,
+      );
+    }
 
     return this.creditService.getOrCreateWallet(businessId);
   }
@@ -139,7 +159,8 @@ export class CreditPlanService {
     reference: string,
   ): Promise<BusinessCreditWallet> {
     // Idempotency: check if reference has already been processed
-    const existingPayment = await this.paymentsService.findByReference(reference);
+    const existingPayment =
+      await this.paymentsService.findByReference(reference);
     if (existingPayment) {
       this.logger.warn(
         `Idempotency triggered: Credit package purchase for reference ${reference} has already been processed.`,
@@ -210,6 +231,15 @@ export class CreditPlanService {
         `Top-up: ${plan.name}`,
       );
     }
+    if (plan.aiAmount > 0) {
+      await this.creditService.addCredits(
+        businessId,
+        Channel.AI,
+        plan.aiAmount,
+        CreditTransactionType.CREDIT_TOPUP,
+        `Top-up: ${plan.name}`,
+      );
+    }
 
     return this.creditService.getOrCreateWallet(businessId);
   }
@@ -221,9 +251,10 @@ export class CreditPlanService {
   async getRates() {
     const settings = await this.settingsService.getGlobalSettings();
     return {
-      creditPriceSms: Number(settings.creditPriceSms) || 15.00,
-      creditPriceWhatsapp: Number(settings.creditPriceWhatsapp) || 25.00,
-      creditPriceEmail: Number(settings.creditPriceEmail) || 2.00,
+      creditPriceSms: Number(settings.creditPriceSms) || 15.0,
+      creditPriceWhatsapp: Number(settings.creditPriceWhatsapp) || 25.0,
+      creditPriceEmail: Number(settings.creditPriceEmail) || 2.0,
+      creditPriceAi: Number(settings.creditPriceAi) || 50.0,
     };
   }
 

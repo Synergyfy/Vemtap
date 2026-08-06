@@ -88,6 +88,90 @@ export class CreateCatalogueOfferDto {
   @IsArray()
   @IsUUID(undefined, { each: true })
   itemIds: string[];
+
+  @ApiPropertyOptional({ example: '2026-06-01T00:00:00.000Z' })
+  @IsOptional()
+  @IsString()
+  startDate?: string;
+
+  @ApiPropertyOptional({ example: '2026-06-30T23:59:59.000Z' })
+  @IsOptional()
+  @IsString()
+  endDate?: string;
+
+  @ApiPropertyOptional({ example: 'discount' })
+  @IsOptional()
+  @IsString()
+  offerType?: string;
+
+  @ApiPropertyOptional({ example: 'everyone_nearby' })
+  @IsOptional()
+  @IsString()
+  audience?: string;
+
+  @ApiPropertyOptional({
+    example: [
+      'Valid during business hours',
+      'Cannot be combined with other offers',
+    ],
+  })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  terms?: string[];
+
+  @ApiPropertyOptional({ example: 'VEM' })
+  @IsOptional()
+  @IsString()
+  claimCodePrefix?: string;
+
+  @ApiPropertyOptional({ example: 1 })
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  @Min(0)
+  maxClaimsPerCustomer?: number;
+
+  @ApiPropertyOptional({ example: 'all' })
+  @IsOptional()
+  @IsString()
+  audienceTarget?: string;
+
+  @ApiPropertyOptional({ example: 'same_area' })
+  @IsOptional()
+  @IsString()
+  deliveryScope?: string;
+
+  @ApiPropertyOptional({ example: 10 })
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  @Min(0)
+  deliveryRadius?: number;
+
+  @ApiPropertyOptional({ example: 'km' })
+  @IsOptional()
+  @IsString()
+  deliveryUnit?: string;
+
+  @ApiPropertyOptional({ example: 'Lagos State' })
+  @IsOptional()
+  @IsString()
+  deliveryRegion?: string;
+
+  @ApiPropertyOptional({ example: 50.0 })
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  @Min(0)
+  minOrderAmount?: number;
+
+  @ApiPropertyOptional({
+    example: 'Full terms, offer details, and eligible items description',
+  })
+  @IsOptional()
+  @IsString()
+  longDescription?: string;
 }
 
 export class UpdateCatalogueOfferDto {
@@ -160,6 +244,104 @@ export class UpdateCatalogueOfferDto {
   @IsArray()
   @IsUUID(undefined, { each: true })
   itemIds?: string[];
+
+  @ApiPropertyOptional({ example: '2026-06-01T00:00:00.000Z' })
+  @IsOptional()
+  @IsString()
+  startDate?: string;
+
+  @ApiPropertyOptional({ example: '2026-06-30T23:59:59.000Z' })
+  @IsOptional()
+  @IsString()
+  endDate?: string;
+
+  @ApiPropertyOptional({ example: 'discount' })
+  @IsOptional()
+  @IsString()
+  offerType?: string;
+
+  @ApiPropertyOptional({ example: 'everyone_nearby' })
+  @IsOptional()
+  @IsString()
+  audience?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  terms?: string[];
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  claimCodePrefix?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  @Min(0)
+  maxClaimsPerCustomer?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  audienceTarget?: string;
+
+  @ApiPropertyOptional({ example: 'same_area' })
+  @IsOptional()
+  @IsString()
+  deliveryScope?: string;
+
+  @ApiPropertyOptional({ example: 10 })
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  @Min(0)
+  deliveryRadius?: number;
+
+  @ApiPropertyOptional({ example: 'km' })
+  @IsOptional()
+  @IsString()
+  deliveryUnit?: string;
+
+  @ApiPropertyOptional({ example: 'Lagos State' })
+  @IsOptional()
+  @IsString()
+  deliveryRegion?: string;
+
+  @ApiPropertyOptional({ example: 50.0 })
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  @Min(0)
+  minOrderAmount?: number;
+
+  @ApiPropertyOptional({
+    example: 'Full terms, offer details, and eligible items description',
+  })
+  @IsOptional()
+  @IsString()
+  longDescription?: string;
+}
+
+export class GenerateOfferTermsDto {
+  @ApiPropertyOptional({ example: 'Summer Special Buy 1 Get 1 Free' })
+  @IsOptional()
+  @IsString()
+  title?: string;
+
+  @ApiPropertyOptional({ example: 'Summer Special Buy 1 Get 1 Free' })
+  @IsOptional()
+  @IsString()
+  name?: string;
+
+  @ApiPropertyOptional({
+    example: 'Enjoy 50% off all summer beverages and snacks',
+  })
+  @IsOptional()
+  @IsString()
+  description?: string;
 }
 
 export class CatalogueOfferQueryDto {
@@ -191,4 +373,59 @@ export class CatalogueOfferQueryDto {
   @IsOptional()
   @IsUUID()
   branchId?: string;
+}
+
+export class PublicCatalogueOffersQueryDto {
+  @ApiPropertyOptional()
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(1)
+  page?: number = 1;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(1)
+  limit?: number = 10;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  search?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  sortBy?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsUUID()
+  categoryId?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  lat?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  lng?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  radius?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  audience?: string;
 }

@@ -1,26 +1,52 @@
 'use client';
 
 import React from 'react';
-import DiscoveryNav from '@/components/admin/discovery/DiscoveryNav';
 import { 
     Tag, Store, MousePointerClick, TrendingUp,
     Search, Filter, PieChart, BarChart3,
-    ArrowUpRight, Target, LayoutGrid, Boxes, Eye
+    ArrowUpRight, Target, LayoutGrid, Boxes, Eye, ChevronLeft
 } from 'lucide-react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-
-const MOCK_CATEGORIES = [
-    { id: '1', name: 'Restaurants', referrals: 1250, conversion: '18.5%', revenue: 2450000, topOffer: '15% Lunch Discount' },
-    { id: '2', name: 'Fashion', referrals: 840, conversion: '12.4%', revenue: 1850000, topOffer: 'Summer Lookbook' },
-    { id: '3', name: 'Supermarkets', referrals: 2100, conversion: '5.2%', revenue: 4200000, topOffer: 'Free Delivery' },
-    { id: '4', name: 'Salons', referrals: 320, conversion: '22.8%', revenue: 850000, topOffer: 'Free Consultation' },
-];
+import DiscoveryNav from '@/components/admin/discovery/DiscoveryNav';
+import { useAdminCategories } from '@/services/discovery/hooks';
 
 export default function DiscoveryCategoriesPage() {
+    const { data: response, isLoading } = useAdminCategories({ page: 1, limit: 20 });
+    const categories = response?.data ?? [];
+
+    if (isLoading) {
+        return (
+            <div className="p-8">
+                <DiscoveryNav current="/admin/discovery/categories" />
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+                    {[1, 2, 3, 4].map((i) => (
+                        <div key={i} className="bg-white rounded-3xl border border-gray-100 p-6 shadow-sm animate-pulse">
+                            <div className="h-10 w-10 rounded-2xl bg-gray-100 mb-4" />
+                            <div className="h-3 w-24 bg-gray-100 rounded mb-2" />
+                            <div className="h-6 w-16 bg-gray-100 rounded" />
+                        </div>
+                    ))}
+                </div>
+                <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
+                    <div className="p-6 border-b border-gray-50">
+                        <div className="h-5 w-40 bg-gray-100 rounded" />
+                    </div>
+                    <div className="p-6 space-y-4">
+                        {[1, 2, 3, 4].map((i) => (
+                            <div key={i} className="h-12 bg-gray-50 rounded-lg animate-pulse" />
+                        ))}
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className="p-8">
-            <DiscoveryNav current="/admin/discovery/categories" />
+            <Link href="/admin/discovery/dashboard" className="inline-flex items-center gap-1.5 text-xs font-bold text-text-secondary hover:text-text-main transition-colors mb-6">
+                <ChevronLeft size={14} /> Back to Discovery
+            </Link>
 
             {/* Category Performance Stats */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
@@ -69,7 +95,7 @@ export default function DiscoveryCategoriesPage() {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-50 text-sm">
-                                {MOCK_CATEGORIES.map((cat) => (
+                                {categories.map((cat) => (
                                     <tr key={cat.id} className="hover:bg-gray-50/50 transition-colors group">
                                         <td className="px-6 py-4">
                                             <p className="font-bold text-text-main group-hover:text-primary transition-colors">{cat.name}</p>

@@ -17,8 +17,8 @@ import {
   ApiBearerAuth,
 } from '@nestjs/swagger';
 import { TemplatesService } from '../services/templates.service';
-import { CreateTemplateDto } from '../dto/create-template.dto';
-import { UpdateTemplateDto } from '../dto/update-template.dto';
+import { CreateMarketingTemplateDto } from '../dto/create-template.dto';
+import { UpdateMarketingTemplateDto } from '../dto/update-template.dto';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../../common/guards/roles.guard';
 import { Roles } from '../../../common/decorators/roles.decorator';
@@ -37,11 +37,12 @@ export class MarketingTemplatesController {
   @ApiOperation({ summary: 'Create a new print template (Admin only)' })
   @ApiResponse({ status: 201, type: MarketingTemplate })
   @Roles(UserRole.ADMIN)
-  create(@Body() createDto: CreateTemplateDto, @Req() req: Request) {
+  create(@Body() createDto: CreateMarketingTemplateDto, @Req() req: Request) {
     return this.templatesService.create(createDto, (req as any).user);
   }
 
   @Get()
+  @Roles(UserRole.ADMIN, UserRole.OWNER, UserRole.MANAGER)
   @ApiOperation({ summary: 'Get all active print templates' })
   @ApiResponse({ status: 200, type: [MarketingTemplate] })
   findAll(
@@ -51,11 +52,14 @@ export class MarketingTemplatesController {
     @Query('categoryIds') categoryIds?: string,
   ) {
     const activeOnly = all !== 'true';
-    const ids = categoryIds ? categoryIds.split(',').filter(Boolean) : undefined;
+    const ids = categoryIds
+      ? categoryIds.split(',').filter(Boolean)
+      : undefined;
     return this.templatesService.findAll(category, type, activeOnly, ids);
   }
 
   @Get('categories')
+  @Roles(UserRole.ADMIN, UserRole.OWNER, UserRole.MANAGER)
   @ApiOperation({ summary: 'Get list of unique template categories' })
   @ApiResponse({ status: 200, type: [String] })
   getCategories() {
@@ -63,6 +67,7 @@ export class MarketingTemplatesController {
   }
 
   @Get(':id')
+  @Roles(UserRole.ADMIN, UserRole.OWNER, UserRole.MANAGER)
   @ApiOperation({ summary: 'Get a template by ID' })
   @ApiResponse({ status: 200, type: MarketingTemplate })
   findOne(@Param('id') id: string) {
@@ -73,7 +78,11 @@ export class MarketingTemplatesController {
   @ApiOperation({ summary: 'Update a template (Admin only)' })
   @ApiResponse({ status: 200, type: MarketingTemplate })
   @Roles(UserRole.ADMIN)
-  update(@Param('id') id: string, @Body() updateDto: UpdateTemplateDto, @Req() req: Request) {
+  update(
+    @Param('id') id: string,
+    @Body() updateDto: UpdateMarketingTemplateDto,
+    @Req() req: Request,
+  ) {
     return this.templatesService.update(id, updateDto, (req as any).user);
   }
 

@@ -1,7 +1,7 @@
 "use client";
 
-import React from 'react';
-import { motion } from 'framer-motion';
+import React, { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { 
   ArrowRight, Play, CheckCircle2, QrCode, MessageSquare, 
   BarChart3, Image as ImageIcon, Globe, ShieldCheck, 
@@ -18,6 +18,8 @@ import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 
 export default function Homepage() {
+  const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
+
   return (
     <div className="min-h-screen bg-white">
       <Navbar />
@@ -35,19 +37,22 @@ export default function Homepage() {
               <Badge className="bg-blue-50 text-[#066CF4] border-none px-4 py-1.5 font-black uppercase tracking-widest mb-6">
                 Customer Engagement Platform
               </Badge>
-              <h1 className="text-4xl md:text-6xl lg:text-7xl font-black text-gray-900 leading-[1.1] mb-8">
-                Turn Every Visitor <br className="hidden md:block" /> Into A Customer <br className="hidden md:block" /> <span className="text-[#066CF4]">You Can Reach Again</span>
+              <h1 className="text-4xl md:text-5xl lg:text-6xl font-black text-gray-900 leading-[1.1] mb-8 max-w-2xl mx-auto lg:mx-0">
+                Turn Every Customer Into A <span className="text-[#066CF4]">Customer You Can Reach Again.</span>
               </h1>
               <p className="text-lg md:text-xl text-gray-500 font-medium max-w-xl mx-auto lg:mx-0 mb-10 leading-relaxed">
-                Capture customer details using QR codes and NFC technology. Build your customer database, send smart messages, and grow your business.
+                We help businesses capture customer details, build lasting relationships, automate follow-ups, and increase repeat sales...
               </p>
               <div className="flex flex-col sm:flex-row items-center gap-4 justify-center lg:justify-start">
                 <Link href="/get-started" className="w-full sm:w-auto">
                   <Button className="h-16 px-10 rounded-2xl bg-[#066CF4] text-sm font-black uppercase tracking-[0.2em] text-white shadow-2xl shadow-blue-500/20 active:scale-95 transition-all">
-                    Start Free
+                    Get Started
                   </Button>
                 </Link>
-                <button className="flex items-center gap-3 px-8 py-4 text-gray-900 font-black uppercase tracking-widest text-xs hover:text-[#066CF4] transition-colors">
+                <button 
+                  onClick={() => setIsVideoModalOpen(true)}
+                  className="flex items-center gap-3 px-8 py-4 text-gray-900 font-black uppercase tracking-widest text-xs hover:text-[#066CF4] transition-colors"
+                >
                   <div className="size-10 rounded-full bg-white shadow-lg flex items-center justify-center text-[#066CF4]">
                     <Play size={16} fill="currentColor" />
                   </div>
@@ -59,33 +64,18 @@ export default function Homepage() {
             <motion.div 
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
-              className="relative"
+              className="relative lg:mt-0"
             >
-              <div className="relative mx-auto w-full max-w-[400px] aspect-[9/18.5] bg-gray-900 rounded-[3rem] border-[10px] border-gray-800 shadow-[0_50px_100px_-20px_rgba(0,0,0,0.3)] overflow-hidden">
-                <div className="h-full w-full bg-white p-6 pt-12">
-                   {/* Simplified Dashboard Illustration */}
-                   <div className="space-y-6">
-                     <div className="flex justify-between items-center">
-                       <div className="size-8 rounded-full bg-blue-50" />
-                       <div className="w-20 h-2 bg-gray-100 rounded" />
-                     </div>
-                     <div className="h-32 w-full bg-blue-50 rounded-2xl p-4">
-                       <div className="w-1/2 h-4 bg-[#066CF4]/20 rounded mb-2" />
-                       <div className="w-3/4 h-8 bg-[#066CF4] rounded-lg" />
-                     </div>
-                     <div className="grid grid-cols-2 gap-4">
-                       <div className="h-24 bg-gray-50 rounded-2xl" />
-                       <div className="h-24 bg-gray-50 rounded-2xl" />
-                     </div>
-                     <div className="space-y-3">
-                       {[1, 2, 3].map(i => (
-                         <div key={i} className="h-12 bg-gray-50 rounded-xl flex items-center px-4 gap-3">
-                           <div className="size-6 rounded-full bg-white shadow-sm" />
-                           <div className="w-24 h-2 bg-gray-200 rounded" />
-                         </div>
-                       ))}
-                     </div>
-                   </div>
+              <div className="relative mx-auto w-full max-w-[320px] aspect-[9/18.5] bg-gray-900 rounded-[3rem] border-[8px] border-gray-800 shadow-[0_50px_100px_-20px_rgba(0,0,0,0.3)] overflow-hidden">
+                <div className="h-full w-full bg-black relative">
+                  <video
+                    src="/assets/videos/hero.webm"
+                    autoPlay
+                    loop
+                    muted
+                    playsInline
+                    className="w-full h-full object-cover"
+                  />
                 </div>
               </div>
               {/* Floating element */}
@@ -362,7 +352,7 @@ export default function Homepage() {
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
                 <Link href="/get-started">
                   <Button className="h-16 px-12 rounded-2xl bg-[#066CF4] text-sm font-black uppercase tracking-[0.2em] text-white shadow-2xl shadow-blue-500/20 active:scale-95 transition-all">
-                    Start Free
+                    Get Started
                   </Button>
                 </Link>
                 <Link href="/contact">
@@ -374,6 +364,32 @@ export default function Homepage() {
           </div>
         </section>
       </main>
+
+      <AnimatePresence>
+        {isVideoModalOpen && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="relative w-full max-w-5xl aspect-video bg-black rounded-2xl overflow-hidden shadow-2xl border border-white/10"
+            >
+              <button 
+                onClick={() => setIsVideoModalOpen(false)}
+                className="absolute top-4 right-4 z-10 size-10 rounded-full bg-black/50 text-white hover:bg-black/80 flex items-center justify-center transition-colors border border-white/20 backdrop-blur-md"
+              >
+                <X size={20} />
+              </button>
+              <video
+                src="/assets/videos/vemtap-exp.webm"
+                autoPlay
+                controls
+                className="w-full h-full object-contain"
+              />
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       <Footer />
     </div>

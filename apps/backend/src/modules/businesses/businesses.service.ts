@@ -7,12 +7,16 @@ import {
   forwardRef,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, In } from 'typeorm';
+import { InjectQueue } from '@nestjs/bullmq';
+import { Queue } from 'bullmq';
+import { Repository, In, IsNull, Not } from 'typeorm';
+import { Cron } from '@nestjs/schedule';
 import { Business, BusinessStatus } from './entities/business.entity';
 import { UpdateBusinessDto } from './dto/update-business.dto';
 import { AdminCreateBusinessDto } from './dto/admin-create-business.dto';
 import { User, UserRole, UserStatus } from '../users/entities/user.entity';
 import * as bcrypt from 'bcrypt';
+import { randomBytes } from 'crypto';
 import { ImportCustomersDto } from './dto/import-customers.dto';
 import { MailService } from '../mail/mail.service';
 import { Branch } from '../branches/entities/branch.entity';
@@ -20,8 +24,16 @@ import { Visit } from '../visitors/entities/visit.entity';
 import { DevicesService } from '../devices/devices.service';
 import { Reward } from '../loyalty/entities/reward.entity';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
-import { Subscription, SubscriptionStatus } from '../subscriptions/entities/subscription.entity';
+import { paginateWithCursor } from '../../common/utils/cursor-pagination.util';
+import {
+  Subscription,
+  SubscriptionStatus,
+} from '../subscriptions/entities/subscription.entity';
 import { Plan } from '../subscriptions/entities/plan.entity';
+import {
+  GEOCODING_QUEUE,
+  GeocodingJobData,
+} from './processors/geocoding.processor';
 
 @Injectable()
 export class BusinessesService {
@@ -44,6 +56,8 @@ export class BusinessesService {
     private subscriptionRepository: Repository<Subscription>,
     @InjectRepository(Plan)
     private planRepository: Repository<Plan>,
+    @InjectQueue(GEOCODING_QUEUE)
+    private readonly geocodingQueue: Queue<GeocodingJobData>,
   ) {}
 
   async create(
@@ -53,6 +67,8 @@ export class BusinessesService {
       website?: string;
       state?: string;
       city?: string;
+      latitude?: number;
+      longitude?: number;
       whatsappNumber?: string;
       officialEmail?: string;
       engagement?: Record<string, any>;
@@ -81,6 +97,8 @@ export class BusinessesService {
       website,
       state,
       city,
+      latitude,
+      longitude,
       whatsappNumber,
       officialEmail,
       phone,
@@ -97,6 +115,8 @@ export class BusinessesService {
       website,
       state,
       city,
+      latitude,
+      longitude,
       whatsappNumber,
     } as Partial<Business>);
     const savedBusiness = await this.businessesRepository.save(business);
@@ -110,6 +130,8 @@ export class BusinessesService {
       address,
       state,
       city,
+      latitude,
+      longitude,
       website,
       whatsappNumber,
       officialEmail: officialEmail,
@@ -166,7 +188,7 @@ export class BusinessesService {
 
   async findByCode(uniqueCode: string): Promise<any> {
     const business = await this.businessesRepository.findOne({
-      where: { uniqueCode, status: BusinessStatus.ACTIVE },
+      where: { uniqueCode, status: Not(BusinessStatus.SUSPENDED) },
       relations: ['branches', 'category', 'subcategory', 'owner'],
     });
     if (!business) {
@@ -228,13 +250,130 @@ export class BusinessesService {
     updateBusinessDto: UpdateBusinessDto,
   ): Promise<Business> {
     const business = await this.findById(id);
+
+    // Map frontend aliases to entity field names
+    if (updateBusinessDto.about && !updateBusinessDto.description) {
+      (updateBusinessDto as any).description = updateBusinessDto.about;
+    }
+    if (updateBusinessDto.businessHours && !updateBusinessDto.openingHours) {
+      (updateBusinessDto as any).openingHours = updateBusinessDto.businessHours;
+    }
+
+    // Merge individual social fields into socials object
+    const socialFields = [
+      'facebookUrl',
+      'instagramUrl',
+      'tiktokUrl',
+      'xUrl',
+      'linkedinUrl',
+    ] as const;
+    const hasIndividualSocials = socialFields.some(
+      (f) => !!(updateBusinessDto as any)[f],
+    );
+    if (hasIndividualSocials) {
+      const existingSocials = business.socials || {};
+      for (const field of socialFields) {
+        const value = (updateBusinessDto as any)[field];
+        if (value) {
+          const key = field.replace('Url', '').toLowerCase();
+          existingSocials[key] = value;
+        }
+      }
+      (updateBusinessDto as any).socials = existingSocials;
+    }
+
+    // Clean up alias fields before assign to avoid TypeORM warnings
+    delete (updateBusinessDto as any).about;
+    delete (updateBusinessDto as any).businessHours;
+    for (const field of socialFields) {
+      delete (updateBusinessDto as any)[field];
+    }
+
     Object.assign(business, updateBusinessDto);
-    return this.businessesRepository.save(business);
+    const saved = await this.businessesRepository.save(business);
+
+    if (
+      updateBusinessDto.latitude !== undefined ||
+      updateBusinessDto.longitude !== undefined
+    ) {
+      const mainBranch = await this.findMainBranch(id);
+      if (mainBranch) {
+        if (updateBusinessDto.latitude !== undefined) {
+          mainBranch.latitude = updateBusinessDto.latitude;
+        }
+        if (updateBusinessDto.longitude !== undefined) {
+          mainBranch.longitude = updateBusinessDto.longitude;
+        }
+        await this.branchRepository.save(mainBranch);
+      }
+    }
+
+    return saved;
+  }
+
+  async enqueueGeocode(businessId: string): Promise<void> {
+    const business = await this.findById(businessId);
+    const mainBranch = await this.findMainBranch(businessId);
+
+    if (!mainBranch) {
+      throw new NotFoundException('Main branch not found for this business');
+    }
+
+    await this.geocodingQueue.add(
+      'geocode-address',
+      {
+        businessId,
+        branchId: mainBranch.id,
+        addressLine: business.address,
+        city: business.city,
+        state: business.state,
+        country: 'Nigeria',
+      },
+      {
+        attempts: 3,
+        backoff: { type: 'exponential', delay: 5000 },
+        removeOnComplete: true,
+        removeOnFail: 100,
+      },
+    );
+  }
+
+  @Cron('*/10 * * * *')
+  async backfillMissingGeocodes() {
+    const BATCH_SIZE = 10;
+
+    const branches = await this.branchRepository.find({
+      where: { latitude: IsNull() },
+      take: BATCH_SIZE,
+      order: { createdAt: 'ASC' },
+    });
+
+    if (branches.length === 0) return;
+
+    for (const branch of branches) {
+      const business = await this.businessesRepository.findOne({
+        where: { id: branch.businessId },
+        select: ['id', 'address', 'city', 'state'],
+      });
+      if (!business) continue;
+
+      const addressLine = branch.address || business.address;
+      const city = branch.city || business.city;
+      if (!addressLine) continue;
+
+      await this.geocodingQueue.add('geocode-address', {
+        businessId: business.id,
+        branchId: branch.id,
+        addressLine,
+        city,
+        state: business.state,
+        country: 'Nigeria',
+        updateBusiness: branch.isMainBranch,
+      });
+    }
   }
 
   async importCustomers(branchId: string, importDto: ImportCustomersDto) {
-    const defaultPassword = '123456';
-    const hashedPassword = await bcrypt.hash(defaultPassword, 10);
     const results = {
       imported: 0,
       skipped: 0,
@@ -252,6 +391,11 @@ export class BusinessesService {
           results.skipped++;
           continue;
         }
+
+        // Each imported customer gets a unique random password (emailed to
+        // them) — never a shared constant.
+        const tempPassword = randomBytes(9).toString('base64url').slice(0, 12);
+        const hashedPassword = await bcrypt.hash(tempPassword, 10);
 
         const newUser = this.usersRepository.create({
           firstName: customerData.firstName,
@@ -272,7 +416,7 @@ export class BusinessesService {
           .sendWelcomeEmail(
             email,
             `${customerData.firstName} ${customerData.lastName}`,
-            defaultPassword,
+            tempPassword,
           )
           .catch((err) =>
             console.error(`Failed to send welcome email to ${email}:`, err),
@@ -333,10 +477,20 @@ export class BusinessesService {
 
     const page = query.page || 1;
     const limit = query.limit || 10;
-    qb.skip((page - 1) * limit).take(limit);
-    qb.orderBy('business.createdAt', 'DESC');
+    const cursor = (query as any).cursor || (query as any).nextCursor;
 
-    const [businesses, total] = await qb.getManyAndCount();
+    const result = await paginateWithCursor({
+      queryBuilder: qb,
+      cursor,
+      page,
+      limit,
+      sortField: 'createdAt',
+      sortOrder: 'DESC',
+      entityAlias: 'business',
+    });
+
+    const businesses = result.data;
+    const total = result.total;
 
     // Stats
     const activeCount = await this.businessesRepository.count({
@@ -391,40 +545,66 @@ export class BusinessesService {
     };
   }
 
-  async findSuspendedAdmin(query: { page?: number; limit?: number }) {
-    const page = query.page || 1;
-    const limit = query.limit || 10;
+  async findSuspendedAdmin(query: {
+    page?: number;
+    limit?: number;
+    cursor?: string;
+  }) {
+    const qb = this.businessesRepository
+      .createQueryBuilder('business')
+      .leftJoinAndSelect('business.owner', 'owner')
+      .leftJoinAndSelect('business.category', 'category')
+      .leftJoinAndSelect('business.subcategory', 'subcategory')
+      .where('business.status = :status', { status: BusinessStatus.SUSPENDED });
 
-    const [businesses, total] = await this.businessesRepository.findAndCount({
-      where: { status: BusinessStatus.SUSPENDED },
-      relations: ['owner', 'category', 'subcategory'],
-      order: { suspendedAt: 'DESC' },
-      skip: (page - 1) * limit,
-      take: limit,
+    const result = await paginateWithCursor({
+      queryBuilder: qb,
+      cursor: query.cursor,
+      page: query.page,
+      limit: query.limit,
+      sortField: 'suspendedAt',
+      sortOrder: 'DESC',
+      entityAlias: 'business',
     });
 
     return {
-      data: businesses,
+      data: result.data,
+      cursor: result.cursor,
+      nextCursor: result.nextCursor,
+      prevCursor: result.prevCursor,
+      hasNextPage: result.hasNextPage,
       meta: {
-        total,
-        page,
-        lastPage: Math.ceil(total / limit),
+        total: result.total,
+        page: result.page,
+        lastPage: result.meta.lastPage,
       },
     };
   }
 
-  async findPendingVerificationAdmin(query: { page?: number; limit?: number }) {
-    const page = query.page || 1;
-    const limit = query.limit || 10;
+  async findPendingVerificationAdmin(query: {
+    page?: number;
+    limit?: number;
+    cursor?: string;
+  }) {
+    const qb = this.businessesRepository
+      .createQueryBuilder('business')
+      .leftJoinAndSelect('business.owner', 'owner')
+      .leftJoinAndSelect('business.category', 'category')
+      .leftJoinAndSelect('business.subcategory', 'subcategory')
+      .where('business.isVerified = :isVerified', { isVerified: false });
 
-    // 1. Get businesses that are NOT verified
-    const [items, total] = await this.businessesRepository.findAndCount({
-      where: { isVerified: false },
-      relations: ['owner', 'category', 'subcategory'],
-      order: { createdAt: 'DESC' },
-      skip: (page - 1) * limit,
-      take: limit,
+    const result = await paginateWithCursor({
+      queryBuilder: qb,
+      cursor: query.cursor,
+      page: query.page,
+      limit: query.limit,
+      sortField: 'createdAt',
+      sortOrder: 'DESC',
+      entityAlias: 'business',
     });
+
+    const items = result.data;
+    const total = result.total;
 
     // 2. Stats for verification
     const todayStart = new Date();
@@ -455,8 +635,10 @@ export class BusinessesService {
       data: items,
       meta: {
         total,
-        page,
-        lastPage: Math.ceil(total / limit),
+        page: result.page,
+        lastPage: Math.ceil(total / (result.limit || 10)),
+        cursor: result.cursor,
+        nextCursor: result.nextCursor,
       },
       stats: {
         totalPending: total,
@@ -548,7 +730,7 @@ export class BusinessesService {
       registrationNumber: dto.registrationNumber,
       documents: dto.documents,
       engagement: dto.engagement,
-    } as any);
+    });
 
     // Ensure user status is active and linked to branch (linked during this.create)
     user.status = UserStatus.ACTIVE;
@@ -676,17 +858,20 @@ export class BusinessesService {
   }
 
   async getStats() {
-    const [totalBusinesses, activeBusinesses, churnedCount, statusRaw] = await Promise.all([
-      this.businessesRepository.count(),
-      this.businessesRepository.count({ where: { status: 'active' as any } }),
-      this.businessesRepository.count({ where: { status: 'suspended' as any } }),
-      this.businessesRepository
-        .createQueryBuilder('b')
-        .select('b.status', 'status')
-        .addSelect('COUNT(b.id)', 'count')
-        .groupBy('b.status')
-        .getRawMany<{ status: string; count: string }>(),
-    ]);
+    const [totalBusinesses, activeBusinesses, churnedCount, statusRaw] =
+      await Promise.all([
+        this.businessesRepository.count(),
+        this.businessesRepository.count({ where: { status: 'active' as any } }),
+        this.businessesRepository.count({
+          where: { status: 'suspended' as any },
+        }),
+        this.businessesRepository
+          .createQueryBuilder('b')
+          .select('b.status', 'status')
+          .addSelect('COUNT(b.id)', 'count')
+          .groupBy('b.status')
+          .getRawMany<{ status: string; count: string }>(),
+      ]);
 
     const statusDistribution = statusRaw.map((r) => ({
       status: r.status,
@@ -717,11 +902,13 @@ export class BusinessesService {
       planMap.set(planName, entry);
     }
 
-    const planDistribution = Array.from(planMap.entries()).map(([plan, data]) => ({
-      plan,
-      count: data.count,
-      totalMrr: data.totalMrr,
-    }));
+    const planDistribution = Array.from(planMap.entries()).map(
+      ([plan, data]) => ({
+        plan,
+        count: data.count,
+        totalMrr: data.totalMrr,
+      }),
+    );
 
     let bestSellingPlan: {
       plan: string;
@@ -730,7 +917,9 @@ export class BusinessesService {
     } | null = null;
 
     if (planDistribution.length > 0) {
-      const sorted = [...planDistribution].sort((a, b) => b.totalMrr - a.totalMrr);
+      const sorted = [...planDistribution].sort(
+        (a, b) => b.totalMrr - a.totalMrr,
+      );
       bestSellingPlan = {
         plan: sorted[0].plan,
         totalMrr: sorted[0].totalMrr,

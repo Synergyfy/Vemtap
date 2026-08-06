@@ -27,22 +27,24 @@ export class CategoriesService {
 
   private async clearCache() {
     try {
-      // In newer versions of cache-manager (v5+), store is often stores[0] or moved.
-      // NestJS Cache object sometimes hides the store depending on the version.
       const cacheMgr = this.cacheManager as any;
       const store =
         cacheMgr.store || (cacheMgr.stores ? cacheMgr.stores[0] : null);
 
       if (store && typeof store.keys === 'function') {
-        const keys = await store.keys('categories:*');
+        const keys = await store.keys('*categories:*');
         for (const key of keys) {
-          await this.cacheManager.del(key);
+          if (typeof store.del === 'function') {
+            await store.del(key);
+          } else {
+            await this.cacheManager.del(key);
+          }
         }
+      } else if (typeof (this.cacheManager as any).reset === 'function') {
+        await (this.cacheManager as any).reset();
       } else {
-        // Fallback to reset if we can't find keys (less efficient but safe)
-        // await this.cacheManager.reset();
         this.logger.warn(
-          'Cache store does not support keys() method. Cache might not be cleared correctly.',
+          'Cache store does not support keys() or reset(). Cache might not be cleared correctly.',
         );
       }
     } catch (error) {

@@ -1,103 +1,116 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
-export type StockAction = 'add' | 'remove' | 'adjust' | 'sale' | 'order';
+export type MovementType = 'receive' | 'adjust' | 'transfer' | 'sale' | 'return' | 'count_variance';
 
-export interface StockLog {
+export interface StockMovement {
   id: string;
   productId: string;
   productName: string;
-  action: StockAction;
-  quantity: number;
+  type: MovementType;
+  quantityChange: number;
   previousQuantity: number;
   newQuantity: number;
   reason: string;
-  timestamp: string;
+  referenceId?: string;
+  createdAt: string;
+  user: string;
+}
+
+export interface StockCountSession {
+  id: string;
+  status: 'draft' | 'in_progress' | 'completed';
+  itemsCounted: number;
+  totalVariances: number;
+  createdAt: string;
+  completedAt?: string;
 }
 
 interface InventoryState {
-  inventoryLevels: Record<string, number>;
-  lowStockThresholds: Record<string, number>;
-  stockLogs: StockLog[];
-  
-  // Actions
-  addStock: (productId: string, quantity: number, reason: string) => void;
-  removeStock: (productId: string, quantity: number, reason: string) => void;
-  adjustStock: (productId: string, newQuantity: number, reason: string) => void;
-  setThreshold: (productId: string, threshold: number) => void;
+  movements: StockMovement[];
+  countSessions: StockCountSession[];
+
+  recordMovement: (
+    productId: string,
+    productName: string,
+    type: MovementType,
+    quantityChange: number,
+    reason: string,
+    previousQuantity: number,
+    referenceId?: string,
+    user?: string
+  ) => void;
+
+  receiveStock: (items: { productId: string; productName: string; quantity: number; currentQty: number }[], supplierId?: string, poNumber?: string) => void;
+  adjustStock: (items: { productId: string; productName: string; quantityChange: number; reason: string; currentQty: number }[]) => void;
+
+  getMovementsForProduct: (productId: string) => StockMovement[];
+  getRecentMovements: (limit?: number) => StockMovement[];
+
+  seedMovements: () => void;
+  isSeeded: boolean;
+
   resetStore: () => void;
 }
 
 export const useInventoryStore = create<InventoryState>()(
   persist(
-    (set) => ({
-      inventoryLevels: {},
-      lowStockThresholds: {},
-      stockLogs: [],
+    (set, get) => ({
+      movements: [],
+      countSessions: [],
+      isSeeded: false,
 
-      addStock: (productId, quantity, reason) => set((state) => {
-        const current = state.inventoryLevels[productId] || 0;
-        const newQuantity = current + quantity;
-        const newLog: StockLog = {
-          id: Math.random().toString(36).substr(2, 9),
+      recordMovement: (productId, productName, type, quantityChange, reason, previousQuantity, referenceId, user = 'System') => {
+        const newQuantity = Math.max(0, previousQuantity + quantityChange);
+
+        const movement: StockMovement = {
+          id: `mov-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
           productId,
-          productName: 'Product', // Should be fetched from product store in real impl
-          action: 'add',
-          quantity,
-          previousQuantity: current,
+          productName,
+          type,
+          quantityChange,
+          previousQuantity,
           newQuantity,
           reason,
-          timestamp: new Date().toISOString(),
+          referenceId,
+          createdAt: new Date().toISOString(),
+          user,
         };
-        return {
-          inventoryLevels: { ...state.inventoryLevels, [productId]: newQuantity },
-          stockLogs: [newLog, ...state.stockLogs]
-        };
-      }),
-      
-      removeStock: (productId, quantity, reason) => set((state) => {
-        const current = state.inventoryLevels[productId] || 0;
-        const newQuantity = Math.max(0, current - quantity);
-        const newLog: StockLog = {
-          id: Math.random().toString(36).substr(2, 9),
-          productId,
-          productName: 'Product',
-          action: 'remove',
-          quantity,
-          previousQuantity: current,
-          newQuantity,
-          reason,
-          timestamp: new Date().toISOString(),
-        };
-        return {
-          inventoryLevels: { ...state.inventoryLevels, [productId]: newQuantity },
-          stockLogs: [newLog, ...state.stockLogs]
-        };
-      }),
-      
-      adjustStock: (productId, newQuantity, reason) => set((state) => ({
-        inventoryLevels: { ...state.inventoryLevels, [productId]: newQuantity },
-        stockLogs: [{
-          id: Math.random().toString(36).substr(2, 9),
-          productId,
-          productName: 'Product',
-          action: 'adjust',
-          quantity: newQuantity - (state.inventoryLevels[productId] || 0),
-          previousQuantity: state.inventoryLevels[productId] || 0,
-          newQuantity,
-          reason,
-          timestamp: new Date().toISOString(),
-        }, ...state.stockLogs]
-      })),
 
-      setThreshold: (productId, threshold) => set((state) => ({
-        lowStockThresholds: { ...state.lowStockThresholds, [productId]: threshold }
-      })),
+        set((state) => ({
+          movements: [movement, ...state.movements],
+        }));
+      },
 
-      resetStore: () => set({ inventoryLevels: {}, lowStockThresholds: {}, stockLogs: [] }),
+      receiveStock: (items, supplierId, poNumber) => {
+        const { recordMovement } = get();
+        items.forEach(item => {
+          recordMovement(item.productId, item.productName, 'receive', item.quantity, 'Supplier Delivery', item.currentQty, poNumber);
+        });
+      },
+
+      adjustStock: (items) => {
+        const { recordMovement } = get();
+        items.forEach(item => {
+          recordMovement(item.productId, item.productName, 'adjust', item.quantityChange, item.reason, item.currentQty);
+        });
+      },
+
+      getMovementsForProduct: (productId) => {
+        return get().movements.filter(m => m.productId === productId);
+      },
+
+      getRecentMovements: (limit = 50) => {
+        return get().movements.slice(0, limit);
+      },
+
+      seedMovements: () => {
+        if (get().isSeeded) return;
+        set({ isSeeded: true, movements: [] });
+      },
+
+      resetStore: () => set({ movements: [], countSessions: [], isSeeded: false }),
     }),
-    {
-      name: 'vemtap-inventory-storage',
-    }
+    { name: 'vemtap-inventory-storage-v2' }
   )
 );

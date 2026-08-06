@@ -10,7 +10,7 @@ import {
 import { Channel } from '../../enums/channel.enum';
 import { TemplateCategory } from '../../entities/message-template.entity';
 
-export class CreateTemplateDto {
+export class CreateMessagingTemplateDto {
   @ApiProperty({ example: 'Welcome Template' })
   @IsString()
   @IsNotEmpty()

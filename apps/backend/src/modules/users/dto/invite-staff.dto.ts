@@ -12,20 +12,51 @@ import { UserRole } from '../entities/user.entity';
 
 export enum StaffPermission {
   DASHBOARD = 'dashboard',
+  INVENTORY = 'inventory',
+  POS = 'pos',
   VISITORS = 'visitors',
   MESSAGES = 'messages',
-  CHAT = 'chat',
-  LOYALTY = 'loyalty',
   ENGAGEMENT = 'engagement',
+  CUSTOMER_EXPERIENCE = 'customer-experience',
+  MARKETING = 'marketing',
+  DISCOVERY = 'discovery',
   ANALYTICS = 'analytics',
   STAFF = 'staff',
-  CATALOGUE = 'catalogue',
-  QRTHRIVE = 'qrthrive',
-  CUSTOMER_EXPERIENCE = 'customer-experience',
-  AUTOMATIONS = 'automations',
-  SUPPORT = 'support',
-  TUTORIAL = 'tutorial',
   SETTINGS = 'settings',
+  QRTHRIVE = 'qrthrive',
+  // Sales (pos) sub-permissions
+  POS_SALES_DASHBOARD = 'pos:sales-dashboard',
+  POS_HOME = 'pos:pos-home',
+  POS_ORDERS = 'pos:orders',
+  POS_SETTINGS = 'pos:settings',
+  POS_HELP = 'pos:help',
+  // Inventory sub-permissions
+  INVENTORY_OVERVIEW = 'inventory:overview',
+  INVENTORY_CATALOGUE = 'inventory:catalogue',
+  INVENTORY_INVENTORY = 'inventory:inventory',
+  // Visitors (customers) sub-permissions
+  VISITORS_OVERVIEW = 'visitors:overview',
+  VISITORS_CUSTOMER_LIST = 'visitors:customer-list',
+  VISITORS_LOYALTY = 'visitors:loyalty',
+  VISITORS_VISITORS = 'visitors:visitors',
+  // Discovery sub-permissions
+  DISCOVERY_GET_CUSTOMERS = 'discovery:get-customers',
+  DISCOVERY_BUSINESS_PARTNERSHIP = 'discovery:business-partnership',
+  // Analytics sub-permissions
+  ANALYTICS_OVERVIEW = 'analytics:overview',
+  ANALYTICS_AI_REPORTS = 'analytics:ai-reports',
+  ANALYTICS_SALES_REPORTS = 'analytics:sales-reports',
+  ANALYTICS_INVENTORY_REPORTS = 'analytics:inventory-reports',
+  ANALYTICS_CUSTOMERS = 'analytics:customers',
+  ANALYTICS_DISCOVERY = 'analytics:discovery',
+  ANALYTICS_FOOTFALL = 'analytics:footfall',
+  ANALYTICS_MARKETING = 'analytics:marketing',
+  ANALYTICS_PEAK_TIMES = 'analytics:peak-times',
+  // Settings sub-permissions
+  SETTINGS_PROFILE = 'settings:profile',
+  SETTINGS_SUBSCRIPTION = 'settings:subscription',
+  SETTINGS_SUPPORT = 'settings:support',
+  SETTINGS_COMPLIANCE = 'settings:compliance',
 }
 
 export class InviteStaffDto {
@@ -49,12 +80,10 @@ export class InviteStaffDto {
   @IsOptional()
   phone?: string;
 
-  @ApiProperty({
-    enum: [UserRole.MANAGER, UserRole.STAFF],
-    example: UserRole.STAFF,
-  })
-  @IsEnum(UserRole)
-  role: UserRole;
+  @ApiProperty({ example: 'Cashier' })
+  @IsString()
+  @IsNotEmpty()
+  role: string;
 
   @ApiProperty({ example: 'Sales Associate', required: false })
   @IsString()

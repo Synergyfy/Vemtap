@@ -8,6 +8,7 @@ import {
   Delete,
   Request,
   Query,
+  UseGuards,
 } from '@nestjs/common';
 import { ProductsService } from './products.service';
 import { CreateProductDto } from './dto/create-product.dto';
@@ -17,13 +18,25 @@ import { RequestQuoteDto } from './dto/request-quote.dto';
 import { NegotiateQuoteDto } from './dto/negotiate-quote.dto';
 import { CreateProductTypeDto } from './dto/create-product-type.dto';
 import { UpdateProductTypeDto } from './dto/update-product-type.dto';
+import { AdminProductQueryDto, ProductQueryDto } from './dto/product-query.dto';
+import {
+  CreateProductReviewDto,
+  ProductReviewsAdminQueryDto,
+  UpdateProductReviewStatusDto,
+} from './dto/product-review.dto';
 import { Product } from './entities/product.entity';
+import {
+  ProductReview,
+  ProductReviewStatus,
+} from './entities/product-review.entity';
 import { ProductType } from './entities/product-type.entity';
 import { Quote } from './entities/quote.entity';
 import { Order, OrderStatus } from './entities/order.entity';
 import { User, UserRole } from '../users/entities/user.entity';
 import { Public } from '../../common/decorators/public.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../../common/guards/roles.guard';
 import {
   ApiTags,
   ApiOperation,
@@ -32,6 +45,7 @@ import {
 } from '@nestjs/swagger';
 
 @ApiTags('products')
+@UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('products')
 export class ProductsController {
   constructor(private readonly productsService: ProductsService) {}
@@ -55,11 +69,11 @@ export class ProductsController {
   @ApiOperation({ summary: 'Get all published products (Public)' })
   @ApiResponse({
     status: 200,
-    description: 'Return all published products.',
-    type: [Product],
+    description:
+      'Return paginated published products with search/filter/sort support.',
   })
-  findAll(@Query('productTypeId') productTypeId?: string) {
-    return this.productsService.findAllPublished(productTypeId);
+  findAll(@Query() query: ProductQueryDto) {
+    return this.productsService.findAllPublished(query);
   }
 
   // --- Product Types Endpoints ---
@@ -112,12 +126,12 @@ export class ProductsController {
   })
   @ApiResponse({
     status: 200,
-    description: 'Return all products.',
-    type: [Product],
+    description:
+      'Return paginated products with search/filter/sort/status support.',
   })
   @ApiResponse({ status: 403, description: 'Forbidden.' })
-  findAllAdmin() {
-    return this.productsService.findAllAdmin();
+  findAllAdmin(@Query() query: AdminProductQueryDto) {
+    return this.productsService.findAllAdmin(query);
   }
 
   @Roles(UserRole.ADMIN)
@@ -134,6 +148,96 @@ export class ProductsController {
   @ApiOperation({ summary: 'Count products by type (Admin only)' })
   countByProductType(@Param('id') id: string) {
     return this.productsService.countByProductType(id);
+  }
+
+  // --- Product Reviews ---
+
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth()
+  @Get('reviews/pending')
+  @ApiOperation({
+    summary: 'List product reviews by status (Admin only)',
+    description:
+      'Defaults to the pending moderation queue. Pass ?status=approved|rejected|pending to filter.',
+  })
+  findAllReviewsAdmin(@Query() query: ProductReviewsAdminQueryDto) {
+    return this.productsService.findReviewsAdmin(
+      query.status,
+      query.page,
+      query.limit,
+    );
+  }
+
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth()
+  @Patch('reviews/:id/approve')
+  @ApiOperation({ summary: 'Approve a product review (Admin only)' })
+  approveReview(@Param('id') id: string) {
+    return this.productsService.updateReviewStatus(
+      id,
+      ProductReviewStatus.APPROVED,
+    );
+  }
+
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth()
+  @Patch('reviews/:id/reject')
+  @ApiOperation({ summary: 'Reject a product review (Admin only)' })
+  rejectReview(@Param('id') id: string) {
+    return this.productsService.updateReviewStatus(
+      id,
+      ProductReviewStatus.REJECTED,
+    );
+  }
+
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth()
+  @Patch('reviews/:id/status')
+  @ApiOperation({ summary: 'Update product review status (Admin only)' })
+  updateReviewStatus(
+    @Param('id') id: string,
+    @Body() dto: UpdateProductReviewStatusDto,
+  ) {
+    return this.productsService.updateReviewStatus(id, dto.status);
+  }
+
+  @Public()
+  @Get(':id/reviews')
+  @ApiOperation({ summary: 'Get approved reviews for a product (Public)' })
+  @ApiResponse({
+    status: 200,
+    description: 'Return paginated approved reviews.',
+    type: [ProductReview],
+  })
+  @ApiResponse({ status: 404, description: 'Product not found.' })
+  findProductReviews(
+    @Param('id') id: string,
+    @Query('page') page?: number,
+    @Query('limit') limit?: number,
+  ) {
+    return this.productsService.findApprovedReviews(id, page, limit);
+  }
+
+  @Public()
+  @Post(':id/reviews')
+  @ApiOperation({ summary: 'Submit a review for a product (Public)' })
+  @ApiResponse({
+    status: 201,
+    description: 'Review submitted and queued for admin approval.',
+    type: ProductReview,
+  })
+  @ApiResponse({ status: 404, description: 'Product not found.' })
+  createProductReview(
+    @Request() req: any,
+    @Param('id') id: string,
+    @Body() dto: CreateProductReviewDto,
+  ) {
+    const forwarded = req.headers?.['x-forwarded-for'];
+    const ip =
+      req.ip ||
+      (Array.isArray(forwarded) ? forwarded[0] : forwarded) ||
+      undefined;
+    return this.productsService.createReview(req.user, id, dto, ip);
   }
 
   @Public()
@@ -198,10 +302,12 @@ export class ProductsController {
     return this.productsService.remove(id);
   }
 
-  @Roles(UserRole.OWNER)
+  @Roles(UserRole.CUSTOMER, UserRole.OWNER, UserRole.ADMIN)
   @ApiBearerAuth()
   @Post(':id/quote')
-  @ApiOperation({ summary: 'Request a quote for a product (Owner only)' })
+  @ApiOperation({
+    summary: 'Request a quote for a product (Customer, Owner, or Admin)',
+  })
   @ApiResponse({
     status: 201,
     description: 'The quote request has been successfully created.',
@@ -246,10 +352,12 @@ export class ProductsController {
     return this.productsService.getAllQuotesAdmin();
   }
 
-  @Roles(UserRole.OWNER)
+  @Roles(UserRole.CUSTOMER, UserRole.OWNER, UserRole.ADMIN)
   @ApiBearerAuth()
   @Get('quotes/my')
-  @ApiOperation({ summary: 'Get my quote requests (Owner only)' })
+  @ApiOperation({
+    summary: 'Get my quote requests (Customer, Owner, or Admin)',
+  })
   @ApiResponse({
     status: 200,
     type: [Quote],
@@ -304,10 +412,12 @@ export class ProductsController {
     return this.productsService.negotiateQuote(id, req.user, dto);
   }
 
-  @Roles(UserRole.OWNER)
+  @Roles(UserRole.CUSTOMER, UserRole.OWNER)
   @ApiBearerAuth()
   @Post('quotes/:id/accept')
-  @ApiOperation({ summary: 'Accept a negotiated quote (Owner only)' })
+  @ApiOperation({
+    summary: 'Accept a negotiated quote (Customer or Owner)',
+  })
   @ApiResponse({
     status: 201,
     type: Order,
@@ -326,10 +436,12 @@ export class ProductsController {
     return this.productsService.acceptQuote(id, req.user);
   }
 
-  @Roles(UserRole.OWNER)
+  @Roles(UserRole.CUSTOMER, UserRole.OWNER)
   @ApiBearerAuth()
   @Post('quotes/:id/reject')
-  @ApiOperation({ summary: 'Reject a negotiated quote (Owner only)' })
+  @ApiOperation({
+    summary: 'Reject a negotiated quote (Customer or Owner)',
+  })
   @ApiResponse({
     status: 201,
     type: Quote,

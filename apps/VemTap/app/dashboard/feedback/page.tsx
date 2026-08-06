@@ -9,21 +9,39 @@ import {
 import { MessageSquare, Star, ThumbsUp, ThumbsDown, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
+import { useQuery } from '@tanstack/react-query';
+import { api } from '@/lib/api';
+import Spinner from '@/components/ui/Spinner';
 
 export default function FeedbackPage() {
-    const stats = [
-        { label: 'Total Reviews', value: '1,250', icon: MessageSquare, color: 'text-blue-600', bg: 'bg-blue-50' },
-        { label: 'Avg. Rating', value: '4.7', icon: Star, color: 'text-amber-600', bg: 'bg-amber-50' },
-        { label: 'Positive', value: '87%', icon: ThumbsUp, color: 'text-emerald-600', bg: 'bg-emerald-50' },
-        { label: 'Negative', value: '13%', icon: ThumbsDown, color: 'text-red-600', bg: 'bg-red-50' },
-    ];
+    const { data: statsData, isLoading: statsLoading } = useQuery({
+        queryKey: ['feedback', 'stats'],
+        queryFn: () => api.get('/feedback/stats'),
+    });
 
-    const mockReviews = [
-        { id: '1', user: 'Sarah Jenkins', rating: 5, comment: 'Absolutely loved the atmosphere and the coffee was perfect!', date: 'Today' },
-        { id: '2', user: 'Michael K.', rating: 4, comment: 'Great service, but the wait time was a bit long.', date: 'Today' },
-        { id: '3', user: 'Elena R.', rating: 5, comment: 'Best haircut I have had in years. Highly recommend!', date: 'Yesterday' },
-        { id: '4', user: 'David W.', rating: 3, comment: 'Food was okay, but the place was a bit noisy.', date: 'Oct 24' },
-    ];
+    const { data: reviewsData, isLoading: reviewsLoading } = useQuery({
+        queryKey: ['feedback', 'reviews'],
+        queryFn: () => api.get('/feedback/reviews'),
+    });
+
+    const stats = statsData ? [
+        { label: 'Total Reviews', value: statsData.totalReviews?.toLocaleString() || '0', icon: MessageSquare, color: 'text-blue-600', bg: 'bg-blue-50' },
+        { label: 'Avg. Rating', value: statsData.avgRating?.toString() || '0', icon: Star, color: 'text-amber-600', bg: 'bg-amber-50' },
+        { label: 'Positive', value: statsData.positive ? `${statsData.positive}%` : '0%', icon: ThumbsUp, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+        { label: 'Negative', value: statsData.negative ? `${statsData.negative}%` : '0%', icon: ThumbsDown, color: 'text-red-600', bg: 'bg-red-50' },
+    ] : [];
+
+    const reviews = Array.isArray(reviewsData) ? reviewsData : [];
+
+    const isLoading = statsLoading || reviewsLoading;
+
+    if (isLoading) {
+        return (
+            <div className="flex items-center justify-center p-20 min-h-[60vh]">
+                <Spinner size="lg" />
+            </div>
+        );
+    }
 
     return (
         <div className="pb-24 md:pb-10 max-w-5xl mx-auto p-4 md:p-8 space-y-12">
@@ -32,7 +50,7 @@ export default function FeedbackPage() {
             <FeedbackOverviewHeader />
 
             {/* OVERVIEW METRICS */}
-            <FeedbackStatsCards stats={stats} />
+            {stats.length > 0 && <FeedbackStatsCards stats={stats} />}
 
             {/* QUICK ACTIONS */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -60,7 +78,7 @@ export default function FeedbackPage() {
             </div>
 
             {/* RECENT REVIEWS */}
-            <RecentReviewsList reviews={mockReviews} />
+            <RecentReviewsList reviews={reviews} />
         </div>
     );
 }

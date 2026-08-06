@@ -2,20 +2,23 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { usePathname } from 'next/navigation';
-import { X, Send, Minimize2, Maximize2, MessageCircle, User, Headset, Loader2, Trash2, Mail, Info, CheckCircle2 } from 'lucide-react';
+import { X, Send, Minimize2, Maximize2, MessageCircle, User, Headset, Loader2, Trash2, Mail, Info, CheckCircle2, Briefcase, Users, Paperclip, FileText } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Draggable from 'react-draggable';
 import { useChatStore } from '@/store/chatStore';
 import { useAuthStore } from '@/store/useAuthStore';
 import { api } from '@/lib/api';
 import { cn } from '@/lib/utils';
-import { useEscalateChat, useSendSupportMessage, useSupportTicket, useUserSupportTickets } from '@/services/support/hooks';
+import { useEscalateChat, useSendSupportMessage, useSupportTicket, useUserSupportTickets, useAddTicketAttachments } from '@/services/support/hooks';
 import { useSupportSocket } from '@/hooks/useSupportSocket';
 import { toast } from 'react-hot-toast';
+
+type UserRole = 'business_owner' | 'customer' | null;
 
 export default function SupportChatbot() {
     const pathname = usePathname();
     const { history, addMessage, clearHistory, isOpen, setIsOpen, isVisible, setIsVisible } = useChatStore();
+
     const { isAuthenticated, user } = useAuthStore();
     
     const [isFullScreen, setIsFullScreen] = useState(false);
@@ -34,12 +37,29 @@ export default function SupportChatbot() {
     const [liveTicketId, setLiveTicketId] = useState<string | null>(null);
     const [isGuestIdentified, setIsGuestIdentified] = useState(false);
     const [sessionId, setSessionId] = useState<string | null>(null);
+    const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
+    const [userRole, setUserRole] = useState<UserRole>(() => {
+        if (typeof window !== 'undefined') {
+            return localStorage.getItem('vemtap_user_role') as UserRole;
+        }
+        return null;
+    });
+    const [showRoleSelector, setShowRoleSelector] = useState(false);
+
+    const storeUserRole = (role: UserRole) => {
+        setUserRole(role);
+        localStorage.setItem('vemtap_user_role', role || '');
+        setShowRoleSelector(false);
+    };
     
     // Hooks
     const escalateMutation = useEscalateChat();
     const { socket, isConnected } = useSupportSocket({ enabled: handedToAgent });
     const { data: ticketData, refetch: refetchTicket } = useSupportTicket(liveTicketId || '', false);
-    const { data: userTicketsData } = useUserSupportTickets(1, 5);
+    const { data: userTicketsData } = useUserSupportTickets(1, 5, isAuthenticated);
+    const attachmentsMutation = useAddTicketAttachments(liveTicketId || '');
     
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const chatbotRef = useRef<HTMLDivElement>(null);
@@ -146,15 +166,28 @@ export default function SupportChatbot() {
         }
     }, [socket, handedToAgent, liveTicketId, addMessage, user?.id]);
 
-    // Initial greeting if history is empty and logged in
+// Determine user role and show selector only for guests
     useEffect(() => {
-        if (history.length === 0 && isAuthenticated) {
-            addMessage({
-                role: 'assistant',
-                content: `Hi ${user?.firstName || 'there'}! 👋 Welcome to VemTap Support. A member of our team is ready to help you.`
-            });
+        if (isOpen && history.length === 0) {
+            if (isAuthenticated && user?.role) {
+                const mappedRole: UserRole = ['owner', 'manager', 'staff', 'admin', 'agent'].includes(user.role) ? 'business_owner' : 'customer';
+                setUserRole(mappedRole);
+                localStorage.setItem('vemtap_user_role', mappedRole || '');
+                if (mappedRole === 'business_owner') {
+                    addMessage({ role: 'assistant', content: `Hi ${user.firstName || 'there'}! 👋 I'm the VemTap Support Bot. As a **Business Owner**, I can help you with managing your branches, catalogue, promotions, analytics, and more. How can I assist you today?` });
+                } else {
+                    addMessage({ role: 'assistant', content: `Hi ${user.firstName || 'there'}! 👋 I'm the VemTap Support Bot. As a **Customer**, I can help you with discovering deals, earning rewards, and using VemTap at your favorite businesses. How can I help you today?` });
+                }
+            } else {
+                const stored = localStorage.getItem('vemtap_user_role');
+                if (stored && !userRole) {
+                    setUserRole(stored as UserRole);
+                } else if (!userRole && !stored) {
+                    setShowRoleSelector(true);
+                }
+            }
         }
-    }, [history.length, addMessage, isAuthenticated, user]);
+    }, [isOpen, history.length, userRole, isAuthenticated, user?.role, addMessage, user?.firstName]);
 
     useEffect(() => {
         const checkMobile = () => setIsMobile(window.innerWidth < 768);
@@ -200,30 +233,65 @@ export default function SupportChatbot() {
                 guestName: guestDetails.name,
                 guestEmail: guestDetails.email,
                 sessionId: sessionId || undefined,
+                userRole: userRole || undefined,
                 history: history.slice(-5).map(m => ({ role: m.role, content: m.content }))
             });
 
-            addMessage({
-                role: 'assistant',
-                content: data.content,
-                source: data.source,
-                interactionId: data.id,
-                buttons: data.buttons,
-                followUp: data.followUp,
-            });
+            const replyText = data?.content || data?.message || data?.reply || data?.text;
+            if (replyText) {
+                addMessage({
+                    role: 'assistant',
+                    content: replyText,
+                    source: data.source,
+                    interactionId: data.id,
+                    buttons: data.buttons,
+                    followUp: data.followUp,
+                });
 
-            if (data.content.toLowerCase().includes('connect you with a human') ||
-                data.content.toLowerCase().includes('human agent') ||
-                data.suggestedAction === 'escalate') {
-                setHandedToAgent(true);
+                if (replyText.toLowerCase().includes('connect you with a human') ||
+                    replyText.toLowerCase().includes('human agent') ||
+                    data.suggestedAction === 'escalate') {
+                    setHandedToAgent(true);
+                }
+                return;
             }
+            throw new Error('Empty response from bot API');
         } catch (error) {
+            // Smart Fallback to local Next.js /api/chat endpoint
+            try {
+                const historyItems = history.slice(-5).map(m => ({ role: m.role, content: m.content }));
+                historyItems.push({ role: 'user', content: userText });
+
+                const chatRes = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        messages: historyItems,
+                        context: getContext(),
+                    }),
+                });
+                const chatData = await chatRes.json();
+                const fallbackContent = chatData?.content || chatData?.text || chatData?.message;
+                if (fallbackContent) {
+                    addMessage({
+                        role: 'assistant',
+                        content: fallbackContent,
+                        buttons: [
+                            { label: 'Talk to Human Agent', action: 'action', value: 'escalate' }
+                        ]
+                    });
+                    return;
+                }
+            } catch (fallbackErr) {
+                console.error("Local chat fallback failed:", fallbackErr);
+            }
+
             addMessage({
                 role: 'assistant',
-                content: "I'm having trouble connecting right now. Please try again later.",
+                content: "I'm having trouble connecting to support right now. Would you like to connect to a human agent?",
                 buttons: [
+                    { label: 'Connect to Agent', action: 'action', value: 'escalate' },
                     { label: 'Try Again', action: 'action', value: userText },
-                    { label: 'Chat on WhatsApp', action: 'url', value: 'https://wa.me/234XXXXXXXXXX' },
                 ],
             });
         } finally {
@@ -256,11 +324,77 @@ export default function SupportChatbot() {
         }
     };
 
+    const readFileAsDataUrl = (file: File): Promise<string> => new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+    });
+
+    const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const files = Array.from(e.target.files || []);
+        e.target.value = '';
+        if (files.length === 0) return;
+        if (selectedFiles.length + files.length > 10) {
+            toast.error('You can attach up to 10 files');
+            return;
+        }
+        const MAX_FILE_SIZE = 10 * 1024 * 1024;
+        const MAX_TOTAL_SIZE = 25 * 1024 * 1024;
+        const all = [...selectedFiles, ...files];
+        if (all.some((f) => f.size > MAX_FILE_SIZE)) {
+            toast.error('Each file must be smaller than 10 MB');
+            return;
+        }
+        if (all.reduce((sum, f) => sum + f.size, 0) > MAX_TOTAL_SIZE) {
+            toast.error('Total attachments must be smaller than 25 MB');
+            return;
+        }
+        setSelectedFiles(all);
+    };
+
+    const removeFile = (index: number) => {
+        setSelectedFiles((prev) => prev.filter((_, i) => i !== index));
+    };
+
     const handleSendMessage = async () => {
-        if (!inputValue.trim() || isLoading) return;
+        if ((!inputValue.trim() && selectedFiles.length === 0) || isLoading) return;
+
+        if (selectedFiles.length > 0 && !(handedToAgent && liveTicketId)) {
+            toast.error('Connect to a human agent first to send files');
+            return;
+        }
 
         const userText = inputValue;
         setInputValue('');
+
+        if (selectedFiles.length > 0 && liveTicketId) {
+            addMessage({
+                role: 'user',
+                content: userText || `📎 ${selectedFiles.map((f) => f.name).join(', ')}`
+            });
+            setIsLoading(true);
+            try {
+                const attachments = await Promise.all(selectedFiles.map(async (file) => ({
+                    url: await readFileAsDataUrl(file),
+                    name: file.name,
+                    mimeType: file.type || 'application/octet-stream',
+                    size: file.size
+                })));
+                await attachmentsMutation.mutateAsync({
+                    message: userText || undefined,
+                    attachments
+                });
+                setSelectedFiles([]);
+                refetchTicket();
+            } catch (error) {
+                toast.error("Attachments not sent. Check your connection.");
+            } finally {
+                setIsLoading(false);
+            }
+            return;
+        }
+
         addMessage({ role: 'user', content: userText });
         
         if (handedToAgent && liveTicketId) {
@@ -288,15 +422,11 @@ export default function SupportChatbot() {
     const handleContactSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         setIsLoading(true);
-        // Simulate a slight delay for better UX
         setTimeout(() => {
             setIsLoading(false);
             setIsGuestIdentified(true);
-            addMessage({
-                role: 'assistant',
-                content: `Hi ${contactForm.name}! 👋 I'm the VemTap Support Bot. How can I help you today?`
-            });
-        }, 800);
+            setShowRoleSelector(true);
+        }, 400);
     };
 
     const handleFollowUpClick = (question: string) => {
@@ -304,56 +434,25 @@ export default function SupportChatbot() {
         sendQuery(question);
     };
 
-    const nodeRef = useRef<HTMLDivElement>(null);
-    const windowRef = useRef<HTMLDivElement>(null);
-    const [isDragging, setIsDragging] = useState(false);
-    const [dragStartPos, setDragStartPos] = useState({ x: 0, y: 0 });
-
     return (
         <div className="font-sans">
             <AnimatePresence>
                 {!isOpen && isVisible && (
-                    <motion.div
+                    <motion.button
                         initial={{ scale: 0, opacity: 0 }}
                         animate={{ scale: 1, opacity: 1 }}
                         exit={{ scale: 0, opacity: 0 }}
-                        className="fixed inset-0 pointer-events-none z-60"
+className="fixed bottom-6 right-6 z-60 hidden md:block"
                     >
-                        <Draggable 
-                            nodeRef={floatingButtonRef}
-                            bounds="parent"
-                            onStart={(e, data) => {
-                                setDragStartPos({ x: data.x, y: data.y });
-                            }}
-                            onDrag={(e, data) => {
-                                const dx = Math.abs(data.x - dragStartPos.x);
-                                const dy = Math.abs(data.y - dragStartPos.y);
-                                if (dx > 5 || dy > 5) {
-                                    setIsDragging(true);
-                                }
-                            }}
-                            onStop={() => { 
-                                setTimeout(() => setIsDragging(false), 100); 
-                            }}
-                        >
-                            <div 
-                                ref={floatingButtonRef} 
-                                className="pointer-events-auto absolute bottom-20 sm:bottom-6 right-4 sm:right-6 group flex flex-col items-end gap-2 cursor-grab active:cursor-grabbing"
-                            >
-                                <button 
-                                    onClick={(e) => { e.stopPropagation(); if (!isDragging) setIsVisible(false); }}
-                                    className="cancel-drag bg-white/90 hover:bg-white text-gray-500 p-1 rounded-full shadow-md border border-gray-100 opacity-0 group-hover:opacity-100 transition-opacity"
-                                >
-                                    <X size={14} />
-                                </button>
+                        <Draggable nodeRef={floatingButtonRef} bounds="parent">
+                            <div ref={floatingButtonRef} className="cursor-grab active:cursor-grabbing">
                                 <button
-                                    onClick={() => {
-                                        if (!isDragging) setIsOpen(true);
-                                    }}
-                                    className="relative transition-transform active:scale-90"
+                                    onClick={() => setIsOpen(true)}
+                                    className="relative transition-transform active:scale-90 focus:outline-none"
+                                    aria-label="Open chat"
                                 >
                                     <div className="absolute inset-0 rounded-full bg-blue-400/30 animate-ping"></div>
-                                    <div className="relative w-16 h-16 rounded-full bg-linear-to-br from-blue-600 to-indigo-600 shadow-2xl flex items-center justify-center transform transition-all duration-300 group-hover:scale-110 group-hover:shadow-blue-500/50">
+                                    <div className="relative w-16 h-16 rounded-full bg-linear-to-br from-blue-600 to-indigo-600 shadow-2xl flex items-center justify-center hover:scale-110 hover:shadow-blue-500/50 transition-all duration-300">
                                         <MessageCircle className="text-white" size={28} />
                                         <div className="absolute -top-1 -right-1 w-5 h-5 bg-emerald-500 rounded-full flex items-center justify-center border-2 border-white shadow-sm">
                                             <span className="w-2 h-2 bg-white rounded-full animate-pulse"></span>
@@ -362,7 +461,7 @@ export default function SupportChatbot() {
                                 </button>
                             </div>
                         </Draggable>
-                    </motion.div>
+                    </motion.button>
                 )}
             </AnimatePresence>
 
@@ -408,7 +507,53 @@ export default function SupportChatbot() {
                                 </div>
 
                                 <div className="flex-1 overflow-hidden flex flex-col bg-gray-50/50">
-                                    {(!isAuthenticated && !isGuestIdentified) ? (
+                                    {showRoleSelector ? (
+                                        <div className="flex-1 overflow-y-auto p-6 flex flex-col">
+                                            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="flex-1 flex flex-col">
+                                                <div className="bg-white rounded-3xl border border-gray-100 p-6 mb-6 shadow-sm">
+                                                    <div className="size-12 rounded-2xl bg-blue-50 flex items-center justify-center text-blue-600 mb-4">
+                                                        <Info size={24} />
+                                                    </div>
+                                                    <h4 className="text-lg font-bold text-gray-900 mb-2">Welcome to VemTap Support!</h4>
+                                                    <p className="text-sm text-gray-500 leading-relaxed">To give you the best experience, please tell us who you are:</p>
+                                                </div>
+                                                <button
+                                                    onClick={() => {
+                                                        storeUserRole('business_owner');
+                                                        addMessage({ role: 'assistant', content: `Hi${contactForm.name ? ' ' + contactForm.name : ''}! 👋 I'm the VemTap Support Bot. As a **Business Owner**, I can help you with managing your branches, catalogue, promotions, analytics, and more. How can I assist you today?` });
+                                                    }}
+                                                    className="w-full text-left bg-white border-2 border-transparent hover:border-blue-200 rounded-3xl p-5 shadow-sm hover:shadow-md transition-all group active:scale-[0.99] mb-3"
+                                                >
+                                                    <div className="flex items-start gap-4">
+                                                        <div className="size-12 rounded-2xl bg-indigo-50 flex items-center justify-center shrink-0 group-hover:bg-indigo-100 transition-colors">
+                                                            <Briefcase size={24} className="text-indigo-600" />
+                                                        </div>
+                                                        <div className="flex-1 min-w-0">
+                                                            <h5 className="text-sm font-black text-gray-900 mb-1">Business Owner</h5>
+                                                            <p className="text-[10px] font-medium text-gray-500 leading-relaxed">You own or manage a business and use VemTap to promote your services, engage customers, and grow your revenue.</p>
+                                                        </div>
+                                                    </div>
+                                                </button>
+                                                <button
+                                                    onClick={() => {
+                                                        storeUserRole('customer');
+                                                        addMessage({ role: 'assistant', content: `Hi${contactForm.name ? ' ' + contactForm.name : ''}! 👋 I'm the VemTap Support Bot. As a **Customer**, I can help you with discovering deals, earning rewards, and using VemTap at your favorite businesses. How can I help you today?` });
+                                                    }}
+                                                    className="w-full text-left bg-white border-2 border-transparent hover:border-blue-200 rounded-3xl p-5 shadow-sm hover:shadow-md transition-all group active:scale-[0.99]"
+                                                >
+                                                    <div className="flex items-start gap-4">
+                                                        <div className="size-12 rounded-2xl bg-emerald-50 flex items-center justify-center shrink-0 group-hover:bg-emerald-100 transition-colors">
+                                                            <Users size={24} className="text-emerald-600" />
+                                                        </div>
+                                                        <div className="flex-1 min-w-0">
+                                                            <h5 className="text-sm font-black text-gray-900 mb-1">Customer / Consumer</h5>
+                                                            <p className="text-[10px] font-medium text-gray-500 leading-relaxed">You visit businesses that use VemTap to discover deals, earn rewards, and enjoy personalized experiences.</p>
+                                                        </div>
+                                                    </div>
+                                                </button>
+                                            </motion.div>
+                                        </div>
+                                    ) : (!isAuthenticated && !isGuestIdentified) ? (
                                         <div className="flex-1 overflow-y-auto p-8 flex flex-col">
                                             {isSubmitted ? (
                                                 <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="flex-1 flex flex-col items-center justify-center text-center py-10">
@@ -446,19 +591,51 @@ export default function SupportChatbot() {
                                     ) : (
                                         <>
                                             <div className="flex-1 overflow-y-auto p-6 space-y-6 scrollbar-hide">
-                                                {history.map((message, idx) => (
+                                                    {history.map((message, idx) => (
                                                     <motion.div initial={{ opacity: 0, scale: 0.95, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} key={idx} className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                                                        <div className={`flex max-w-[85%] ${message.role === 'user' ? 'flex-row-reverse' : 'flex-row'} gap-3 items-end`}>
-                                                            <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 border shadow-sm ${message.role === 'user' ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-white border-gray-100 text-indigo-600'}`}>
-                                                                {message.role === 'user' ? <User size={14} /> : <Headset size={14} />}
-                                                            </div>
-                                                            <div className={`rounded-2xl px-5 py-3.5 shadow-sm relative ${message.role === 'user' ? 'bg-linear-to-br from-indigo-600 to-indigo-500 text-white rounded-tr-none' : 'bg-white text-gray-800 border border-gray-100 rounded-tl-none'}`}>
-                                                                <p className="text-sm font-medium leading-relaxed whitespace-pre-wrap">{message.content}</p>
-                                                                <div className={`text-[9px] font-bold mt-1.5 flex items-center justify-between gap-1 uppercase tracking-tighter ${message.role === 'user' ? 'text-indigo-100/70' : 'text-gray-400'}`}>
-                                                                    <span>{message.role === 'assistant' && !message.interactionId ? 'Support Bot' : ''}</span>
-                                                                    <span>{new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                                        <div className={`flex flex-col max-w-[85%] ${message.role === 'user' ? 'items-end' : 'items-start'} gap-2`}>
+                                                            <div className={`flex ${message.role === 'user' ? 'flex-row-reverse' : 'flex-row'} gap-3 items-end`}>
+                                                                <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 border shadow-sm ${message.role === 'user' ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-white border-gray-100 text-indigo-600'}`}>
+                                                                    {message.role === 'user' ? <User size={14} /> : <Headset size={14} />}
+                                                                </div>
+                                                                <div className={`rounded-2xl px-5 py-3.5 shadow-sm relative ${message.role === 'user' ? 'bg-linear-to-br from-indigo-600 to-indigo-500 text-white rounded-tr-none' : 'bg-white text-gray-800 border border-gray-100 rounded-tl-none'}`}>
+                                                                    <p className="text-sm font-medium leading-relaxed whitespace-pre-wrap">{message.content}</p>
+                                                                    <div className={`text-[9px] font-bold mt-1.5 flex items-center justify-between gap-1 uppercase tracking-tighter ${message.role === 'user' ? 'text-indigo-100/70' : 'text-gray-400'}`}>
+                                                                        <span>{message.role === 'assistant' && !message.interactionId ? 'Support Bot' : ''}</span>
+                                                                        <span>{new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                                                    </div>
                                                                 </div>
                                                             </div>
+                                                            {message.buttons && message.buttons.length > 0 && (
+                                                                <div className="flex flex-wrap gap-2 ml-11">
+                                                                    {message.buttons.map((btn, bi) => (
+                                                                        <button
+                                                                            key={bi}
+                                                                            onClick={() => {
+                                                                                if (btn.action === 'url') window.open(btn.value, '_blank');
+                                                                                else if (btn.action === 'action' && btn.value === 'escalate') handleEscalate();
+                                                                                else if (btn.action === 'action') sendQuery(btn.value);
+                                                                            }}
+                                                                            className="px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-xs font-bold text-gray-700 hover:bg-gray-50 hover:border-gray-300 transition-all active:scale-95 shadow-sm"
+                                                                        >
+                                                                            {btn.label}
+                                                                        </button>
+                                                                    ))}
+                                                                </div>
+                                                            )}
+                                                            {message.followUp && message.followUp.length > 0 && (
+                                                                <div className="flex flex-wrap gap-2 ml-11">
+                                                                    {message.followUp.map((q, qi) => (
+                                                                        <button
+                                                                            key={qi}
+                                                                            onClick={() => handleFollowUpClick(q)}
+                                                                            className="px-3 py-1.5 bg-blue-50 border border-blue-100 rounded-xl text-[10px] font-bold text-blue-600 hover:bg-blue-100 transition-all active:scale-95"
+                                                                        >
+                                                                            {q}
+                                                                        </button>
+                                                                    ))}
+                                                                </div>
+                                                            )}
                                                         </div>
                                                     </motion.div>
                                                 ))}
@@ -496,9 +673,31 @@ export default function SupportChatbot() {
                                                 <div ref={messagesEndRef} />
                                             </div>
                                             <div className="px-6 py-6 bg-white border-t border-gray-100 shrink-0 shadow-[0_-10px_20px_-10px_rgba(0,0,0,0.05)]">
+                                                {selectedFiles.length > 0 && (
+                                                    <div className="flex flex-wrap gap-2 mb-3">
+                                                        {selectedFiles.map((file, fi) => (
+                                                            <div key={fi} className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-xl pl-3 pr-2 py-1.5">
+                                                                <FileText size={14} className="text-indigo-600 shrink-0" />
+                                                                <span className="text-xs font-medium text-gray-700 max-w-[140px] truncate">{file.name}</span>
+                                                                <button onClick={() => removeFile(fi)} className="text-gray-400 hover:text-red-500 transition-colors">
+                                                                    <X size={14} />
+                                                                </button>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
                                                 <div className="flex items-end gap-3 bg-gray-50 border border-gray-100 rounded-[2rem] p-2 pr-3 focus-within:bg-white focus-within:border-indigo-200 focus-within:ring-4 focus-within:ring-indigo-50 transition-all duration-300">
+                                                    <input ref={fileInputRef} type="file" multiple className="hidden" onChange={handleFileSelect} />
+                                                    <button
+                                                        onClick={() => fileInputRef.current?.click()}
+                                                        disabled={isLoading || !handedToAgent}
+                                                        title={handedToAgent ? 'Attach files (max 10, 10 MB each)' : 'Connect to an agent to send files'}
+                                                        className="w-12 h-12 shrink-0 flex items-center justify-center text-indigo-600 hover:bg-indigo-50 rounded-2xl transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                                                    >
+                                                        <Paperclip size={20} />
+                                                    </button>
                                                     <textarea value={inputValue} onChange={(e) => setInputValue(e.target.value)} onKeyDown={handleKeyPress} placeholder="Message the team..." rows={1} disabled={isLoading} className="flex-1 px-4 py-3 bg-transparent border-none outline-none resize-none text-[13px] font-medium placeholder:text-gray-400 min-h-[48px] max-h-[120px]" />
-                                                    <button onClick={handleSendMessage} disabled={!inputValue.trim() || isLoading} className="w-12 h-12 bg-indigo-600 text-white rounded-2xl hover:bg-indigo-700 transition-all shadow-lg hover:shadow-indigo-200 active:scale-90 flex items-center justify-center shrink-0 disabled:opacity-30">
+                                                    <button onClick={handleSendMessage} disabled={(!inputValue.trim() && selectedFiles.length === 0) || isLoading} className="w-12 h-12 bg-indigo-600 text-white rounded-2xl hover:bg-indigo-700 transition-all shadow-lg hover:shadow-indigo-200 active:scale-90 flex items-center justify-center shrink-0 disabled:opacity-30">
                                                         <Send size={20} />
                                                     </button>
                                                 </div>

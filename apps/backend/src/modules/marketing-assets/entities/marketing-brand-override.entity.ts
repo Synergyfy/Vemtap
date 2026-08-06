@@ -13,7 +13,10 @@ export class MarketingBrandOverride extends AbstractBaseEntity {
   @Column({ unique: true })
   businessId: string;
 
-  @ApiProperty({ example: 'https://cdn.vemtap.com/brands/override-logo.png', nullable: true })
+  @ApiProperty({
+    example: 'https://cdn.vemtap.com/brands/override-logo.png',
+    nullable: true,
+  })
   @Column({ nullable: true })
   logoUrl: string;
 

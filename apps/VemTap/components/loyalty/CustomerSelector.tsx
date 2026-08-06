@@ -112,7 +112,7 @@ export default function CustomerSelector({ selectedIds, onSelect }: CustomerSele
                         })
                     ) : (
                         <div className="py-10 text-center text-gray-400">
-                            No customers found for "{searchQuery}"
+                            Couldn't find "{searchQuery}". Every customer starts somewhere — try a different search.
                         </div>
                     )}
                 </div>

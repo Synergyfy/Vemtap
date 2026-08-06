@@ -47,7 +47,11 @@ const HIGH_RISK_WORDS = [
     'immediate action', 'verify', 'account', 'secure-login', 'verify-now', 
     'urgent', 'winner', 'prize', 'bank', 'password', 'urgent response needed', 
     'you have won', 'congratulations winner', 'click below', 'identity verification', 
-    'crypto giveaway', 'failed delivery', 'free gift', 'action required', 'bank account'
+    'crypto giveaway', 'failed delivery', 'free gift', 'action required', 'bank account',
+    'promo', 'promotion', 'congrat', 'congratulations', 'bonus', 'discount',
+    'offer', 'claim', 'exclusive', 'limited time', 'act now', 'don\'t miss',
+    'special offer', 'free', 'win', 'cash', 'guaranteed', 'risk free',
+    'no obligation', 'act today', 'expires', 'limited supply'
 ];
 
 export default function SMSSender() {
@@ -601,8 +605,8 @@ export default function SMSSender() {
             </div>
 
             {/* Bottom Sticky Action Bar */}
-            <div className="fixed bottom-0 md:bottom-6 left-0 md:left-1/2 md:-translate-x-1/2 w-full md:max-w-5xl px-0 md:px-6 z-50">
-                <div className="bg-white/95 md:bg-white/80 backdrop-blur-xl border-t md:border border-gray-100 md:border-white/20 md:rounded-3xl p-4 md:p-4 shadow-[0_-8px_30px_rgb(0,0,0,0.08)] md:shadow-2xl flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4 md:gap-6 ring-1 ring-black/5">
+            <div className="fixed bottom-20 md:bottom-6 left-0 md:left-1/2 md:-translate-x-1/2 w-full md:max-w-5xl px-0 md:px-6 z-40">
+                <div className="bg-white/95 md:bg-white/80 backdrop-blur-xl border-t md:border border-gray-100 md:border-white/20 md:rounded-3xl p-3 md:p-4 shadow-[0_-8px_30px_rgb(0,0,0,0.08)] md:shadow-2xl flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 md:gap-6 ring-1 ring-black/5">
                     <div className="flex justify-between md:justify-start md:gap-8 px-4 md:pl-4">
                         <div>
                             <p className="text-[8px] md:text-[9px] font-black text-slate-400 uppercase tracking-widest">Recipients</p>
@@ -760,7 +764,7 @@ export default function SMSSender() {
                                         <div className="size-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4">
                                             <Users size={24} className="text-slate-300" />
                                         </div>
-                                        <p className="text-sm font-bold text-slate-400">No visitors found</p>
+                                        <p className="text-sm font-bold text-slate-400">Your first customer is waiting. Let's capture them today.</p>
                                     </div>
                                 )}
                             </div>

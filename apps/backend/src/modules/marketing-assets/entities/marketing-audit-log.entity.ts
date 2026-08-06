@@ -16,7 +16,10 @@ export class MarketingAuditLog extends AbstractBaseEntity {
   @Column()
   action: string;
 
-  @ApiProperty({ example: 'MarketingAsset', description: 'Type of entity affected' })
+  @ApiProperty({
+    example: 'MarketingAsset',
+    description: 'Type of entity affected',
+  })
   @Column()
   entityType: string;
 

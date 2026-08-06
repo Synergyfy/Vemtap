@@ -19,18 +19,12 @@ export default function AutomationsPage() {
 
     const isLoading = isLoadingRules || isLoadingPerf;
 
-    const stats = [
-        { label: 'Active Automations', value: rules.filter(r => r.isActive).length || '4', icon: Zap, color: 'text-blue-600', bg: 'bg-blue-50', trend: '+1' },
-        { label: 'Messages Sent', value: performance?.totalMessagesSent?.toLocaleString() || '5,320', icon: Send, color: 'text-emerald-600', bg: 'bg-emerald-50', trend: '+12%' },
-        { label: 'Customers Reached', value: performance?.totalReplies?.toLocaleString() || '2,180', icon: Users, color: 'text-purple-600', bg: 'bg-purple-50', trend: '+8%' },
-        { label: 'Success Rate', value: '96%', icon: TrendingUp, color: 'text-amber-600', bg: 'bg-amber-50', trend: '+2%' },
-    ];
-
-    const mockActiveRules = [
-        { id: '1', name: 'Welcome Message', status: 'active', trigger: 'Registration', sent: 1250, reached: 1100, successRate: 98, performance: 'A+' },
-        { id: '2', name: 'Birthday Reward', status: 'active', trigger: 'Birthday', sent: 450, reached: 430, successRate: 95, performance: 'A' },
-        { id: '3', name: '30-Day Reactivation', status: 'paused', trigger: 'Inactivity', sent: 890, reached: 210, successRate: 88, performance: 'B+' },
-    ];
+    const stats = rules.length > 0 || performance ? [
+        { label: 'Active Automations', value: rules.filter(r => r.isActive).length.toString(), icon: Zap, color: 'text-blue-600', bg: 'bg-blue-50', trend: '+0' },
+        { label: 'Messages Sent', value: performance?.totalMessagesSent?.toLocaleString() || '0', icon: Send, color: 'text-emerald-600', bg: 'bg-emerald-50', trend: '+0%' },
+        { label: 'Customers Reached', value: performance?.totalReplies?.toLocaleString() || '0', icon: Users, color: 'text-purple-600', bg: 'bg-purple-50', trend: '+0%' },
+        { label: 'Success Rate', value: '0%', icon: TrendingUp, color: 'text-amber-600', bg: 'bg-amber-50', trend: '+0%' },
+    ] : [];
 
     if (isLoading) {
         return (
@@ -41,7 +35,7 @@ export default function AutomationsPage() {
     }
 
     return (
-        <div className="pb-24 md:pb-10 max-w-6xl mx-auto p-4 md:p-8 space-y-12">
+        <div className="pb-24 md:pb-10 max-w-7xl mx-auto p-4 md:p-8 space-y-12">
             {/* SCREEN 1: AUTOMATION DASHBOARD */}
             
             <AutomationOverviewHeader />
@@ -55,7 +49,7 @@ export default function AutomationsPage() {
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
                 {/* LEFT COLUMN: Active Automations */}
                 <div className="lg:col-span-8 space-y-8">
-                    <ActiveAutomationsList rules={rules.length > 0 ? rules : mockActiveRules} />
+                    <ActiveAutomationsList rules={rules} />
                 </div>
 
                 {/* RIGHT COLUMN: Quick Actions & Help */}

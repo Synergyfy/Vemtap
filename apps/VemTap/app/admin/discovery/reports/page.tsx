@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import DiscoveryNav from '@/components/admin/discovery/DiscoveryNav';
 import { 
     FileText, Download, Calendar, Filter, 
@@ -8,14 +8,25 @@ import {
     CheckCircle2, Clock, Plus, Share2, MoreHorizontal
 } from 'lucide-react';
 import { motion } from 'framer-motion';
-
-const MOCK_REPORTS = [
-    { id: '1', name: 'Monthly Network Performance', type: 'Full Summary', date: '2026-06-01', status: 'Ready', size: '2.4 MB' },
-    { id: '2', name: 'Wuse 2 District Deep-Dive', type: 'Location Analysis', date: '2026-06-10', status: 'Ready', size: '1.8 MB' },
-    { id: '3', name: 'Sponsored Ads ROI Q2', type: 'Revenue Report', date: '2026-06-12', status: 'Processing', size: '—' },
-];
+import { useAdminReports, useGenerateAdminReport } from '@/services/discovery/hooks';
 
 export default function DiscoveryReportsPage() {
+    const { data: reportsData, isLoading } = useAdminReports({ page: 1, limit: 10 });
+    const generateReport = useGenerateAdminReport();
+
+    const [reportType, setReportType] = useState('Network Performance Summary');
+    const [dateRange, setDateRange] = useState('Last 7 Days');
+
+    const reports = reportsData?.data ?? [];
+
+    const handleGenerate = () => {
+        generateReport.mutate({
+            name: reportType,
+            type: reportType,
+            dateRange,
+        });
+    };
+
     return (
         <div className="p-8">
             <DiscoveryNav current="/admin/discovery/reports" />
@@ -33,7 +44,11 @@ export default function DiscoveryReportsPage() {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div>
                                 <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1 mb-2 block">Report Type</label>
-                                <select className="w-full h-12 bg-gray-50 border border-gray-200 rounded-2xl px-4 text-sm font-bold text-text-main outline-none focus:ring-4 focus:ring-primary/10 transition-all">
+                                <select
+                                    value={reportType}
+                                    onChange={(e) => setReportType(e.target.value)}
+                                    className="w-full h-12 bg-gray-50 border border-gray-200 rounded-2xl px-4 text-sm font-bold text-text-main outline-none focus:ring-4 focus:ring-primary/10 transition-all"
+                                >
                                     <option>Network Performance Summary</option>
                                     <option>Location & District ROI</option>
                                     <option>Industry Category Breakdown</option>
@@ -45,7 +60,11 @@ export default function DiscoveryReportsPage() {
                                 <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1 mb-2 block">Date Range</label>
                                 <div className="relative group">
                                     <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 size-4 text-text-secondary" />
-                                    <select className="w-full h-12 bg-gray-50 border border-gray-200 rounded-2xl pl-11 pr-4 text-sm font-bold text-text-main outline-none focus:ring-4 focus:ring-primary/10 transition-all">
+                                    <select
+                                        value={dateRange}
+                                        onChange={(e) => setDateRange(e.target.value)}
+                                        className="w-full h-12 bg-gray-50 border border-gray-200 rounded-2xl pl-11 pr-4 text-sm font-bold text-text-main outline-none focus:ring-4 focus:ring-primary/10 transition-all"
+                                    >
                                         <option>Last 7 Days</option>
                                         <option>Last 30 Days</option>
                                         <option>Current Quarter (Q2)</option>
@@ -54,8 +73,17 @@ export default function DiscoveryReportsPage() {
                                 </div>
                             </div>
                         </div>
-                        <button className="mt-8 w-full py-4 bg-primary text-white text-xs font-black uppercase tracking-widest rounded-2xl hover:bg-primary-hover shadow-xl shadow-primary/20 transition-all active:scale-95 flex items-center justify-center gap-2">
-                            <BarChart3 size={18} /> Compile & Generate Report
+                        <button
+                            onClick={handleGenerate}
+                            disabled={generateReport.isPending}
+                            className="mt-8 w-full py-4 bg-primary text-white text-xs font-black uppercase tracking-widest rounded-2xl hover:bg-primary-hover shadow-xl shadow-primary/20 transition-all active:scale-95 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            {generateReport.isPending ? (
+                                <Clock size={18} className="animate-spin" />
+                            ) : (
+                                <BarChart3 size={18} />
+                            )}
+                            {generateReport.isPending ? 'Generating...' : 'Compile & Generate Report'}
                         </button>
                     </div>
 
@@ -76,7 +104,25 @@ export default function DiscoveryReportsPage() {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-50 text-sm">
-                                    {MOCK_REPORTS.map((report) => (
+                                    {isLoading ? (
+                                        Array.from({ length: 5 }).map((_, i) => (
+                                            <tr key={`skeleton-${i}`} className="animate-pulse">
+                                                <td className="px-6 py-4">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="size-8 rounded-lg bg-gray-100" />
+                                                        <div className="space-y-1.5">
+                                                            <div className="h-3.5 w-48 bg-gray-100 rounded" />
+                                                            <div className="h-2.5 w-16 bg-gray-100 rounded" />
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-4"><div className="h-3.5 w-28 bg-gray-100 rounded" /></td>
+                                                <td className="px-6 py-4"><div className="h-3.5 w-24 bg-gray-100 rounded" /></td>
+                                                <td className="px-6 py-4 text-center"><div className="h-5 w-20 bg-gray-100 rounded-full mx-auto" /></td>
+                                                <td className="px-6 py-4 text-right"><div className="h-7 w-20 bg-gray-100 rounded-lg ml-auto" /></td>
+                                            </tr>
+                                        ))
+                                    ) : reports.map((report) => (
                                         <tr key={report.id} className="hover:bg-gray-50/50 transition-colors group">
                                             <td className="px-6 py-4">
                                                 <div className="flex items-center gap-3">

@@ -5,6 +5,7 @@ import {
   OneToMany,
   JoinColumn,
   BeforeInsert,
+  Index,
 } from 'typeorm';
 import { AbstractBaseEntity } from '../../../common/entities/base.entity';
 import { Business } from '../../businesses/entities/business.entity';
@@ -12,6 +13,7 @@ import { User } from '../../users/entities/user.entity';
 import { Visit } from '../../visitors/entities/visit.entity';
 import { Campaign } from '../../campaigns/entities/campaign.entity';
 import type { MessageCampaign } from '../../messaging/entities/message-campaign.entity';
+import { Cluster } from '../../clusters/entities/cluster.entity';
 
 import { ApiProperty } from '@nestjs/swagger';
 import { generateUniqueCode } from '../../../common/utils/random.util';
@@ -45,6 +47,21 @@ export class Branch extends AbstractBaseEntity {
   @Column({ nullable: true })
   city: string;
 
+  @Column('decimal', { precision: 10, scale: 7, nullable: true })
+  latitude: number;
+
+  @Column('decimal', { precision: 10, scale: 7, nullable: true })
+  longitude: number;
+
+  @Index('idx_branches_location', { spatial: true })
+  @Column({
+    type: 'geography',
+    spatialFeatureType: 'Point',
+    srid: 4326,
+    nullable: true,
+  })
+  location: any;
+
   @Column({ nullable: true })
   phone: string;
 
@@ -71,6 +88,20 @@ export class Branch extends AbstractBaseEntity {
 
   @Column({ type: 'varchar', nullable: true, length: 500 })
   mainQrShortUrl: string | null;
+
+  @ApiProperty({
+    example: null,
+    description: 'Cluster this branch is assigned to (market area)',
+  })
+  @Index('idx_branches_cluster')
+  @Column({ type: 'uuid', nullable: true })
+  clusterId: string | null;
+
+  @ManyToOne(() => Cluster, (cluster) => cluster.branches, {
+    onDelete: 'SET NULL',
+  })
+  @JoinColumn({ name: 'clusterId' })
+  cluster: Cluster;
 
   @ApiProperty({
     example: '#2563EB',
@@ -165,6 +196,50 @@ export class Branch extends AbstractBaseEntity {
   @Column({ default: true })
   showFeedback: boolean;
 
+  @ApiProperty({
+    example: true,
+    description: 'Whether the branch has joined the Discovery Network',
+  })
+  @Column({ default: true })
+  joinDiscoveryNetwork: boolean;
+
+  @ApiProperty({
+    example: true,
+    description:
+      'Whether the branch allows other businesses to request partnerships',
+  })
+  @Column({ default: true })
+  receivePartnerRequests: boolean;
+
+  @ApiProperty({
+    example: true,
+    description:
+      'Whether the branch shows active promotions on the Discovery Network',
+  })
+  @Column({ default: true })
+  allowPromotions: boolean;
+
+  @ApiProperty({
+    example: true,
+    description: 'Push notification preference for discovery updates',
+  })
+  @Column({ default: true })
+  pushNotifications: boolean;
+
+  @ApiProperty({
+    example: false,
+    description: 'SMS notification preference for discovery updates',
+  })
+  @Column({ default: false })
+  smsAlerts: boolean;
+
+  @ApiProperty({
+    example: true,
+    description: 'Email summary preference for discovery updates',
+  })
+  @Column({ default: true })
+  emailSummary: boolean;
+
   @ManyToOne(() => Business, (business) => business.branches, {
     onDelete: 'CASCADE',
   })
@@ -185,8 +260,6 @@ export class Branch extends AbstractBaseEntity {
 
   @OneToMany('MessageCampaign', 'branch')
   messageCampaigns: MessageCampaign[];
-
-
 
   @BeforeInsert()
   generateUniqueCode() {

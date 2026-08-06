@@ -36,7 +36,7 @@ describe('AutomationsController (e2e)', () => {
       branchId: branchId,
       businessId: user.businessId,
       name: 'Test Welcome Automation',
-      triggerType: TriggerType.FIRST_TAG,
+      triggerType: TriggerType.FIRST_MESSAGE,
       actionType: ActionType.SEND_WHATSAPP,
       isActive: false,
       delaySeconds: 0,

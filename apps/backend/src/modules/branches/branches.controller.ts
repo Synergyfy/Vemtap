@@ -10,25 +10,34 @@ import {
   Request,
   ForbiddenException,
   NotFoundException,
-  Get as GetMapping,
+  Query,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth, ApiResponse, ApiParam } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiBearerAuth,
+  ApiResponse,
+  ApiParam,
+} from '@nestjs/swagger';
 import { BranchesService } from './branches.service';
 import { CreateBranchDto, UpdateBranchDto } from './dto/branch.dto';
+import { UpdateCustomerCaptureDto } from './dto/customer-capture.dto';
 import { Roles } from '../../common/decorators/roles.decorator';
+import { Public } from '../../common/decorators/public.decorator';
 import { UserRole } from '../users/entities/user.entity';
-import { CapabilityGuard } from '../subscriptions/guards/capability.guard';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../../common/guards/roles.guard';
 import { RequireCapability } from '../subscriptions/decorators/capability.decorator';
 
 @ApiTags('branches')
 @ApiBearerAuth()
+@UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('branches')
 export class BranchesController {
   constructor(private readonly branchesService: BranchesService) {}
 
   @Post()
   @Roles(UserRole.OWNER)
-  @UseGuards(CapabilityGuard)
   @RequireCapability('branches')
   @ApiOperation({ summary: 'Create a new branch for the business' })
   create(@Request() req, @Body() createBranchDto: CreateBranchDto) {
@@ -36,7 +45,7 @@ export class BranchesController {
   }
 
   @Get()
-  @Roles(UserRole.OWNER, UserRole.MANAGER)
+  @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF, UserRole.ADMIN)
   @ApiOperation({ summary: 'Get all branches for the business' })
   async findAll(@Request() req) {
     const businessId = await this.getBusinessId(req.user);
@@ -44,7 +53,7 @@ export class BranchesController {
   }
 
   @Get(':id')
-  @Roles(UserRole.OWNER, UserRole.MANAGER)
+  @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF, UserRole.ADMIN)
   @ApiOperation({ summary: 'Get a specific branch' })
   async findOne(@Request() req, @Param('id') id: string) {
     const businessId = await this.getBusinessId(req.user);
@@ -60,17 +69,59 @@ export class BranchesController {
     @Body() updateBranchDto: UpdateBranchDto,
   ) {
     const businessId = await this.getBusinessId(req.user);
-    return this.branchesService.update(businessId, id, updateBranchDto, req.user);
+    return this.branchesService.update(
+      businessId,
+      id,
+      updateBranchDto,
+      req.user,
+    );
+  }
+
+  @Get(':id/customer-capture')
+  @Roles(UserRole.OWNER)
+  @ApiOperation({ summary: 'Get persisted customer-capture configuration' })
+  async getCustomerCapture(@Request() req, @Param('id') id: string) {
+    const businessId = await this.getBusinessId(req.user);
+    const branch = await this.branchesService.findOne(businessId, id);
+    return branch.engagement?.customerCapture || null;
+  }
+
+  @Patch(':id/customer-capture')
+  @Roles(UserRole.OWNER)
+  @ApiOperation({ summary: 'Persist customer-capture configuration' })
+  async updateCustomerCapture(
+    @Request() req,
+    @Param('id') id: string,
+    @Body() dto: UpdateCustomerCaptureDto,
+  ) {
+    const businessId = await this.getBusinessId(req.user);
+    const branch = await this.branchesService.findOne(businessId, id);
+    return this.branchesService.updateCustomerCapture(branch, dto);
+  }
+
+  @Post(':id/request-delete-otp')
+  @Roles(UserRole.OWNER)
+  @ApiOperation({ summary: 'Request OTP for deleting a branch' })
+  async requestDeleteOtp(@Request() req, @Param('id') id: string) {
+    const businessId = await this.getBusinessId(req.user);
+    return this.branchesService.requestDeleteOtp(businessId, id);
   }
 
   @Delete(':id')
   @Roles(UserRole.OWNER)
-  @ApiOperation({ summary: 'Delete a branch' })
-  async remove(@Request() req, @Param('id') id: string) {
+  @ApiOperation({ summary: 'Delete a branch with OTP verification' })
+  async remove(
+    @Request() req,
+    @Param('id') id: string,
+    @Body('otp') bodyOtp?: string,
+    @Query('otp') queryOtp?: string,
+  ) {
     const businessId = await this.getBusinessId(req.user);
-    return this.branchesService.remove(businessId, id);
+    const otp = bodyOtp || queryOtp;
+    return this.branchesService.remove(businessId, id, otp);
   }
 
+  @Public()
   @Get('check-username/:username')
   @ApiOperation({
     summary: 'Check username availability',
@@ -110,6 +161,50 @@ export class BranchesController {
       available: !error,
       message: error,
     };
+  }
+
+  @Get(':id/last-top-recent-customer')
+  @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF)
+  @ApiOperation({
+    summary: 'Get the last top recent customer of a branch',
+    description:
+      'Returns the customer who has visited this branch the most, with tie-breaks for the most recent visit.',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'The ID of the branch',
+    example: 'branch-uuid-here',
+  })
+  @ApiResponse({
+    status: 200,
+    description:
+      'The top recent customer detail or null if the branch has no visitors yet.',
+    schema: {
+      example: {
+        customer: {
+          id: 'uuid-string',
+          firstName: 'John',
+          lastName: 'Doe',
+          email: 'john.doe@example.com',
+          phone: '+2348012345678',
+          avatar: 'https://example.com/avatar.jpg',
+          uniqueCode: 'CUST-123456',
+          createdAt: '2023-10-25T10:00:00.000Z',
+        },
+        visitCount: 12,
+        lastVisitAt: '2023-10-25T10:00:00.000Z',
+      },
+    },
+  })
+  async getLastTopRecentCustomer(@Request() req, @Param('id') id: string) {
+    const hasAccess = await this.branchesService.checkBranchAccess(
+      req.user,
+      id,
+    );
+    if (!hasAccess) {
+      throw new ForbiddenException('You do not have access to this branch');
+    }
+    return this.branchesService.getLastTopRecentCustomer(id);
   }
 
   private async getBusinessId(user: any): Promise<string> {

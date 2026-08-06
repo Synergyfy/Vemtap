@@ -165,8 +165,10 @@ export const apiCall = async (endpoint: string, options: ExtendedRequestInit = {
             errorData = { message: `API Error: ${response.status}` };
         }
 
+        const errMsg = Array.isArray(errorData.message) ? errorData.message[0] : (typeof errorData.message === 'string' ? errorData.message : '');
+
         // Global Subscription Expiry Handling
-        if (response.status === 403 && (errorData.message?.toLowerCase().includes('subscription expired') || errorData.message?.toLowerCase().includes('renew to continue'))) {
+        if (response.status === 403 && (errMsg.toLowerCase().includes('subscription expired') || errMsg.toLowerCase().includes('renew to continue'))) {
             try {
                 const { useSubscriptionStore } = await import('@/store/useSubscriptionStore');
                 useSubscriptionStore.getState().setSubscriptionExpired(true);
@@ -175,7 +177,52 @@ export const apiCall = async (endpoint: string, options: ExtendedRequestInit = {
             }
         }
 
-        throw new Error(errorData.message || `API Error: ${response.status}`);
+        // Feature-level lock detection: e.g. "Catalogue feature is not enabled for your plan"
+        if (response.status === 403 && /feature is not enabled for your plan/i.test(errMsg)) {
+            try {
+                const match = errMsg.match(/^(\w+) feature/i);
+                if (match) {
+                    const rawFeature = match[1].toLowerCase();
+                    const featureToId: Record<string, string> = {
+                        'catalogue': 'catalogue',
+                        'analytics': 'analytics',
+                        'inventory': 'inventory',
+                        'messaging': 'messaging',
+                        'loyalty': 'loyalty',
+                        'branches': 'branches',
+                        'staff': 'staff',
+                        'team': 'teamMembers',
+                        'pos': 'pos',
+                        'visitors': 'visitors',
+                        'forms': 'forms',
+                    };
+                    const featureId = featureToId[rawFeature] || rawFeature;
+                    const { useSubscriptionStore } = await import('@/store/useSubscriptionStore');
+                    useSubscriptionStore.getState().markFeatureLocked(featureId);
+                    // Also refresh capabilities so future navigations see correct state
+                    useSubscriptionStore.getState().fetchCapabilities();
+                }
+            } catch (e) {
+                console.error('Failed to mark feature locked', e);
+            }
+        }
+
+        // Global Conflict / Duplicate Handling
+        if ((response.status === 400 || response.status === 409) && errMsg) {
+            const msgToLower = errMsg.toLowerCase();
+            if (msgToLower.includes('already exist') || msgToLower.includes('taken') || msgToLower.includes('duplicate') || msgToLower.includes('in use')) {
+                try {
+                    const { useConflictStore } = await import('@/store/useConflictStore');
+                    if (typeof window !== 'undefined') {
+                        useConflictStore.getState().openConflict(errMsg);
+                    }
+                } catch (e) {
+                    console.error('Failed to trigger conflict store state', e);
+                }
+            }
+        }
+
+        throw new Error(errMsg || `API Error: ${response.status}`);
     }
 
     const text = await response.text();

@@ -24,6 +24,7 @@ import { AffiliatesService } from '../affiliates/affiliates.service';
 import { ExternalAffiliateService } from '../affiliates/external-affiliate.service';
 import { QrThriveService } from '../qr-thrive/qr-thrive.service';
 import { BranchesService } from '../branches/branches.service';
+import { Reward } from '../loyalty/entities/reward.entity';
 
 describe('SubscriptionsService', () => {
   let service: SubscriptionsService;
@@ -44,6 +45,7 @@ describe('SubscriptionsService', () => {
     loyaltyLimit: 2,
     branchLimit: 3,
     analyticsLevel: 'basic',
+    permissionsConfiguredAt: new Date(),
   };
 
   const mockTrialPlan = {
@@ -92,7 +94,7 @@ describe('SubscriptionsService', () => {
     findOne: jest.fn().mockResolvedValue(mockBusiness),
   };
 
-  const mockUserRepo = { update: jest.fn() };
+  const mockUserRepo = { update: jest.fn(), count: jest.fn() };
   const mockBranchRepo = { find: jest.fn() };
   const mockDeviceRepo = { count: jest.fn() };
 
@@ -127,15 +129,34 @@ describe('SubscriptionsService', () => {
   const mockAffiliatesService = { processSubscriptionCommission: jest.fn() };
   const mockExternalAffiliateService = { recordReferral: jest.fn() };
   const mockQrThriveService = { syncSubscription: jest.fn() };
-  const mockBranchesService = { findBusinessByOwner: jest.fn(), findById: jest.fn() };
+  const mockBranchesService = {
+    findBusinessByOwner: jest.fn(),
+    findById: jest.fn(),
+  };
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
-        { provide: getRepositoryToken(CatalogueItem), useValue: {} },
-        { provide: getRepositoryToken(CatalogueOffer), useValue: {} },
-        { provide: getRepositoryToken(CatalogueCategory), useValue: {} },
-        { provide: getRepositoryToken(AutomationRule), useValue: {} },
+        {
+          provide: getRepositoryToken(CatalogueItem),
+          useValue: { count: jest.fn().mockResolvedValue(0) },
+        },
+        {
+          provide: getRepositoryToken(CatalogueOffer),
+          useValue: { count: jest.fn().mockResolvedValue(0) },
+        },
+        {
+          provide: getRepositoryToken(CatalogueCategory),
+          useValue: { count: jest.fn().mockResolvedValue(0) },
+        },
+        {
+          provide: getRepositoryToken(AutomationRule),
+          useValue: { count: jest.fn().mockResolvedValue(0) },
+        },
+        {
+          provide: getRepositoryToken(Reward),
+          useValue: { count: jest.fn().mockResolvedValue(0) },
+        },
         SubscriptionsService,
         {
           provide: getRepositoryToken(Subscription),
@@ -150,7 +171,10 @@ describe('SubscriptionsService', () => {
         { provide: CreditService, useValue: mockCreditService },
         { provide: AddonsService, useValue: mockAddonsService },
         { provide: AffiliatesService, useValue: mockAffiliatesService },
-        { provide: ExternalAffiliateService, useValue: mockExternalAffiliateService },
+        {
+          provide: ExternalAffiliateService,
+          useValue: mockExternalAffiliateService,
+        },
         { provide: QrThriveService, useValue: mockQrThriveService },
         { provide: BranchesService, useValue: mockBranchesService },
         {
@@ -216,6 +240,85 @@ describe('SubscriptionsService', () => {
       });
 
       expect(result.subscription.endDate.toISOString()).toBe(customEndDateStr);
+    });
+
+    describe('permissions guard', () => {
+      it('should allow free plan even without permissionsConfiguredAt', async () => {
+        const freePlanNoPerms = {
+          ...mockFreePlan,
+          permissionsConfiguredAt: null,
+        };
+        mockPlansService.findOne.mockResolvedValue(freePlanNoPerms);
+        mockSubRepository.findOne.mockResolvedValue(null);
+        mockBranchRepo.find.mockResolvedValue([]);
+
+        const result = await service.subscribe({
+          planId: '2',
+          businessId: 'b1',
+          billingPeriod: BillingPeriod.YEARLY,
+        });
+
+        expect(result.subscription.status).toBe(SubscriptionStatus.ACTIVE);
+      });
+
+      it('should throw BadRequest if paid plan has null permissionsConfiguredAt', async () => {
+        const paidPlanNoPerms = {
+          ...mockPlan,
+          permissionsConfiguredAt: null,
+        };
+        mockPlansService.findOne.mockResolvedValue(paidPlanNoPerms);
+
+        await expect(
+          service.subscribe({
+            planId: '1',
+            businessId: 'b1',
+            billingPeriod: BillingPeriod.MONTHLY,
+          }),
+        ).rejects.toThrow(BadRequestException);
+      });
+
+      it('should allow paid plan if permissionsConfiguredAt is set', async () => {
+        const paidPlanWithPerms = {
+          ...mockPlan,
+          permissionsConfiguredAt: new Date(),
+        };
+        mockPlansService.findOne.mockResolvedValue(paidPlanWithPerms);
+        mockSubRepository.findOne.mockResolvedValue(null);
+        mockBranchRepo.find.mockResolvedValue([]);
+        mockPaymentsService.verifyTransaction.mockResolvedValue({
+          status: 'success',
+          data: { amount: 5000 },
+          authorization: { authorization_code: 'AUTH_123' },
+        });
+
+        const result = await service.subscribe({
+          planId: '1',
+          businessId: 'b1',
+          billingPeriod: BillingPeriod.MONTHLY,
+          paymentReference: 'PAY_123',
+        });
+
+        expect(result.subscription.status).toBe(SubscriptionStatus.ACTIVE);
+      });
+
+      it('should allow admin override even without permissionsConfiguredAt', async () => {
+        const paidPlanNoPerms = {
+          ...mockPlan,
+          permissionsConfiguredAt: null,
+        };
+        mockPlansService.findOne.mockResolvedValue(paidPlanNoPerms);
+        mockSubRepository.findOne.mockResolvedValue(null);
+        mockBranchRepo.find.mockResolvedValue([]);
+
+        const result = await service.subscribe({
+          planId: '1',
+          businessId: 'b1',
+          billingPeriod: BillingPeriod.MONTHLY,
+          isAdminOverride: true,
+        });
+
+        expect(result.subscription.status).toBe(SubscriptionStatus.ACTIVE);
+      });
     });
   });
 
@@ -293,6 +396,154 @@ describe('SubscriptionsService', () => {
         'AUTH_TRIAL',
       );
       expect(trialWithAuth.status).toBe(SubscriptionStatus.ACTIVE);
+    });
+  });
+
+  describe('getCapabilities', () => {
+    it('should return capability features and correctly treat -1 as unlimited for teamMembers and loyaltyPrograms', async () => {
+      const unlimitedPlan = {
+        ...mockPlan,
+        teamMembersEnabled: true,
+        teamMembersLimit: -1,
+        loyaltyEnabled: true,
+        loyaltyLimit: -1,
+        automationsEnabled: true,
+        maxAutomations: -1,
+      };
+
+      const activeSub = {
+        ...mockSubscription,
+        plan: unlimitedPlan,
+      };
+
+      mockSubRepository.findOne.mockResolvedValueOnce(activeSub);
+      mockBranchRepo.find.mockResolvedValueOnce([
+        { id: 'br-1', isMainBranch: true },
+      ]);
+      mockUserRepo.count.mockResolvedValueOnce(2);
+      mockDeviceRepo.count.mockResolvedValueOnce(0);
+
+      const result = await service.getCapabilities('b1');
+
+      expect(result.capabilities.teamMembers).toEqual({
+        enabled: true,
+        limit: 'unlimited',
+        used: 2,
+        remaining: 'unlimited',
+      });
+
+      expect(result.capabilities.loyaltyPrograms).toEqual({
+        enabled: true,
+        limit: 'unlimited',
+        used: 0,
+        remaining: 'unlimited',
+      });
+
+      expect(result.capabilities.automations).toEqual({
+        enabled: true,
+        limit: 'unlimited',
+        used: 0,
+        remaining: 'unlimited',
+      });
+    });
+
+    it('should return capability features and correctly treat positive limits as finite for teamMembers and loyaltyPrograms', async () => {
+      const finitePlan = {
+        ...mockPlan,
+        teamMembersEnabled: true,
+        teamMembersLimit: 5,
+        loyaltyEnabled: true,
+        loyaltyLimit: 3,
+        maxAutomations: 10,
+      };
+
+      const activeSub = {
+        ...mockSubscription,
+        plan: finitePlan,
+      };
+
+      mockSubRepository.findOne.mockResolvedValueOnce(activeSub);
+      mockBranchRepo.find.mockResolvedValueOnce([
+        { id: 'br-1', isMainBranch: true },
+      ]);
+      mockUserRepo.count.mockResolvedValueOnce(2);
+      mockDeviceRepo.count.mockResolvedValueOnce(0);
+
+      const result = await service.getCapabilities('b1');
+
+      expect(result.capabilities.teamMembers).toEqual({
+        enabled: true,
+        limit: 5,
+        used: 2,
+        remaining: 3,
+      });
+
+      expect(result.capabilities.loyaltyPrograms).toEqual({
+        enabled: true,
+        limit: 3,
+        used: 0,
+        remaining: 3,
+      });
+    });
+
+    it('should treat null limits as 0/disabled and not unlimited', async () => {
+      const nullLimitPlan = {
+        ...mockPlan,
+        teamMembersEnabled: true,
+        teamMembersLimit: null,
+        loyaltyEnabled: true,
+        loyaltyLimit: null,
+        automationsEnabled: true,
+        maxAutomations: null,
+      };
+
+      const activeSub = {
+        ...mockSubscription,
+        plan: nullLimitPlan,
+      };
+
+      mockSubRepository.findOne.mockResolvedValueOnce(activeSub);
+      mockBranchRepo.find.mockResolvedValueOnce([
+        { id: 'br-1', isMainBranch: true },
+      ]);
+      mockUserRepo.count.mockResolvedValueOnce(2);
+      mockDeviceRepo.count.mockResolvedValueOnce(0);
+
+      const result = await service.getCapabilities('b1');
+
+      expect(result.capabilities.teamMembers).toEqual({
+        enabled: true,
+        limit: 0,
+        used: 2,
+        remaining: 0,
+      });
+
+      expect(result.capabilities.loyaltyPrograms).toEqual({
+        enabled: true,
+        limit: 0,
+        used: 0,
+        remaining: 0,
+      });
+
+      expect(result.capabilities.automations).toEqual({
+        enabled: true,
+        limit: 0,
+        used: 0,
+        remaining: 0,
+      });
+    });
+  });
+
+  describe('cancelSubscription', () => {
+    it('should cancel active subscription successfully', async () => {
+      mockSubRepository.findOne.mockResolvedValueOnce(mockSubscription);
+      mockSubRepository.save.mockImplementationOnce((sub) =>
+        Promise.resolve(sub),
+      );
+
+      const result = await service.cancelSubscription('b1');
+      expect(result.message).toBe('Subscription cancelled successfully');
+      expect(result.subscription.status).toBe(SubscriptionStatus.CANCELED);
     });
   });
 });

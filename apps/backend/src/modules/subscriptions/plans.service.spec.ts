@@ -61,7 +61,7 @@ describe('PlansService', () => {
       features: ['feature1'],
       trialDurationDays: 30,
     };
-    const plan = await service.create(dto as any);
+    const plan = await service.create(dto);
 
     expect(plan.quarterlyPrice).toBe(PricingUtil.calculateQuarterlyPrice(2000));
     expect(plan.yearlyPrice).toBe(PricingUtil.calculateYearlyPrice(2000));
@@ -120,6 +120,82 @@ describe('PlansService', () => {
 
     expect(mockPlanRepository.findOne).toHaveBeenCalledWith({
       where: { isFree: true, isActive: true },
+    });
+  });
+
+  describe('updatePermissions', () => {
+    it('should update permissions and set permissionsConfiguredAt', async () => {
+      const dto = {
+        inventoryEnabled: true,
+        inventoryLimit: 10,
+        posEnabled: false,
+        formsEnabled: true,
+        formsLimit: 5,
+      };
+      const mockPlanWithPerms = { ...mockPlan };
+      mockPlanRepository.findOne.mockResolvedValue(mockPlanWithPerms);
+
+      const beforeUpdate = new Date();
+      const result = await service.updatePermissions('1', dto);
+
+      expect(result.inventoryEnabled).toBe(true);
+      expect(result.inventoryLimit).toBe(10);
+      expect(result.posEnabled).toBe(false);
+      expect(result.formsEnabled).toBe(true);
+      expect(result.formsLimit).toBe(5);
+      expect(result.permissionsConfiguredAt).toBeInstanceOf(Date);
+      expect(result.permissionsConfiguredAt!.getTime()).toBeGreaterThanOrEqual(
+        beforeUpdate.getTime(),
+      );
+      expect(mockPlanRepository.save).toHaveBeenCalled();
+    });
+  });
+
+  describe('getPermissions', () => {
+    it('should return only permission columns', async () => {
+      mockPlanRepository.findOne.mockResolvedValue({
+        ...mockPlan,
+        inventoryEnabled: true,
+        inventoryLimit: 10,
+        permissionsConfiguredAt: new Date(),
+      });
+
+      const result = await service.getPermissions('1');
+
+      expect(result.id).toBe('1');
+      expect(result).toHaveProperty('inventoryEnabled');
+      expect(result).toHaveProperty('inventoryLimit');
+      expect(result).toHaveProperty('permissionsConfiguredAt');
+      expect(result).toHaveProperty('messagingEnabled');
+      expect(result).toHaveProperty('smsCredits');
+      expect(result).toHaveProperty('branchesEnabled');
+      expect(result).toHaveProperty('branchLimit');
+      expect(result).toHaveProperty('teamMembersEnabled');
+      expect(result).toHaveProperty('teamMembersLimit');
+      expect(result).toHaveProperty('loyaltyEnabled');
+      expect(result).toHaveProperty('loyaltyLimit');
+      expect(result).toHaveProperty('analyticsEnabled');
+      expect(result).toHaveProperty('analyticsLevel');
+      expect(result).toHaveProperty('catalogueEnabled');
+      expect(result).toHaveProperty('maxCatalogueItems');
+      expect(result).toHaveProperty('maxCatalogueCategories');
+      expect(result).toHaveProperty('maxCatalogueOffers');
+      expect(result).toHaveProperty('automationsEnabled');
+      expect(result).toHaveProperty('maxAutomations');
+      expect(result).toHaveProperty('posEnabled');
+      expect(result).toHaveProperty('posTerminalLimit');
+      expect(result).toHaveProperty('visitorsEnabled');
+      expect(result).toHaveProperty('inAppChatEnabled');
+      expect(result).toHaveProperty('formsLimit');
+      expect(result).toHaveProperty('businessQrEnabled');
+      expect(result).toHaveProperty('marketingKitEnabled');
+      expect(result).toHaveProperty('marketingKitLimit');
+      expect(result).toHaveProperty('discoveryEnabled');
+      expect(result).toHaveProperty('staffRolesEnabled');
+      expect(result).toHaveProperty('staffRolesLimit');
+      expect(result).toHaveProperty('activityLogEnabled');
+      expect(result).toHaveProperty('qrCodesEnabled');
+      expect(result).toHaveProperty('qrCodesLimit');
     });
   });
 });

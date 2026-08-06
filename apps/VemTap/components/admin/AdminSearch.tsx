@@ -202,8 +202,7 @@ export default function AdminSearch() {
     const handleSelect = (item: SearchResult) => {
         closePalette();
         if (item.type === 'action' && item.actionType === 'logout') {
-            logout();
-            router.push('/login');
+            logout().then(() => router.push('/login'));
         } else {
             router.push(item.href);
         }
@@ -332,7 +331,7 @@ export default function AdminSearch() {
                                         <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-3">
                                             <Search className="text-gray-400" size={20} />
                                         </div>
-                                        <p className="text-sm font-bold text-text-main">No results found</p>
+                                        <p className="text-sm font-bold text-text-main">Couldn't find what you're looking for? Try a different search term.</p>
                                         <p className="text-xs text-text-secondary mt-1">We couldn't find anything matching "{query}"</p>
                                     </div>
                                 ) : (

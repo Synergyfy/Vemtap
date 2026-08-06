@@ -59,8 +59,8 @@ export default function AdminSidebar({ children, activePage }: AdminSidebarProps
         setExpandedMenus(prev => (prev.includes(menu) ? [] : [menu]));
     };
 
-    const handleLogout = () => {
-        logout();
+    const handleLogout = async () => {
+        await logout();
         router.push('/login');
     };
 
@@ -88,9 +88,9 @@ export default function AdminSidebar({ children, activePage }: AdminSidebarProps
                 />
             )}
 
-            {/* Sidebar - Light theme matching business dashboard */}
+            {/* Sidebar */}
             <aside className={`
-                fixed inset-y-0 left-0 z-70 w-64 bg-white border-r border-gray-200 flex flex-col transition-transform duration-300 lg:static lg:translate-x-0
+                fixed inset-y-0 left-0 z-70 w-72 bg-white border-r border-gray-200 flex flex-col transition-transform duration-300 lg:static lg:translate-x-0
                 ${isMobileOpen ? 'translate-x-0' : '-translate-x-full'}
             `}>
                 {/* Logo with Wordmark */}
@@ -101,39 +101,41 @@ export default function AdminSidebar({ children, activePage }: AdminSidebarProps
                 </div>
 
                 {/* Navigation */}
-                <nav className="flex-1 overflow-y-auto py-6 px-3">
+                <nav className="flex-1 overflow-y-auto py-6 px-3 space-y-0.5">
                     {filteredMenuItems.map((item) => {
                         const IconComponent = item.icon;
                         return (
-                            <div key={item.id} className="mb-1">
+                            <div key={item.id}>
                                 {item.submenu ? (
                                     <>
                                         <button
                                             onClick={() => toggleMenu(item.id)}
-                                            className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${isParentActive(item.submenu)
-                                                ? 'bg-primary/5 text-primary'
-                                                : 'text-text-secondary hover:bg-gray-50 hover:text-text-main'
+                                            className={`w-full flex items-center justify-between px-4 py-3.5 rounded-xl text-[15px] font-medium transition-all ${
+                                                isParentActive(item.submenu) || expandedMenus.includes(item.id)
+                                                    ? 'bg-primary/5 text-primary font-semibold'
+                                                    : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'
                                                 }`}
                                         >
-                                            <div className="flex items-center gap-3">
-                                                <IconComponent size={18} />
-                                                <span>{item.label}</span>
+                                            <div className="flex items-center gap-3 min-w-0">
+                                                <IconComponent size={20} className="shrink-0" />
+                                                <span className="truncate">{item.label}</span>
                                             </div>
                                             <ChevronDown
                                                 size={16}
-                                                className={`transition-transform ${(expandedMenus.includes(item.id) || isParentActive(item.submenu)) ? 'rotate-180' : ''}`}
+                                                className={`shrink-0 text-gray-400 transition-transform ${(expandedMenus.includes(item.id) || isParentActive(item.submenu)) ? 'rotate-180' : ''}`}
                                             />
                                         </button>
                                         {(expandedMenus.includes(item.id) || isParentActive(item.submenu)) && (
-                                            <div className="mt-1 ml-9 space-y-1">
+                                            <div className="mt-1 ml-10 space-y-0.5">
                                                 {item.submenu.map((subItem) => (
                                                     <Link
                                                         key={subItem.href}
                                                         href={subItem.href}
                                                         onClick={(e) => e.stopPropagation()}
-                                                        className={`block px-3 py-2 rounded-lg text-sm font-medium transition-colors ${isActive(subItem.href)
-                                                            ? 'bg-primary text-white'
-                                                            : 'text-text-secondary hover:bg-gray-50 hover:text-text-main'
+                                                        className={`block px-4 py-2.5 rounded-xl text-[15px] font-medium transition-all ${
+                                                            isActive(subItem.href)
+                                                                ? 'bg-primary/10 text-primary font-semibold border-l-[3px] border-primary'
+                                                                : 'text-gray-500 hover:bg-gray-50 hover:text-gray-700'
                                                             }`}
                                                     >
                                                         {subItem.label}
@@ -145,12 +147,13 @@ export default function AdminSidebar({ children, activePage }: AdminSidebarProps
                                 ) : (
                                     <Link
                                         href={item.href!}
-                                        className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${isActive(item.href!)
-                                            ? 'bg-primary/5 text-primary'
-                                            : 'text-text-secondary hover:bg-gray-50 hover:text-text-main'
+                                        className={`flex items-center gap-3 px-4 py-3.5 rounded-xl text-[15px] font-medium transition-all ${
+                                            isActive(item.href!)
+                                                ? 'bg-primary/10 text-primary font-semibold border-l-[3px] border-primary'
+                                                : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'
                                             }`}
                                     >
-                                        <IconComponent size={18} />
+                                        <IconComponent size={20} />
                                         <span>{item.label}</span>
                                     </Link>
                                 )}
@@ -160,21 +163,21 @@ export default function AdminSidebar({ children, activePage }: AdminSidebarProps
                 </nav>
 
                 {/* Admin Profile */}
-                <div className="border-t border-gray-200 p-4">
-                    <div className="flex items-center gap-3 mb-3">
+                <div className="border-t border-gray-100 p-4">
+                    <div className="flex items-center gap-3 mb-3 px-1">
                         <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
                             <Shield className="text-primary" size={20} />
                         </div>
                         <div className="flex-1 min-w-0">
-                            <p className="text-sm font-bold text-text-main truncate">{user?.name || 'Admin'}</p>
-                            <p className="text-xs text-text-secondary truncate">System Administrator</p>
+                            <p className="text-sm font-semibold text-gray-900 truncate">{user?.name || 'Admin'}</p>
+                            <p className="text-xs text-gray-500 truncate">System Administrator</p>
                         </div>
                     </div>
                     <button
                         onClick={handleLogout}
-                        className="w-full py-2 px-3 bg-gray-50 text-text-secondary rounded-lg text-sm font-bold hover:bg-gray-100 hover:text-text-main transition-colors flex items-center justify-center gap-2"
+                        className="w-full py-2.5 px-4 bg-gray-50 text-gray-600 rounded-xl text-sm font-semibold hover:bg-gray-100 hover:text-gray-900 transition-all flex items-center justify-center gap-2"
                     >
-                        <LogOut size={16} />
+                        <LogOut size={18} />
                         Logout
                     </button>
                 </div>
@@ -183,27 +186,25 @@ export default function AdminSidebar({ children, activePage }: AdminSidebarProps
             {/* Main Content */}
             <div className="flex-1 flex flex-col overflow-hidden w-full">
                 {/* Top Bar */}
-                <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-4 lg:px-8">
+                <header className="h-16 bg-white border-b border-gray-100 flex items-center justify-between px-4 lg:px-8 shrink-0">
                     <div className="flex items-center gap-4 flex-1">
                         <button
                             onClick={() => setIsMobileOpen(true)}
-                            className="p-2 text-text-secondary hover:bg-gray-50 rounded-lg lg:hidden"
+                            className="p-2.5 text-gray-500 hover:bg-gray-50 rounded-xl lg:hidden border border-gray-100"
                         >
-                            <Menu size={24} />
+                            <Menu size={22} />
                         </button>
                         <AdminSearch />
                     </div>
-                    <div className="flex items-center gap-4 relative">
+                    <div className="flex items-center gap-3 relative">
                         {/* Notification Button */}
                         <button
                             onClick={() => setShowNotifications(!showNotifications)}
-                            className="relative p-2 text-text-secondary hover:text-text-main hover:bg-gray-50 rounded-lg transition-colors"
+                            className="relative size-9 rounded-lg bg-gray-50 flex items-center justify-center text-gray-400 hover:text-primary transition-all"
                         >
-                            <Bell size={20} />
+                            <Bell size={18} />
                             {unreadCount > 0 && (
-                                <span className="absolute top-1.5 right-1.5 min-w-[18px] h-[18px] bg-red-500 text-white text-[10px] font-bold flex items-center justify-center rounded-full px-1">
-                                    {unreadCount > 9 ? '9+' : unreadCount}
-                                </span>
+                                <span className="absolute top-2 right-2 size-1.5 bg-red-500 rounded-full border border-white" />
                             )}
                         </button>
 
@@ -214,19 +215,19 @@ export default function AdminSidebar({ children, activePage }: AdminSidebarProps
                                     className="fixed inset-0 z-40"
                                     onClick={() => setShowNotifications(false)}
                                 ></div>
-                                <div className="absolute right-0 top-12 w-80 bg-white rounded-xl shadow-xl border border-gray-200 z-50 overflow-hidden">
+                                <div className="absolute right-0 top-12 w-80 bg-white rounded-xl shadow-xl border border-gray-100 z-50 overflow-hidden">
                                     <div className="p-4 border-b border-gray-100 flex items-center justify-between bg-gray-50">
-                                        <h3 className="font-bold text-text-main text-sm">Notifications</h3>
+                                        <h3 className="font-semibold text-gray-900 text-sm">Notifications</h3>
                                         <button
                                             onClick={() => readAllMutation.mutate()}
-                                            className="text-xs text-primary font-bold hover:underline"
+                                            className="text-xs text-primary font-semibold hover:underline"
                                         >
                                             Mark all read
                                         </button>
                                     </div>
                                     <div className="max-h-80 overflow-y-auto">
                                         {notifications.length === 0 ? (
-                                            <div className="p-8 text-center text-text-secondary text-sm">
+                                            <div className="p-8 text-center text-gray-500 text-sm">
                                                 No notifications yet
                                             </div>
                                         ) : (
@@ -239,10 +240,10 @@ export default function AdminSidebar({ children, activePage }: AdminSidebarProps
                                                     <div className="flex items-start gap-3">
                                                         <div className={`mt-1 w-2 h-2 rounded-full shrink-0 ${!note.isRead ? 'bg-primary' : 'bg-transparent'}`}></div>
                                                         <div className="flex-1">
-                                                            <p className={`text-sm ${!note.isRead ? 'font-bold text-text-main' : 'text-text-secondary'}`}>
+                                                            <p className={`text-sm ${!note.isRead ? 'font-semibold text-gray-900' : 'text-gray-600'}`}>
                                                                 {note.title}
                                                             </p>
-                                                            <p className="text-xs text-text-secondary mt-1">{note.message}</p>
+                                                            <p className="text-xs text-gray-500 mt-1">{note.message}</p>
                                                             <p className="text-[10px] text-gray-400 mt-2">
                                                                 {new Date(note.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                                             </p>
@@ -255,7 +256,7 @@ export default function AdminSidebar({ children, activePage }: AdminSidebarProps
                                     <div className="p-3 border-t border-gray-100 text-center">
                                         <Link
                                             href="/admin/notifications"
-                                            className="text-xs font-bold text-primary hover:text-primary-hover"
+                                            className="text-xs font-semibold text-primary hover:underline"
                                             onClick={() => setShowNotifications(false)}
                                         >
                                             View All Notifications
@@ -265,8 +266,8 @@ export default function AdminSidebar({ children, activePage }: AdminSidebarProps
                             </>
                         )}
 
-                        <button className="p-2 text-text-secondary hover:text-text-main hover:bg-gray-50 rounded-lg transition-colors">
-                            <HelpCircle size={20} />
+                        <button className="size-9 rounded-lg bg-gray-50 flex items-center justify-center text-gray-400 hover:text-primary transition-all">
+                            <HelpCircle size={18} />
                         </button>
                     </div>
                 </header>

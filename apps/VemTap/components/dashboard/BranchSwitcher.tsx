@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { ChevronDown, MapPin, Building2, Check, Plus, Layers, X, Save, Trash2, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
@@ -15,6 +15,8 @@ export default function BranchSwitcher() {
     const createBranchMutation = useCreateBranch();
     const deleteBranchMutation = useDeleteBranch();
     const businessName = useAuthStore((state) => state.user?.businessName);
+    const businessLogo = useAuthStore((state) => state.user?.businessLogo);
+    const router = useRouter();
 
     const [isOpen, setIsOpen] = useState(false);
     const [isCreating, setIsCreating] = useState(false);
@@ -76,7 +78,7 @@ export default function BranchSwitcher() {
         e.stopPropagation();
         if (!confirm(`Delete "${branchName}"? This cannot be undone.`)) return;
         try {
-            await deleteBranchMutation.mutateAsync(branchId);
+            await deleteBranchMutation.mutateAsync({ id: branchId });
             if (activeBranchId === branchId) setActiveBranch(null);
             toast.success(`Branch deleted`);
         } catch {
@@ -86,30 +88,27 @@ export default function BranchSwitcher() {
 
     if (!isLoading && branches.length <= 1) {
         return (
-            <div className="flex items-center gap-2">
-                <div className="flex items-center gap-3 px-3 py-2 rounded-xl border border-gray-100 bg-gray-50/50 transition-all duration-200">
-                    <div className="size-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
-                        <Building2 size={18} />
+            <button onClick={() => router.push('/dashboard/settings/branches')} className="flex items-center gap-2 w-full cursor-pointer">
+                <div className="flex-1 flex items-center gap-3 px-3 py-2 rounded-xl border border-gray-100 bg-gray-50/50 hover:bg-white hover:border-primary/20 transition-all duration-200">
+                    <div className="size-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary overflow-hidden shrink-0">
+                        {businessLogo ? (
+                            <img src={businessLogo} alt="Logo" className="size-full object-cover p-1" />
+                        ) : (
+                            <Building2 size={18} />
+                        )}
                     </div>
-                    <div className="text-left hidden sm:block">
-                        <p className="text-[10px] font-black text-primary uppercase tracking-widest leading-none mb-1">
+                    <div className="text-left block flex-1 min-w-0">
+                        <p className="text-[10px] font-semibold text-primary leading-none mb-1 truncate">
                             Location
                         </p>
                         <div className="flex items-center gap-2">
-                            <span className="text-sm font-bold text-text-main truncate max-w-[120px]">
+                            <span className="text-sm font-bold text-text-main truncate">
                                 {formatBranchName(branches[0]?.name, branches[0]?.isMainBranch)}
                             </span>
                         </div>
                     </div>
                 </div>
-                <Link
-                    href="/dashboard/settings/branches"
-                    className="p-2 text-text-secondary hover:text-primary transition-colors flex items-center gap-2 group"
-                    title="Manage Locations"
-                >
-                    <span className="material-icons-round text-lg">settings</span>
-                </Link>
-            </div>
+            </button>
         );
     }
 
@@ -120,40 +119,34 @@ export default function BranchSwitcher() {
     const handleSelectBranch = (branchId: string | null) => {
         setActiveBranch(branchId);
         setIsOpen(false);
+        router.push('/dashboard/settings/branches');
     };
 
     return (
-        <div className="relative" ref={dropdownRef}>
-            <div className="flex items-center gap-2">
+        <div className="relative w-full" ref={dropdownRef}>
+            <div className="flex items-center gap-2 w-full">
                 <button
                     onClick={() => { setIsOpen(!isOpen); setIsCreating(false); }}
-                    className="flex items-center gap-3 px-3 py-2 rounded-xl border border-gray-100 bg-gray-50/50 hover:bg-white hover:border-primary/20 transition-all duration-200 group"
+                    className="flex-1 flex items-center gap-3 px-3 py-2 rounded-xl border border-gray-100 bg-gray-50/50 hover:bg-white hover:border-primary/20 transition-all duration-200 group"
                 >
-                    <div className="size-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+                    <div className="size-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary shrink-0">
                         {isLoading ? <Loader2 size={18} className="animate-spin" /> : <Building2 size={18} />}
                     </div>
-                    <div className="text-left hidden sm:block">
-                        <p className="text-[10px] font-black text-primary uppercase tracking-widest leading-none mb-1">
+                    <div className="text-left block flex-1 min-w-0">
+                        <p className="text-[10px] font-semibold text-primary leading-none mb-1 truncate">
                             Active Location
                         </p>
-                        <div className="flex items-center gap-2">
-                            <span className="text-sm font-bold text-text-main truncate max-w-[120px]">
+                        <div className="flex items-center justify-between gap-2">
+                            <span className="text-sm font-bold text-text-main truncate">
                                 {displayName}
                             </span>
                             <ChevronDown
                                 size={14}
-                                className={`text-text-secondary transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
+                                className={`text-text-secondary shrink-0 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
                             />
                         </div>
                     </div>
                 </button>
-                <Link
-                    href="/dashboard/settings/branches"
-                    className="p-2 text-text-secondary hover:text-primary transition-colors flex items-center gap-2 group"
-                    title="Manage Locations"
-                >
-                    <span className="material-icons-round text-lg">settings</span>
-                </Link>
             </div>
 
             <AnimatePresence>
@@ -162,16 +155,16 @@ export default function BranchSwitcher() {
                         initial={{ opacity: 0, y: 10, scale: 0.95 }}
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                        className="absolute top-full left-0 mt-2 w-80 bg-white rounded-2xl shadow-xl border border-gray-100 p-2 z-50 overflow-hidden"
+                        className="absolute bottom-full left-0 mb-2 w-80 bg-white rounded-2xl shadow-xl border border-gray-100 p-2 z-50 overflow-hidden"
                     >
                         {!isCreating ? (
                             <>
                                 <div className="px-3 py-2 mb-1 flex items-center justify-between">
-                                    <p className="text-[10px] font-black text-text-secondary uppercase tracking-widest">
-                                        Switch Business Location
+                                    <p className="text-[10px] font-semibold text-gray-500">
+                                        Switch Location
                                     </p>
-                                    <span className="text-[10px] text-text-secondary font-medium">
-                                        {branches.length} Business Location{branches.length !== 1 ? 's' : ''}
+                                    <span className="text-[10px] text-gray-400 font-medium">
+                                        {branches.length} Location{branches.length !== 1 ? 's' : ''}
                                     </span>
                                 </div>
 
@@ -238,7 +231,16 @@ export default function BranchSwitcher() {
                                     ))}
                                 </div>
 
-                                <div className="mt-2 pt-2 border-t border-gray-100">
+                                <div className="mt-2 pt-2 border-t border-gray-100 space-y-1">
+                                    <button
+                                        onClick={() => { setIsOpen(false); router.push('/dashboard/settings/branches'); }}
+                                        className="w-full flex items-center gap-3 p-3 rounded-xl text-gray-500 hover:bg-gray-50 transition-all duration-200"
+                                    >
+                                        <div className="size-8 rounded-lg bg-gray-100 flex items-center justify-center">
+                                            <Layers size={18} className="text-gray-500" />
+                                        </div>
+                                        <span className="text-sm font-bold">Manage Locations</span>
+                                    </button>
                                     <button
                                         onClick={() => setIsCreating(true)}
                                         className="w-full flex items-center gap-3 p-3 rounded-xl text-primary hover:bg-primary/5 transition-all duration-200"
@@ -254,7 +256,7 @@ export default function BranchSwitcher() {
                             /* Create Branch Form */
                             <div className="p-3 space-y-3">
                                 <div className="flex items-center justify-between mb-1">
-                                    <p className="text-[10px] font-black text-text-secondary uppercase tracking-widest">New Branch</p>
+                                    <p className="text-[10px] font-semibold text-gray-500">New Branch</p>
                                     <button
                                         onClick={() => setIsCreating(false)}
                                         className="size-6 flex items-center justify-center rounded-lg hover:bg-gray-100 transition-colors"
@@ -282,7 +284,7 @@ export default function BranchSwitcher() {
                                     type="text"
                                     placeholder="Phone (optional)"
                                     value={newBranchPhone}
-                                    onChange={(e) => setNewBranchPhone(e.target.value)}
+                                    onChange={(e) => setNewBranchPhone(e.target.value.replace(/\D/g, ''))}
                                     className="w-full h-10 bg-gray-50 border border-gray-200 rounded-xl px-3 text-sm font-bold focus:bg-white focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
                                 />
                                 <div className="flex gap-2 pt-1">

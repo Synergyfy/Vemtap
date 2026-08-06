@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState } from 'react';
-import DiscoveryNav from '@/components/admin/discovery/DiscoveryNav';
 import { 
     Boxes, Plus, Edit3, Trash2, Search, 
     Filter, CheckCircle2, XCircle, Info,
@@ -9,17 +8,77 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import Modal from '@/components/ui/Modal';
-
-const MOCK_CAT_TYPES = [
-    { id: '1', name: 'Discounts', desc: 'Percentage or flat amount off purchase.', count: 145, status: 'Active' },
-    { id: '2', name: 'Buy One Get One', desc: 'BOGO offers for products or services.', count: 82, status: 'Active' },
-    { id: '3', name: 'Free Gift', desc: 'Complimentary item with minimum spend.', count: 34, status: 'Active' },
-    { id: '4', name: 'Free Delivery', desc: 'Zero shipping costs for logistics partners.', count: 56, status: 'Inactive' },
-];
+import { 
+    useAdminCategoryTypes, 
+    useCreateAdminCategoryType, 
+    useUpdateAdminCategoryType, 
+    useDeleteAdminCategoryType 
+} from '@/services/discovery/hooks';
+import type { AdminCategoryType } from '@/services/discovery/types';
+import DiscoveryNav from '@/components/admin/discovery/DiscoveryNav';
 
 export default function ManageOfferCategoriesPage() {
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [editingCat, setEditingCat] = useState<any>(null);
+    const [editingCat, setEditingCat] = useState<AdminCategoryType | null>(null);
+    const [formData, setFormData] = useState({ name: '', description: '', status: 'Active' });
+
+    const { data: response, isLoading } = useAdminCategoryTypes({ page: 1, limit: 50 });
+    const categoryTypes = response?.data ?? [];
+    const createMutation = useCreateAdminCategoryType();
+    const updateMutation = useUpdateAdminCategoryType();
+    const deleteMutation = useDeleteAdminCategoryType();
+
+    const handleOpenCreate = () => {
+        setEditingCat(null);
+        setFormData({ name: '', description: '', status: 'Active' });
+        setIsModalOpen(true);
+    };
+
+    const handleOpenEdit = (cat: AdminCategoryType) => {
+        setEditingCat(cat);
+        setFormData({ name: cat.name, description: cat.desc, status: cat.status });
+        setIsModalOpen(true);
+    };
+
+    const handleSubmit = () => {
+        if (editingCat) {
+            updateMutation.mutate(
+                { id: editingCat.id, name: formData.name, description: formData.description, status: formData.status },
+                { onSuccess: () => setIsModalOpen(false) }
+            );
+        } else {
+            createMutation.mutate(
+                { name: formData.name, description: formData.description, status: formData.status },
+                { onSuccess: () => setIsModalOpen(false) }
+            );
+        }
+    };
+
+    const handleDelete = (id: string) => {
+        deleteMutation.mutate(id);
+    };
+
+    if (isLoading) {
+        return (
+            <div className="p-8">
+                <DiscoveryNav current="/admin/discovery/categories" />
+                <div className="flex items-center justify-between mb-6">
+                    <div className="h-4 w-32 bg-gray-100 rounded animate-pulse" />
+                    <div className="h-12 w-40 bg-gray-100 rounded-2xl animate-pulse" />
+                </div>
+                <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
+                    <div className="p-6 border-b border-gray-50">
+                        <div className="h-5 w-48 bg-gray-100 rounded animate-pulse" />
+                    </div>
+                    <div className="p-6 space-y-4">
+                        {[1, 2, 3, 4].map((i) => (
+                            <div key={i} className="h-16 bg-gray-50 rounded-lg animate-pulse" />
+                        ))}
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="p-8">
@@ -31,14 +90,16 @@ export default function ManageOfferCategoriesPage() {
                     <ChevronLeft size={16} /> Back to Analytics
                 </Link>
                 <button 
-                    onClick={() => { setEditingCat(null); setIsModalOpen(true); }}
+                    onClick={handleOpenCreate}
                     className="h-12 px-6 rounded-2xl bg-primary text-white text-xs font-black uppercase tracking-widest flex items-center gap-2 hover:bg-primary-hover shadow-lg shadow-primary/20 transition-all active:scale-95"
                 >
                     <Plus size={16} /> Create Category
                 </button>
             </div>
 
-            <DiscoveryNav current="/admin/discovery/categories" />
+            <Link href="/admin/discovery/dashboard" className="inline-flex items-center gap-1.5 text-xs font-bold text-text-secondary hover:text-text-main transition-colors mb-6">
+                <ChevronLeft size={14} /> Back to Discovery
+            </Link>
 
             <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
                 <div className="p-6 border-b border-gray-50 flex items-center justify-between bg-gray-50/30">
@@ -58,7 +119,7 @@ export default function ManageOfferCategoriesPage() {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-50 text-sm">
-                            {MOCK_CAT_TYPES.map((cat) => (
+                            {categoryTypes.map((cat) => (
                                 <tr key={cat.id} className="hover:bg-gray-50/50 transition-colors group">
                                     <td className="px-6 py-4">
                                         <div className="flex items-center gap-3">
@@ -84,12 +145,15 @@ export default function ManageOfferCategoriesPage() {
                                     <td className="px-6 py-4 text-right">
                                         <div className="flex items-center justify-end gap-2">
                                             <button 
-                                                onClick={() => { setEditingCat(cat); setIsModalOpen(true); }}
+                                                onClick={() => handleOpenEdit(cat)}
                                                 className="p-2 rounded-lg bg-gray-50 text-text-secondary hover:bg-primary/10 hover:text-primary transition-all"
                                             >
                                                 <Edit3 size={16} />
                                             </button>
-                                            <button className="p-2 rounded-lg bg-gray-50 text-text-secondary hover:bg-rose-50 hover:text-rose-600 transition-all">
+                                            <button 
+                                                onClick={() => handleDelete(cat.id)}
+                                                className="p-2 rounded-lg bg-gray-50 text-text-secondary hover:bg-rose-50 hover:text-rose-600 transition-all"
+                                            >
                                                 <Trash2 size={16} />
                                             </button>
                                         </div>
@@ -121,7 +185,8 @@ export default function ManageOfferCategoriesPage() {
                             <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1 mb-2 block">Category Name</label>
                             <input 
                                 type="text" 
-                                defaultValue={editingCat?.name}
+                                value={formData.name}
+                                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                                 placeholder="e.g. Seasonal Flash Sale"
                                 className="w-full h-12 rounded-2xl border border-gray-200 bg-gray-50 px-4 text-sm font-bold text-text-main focus:outline-none focus:ring-4 focus:ring-primary/10 transition-all"
                             />
@@ -129,17 +194,23 @@ export default function ManageOfferCategoriesPage() {
                         <div>
                             <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1 mb-2 block">Internal Description</label>
                             <textarea 
-                                defaultValue={editingCat?.desc}
+                                value={formData.description}
+                                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                                 placeholder="Explain the purpose of this category..."
                                 className="w-full h-24 rounded-2xl border border-gray-200 bg-gray-50 p-4 text-sm font-medium focus:outline-none focus:ring-4 focus:ring-primary/10 transition-all resize-none"
                             />
                         </div>
-                        <div className="flex items-center justify-between p-4 rounded-2xl bg-gray-50 border border-gray-100">
+                        <div 
+                            className="flex items-center justify-between p-4 rounded-2xl bg-gray-50 border border-gray-100 cursor-pointer"
+                            onClick={() => setFormData({ ...formData, status: formData.status === 'Active' ? 'Inactive' : 'Active' })}
+                        >
                             <div>
                                 <p className="text-xs font-bold text-text-main">Enable Category</p>
                                 <p className="text-[10px] text-text-secondary font-medium mt-0.5">Allow businesses to select this type.</p>
                             </div>
-                            <div className="size-10 rounded-xl bg-primary flex items-center justify-center text-white cursor-pointer shadow-lg shadow-primary/20">
+                            <div className={`size-10 rounded-xl flex items-center justify-center text-white cursor-pointer shadow-lg transition-all ${
+                                formData.status === 'Active' ? 'bg-primary shadow-primary/20' : 'bg-gray-300'
+                            }`}>
                                 <CheckCircle2 size={20} />
                             </div>
                         </div>
@@ -153,9 +224,14 @@ export default function ManageOfferCategoriesPage() {
                             Cancel
                         </button>
                         <button 
-                            className="flex-[1.5] h-12 rounded-2xl bg-primary text-white text-xs font-black uppercase tracking-widest shadow-xl shadow-primary/20 transition-all active:scale-95"
+                            onClick={handleSubmit}
+                            disabled={!formData.name || createMutation.isPending || updateMutation.isPending}
+                            className="flex-[1.5] h-12 rounded-2xl bg-primary text-white text-xs font-black uppercase tracking-widest shadow-xl shadow-primary/20 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                            {editingCat ? 'Save Changes' : 'Create Category'}
+                            {createMutation.isPending || updateMutation.isPending
+                                ? 'Saving...'
+                                : editingCat ? 'Save Changes' : 'Create Category'
+                            }
                         </button>
                     </div>
                 </div>

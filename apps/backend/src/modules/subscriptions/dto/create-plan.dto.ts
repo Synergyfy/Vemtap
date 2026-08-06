@@ -204,4 +204,161 @@ export class CreatePlanDto {
   @IsBoolean()
   @IsOptional()
   isPopular?: boolean;
+
+  // --- New Permission Columns ---
+
+  @ApiPropertyOptional({
+    description: 'Is inventory counting enabled?',
+    example: false,
+  })
+  @IsBoolean()
+  @IsOptional()
+  inventoryEnabled?: boolean;
+
+  @ApiPropertyOptional({
+    description: 'Inventory counting limit (null for unlimited)',
+    example: 10,
+  })
+  @IsNumber()
+  @IsOptional()
+  inventoryLimit?: number;
+
+  @ApiPropertyOptional({
+    description: 'Is POS terminal enabled?',
+    example: false,
+  })
+  @IsBoolean()
+  @IsOptional()
+  posEnabled?: boolean;
+
+  @ApiPropertyOptional({
+    description: 'POS terminal limit (null for unlimited)',
+    example: 1,
+  })
+  @IsNumber()
+  @IsOptional()
+  posTerminalLimit?: number;
+
+  @ApiPropertyOptional({
+    description: 'Is visitors feed enabled?',
+    example: false,
+  })
+  @IsBoolean()
+  @IsOptional()
+  visitorsEnabled?: boolean;
+
+  @ApiPropertyOptional({
+    description: 'Is in-app chat enabled?',
+    example: false,
+  })
+  @IsBoolean()
+  @IsOptional()
+  inAppChatEnabled?: boolean;
+
+  @ApiPropertyOptional({
+    description: 'Is forms module enabled?',
+    example: false,
+  })
+  @IsBoolean()
+  @IsOptional()
+  formsEnabled?: boolean;
+
+  @ApiPropertyOptional({
+    description: 'Forms limit (null for unlimited)',
+    example: 5,
+  })
+  @IsNumber()
+  @IsOptional()
+  formsLimit?: number;
+
+  @ApiPropertyOptional({
+    description: 'Is business QR enabled?',
+    example: false,
+  })
+  @IsBoolean()
+  @IsOptional()
+  businessQrEnabled?: boolean;
+
+  @ApiPropertyOptional({
+    description: 'Is marketing kit enabled?',
+    example: false,
+  })
+  @IsBoolean()
+  @IsOptional()
+  marketingKitEnabled?: boolean;
+
+  @ApiPropertyOptional({
+    description: 'Marketing kit assets limit (null for unlimited)',
+    example: 10,
+  })
+  @IsNumber()
+  @IsOptional()
+  marketingKitLimit?: number;
+
+  @ApiPropertyOptional({
+    description: 'Is discovery network enabled?',
+    example: false,
+  })
+  @IsBoolean()
+  @IsOptional()
+  discoveryEnabled?: boolean;
+
+  @ApiPropertyOptional({
+    description: 'Is staff roles management enabled?',
+    example: false,
+  })
+  @IsBoolean()
+  @IsOptional()
+  staffRolesEnabled?: boolean;
+
+  @ApiPropertyOptional({
+    description: 'Staff roles limit (null for unlimited)',
+    example: 5,
+  })
+  @IsNumber()
+  @IsOptional()
+  staffRolesLimit?: number;
+
+  @ApiPropertyOptional({
+    description: 'Is activity log enabled?',
+    example: false,
+  })
+  @IsBoolean()
+  @IsOptional()
+  activityLogEnabled?: boolean;
+
+  @ApiPropertyOptional({
+    description: 'Is QR codes module enabled?',
+    example: false,
+  })
+  @IsBoolean()
+  @IsOptional()
+  qrCodesEnabled?: boolean;
+
+  @ApiPropertyOptional({
+    description: 'QR codes limit (null for unlimited)',
+    example: 5,
+  })
+  @IsNumber()
+  @IsOptional()
+  qrCodesLimit?: number;
+
+  // --- AI Copilot ---
+
+  @ApiPropertyOptional({
+    description: 'Is AI Copilot enabled on this plan?',
+    example: true,
+  })
+  @IsBoolean()
+  @IsOptional()
+  aiCopilotEnabled?: boolean;
+
+  @ApiPropertyOptional({
+    description:
+      'Monthly AI Copilot credit allowance. 0 = disabled. -1 = unlimited.',
+    example: 50,
+  })
+  @IsNumber()
+  @IsOptional()
+  aiCredits?: number;
 }

@@ -21,6 +21,7 @@ import { VisitorsService } from '../visitors/visitors.service';
 import { MailService } from '../mail/mail.service';
 import { CatalogueService } from '../catalogue/catalogue.service';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { getQueueToken } from '@nestjs/bullmq';
 
 describe('CatalogueOrderService', () => {
   let service: CatalogueOrderService;
@@ -92,6 +93,12 @@ describe('CatalogueOrderService', () => {
             count: jest.fn().mockResolvedValue(0),
             create: jest.fn(),
             save: jest.fn(),
+          },
+        },
+        {
+          provide: getQueueToken('order-notifications'),
+          useValue: {
+            add: jest.fn().mockResolvedValue({}),
           },
         },
         CatalogueOrderService,
@@ -242,7 +249,7 @@ describe('CatalogueOrderService', () => {
 
       await service.updateStatus(
         'order-1',
-        CatalogueOrderStatus.COMPLETED,
+        { status: CatalogueOrderStatus.COMPLETED },
         'bus-1',
         mockStaff,
       );
@@ -284,7 +291,7 @@ describe('CatalogueOrderService', () => {
 
       await service.updateStatus(
         'order-1',
-        CatalogueOrderStatus.COMPLETED,
+        { status: CatalogueOrderStatus.COMPLETED },
         'bus-1',
         mockStaff,
       );
@@ -292,6 +299,67 @@ describe('CatalogueOrderService', () => {
       expect(mockLoyaltyService.generateRedemptionCode).toHaveBeenCalledTimes(
         2,
       ); // quantity is 2
+    });
+
+    it('should set attendedById when changing status from new to processing', async () => {
+      const mockOrder = {
+        id: 'order-1',
+        status: CatalogueOrderStatus.NEW,
+        customerId: 'cust-1',
+        businessId: 'bus-1',
+        items: [],
+      };
+      mockOrderRepo.findOne.mockResolvedValue(mockOrder);
+
+      await service.updateStatus(
+        'order-1',
+        { status: CatalogueOrderStatus.PROCESSING },
+        'bus-1',
+        mockStaff,
+      );
+
+      expect((mockOrder as any).attendedById).toBe('staff-1');
+    });
+
+    it('should set attendedById when changing status from processing to completed', async () => {
+      const mockOrder = {
+        id: 'order-1',
+        status: CatalogueOrderStatus.PROCESSING,
+        customerId: 'cust-1',
+        businessId: 'bus-1',
+        items: [],
+      };
+      mockOrderRepo.findOne.mockResolvedValue(mockOrder);
+
+      await service.updateStatus(
+        'order-1',
+        { status: CatalogueOrderStatus.COMPLETED },
+        'bus-1',
+        mockStaff,
+      );
+
+      expect((mockOrder as any).attendedById).toBe('staff-1');
+    });
+
+    it('should NOT set attendedById for non-qualifying transitions (new -> cancelled)', async () => {
+      const mockOrder = {
+        id: 'order-1',
+        status: CatalogueOrderStatus.NEW,
+        customerId: 'cust-1',
+        businessId: 'bus-1',
+        stockDeducted: false,
+        items: [],
+      };
+      mockOrderRepo.findOne.mockResolvedValue(mockOrder);
+
+      await service.updateStatus(
+        'order-1',
+        { status: CatalogueOrderStatus.CANCELLED },
+        'bus-1',
+        mockStaff,
+      );
+
+      expect((mockOrder as any).attendedById).toBeUndefined();
     });
   });
 });

@@ -16,37 +16,44 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useQrThriveStore } from '@/store/useQrThriveStore';
+import { useQrThriveStats } from '@/services/qr-thrive/hooks';
 
-const scanData = [
-  { name: 'Mon', scans: 400, conv: 240 },
-  { name: 'Tue', scans: 600, conv: 380 },
-  { name: 'Wed', scans: 500, conv: 310 },
-  { name: 'Thu', scans: 900, conv: 520 },
-  { name: 'Fri', scans: 1200, conv: 740 },
-  { name: 'Sat', scans: 1500, conv: 980 },
-  { name: 'Sun', scans: 1300, conv: 820 },
-];
-
-const deviceData = [
-  { name: 'iOS', value: 65, color: '#066CF4' },
-  { name: 'Android', value: 30, color: '#10B981' },
-  { name: 'Other', value: 5, color: '#F1F5F9' },
-];
+// Helper for colors
+const CHART_COLORS = ['#066CF4', '#10B981', '#F59E0B', '#8B5CF6', '#EC4899', '#64748B'];
 
 export function QRThriveAnalyticsView() {
     const { setView } = useQrThriveStore();
+    const { data: stats, isLoading } = useQrThriveStats();
+
+    const chartData = stats?.chartData || [];
+    const deviceDist = stats?.deviceDist || {};
+    const formattedDeviceData = Object.entries(deviceDist).map(([name, value], i) => ({
+        name: name || 'Unknown',
+        value,
+        color: CHART_COLORS[i % CHART_COLORS.length],
+    }));
+
+    if (isLoading) {
+        return (
+            <div className="flex items-center justify-center min-h-[400px]">
+                <div className="size-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
+            </div>
+        );
+    }
 
     return (
         <div className="space-y-12">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-                <div>
+                <div className="flex flex-col items-start gap-1">
+                    <Button variant="ghost" size="sm" onClick={() => setView('hub')} className="text-[10px] font-black uppercase tracking-widest text-gray-500 hover:text-gray-900 -ml-3 mb-2 flex items-center gap-2">
+                        <ArrowLeft size={14} /> Back to Hub
+                    </Button>
                     <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">
                         <BarChart3 size={12} /> QR Performance
                     </div>
                     <h2 className="text-3xl font-black text-gray-900 leading-tight">Advanced Analytics</h2>
                 </div>
                 <div className="flex items-center gap-3">
-                   <Button variant="ghost" onClick={() => setView('hub')} className="text-[10px] font-black uppercase tracking-widest text-gray-400">Back to Hub</Button>
                    <Button variant="outline" className="h-12 px-6 rounded-2xl border-gray-100 bg-white font-black text-[10px] uppercase tracking-widest text-gray-400">
                       <Download size={16} className="mr-2" /> Export Report
                    </Button>
@@ -56,10 +63,10 @@ export function QRThriveAnalyticsView() {
             {/* HIGH LEVEL KPIS */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 {[
-                    { label: 'Total Scans', value: '18,420', trend: '+12%', isUp: true, color: 'text-blue-600', bg: 'bg-blue-50' },
-                    { label: 'Unique Users', value: '12,100', trend: '+8%', isUp: true, color: 'text-purple-600', bg: 'bg-purple-50' },
-                    { label: 'Conversions', value: '2,450', trend: '+15%', isUp: true, color: 'text-emerald-600', bg: 'bg-emerald-50' },
-                    { label: 'Bounce Rate', value: '14%', trend: '-2%', isUp: false, color: 'text-rose-600', bg: 'bg-rose-50' },
+                    { label: 'Total Scans', value: stats?.totalScans || 0, trend: '+0%', isUp: true, color: 'text-blue-600', bg: 'bg-blue-50' },
+                    { label: 'Unique Users', value: stats?.uniqueVisitors || 0, trend: '+0%', isUp: true, color: 'text-purple-600', bg: 'bg-purple-50' },
+                    { label: 'Scans Last 24h', value: stats?.scansLast24h || 0, trend: '+0%', isUp: true, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+                    { label: 'Total QR Codes', value: stats?.totalQrCodes || 0, trend: '', isUp: true, color: 'text-slate-600', bg: 'bg-slate-50' },
                 ].map((stat, i) => (
                     <div key={i} className="bg-white p-6 rounded-[32px] border border-gray-100 shadow-sm">
                         <div className="flex justify-between items-start mb-4">
@@ -92,7 +99,7 @@ export function QRThriveAnalyticsView() {
                 
                 <div className="h-[350px] w-full">
                     <ResponsiveContainer width="100%" height="100%">
-                        <AreaChart data={scanData}>
+                        <AreaChart data={chartData}>
                             <defs>
                                 <linearGradient id="colorScans" x1="0" y1="0" x2="0" y2="1">
                                     <stop offset="5%" stopColor="#066CF4" stopOpacity={0.1}/>
@@ -104,7 +111,7 @@ export function QRThriveAnalyticsView() {
                             <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 700, fill: '#94A3B8' }} />
                             <Tooltip contentStyle={{ borderRadius: '20px', border: 'none', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)', fontSize: '12px', fontWeight: 'bold' }} />
                             <Area type="monotone" dataKey="scans" stroke="#066CF4" strokeWidth={4} fillOpacity={1} fill="url(#colorScans)" />
-                            <Area type="monotone" dataKey="conv" stroke="#10B981" strokeWidth={4} fill="transparent" />
+                            <Area type="monotone" dataKey="unique" stroke="#10B981" strokeWidth={4} fill="transparent" />
                         </AreaChart>
                     </ResponsiveContainer>
                 </div>
@@ -116,8 +123,8 @@ export function QRThriveAnalyticsView() {
                     <div className="h-[200px] w-[200px] shrink-0">
                         <ResponsiveContainer width="100%" height="100%">
                             <PieChart>
-                                <Pie data={deviceData} cx="50%" cy="50%" innerRadius={60} outerRadius={80} paddingAngle={8} dataKey="value">
-                                    {deviceData.map((entry, index) => (
+                                <Pie data={formattedDeviceData} cx="50%" cy="50%" innerRadius={60} outerRadius={80} paddingAngle={8} dataKey="value">
+                                    {formattedDeviceData.map((entry, index) => (
                                         <Cell key={`cell-${index}`} fill={entry.color} />
                                     ))}
                                 </Pie>
@@ -128,15 +135,19 @@ export function QRThriveAnalyticsView() {
                     <div className="flex-1 space-y-6">
                         <h3 className="text-xl font-black text-gray-900">Device Distribution</h3>
                         <div className="space-y-3">
-                            {deviceData.map((d) => (
+                            {formattedDeviceData.length > 0 ? formattedDeviceData.map((d) => (
                                 <div key={d.name} className="flex items-center justify-between">
                                     <div className="flex items-center gap-2">
                                         <div className="size-3 rounded-full" style={{ backgroundColor: d.color }} />
                                         <span className="text-xs font-bold text-gray-500">{d.name}</span>
                                     </div>
-                                    <span className="text-sm font-black text-gray-900">{d.value}%</span>
+                                    <span className="text-sm font-black text-gray-900">
+                                        {Math.round((d.value / (stats?.totalScans || 1)) * 100)}%
+                                    </span>
                                 </div>
-                            ))}
+                            )) : (
+                                <p className="text-sm text-gray-400">No device data available yet.</p>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -147,10 +158,8 @@ export function QRThriveAnalyticsView() {
                     <h3 className="text-xl font-black mb-10 relative z-10">Conversion Funnel</h3>
                     <div className="space-y-6 relative z-10">
                         {[
-                            { label: 'Scanned QR', value: '18,420', perc: '100%' },
-                            { label: 'Loaded Experience', value: '16,500', perc: '89%' },
-                            { label: 'Interaction', value: '8,200', perc: '44%' },
-                            { label: 'Converted', value: '2,450', perc: '13%' },
+                            { label: 'Total Scans', value: stats?.totalScans || 0, perc: '100%' },
+                            { label: 'Unique Visitors', value: stats?.uniqueVisitors || 0, perc: `${Math.round(((stats?.uniqueVisitors || 0) / (stats?.totalScans || 1)) * 100)}%` },
                         ].map((step, i) => (
                             <div key={i} className="space-y-2">
                                 <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest text-white/40">

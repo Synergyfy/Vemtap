@@ -12,7 +12,10 @@ import { QRType } from '../enums';
 import { ExternalLeadStatus } from '../entities/external-lead-status.entity';
 
 export class UpdateLeadStatusDto {
-  @ApiProperty({ enum: ExternalLeadStatus, example: ExternalLeadStatus.PROCESSING })
+  @ApiProperty({
+    enum: ExternalLeadStatus,
+    example: ExternalLeadStatus.PROCESSING,
+  })
   @IsEnum(ExternalLeadStatus)
   @IsNotEmpty()
   status: ExternalLeadStatus;
@@ -157,8 +160,6 @@ export class UpdateFolderDto {
   color?: string;
 }
 
-
-
 export class SpecializedLeadsQueryDto {
   @ApiPropertyOptional({
     description: 'Filter by types (comma-separated): booking, menu, form',
@@ -184,7 +185,10 @@ export class SpecializedLeadsQueryDto {
   @IsOptional()
   search?: string;
 
-  @ApiPropertyOptional({ description: 'Page number for pagination', example: 1 })
+  @ApiPropertyOptional({
+    description: 'Page number for pagination',
+    example: 1,
+  })
   @IsOptional()
   page?: number;
 
@@ -195,4 +199,3 @@ export class SpecializedLeadsQueryDto {
   @IsOptional()
   limit?: number;
 }
-

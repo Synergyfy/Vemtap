@@ -5,6 +5,8 @@ import { UserRole } from './entities/user.entity';
 import { UsersService } from './users.service';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { BranchesService } from '../branches/branches.service';
+import { BusinessesService } from '../businesses/businesses.service';
+import { QrThriveService } from '../qr-thrive/qr-thrive.service';
 
 describe('UsersController', () => {
   let controller: UsersController;
@@ -45,6 +47,15 @@ describe('UsersController', () => {
   };
   const mockReq = { user: { id: 'user-1', branchId: 'branch-1' } };
 
+  const mockBusinessesService = {
+    findOne: jest.fn(),
+  };
+
+  const mockQrThriveService = {
+    getMappingByUserId: jest.fn(),
+    provisionUser: jest.fn(),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       controllers: [UsersController],
@@ -52,6 +63,8 @@ describe('UsersController', () => {
         { provide: UsersService, useValue: mockUsersService },
         { provide: SubscriptionsService, useValue: mockSubscriptionsService },
         { provide: BranchesService, useValue: mockBranchesService },
+        { provide: BusinessesService, useValue: mockBusinessesService },
+        { provide: QrThriveService, useValue: mockQrThriveService },
       ],
     }).compile();
 
@@ -77,7 +90,7 @@ describe('UsersController', () => {
       const updatedUser = { ...mockUser, ...updates };
       mockUsersService.updateProfile.mockResolvedValue(updatedUser);
 
-      const result = await controller.updateProfile(mockReq, updates as any);
+      const result = await controller.updateProfile(mockReq, updates);
       expect(result).toEqual(updatedUser);
       expect(mockUsersService.updateProfile).toHaveBeenCalledWith(
         'user-1',
@@ -110,12 +123,9 @@ describe('UsersController', () => {
         ...updates,
       });
 
-      const result = await controller.updateStaff(
-        mockReq,
-        'user-2',
-        updates as any,
-        { branchId: 'branch-1' },
-      );
+      const result = await controller.updateStaff(mockReq, 'user-2', updates, {
+        branchId: 'branch-1',
+      });
       expect(result.id).toBe('user-2');
       expect(mockUsersService.updateStaff).toHaveBeenCalledWith(
         'user-2',

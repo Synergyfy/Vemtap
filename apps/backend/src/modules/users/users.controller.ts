@@ -25,21 +25,22 @@ import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { UpdateStaffDto } from './dto/update-staff.dto';
 import { InviteStaffDto } from './dto/invite-staff.dto';
-import { UpdateProfileDto } from './dto/update-profile.dto';
-import { AdminCreateAgentDto } from './dto/admin-create-agent.dto';
+import { UpdateUserProfileDto } from './dto/update-profile.dto';
+import { UserAdminCreateAgentDto } from './dto/admin-create-agent.dto';
 import { FindUsersAdminDto } from './dto/find-users-admin.dto';
 import { BranchFilterDto } from '../../common/dto/branch-filter.dto';
 import { PermissionsGuard } from '../../common/guards/permissions.guard';
 import { Permissions } from '../../common/decorators/permissions.decorator';
-import { CapabilityGuard } from '../subscriptions/guards/capability.guard';
 import { RequireCapability } from '../subscriptions/decorators/capability.decorator';
 import {
   AdminCreateUserDto,
   AdminUpdateUserDto,
 } from './dto/admin-user-management.dto';
+import { Public } from '../../common/decorators/public.decorator';
 import { ParseUUIDPipe, Inject, forwardRef } from '@nestjs/common';
 import { QrThriveService } from '../qr-thrive/qr-thrive.service';
 import { BusinessesService } from '../businesses/businesses.service';
+import { RenameSessionDto } from './dto/rename-session.dto';
 
 @ApiTags('Users')
 @ApiBearerAuth()
@@ -77,6 +78,17 @@ export class UsersController {
     return actorId;
   }
 
+  @Public()
+  @Get('public/check-phone')
+  @ApiOperation({ summary: 'Check if phone number exists (Public)' })
+  @ApiQuery({ name: 'phone', required: true, type: String })
+  async existsByPhone(@Query('phone') phone: string) {
+    if (!phone) {
+      throw new BadRequestException('Phone number query param is required');
+    }
+    return this.usersService.existsByPhone(phone);
+  }
+
   @Get('profile')
   @ApiOperation({ summary: 'Get current user profile' })
   @ApiResponse({ status: 200, type: User })
@@ -88,9 +100,34 @@ export class UsersController {
   @Patch('profile')
   @ApiOperation({ summary: 'Update current user profile' })
   @ApiResponse({ status: 200, type: User })
-  async updateProfile(@Request() req, @Body() updates: UpdateProfileDto) {
+  async updateProfile(@Request() req, @Body() updates: UpdateUserProfileDto) {
     const targetUserId = await this.getTargetUserId(req);
     return this.usersService.updateProfile(targetUserId, updates);
+  }
+
+  @Get('linked-devices')
+  @Roles(UserRole.ADMIN, UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF, UserRole.AGENT, UserRole.CUSTOMER)
+  @ApiOperation({ summary: 'List linked login devices for the current user' })
+  async getLinkedDevices(@Request() req) {
+    return this.usersService.listSessions(req.user.id);
+  }
+
+  @Patch('linked-devices/:id')
+  @Roles(UserRole.ADMIN, UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF, UserRole.AGENT, UserRole.CUSTOMER)
+  @ApiOperation({ summary: 'Rename a linked login device' })
+  async renameLinkedDevice(
+    @Request() req,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: RenameSessionDto,
+  ) {
+    return this.usersService.renameSession(req.user.id, id, dto.deviceName);
+  }
+
+  @Delete('linked-devices/:id')
+  @Roles(UserRole.ADMIN, UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF, UserRole.AGENT, UserRole.CUSTOMER)
+  @ApiOperation({ summary: 'Revoke a linked login device' })
+  async revokeLinkedDevice(@Request() req, @Param('id', ParseUUIDPipe) id: string) {
+    return this.usersService.revokeSession(req.user.id, id);
   }
 
   // --- QR-Thrive Integration ---
@@ -142,7 +179,6 @@ export class UsersController {
   @Post('team/invite')
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF)
   @Permissions('staff')
-  @UseGuards(CapabilityGuard)
   @RequireCapability('teamMembers')
   @ApiOperation({ summary: 'Invite a new team member' })
   @ApiResponse({ status: 201, type: User })
@@ -216,7 +252,7 @@ export class UsersController {
   @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Admin: Create a new agent account' })
   @ApiResponse({ status: 201, description: 'Agent created successfully' })
-  async adminCreateAgent(@Body() dto: AdminCreateAgentDto) {
+  async adminCreateAgent(@Body() dto: UserAdminCreateAgentDto) {
     return this.usersService.adminCreateAgent(dto);
   }
   @Post('admin')

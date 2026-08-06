@@ -25,7 +25,7 @@ import { Otp } from './entities/otp.entity';
     MailModule,
     PassportModule,
     TypeOrmModule.forFeature([Otp]),
-    AffiliatesModule,
+    forwardRef(() => AffiliatesModule),
     ExternalAffiliateModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],

@@ -4,51 +4,67 @@ import React, { useState } from 'react';
 import PageHeader from '@/components/dashboard/PageHeader';
 import { useQuoteStore, Quote } from '@/store/quoteStore';
 import { useAuthStore } from '@/store/useAuthStore';
-import { ShieldCheck, Plus, Search, Building2, Package, Hash, CheckCircle2, AlertCircle } from 'lucide-react';
+import { ShieldCheck, Plus, Search, Building2, Package, Hash, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
+import { adminNfcGrantsApi } from '@/lib/api/admin';
 
 export default function AdminNfcGrantsPage() {
     const { user } = useAuthStore();
     const { quotes, addQuote, updateQuoteStatus } = useQuoteStore();
     const [searchTerm, setSearchTerm] = useState('');
     const [isAddingGrant, setIsAddingGrant] = useState(false);
+    const [grantLoading, setGrantLoading] = useState(false);
 
     // Form state
     const [grantForm, setGrantForm] = useState({
         businessId: '',
         businessName: '',
         quantity: 10,
-        productName: 'NFC Asset Credit'
+        grantType: 'MANUAL_GRANT',
+        notes: '',
     });
 
-    const handleAddGrant = (e: React.FormEvent) => {
+    const handleAddGrant = async (e: React.FormEvent) => {
         e.preventDefault();
+        setGrantLoading(true);
+        try {
+            const result = await adminNfcGrantsApi.grant({
+                businessId: grantForm.businessId,
+                quantity: grantForm.quantity,
+                grantType: grantForm.grantType || undefined,
+                notes: grantForm.notes || undefined,
+            });
 
-        const newQuote: Quote = {
-            id: `GRANT-${Date.now()}`,
-            businessId: grantForm.businessId,
-            businessName: grantForm.businessName,
-            productId: 'nfc-credit',
-            productName: grantForm.productName,
-            productImage: '',
-            firstName: 'Admin',
-            lastName: 'Grant',
-            email: 'admin@vemtap.com',
-            phone: '',
-            company: grantForm.businessName,
-            quantity: grantForm.quantity,
-            message: 'Manual Administrative Grant',
-            estimatedValue: 0,
-            status: 'Approved',
-            createdAt: new Date(),
-            nfcLinksGenerated: 0
-        };
+            const newQuote: Quote = {
+                id: result?.auditLogId || `GRANT-${Date.now()}`,
+                businessId: grantForm.businessId,
+                businessName: grantForm.businessName,
+                productId: 'nfc-credit',
+                productName: 'NFC Asset Credit',
+                productImage: '',
+                firstName: 'Admin',
+                lastName: 'Grant',
+                email: 'admin@vemtap.com',
+                phone: '',
+                company: grantForm.businessName,
+                quantity: grantForm.quantity,
+                message: grantForm.notes || 'Manual Administrative Grant',
+                estimatedValue: 0,
+                status: 'Approved',
+                createdAt: new Date(result?.timestamp || Date.now()),
+                nfcLinksGenerated: 0
+            };
 
-        addQuote(newQuote);
-        toast.success(`Granted ${grantForm.quantity} NFC units to ${grantForm.businessName}`);
-        setIsAddingGrant(false);
-        setGrantForm({ businessId: '', businessName: '', quantity: 10, productName: 'NFC Asset Credit' });
+            addQuote(newQuote);
+            toast.success(`Granted ${grantForm.quantity} NFC units to ${grantForm.businessName}`);
+            setIsAddingGrant(false);
+            setGrantForm({ businessId: '', businessName: '', quantity: 10, grantType: 'MANUAL_GRANT', notes: '' });
+        } catch (err: any) {
+            toast.error(err.message || 'Failed to grant NFC quota');
+        } finally {
+            setGrantLoading(false);
+        }
     };
 
     const adminQuotes = quotes.filter(q =>
@@ -91,7 +107,7 @@ export default function AdminNfcGrantsPage() {
                         exit={{ opacity: 0, y: -20 }}
                         className="bg-white border border-primary/20 rounded-3xl p-8 shadow-xl"
                     >
-                        <form onSubmit={handleAddGrant} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 items-end">
+                        <form onSubmit={handleAddGrant} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 items-end">
                             <div className="space-y-2">
                                 <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Business Name</label>
                                 <div className="relative">
@@ -116,7 +132,7 @@ export default function AdminNfcGrantsPage() {
                                         value={grantForm.businessId}
                                         onChange={(e) => setGrantForm({ ...grantForm, businessId: e.target.value })}
                                         className="w-full h-12 bg-gray-50 border border-gray-100 rounded-xl pl-12 pr-4 text-sm font-bold outline-none focus:bg-white focus:ring-2 focus:ring-primary/20"
-                                        placeholder="biz_123..."
+                                        placeholder="UUID"
                                     />
                                 </div>
                             </div>
@@ -134,12 +150,24 @@ export default function AdminNfcGrantsPage() {
                                     />
                                 </div>
                             </div>
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Notes</label>
+                                <input
+                                    type="text"
+                                    value={grantForm.notes}
+                                    onChange={(e) => setGrantForm({ ...grantForm, notes: e.target.value })}
+                                    className="w-full h-12 bg-gray-50 border border-gray-100 rounded-xl px-4 text-sm font-bold outline-none focus:bg-white focus:ring-2 focus:ring-primary/20"
+                                    placeholder="Optional memo"
+                                />
+                            </div>
                             <div className="flex gap-2">
                                 <button
                                     type="submit"
-                                    className="flex-1 h-12 bg-primary text-white rounded-xl font-bold text-sm hover:bg-primary/90 transition-all"
+                                    disabled={grantLoading}
+                                    className="flex-1 h-12 bg-primary text-white rounded-xl font-bold text-sm hover:bg-primary/90 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
                                 >
-                                    Confirm Grant
+                                    {grantLoading ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle2 size={16} />}
+                                    Confirm
                                 </button>
                                 <button
                                     type="button"

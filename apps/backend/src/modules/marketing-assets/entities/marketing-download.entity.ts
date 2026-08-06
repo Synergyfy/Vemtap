@@ -22,7 +22,10 @@ export class MarketingDownload extends AbstractBaseEntity {
   @Column()
   businessId: string;
 
-  @ApiProperty({ example: 'pdf', description: 'File format of download (pdf, png, svg)' })
+  @ApiProperty({
+    example: 'pdf',
+    description: 'File format of download (pdf, png, svg)',
+  })
   @Column()
   format: string;
 

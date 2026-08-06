@@ -121,7 +121,7 @@ describe('Administration & Impersonation (e2e)', () => {
     expect(log).toBeDefined();
     expect(log.module).toBe(BackendModule.TICKETS);
   });
- 
+
   it('Agent is restricted from DELETE actions while impersonating', async () => {
     const loginRes = await request(app.getHttpServer())
       .post('/api/v1/auth/login')
@@ -152,9 +152,10 @@ describe('Administration & Impersonation (e2e)', () => {
       .post('/api/v1/administration/impersonation/token')
       .set('Authorization', `Bearer ${adminToken}`)
       .send({
-        actorId: (await request(app.getHttpServer())
-          .get('/api/v1/auth/me')
-          .set('Authorization', `Bearer ${adminToken}`)
+        actorId: (
+          await request(app.getHttpServer())
+            .get('/api/v1/auth/me')
+            .set('Authorization', `Bearer ${adminToken}`)
         ).body.id,
         targetBranchId: branchId,
         expiresAt: new Date(Date.now() + 3600000).toISOString(),

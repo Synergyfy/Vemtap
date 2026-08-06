@@ -35,11 +35,37 @@ export interface SubscriptionCapabilities {
     catalogueItems: CapabilityLimit;
     catalogueCategories: CapabilityLimit;
     catalogueOffers: CapabilityLimit;
+    inventory: CapabilityLimit;
+    pos: CapabilityLimit;
+    visitors: {
+      enabled: boolean;
+    };
+    inAppChat: {
+      enabled: boolean;
+    };
+    forms: CapabilityLimit;
+    businessQr: {
+      enabled: boolean;
+    };
+    marketingKit: CapabilityLimit;
+    discovery: {
+      enabled: boolean;
+    };
+    staffRoles: CapabilityLimit;
+    activityLog: {
+      enabled: boolean;
+    };
+    qrCodes: CapabilityLimit;
     features: string[];
     credits: {
       sms: number;
       email: number;
       whatsapp: number;
+      ai: number; // Monthly AI Copilot credit allowance. -1 = unlimited. 0 = disabled.
+    };
+    aiCopilot: {
+      enabled: boolean;
+      credits: number; // Same as credits.ai, exposed explicitly for AI module consumers
     };
   };
   addOns: AddOnCapabilityInfo[];

@@ -204,7 +204,7 @@ export default function OwnerSearch() {
     }, [selectedIndex]);
 
     // Handle selection execution
-    const handleSelect = (item: SearchResult) => {
+    const handleSelect = async (item: SearchResult) => {
         // Subscription check for locked premium features
         if (item.feature && isFeatureLocked(item.feature)) {
             setUpgradeModal({
@@ -218,11 +218,7 @@ export default function OwnerSearch() {
 
         if (item.type === 'action') {
             if (item.actionType === 'logout') {
-                queryClient.clear();
-                if (typeof window !== 'undefined') {
-                    localStorage.clear();
-                }
-                logout();
+                await logout();
                 router.push('/login');
             } else if (item.actionType === 'exit-sudo') {
                 // Exit impersonation mode by reloading to the admin dashboard
@@ -359,7 +355,7 @@ export default function OwnerSearch() {
                                         <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-3">
                                             <Search className="text-gray-400" size={20} />
                                         </div>
-                                        <p className="text-sm font-bold text-text-main">No results found</p>
+                                        <p className="text-sm font-bold text-text-main">Couldn't find what you're looking for? Try a different search term.</p>
                                         <p className="text-xs text-text-secondary mt-1">We couldn't find anything matching "{query}"</p>
                                     </div>
                                 ) : (

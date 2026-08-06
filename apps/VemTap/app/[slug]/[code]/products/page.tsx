@@ -43,13 +43,14 @@ import { PremiumBottomNav } from '@/components/visitor/PremiumBottomNav';
 import { FloatingCartSummary } from '@/components/visitor/FloatingCartSummary';
 import { StepForm, StepFormData } from '@/components/visitor/StepForm';
 import { api } from '@/lib/api';
+import { signupVisitorAndLogin } from '@/lib/visitorAuth';
 import { User } from '@/store/useAuthStore';
 
 export default function ProductsPage() {
     const params = useParams();
     const router = useRouter();
     const { branchId, storeName, logoUrl, setUserData } = useCustomerFlowStore();
-    const { isAuthenticated, user, login } = useAuthStore();
+    const { isAuthenticated, user } = useAuthStore();
     
     const [searchQuery, setSearchQuery] = useState('');
     const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -203,15 +204,9 @@ export default function ProductsPage() {
     const onAuthComplete = async (data: StepFormData) => {
         setIsSubmitting(true);
         try {
-            const nameParts = data.name?.trim().split(/\s+/) || ['Visitor'];
-            const firstName = nameParts[0];
-            const lastName = nameParts.slice(1).join(' ') || ' ';
-            
-            await api.post(`/visitors/signup`, { firstName, lastName, email: data.email, phone: data.phone || undefined });
-            const authResponse = await api.post('/auth/login', { identifier: data.email, password: '123456' });
+            await signupVisitorAndLogin({ email: data.email, phone: data.phone, name: data.name });
 
-            if (authResponse?.access_token) {
-                login(authResponse.user, authResponse.access_token);
+            if (useAuthStore.getState().isAuthenticated) {
                 setUserData(data);
                 setShowAuthForm(false);
                 if (pendingOrder) {
@@ -429,7 +424,7 @@ export default function ProductsPage() {
                 {products.length === 0 && (
                     <div className="py-20 text-center space-y-4">
                         <ShoppingBag size={48} className="mx-auto text-slate-200" />
-                        <p className="text-outline font-bold">No products found matching your criteria.</p>
+                        <p className="text-outline font-bold">No products match your search. Try browsing all categories.</p>
                     </div>
                 )}
             </main>

@@ -3,7 +3,7 @@
 import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { useChatStore } from '@/lib/store/useChatStore';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, Plus, MoreVertical, FileText, MessageSquare, Check, CheckCircle2, Trash2, Settings, Megaphone, Users, Tag } from 'lucide-react';
+import { Search, Plus, MoreVertical, FileText, MessageSquare, Check, CheckCircle2, Trash2, Settings, Megaphone, Users, Tag, ArrowLeft } from 'lucide-react';
 import { useMyBusiness } from '@/services/businesses/hooks';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useChatThreads, useInitBranchConversation, useDeleteThread } from '@/hooks/useMessaging';
@@ -94,6 +94,7 @@ export default function ChatSidebar() {
      const createSegment = useCreateSegment();
      const addSegmentMembers = useAddSegmentMembers();
      const [selectedSegmentId, setSelectedSegmentId] = useState<string | null>(null);
+     const [broadcastAudience, setBroadcastAudience] = useState<any[] | null>(null);
      const [showSendMessageModal, setShowSendMessageModal] = useState(false);
      const [showCreateSegment, setShowCreateSegment] = useState(false);
     const [mounted, setMounted] = useState(false);
@@ -355,12 +356,22 @@ export default function ChatSidebar() {
         setShowCampaigns(false);
         const toastId = toast.loading(`Fetching ${type} visitors...`);
         try {
+            const params = new URLSearchParams();
+            if (branchId && branchId !== 'all') {
+                params.append('branchId', branchId);
+            } else {
+                params.append('allBranches', 'true');
+            }
+            
             const endpoint = type === 'new' ? '/visitors/new' : '/visitors/returning';
-            const response = await api.get(endpoint);
+            const response = await api.get(`${endpoint}?${params.toString()}`);
             const audience = response?.data || [];
             
             if (audience.length > 0) {
                 toast.success(`Found ${audience.length} ${type} visitors`, { id: toastId });
+                setBroadcastAudience(audience);
+                setSelectedSegmentId(null);
+                setShowSendMessageModal(true);
             } else {
                 toast.error(`No ${type} visitors found in this segment.`, { id: toastId });
             }
@@ -395,6 +406,11 @@ export default function ChatSidebar() {
                 {/* Header */}
                 <header className="p-4 flex justify-between items-center bg-white/95 backdrop-blur-sm z-40 sticky top-0 border-b border-slate-100">
                     <div className="flex items-center gap-2 min-w-0">
+                        {isCustomer && (
+                            <Link href="/customer/dashboard" className="md:hidden p-2 -ml-2 text-slate-500 hover:bg-slate-100 rounded-lg" title="Back to Dashboard">
+                                <ArrowLeft size={20} />
+                            </Link>
+                        )}
                         {mounted && headerLogo ? (
                             <img src={headerLogo} alt={headerName} className="w-8 h-8 rounded-lg object-cover shrink-0" />
                         ) : (
@@ -474,7 +490,7 @@ export default function ChatSidebar() {
                                             ) : visitorsLoading ? (
                                                 <div className="px-4 py-4 text-xs text-slate-400">Loading visitors...</div>
                                             ) : availableVisitors.length === 0 ? (
-                                                <div className="px-4 py-4 text-xs text-slate-400">No visitors available.</div>
+                                                <div className="px-4 py-4 text-xs text-slate-400">Your first customer is waiting. Let's capture them today.</div>
                                             ) : (
                                                 availableVisitors.map(visitor => {
                                                     const visitorDisplayName = visitor.name || 
@@ -590,6 +606,9 @@ export default function ChatSidebar() {
                                                                 <p className="text-[10px] text-slate-400">{segment.description || 'Customer Segment'}</p>
                                                             </div>
                                                         </div>
+                                                        <span className="bg-emerald-100 text-emerald-700 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                                                            {segment._count?.users || segment.users?.length || segment.customerCount || 0}
+                                                        </span>
                                                     </button>
                                                 ))}
 
@@ -707,14 +726,19 @@ export default function ChatSidebar() {
                     </>
                 )}
             </nav>
-            {showSendMessageModal && selectedSegmentId && (
+            {showSendMessageModal && (selectedSegmentId || broadcastAudience) && (
                 <SendMessageModal
                     isOpen={showSendMessageModal}
                     onClose={() => {
                         setShowSendMessageModal(false);
                         setSelectedSegmentId(null);
+                        setBroadcastAudience(null);
                     }}
-                    segmentId={selectedSegmentId}
+                    segmentId={selectedSegmentId || undefined}
+                    visitors={broadcastAudience || undefined}
+                    recipientName={broadcastAudience ? `${broadcastAudience.length} visitors` : undefined}
+                    initialChannel="In-App"
+                    allowedChannels={['In-App']}
                     type="general"
                 />
             )}

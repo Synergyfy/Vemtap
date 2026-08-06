@@ -1,6 +1,7 @@
 import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { User } from './entities/user.entity';
+import { UserSession } from './entities/user-session.entity';
 import { PasswordResetHistory } from './entities/password-reset-history.entity';
 import { UsersService } from './users.service';
 import { UsersController } from './users.controller';
@@ -15,7 +16,7 @@ import { EventsModule } from '../../common/gateways/events.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([User, PasswordResetHistory]),
+    TypeOrmModule.forFeature([User, UserSession, PasswordResetHistory]),
     BusinessesModule,
     BranchesModule,
     MailModule,

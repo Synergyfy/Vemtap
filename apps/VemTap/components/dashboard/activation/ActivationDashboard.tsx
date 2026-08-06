@@ -26,8 +26,8 @@ const CHECKLIST_ITEMS: {
     },
     {
         id: 'qr',
-        title: 'Generate QR Code',
-        description: 'Create your customer capture QR code.',
+        title: 'My Business QR',
+        description: 'Manage your primary business QR and customer experience.',
         icon: QrCode,
     },
     {
@@ -87,10 +87,10 @@ export default function ActivationDashboard() {
                         </Badge>
                     </div>
                     <h1 className="mb-2 text-3xl font-black leading-tight md:text-4xl">
-                        Welcome to Vemtap 👋
+                        Let's help you bring your next customer back.
                     </h1>
                     <p className="mb-8 max-w-md text-lg font-medium text-white/80">
-                        Your business is ready. Let's complete a few important steps to start capturing customers and growing your business.
+                        That's a promise. Complete a few quick steps to start capturing customers and building relationships that bring them back again and again.
                     </p>
                     <Button 
                         onClick={handleStartSetup}

@@ -45,6 +45,12 @@ export class CreateCreditPlanDto {
   @Min(0)
   whatsappAmount: number;
 
+  @ApiProperty({ example: 50 })
+  @IsNumber()
+  @IsOptional()
+  @Min(0)
+  aiAmount?: number;
+
   @ApiProperty({ default: true, example: true })
   @IsBoolean()
   @IsOptional()

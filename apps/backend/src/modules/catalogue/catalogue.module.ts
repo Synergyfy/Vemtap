@@ -10,6 +10,11 @@ import { Branch } from '../branches/entities/branch.entity';
 import { CatalogueOfferService } from './catalogue-offer.service';
 import { CatalogueOfferController } from './catalogue-offer.controller';
 import { SubscriptionsModule } from '../subscriptions/subscriptions.module';
+import { CatalogueOfferClaim } from './entities/catalogue-offer-claim.entity';
+import { Otp } from '../auth/entities/otp.entity';
+import { MailModule } from '../mail/mail.module';
+import { AiCopilotModule } from '../ai-copilot/ai-copilot.module';
+import { ClustersModule } from '../clusters/clusters.module';
 
 @Module({
   imports: [
@@ -17,9 +22,14 @@ import { SubscriptionsModule } from '../subscriptions/subscriptions.module';
       CatalogueCategory,
       CatalogueItem,
       CatalogueOffer,
+      CatalogueOfferClaim,
       Branch,
+      Otp,
     ]),
     SubscriptionsModule,
+    MailModule,
+    AiCopilotModule,
+    ClustersModule,
   ],
   controllers: [
     AdminCatalogueController,

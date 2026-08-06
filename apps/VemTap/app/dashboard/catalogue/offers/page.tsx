@@ -239,7 +239,7 @@ export default function OffersPage() {
                 emptyState={
                     <EmptyState
                         icon="shopping-bag"
-                        title="No offers found"
+                        title="Your first offer is waiting — create a deal to attract customers"
                         description="Start bundling items to drive more sales and engagement."
                     />
                 }

@@ -13,7 +13,13 @@ export interface BannerSlide {
     image?: string;
     actionLabel?: string;
     actionUrl?: string;
+    onAction?: () => void;
     color?: string;
+    tag?: string;
+    isLight?: boolean;
+    children?: React.ReactNode;
+    targetType?: 'custom' | 'deals-page' | 'deal';
+    targetId?: string;
 }
 
 interface DashboardBannerProps {
@@ -29,10 +35,6 @@ export default function DashboardBanner({ slides, autoPlayInterval = 5000 }: Das
         setCurrentIndex((prev) => (prev + 1) % slides.length);
     }, [slides.length]);
 
-    const prevSlide = useCallback(() => {
-        setCurrentIndex((prev) => (prev - 1 + slides.length) % slides.length);
-    }, [slides.length]);
-
     useEffect(() => {
         if (isHovered || slides.length <= 1) return;
         const timer = setInterval(nextSlide, autoPlayInterval);
@@ -41,111 +43,139 @@ export default function DashboardBanner({ slides, autoPlayInterval = 5000 }: Das
 
     if (!slides.length) return null;
 
+    const currentSlide = slides[currentIndex];
+    const isLight = currentSlide.isLight;
+    const hasCustomContent = !!currentSlide.children;
+
     return (
         <div 
-            className="relative w-full min-h-[220px] md:h-[260px] rounded-[32px] overflow-hidden group shadow-2xl shadow-black/5"
+            className="relative w-full overflow-hidden group mb-4"
             onMouseEnter={() => setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}
         >
             <AnimatePresence mode="wait">
                 <motion.div
-                    key={slides[currentIndex].id}
-                    initial={{ opacity: 0, y: 10 }}
+                    key={currentSlide.id}
+                    initial={{ opacity: 0, y: -10 }}
                     animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -10 }}
-                    transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+                    exit={{ opacity: 0, y: 10 }}
                     className={cn(
-                        "absolute inset-0 flex flex-col justify-center p-8 md:p-12",
-                        slides[currentIndex].color || "bg-gradient-to-br from-indigo-600 via-blue-600 to-teal-500"
+                        "rounded-[2rem] md:rounded-[2.5rem] border-none shadow-lg shadow-blue-500/5 transition-all duration-500",
+                        hasCustomContent
+                            ? "p-0 overflow-hidden"
+                            : "p-4 md:p-10 flex flex-col md:flex-row md:items-center justify-between gap-4 md:gap-6 min-h-[140px] md:min-h-[220px]",
+                        currentSlide.color || "bg-gradient-to-r from-[#066CF4] to-[#4293FF]"
                     )}
                 >
-                    {/* Abstract Background Decoration */}
-                    <div className="absolute inset-0 opacity-20 pointer-events-none">
-                        <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-white rounded-full blur-[100px] -mr-40 -mt-40" />
-                        <div className="absolute bottom-0 left-0 w-[300px] h-[300px] bg-black rounded-full blur-[80px] -ml-20 -mb-20" />
-                    </div>
-
-                    {/* Content Container */}
-                    <div className="relative z-10 max-w-3xl">
-                        <motion.div 
-                            initial={{ opacity: 0, x: -20 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            transition={{ delay: 0.2 }}
-                            className="flex items-center gap-2 mb-4 md:mb-6"
-                        >
-                            <div className="p-2.5 bg-white/10 rounded-xl backdrop-blur-xl border border-white/20 shadow-lg">
-                                {(() => {
-                                    const Icon = slides[currentIndex].icon;
-                                    return Icon ? <Icon size={18} className="text-white" /> : <Sparkles size={18} />;
-                                })()}
+                    {hasCustomContent ? (
+                        <>
+                            <div className="relative w-full">
+                                {currentSlide.children}
                             </div>
-                            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/90">Announcements</span>
-                        </motion.div>
-
-                        <motion.h2 
-                            initial={{ opacity: 0, x: -20 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            transition={{ delay: 0.3 }}
-                            className="text-2xl md:text-5xl font-display font-bold text-white mb-3 md:mb-4 leading-[1.1] tracking-tight"
-                        >
-                            {slides[currentIndex].title}
-                        </motion.h2>
-
-                        <motion.p 
-                            initial={{ opacity: 0, x: -20 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            transition={{ delay: 0.4 }}
-                            className="text-sm md:text-lg font-medium text-white/80 max-w-2xl leading-relaxed mb-4 md:mb-6"
-                        >
-                            {slides[currentIndex].description}
-                        </motion.p>
-                        
-                        {slides[currentIndex].actionLabel && (
-                            <motion.button 
-                                initial={{ opacity: 0, y: 10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: 0.5 }}
-                                onClick={() => slides[currentIndex].actionUrl && (window.location.href = slides[currentIndex].actionUrl)}
-                                className="inline-flex items-center gap-3 px-8 py-4 bg-white text-slate-900 rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-slate-50 transition-all shadow-xl shadow-black/10 hover:shadow-black/20 hover:-translate-y-1 active:translate-y-0 active:scale-95"
+                            {slides.length > 1 && (
+                                <div className="absolute bottom-3 right-4 flex gap-1.5 z-10">
+                                    {slides.map((_, i) => (
+                                        <div 
+                                            key={i} 
+                                            className={cn(
+                                                "h-1 rounded-full transition-all duration-300",
+                                                currentIndex === i 
+                                                    ? "w-6 bg-white" 
+                                                    : "w-1.5 bg-white/40"
+                                            )} 
+                                        />
+                                    ))}
+                                </div>
+                            )}
+                        </>
+                    ) : (
+                    <>
+                    <div className="flex items-start gap-3 md:gap-6 flex-1 min-w-0">
+                        {(currentSlide.icon || currentSlide.image) && (
+                            <div className={cn(
+                                "size-10 md:size-16 rounded-xl md:rounded-2xl flex items-center justify-center shrink-0 shadow-sm overflow-hidden",
+                                isLight ? "bg-[#066CF4]/5 text-[#066CF4]" : "bg-white/20 text-white"
+                            )}>
+                                {currentSlide.image ? (
+                                    <img src={currentSlide.image} alt={currentSlide.title} className="w-full h-full object-cover" />
+                                ) : (
+                                    <>
+                                        <currentSlide.icon size={isLight ? 24 : 20} className="md:hidden" />
+                                        <currentSlide.icon size={isLight ? 32 : 28} className="hidden md:block" />
+                                    </>
+                                )}
+                            </div>
+                        )}
+                        <div className="min-w-0">
+                            <h2 className={cn(
+                                "text-base md:text-2xl font-black leading-tight flex flex-wrap items-center gap-2 mb-1 md:mb-2",
+                                isLight ? "text-gray-900" : "text-white"
+                            )}>
+                                {currentSlide.tag && (
+                                    <span className={cn(
+                                        "text-[8px] md:text-[9px] font-black px-2 py-0.5 rounded-full shrink-0 shadow-sm",
+                                        currentSlide.tag === 'SETUP' ? "text-emerald-600 bg-emerald-50" : "text-[#066CF4] bg-white"
+                                    )}>
+                                        {currentSlide.tag}
+                                    </span>
+                                )}
+                                <span className="truncate">{currentSlide.title}</span>
+                            </h2>
+                            <p className={cn(
+                                "text-[10px] md:text-sm font-medium leading-snug md:leading-relaxed max-w-[450px] opacity-90",
+                                isLight ? "text-gray-400" : "text-white/80"
+                            )}>
+                                {currentSlide.description}
+                            </p>
+                        </div>
+                    </div>
+                    
+                    <div className="flex items-center justify-between md:flex-col md:items-end gap-4 md:gap-6 shrink-0">
+                        {currentSlide.actionLabel && (
+                            <button 
+                                onClick={() => {
+                                    if (currentSlide.onAction) {
+                                        currentSlide.onAction();
+                                    } else if (currentSlide.actionUrl) {
+                                        window.location.href = currentSlide.actionUrl;
+                                    }
+                                }}
+                                className={cn(
+                                    "h-10 md:h-14 px-6 md:px-8 rounded-xl md:rounded-2xl font-black text-[10px] md:text-xs shadow-xl active:scale-95 transition-all flex items-center gap-2",
+                                    isLight ? "bg-[#066CF4] text-white shadow-blue-500/20" : "bg-white text-[#066CF4] shadow-black/10"
+                                )}
                             >
-                                {slides[currentIndex].actionLabel}
-                                <ArrowRight size={16} className="text-primary" />
-                            </motion.button>
+                                {currentSlide.actionLabel}
+                                <ArrowRight size={14} className="md:hidden" />
+                                <ArrowRight size={16} className="hidden md:block" />
+                            </button>
+                        )}
+
+                        {slides.length > 1 && (
+                            <div className="flex gap-1.5 md:mt-2">
+                                {slides.map((_, i) => (
+                                    <div 
+                                        key={i} 
+                                        className={cn(
+                                            "h-1 rounded-full transition-all duration-300",
+                                            currentIndex === i 
+                                                ? (isLight ? "w-6 bg-[#066CF4]" : "w-6 bg-white") 
+                                                : (isLight ? "w-1.5 bg-gray-200" : "w-1.5 bg-white/30")
+                                        )} 
+                                    />
+                                ))}
+                            </div>
                         )}
                     </div>
+
+                    {/* Decorative background element for Light mode */}
+                    {isLight && (
+                        <div className="absolute -right-12 -top-12 size-48 bg-[#066CF4]/5 rounded-full blur-3xl pointer-events-none" />
+                    )}
+                    </>
+                    )}
                 </motion.div>
             </AnimatePresence>
-
-            {/* Pagination Controls */}
-            <div className="absolute bottom-8 right-8 flex items-center gap-6 z-20">
-                <div className="flex gap-2">
-                    {slides.map((_, i) => (
-                        <button
-                            key={i}
-                            onClick={() => setCurrentIndex(i)}
-                            className={cn(
-                                "h-1 rounded-full transition-all duration-500",
-                                currentIndex === i ? "w-10 bg-white" : "w-2 bg-white/30 hover:bg-white/50"
-                            )}
-                        />
-                    ))}
-                </div>
-                
-                <div className="hidden md:flex items-center gap-2">
-                    <button
-                        onClick={prevSlide}
-                        className="p-2.5 bg-white/10 hover:bg-white/20 rounded-xl backdrop-blur-xl text-white border border-white/10 transition-all"
-                    >
-                        <ChevronLeft size={18} />
-                    </button>
-                    <button
-                        onClick={nextSlide}
-                        className="p-2.5 bg-white/10 hover:bg-white/20 rounded-xl backdrop-blur-xl text-white border border-white/10 transition-all"
-                    >
-                        <ChevronRight size={18} />
-                    </button>
-                </div>
-            </div>
         </div>
     );
 }

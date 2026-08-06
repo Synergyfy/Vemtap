@@ -1,18 +1,31 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, IsOptional, IsString, IsNumber, IsBoolean } from 'class-validator';
+import {
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  IsNumber,
+  IsBoolean,
+} from 'class-validator';
 
-export class CreateCategoryDto {
+export class CreateMarketingCategoryDto {
   @ApiProperty({ example: 'Restaurant' })
   @IsString()
   @IsNotEmpty()
   name: string;
 
-  @ApiProperty({ example: 'restaurant', required: false, description: 'Auto-generated from name if omitted' })
+  @ApiProperty({
+    example: 'restaurant',
+    required: false,
+    description: 'Auto-generated from name if omitted',
+  })
   @IsString()
   @IsOptional()
   slug?: string;
 
-  @ApiProperty({ example: 'Templates for restaurants and cafes', required: false })
+  @ApiProperty({
+    example: 'Templates for restaurants and cafes',
+    required: false,
+  })
   @IsString()
   @IsOptional()
   description?: string;

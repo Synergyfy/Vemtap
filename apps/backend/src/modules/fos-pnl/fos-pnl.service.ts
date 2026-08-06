@@ -21,6 +21,7 @@ import {
   ExpenseResponseDto,
   CashFlowEntryDto,
 } from './dto/pnl-response.dto';
+import { paginateWithCursor } from '../../common/utils/cursor-pagination.util';
 
 @Injectable()
 export class FosPnlService {
@@ -77,7 +78,9 @@ export class FosPnlService {
 
     const activeBusinessIds = new Set(
       transactions
-        .filter((t) => t.businessId && t.type === FosTransactionType.SUBSCRIPTION)
+        .filter(
+          (t) => t.businessId && t.type === FosTransactionType.SUBSCRIPTION,
+        )
         .map((t) => t.businessId),
     );
     const activeBusinesses = activeBusinessIds.size || 1;
@@ -152,21 +155,29 @@ export class FosPnlService {
   // ==================== New: Expenses ====================
 
   async listExpenses(query: ListExpensesQueryDto) {
-    const qb = this.expenseRepo.createQueryBuilder('e')
+    const qb = this.expenseRepo
+      .createQueryBuilder('e')
       .orderBy('e.date', 'DESC')
       .addOrderBy('e.createdAt', 'DESC');
 
     if (query.category) {
-      qb.andWhere('e.category ILIKE :category', { category: `%${query.category}%` });
+      qb.andWhere('e.category ILIKE :category', {
+        category: `%${query.category}%`,
+      });
     }
 
-    const total = await qb.getCount();
-    const page = query.page ?? 1;
-    const perPage = query.perPage ?? 20;
-    const expenses = await qb
-      .skip((page - 1) * perPage)
-      .take(perPage)
-      .getMany();
+    const paginated = await paginateWithCursor({
+      queryBuilder: qb,
+      cursor: (query as any)?.cursor || (query as any)?.nextCursor,
+      page: query.page,
+      perPage: query.perPage,
+      sortField: 'createdAt',
+      sortOrder: 'DESC',
+      entityAlias: 'e',
+    });
+
+    const expenses = paginated.data;
+    const total = paginated.total;
 
     return {
       success: true,
@@ -180,6 +191,12 @@ export class FosPnlService {
           createdAt: e.createdAt,
         })),
         total,
+        page: paginated.page,
+        perPage: paginated.perPage,
+        cursor: paginated.cursor,
+        nextCursor: paginated.nextCursor,
+        prevCursor: paginated.prevCursor,
+        hasNextPage: paginated.hasNextPage,
       },
     };
   }
@@ -216,7 +233,10 @@ export class FosPnlService {
 
   // ==================== New: P&L Statement ====================
 
-  async getPnlStatement(): Promise<{ success: boolean; data: PnlStatementResponseDto }> {
+  async getPnlStatement(): Promise<{
+    success: boolean;
+    data: PnlStatementResponseDto;
+  }> {
     const transactions = await this.transactionRepo.find();
 
     const revenueTransactions = transactions.filter(
@@ -232,10 +252,13 @@ export class FosPnlService {
 
     const allTransactions = transactions;
 
-    const gatewayCost = allTransactions.reduce(
-      (sum, t) => sum + this.toNumber(t.cost),
-      0,
-    );
+    const gatewayCost = allTransactions
+      .filter(
+        (t) =>
+          t.type === FosTransactionType.SUBSCRIPTION ||
+          t.type === FosTransactionType.SMS,
+      )
+      .reduce((sum, t) => sum + this.toNumber(t.cost), 0);
 
     const commissionPaid = allTransactions
       .filter((t) => t.type === FosTransactionType.COMMISSION)
@@ -248,7 +271,7 @@ export class FosPnlService {
     const netProfit = grossRevenue - gatewayCost - commissionPaid - opexPaid;
     const profitMarginPercentage =
       grossRevenue > 0
-        ? Math.round(((netProfit / grossRevenue) * 100) * 10) / 10
+        ? Math.round((netProfit / grossRevenue) * 100 * 10) / 10
         : 0;
 
     return {
@@ -266,7 +289,10 @@ export class FosPnlService {
 
   // ==================== New: Revenue Trends (Monthly) ====================
 
-  async getRevenueTrends(): Promise<{ success: boolean; data: RevenueTrendDto[] }> {
+  async getRevenueTrends(): Promise<{
+    success: boolean;
+    data: RevenueTrendDto[];
+  }> {
     const transactions = await this.transactionRepo.find({
       where: [
         { type: FosTransactionType.SUBSCRIPTION },
@@ -300,7 +326,8 @@ export class FosPnlService {
   // ==================== New: Cash Flows ====================
 
   async listCashflows(query: ListCashFlowsQueryDto) {
-    const qb = this.cashFlowRepo.createQueryBuilder('cf')
+    const qb = this.cashFlowRepo
+      .createQueryBuilder('cf')
       .orderBy('cf.date', 'DESC')
       .addOrderBy('cf.createdAt', 'DESC');
 
@@ -308,13 +335,18 @@ export class FosPnlService {
       qb.andWhere('cf.type = :type', { type: query.type });
     }
 
-    const total = await qb.getCount();
-    const page = query.page ?? 1;
-    const perPage = query.perPage ?? 20;
-    const cashflows = await qb
-      .skip((page - 1) * perPage)
-      .take(perPage)
-      .getMany();
+    const paginated = await paginateWithCursor({
+      queryBuilder: qb,
+      cursor: (query as any)?.cursor || (query as any)?.nextCursor,
+      page: query.page,
+      perPage: query.perPage,
+      sortField: 'createdAt',
+      sortOrder: 'DESC',
+      entityAlias: 'cf',
+    });
+
+    const cashflows = paginated.data;
+    const total = paginated.total;
 
     return {
       success: true,
@@ -328,6 +360,12 @@ export class FosPnlService {
           createdAt: cf.createdAt,
         })),
         total,
+        page: paginated.page,
+        perPage: paginated.perPage,
+        cursor: paginated.cursor,
+        nextCursor: paginated.nextCursor,
+        prevCursor: paginated.prevCursor,
+        hasNextPage: paginated.hasNextPage,
       },
     };
   }
@@ -356,7 +394,10 @@ export class FosPnlService {
 
   // ==================== New: Cash Flow Runway ====================
 
-  async getCashFlowRunway(): Promise<{ success: boolean; data: CashFlowRunwayResponseDto }> {
+  async getCashFlowRunway(): Promise<{
+    success: boolean;
+    data: CashFlowRunwayResponseDto;
+  }> {
     const cashflows = await this.cashFlowRepo.find();
 
     let totalInflow = 0;
@@ -396,7 +437,10 @@ export class FosPnlService {
     const runwayMonths =
       monthlyNetCashFlow >= 0
         ? 99
-        : Math.min(99, Math.floor(closingCashBalance / Math.abs(monthlyNetCashFlow)));
+        : Math.min(
+            99,
+            Math.floor(closingCashBalance / Math.abs(monthlyNetCashFlow)),
+          );
 
     return {
       success: true,
@@ -412,7 +456,10 @@ export class FosPnlService {
 
   // ==================== New: Cost Break-Even ====================
 
-  async getCostBreakEven(): Promise<{ success: boolean; data: CostBreakEvenResponseDto }> {
+  async getCostBreakEven(): Promise<{
+    success: boolean;
+    data: CostBreakEvenResponseDto;
+  }> {
     const cashflows = await this.cashFlowRepo.find();
     const transactions = await this.transactionRepo.find();
 
@@ -453,15 +500,15 @@ export class FosPnlService {
 
     const activeBusinessIds = new Set(
       transactions
-        .filter((t) => t.businessId && t.type === FosTransactionType.SUBSCRIPTION)
+        .filter(
+          (t) => t.businessId && t.type === FosTransactionType.SUBSCRIPTION,
+        )
         .map((t) => t.businessId),
     );
     const activeBusinesses = activeBusinessIds.size || 1;
 
     const arpu =
-      activeBusinesses > 0
-        ? grossRevenue / activeBusinesses / monthCount
-        : 0;
+      activeBusinesses > 0 ? grossRevenue / activeBusinesses / monthCount : 0;
 
     const breakEvenBusinesses =
       arpu > 0 ? Math.ceil(totalMonthlyCosts / arpu) : 0;
@@ -469,7 +516,10 @@ export class FosPnlService {
     const breakEvenRevenue = totalMonthlyCosts;
     const progressPercent =
       totalMonthlyCosts > 0
-        ? Math.min(100, Math.round((grossRevenue / totalMonthlyCosts) * 100 * 100) / 100)
+        ? Math.min(
+            100,
+            Math.round((grossRevenue / totalMonthlyCosts) * 100 * 100) / 100,
+          )
         : 100;
 
     const remainingGap = Math.max(0, totalMonthlyCosts - grossRevenue);

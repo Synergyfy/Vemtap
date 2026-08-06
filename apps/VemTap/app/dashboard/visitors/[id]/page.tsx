@@ -8,7 +8,7 @@ import {
     CRMProfileTabs 
 } from '@/components/dashboard/crm/CRMProfile';
 import { useVisitor } from '@/services/visitors/hooks';
-import { useAuthStore } from '@/store/useAuthStore';
+import { useActiveBranch } from '@/hooks/useActiveBranch';
 import { ArrowLeft, Loader2, Settings, Trash2, FileDown, MoreVertical } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -19,27 +19,10 @@ export default function VisitorProfilePage() {
     const visitorId = params?.id || '';
     const router = useRouter();
 
-    const userBusinessId = useAuthStore((state) => state.user?.businessId);
-    const { data: serverVisitor, isLoading } = useVisitor(visitorId, userBusinessId);
+    const { activeBranchId } = useActiveBranch();
+    const { data: serverVisitor, isLoading } = useVisitor(visitorId, activeBranchId);
 
-    // High-quality mock data for visualization and backend blueprint
-    const mockVisitor = {
-        id: visitorId,
-        name: 'Sarah Jenkins',
-        email: 'sarah.j@example.com',
-        phone: '+234 801 234 5678',
-        visits: 24,
-        joinedDate: 'Oct 12, 2024',
-        lastVisit: '2 days ago',
-        status: 'VIP',
-        totalSpent: '₦145,000',
-        tags: ['Frequent Visitor', 'Coffee Lover', 'Weekend Regular'],
-        location: 'Victoria Island, Lagos',
-        valueScore: 9.4,
-        notes: "Prefers oat milk in her latte. Always visits on Saturdays before noon."
-    };
-
-    const visitor = serverVisitor || (visitorId ? mockVisitor : null);
+    const visitor = serverVisitor || null;
 
     if (isLoading) {
         return (

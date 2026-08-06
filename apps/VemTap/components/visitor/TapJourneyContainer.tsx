@@ -10,6 +10,7 @@ import { toast } from 'react-hot-toast';
 import { useDeviceTapContext, useDeviceTapContextByUsername } from '@/services/devices/hooks';
 import { useRecordPortalVisit } from '@/services/visits/hooks';
 import { api } from '@/lib/api';
+import { signupVisitorAndLogin } from '@/lib/visitorAuth';
 
 // Components
 import { VisitorLayout } from '@/components/visitor/VisitorLayout';
@@ -193,7 +194,7 @@ export const TapJourneyContainer: React.FC<TapJourneyContainerProps> = ({ code, 
 
     const handleAction = async (id: string) => {
         if (id === 'order') {
-            router.push(`/${slug}/${activeDeviceCode}/products`);
+            router.push(`/b/${activeDeviceCode}/pos`);
         } else if (id === 'service') {
             if (serviceCount === 1) {
                 try {
@@ -259,19 +260,18 @@ export const TapJourneyContainer: React.FC<TapJourneyContainerProps> = ({ code, 
     const onRegistrationComplete = async (data: StepFormData) => {
         setIsSubmitting(true);
         try {
-            const nameParts = data.name?.trim().split(/\s+/) || ['Visitor'];
-            const firstName = nameParts[0];
-            const lastName = nameParts.slice(1).join(' ') || ' ';
-            const defaultPassword = '123456';
-
-            const signupResponse = await api.post(`/visitors/signup`, {
-                firstName,
-                lastName,
-                email: data.email,
-                phone: data.phone || undefined
-            });
-
             if (isAuthenticated) {
+                const nameParts = data.name?.trim().split(/\s+/) || ['Visitor'];
+                const firstName = nameParts[0];
+                const lastName = nameParts.slice(1).join(' ') || ' ';
+
+                const signupResponse = await api.post(`/visitors/signup`, {
+                    firstName,
+                    lastName,
+                    email: data.email,
+                    phone: data.phone || undefined
+                });
+
                 const updatedUser = signupResponse?.user || signupResponse;
                 const currentToken = useAuthStore.getState().access_token;
                 if (currentToken) {
@@ -290,13 +290,9 @@ export const TapJourneyContainer: React.FC<TapJourneyContainerProps> = ({ code, 
                 return;
             }
 
-            const authResponse = await api.post('/auth/login', {
-                identifier: data.email,
-                password: defaultPassword
-            });
+            await signupVisitorAndLogin({ email: data.email, phone: data.phone, name: data.name });
 
-            if (authResponse?.access_token) {
-                login(authResponse.user, authResponse.access_token);
+            if (useAuthStore.getState().isAuthenticated) {
                 setUserData(data);
                 setShowInitialAuth(false);
 
@@ -327,6 +323,8 @@ export const TapJourneyContainer: React.FC<TapJourneyContainerProps> = ({ code, 
         <VisitorLayout
             onReset={resetFlow}
             brandColor={engagementSettings?.brandColor}
+            storeName={storeName}
+            logoUrl={logoUrl}
         >
             {isAuthenticated && user && (
                 <div className="w-full flex justify-end mb-4 relative z-[210]">

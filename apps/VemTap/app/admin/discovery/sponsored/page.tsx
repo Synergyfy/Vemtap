@@ -2,66 +2,30 @@
 
 import React from 'react';
 import Link from 'next/link';
-import DiscoveryNav from '@/components/admin/discovery/DiscoveryNav';
 import { 
     Search, Filter, Plus, MoreHorizontal, 
     Eye, CheckCircle2, Pause, Play, XCircle,
     Activity, DollarSign, Target, Calendar,
-    TrendingUp, BadgeDollarSign, MapPin
+    TrendingUp, BadgeDollarSign, MapPin, ChevronLeft
 } from 'lucide-react';
 import { motion } from 'framer-motion';
-
-const MOCK_CAMPAIGNS = [
-    {
-        id: 'CAMP-001',
-        business: 'Fashion Hub',
-        name: 'Summer Lookbook Boost',
-        radius: '1.5km',
-        budget: 50000,
-        spent: 12500,
-        duration: '30 Days',
-        status: 'Active',
-        impressions: 4500,
-        clicks: 820,
-        conversions: 45,
-    },
-    {
-        id: 'CAMP-002',
-        business: 'The Grill House',
-        name: 'Lunch Hour Featured',
-        radius: '500m',
-        budget: 25000,
-        spent: 25000,
-        duration: '14 Days',
-        status: 'Ended',
-        impressions: 12000,
-        clicks: 2100,
-        conversions: 180,
-    },
-    {
-        id: 'CAMP-003',
-        business: 'Sharp Cuts',
-        name: 'New Client acquisition',
-        radius: '2km',
-        budget: 75000,
-        spent: 0,
-        duration: '60 Days',
-        status: 'Pending',
-        impressions: 0,
-        clicks: 0,
-        conversions: 0,
-    }
-];
+import { useAdminSponsoredCampaigns } from '@/services/discovery/hooks';
 
 export default function DiscoverySponsoredPage() {
+    const { data, isLoading } = useAdminSponsoredCampaigns();
+    const campaigns = data?.data || [];
+    const total = data?.meta?.total || 0;
+
     return (
         <div className="p-8">
-            <DiscoveryNav current="/admin/discovery/sponsored" />
+            <Link href="/admin/discovery/dashboard" className="inline-flex items-center gap-1.5 text-xs font-bold text-text-secondary hover:text-text-main transition-colors mb-6">
+                <ChevronLeft size={14} /> Back to Discovery
+            </Link>
 
             {/* Top Stats */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                 {[
-                    { label: 'Active Campaigns', value: '24', icon: Activity, color: 'text-blue-500', bg: 'bg-blue-50' },
+                    { label: 'Active Campaigns', value: total.toLocaleString(), icon: Activity, color: 'text-blue-500', bg: 'bg-blue-50' },
                     { label: 'Monthly Ad Revenue', value: '₦850,000', icon: BadgeDollarSign, color: 'text-emerald-500', bg: 'bg-emerald-50' },
                     { label: 'Avg. Click-Through Rate', value: '4.8%', icon: TrendingUp, color: 'text-purple-500', bg: 'bg-purple-50' },
                 ].map((stat) => (
@@ -117,7 +81,13 @@ export default function DiscoverySponsoredPage() {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-50 text-sm">
-                            {MOCK_CAMPAIGNS.map((camp) => (
+                            {isLoading ? (
+                                Array.from({ length: 5 }).map((_, i) => (
+                                    <tr key={i} className="animate-pulse">
+                                        <td colSpan={6} className="px-6 py-4 bg-gray-50/50 h-16"></td>
+                                    </tr>
+                                ))
+                            ) : campaigns.map((camp) => (
                                 <tr key={camp.id} className="hover:bg-gray-50/50 transition-colors group">
                                     <td className="px-6 py-4">
                                         <div>

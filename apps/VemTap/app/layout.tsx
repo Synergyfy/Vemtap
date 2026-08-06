@@ -1,18 +1,21 @@
 import type { Metadata } from "next";
-// import { Inter, Outfit } from "next/font/google";
+import { Inter, Geist } from 'next/font/google';
+import { GeistMono } from 'geist/font/mono';
 import "./globals.css";
 
-// Force rebuild
+const geist = Geist({
+    subsets: ["latin"],
+    weight: ["300", "400", "500", "600", "700", "800", "900"],
+    variable: "--font-geist",
+    display: "swap",
+});
 
-// const inter = Inter({
-//     subsets: ["latin"],
-//     variable: "--font-body",
-// });
-
-// const outfit = Outfit({
-//     subsets: ["latin"],
-//     variable: "--font-display",
-// });
+const inter = Inter({
+    subsets: ["latin"],
+    weight: ["300", "400", "500", "600", "700", "800"],
+    variable: "--font-inter",
+    display: "swap",
+});
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://vemtap.io";
 
@@ -75,6 +78,7 @@ export const viewport = {
 };
 
 import QueryProvider from "./providers/QueryProvider";
+import OfflineSyncProvider from "./providers/OfflineSyncProvider";
 import AuthProvider from "@/components/providers/AuthProvider";
 import CookieBanner from "@/components/shared/CookieBanner";
 import ToastProvider from "@/components/providers/ToastProvider";
@@ -82,46 +86,39 @@ import SupportChatbot from "@/components/shared/SupportChatbot";
 import InstallPWA from "@/components/shared/InstallPWA";
 import GoogleAuthProvider from "./providers/GoogleAuthProvider";
 import AdminViewerBanner from "@/components/admin/control-tower/AdminViewerBanner";
-
+import FloatingBackButton from "@/components/shared/FloatingBackButton";
+import ConflictModal from "@/components/ui/ConflictModal";
 export default function RootLayout({
     children,
 }: Readonly<{
     children: React.ReactNode;
 }>) {
     return (
-        <html lang="en" suppressHydrationWarning>
+        <html lang="en" className={`${geist.variable} ${inter.variable} ${GeistMono.variable}`}>
             <head>
-                <link rel="preconnect" href="https://fonts.googleapis.com" />
-                <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />        
-                <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@400;500;700&display=swap" rel="stylesheet" />
                 <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />  
                 <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet" />
                 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
                 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-                <style dangerouslySetInnerHTML={{
-                    __html: `
-            :root {
-              --font-body: 'Inter', sans-serif;
-              --font-display: 'Outfit', sans-serif;
-            }
-          `}} />
             </head>
             <body
-                className={`antialiased font-sans`}
-                style={{ fontFamily: "var(--font-body)" }}
+                className={`${geist.className} antialiased`}
                 suppressHydrationWarning
             >
                 <QueryProvider>
-                    <AuthProvider>
-                        <GoogleAuthProvider>
-                            <ToastProvider />
-                            <AdminViewerBanner />
-                            {children}
-                            <CookieBanner />
-                            <SupportChatbot />
-                            <InstallPWA />
-                        </GoogleAuthProvider>
-                    </AuthProvider>
+                    <OfflineSyncProvider>
+                        <AuthProvider>
+                            <GoogleAuthProvider>
+                                <ToastProvider />
+                                <ConflictModal />
+                                <AdminViewerBanner />
+                                {children}
+                                <CookieBanner />
+                                <SupportChatbot />
+                                <InstallPWA />
+                            </GoogleAuthProvider>
+                        </AuthProvider>
+                    </OfflineSyncProvider>
                 </QueryProvider>
             </body>
         </html>

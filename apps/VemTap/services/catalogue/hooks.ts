@@ -6,7 +6,7 @@ import { Reward } from '../loyalty/types';
 
 export type CatalogueItemStatus = 'active' | 'inactive' | 'out_of_stock' | 'suspended';
 export type CatalogueItemType = 'product' | 'service';
-export type OrderStatus = 'new' | 'processing' | 'completed' | 'cancelled' | 'rejected';
+export type OrderStatus = 'new' | 'processing' | 'completed' | 'cancelled' | 'rejected' | 'refunded' | 'partial_refund';
 export type DiscountType = 'percentage' | 'fixed' | 'none';
 export type CatalogueOfferPricingType = 'sum' | 'percentage_discount' | 'fixed_discount_price';
 export type CatalogueOfferStatus = 'active' | 'inactive';
@@ -35,13 +35,19 @@ export interface CatalogueItem {
     status: CatalogueItemStatus;
     itemType: CatalogueItemType;
     sku?: string;
+    barcode?: string;
+    weight?: string;
+    dimensions?: string;
     discountType: DiscountType;
     discountValue: number | null;
     stockQuantity?: number;
+    minStock?: number;
     allowBackOrder: boolean;
     isSuspended: boolean;
     suspensionNote?: string;
     loyaltyPoints?: number | null;
+    enableLoyaltyPoints?: boolean;
+    loyaltyPointsValue?: number;
     createdAt?: string;
     updatedAt?: string;
 }
@@ -50,6 +56,7 @@ export interface CatalogueOffer {
     id: string;
     name: string;
     description: string;
+    terms?: string[];
     mainImage: string;
     galleryImages?: string[];
     quantity: number | null;
@@ -64,6 +71,16 @@ export interface CatalogueOffer {
     status: CatalogueOfferStatus;
     items: CatalogueItem[];
     reward?: Reward;
+    views?: number;
+    visits?: number;
+    revenue?: number;
+    startDate?: string;
+    endDate?: string;
+    offerType?: string;
+    audience?: string;
+    maxClaimsPerCustomer?: number;
+    claimCodePrefix?: string;
+    audienceTarget?: string;
     createdAt: string;
     updatedAt: string;
 }
@@ -105,6 +122,13 @@ export interface Order {
             name: string;
         };
     };
+    attendedById?: string | null;
+    attendedByUser?: {
+        id: string;
+        firstName: string;
+        lastName: string;
+        name?: string;
+    } | null;
     createdAt: string;
     updatedAt: string;
 }
@@ -130,12 +154,17 @@ export interface CreateItemDto {
     categoryId: string;
     branchId: string;
     sku?: string;
+    barcode?: string;
+    weight?: string;
+    dimensions?: string;
     itemType?: CatalogueItemType;
     discountType?: DiscountType;
     discountValue?: number;
     stockQuantity?: number;
     allowBackOrder?: boolean;
     loyaltyPoints?: number;
+    enableLoyaltyPoints?: boolean;
+    loyaltyPointsValue?: number;
 }
 
 export interface UpdateItemDto extends Partial<CreateItemDto> {
@@ -146,6 +175,7 @@ export interface UpdateItemDto extends Partial<CreateItemDto> {
 export interface CreateCatalogueOfferDto {
     name: string;
     description: string;
+    terms?: string[];
     mainImage?: string;
     galleryImages?: string[];
     quantity?: number;
@@ -156,6 +186,13 @@ export interface CreateCatalogueOfferDto {
     rewardId?: string;
     branchId: string;
     itemIds: string[];
+    startDate?: string;
+    endDate?: string;
+    offerType?: string;
+    audience?: string;
+    maxClaimsPerCustomer?: number;
+    claimCodePrefix?: string;
+    audienceTarget?: string;
 }
 
 export interface UpdateCatalogueOfferDto extends Partial<CreateCatalogueOfferDto> {
@@ -189,7 +226,7 @@ export interface CreateOrderDto {
 
 // Categories
 export const getCategories = async () => {
-    return await api.get('/admin/catalogue/categories');
+    return await api.get('/catalogue/categories');
 };
 
 export const getCategoriesPublic = async (branchId: string) => {
@@ -197,21 +234,21 @@ export const getCategoriesPublic = async (branchId: string) => {
 };
 
 export const createCategory = async (data: CreateCategoryDto) => {
-    return await api.post('/admin/catalogue/categories', data);
+    return await api.post('/catalogue/categories', data);
 };
 
 export const updateCategory = async (id: string, data: Partial<CreateCategoryDto>) => {
-    return await api.patch(`/admin/catalogue/categories/${id}`, data);
+    return await api.patch(`/catalogue/categories/${id}`, data);
 };
 
 export const deleteCategory = async (id: string) => {
-    return await api.delete(`/admin/catalogue/categories/${id}`);
+    return await api.delete(`/catalogue/categories/${id}`);
 };
 
 // Items
 export const getItems = async (params: { branchId?: string, categoryId?: string, search?: string } = {}) => {
     const qs = new URLSearchParams(Object.entries(params).filter(([_, v]) => v !== undefined && v !== '') as string[][]).toString();
-    return await api.get(`/admin/catalogue/items${qs ? `?${qs}` : ''}`);
+    return await api.get(`/catalogue/items${qs ? `?${qs}` : ''}`);
 };
 
 export const getItemsPublic = async (branchId: string, params: { categoryId?: string, search?: string } = {}) => {
@@ -225,11 +262,55 @@ export const getCatalogueItem = async (id: string, branchId?: string) => {
 };
 
 export const createItem = async (data: CreateItemDto) => {
-    return await api.post('/admin/catalogue/items', data);
+    return await api.post('/catalogue/items', data);
+};
+
+export interface BulkImportItemDto {
+    name: string;
+    price: number;
+    shortDescription?: string;
+    description?: string;
+    category?: string;
+    stockQuantity?: number;
+    sku?: string;
+    barcode?: string;
+}
+
+export interface BulkImportRequest {
+    branchId: string;
+    items: BulkImportItemDto[];
+}
+
+export interface BulkImportRowResult {
+    row: number;
+    success: boolean;
+    error?: string;
+    itemId?: string;
+}
+
+export interface BulkImportResponse {
+    created: number;
+    failed: number;
+    results: BulkImportRowResult[];
+}
+
+export const bulkImportItems = async (data: BulkImportRequest): Promise<BulkImportResponse> => {
+    return await api.post('/catalogue/items/bulk', data);
+};
+
+export const useBulkImportItems = () => {
+    const queryClient = useQueryClient();
+    return useMutation<BulkImportResponse, Error, BulkImportRequest>({
+        mutationFn: bulkImportItems,
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['catalogue', 'items'] });
+            queryClient.invalidateQueries({ queryKey: ['catalogue', 'item'] });
+        },
+    });
 };
 
 export const updateItem = async (id: string, data: UpdateItemDto) => {
-    return await api.patch(`/admin/catalogue/items/${id}`, data);
+    return await api.patch(`/catalogue/items/${id}`, data);
 };
 
 export const deleteItem = async (id: string, params: { branchId: string, applyGlobally?: boolean }) => {
@@ -237,15 +318,15 @@ export const deleteItem = async (id: string, params: { branchId: string, applyGl
         branchId: params.branchId, 
         applyGlobally: String(!!params.applyGlobally) 
     }).toString();
-    return await api.delete(`/admin/catalogue/items/${id}?${qs}`);
+    return await api.delete(`/catalogue/items/${id}?${qs}`);
 };
 
 export const importItem = async (id: string, targetBranchId: string) => {
-    return await api.post(`/admin/catalogue/items/${id}/import`, { targetBranchId });
+    return await api.post(`/catalogue/items/${id}/import`, { targetBranchId });
 };
 
 // Orders
-export const getOrders = async (params: { branchId?: string, status?: string, search?: string } = {}) => {
+export const getOrders = async (params: { branchId?: string, status?: string, search?: string, type?: string, page?: number, limit?: number } = {}) => {
     const qs = new URLSearchParams(Object.entries(params).filter(([_, v]) => v !== undefined && v !== '') as string[][]).toString();
     return await api.get(`/catalogue/orders${qs ? `?${qs}` : ''}`);
 };
@@ -254,8 +335,16 @@ export const getOrderDetails = async (id: string) => {
     return await api.get(`/catalogue/orders/${id}`);
 };
 
-export const updateOrderStatus = async (id: string, status: OrderStatus) => {
-    return await api.patch(`/catalogue/orders/${id}/status`, { status });
+export interface CatalogueRefundItem {
+    itemId: string;
+    refundQuantity: number;
+}
+
+export const updateOrderStatus = async (id: string, status: OrderStatus, reason?: string, refundItems?: CatalogueRefundItem[]) => {
+    const body: any = { status };
+    if (reason) body.reason = reason;
+    if (refundItems && refundItems.length > 0) body.refundItems = refundItems;
+    return await api.patch(`/catalogue/orders/${id}/status`, body);
 };
 
 export const createOrder = async (data: CreateOrderDto) => {
@@ -273,8 +362,68 @@ export const getOffersPublic = async (branchId: string, params: { search?: strin
     return await api.get(`/catalogue/offers/public/${branchId}${qs ? `?${qs}` : ''}`);
 };
 
+export interface PublicCatalogueOffersQuery {
+    page?: number;
+    limit?: number;
+    search?: string;
+    sortBy?: string;
+    categoryId?: string;
+    lat?: number;
+    lng?: number;
+    radius?: number;
+    audience?: string;
+}
+
+export interface RequestClaimOtpDto {
+    offerId: string;
+    firstName: string;
+    lastName?: string;
+    email: string;
+    phone: string;
+}
+
+export interface VerifyClaimDto {
+    email: string;
+    offerId: string;
+    code: string;
+}
+
+export const getOffersGlobal = async (params: PublicCatalogueOffersQuery = {}) => {
+    const cleanParams = Object.fromEntries(
+        Object.entries(params).filter(([_, v]) => v !== undefined && v !== null && v !== '')
+    );
+    const qs = new URLSearchParams(cleanParams as any).toString();
+    return await api.get(`/catalogue/offers/public${qs ? `?${qs}` : ''}`);
+};
+
+export const requestClaimOtp = async (data: RequestClaimOtpDto) => {
+    return await api.post('/catalogue/offers/claim/request', data);
+};
+
+export const verifyClaim = async (data: VerifyClaimDto) => {
+    return await api.post('/catalogue/offers/claim/verify', data);
+};
+
 export const getOfferDetails = async (id: string) => {
     return await api.get(`/catalogue/offers/public/details/${id}`);
+};
+
+export interface ClaimRedeemResponse {
+    success: boolean;
+    message: string;
+    claim: {
+        id: string;
+        firstName?: string;
+        lastName?: string;
+        email?: string;
+        phone?: string;
+        status: string;
+        offerName: string;
+    };
+}
+
+export const redeemClaim = async (code: string): Promise<ClaimRedeemResponse> => {
+    return await api.post(`/catalogue/offers/claim/redeem/${code}`, {});
 };
 
 export const createOffer = async (data: CreateCatalogueOfferDto) => {
@@ -418,7 +567,7 @@ export const useImportCatalogueItem = () => {
     });
 };
 
-export const useCatalogueOrders = (params: { branchId?: string, status?: string, search?: string, type?: string } = {}) => {
+export const useCatalogueOrders = (params: { branchId?: string, status?: string, search?: string, type?: string, page?: number, limit?: number } = {}) => {
     return useQuery<PaginatedResponse<Order>>({
         queryKey: ['catalogue', 'orders', params],
         queryFn: () => getOrders(params),
@@ -443,7 +592,7 @@ export const useCatalogueOrderDetails = (id: string) => {
 export const useUpdateCatalogueOrderStatus = () => {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: ({ id, status }: { id: string, status: OrderStatus }) => updateOrderStatus(id, status),
+        mutationFn: ({ id, status, reason, refundItems }: { id: string, status: OrderStatus, reason?: string, refundItems?: CatalogueRefundItem[] }) => updateOrderStatus(id, status, reason, refundItems),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['catalogue', 'orders'] });
         },
@@ -463,6 +612,25 @@ export const useCatalogueOffersPublic = (branchId: string, params: { search?: st
         queryKey: ['catalogue', 'offers', 'public', branchId, params],
         queryFn: () => getOffersPublic(branchId, params),
         enabled: !!branchId,
+    });
+};
+
+export const useCatalogueOffersGlobal = (params: PublicCatalogueOffersQuery = {}) => {
+    return useQuery<PaginatedResponse<CatalogueOffer>>({
+        queryKey: ['catalogue', 'offers', 'global', params],
+        queryFn: () => getOffersGlobal(params),
+    });
+};
+
+export const useRequestClaimOtp = () => {
+    return useMutation({
+        mutationFn: requestClaimOtp,
+    });
+};
+
+export const useVerifyClaim = () => {
+    return useMutation({
+        mutationFn: verifyClaim,
     });
 };
 
@@ -507,5 +675,22 @@ export const useDeleteCatalogueOffer = () => {
 export const useCreateCatalogueOrder = () => {
     return useMutation({
         mutationFn: createOrder,
+    });
+};
+
+export const useRedeemClaim = () => {
+    return useMutation<ClaimRedeemResponse, Error, string>({
+        mutationFn: redeemClaim,
+    });
+};
+
+export const getBusinessClaims = async () => {
+    return await api.get('/catalogue/offers/claims');
+};
+
+export const useBusinessClaims = () => {
+    return useQuery({
+        queryKey: ['catalogue', 'offers', 'claims'],
+        queryFn: getBusinessClaims,
     });
 };

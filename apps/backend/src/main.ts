@@ -11,6 +11,7 @@ import {
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import helmet from 'helmet';
 import compression from 'compression';
+import { json, urlencoded } from 'express';
 import { AppModule } from './app.module';
 
 import { ObservabilityLoggingInterceptor } from './observability/interceptors/logging.interceptor';
@@ -20,6 +21,12 @@ import { AllExceptionsFilter } from './common/filters/http-exception.filter';
 // 1. Shared Configuration Function
 // This setup applies to both Local and Vercel environments
 export function configureApp(app: INestApplication) {
+  // Body parsing. We opt out of Nest's default 100kb parser so the support
+  // attachment endpoint can accept up to its documented 25MB total. Both the
+  // JSON and urlencoded parsers are re-registered here.
+  app.use(json({ limit: '25mb' }));
+  app.use(urlencoded({ extended: true, limit: '25mb' }));
+
   // Security
   app.use(helmet());
 
@@ -89,6 +96,7 @@ if (require.main === module) {
     const logger = new Logger('Bootstrap');
     const app = await NestFactory.create(AppModule, {
       logger: new PinoLoggerService(),
+      bodyParser: false,
     });
 
     configureApp(app);
@@ -116,7 +124,9 @@ if (require.main === module) {
     //  2. Give in-flight requests up to 10 seconds to complete.
     //  3. Then close the NestJS app (flushes queues, closes DB pool, etc.).
     process.on('SIGTERM', async () => {
-      logger.log('[Shutdown] SIGTERM received — draining in-flight requests (10s window)...');
+      logger.log(
+        '[Shutdown] SIGTERM received — draining in-flight requests (10s window)...',
+      );
       server.close(async () => {
         logger.log('[Shutdown] HTTP server closed. Closing application...');
         await app.close();
@@ -131,8 +141,12 @@ if (require.main === module) {
       }, 15_000).unref();
     });
 
-    logger.log(`Application is running on: http://localhost:${process.env.PORT || 3002}/api/v1`);
-    logger.log(`Swagger documentation: http://localhost:${process.env.PORT || 3002}/api-docs`);
+    logger.log(
+      `Application is running on: http://localhost:${process.env.PORT || 3002}/api/v1`,
+    );
+    logger.log(
+      `Swagger documentation: http://localhost:${process.env.PORT || 3002}/api-docs`,
+    );
   };
   void bootstrap();
 }
@@ -145,6 +159,7 @@ export default async (req: unknown, res: unknown) => {
   if (!cachedApp) {
     const app = await NestFactory.create(AppModule, {
       logger: new PinoLoggerService(),
+      bodyParser: false,
     });
     configureApp(app);
     await app.init();

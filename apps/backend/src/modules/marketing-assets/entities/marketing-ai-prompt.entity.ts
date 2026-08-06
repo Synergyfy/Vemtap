@@ -12,7 +12,11 @@ export class MarketingAIPrompt extends AbstractBaseEntity {
   @Column()
   category: string;
 
-  @ApiProperty({ example: 'Write a catchy one-line call to action for a {businessType} business asking customers to leave a Google Review. Emphasize a friendly vibe.', description: 'The prompt template' })
+  @ApiProperty({
+    example:
+      'Write a catchy one-line call to action for a {businessType} business asking customers to leave a Google Review. Emphasize a friendly vibe.',
+    description: 'The prompt template',
+  })
   @Column({ type: 'text' })
   promptTemplate: string;
 

@@ -23,6 +23,7 @@ import AwardPointsConfirmation from '@/components/loyalty/AwardPointsConfirmatio
 import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from "@/lib/utils";
+import { PageGuideButton, AICopilotButton } from '@/components/ai';
 
 export default function AwardPointsPage() {
     const router = useRouter();
@@ -74,24 +75,12 @@ export default function AwardPointsPage() {
         }
 
         try {
-            const pointsToAward = customPoints > 0 ? customPoints : (selectedProgram?.pointCost || 0);
-            
-            // In a real app, you might have a bulk earn points API. 
-            // For now, we'll iterate or assume the backend handles multiple userIds if supported.
-            // Based on loyaltyApi.ts, it seems to take a single userId.
-            
             let successCount = 0;
             for (const userId of selectedCustomerIds) {
                 const response = await earnPoints({
                     userId,
                     branchId: activeBranchId || user?.branchId || '',
-                    isVisit: false,
-                    metadata: {
-                        source: 'manual_award',
-                        rewardId: selectedProgramId,
-                        points: pointsToAward,
-                        awardedBy: user?.id
-                    }
+                    isVisit: false
                 });
                 if (response.success) successCount++;
             }
@@ -122,7 +111,7 @@ export default function AwardPointsPage() {
                         <ChevronLeft className="w-5 h-5 md:w-6 md:h-6" />
                     </Button>
                     <div>
-                        <h1 className="text-xl md:text-3xl font-black text-gray-900 tracking-tight">Give Points</h1>
+                        <div className="flex items-center gap-2"><h1 className="text-xl md:text-3xl font-black text-gray-900 tracking-tight">Give Points</h1><PageGuideButton /><AICopilotButton /></div>
                         <p className="text-xs md:text-base text-gray-500 font-medium">Issue loyalty points to your customers</p>
                     </div>
                 </div>

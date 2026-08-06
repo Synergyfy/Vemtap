@@ -1,7 +1,9 @@
 import {
     Home, Users, Gift, BarChart, Settings, HelpCircle,
     MessageSquare, ShieldCheck, MessageCircle, Zap, ShoppingBag, QrCode, FileText, Palette,
-    Package, Target, Globe, Star
+    Package, Globe, Star, LayoutDashboard, Megaphone, Workflow, Share2, 
+    LineChart, CreditCard, Layers, Globe2, Cpu, BookOpen, Settings2, Wallet, 
+    UserCheck, Wand2, BarChart3, TrendingUp, Search, Users2, Download
 } from 'lucide-react';
 
 export interface SubmenuItem {
@@ -25,265 +27,239 @@ export interface MenuItem {
     keywords?: string[];
 }
 
-export const OWNER_MENU_ITEMS: MenuItem[] = [
+export interface NavSection {
+    id: string;
+    label: string;
+    items: MenuItem[];
+}
+
+export const NAVIGATION_SECTIONS: NavSection[] = [
     {
-        id: 'overview',
-        label: 'Dashboard',
-        icon: Home,
-        href: '/dashboard',
-        roles: ['owner', 'manager', 'staff'],
-        permission: 'dashboard',
-        keywords: ['home', 'overview', 'stats', 'main', 'summary', 'welcome', 'index']
-    },
-    {
-        id: 'customer-capture-setup',
-        label: 'Customer Capture',
-        icon: QrCode,
-        roles: ['owner', 'manager'],
-        permission: 'dashboard',
-        keywords: ['qr', 'setup', 'capture', 'link', 'shortlink', 'generator', 'customize'],
-        submenu: [
-            { label: 'Capture Setup', href: '/dashboard/customer-capture/setup', keywords: ['wizard', 'onboarding', 'activation'] },
-            { label: 'Manage QR Codes', href: '/dashboard/explore-qrthrive', keywords: ['list', 'edit', 'thrive'] },
+        id: 'section-dashboard',
+        label: '',
+        items: [
+            {
+                id: 'overview',
+                label: 'Dashboard',
+                icon: Home,
+                href: '/dashboard',
+                roles: ['owner', 'manager', 'cashier', 'inventory', 'marketing', 'customer_service', 'staff'],
+                permission: 'dashboard',
+                keywords: ['home', 'overview', 'stats', 'main', 'summary', 'welcome', 'index']
+            }
         ]
     },
     {
-        id: 'visitors',
-        label: 'Visitors',
-        icon: Users,
-        roles: ['owner', 'manager', 'staff'],
-        permission: 'visitors',
-        keywords: ['customers', 'contacts', 'users', 'shoppers', 'database', 'audience'],
-        submenu: [
-            { label: 'Overview', href: '/dashboard/visitors', keywords: ['summary', 'analytics', 'statistics', 'charts'] },
-            { label: 'All Visitors', href: '/dashboard/visitors/all', keywords: ['contacts', 'users', 'shoppers', 'database', 'list'] },
-            { label: 'New Visitors', href: '/dashboard/visitors/new', keywords: ['recent', 'signup', 'fresh', 'acquired'] },
-            { label: 'Returning', href: '/dashboard/visitors/returning', keywords: ['loyal', 'frequent', 'active', 're-engaged'] },
+        id: 'section-commerce',
+        label: 'My Store',
+        items: [
+            {
+                id: 'sales',
+                label: 'Sales',
+                icon: CreditCard,
+                href: '/dashboard/sales',
+                roles: ['owner', 'manager', 'cashier', 'staff'],
+                permission: 'pos',
+                submenu: [
+                    { label: 'Sales Dashboard', href: '/dashboard/sales' },
+                    { label: 'POS Home', href: '/dashboard/pos' },
+                    { label: 'Orders', href: '/dashboard/pos/orders' },
+                    { label: 'Settings', href: '/dashboard/pos/settings' },
+                    { label: 'Help', href: '/dashboard/pos/support' },
+                ],
+                keywords: ['pos', 'checkout', 'register', 'sales', 'transaction', 'orders']
+            },
+            {
+                id: 'products-stock',
+                label: 'Products & Stock',
+                icon: Package,
+                href: '/dashboard/products-stock',
+                roles: ['owner', 'manager', 'inventory'],
+                permission: 'inventory',
+                submenu: [
+                    { label: 'Overview', href: '/dashboard/products-stock' },
+                    { label: 'Catalogue', href: '/dashboard/catalogue' },
+                    { label: 'Inventory', href: '/dashboard/inventory' },
+                ],
+                keywords: ['products', 'stock', 'inventory', 'warehouse', 'reorder', 'catalogue']
+            },
+            {
+                id: 'commerce-customers',
+                label: 'Customers',
+                icon: Users,
+                href: '/dashboard/customers',
+                roles: ['owner', 'manager', 'cashier', 'customer_service', 'staff'],
+                permission: 'visitors',
+                submenu: [
+                    { label: 'Overview', href: '/dashboard/customers' },
+                    { label: 'Customer List', href: '/dashboard/pos/customers' },
+                    { label: 'Loyalty', href: '/dashboard/loyalty' },
+                    { label: 'Visitors', href: '/dashboard/visitors' },
+                ],
+                keywords: ['customers', 'contacts', 'users', 'shoppers', 'database', 'audience', 'loyalty']
+            }
         ]
     },
     {
-        id: 'live-chat',
-        label: 'In-App Chat',
-        icon: MessageCircle,
-        href: '/dashboard/messaging/chat',
-        roles: ['owner', 'manager', 'staff'],
-        permission: 'chat',
-        keywords: ['support', 'messages', 'live', 'realtime', 'conversations', 'in-app', 'inbox']
-    },
-    {
-        id: 'inventory',
-        label: 'Inventory',
-        icon: Package,
-        href: '/dashboard/inventory',
-        roles: ['owner', 'manager'],
-        permission: 'inventory',
-        keywords: ['stock', 'items', 'products', 'inventory', 'warehouse', 'reorder'],
-    },
-    {
-        id: 'pos',
-        label: 'Point Of Sale',
-        icon: Zap,
-        href: '/dashboard/pos',
-        roles: ['owner', 'manager', 'staff'],
-        permission: 'pos',
-        keywords: ['pos', 'checkout', 'register', 'sales', 'transaction'],
-    },
-    {
-        id: 'messaging-center',
-        label: 'Messaging Center',
-        icon: MessageSquare,
-        roles: ['owner', 'manager'],
-        permission: 'messages',
-        keywords: ['whatsapp', 'sms', 'email', 'credits', 'broadcasts', 'history', 'campaigns', 'marketing'],
-        submenu: [
-            { label: 'Overview', href: '/dashboard/messaging', keywords: ['summary', 'analytics', 'dashboard'] },
-            { label: 'Create Campaign', href: '/dashboard/messaging/create', keywords: ['new', 'compose', 'wizard', 'send'] },
-            { label: 'Campaign History', href: '/dashboard/messaging/history', keywords: ['logs', 'sent', 'status', 'delivery', 'records'] },
-            { label: 'Reports', href: '/dashboard/messaging/reports', keywords: ['analytics', 'performance', 'roi', 'stats'] },
-            { label: 'Messaging Credits', href: '/dashboard/messaging/credits', keywords: ['topup', 'buy', 'balance', 'pricing', 'purchase'] },
+        id: 'section-engagement',
+        label: 'Customer Engagement',
+        items: [
+            {
+                id: 'in-app-chat',
+                label: 'In-App Chat',
+                icon: MessageSquare,
+                href: '/dashboard/messaging/chat',
+                roles: ['owner', 'manager', 'customer_service', 'staff'],
+                permission: 'messages',
+                keywords: ['chat', 'whatsapp', 'sms', 'email', 'inbox', 'broadcast'],
+            },
+            {
+                id: 'channels',
+                label: 'Channels',
+                icon: Globe2,
+                href: '/dashboard/messaging',
+                roles: ['owner', 'manager', 'marketing', 'customer_service'],
+                permission: 'dashboard',
+                keywords: ['qr', 'setup', 'capture', 'link', 'shortlink', 'generator', 'customize'],
+            },
+            {
+                id: 'manage-forms',
+                label: 'Forms',
+                icon: FileText,
+                href: '/dashboard/engagement/forms',
+                roles: ['owner', 'manager', 'customer_service', 'staff'],
+                permission: 'engagement',
+                keywords: ['submissions', 'questionnaires', 'feedback', 'surveys', 'signups', 'templates']
+            }
         ]
     },
     {
-        id: 'automations',
-        label: 'Automations',
-        icon: Zap,
-        roles: ['owner', 'manager'],
-        permission: 'automations',
-        keywords: ['workflow', 'trigger', 'welcome', 'birthday', 'reactivation', 'smart', 'automatic'],
-        submenu: [
-            { label: 'Overview', href: '/dashboard/automations', keywords: ['dashboard', 'summary', 'active'] },
-            { label: 'Welcome Flow', href: '/dashboard/automations/welcome', keywords: ['onboarding', 'new', 'registration'] },
-            { label: 'Birthday Flow', href: '/dashboard/automations/birthday', keywords: ['celebration', 'rewards', 'annual'] },
-            { label: 'Reactivation Flow', href: '/dashboard/automations/reactivation', keywords: ['winback', 'inactive', 'reminder'] },
-            { label: 'Activity Logs', href: '/dashboard/automations/logs', keywords: ['history', 'execution', 'audit'] },
-        ]
-    },
-    {
-        id: 'loyalty',
-        label: 'Loyalty',
-        icon: Gift,
-        href: '/dashboard/loyalty',
-        roles: ['owner', 'manager', 'staff'],
-        permission: 'loyalty',
-        feature: 'loyalty',
-        featureName: 'Loyalty Programs',
-        keywords: ['rewards', 'points', 'stamps', 'cards', 'memberships', 'gift', 'coupons', 'discounts']
-    },
-    {
-        id: 'catalogue',
-        label: 'Catalogue',
-        icon: ShoppingBag,
-        roles: ['owner', 'manager'],
-        permission: 'catalogue',
-        feature: 'catalogue',
-        featureName: 'Catalogue',
-        keywords: ['products', 'offers', 'categories', 'orders', 'bookings', 'shop', 'storefront', 'items'],
-        submenu: [
-            { label: 'Overview', href: '/dashboard/catalogue', keywords: ['shop', 'storefront', 'summary'] },
-            { label: 'Products', href: '/dashboard/catalogue/products', keywords: ['items', 'inventory', 'pricing', 'goods'] },
-            { label: 'Offers', href: '/dashboard/catalogue/offers', keywords: ['discounts', 'deals', 'sales', 'coupons'] },
-            { label: 'Categories', href: '/dashboard/catalogue/categories', keywords: ['sections', 'groups', 'types', 'tags'] },
-            { label: 'Orders', href: '/dashboard/catalogue/orders', keywords: ['purchases', 'transactions', 'sales', 'delivery'] },
-            { label: 'Bookings', href: '/dashboard/catalogue/bookings', keywords: ['reservations', 'appointments', 'schedules', 'calendar'] },
-        ]
-    },
-    {
-        id: 'analytics',
-        label: 'Advanced Analytics',
-        icon: BarChart,
-        roles: ['owner', 'manager'],
-        permission: 'analytics',
-        keywords: ['charts', 'metrics', 'stats', 'data', 'reports', 'footfall', 'peak times', 'trends'],
-        submenu: [
-            { label: 'Overview', href: '/dashboard/analytics', keywords: ['summary', 'statistics', 'charts'] },
-            { label: 'Customers', href: '/dashboard/analytics/customers', keywords: ['behavior', 'growth', 'retention'] },
-            { label: 'Sales', href: '/dashboard/analytics/sales', keywords: ['revenue', 'transactions', 'orders'] },
-            { label: 'Inventory', href: '/dashboard/analytics/inventory', keywords: ['stock', 'products', 'reorder'] },
-            { label: 'Customer Value', href: '/dashboard/analytics/customer-value', keywords: ['clv', 'loyalty', 'spending'] },
-            { label: 'Marketing', href: '/dashboard/analytics/marketing', keywords: ['campaigns', 'conversion'] },
-            { label: 'Discovery', href: '/dashboard/analytics/discovery', keywords: ['network', 'reach'] },
-        ]
-    },
-    {
-        id: 'manage-forms',
-        label: 'Manage Forms',
-        icon: FileText,
-        href: '/dashboard/engagement/forms',
-        roles: ['owner', 'manager', 'staff'],
-        permission: 'engagement',
-        keywords: ['submissions', 'questionnaires', 'feedback', 'surveys', 'signups', 'templates']
-    },
-    {
-        id: 'intelligence',
-        label: 'Customer Intelligence',
-        icon: Target,
-        href: '/dashboard/intelligence',
-        roles: ['owner', 'manager'],
-        permission: 'analytics',
-        keywords: ['intelligence', 'crm', 'growth', 'insights', 'health', 'value'],
-    },
-    {
-        id: 'agent-desk',
-        label: 'Support Desk',
-        icon: HelpCircle,
-        href: '/agent/dashboard',
-        roles: ['staff', 'manager'],
-        permission: 'support',
-        keywords: ['tickets', 'helpdesk', 'issues', 'bugs', 'resolutions', 'agent']
-    },
-    {
-        id: 'admin-nfc',
-        label: 'Admin NFC Grants',
-        icon: ShieldCheck,
-        href: '/admin/nfc-grants',
-        roles: ['admin'],
-        keywords: ['quota', 'credits', 'allocations', 'permissions', 'grants', 'nfc', 'sudo']
-    },
-    {
-        id: 'explore-qrthrive',
-        label: 'Explore QRThrive',
-        icon: QrCode,
-        href: '/dashboard/explore-qrthrive',
-        roles: ['owner', 'manager', 'staff'],
-        permission: 'qrthrive',
-        keywords: ['qr', 'generator', 'codes', 'thrive', 'marketing', 'flyers']
-    },
-    {
-        id: 'customer-experience',
+        id: 'section-experience',
         label: 'Customer Experience',
-        icon: Zap,
-        href: '/dashboard/customer-experience',
-        roles: ['owner', 'manager', 'staff'],
-        permission: 'customer-experience',
-        keywords: ['feedback', 'satisfaction', 'reviews', 'ratings', 'engagement', 'nps']
-    },
-    {
-        id: 'marketing-assets',
-        label: 'Marketing Materials',
-        icon: Palette,
-        href: '/dashboard/marketing-assets',
-        roles: ['owner', 'manager'],
-        permission: 'dashboard',
-        keywords: ['marketing', 'flyers', 'posters', 'cards', 'tent', 'designs', 'creative', 'brand', 'print']
-    },
-    {
-        id: 'discovery',
-        label: 'Discovery Network',
-        icon: Globe,
-        roles: ['owner', 'manager'],
-        permission: 'discovery',
-        keywords: ['network', 'marketplace', 'discovery', 'leads', 'traffic', 'promotions'],
-        submenu: [
-            { label: 'Overview', href: '/dashboard/discovery', keywords: ['summary', 'analytics', 'dashboard'] },
-            { label: 'Business Listing', href: '/dashboard/discovery/settings', keywords: ['profile', 'settings', 'visibility'] },
-            { label: 'Promotions', href: '/dashboard/discovery/promotions', keywords: ['offers', 'campaigns', 'deals'] },
-            { label: 'Analytics', href: '/dashboard/discovery/analytics', keywords: ['performance', 'reports', 'stats'] },
+        items: [
+            {
+                id: 'my-business-qr',
+                label: 'My Business QR',
+                icon: QrCode,
+                href: '/dashboard/customer-experience',
+                roles: ['owner', 'manager', 'marketing', 'staff'],
+                permission: 'customer-experience',
+                keywords: ['qr', 'code', 'scan', 'setup']
+            },
+            {
+                id: 'marketing-assets',
+                label: 'Marketing Kit',
+                icon: Palette,
+                href: '/dashboard/marketing-assets',
+                roles: ['owner', 'manager', 'marketing', 'staff'],
+                permission: 'marketing',
+                keywords: ['assets', 'printables', 'flyers', 'stickers', 'posters']
+            }
         ]
     },
     {
-        id: 'feedback',
-        label: 'Feedback & Reviews',
-        icon: Star,
-        roles: ['owner', 'manager'],
-        permission: 'feedback',
-        keywords: ['reviews', 'ratings', 'feedback', 'comments', 'sentiment', 'support'],
-        submenu: [
-            { label: 'Overview', href: '/dashboard/feedback', keywords: ['summary', 'analytics', 'dashboard'] },
-            { label: 'Review Requests', href: '/dashboard/feedback/requests', keywords: ['send', 'compose', 'campaign'] },
-            { label: 'Responses', href: '/dashboard/feedback/responses', keywords: ['replies', 'inbox', 'customer'] },
-            { label: 'Insights', href: '/dashboard/feedback/insights', keywords: ['analytics', 'performance', 'reports'] },
+        id: 'section-discovery',
+        label: '',
+        items: [
+            {
+                id: 'discovery',
+                label: 'Get Customers',
+                icon: null,
+                href: '/dashboard/discovery',
+                roles: ['owner', 'manager', 'marketing'],
+                permission: 'discovery',
+                submenu: [
+                    { label: 'Get Customers', href: '/dashboard/discovery' },
+                    { label: 'Business Partnership', href: '/dashboard/business-partnership' },
+                ],
+                keywords: ['network', 'marketplace', 'discovery', 'leads', 'traffic', 'promotions', 'partner', 'partnership', 'referral', 'commission', 'invite', 'collaborate']
+            }
         ]
     },
     {
-        id: 'referrals',
-        label: 'Referrals',
-        icon: Users,
-        roles: ['owner', 'manager'],
-        permission: 'referrals',
-        keywords: ['refer', 'commissions', 'affiliate', 'invites', 'partners'],
-        submenu: [
-            { label: 'Overview', href: '/dashboard/referrals', keywords: ['summary', 'analytics', 'dashboard'] },
-            { label: 'Referral Link', href: '/dashboard/referrals/link', keywords: ['invite', 'share', 'code'] },
-            { label: 'Tracking', href: '/dashboard/referrals/tracking', keywords: ['pipeline', 'status', 'list'] },
-            { label: 'Earnings', href: '/dashboard/referrals/earnings', keywords: ['commissions', 'revenue', 'stats'] },
-            { label: 'Payouts', href: '/dashboard/referrals/payouts', keywords: ['withdraw', 'balance', 'bank'] },
+        id: 'section-analytics',
+        label: '',
+        items: [
+            {
+                id: 'analytics-overview',
+                label: 'Analytics',
+                icon: null,
+                href: '/dashboard/analytics',
+                roles: ['owner', 'manager'],
+                permission: 'analytics',
+                submenu: [
+                    { label: 'Overview', href: '/dashboard/analytics' },
+                    { label: 'AI Reports', href: '/dashboard/analytics/ai-reports' },
+                    { label: 'Sales Reports', href: '/dashboard/analytics/sales' },
+                    { label: 'Inventory Reports', href: '/dashboard/analytics/inventory' },
+                    { label: 'Customers', href: '/dashboard/analytics/customers' },
+                    { label: 'Discovery', href: '/dashboard/analytics/discovery' },
+                    { label: 'Footfall', href: '/dashboard/analytics/footfall' },
+                    { label: 'Marketing', href: '/dashboard/analytics/marketing' },
+                    { label: 'Peak Times', href: '/dashboard/analytics/peak-times' },
+                ],
+                keywords: ['stats', 'overview', 'executive', 'data', 'insights', 'charts', 'advanced', 'ai', 'reports']
+            }
         ]
     },
     {
-        id: 'settings',
-        label: 'Settings',
-        icon: Settings,
-        href: '/dashboard/settings',
-        roles: ['owner', 'manager'],
-        permission: 'settings',
-        keywords: ['configuration', 'preferences', 'profile', 'billing', 'subscription', 'branches', 'team', 'compliance'],
-        submenu: [
-            { label: 'Profile', href: '/dashboard/settings/profile', keywords: ['personal', 'account', 'business', 'email', 'avatar'] },
-            { label: 'Business Locations', href: '/dashboard/settings/branches', keywords: ['outlets', 'branches', 'stores', 'maps', 'addresses'] },
-            { label: 'Team', href: '/dashboard/staff', keywords: ['staff', 'employees', 'members', 'roles', 'permissions'] },
-            { label: 'Subscription', href: '/dashboard/settings/subscription', keywords: ['billing', 'plans', 'invoice', 'upgrade', 'pricing', 'tier'] },
-            { label: 'Support', href: '/dashboard/support', keywords: ['tickets', 'contact', 'help', 'email', 'bug'] },
-            { label: 'Legal & Compliance', href: '/dashboard/compliance', keywords: ['legal', 'terms', 'privacy', 'gdpr', 'agreements'] },
+        id: 'section-manage',
+        label: 'Manage Location',
+        items: [
+            {
+                id: 'staff',
+                label: 'Staff',
+                icon: Users2,
+                href: '/dashboard/staff',
+                roles: ['owner', 'manager'],
+                permission: 'staff',
+                keywords: ['team', 'employees', 'cashiers', 'managers', 'roles', 'permissions', 'activity', 'log']
+            },
+            {
+                id: 'branches',
+                label: 'Locations',
+                icon: Globe,
+                href: '/dashboard/settings/branches',
+                roles: ['owner', 'manager'],
+                permission: 'settings',
+                keywords: ['branches', 'locations', 'outlets', 'address', 'stores']
+            }
         ]
     },
+    {
+        id: 'section-qrthrive',
+        label: 'QRThrive',
+        items: [
+            {
+                id: 'qr-codes',
+                label: 'Explore QRThrive',
+                icon: QrCode,
+                href: '/dashboard/explore-qrthrive',
+                roles: ['owner', 'manager', 'marketing', 'staff'],
+                permission: 'qrthrive',
+            }
+        ]
+    },
+    {
+        id: 'section-settings',
+        label: '',
+        items: [
+            {
+                id: 'preferences',
+                label: 'Settings',
+                icon: null,
+                roles: ['owner', 'manager'],
+                permission: 'settings',
+                submenu: [
+                    { label: 'Profile', href: '/dashboard/settings/profile' },
+                    { label: 'Subscription', href: '/dashboard/settings/subscription' },
+                    { label: 'Support', href: '/dashboard/support' },
+                    { label: 'Compliance', href: '/dashboard/compliance' },
+                ]
+            }
+        ]
+    }
 ];
+
+export const OWNER_MENU_ITEMS: MenuItem[] = NAVIGATION_SECTIONS.flatMap(s => s.items);
+

@@ -73,7 +73,7 @@ export default function SMSTemplatesPage() {
             <div className="flex items-center justify-between">
                 <PageHeader
                     title="SMS Templates"
-                    description="Quick-send templates for your SMS campaigns."
+                    description="Quick-send templates for your SMS messages."
                 />
                 <button
                     onClick={() => handleOpenModal()}
@@ -145,7 +145,6 @@ export default function SMSTemplatesPage() {
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
-                            onClick={() => setIsModalOpen(false)}
                             className="absolute inset-0 bg-black/40 backdrop-blur-sm"
                         />
                         <motion.div

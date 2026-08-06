@@ -1,25 +1,37 @@
 'use client';
 
 import React from 'react';
-import DiscoveryNav from '@/components/admin/discovery/DiscoveryNav';
+import Link from 'next/link';
 import { 
     Target, TrendingUp, DollarSign, Clock, CheckCircle2,
-    ArrowRight, MapPin, MousePointerClick, Tag, Search, Filter
+    ArrowRight, MapPin, MousePointerClick, Tag, Search, Filter, ChevronLeft
 } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { useAdminAttribution } from '@/services/discovery/hooks';
 
 export default function DiscoveryAttributionPage() {
+    const { data, isLoading } = useAdminAttribution();
+    const stats = data?.metrics;
+    const paths = data?.paths ?? [];
+    const windowHours = data?.window ?? 24;
+
     return (
         <div className="p-8">
-            <DiscoveryNav current="/admin/discovery/attribution" />
+            <Link href="/admin/discovery/dashboard" className="inline-flex items-center gap-1.5 text-xs font-bold text-text-secondary hover:text-text-main transition-colors mb-6">
+                <ChevronLeft size={14} /> Back to Discovery
+            </Link>
 
-            {/* Attribution Stats */}
+            {isLoading ? (
+                <div className="flex items-center justify-center py-20">
+                    <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+                </div>
+            ) : (<>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
                 {[
-                    { label: 'Attributed Visits', value: '1,254', icon: MapPin, color: 'text-blue-500', bg: 'bg-blue-50' },
-                    { label: 'Attributed Purchases', value: '412', icon: CheckCircle2, color: 'text-emerald-500', bg: 'bg-emerald-50' },
-                    { label: 'Attributed Revenue', value: '₦2.45M', icon: DollarSign, color: 'text-green-600', bg: 'bg-green-50' },
-                    { label: 'Avg Attribution Time', value: '18m', icon: Clock, color: 'text-amber-500', bg: 'bg-amber-50' },
+                    { label: 'Attributed Visits', value: stats?.attributedVisits?.toLocaleString() ?? '0', icon: MapPin, color: 'text-blue-500', bg: 'bg-blue-50' },
+                    { label: 'Attributed Purchases', value: stats?.attributedPurchases?.toLocaleString() ?? '0', icon: CheckCircle2, color: 'text-emerald-500', bg: 'bg-emerald-50' },
+                    { label: 'Attributed Revenue', value: stats?.attributedRevenue ?? '₦0', icon: DollarSign, color: 'text-green-600', bg: 'bg-green-50' },
+                    { label: 'Avg Attribution Time', value: stats?.avgAttributionTime ?? '0m', icon: Clock, color: 'text-amber-500', bg: 'bg-amber-50' },
                 ].map((stat) => (
                     <div key={stat.label} className="bg-white rounded-3xl border border-gray-100 p-6 shadow-sm group">
                         <div className="flex justify-between items-start mb-4">
@@ -44,11 +56,7 @@ export default function DiscoveryAttributionPage() {
                     </div>
 
                     <div className="space-y-6">
-                        {[
-                            { from: 'Fashion Hub', to: 'The Grill House', flow: 45, conversion: '12%', revenue: '₦650k' },
-                            { from: 'Supermarket Plus', to: 'Sharp Cuts Barbershop', flow: 38, conversion: '8%', revenue: '₦120k' },
-                            { from: 'The Grill House', to: 'Juice Paradise', flow: 32, conversion: '15%', revenue: '₦85k' },
-                        ].map((path, i) => (
+                        {paths.map((path, i) => (
                             <div key={i} className="p-4 rounded-2xl border border-gray-50 bg-gray-50/30 flex items-center justify-between group hover:bg-white hover:border-gray-200 hover:shadow-md transition-all">
                                 <div className="flex items-center gap-4">
                                     <div className="flex items-center gap-2">
@@ -83,11 +91,11 @@ export default function DiscoveryAttributionPage() {
                             Attribution Window
                         </h3>
                         <div className="p-6 rounded-2xl bg-gray-50 border border-gray-100 text-center">
-                            <p className="text-4xl font-display font-bold text-primary">24h</p>
+                            <p className="text-4xl font-display font-bold text-primary">{windowHours}h</p>
                             <p className="text-xs font-bold text-text-secondary mt-2 uppercase tracking-widest">Active Setting</p>
                         </div>
                         <p className="text-xs font-medium text-text-secondary mt-6 leading-relaxed">
-                            Referrals are currently attributed if the customer visits the target business within <span className="text-text-main font-bold">24 hours</span> of receiving the offer.
+                            Referrals are currently attributed if the customer visits the target business within <span className="text-text-main font-bold">{windowHours} hours</span> of receiving the offer.
                         </p>
                         <button className="mt-8 w-full py-4 bg-gray-50 text-text-main text-xs font-black uppercase tracking-widest rounded-2xl hover:bg-gray-100 transition-all">
                             Change Attribution Rules
@@ -98,6 +106,7 @@ export default function DiscoveryAttributionPage() {
                     </div>
                 </div>
             </div>
+        </>)}
         </div>
     );
 }

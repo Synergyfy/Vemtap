@@ -1,6 +1,36 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 
+export interface FaqPage {
+  id: string;
+  title: string;
+  path: string;
+  summary: string;
+  thumbnail: string | null;
+  order: number;
+}
+
+export interface FaqSection {
+  id: string;
+  title: string;
+  order: number;
+  pages: FaqPage[];
+}
+
+export interface FaqCategory {
+  id: string;
+  title: string;
+  order: number;
+  sections: FaqSection[];
+}
+
+export const useSupportFaqs = () => {
+  return useQuery<{ categories: FaqCategory[] }, Error>({
+    queryKey: ['support-faqs'],
+    queryFn: () => api.get('/support/faqs'),
+  });
+};
+
 export const useSupportTickets = (params?: { type?: string; isAssigned?: boolean; page?: number; limit?: number }) => {
   return useQuery({
     queryKey: ['support-tickets', params],
@@ -8,10 +38,11 @@ export const useSupportTickets = (params?: { type?: string; isAssigned?: boolean
   });
 };
 
-export const useUserSupportTickets = (page: number = 1, limit: number = 10) => {
+export const useUserSupportTickets = (page: number = 1, limit: number = 10, enabled: boolean = true) => {
   return useQuery({
     queryKey: ['user-support-tickets', page, limit],
     queryFn: () => api.get('/support/tickets', { params: { page, limit } }),
+    enabled,
   });
 };
 
@@ -45,6 +76,25 @@ export const useSendSupportMessage = (ticketId: string, isAdmin: boolean = false
   });
 };
 
+export interface TicketAttachmentInput {
+  url: string;
+  name: string;
+  mimeType: string;
+  size: number;
+}
+
+export const useAddTicketAttachments = (ticketId: string) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: { attachments: TicketAttachmentInput[]; message?: string }) =>
+      api.post(`/support/tickets/${ticketId}/attachments`, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['support-ticket', ticketId] });
+      queryClient.invalidateQueries({ queryKey: ['user-support-tickets'] });
+    },
+  });
+};
+
 export const useUpdateTicketStatus = (ticketId: string) => {
   const queryClient = useQueryClient();
   return useMutation({
@@ -66,3 +116,16 @@ export const useAssignTicket = (ticketId: string) => {
     },
   });
 };
+
+export const useCreateSupportTicket = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: { subject: string; message: string; category?: string; priority?: string }) =>
+      api.post('/support/tickets', data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['user-support-tickets'] });
+      queryClient.invalidateQueries({ queryKey: ['support-tickets'] });
+    },
+  });
+};
+

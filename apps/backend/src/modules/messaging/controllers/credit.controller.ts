@@ -33,7 +33,7 @@ export class CreditController {
   constructor(private readonly creditService: CreditService) {}
 
   @Get('balance')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiOperation({
     summary: 'Get current messaging credit balance (Business Dashboard)',
     description:

@@ -30,8 +30,10 @@ export default function ManagePlanPage() {
 
     const cancelMutation = useMutation({
         mutationFn: async () => {
-            if (!user?.businessId) throw new Error('Business ID not found');
-            return await api.post(`/subscriptions/cancel/${user.businessId}`, {});
+            if (user?.businessId) {
+                return await api.post(`/subscriptions/cancel/${user.businessId}`, {});
+            }
+            return await api.post('/subscriptions/cancel', {});
         },
         onSuccess: () => {
             toast.success('Subscription cancelled successfully');
@@ -194,6 +196,7 @@ export default function ManagePlanPage() {
                         ))}
 
                         {[
+                            { label: 'AI Credits', value: capabilities.capabilities?.credits?.ai ?? 0 },
                             { label: 'SMS Credits', value: capabilities.capabilities?.credits?.sms ?? 0 },
                             { label: 'Email Credits', value: capabilities.capabilities?.credits?.email ?? 0 },
                             { label: 'WhatsApp Credits', value: capabilities.capabilities?.credits?.whatsapp ?? 0 },

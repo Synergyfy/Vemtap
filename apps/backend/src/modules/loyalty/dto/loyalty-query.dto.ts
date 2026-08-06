@@ -20,6 +20,11 @@ export class RewardQueryDto {
   @IsString()
   branchCode?: string;
 
+  @ApiPropertyOptional({ description: 'Business ID' })
+  @IsOptional()
+  @IsUUID()
+  businessId?: string;
+
   @ApiPropertyOptional({ description: 'Search term for reward name' })
   @IsOptional()
   @IsString()
@@ -103,6 +108,27 @@ export class PointLogsQueryDto {
   @IsOptional()
   @IsUUID()
   branchId?: string;
+
+  @ApiPropertyOptional({ description: 'Page number', default: 1 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  page?: number = 1;
+
+  @ApiPropertyOptional({ description: 'Items per page', default: 10 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  limit?: number = 10;
+}
+
+export class CustomerPointLogsQueryDto {
+  @ApiPropertyOptional({ description: 'Business ID; omit for all businesses' })
+  @IsOptional()
+  @IsUUID()
+  businessId?: string;
 
   @ApiPropertyOptional({ description: 'Page number', default: 1 })
   @IsOptional()

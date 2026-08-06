@@ -2,6 +2,8 @@
 
 import React, { useEffect, Suspense } from 'react';
 import DashboardSidebar from '@/components/dashboard/DashboardSidebar';
+import PageGuide from '@/components/dashboard/PageGuide';
+import PermissionRouteGuard from '@/components/dashboard/PermissionRouteGuard';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useEventsSocket } from '@/hooks/useEventsSocket';
 
@@ -31,9 +33,14 @@ export default function DashboardLayout({
                 </div>
             </div>
         }>
-            <DashboardSidebar>
-                {children}
-            </DashboardSidebar>
+            <div className="dashboard-typography-override h-full w-full">
+                <DashboardSidebar>
+                    <PermissionRouteGuard>
+                        {children}
+                    </PermissionRouteGuard>
+                </DashboardSidebar>
+            </div>
+            <PageGuide />
         </Suspense>
     );
 }

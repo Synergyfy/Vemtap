@@ -22,11 +22,13 @@ import {
   ApiBody,
 } from '@nestjs/swagger';
 import { NotificationResponseDto } from './dto/notification-response.dto';
+import { RegisterPushTokenDto } from './dto/register-push-token.dto';
+import { UpdateNotificationPreferencesDto } from './dto/update-notification-preferences.dto';
 
 @ApiTags('notifications')
 @ApiBearerAuth()
 @Controller('notifications')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
 export class NotificationsController {
   constructor(
     private readonly notificationsService: NotificationsService,
@@ -45,8 +47,16 @@ export class NotificationsController {
     },
   })
   @ApiResponse({ status: 201, description: 'Token registered successfully' })
-  async registerPushToken(@Body('token') token: string, @Request() req) {
-    return this.pushNotificationService.registerToken(req.user.id, token, true);
+  async registerPushToken(@Body() dto: RegisterPushTokenDto, @Request() req) {
+    return this.pushNotificationService.registerToken(req.user.id, dto.token, true);
+  }
+
+  @Post('device-token')
+  @ApiOperation({ summary: 'Register a device/FCM push token for the current user' })
+  @ApiBody({ type: RegisterPushTokenDto })
+  @ApiResponse({ status: 201, description: 'Device token registered successfully' })
+  async registerDeviceToken(@Body() dto: RegisterPushTokenDto, @Request() req) {
+    return this.pushNotificationService.registerToken(req.user.id, dto.token, true);
   }
 
   @Post('visitor/push-token')
@@ -61,12 +71,26 @@ export class NotificationsController {
     },
   })
   @ApiResponse({ status: 201, description: 'Token registered successfully' })
-  async registerVisitorPushToken(@Body('token') token: string, @Request() req) {
+  async registerVisitorPushToken(@Body() dto: RegisterPushTokenDto, @Request() req) {
     return this.pushNotificationService.registerToken(
       req.user.id,
-      token,
+      dto.token,
       false,
     );
+  }
+
+  @Get('preferences')
+  @Roles(UserRole.ADMIN, UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF, UserRole.AGENT, UserRole.CUSTOMER)
+  @ApiOperation({ summary: 'Get notification preferences for the current user' })
+  async getPreferences(@Request() req) {
+    return this.notificationsService.getPreferences(req.user.id);
+  }
+
+  @Patch('preferences')
+  @Roles(UserRole.ADMIN, UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF, UserRole.AGENT, UserRole.CUSTOMER)
+  @ApiOperation({ summary: 'Update notification preferences for the current user' })
+  async updatePreferences(@Request() req, @Body() dto: UpdateNotificationPreferencesDto) {
+    return this.notificationsService.updatePreferences(req.user.id, dto as Record<string, boolean>);
   }
 
   @Get()
@@ -89,6 +113,14 @@ export class NotificationsController {
   })
   getUnreadCount(@Request() req) {
     return this.notificationsService.getUnreadCount(req.user.id);
+  }
+
+  @Post('mark-all-read')
+  @Patch('mark-all-read')
+  @ApiOperation({ summary: 'Mark all notifications as read for current user' })
+  @ApiResponse({ status: 200, description: 'All notifications marked as read' })
+  markAllAsRead(@Request() req) {
+    return this.notificationsService.markAllAsRead(req.user.id);
   }
 
   @Patch(':id/read')

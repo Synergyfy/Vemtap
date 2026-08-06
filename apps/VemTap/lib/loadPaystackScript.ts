@@ -4,11 +4,28 @@ export function loadPaystackScript(): Promise<void> {
       resolve();
       return;
     }
+
+    const timer = setTimeout(
+      () =>
+        reject(
+          new Error(
+            'Could not load the payment gateway. Check your internet connection or disable ad-blockers, then try again.',
+          ),
+        ),
+      15000,
+    );
+
     const script = document.createElement('script');
     script.src = 'https://js.paystack.co/v1/inline.js';
     script.async = true;
-    script.onload = () => resolve();
-    script.onerror = () => reject(new Error('Failed to load Paystack script'));
+    script.onload = () => {
+      clearTimeout(timer);
+      resolve();
+    };
+    script.onerror = () => {
+      clearTimeout(timer);
+      reject(new Error('Failed to load the payment gateway. Please try again.'));
+    };
     document.head.appendChild(script);
   });
 }

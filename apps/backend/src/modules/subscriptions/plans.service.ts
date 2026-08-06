@@ -4,6 +4,7 @@ import { Plan } from './entities/plan.entity';
 import { Repository } from 'typeorm';
 import { CreatePlanDto } from './dto/create-plan.dto';
 import { UpdatePlanDto } from './dto/update-plan.dto';
+import { SavePlanPermissionsDto } from './dto/save-plan-permissions.dto';
 import { PricingUtil } from './utils/pricing.util';
 
 @Injectable()
@@ -13,6 +14,30 @@ export class PlansService {
     private readonly planRepository: Repository<Plan>,
   ) {}
 
+  private sanitizePlanDefaults(plan: Plan): void {
+    if (plan.aiCredits === null || plan.aiCredits === undefined) {
+      plan.aiCredits = 0;
+    }
+    if (plan.smsCredits === null || plan.smsCredits === undefined) {
+      plan.smsCredits = 0;
+    }
+    if (plan.emailCredits === null || plan.emailCredits === undefined) {
+      plan.emailCredits = 0;
+    }
+    if (plan.whatsappCredits === null || plan.whatsappCredits === undefined) {
+      plan.whatsappCredits = 0;
+    }
+    if (plan.branchLimit === null || plan.branchLimit === undefined) {
+      plan.branchLimit = 1;
+    }
+    if (
+      plan.trialDurationDays === null ||
+      plan.trialDurationDays === undefined
+    ) {
+      plan.trialDurationDays = 30;
+    }
+  }
+
   async create(createPlanDto: CreatePlanDto): Promise<Plan> {
     const plan = this.planRepository.create(createPlanDto);
 
@@ -20,6 +45,7 @@ export class PlansService {
     plan.monthlyPrice = monthly;
     plan.quarterlyPrice = PricingUtil.calculateQuarterlyPrice(monthly);
     plan.yearlyPrice = PricingUtil.calculateYearlyPrice(monthly);
+    this.sanitizePlanDefaults(plan);
 
     return this.planRepository.save(plan);
   }
@@ -51,6 +77,7 @@ export class PlansService {
     plan.monthlyPrice = monthly;
     plan.quarterlyPrice = PricingUtil.calculateQuarterlyPrice(monthly);
     plan.yearlyPrice = PricingUtil.calculateYearlyPrice(monthly);
+    this.sanitizePlanDefaults(plan);
 
     return this.planRepository.save(plan);
   }
@@ -58,5 +85,65 @@ export class PlansService {
   async remove(id: string): Promise<void> {
     const plan = await this.findOne(id);
     await this.planRepository.softRemove(plan);
+  }
+
+  async updatePermissions(
+    id: string,
+    dto: SavePlanPermissionsDto,
+  ): Promise<Plan> {
+    const plan = await this.findOne(id);
+    Object.assign(plan, dto);
+    this.sanitizePlanDefaults(plan);
+    plan.permissionsConfiguredAt = new Date();
+    return this.planRepository.save(plan);
+  }
+
+  async getPermissions(id: string): Promise<Partial<Plan>> {
+    const plan = await this.findOne(id);
+    const permissionFields: (keyof Plan)[] = [
+      'messagingEnabled',
+      'smsCredits',
+      'whatsappCredits',
+      'emailCredits',
+      'teamMembersEnabled',
+      'teamMembersLimit',
+      'loyaltyEnabled',
+      'loyaltyLimit',
+      'branchesEnabled',
+      'branchLimit',
+      'analyticsEnabled',
+      'analyticsLevel',
+      'catalogueEnabled',
+      'maxCatalogueItems',
+      'maxCatalogueCategories',
+      'maxCatalogueOffers',
+      'automationsEnabled',
+      'maxAutomations',
+      'inventoryEnabled',
+      'inventoryLimit',
+      'posEnabled',
+      'posTerminalLimit',
+      'visitorsEnabled',
+      'inAppChatEnabled',
+      'formsEnabled',
+      'formsLimit',
+      'businessQrEnabled',
+      'marketingKitEnabled',
+      'marketingKitLimit',
+      'discoveryEnabled',
+      'staffRolesEnabled',
+      'staffRolesLimit',
+      'activityLogEnabled',
+      'qrCodesEnabled',
+      'qrCodesLimit',
+      'aiCopilotEnabled',
+      'aiCredits',
+      'permissionsConfiguredAt',
+    ];
+    const result: Partial<Plan> = { id: plan.id };
+    for (const field of permissionFields) {
+      (result as any)[field] = plan[field];
+    }
+    return result;
   }
 }

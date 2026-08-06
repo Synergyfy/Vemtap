@@ -118,6 +118,12 @@ export class Business extends AbstractBaseEntity {
   @Column({ nullable: true })
   city: string;
 
+  @Column('decimal', { precision: 10, scale: 7, nullable: true })
+  latitude: number;
+
+  @Column('decimal', { precision: 10, scale: 7, nullable: true })
+  longitude: number;
+
   @Column({ nullable: true })
   whatsappNumber: string;
 
@@ -131,6 +137,30 @@ export class Business extends AbstractBaseEntity {
   @ApiProperty({ example: '2026-03-21T18:00:00Z', nullable: true })
   @Column({ type: 'timestamp', nullable: true })
   verifiedAt: Date | null;
+
+  @ApiProperty({
+    example: { loyaltyEnabled: true, loyaltyRedeemThreshold: 100 },
+    nullable: true,
+    description: 'POS-specific settings for this business',
+  })
+  @Column({ type: 'jsonb', nullable: true, default: () => "'{}'" })
+  posSettings: {
+    currency?: string;
+    receiptHeader?: string;
+    receiptFooter?: string;
+    autoPrintReceipt?: boolean;
+    showLogo?: boolean;
+    taxEnabled?: boolean;
+    taxRate?: number;
+    taxLabel?: string;
+    pricesIncludeTax?: boolean;
+    loyaltyEnabled?: boolean;
+    loyaltyRedeemThreshold?: number;
+    lowStockAlerts?: boolean;
+    dailySalesSummary?: boolean;
+    newOrderAlert?: boolean;
+    staffActivityAlerts?: boolean;
+  };
 
   // Relation to the owner
   @OneToOne(() => User, (user) => user.ownedBusiness, {

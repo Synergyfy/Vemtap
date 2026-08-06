@@ -150,7 +150,7 @@ export function SequenceStep({ branchId }: SequenceStepProps) {
                     }
                 }
             });
-            toast.success('Sequence flow saved successfully');
+            toast.success("Your customer journey is ready. Every step brings them closer to coming back.");
         } catch (error) {
             console.error('Failed to save sequence', error);
             toast.error('Failed to save sequence flow');

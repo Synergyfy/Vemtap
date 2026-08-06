@@ -6,7 +6,7 @@ import {
   IsArray,
   IsEmail,
 } from 'class-validator';
-import { UserRole, UserStatus } from '../entities/user.entity';
+import { UserStatus } from '../entities/user.entity';
 import { StaffPermission } from './invite-staff.dto';
 
 export class UpdateStaffDto {
@@ -20,10 +20,10 @@ export class UpdateStaffDto {
   @IsOptional()
   email?: string;
 
-  @ApiProperty({ enum: UserRole, required: false })
-  @IsEnum(UserRole)
+  @ApiProperty({ example: 'Supervisor', required: false })
+  @IsString()
   @IsOptional()
-  role?: UserRole;
+  role?: string;
 
   @ApiProperty({ example: 'Senior Manager', required: false })
   @IsString()

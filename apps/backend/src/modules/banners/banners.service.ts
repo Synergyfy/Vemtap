@@ -22,30 +22,34 @@ export class BannersService {
     private readonly cacheManager: Cache,
   ) {}
 
-  async findAll(): Promise<Banner[]> {
-    const cached = await this.cacheManager.get<Banner[]>(CACHE_KEY_ALL);
+  async findAll(placement?: 'business' | 'customer'): Promise<Banner[]> {
+    const cacheKey = placement ? `${CACHE_KEY_ALL}:${placement}` : CACHE_KEY_ALL;
+    const cached = await this.cacheManager.get<Banner[]>(cacheKey);
     if (cached) return cached;
     const banners = await this.bannerRepository.find({
+      where: placement ? { placement } : {},
       order: { sortOrder: 'ASC', createdAt: 'ASC' },
     });
-    await this.cacheManager.set(CACHE_KEY_ALL, banners);
+    await this.cacheManager.set(cacheKey, banners);
     return banners;
   }
 
-  async findActive(): Promise<Banner[]> {
-    const cached = await this.cacheManager.get<Banner[]>(CACHE_KEY_ACTIVE);
+  async findActive(placement?: 'business' | 'customer'): Promise<Banner[]> {
+    const cacheKey = placement ? `${CACHE_KEY_ACTIVE}:${placement}` : CACHE_KEY_ACTIVE;
+    const cached = await this.cacheManager.get<Banner[]>(cacheKey);
     if (cached) return cached;
     const banners = await this.bannerRepository.find({
-      where: { isActive: true },
+      where: placement ? { isActive: true, placement } : { isActive: true },
       order: { sortOrder: 'ASC', createdAt: 'ASC' },
     });
-    await this.cacheManager.set(CACHE_KEY_ACTIVE, banners);
+    await this.cacheManager.set(cacheKey, banners);
     return banners;
   }
 
   async findOne(id: string): Promise<Banner> {
     const banner = await this.bannerRepository.findOne({ where: { id } });
-    if (!banner) throw new NotFoundException(`Banner with id "${id}" not found`);
+    if (!banner)
+      throw new NotFoundException(`Banner with id "${id}" not found`);
     return banner;
   }
 
@@ -99,18 +103,25 @@ export class BannersService {
   private async clearCache() {
     try {
       const cacheMgr = this.cacheManager as any;
-      const store = cacheMgr.store || (cacheMgr.stores ? cacheMgr.stores[0] : null);
+      const store =
+        cacheMgr.store || (cacheMgr.stores ? cacheMgr.stores[0] : null);
       if (store && typeof store.keys === 'function') {
-        const keys = await store.keys('banners:*');
+        const keys = await store.keys('*banners:*');
         for (const key of keys) {
-          await this.cacheManager.del(key);
+          if (typeof store.del === 'function') {
+            await store.del(key);
+          } else {
+            await this.cacheManager.del(key);
+          }
         }
       } else {
         await this.cacheManager.del(CACHE_KEY_ACTIVE);
         await this.cacheManager.del(CACHE_KEY_ALL);
       }
     } catch (error) {
-      this.logger.error(`Failed to clear banner cache: ${(error as Error).message}`);
+      this.logger.error(
+        `Failed to clear banner cache: ${(error as Error).message}`,
+      );
     }
   }
 }

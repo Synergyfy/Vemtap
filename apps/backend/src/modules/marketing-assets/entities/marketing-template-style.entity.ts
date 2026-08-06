@@ -40,7 +40,10 @@ export class MarketingTemplateStyle extends AbstractBaseEntity {
   @Column({ length: 7 })
   textColor: string;
 
-  @ApiProperty({ example: { fontFamily: 'Inter', headingSize: 32, bodySize: 14 }, nullable: true })
+  @ApiProperty({
+    example: { fontFamily: 'Inter', headingSize: 32, bodySize: 14 },
+    nullable: true,
+  })
   @Column({ type: 'json', nullable: true })
   fontConfig?: Record<string, any>;
 
@@ -48,11 +51,17 @@ export class MarketingTemplateStyle extends AbstractBaseEntity {
   @Column({ type: 'json', nullable: true })
   layoutConfig?: Record<string, any>;
 
-  @ApiProperty({ example: { borderRadius: 8, buttonStyle: 'filled' }, nullable: true })
+  @ApiProperty({
+    example: { borderRadius: 8, buttonStyle: 'filled' },
+    nullable: true,
+  })
   @Column({ type: 'json', nullable: true })
   ctaConfig?: Record<string, any>;
 
-  @ApiProperty({ example: { cornerStyle: 'rounded', iconStyle: 'default' }, nullable: true })
+  @ApiProperty({
+    example: { cornerStyle: 'rounded', iconStyle: 'default' },
+    nullable: true,
+  })
   @Column({ type: 'json', nullable: true })
   qrConfig?: Record<string, any>;
 
@@ -64,7 +73,10 @@ export class MarketingTemplateStyle extends AbstractBaseEntity {
   @BeforeUpdate()
   generateSlug() {
     if (!this.slug) {
-      this.slug = this.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+      this.slug = this.name
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/(^-|-$)/g, '');
     }
   }
 }

@@ -67,6 +67,10 @@ pids
 *.pid.lock
 .next/dev/lock
 
+# Stray lock files (pnpm monorepo — only pnpm-lock.yaml should exist)
+package-lock.json
+yarn.lock
+
 # Vercel
 .vercel
 
@@ -78,3 +82,6 @@ endpoint.log
 
 # opencode
 opencode.json
+
+# Mocked data audit
+DASHBOARD-MOCKED-DATA-AUDIT.md

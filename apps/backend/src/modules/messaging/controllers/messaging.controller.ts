@@ -29,7 +29,8 @@ import { AnalyticsService } from '../services/analytics.service';
 import { InboxService } from '../services/inbox.service';
 import { SendMessageDto } from '../dto/send-message.dto';
 import { UpdateMessageDto } from '../dto/update-message.dto';
-import { CreateTemplateDto } from '../dto/template/create-template.dto';
+import { CreateMessagingTemplateDto } from '../dto/template/create-template.dto';
+import { UpdateTemplateStatusDto } from '../dto/template/update-template-status.dto';
 import { ReplyDto } from '../dto/reply.dto';
 import { Channel } from '../enums/channel.enum';
 import { User, UserRole } from '../../users/entities/user.entity';
@@ -126,10 +127,10 @@ export class MessagingController {
     description:
       'Creates a message template that can be reused for campaigns or direct messages. Access: OWNER, MANAGER, ADMIN',
   })
-  @ApiBody({ type: CreateTemplateDto })
+  @ApiBody({ type: CreateMessagingTemplateDto })
   @ApiResponse({ status: 201, description: 'Template created successfully' })
   async createTemplate(
-    @Body() dto: CreateTemplateDto,
+    @Body() dto: CreateMessagingTemplateDto,
     @Request() req: { user: User },
   ) {
     // Explicitly check for branchId if not provided in DTO for Owners/Admins
@@ -149,14 +150,52 @@ export class MessagingController {
       'Modifies an existing message template. Access: OWNER, MANAGER, ADMIN',
   })
   @ApiParam({ name: 'id', description: 'Template UUID' })
-  @ApiBody({ type: CreateTemplateDto, description: 'Partial template data' })
+  @ApiBody({
+    type: CreateMessagingTemplateDto,
+    description: 'Partial template data',
+  })
   @ApiResponse({ status: 200, description: 'Template updated successfully' })
   async updateTemplate(
     @Param() { id }: IdDto,
-    @Body() dto: Partial<CreateTemplateDto>,
+    @Body() dto: Partial<CreateMessagingTemplateDto>,
     @Request() req: { user: User },
   ) {
     return this.templateService.updateTemplate(id, dto, req.user);
+  }
+
+  @Get('admin/templates')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({
+    summary: 'Admin: Get all messaging templates platform-wide',
+    description: 'Retrieves all messaging templates. Access: ADMIN',
+  })
+  @ApiResponse({ status: 200, description: 'Templates retrieved successfully' })
+  async getAdminTemplates() {
+    return this.templateService.findAllAdmin();
+  }
+
+  @Post('admin/templates/:id/status')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({
+    summary: 'Admin: Update template status',
+    description:
+      'Updates template status (approved, rejected, pending). Access: ADMIN',
+  })
+  @ApiParam({ name: 'id', description: 'Template UUID' })
+  @ApiBody({ type: UpdateTemplateStatusDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Template status updated successfully',
+  })
+  async updateAdminTemplateStatus(
+    @Param() { id }: IdDto,
+    @Body() dto: UpdateTemplateStatusDto,
+  ) {
+    return this.templateService.updateStatus(id, dto.status);
   }
 
   @Get('campaigns')
@@ -201,7 +240,7 @@ export class MessagingController {
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard, TrialRestrictionGuard)
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF, UserRole.ADMIN)
-  @Permissions('chat')
+  @Permissions('messages')
   @ApiParam({ name: 'channel', enum: Channel })
   @ApiOperation({
     summary:
@@ -227,7 +266,7 @@ export class MessagingController {
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard, TrialRestrictionGuard)
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF, UserRole.ADMIN)
-  @Permissions('chat')
+  @Permissions('messages')
   @ApiOperation({
     summary: 'Get messages in a specific thread (Newest to Oldest)',
     description:
@@ -252,7 +291,7 @@ export class MessagingController {
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard, TrialRestrictionGuard)
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF)
-  @Permissions('chat')
+  @Permissions('messages')
   @ApiOperation({
     summary: 'Send a reply to an active thread (Supports Quoting)',
     description:
@@ -286,7 +325,7 @@ export class MessagingController {
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard, TrialRestrictionGuard)
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF, UserRole.ADMIN)
-  @Permissions('chat')
+  @Permissions('messages')
   @ApiOperation({
     summary: 'Mark a conversation thread as read for the branch',
     description:
@@ -308,7 +347,7 @@ export class MessagingController {
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard, TrialRestrictionGuard)
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF)
-  @Permissions('chat')
+  @Permissions('messages')
   @ApiOperation({
     summary: 'Initialize an empty conversation thread with a customer',
   })
@@ -340,7 +379,7 @@ export class MessagingController {
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard, TrialRestrictionGuard)
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF)
-  @Permissions('chat')
+  @Permissions('messages')
   @ApiOperation({ summary: 'Edit a message' })
   @ApiParam({ name: 'id', description: 'Message UUID' })
   async editMessage(
@@ -362,7 +401,7 @@ export class MessagingController {
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard, TrialRestrictionGuard)
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF)
-  @Permissions('chat')
+  @Permissions('messages')
   @ApiOperation({ summary: 'Delete (hide) a message' })
   @ApiParam({ name: 'id', description: 'Message UUID' })
   async deleteMessage(

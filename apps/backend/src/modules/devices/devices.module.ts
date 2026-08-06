@@ -12,6 +12,7 @@ import { VisitorsModule } from '../visitors/visitors.module';
 import { CatalogueModule } from '../catalogue/catalogue.module';
 import { FormsModule } from '../forms/forms.module';
 import { QrThriveModule } from '../qr-thrive/qr-thrive.module';
+import { ClustersModule } from '../clusters/clusters.module';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { QrThriveModule } from '../qr-thrive/qr-thrive.module';
     CatalogueModule,
     forwardRef(() => FormsModule),
     QrThriveModule,
+    ClustersModule,
   ],
   controllers: [DevicesController, DeviceTapController],
   providers: [DevicesService],

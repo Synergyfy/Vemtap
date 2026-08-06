@@ -25,20 +25,20 @@ export default function Hero() {
                         <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary/10 rounded-full mb-2">
                             <Zap size={14} className="text-primary fill-primary" />
                             <span className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">
-                                The Future of Customer Loyalty
+                                Customer Engagement Platform
                             </span>
                         </div>
-                        <h1 className="font-display font-black text-4xl md:text-5xl lg:text-7xl leading-[1.1] text-text-main tracking-tight">
-                            Turn Every Visitor Into A <span className="text-primary">Customer You Can Reach Again</span>
+                        <h1 className="font-display font-black text-4xl md:text-5xl lg:text-6xl leading-[1.1] text-text-main tracking-tight">
+                            Turn Every Customer Into A <span className="text-primary">Customer You Can Reach Again.</span>
                         </h1>
 
                         <p className="text-base md:text-xl text-text-secondary max-w-xl font-medium leading-relaxed">
-                            Capture customer details using QR codes and NFC technology. Build your customer database, send smart messages, and grow your business.
+                            We help businesses capture customer details, build lasting relationships, automate follow-ups, and increase repeat sales...
                         </p>
 
                         <div className="flex flex-col sm:flex-row items-center gap-4 pt-4">
                             <Link href="/get-started" className="w-full sm:w-auto text-center bg-primary hover:bg-primary-hover text-white font-black uppercase tracking-widest text-xs px-10 py-5 rounded-2xl transition-all transform hover:scale-105 shadow-2xl shadow-primary/30 cursor-pointer">
-                                Start Free
+                                Get Started
                             </Link>
                             <Link href="/demo" className="w-full sm:w-auto text-center bg-white border-2 border-primary/10 hover:border-primary/30 text-primary font-black uppercase tracking-widest text-xs px-10 py-5 rounded-2xl transition-all transform hover:scale-105 shadow-xl shadow-gray-200/50 cursor-pointer">
                                 Watch Demo
@@ -48,7 +48,7 @@ export default function Hero() {
 
                     {/* Right Column: Video Showcase */}
                     <div className="relative animate-in fade-in slide-in-from-right-32 duration-1000 delay-200 flex justify-center lg:justify-end">
-                        <div className="relative w-full max-w-[340px] p-3 bg-gray-50/50 rounded-[3.5rem] border border-gray-100 shadow-sm group">
+                        <div className="relative w-full max-w-[280px] p-2 bg-gray-50/50 rounded-[3.5rem] border border-gray-100 shadow-sm group">
                             <div className="relative aspect-9/16 bg-gray-950 rounded-[3rem] overflow-hidden shadow-2xl border-4 border-gray-900 group-hover:border-primary/20 transition-colors duration-500">
                                 <video
                                     autoPlay

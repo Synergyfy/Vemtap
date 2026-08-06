@@ -1,0 +1,75 @@
+import { api } from '@/lib/api';
+import type {
+  CreatePosSaleDto,
+  HoldPosSaleDto,
+  OpenRegisterDto,
+  PosSaleStatus,
+  PosSalesQuery,
+  PosCustomerQuery,
+  RegisterHistoryQuery,
+  UpdatePosSaleStatusDto,
+  BatchSyncRequest,
+  BatchSyncResult,
+} from '@/services/pos/types';
+
+export const posApi = {
+  getSales: (params?: PosSalesQuery) =>
+    api.get('/pos/sales', { params }),
+
+  getSale: (id: string) =>
+    api.get(`/pos/sales/${id}`),
+
+  createSale: (dto: CreatePosSaleDto) =>
+    api.post('/pos/sales', dto),
+
+  batchSyncOfflineSales: (dto: BatchSyncRequest) =>
+    api.post('/pos/sales/batch-sync', dto),
+
+  updateSaleStatus: (id: string, dto: UpdatePosSaleStatusDto) =>
+    api.patch(`/pos/sales/${id}/status`, dto),
+
+  holdSale: (dto: HoldPosSaleDto) =>
+    api.post('/pos/sales/hold', dto),
+
+  getHeldSales: (branchId?: string) =>
+    api.get('/pos/sales/held', { params: { branchId } }),
+
+  getHeldSale: (id: string) =>
+    api.get(`/pos/sales/held/${id}`),
+
+  deleteHeldSale: (id: string) =>
+    api.delete(`/pos/sales/held/${id}`),
+
+  openRegister: (dto: OpenRegisterDto) =>
+    api.post('/pos/register/open', dto),
+
+  closeRegister: () =>
+    api.post('/pos/register/close', {}),
+
+  getRegisterStatus: () =>
+    api.get('/pos/register/status'),
+
+  getRegisterHistory: (query?: RegisterHistoryQuery) =>
+    api.get('/pos/register/history', { params: query }),
+
+  getDashboard: (branchId?: string) =>
+    api.get('/pos/dashboard', { params: { branchId } }),
+
+  getTopProducts: (branchId?: string) =>
+    api.get('/pos/dashboard/top-products', { params: { branchId } }),
+
+  adjustStock: (id: string, quantity: number) =>
+    api.patch(`/pos/products/${id}/stock`, { quantity }),
+
+  getCustomers: (params?: PosCustomerQuery) =>
+    api.get('/pos/customers', { params }),
+
+  getCustomer: (id: string) =>
+    api.get(`/pos/customers/${id}`),
+
+  cashDrop: (dto: { amount: number; reason: string }) =>
+    api.post('/pos/register/cash-drop', dto),
+
+  getZReport: () =>
+    api.get('/pos/register/z-report'),
+};

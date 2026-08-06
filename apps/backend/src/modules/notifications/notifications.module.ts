@@ -6,7 +6,10 @@ import { Notification } from './entities/notification.entity';
 import { NotificationsService } from './notifications.service';
 import { NotificationsController } from './notifications.controller';
 import { PushNotificationService } from './push-notification.service';
-import { PushNotificationProcessor, PUSH_NOTIFICATION_QUEUE } from './push-notification.processor';
+import {
+  PushNotificationProcessor,
+  PUSH_NOTIFICATION_QUEUE,
+} from './push-notification.processor';
 import { User } from '../users/entities/user.entity';
 import { Contact } from '../contacts/entities/contact.entity';
 
@@ -47,7 +50,11 @@ import { Contact } from '../contacts/entities/contact.entity';
       name: PUSH_NOTIFICATION_QUEUE,
     }),
   ],
-  providers: [NotificationsService, PushNotificationService, PushNotificationProcessor],
+  providers: [
+    NotificationsService,
+    PushNotificationService,
+    PushNotificationProcessor,
+  ],
   controllers: [NotificationsController],
   exports: [NotificationsService, PushNotificationService],
 })

@@ -5,14 +5,16 @@ import {
   ConflictException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, IsNull } from 'typeorm';
 import { User, UserRole, UserStatus } from './entities/user.entity';
+import { UserSession } from './entities/user-session.entity';
 import * as bcrypt from 'bcrypt';
 import { UpdateStaffDto } from './dto/update-staff.dto';
 import { InviteStaffDto } from './dto/invite-staff.dto';
 import { PasswordResetHistory } from './entities/password-reset-history.entity';
 import { MailService } from '../mail/mail.service';
 import { EventsGateway } from '../../common/gateways/events.gateway';
+import { paginateWithCursor } from '../../common/utils/cursor-pagination.util';
 
 @Injectable()
 export class UsersService {
@@ -21,6 +23,8 @@ export class UsersService {
     private usersRepository: Repository<User>,
     @InjectRepository(PasswordResetHistory)
     private passwordResetHistoryRepository: Repository<PasswordResetHistory>,
+    @InjectRepository(UserSession)
+    private userSessionRepository: Repository<UserSession>,
     private readonly mailService: MailService,
     private readonly eventsGateway: EventsGateway,
   ) {}
@@ -46,14 +50,22 @@ export class UsersService {
       .findOne({ where: { id: branchId } });
 
     const trimmedFirstName = dto.firstName.trim();
-    const hashedPassword = await bcrypt.hash(trimmedFirstName.toLowerCase(), 10);
+    const defaultPassword = Math.floor(
+      100000 + Math.random() * 900000,
+    ).toString();
+    const hashedPassword = await bcrypt.hash(defaultPassword, 10);
+    const actualRole =
+      dto.role.trim().toLowerCase() === 'manager'
+        ? UserRole.MANAGER
+        : UserRole.STAFF;
     const user = this.usersRepository.create({
       firstName: trimmedFirstName,
       lastName: dto.lastName.trim(),
       email: dto.email.trim().toLowerCase(),
       phone: dto.phone?.trim(),
       password: hashedPassword,
-      role: dto.role,
+      role: actualRole,
+      roleTag: dto.role.trim(),
       jobTitle: dto.jobTitle?.trim(),
       permissions: dto.permissions,
       branchId: branchId,
@@ -67,7 +79,7 @@ export class UsersService {
       await this.mailService.sendWelcomeEmail(
         savedUser.email,
         savedUser.firstName,
-        trimmedFirstName.toLowerCase(),
+        defaultPassword,
       );
     } catch (error) {
       console.error('Failed to send invitation email:', error);
@@ -115,6 +127,13 @@ export class UsersService {
     });
   }
 
+  async existsByPhone(
+    phone: string,
+  ): Promise<{ exists: boolean; email?: string }> {
+    const user = await this.findByPhone(phone);
+    return { exists: !!user, email: user?.email };
+  }
+
   async findByGoogleId(googleId: string): Promise<User | null> {
     return this.usersRepository.findOne({
       where: { googleId },
@@ -127,6 +146,65 @@ export class UsersService {
     return this.usersRepository.findOne({
       where: [{ email: trimmed.toLowerCase() }, { phone: trimmed }],
     });
+  }
+
+  async getTwoFactorState(id: string): Promise<Pick<User, 'twoFactorEnabled' | 'twoFactorSecret'> | null> {
+    return this.usersRepository.findOne({
+      where: { id },
+      select: ['id', 'twoFactorEnabled', 'twoFactorSecret'],
+    });
+  }
+
+  async createSession(userId: string, metadata?: Partial<UserSession>) {
+    const session = this.userSessionRepository.create({
+      userId,
+      deviceName: metadata?.deviceName || 'Web browser',
+      platform: metadata?.platform || 'web',
+      userAgent: metadata?.userAgent || null,
+      ipAddress: metadata?.ipAddress || null,
+      lastActiveAt: new Date(),
+      revokedAt: null,
+    });
+    return this.userSessionRepository.save(session);
+  }
+
+  async findActiveSession(id: string, userId: string) {
+    return this.userSessionRepository.findOne({ where: { id, userId, revokedAt: IsNull() } });
+  }
+
+  async listSessions(userId: string) {
+    return this.userSessionRepository.find({
+      where: { userId },
+      order: { lastActiveAt: 'DESC' },
+      select: ['id', 'deviceName', 'platform', 'userAgent', 'ipAddress', 'lastActiveAt', 'revokedAt', 'createdAt'],
+    });
+  }
+
+  async renameSession(userId: string, sessionId: string, deviceName: string) {
+    const session = await this.userSessionRepository.findOne({ where: { id: sessionId, userId } });
+    if (!session) throw new NotFoundException('Linked device not found');
+    session.deviceName = deviceName;
+    return this.userSessionRepository.save(session);
+  }
+
+  async revokeSession(userId: string, sessionId: string) {
+    const session = await this.userSessionRepository.findOne({ where: { id: sessionId, userId } });
+    if (!session) throw new NotFoundException('Linked device not found');
+    session.revokedAt = new Date();
+    await this.userSessionRepository.save(session);
+    return { success: true };
+  }
+
+  async revokeOtherSessions(userId: string, currentSessionId: string) {
+    await this.userSessionRepository
+      .createQueryBuilder()
+      .update(UserSession)
+      .set({ revokedAt: new Date() })
+      .where('userId = :userId', { userId })
+      .andWhere('id != :currentSessionId', { currentSessionId })
+      .andWhere('revokedAt IS NULL')
+      .execute();
+    return { success: true };
   }
 
   async updateProfile(id: string, updates: Partial<User>): Promise<User> {
@@ -184,7 +262,11 @@ export class UsersService {
     if (updates.email) user.email = updates.email;
 
     if (updates.role) {
-      user.role = updates.role;
+      user.roleTag = updates.role.trim();
+      user.role =
+        updates.role.trim().toLowerCase() === 'manager'
+          ? UserRole.MANAGER
+          : UserRole.STAFF;
     }
 
     if (updates.permissions) {
@@ -360,7 +442,15 @@ export class UsersService {
   }
 
   async findAllAdmin(options: any) {
-    const { search, role, status, page = 1, limit = 10 } = options;
+    const {
+      search,
+      role,
+      status,
+      page = 1,
+      limit = 10,
+      cursor,
+      nextCursor,
+    } = options;
     const qb = this.usersRepository.createQueryBuilder('user');
 
     if (search) {
@@ -372,14 +462,27 @@ export class UsersService {
     if (role) qb.andWhere('user.role = :role', { role });
     if (status) qb.andWhere('user.status = :status', { status });
 
-    qb.skip((page - 1) * limit)
-      .take(limit)
-      .orderBy('user.createdAt', 'DESC');
+    const result = await paginateWithCursor({
+      queryBuilder: qb,
+      cursor: cursor || nextCursor,
+      page,
+      limit,
+      sortField: 'createdAt',
+      sortOrder: 'DESC',
+      entityAlias: 'user',
+    });
 
-    const [data, total] = await qb.getManyAndCount();
     return {
-      data,
-      meta: { total, page, lastPage: Math.ceil(total / limit) },
+      data: result.data,
+      cursor: result.cursor,
+      nextCursor: result.nextCursor,
+      prevCursor: result.prevCursor,
+      hasNextPage: result.hasNextPage,
+      meta: {
+        total: result.total,
+        page: result.page,
+        lastPage: result.meta.lastPage,
+      },
     };
   }
 }

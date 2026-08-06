@@ -1,4 +1,10 @@
-import { IsString, IsOptional, IsBoolean, IsNumber, IsIn } from 'class-validator';
+import {
+  IsString,
+  IsOptional,
+  IsBoolean,
+  IsNumber,
+  IsIn,
+} from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 const ICON_NAMES = ['Sparkles', 'Megaphone', 'Zap', 'Gift'] as const;
@@ -41,4 +47,25 @@ export class CreateBannerDto {
   @IsOptional()
   @IsBoolean()
   isActive?: boolean;
+
+  @ApiPropertyOptional({ example: 'business', enum: ['business', 'customer'] })
+  @IsOptional()
+  @IsIn(['business', 'customer'])
+  placement?: 'business' | 'customer';
+
+  @ApiPropertyOptional({
+    example: 'custom',
+    enum: ['custom', 'deals-page', 'deal'],
+  })
+  @IsOptional()
+  @IsIn(['custom', 'deals-page', 'deal'])
+  targetType?: 'custom' | 'deals-page' | 'deal';
+
+  @ApiPropertyOptional({
+    example: 'offer_123',
+    description: 'Deal offer id when targetType is "deal"',
+  })
+  @IsOptional()
+  @IsString()
+  targetId?: string;
 }

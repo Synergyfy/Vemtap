@@ -31,12 +31,14 @@ interface BookingSystemProps {
     service: CatalogueItem;
     onConfirm: (date: string, time: string) => void;
     isSubmitting?: boolean;
+    storeName?: string;
 }
 
 export const BookingSystem: React.FC<BookingSystemProps> = ({ 
     service, 
     onConfirm, 
-    isSubmitting = false 
+    isSubmitting = false,
+    storeName
 }) => {
     const today = useMemo(() => new Date(), []);
     const [currentMonth, setCurrentMonth] = useState(today.getMonth());
@@ -230,7 +232,7 @@ export const BookingSystem: React.FC<BookingSystemProps> = ({
                     )}
                 </button>
                 <p className="text-[9px] md:text-[10px] text-center text-outline font-bold mt-4 uppercase tracking-widest">
-                    Secure checkout powered by Vemtap Premium
+                    Secure checkout powered by {storeName || 'Vemtap'}
                 </p>
             </div>
         </div>

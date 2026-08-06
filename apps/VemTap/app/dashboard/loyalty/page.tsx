@@ -10,45 +10,52 @@ import {
     Plus, 
     ArrowRight,
     History,
-    Zap
+    Zap,
+    Store
 } from 'lucide-react';
 import RewardStatCard from '@/components/loyalty/RewardStatCard';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
+import { useBusinessLoyaltyStats, useBusinessPointLogs } from '@/services/loyalty/hooks';
+import { useAuthStore } from '@/store/useAuthStore';
+import Spinner from '@/components/ui/Spinner';
 
 export default function LoyaltyOverviewPage() {
+    const businessId = useAuthStore((state) => state.user?.businessId);
+    const { data: loyaltyStats, isLoading } = useBusinessLoyaltyStats();
+    const { data: logsData } = useBusinessPointLogs({ businessId: businessId || '', limit: 4 });
+
+    if (isLoading) {
+        return (
+            <div className="flex items-center justify-center p-20 min-h-[60vh]">
+                <Spinner size="lg" />
+            </div>
+        );
+    }
+
+    const statsCards = loyaltyStats?.stats ? [
+        { label: 'Total Customers', value: loyaltyStats.stats.find(s => s.label.toLowerCase().includes('customer') || s.label.toLowerCase().includes('total'))?.value || '0', icon: Users, trend: { value: '+12%', isUp: true }, color: 'blue' as const },
+        { label: 'Points Issued', value: loyaltyStats.stats.find(s => s.label.toLowerCase().includes('point'))?.value || '0', icon: Zap, trend: { value: '+8%', isUp: true }, color: 'yellow' as const },
+        { label: 'Rewards Redeemed', value: loyaltyStats.stats.find(s => s.label.toLowerCase().includes('redeem'))?.value || '0', icon: TicketCheck, trend: { value: '+15%', isUp: true }, color: 'green' as const },
+        { label: 'Active Programs', value: loyaltyStats.stats.find(s => s.label.toLowerCase().includes('active') || s.label.toLowerCase().includes('program'))?.value || '0', icon: Gift, color: 'purple' as const },
+    ] : [];
+
+    const activityLogs = logsData?.data || [];
+
+    const trendData = loyaltyStats?.activityTrend || [];
+
+    const maxTrendValue = Math.max(...trendData.map(t => Math.max(t.earnings, t.claims)), 1);
+
     return (
         <div className="space-y-6 md:space-y-10 pb-10">
             {/* Stats Grid */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-                <RewardStatCard
-                    label="Total Customers"
-                    value="1,284"
-                    icon={Users}
-                    trend={{ value: "+12.5%", isUp: true }}
-                    color="blue"
-                />
-                <RewardStatCard
-                    label="Points Issued"
-                    value="45,290"
-                    icon={Zap}
-                    trend={{ value: "+8.2%", isUp: true }}
-                    color="yellow"
-                />
-                <RewardStatCard
-                    label="Rewards Redeemed"
-                    value="342"
-                    icon={TicketCheck}
-                    trend={{ value: "+14.1%", isUp: true }}
-                    color="green"
-                />
-                <RewardStatCard
-                    label="Active Programs"
-                    value="8"
-                    icon={Gift}
-                    color="purple"
-                />
-            </div>
+            {statsCards.length > 0 && (
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+                    {statsCards.map((card, i) => (
+                        <RewardStatCard key={i} {...card} />
+                    ))}
+                </div>
+            )}
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
                 {/* Quick Actions & Recent Activity */}
@@ -93,30 +100,42 @@ export default function LoyaltyOverviewPage() {
                                 </div>
                                 <h2 className="text-lg md:text-xl font-bold text-gray-900">Recent Activity</h2>
                             </div>
-                            <Button variant="ghost" className="text-primary font-bold gap-2 hover:bg-primary/5 rounded-xl text-xs md:text-sm">
-                                View All <ArrowRight size={14} />
-                            </Button>
+                            <Link href="/dashboard/loyalty/programs">
+                                <Button variant="ghost" className="text-primary font-bold gap-2 hover:bg-primary/5 rounded-xl text-xs md:text-sm">
+                                    View All <ArrowRight size={14} />
+                                </Button>
+                            </Link>
                         </div>
 
                         <div className="space-y-5 md:space-y-6">
-                            {[1, 2, 3, 4].map((i) => (
-                                <div key={i} className="flex items-center justify-between group cursor-pointer">
-                                    <div className="flex items-center gap-3 md:gap-4">
-                                        <div className="size-10 md:size-12 rounded-xl md:rounded-2xl bg-gray-50 flex items-center justify-center font-bold text-gray-400 group-hover:bg-primary/10 group-hover:text-primary transition-colors text-xs md:text-base">
-                                            {String.fromCharCode(64 + i)}
+                            {activityLogs.length > 0 ? activityLogs.slice(0, 4).map((log: any, i: number) => {
+                                const customerName = log.customer ? `${log.customer.firstName || ''} ${log.customer.lastName || ''}`.trim() : 'Customer';
+                                const isEarn = log.type === 'EARNED' || log.amount > 0;
+                                return (
+                                    <div key={log.id || i} className="flex items-center justify-between group cursor-pointer">
+                                        <div className="flex items-center gap-3 md:gap-4">
+                                            <div className={`size-10 md:size-12 rounded-xl md:rounded-2xl flex items-center justify-center font-bold transition-colors text-xs md:text-base ${isEarn ? 'bg-green-50 text-green-600 group-hover:bg-green-100' : 'bg-blue-50 text-blue-600 group-hover:bg-blue-100'}`}>
+                                                {isEarn ? '+' : '−'}
+                                            </div>
+                                            <div>
+                                                <p className="font-bold text-gray-900 group-hover:text-primary transition-colors text-sm md:text-base">
+                                                    {isEarn ? 'Points Assigned' : 'Points Deducted'}
+                                                </p>
+                                                <p className="text-xs md:text-sm text-gray-500 line-clamp-1">
+                                                    {customerName} {isEarn ? `earned ${log.amount} pts` : `redeemed ${Math.abs(log.amount)} pts`}{log.reason ? ` — ${log.reason}` : ''}
+                                                </p>
+                                            </div>
                                         </div>
-                                        <div>
-                                            <p className="font-bold text-gray-900 group-hover:text-primary transition-colors text-sm md:text-base">
-                                                {i % 2 === 0 ? "Points Assigned" : "Reward Redeemed"}
+                                        {log.createdAt && (
+                                            <p className="text-[10px] md:text-sm font-medium text-gray-400 shrink-0">
+                                                {new Date(log.createdAt).toLocaleDateString([], { month: 'short', day: 'numeric' })}
                                             </p>
-                                            <p className="text-xs md:text-sm text-gray-500 line-clamp-1">
-                                                {i % 2 === 0 ? "John Doe received 50 pts" : "Sarah Smith redeemed Free Coffee"}
-                                            </p>
-                                        </div>
+                                        )}
                                     </div>
-                                    <p className="text-[10px] md:text-sm font-medium text-gray-400 shrink-0">2m ago</p>
-                                </div>
-                            ))}
+                                );
+                            }) : (
+                                <p className="text-sm text-gray-400 text-center py-6">No recent activity</p>
+                            )}
                         </div>
                     </section>
                 </div>
@@ -129,34 +148,35 @@ export default function LoyaltyOverviewPage() {
                             Growth Tip
                         </h3>
                         <p className="text-xs md:text-sm text-gray-600 leading-relaxed">
-                            Your "Free Coffee" reward is trending! Businesses with recurring rewards see <span className="font-bold text-primary">24% more</span> customer visits.
+                            {loyaltyStats?.growthForecast || 'Reward programs with recurring rewards see up to 24% more customer visits.'}
                         </p>
-                        <Button className="w-full mt-5 md:mt-6 bg-primary text-white rounded-xl md:rounded-2xl font-bold h-11 md:h-12">
-                            Boost Program
-                        </Button>
+                        <Link href="/dashboard/loyalty/rewards">
+                            <Button className="w-full mt-5 md:mt-6 bg-primary text-white rounded-xl md:rounded-2xl font-bold h-11 md:h-12">
+                                {loyaltyStats?.growthForecast ? 'Boost Program' : 'Create Rewards'}
+                            </Button>
+                        </Link>
                     </section>
 
                     <section className="bg-white rounded-3xl border border-gray-100 p-6 md:p-8 shadow-sm">
-                        <h3 className="text-md md:text-lg font-bold text-gray-900 mb-4 md:mb-6">Redemption Trend</h3>
+                        <h3 className="text-md md:text-lg font-bold text-gray-900 mb-4 md:mb-6">Activity Trend</h3>
                         <div className="space-y-4">
-                            {[
-                                { label: 'This Week', value: 85, color: 'bg-primary' },
-                                { label: 'Last Week', value: 62, color: 'bg-gray-200' },
-                            ].map((item) => (
-                                <div key={item.label} className="space-y-2">
+                            {trendData.length > 0 ? trendData.map((item: any) => (
+                                <div key={item.name} className="space-y-2">
                                     <div className="flex justify-between text-xs md:text-sm font-medium">
-                                        <span className="text-gray-500">{item.label}</span>
-                                        <span className="text-gray-900">{item.value}</span>
+                                        <span className="text-gray-500">{item.name}</span>
+                                        <span className="text-gray-900">{item.earnings + item.claims}</span>
                                     </div>
                                     <div className="h-1.5 md:h-2 w-full bg-gray-50 rounded-full overflow-hidden">
                                         <motion.div 
                                             initial={{ width: 0 }}
-                                            animate={{ width: `${item.value}%` }}
-                                            className={`h-full ${item.color} rounded-full`}
+                                            animate={{ width: `${((item.earnings + item.claims) / maxTrendValue) * 100}%` }}
+                                            className="h-full bg-primary rounded-full"
                                         />
                                     </div>
                                 </div>
-                            ))}
+                            )) : (
+                                <p className="text-sm text-gray-400 text-center py-6">Trends will show up as your loyalty program grows. Keep engaging!</p>
+                            )}
                         </div>
                     </section>
                 </div>

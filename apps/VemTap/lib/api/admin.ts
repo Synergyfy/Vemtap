@@ -13,7 +13,6 @@ export const adminUsersApi = {
         if (params?.limit) q.set('limit', String(params.limit));
         return api.get(`/users/admin?${q.toString()}`);
     },
-    getStats: () => api.get('/users/admin/stats'),
     create: (data: any) => api.post('/users/admin', data),
     update: (id: string, data: any) => api.patch(`/users/admin/${id}`, data),
     delete: (id: string) => api.delete(`/users/admin/${id}`),
@@ -183,7 +182,7 @@ export const adminMessagingApi = {
     }) => api.post('/messaging/templates', data),
     updateTemplateStatus: (id: string, status: 'pending' | 'approved' | 'rejected') =>
         api.post(`/messaging/admin/templates/${id}/status`, { status }),
-    deleteTemplate: (id: string) => api.delete(`/messaging/templates/${id}/delete`),
+    deleteTemplate: (id: string) => api.delete(`/messaging/templates/${id}`),
 };
 
 export const adminNotificationsApi = {
@@ -296,6 +295,8 @@ export const adminCreditsApi = {
 export const adminLoyaltyApi = {
     getTemplates: () => api.get('/loyalty/reward-templates'),
     createTemplate: (data: any) => api.post('/loyalty/reward-templates', data),
+    updateTemplate: (id: string, data: any) => api.patch(`/loyalty/reward-templates/${id}`, data),
+    deleteTemplate: (id: string) => api.delete(`/loyalty/reward-templates/${id}`),
     getBusinessLogs: (params: { businessId: string; branchId?: string; page?: number; limit?: number }) => {
         const q = new URLSearchParams();
         q.set('businessId', params.businessId);
@@ -304,6 +305,17 @@ export const adminLoyaltyApi = {
         if (params.limit) q.set('limit', String(params.limit));
         return api.get(`/loyalty/points/business-logs?${q.toString()}`);
     },
+};
+
+export const adminPartnershipRewardsApi = {
+    getTiers: () => api.get('/discovery/admin/partnerships/rewards'),
+    saveTiers: (data: { tiers: any[]; defaultMultiplier?: number; autoUpgradeEnabled?: boolean }) =>
+        api.put('/discovery/admin/partnerships/rewards', data),
+};
+
+export const adminNfcGrantsApi = {
+    grant: (data: { businessId: string; quantity: number; grantType?: string; notes?: string }) =>
+        api.post('/administration/nfc-grants', data),
 };
 
 // =====================
@@ -330,7 +342,8 @@ export const adminBundleDiscountsApi = {
 // BANNERS (Admin)
 // =====================
 export const adminBannersApi = {
-    list: () => api.get('/admin/banners'),
+    list: (placement?: 'business' | 'customer') =>
+        api.get('/admin/banners', placement ? { params: { placement } } : undefined),
     get: (id: string) => api.get(`/admin/banners/${id}`),
     create: (data: any) => api.post('/admin/banners', data),
     update: (id: string, data: any) => api.patch(`/admin/banners/${id}`, data),

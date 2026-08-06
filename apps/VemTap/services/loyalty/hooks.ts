@@ -130,15 +130,11 @@ export const useReward = (id: string) => {
     });
 };
 
-export const useRewardRedemptions = (rewardId: string, branchId?: string) => {
-    const { branchId: resolvedBranchId } = useResolvedBranchParams(branchId);
-
+export const useRewardRedemptions = (rewardId: string) => {
     return useQuery<Redemption[], Error>({
-        queryKey: ['loyalty', 'rewards', rewardId, 'redemptions', resolvedBranchId],
+        queryKey: ['loyalty', 'rewards', rewardId, 'redemptions'],
         queryFn: async () => {
-            const params = new URLSearchParams();
-            if (resolvedBranchId) params.append('branchId', resolvedBranchId);
-            return await api.get(`/loyalty/rewards/${rewardId}/redemptions?${params.toString()}`);
+            return await api.get(`/loyalty/rewards/${rewardId}/redemptions`);
         },
         enabled: !!rewardId,
     });
@@ -230,7 +226,7 @@ export const useEarnPoints = () => {
     const queryClient = useQueryClient();
 
     return useMutation<PointEarnResponse, Error, PointEarnRequest>({
-        mutationFn: async (dto) => await api.post('/loyalty/earn', dto),
+        mutationFn: async (dto) => await api.post('/loyalty/points/give', dto),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['loyalty'] });
         },
@@ -286,7 +282,10 @@ export const useLoyaltyHistory = (branchId?: string) => {
 
 export const useGenerateRedemptionCode = () => {
     return useMutation<Redemption, Error, { rewardId: string; branchId?: string }>({
-        mutationFn: async (dto) => await api.post('/loyalty/generate-code', dto)
+        mutationFn: async (dto) => {
+            const result: any = await api.post('/loyalty/redemption/generate-code', dto);
+            return { ...result, redemptionCode: result.redemptionCode ?? result.code };
+        }
     });
 };
 
@@ -379,7 +378,10 @@ export const useApplyLoyaltyTemplate = (branchId?: string) => {
 export const usePointsBalance = (businessId: string) => {
     return useQuery<{ balance: number }, Error>({
         queryKey: ['loyalty', 'points-balance', businessId],
-        queryFn: async () => await api.get(`/loyalty/points/balance?businessId=${businessId}`),
+        queryFn: async () => {
+            const res = await api.get(`/loyalty/points/balance?businessId=${businessId}`);
+            return typeof res === 'number' ? { balance: res } : (res && typeof res === 'object' ? res : { balance: 0 });
+        },
         enabled: !!businessId,
     });
 };
@@ -393,6 +395,21 @@ export const usePointsLogs = (params: { businessId: string; page?: number; limit
             if (params.page) q.set('page', String(params.page));
             if (params.limit) q.set('limit', String(params.limit));
             return await api.get(`/loyalty/points/logs?${q.toString()}`);
+        },
+        enabled: !!params.businessId,
+    });
+};
+
+export const useBusinessPointLogs = (params: { businessId: string; branchId?: string; page?: number; limit?: number }) => {
+    return useQuery<{ data: PointTransaction[]; total: number; page: number; limit: number }, Error>({
+        queryKey: ['loyalty', 'business-point-logs', params],
+        queryFn: async () => {
+            const q = new URLSearchParams();
+            q.set('businessId', params.businessId);
+            if (params.branchId) q.set('branchId', params.branchId);
+            if (params.page) q.set('page', String(params.page));
+            if (params.limit) q.set('limit', String(params.limit));
+            return await api.get(`/loyalty/points/business-logs?${q.toString()}`);
         },
         enabled: !!params.businessId,
     });

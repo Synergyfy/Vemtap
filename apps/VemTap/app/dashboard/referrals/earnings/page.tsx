@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { useReferralStore } from '@/store/useReferralStore';
+import { PageGuideButton, AICopilotButton } from '@/components/ai';
 
 export default function EarningsPage() {
     const { stats } = useReferralStore();
@@ -24,7 +25,7 @@ export default function EarningsPage() {
                 Back to Dashboard
             </Link>
 
-            <h1 className="text-3xl font-black text-gray-900 leading-tight mb-8">Commission Earnings</h1>
+            <div className="flex items-center gap-2 mb-8"><h1 className="text-3xl font-black text-gray-900 leading-tight">Commission Earnings</h1><PageGuideButton /><AICopilotButton /></div>
 
             {/* EARNINGS SUMMARY */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-12">

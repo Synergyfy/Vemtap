@@ -21,6 +21,8 @@ import { Device, DeviceStatus } from '../devices/entities/device.entity';
 import { Branch } from '../branches/entities/branch.entity';
 import { Contact } from '../contacts/entities/contact.entity';
 import { VisitorQueryDto } from './dto/visitor-query.dto';
+import { paginateWithCursor } from '../../common/utils/cursor-pagination.util';
+import { CatalogueOffer } from '../catalogue/entities/catalogue-offer.entity';
 import {
   VisitorResponseDto,
   PaginatedVisitorResponseDto,
@@ -28,6 +30,7 @@ import {
   ReturningVisitorResponseDto,
 } from './dto/visitor-response.dto';
 import { VisitorStatsResponseDto } from './dto/visitor-stats.dto';
+import { VisitorGrowthResponseDto } from './dto/visitor-growth.dto';
 import { CreateVisitorDto } from './dto/create-visitor.dto';
 import { VisitorSignupDto } from './dto/visitor-signup.dto';
 import { MessagingEngineService } from '../messaging/services/messaging-engine.service';
@@ -36,10 +39,12 @@ import { TriggerType } from '../messaging/enums/automation.enum';
 import { Channel } from '../messaging/enums/channel.enum';
 import { CampaignsService } from '../campaigns/campaigns.service';
 import * as bcrypt from 'bcrypt';
+import { randomBytes } from 'crypto';
 import { MailService } from '../mail/mail.service';
 import { MessageLog } from '../messaging/entities/message-log.entity';
 import { BranchesService } from '../branches/branches.service';
 import { LoyaltyService } from '../loyalty/loyalty.service';
+import { AuthService } from '../auth/auth.service';
 import { PointTransaction } from '../loyalty/entities/point-transaction.entity';
 import { RedemptionCode } from '../loyalty/entities/redemption-code.entity';
 import { Reward } from '../loyalty/entities/reward.entity';
@@ -53,6 +58,10 @@ import { VisitedBranchesQueryDto } from './dto/visited-branches-query.dto';
 import { PaginatedVisitedBranchResponseDto } from './dto/visited-branch-response.dto';
 import { AdminVisitorActivitiesQueryDto } from './dto/admin-visitor-activities-query.dto';
 import { PaginatedVisitResponseDto } from './dto/visit-response.dto';
+import {
+  ActivityFeedItemDto,
+  PaginatedActivityFeedResponseDto,
+} from './dto/activity-feed-response.dto';
 
 @Injectable()
 export class VisitorsService {
@@ -74,6 +83,7 @@ export class VisitorsService {
     private mailService: MailService,
     private branchesService: BranchesService,
     private loyaltyService: LoyaltyService,
+    private authService: AuthService,
   ) {}
 
   async getVisitedBranches(
@@ -157,8 +167,7 @@ export class VisitorsService {
 
     const baseQb = this.userRepository
       .createQueryBuilder('user')
-      .innerJoin('user.visits', 'visit')
-
+      .innerJoin('user.visits', 'visit');
 
     if (branchId) {
       baseQb.andWhere('visit.branchId = :branchId', { branchId });
@@ -321,10 +330,222 @@ export class VisitorsService {
     };
   }
 
+  async getGrowthChartData(
+    range: string = '7D',
+    branchId?: string,
+    businessId?: string,
+  ): Promise<VisitorGrowthResponseDto> {
+    const validRanges = ['7D', '30D', '90D', '12M'];
+    const activeRange = validRanges.includes(range) ? range : '7D';
+
+    try {
+      const now = new Date();
+      const startDate = new Date();
+      let buckets: { name: string; customers: number }[] = [];
+
+      if (activeRange === '7D') {
+        startDate.setDate(now.getDate() - 6);
+        startDate.setHours(0, 0, 0, 0);
+
+        const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+        const countsMap = new Map<string, number>();
+
+        for (let i = 0; i < 7; i++) {
+          const d = new Date(startDate);
+          d.setDate(startDate.getDate() + i);
+          const dayName = daysOfWeek[d.getDay()];
+          countsMap.set(dayName, 0);
+        }
+
+        const qb = this.visitRepository
+          .createQueryBuilder('visit')
+          .select('DATE(visit.createdAt)', 'date')
+          .addSelect('COUNT(DISTINCT visit.customerId)', 'count')
+          .where('visit.createdAt >= :startDate', { startDate });
+
+        if (branchId) {
+          qb.andWhere('visit.branchId = :branchId', { branchId });
+        } else if (businessId) {
+          qb.andWhere('visit.businessId = :businessId', { businessId });
+        }
+
+        const rawResults = await qb
+          .groupBy('DATE(visit.createdAt)')
+          .getRawMany();
+
+        rawResults.forEach((row) => {
+          if (!row.date) return;
+          const dateStr =
+            typeof row.date === 'string' ? row.date : row.date.toISOString();
+          const d = new Date(dateStr);
+          // Use UTC day to avoid timezone offset shifts on YYYY-MM-DD strings
+          const dayName = daysOfWeek[isNaN(d.getTime()) ? 0 : d.getUTCDay()];
+          if (countsMap.has(dayName)) {
+            countsMap.set(dayName, parseInt(row.count || '0', 10));
+          }
+        });
+
+        buckets = Array.from(countsMap.entries()).map(([name, customers]) => ({
+          name,
+          customers,
+        }));
+      } else if (activeRange === '30D') {
+        startDate.setDate(now.getDate() - 30);
+        const countsMap = new Map<string, number>([
+          ['Week 1', 0],
+          ['Week 2', 0],
+          ['Week 3', 0],
+          ['Week 4', 0],
+        ]);
+
+        const qb = this.visitRepository
+          .createQueryBuilder('visit')
+          .select('visit.createdAt', 'createdAt')
+          .where('visit.createdAt >= :startDate', { startDate });
+
+        if (branchId) {
+          qb.andWhere('visit.branchId = :branchId', { branchId });
+        } else if (businessId) {
+          qb.andWhere('visit.businessId = :businessId', { businessId });
+        }
+
+        const visits = await qb.getRawMany();
+        visits.forEach((v) => {
+          if (!v.createdAt) return;
+          const visitDate = new Date(v.createdAt);
+          if (isNaN(visitDate.getTime())) return;
+
+          const diffDays = Math.floor(
+            (now.getTime() - visitDate.getTime()) / (1000 * 60 * 60 * 24),
+          );
+          let weekKey = 'Week 4';
+          if (diffDays >= 22) weekKey = 'Week 1';
+          else if (diffDays >= 15) weekKey = 'Week 2';
+          else if (diffDays >= 8) weekKey = 'Week 3';
+
+          countsMap.set(weekKey, (countsMap.get(weekKey) || 0) + 1);
+        });
+
+        buckets = Array.from(countsMap.entries()).map(([name, customers]) => ({
+          name,
+          customers,
+        }));
+      } else if (activeRange === '90D') {
+        const monthNames = [
+          'Jan',
+          'Feb',
+          'Mar',
+          'Apr',
+          'May',
+          'Jun',
+          'Jul',
+          'Aug',
+          'Sep',
+          'Oct',
+          'Nov',
+          'Dec',
+        ];
+        startDate.setMonth(now.getMonth() - 2);
+        startDate.setDate(1);
+
+        const countsMap = new Map<string, number>();
+        for (let i = 0; i < 3; i++) {
+          const m = new Date(startDate);
+          m.setMonth(startDate.getMonth() + i);
+          countsMap.set(monthNames[m.getMonth()], 0);
+        }
+
+        const qb = this.visitRepository
+          .createQueryBuilder('visit')
+          .select('visit.createdAt', 'createdAt')
+          .where('visit.createdAt >= :startDate', { startDate });
+
+        if (branchId) {
+          qb.andWhere('visit.branchId = :branchId', { branchId });
+        } else if (businessId) {
+          qb.andWhere('visit.businessId = :businessId', { businessId });
+        }
+
+        const visits = await qb.getRawMany();
+        visits.forEach((v) => {
+          if (!v.createdAt) return;
+          const visitDate = new Date(v.createdAt);
+          if (isNaN(visitDate.getTime())) return;
+
+          const mName = monthNames[visitDate.getMonth()];
+          if (countsMap.has(mName)) {
+            countsMap.set(mName, (countsMap.get(mName) || 0) + 1);
+          }
+        });
+
+        buckets = Array.from(countsMap.entries()).map(([name, customers]) => ({
+          name,
+          customers,
+        }));
+      } else if (activeRange === '12M') {
+        const countsMap = new Map<string, number>([
+          ['Q1', 0],
+          ['Q2', 0],
+          ['Q3', 0],
+          ['Q4', 0],
+        ]);
+
+        const qb = this.visitRepository
+          .createQueryBuilder('visit')
+          .select('visit.createdAt', 'createdAt')
+          .where('visit.createdAt >= :startDate', {
+            startDate: new Date(now.getFullYear(), 0, 1),
+          });
+
+        if (branchId) {
+          qb.andWhere('visit.branchId = :branchId', { branchId });
+        } else if (businessId) {
+          qb.andWhere('visit.businessId = :businessId', { businessId });
+        }
+
+        const visits = await qb.getRawMany();
+        visits.forEach((v) => {
+          if (!v.createdAt) return;
+          const visitDate = new Date(v.createdAt);
+          if (isNaN(visitDate.getTime())) return;
+
+          const qIndex = Math.floor(visitDate.getMonth() / 3);
+          const qKey = `Q${qIndex + 1}`;
+          if (countsMap.has(qKey)) {
+            countsMap.set(qKey, (countsMap.get(qKey) || 0) + 1);
+          }
+        });
+
+        buckets = Array.from(countsMap.entries()).map(([name, customers]) => ({
+          name,
+          customers,
+        }));
+      }
+
+      return {
+        range: activeRange,
+        data: buckets,
+      };
+    } catch (error) {
+      console.error(
+        '[VisitorsService] Error generating growth chart data:',
+        error,
+      );
+      throw new BadRequestException('Failed to generate growth chart data');
+    }
+  }
+
   async create(
     createVisitorDto: CreateVisitorDto | VisitorSignupDto,
     branchId?: string,
-  ): Promise<VisitorResponseDto> {
+  ): Promise<
+    VisitorResponseDto & {
+      access_token?: string;
+      sessionId?: string;
+      user?: Partial<User>;
+      isNewUser?: boolean;
+    }
+  > {
     const dto = createVisitorDto as CreateVisitorDto & {
       deviceId?: string;
     };
@@ -346,9 +567,15 @@ export class VisitorsService {
       }
     }
 
-    const defaultPassword = '123456';
+    // New customers receive a per-account random password (emailed to them)
+    // instead of a shared default, so the constant can never be used as a
+    // universal backdoor. Immediate auto-login is provided by the auth token
+    // returned from this endpoint (see buildAuthResponse below).
+    const defaultPassword = randomBytes(9).toString('base64url').slice(0, 12);
+    let isNewCustomer = false;
 
     if (!user) {
+      isNewCustomer = true;
       const hashedPassword = await bcrypt.hash(defaultPassword, 10);
       user = this.userRepository.create({
         email: dto.email,
@@ -441,7 +668,34 @@ export class VisitorsService {
       },
     });
 
-    return this.mapToVisitorDto(updatedUser!, branchId);
+    const visitorDto = this.mapToVisitorDto(updatedUser!, branchId);
+
+    // Public visitor signups auto-login: return a JWT alongside the visitor
+    // payload so clients no longer need to rely on a shared default password.
+    if (isNewCustomer) {
+      try {
+        const authResponse = await this.authService.buildAuthResponse(
+          updatedUser!,
+          true,
+        );
+        return {
+          ...visitorDto,
+          access_token: authResponse.access_token,
+          sessionId: authResponse.sessionId,
+          user: authResponse.user,
+          isNewUser: true,
+        };
+      } catch (err) {
+        // Token issuance is non-blocking for the signup — fall back to the
+        // legacy response shape if anything fails.
+        console.error(
+          '[VisitorsService] Failed to issue auth token on signup:',
+          err,
+        );
+      }
+    }
+
+    return visitorDto;
   }
 
   async findOne(
@@ -509,8 +763,7 @@ export class VisitorsService {
 
     const baseQb = this.userRepository
       .createQueryBuilder('user')
-      .innerJoin('user.visits', 'visit')
-
+      .innerJoin('user.visits', 'visit');
 
     if (branchId) {
       baseQb.andWhere('visit.branchId = :branchId', { branchId });
@@ -659,8 +912,7 @@ export class VisitorsService {
 
     const baseQb = this.userRepository
       .createQueryBuilder('user')
-      .innerJoin('user.visits', 'visit')
-
+      .innerJoin('user.visits', 'visit');
 
     if (branchId) {
       baseQb.andWhere('visit.branchId = :branchId', { branchId });
@@ -1037,6 +1289,104 @@ export class VisitorsService {
     };
   }
 
+  async getActivityFeed(
+    context: { branchId?: string; businessId?: string },
+    page: number = 1,
+    limit: number = 20,
+    cursor?: string,
+  ): Promise<PaginatedActivityFeedResponseDto> {
+    const skip = (page - 1) * limit;
+
+    const qb = this.visitRepository
+      .createQueryBuilder('visit')
+      .leftJoinAndSelect('visit.customer', 'customer')
+      .leftJoinAndSelect('visit.branch', 'branch')
+      .leftJoinAndSelect('visit.order', 'order')
+      .where('visit.deletedAt IS NULL');
+
+    if (context.branchId) {
+      qb.andWhere('visit.branchId = :branchId', {
+        branchId: context.branchId,
+      });
+    } else if (context.businessId) {
+      qb.andWhere('visit.businessId = :businessId', {
+        businessId: context.businessId,
+      });
+    }
+
+    const result = await paginateWithCursor({
+      queryBuilder: qb,
+      cursor,
+      page,
+      limit,
+      sortField: 'createdAt',
+      sortOrder: 'DESC',
+      entityAlias: 'visit',
+    });
+
+    const visits = result.data;
+    const total = result.total;
+
+    const data: ActivityFeedItemDto[] = visits.map((visit) => {
+      const customerName = visit.customer
+        ? `${visit.customer.firstName || ''} ${(visit.customer.lastName || '')[0] || ''}`.trim() ||
+          'Unknown'
+        : 'Unknown';
+
+      const shortName = customerName
+        .split(' ')
+        .map((p, i) => (i === 0 ? p : `${p[0]}.`))
+        .join(' ');
+
+      if (visit.orderId) {
+        return {
+          id: visit.id,
+          type: 'order',
+          userName: shortName,
+          description: `Placed an order`,
+          timestamp: visit.createdAt,
+          branchId: visit.branchId,
+          metadata: { orderId: visit.orderId },
+        };
+      }
+
+      if (visit.status === 'new') {
+        return {
+          id: visit.id,
+          type: 'registration',
+          userName: shortName,
+          description: visit.deviceId
+            ? `Registered via device`
+            : `Registered via portal`,
+          timestamp: visit.createdAt,
+          branchId: visit.branchId,
+          metadata: { deviceId: visit.deviceId },
+        };
+      }
+
+      return {
+        id: visit.id,
+        type: 'visit',
+        userName: shortName,
+        description: visit.deviceId ? `Visited via device` : `Returning visit`,
+        timestamp: visit.createdAt,
+        branchId: visit.branchId,
+        metadata: { deviceId: visit.deviceId, status: visit.status },
+      };
+    });
+
+    return {
+      data,
+      total,
+      page,
+      limit,
+      cursor: result.cursor,
+      nextCursor: result.nextCursor,
+      prevCursor: result.prevCursor,
+      hasNextPage: result.hasNextPage,
+    } as any;
+  }
+
   // ─── Smart Visit Recording ────────────────────────────────────────────────
 
   /**
@@ -1053,12 +1403,23 @@ export class VisitorsService {
     sessionToken: string;
     ipAddress?: string;
     userAgent?: string;
+    referredByBranchId?: string;
+    catalogueOfferId?: string;
   }): Promise<{ visitId: string; sessionToken: string; isNewVisit: boolean }> {
-    const { customerId, deviceCode, sessionToken, ipAddress, userAgent } =
-      params;
+    const {
+      customerId,
+      deviceCode,
+      sessionToken,
+      ipAddress,
+      userAgent,
+      referredByBranchId,
+      catalogueOfferId,
+    } = params;
 
     // --- Prevent Admins from being recorded as visitors ---
-    const user = await this.userRepository.findOne({ where: { id: customerId } });
+    const user = await this.userRepository.findOne({
+      where: { id: customerId },
+    });
     if (user?.role === UserRole.ADMIN) {
       return { visitId: 'admin-skip', sessionToken, isNewVisit: false };
     }
@@ -1135,9 +1496,17 @@ export class VisitorsService {
       sessionToken,
       ipAddress: ipAddress ?? null,
       userAgent: userAgent ?? null,
+      referredByBranchId: referredByBranchId ?? null,
+      catalogueOfferId: catalogueOfferId ?? null,
     } as any) as unknown as Visit;
 
     const saved = await this.visitRepository.save(visit);
+
+    // Increment views on CatalogueOffer if associated
+    if (catalogueOfferId) {
+      const offerRepo = this.dataSource.getRepository(CatalogueOffer);
+      await offerRepo.increment({ id: catalogueOfferId }, 'views', 1);
+    }
 
     return { visitId: saved.id, sessionToken, isNewVisit: true };
   }
@@ -1156,6 +1525,8 @@ export class VisitorsService {
     branchId: string;
     businessId: string;
     deviceId?: string;
+    referredByBranchId?: string;
+    catalogueOfferId?: string;
   }): Promise<void> {
     const {
       sessionToken,
@@ -1164,6 +1535,8 @@ export class VisitorsService {
       branchId,
       businessId,
       deviceId,
+      referredByBranchId,
+      catalogueOfferId,
     } = params;
 
     if (sessionToken) {
@@ -1180,6 +1553,29 @@ export class VisitorsService {
         visit.orderId = orderId;
         visit.upgradedAt = new Date();
         await this.visitRepository.save(visit);
+
+        // Discovery attribution update — atomic increments to avoid race conditions
+        if (visit.catalogueOfferId) {
+          const offerRepo = this.dataSource.getRepository(CatalogueOffer);
+          await offerRepo.increment(
+            { id: visit.catalogueOfferId },
+            'visits',
+            1,
+          );
+          if (orderId) {
+            const orderRepo = this.dataSource.getRepository('CatalogueOrder');
+            const order = (await orderRepo.findOne({
+              where: { id: orderId },
+            })) as any;
+            if (order?.totalAmount) {
+              await offerRepo.increment(
+                { id: visit.catalogueOfferId },
+                'revenue',
+                Number(order.totalAmount),
+              );
+            }
+          }
+        }
         return;
       }
     }
@@ -1201,9 +1597,30 @@ export class VisitorsService {
       visitType: 'patronage',
       sessionToken: newSessionToken,
       upgradedAt: new Date(),
+      referredByBranchId: referredByBranchId ?? null,
+      catalogueOfferId: catalogueOfferId ?? null,
     } as any) as unknown as Visit;
 
     await this.visitRepository.save(fallbackVisit);
+
+    // Increment metrics on CatalogueOffer atomically — avoids race conditions
+    if (catalogueOfferId) {
+      const offerRepo = this.dataSource.getRepository(CatalogueOffer);
+      await offerRepo.increment({ id: catalogueOfferId }, 'visits', 1);
+      if (orderId) {
+        const orderRepo = this.dataSource.getRepository('CatalogueOrder');
+        const order = (await orderRepo.findOne({
+          where: { id: orderId },
+        })) as any;
+        if (order?.totalAmount) {
+          await offerRepo.increment(
+            { id: catalogueOfferId },
+            'revenue',
+            Number(order.totalAmount),
+          );
+        }
+      }
+    }
   }
 
   /**

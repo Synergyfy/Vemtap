@@ -10,6 +10,7 @@ import { toast } from 'react-hot-toast';
 import Spinner from '@/components/ui/Spinner';
 import { useAuthStore } from '@/store/useAuthStore';
 import { api } from '@/lib/api';
+import { signupVisitorAndLogin } from '@/lib/visitorAuth';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export default function PublicBusinessFormPage() {
@@ -68,28 +69,12 @@ export default function PublicBusinessFormPage() {
         if (!pendingAnswers || !form) return;
         setIsSigningUp(true);
         try {
-            const nameParts = data.name?.trim().split(/\s+/) || ['Visitor'];
-            const firstName = nameParts[0];
-            const lastName = nameParts.slice(1).join(' ') || ' ';
-            const defaultPassword = '123456';
-            const branchQuery = form.branchId ? `?branchId=${form.branchId}` : '';
-
-            await api.post(`/visitors/signup${branchQuery}`, {
-                firstName,
-                lastName,
+            await signupVisitorAndLogin({
                 email: data.email || undefined,
-                phone: data.phone || undefined,
+                phone: data.phone,
+                name: data.name,
+                branchId: form.branchId,
             });
-
-            const identifier = data.email || data.phone || '';
-            const authResponse = await api.post('/auth/login', {
-                identifier,
-                password: defaultPassword,
-            });
-
-            if (authResponse?.access_token) {
-                useAuthStore.getState().login(authResponse.user, authResponse.access_token);
-            }
 
             const payload = buildAnswerPayload(pendingAnswers);
             if (payload.length === 0) {
@@ -280,7 +265,7 @@ export default function PublicBusinessFormPage() {
 
                 {/* Powered-by footer */}
                 <p className="text-center text-[10px] font-medium text-slate-400 pb-4">
-                    Powered by <span className="font-bold text-primary">VemTap</span>
+                    Powered by <span className="font-bold text-primary">{resolvedBusinessName || 'VemTap'}</span>
                 </p>
             </div>
 

@@ -10,6 +10,8 @@ export interface Branch {
     username?: string;
     name: string;
     address: string;
+    latitude?: number;
+    longitude?: number;
     phone: string;
     isActive: boolean;
     isMainBranch: boolean;
@@ -84,6 +86,8 @@ export interface Business {
     emailSettings?: any;
     ownerId: string;
     address?: string;
+    latitude?: number;
+    longitude?: number;
     state?: string;
     city?: string;
     website?: string;
@@ -97,7 +101,7 @@ export interface Business {
     youtubeUrl?: string;
     customLink?: string;
     isActive: boolean;
-    status: 'pending' | 'APPROVED' | 'REJECTED' | 'SUSPENDED';
+    status: 'pending' | 'active' | 'suspended';
     linkedinUrl?: string;
     reviewUrl?: string;
     trustpilotUrl?: string;
@@ -116,4 +120,21 @@ export interface Business {
     idDocument?: string;
     registrationNumber?: string;
     cacType?: string;
+    posSettings?: {
+        currency?: string;
+        receiptHeader?: string;
+        receiptFooter?: string;
+        autoPrintReceipt?: boolean;
+        showLogo?: boolean;
+        taxEnabled?: boolean;
+        taxRate?: number;
+        taxLabel?: string;
+        pricesIncludeTax?: boolean;
+        loyaltyEnabled?: boolean;
+        loyaltyRedeemThreshold?: number;
+        lowStockAlerts?: boolean;
+        dailySalesSummary?: boolean;
+        newOrderAlert?: boolean;
+        staffActivityAlerts?: boolean;
+    };
 }

@@ -7,6 +7,8 @@ import {
 import { Reflector } from '@nestjs/core';
 import { SubscriptionsService } from '../subscriptions.service';
 import { BranchesService } from '../../branches/branches.service';
+import { IS_PUBLIC_KEY } from '../../../common/decorators/public.decorator';
+import { SKIP_SUBSCRIPTION_CHECK_KEY } from '../decorators/skip-subscription-check.decorator';
 
 @Injectable()
 export class CapabilityGuard implements CanActivate {
@@ -17,9 +19,27 @@ export class CapabilityGuard implements CanActivate {
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    const requiredCapability = this.reflector.get<string>(
-      'capability',
+    const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
       context.getHandler(),
+      context.getClass(),
+    ]);
+
+    if (isPublic) {
+      return true;
+    }
+
+    const skipSubscriptionCheck = this.reflector.getAllAndOverride<boolean>(
+      SKIP_SUBSCRIPTION_CHECK_KEY,
+      [context.getHandler(), context.getClass()],
+    );
+
+    if (skipSubscriptionCheck) {
+      return true;
+    }
+
+    const requiredCapability = this.reflector.getAllAndOverride<string>(
+      'capability',
+      [context.getHandler(), context.getClass()],
     );
     if (!requiredCapability) {
       return true;

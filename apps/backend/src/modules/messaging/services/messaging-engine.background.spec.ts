@@ -49,15 +49,39 @@ describe('MessagingEngineService (Background Processing)', () => {
         { id: 'c1', firstName: 'C1' },
         { id: 'c2', firstName: 'C2' },
       ]),
+      findOneBy: jest
+        .fn()
+        .mockImplementation(({ id }) =>
+          Promise.resolve({ id, firstName: id.toUpperCase() }),
+        ),
     };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         MessagingEngineService,
         { provide: getRepositoryToken(User), useValue: userRepoMock },
-        { provide: getRepositoryToken(Message), useValue: {} },
+        {
+          provide: getRepositoryToken(Message),
+          useValue: {
+            create: jest.fn().mockImplementation((dto) => dto),
+            save: jest
+              .fn()
+              .mockImplementation((e) => Promise.resolve({ id: 'm1', ...e })),
+          },
+        },
         { provide: getRepositoryToken(MessageLog), useValue: {} },
-        { provide: getRepositoryToken(ConversationThread), useValue: {} },
+        {
+          provide: getRepositoryToken(ConversationThread),
+          useValue: {
+            findOne: jest
+              .fn()
+              .mockResolvedValue({ id: 't1', branchId: 'br1', customerId: 'c1' }),
+            create: jest.fn().mockImplementation((dto) => dto),
+            save: jest
+              .fn()
+              .mockImplementation((e) => Promise.resolve({ id: 't1', ...e })),
+          },
+        },
         { provide: getRepositoryToken(Business), useValue: {} },
         { provide: getRepositoryToken(Branch), useValue: branchRepoMock },
         { provide: LoyaltyService, useValue: {} },
@@ -79,6 +103,7 @@ describe('MessagingEngineService (Background Processing)', () => {
               emailCredits: 1000,
               whatsappCredits: 1000,
             }),
+            deductCredits: jest.fn().mockResolvedValue(undefined),
           },
         },
         { provide: TemplateService, useValue: { findOne: jest.fn() } },
@@ -122,7 +147,7 @@ describe('MessagingEngineService (Background Processing)', () => {
     const result = await service.sendMessage(dto);
 
     expect(result.status).toBe('QUEUED');
-    expect(result.message).toBe('Messages queued for background processing');
+    expect(result.message).toBe('Messages queued for delivery');
     expect(mockIndividualQueue.addBulk).toHaveBeenCalledTimes(1);
     expect(mockIndividualQueue.addBulk).toHaveBeenCalledWith(
       expect.arrayContaining([

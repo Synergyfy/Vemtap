@@ -344,7 +344,10 @@ export default function AdminTemplateBuilderPage() {
         await updateMutation.mutateAsync({ id, updates: payload });
         toast.success('Template updated successfully');
       }
+      
+      // Successfully saved - redirect back to the templates list
       router.push('/admin/marketing-assets/templates');
+      router.refresh(); // Ensure the list is updated
     } catch (e) {
       toast.error('Failed to save template preset');
     }
@@ -370,18 +373,20 @@ export default function AdminTemplateBuilderPage() {
     ));
   };
 
-  // Custom interactive corner-resize handler
-  const handleResizeStart = (el: any, startEvent: React.MouseEvent | React.TouchEvent) => {
+  // Custom interactive 8-way resize handler
+  const handleResizeStart = (el: any, startEvent: React.MouseEvent | React.TouchEvent, direction: string) => {
     startEvent.stopPropagation();
     if (!canvasRef.current) return;
 
     const canvasRect = canvasRef.current.getBoundingClientRect();
     const isTouchEvent = 'touches' in startEvent;
-    const startX = isTouchEvent ? startEvent.touches[0].clientX : startEvent.clientX;
-    const startY = isTouchEvent ? startEvent.touches[0].clientY : startEvent.clientY;
+    const startX = isTouchEvent ? (startEvent as React.TouchEvent).touches[0].clientX : (startEvent as React.MouseEvent).clientX;
+    const startY = isTouchEvent ? (startEvent as React.TouchEvent).touches[0].clientY : (startEvent as React.MouseEvent).clientY;
 
-    const initialWidth = el.width || 30;
-    const initialHeight = el.height || 8;
+    const initialX = el.x;
+    const initialY = el.y;
+    const initialWidth = el.width || (el.type === 'qr_code' ? (el.size / canvasRect.width) * 100 : 30);
+    const initialHeight = el.height || (el.type === 'qr_code' ? (el.size / canvasRect.height) * 100 : 8);
     const initialSize = el.size || 110;
     const initialFontSize = el.fontSize || 14;
 
@@ -389,32 +394,76 @@ export default function AdminTemplateBuilderPage() {
       if (!canvasRef.current) return;
       const isTouchMove = 'touches' in moveEvent;
       
-      const currentX = isTouchMove ? moveEvent.touches[0].clientX : moveEvent.clientX;
-      const currentY = isTouchMove ? moveEvent.touches[0].clientY : moveEvent.clientY;
+      const currentX = isTouchMove ? (moveEvent as TouchEvent).touches[0].clientX : (moveEvent as MouseEvent).clientX;
+      const currentY = isTouchMove ? (moveEvent as TouchEvent).touches[0].clientY : (moveEvent as MouseEvent).clientY;
 
       const deltaX = currentX - startX;
       const deltaY = currentY - startY;
+      const deltaXPct = (deltaX / canvasRect.width) * 100;
+      const deltaYPct = (deltaY / canvasRect.height) * 100;
 
-      if (el.type === 'logo') {
-        const deltaWidthPct = (deltaX / canvasRect.width) * 100;
-        const deltaHeightPct = (deltaY / canvasRect.height) * 100;
-        const newWidth = Math.max(10, Math.min(100, Math.round(initialWidth + deltaWidthPct)));
-        const newHeight = Math.max(2, Math.min(50, Math.round(initialHeight + deltaHeightPct)));
+      let updates: any = {};
 
-        setElements(prev => prev.map(item => 
-          item.id === el.id ? { ...item, width: newWidth, height: newHeight } : item
-        ));
+      if (el.type === 'text') {
+        // Corner handles -> Scale font size (without wrapping)
+        // Side handles -> Resize box (wrap content)
+        if (['nw', 'ne', 'se', 'sw'].includes(direction)) {
+          // Scale font size based on horizontal movement
+          const factor = (direction === 'se' || direction === 'ne') ? 1 : -1;
+          const newFontSize = Math.max(6, Math.min(100, Math.round(initialFontSize + (deltaX * factor) / 3)));
+          updates.fontSize = newFontSize;
+        } else {
+          // Side handles resize the width/height of the text box
+          if (direction === 'e') {
+            updates.width = Math.max(5, Math.min(100, Math.round(initialWidth + deltaXPct)));
+          } else if (direction === 'w') {
+            const newWidth = Math.max(5, Math.min(100, Math.round(initialWidth - deltaXPct)));
+            const newX = Math.max(0, Math.min(95, Math.round(initialX + deltaXPct)));
+            updates.width = newWidth;
+            updates.x = newX;
+          } else if (direction === 's') {
+            updates.height = Math.max(2, Math.min(100, Math.round(initialHeight + deltaYPct)));
+          } else if (direction === 'n') {
+            const newHeight = Math.max(2, Math.min(100, Math.round(initialHeight - deltaYPct)));
+            const newY = Math.max(0, Math.min(95, Math.round(initialY + deltaYPct)));
+            updates.height = newHeight;
+            updates.y = newY;
+          }
+        }
+      } else if (el.type === 'logo') {
+        if (direction === 'se') {
+          updates.width = Math.max(5, Math.min(100, Math.round(initialWidth + deltaXPct)));
+          updates.height = Math.max(2, Math.min(100, Math.round(initialHeight + deltaYPct)));
+        } else if (direction === 'e') {
+          updates.width = Math.max(5, Math.min(100, Math.round(initialWidth + deltaXPct)));
+        } else if (direction === 'w') {
+          updates.width = Math.max(5, Math.min(100, Math.round(initialWidth - deltaXPct)));
+          updates.x = Math.max(0, Math.min(95, Math.round(initialX + deltaXPct)));
+        } else if (direction === 's') {
+          updates.height = Math.max(2, Math.min(100, Math.round(initialHeight + deltaYPct)));
+        } else if (direction === 'n') {
+          updates.height = Math.max(2, Math.min(100, Math.round(initialHeight - deltaYPct)));
+          updates.y = Math.max(0, Math.min(95, Math.round(initialY + deltaYPct)));
+        } else if (direction === 'nw') {
+          updates.width = Math.max(5, Math.min(100, Math.round(initialWidth - deltaXPct)));
+          updates.height = Math.max(2, Math.min(100, Math.round(initialHeight - deltaYPct)));
+          updates.x = Math.max(0, Math.min(95, Math.round(initialX + deltaXPct)));
+          updates.y = Math.max(0, Math.min(95, Math.round(initialY + deltaYPct)));
+        }
       } else if (el.type === 'qr_code') {
-        // QR Code is square, resize using deltaX
-        const newSize = Math.max(40, Math.min(240, Math.round(initialSize + deltaX)));
+        // QR is square, use deltaX for sizing
+        if (['se', 'e', 's'].includes(direction)) {
+          updates.size = Math.max(40, Math.min(300, Math.round(initialSize + deltaX)));
+        } else if (['nw', 'w', 'n'].includes(direction)) {
+          updates.size = Math.max(40, Math.min(300, Math.round(initialSize - deltaX)));
+          updates.x = Math.max(0, Math.min(95, Math.round(initialX + (deltaX / canvasRect.width) * 100)));
+          updates.y = Math.max(0, Math.min(95, Math.round(initialY + (deltaX / canvasRect.height) * 100)));
+        }
+      }
+
+      if (Object.keys(updates).length > 0) {
         setElements(prev => prev.map(item => 
-          item.id === el.id ? { ...item, size: newSize } : item
-        ));
-      } else if (el.type === 'text') {
-        // Smoothly scale font size based on X delta / 3 (highly responsive and precise)
-        const newFontSize = Math.max(6, Math.min(72, Math.round(initialFontSize + deltaX / 3)));
-        setElements(prev => prev.map(item => 
-          item.id === el.id ? { ...item, fontSize: newFontSize } : item
+          item.id === el.id ? { ...item, ...updates } : item
         ));
       }
     };
@@ -432,6 +481,9 @@ export default function AdminTemplateBuilderPage() {
     document.addEventListener('touchend', handleResizeEnd);
   };
 
+  // Smart alignment guides state
+  const [guides, setGuides] = useState<{ x?: number; y?: number } | null>(null);
+
   // Custom interactive drag positioning handler
   const handleCustomDragStart = (el: any, startEvent: React.MouseEvent | React.TouchEvent) => {
     startEvent.stopPropagation();
@@ -444,12 +496,13 @@ export default function AdminTemplateBuilderPage() {
 
     const initialX = el.x;
     const initialY = el.y;
+    const elWidth = el.width || (el.type === 'qr_code' ? (el.size / canvasRect.width) * 100 : 30);
+    const elHeight = el.height || (el.type === 'qr_code' ? (el.size / canvasRect.height) * 100 : 8);
 
     const handleCustomDragMove = (moveEvent: MouseEvent | TouchEvent) => {
       if (!canvasRef.current) return;
       const isTouchMove = 'touches' in moveEvent;
       
-      // Prevent browser default behavior like scrolling during drag
       if (moveEvent.cancelable) {
         moveEvent.preventDefault();
       }
@@ -463,16 +516,68 @@ export default function AdminTemplateBuilderPage() {
       const deltaXPct = (deltaX / canvasRect.width) * 100;
       const deltaYPct = (deltaY / canvasRect.height) * 100;
 
-      // Bound coordinates smoothly between 0% and 95%
-      const newX = Math.max(0, Math.min(95, Math.round(initialX + deltaXPct)));
-      const newY = Math.max(0, Math.min(95, Math.round(initialY + deltaYPct)));
+      let newX = Math.round(initialX + deltaXPct);
+      let newY = Math.round(initialY + deltaYPct);
 
+      // Smart Snapping & Alignment Detection (Center-to-Center Focus)
+      let activeGuides: { x?: number; y?: number } = {};
+      const snapThreshold = 2.5; // Slightly more generous snapping for better feel
+
+      // 1. Horizontal Center Snapping (Element Middle -> Canvas Middle)
+      const elementMidX = newX + elWidth / 2;
+      if (Math.abs(elementMidX - 50) < snapThreshold) {
+        newX = 50 - elWidth / 2;
+        activeGuides.x = 50; 
+      }
+
+      // 2. Vertical Center Snapping (Element Middle -> Canvas Middle)
+      const elementMidY = newY + elHeight / 2;
+      if (Math.abs(elementMidY - 50) < snapThreshold) {
+        newY = 50 - elHeight / 2;
+        activeGuides.y = 50;
+      }
+
+      // 3. Alignment with other elements (Edge-to-Edge and Center-to-Center)
+      elements.forEach(other => {
+        if (other.id === el.id) return;
+        const otherWidth = other.width || (other.type === 'qr_code' ? (other.size / canvasRect.width) * 100 : 30);
+        const otherHeight = other.height || (other.type === 'qr_code' ? (other.size / canvasRect.height) * 100 : 8);
+        
+        // Match Centers (Vertical Axis)
+        const otherCenterX = other.x + otherWidth / 2;
+        const currentCenterX = newX + elWidth / 2;
+        if (Math.abs(currentCenterX - otherCenterX) < snapThreshold) {
+          newX = otherCenterX - elWidth / 2;
+          activeGuides.x = otherCenterX;
+        }
+
+        // Match Centers (Horizontal Axis)
+        const otherCenterY = other.y + otherHeight / 2;
+        const currentCenterY = newY + elHeight / 2;
+        if (Math.abs(currentCenterY - otherCenterY) < snapThreshold) {
+          newY = otherCenterY - elHeight / 2;
+          activeGuides.y = otherCenterY;
+        }
+
+        // Match Left edges
+        if (Math.abs(newX - other.x) < snapThreshold) {
+          newX = other.x;
+          activeGuides.x = other.x;
+        }
+      });
+
+      // Bound coordinates smoothly
+      newX = Math.max(0, Math.min(100 - elWidth, newX));
+      newY = Math.max(0, Math.min(100 - elHeight, newY));
+
+      setGuides(Object.keys(activeGuides).length > 0 ? activeGuides : null);
       setElements(prev => prev.map(item => 
         item.id === el.id ? { ...item, x: newX, y: newY } : item
       ));
     };
 
     const handleCustomDragEnd = () => {
+      setGuides(null);
       document.removeEventListener('mousemove', handleCustomDragMove);
       document.removeEventListener('mouseup', handleCustomDragEnd);
       document.removeEventListener('touchmove', handleCustomDragMove);
@@ -485,7 +590,7 @@ export default function AdminTemplateBuilderPage() {
     document.addEventListener('touchend', handleCustomDragEnd);
   };
 
-  const handleAddTextElement = (presetText: string, defaultSize: number, weight: string) => {
+  const handleAddTextElement = (presetText: string, defaultSize: number, weight: string, isPlaceholder = false) => {
     const id = `text-${Date.now()}`;
     const newEl = {
       id,
@@ -497,11 +602,13 @@ export default function AdminTemplateBuilderPage() {
       color: '#FFFFFF',
       fontWeight: weight,
       alignment: 'center',
-      width: 80
+      width: 80,
+      height: 10,
+      isPlaceholder
     };
     setElements(prev => [...prev, newEl]);
     setSelectedElementId(id);
-    toast.success('Text element added! Drag it on the preview canvas.');
+    toast.success(`${isPlaceholder ? 'Placeholder' : 'Text element'} added! Drag it on the preview canvas.`);
   };
 
   const handleAddLogoElement = () => {
@@ -513,7 +620,7 @@ export default function AdminTemplateBuilderPage() {
     const newEl = { id, type: 'logo', x: 35, y: 8, width: 30, height: 8 };
     setElements(prev => [...prev, newEl]);
     setSelectedElementId(id);
-    toast.success('Brand logo slot added!');
+    toast.success('Business Logo placeholder added!');
   };
 
   const handleAddQrElement = () => {
@@ -525,7 +632,7 @@ export default function AdminTemplateBuilderPage() {
     const newEl = { id, type: 'qr_code', x: 30, y: 50, size: 110 };
     setElements(prev => [...prev, newEl]);
     setSelectedElementId(id);
-    toast.success('QR Code container added!');
+    toast.success('Dynamic QR Code space added!');
   };
 
   const handleDeleteElement = (elementId: string) => {
@@ -797,7 +904,29 @@ export default function AdminTemplateBuilderPage() {
 
                   {/* Add layers widgets */}
                   <div className="border-t border-gray-50 pt-4 space-y-3">
-                    <h4 className="text-xs font-extrabold text-gray-800 uppercase tracking-wider">Add Elements to Canvas</h4>
+                    <h4 className="text-xs font-extrabold text-gray-800 uppercase tracking-wider">Add Sudo Placeholders</h4>
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        onClick={() => handleAddTextElement('BUSINESS NAME', 14, 'bold', true)}
+                        className="px-3 py-1.5 bg-indigo-50 border border-indigo-100 rounded-xl text-xs font-bold text-indigo-700 hover:bg-indigo-100 flex items-center gap-1.5"
+                      >
+                        <Plus size={12} className="stroke-[3px]" /> Business Name
+                      </button>
+                      <button
+                        onClick={handleAddLogoElement}
+                        className="px-3 py-1.5 bg-blue-50 border border-blue-100 rounded-xl text-xs font-bold text-blue-700 hover:bg-blue-100 flex items-center gap-1.5"
+                      >
+                        <Plus size={12} className="stroke-[3px]" /> Business Logo
+                      </button>
+                      <button
+                        onClick={handleAddQrElement}
+                        className="px-3 py-1.5 bg-green-50 border border-green-100 rounded-xl text-xs font-bold text-green-700 hover:bg-green-100 flex items-center gap-1.5"
+                      >
+                        <Plus size={12} className="stroke-[3px]" /> QR Code
+                      </button>
+                    </div>
+
+                    <h4 className="text-[10px] font-extrabold text-gray-400 uppercase tracking-wider pt-2">Custom Text Elements</h4>
                     <div className="flex flex-wrap gap-2">
                       <button
                         onClick={() => handleAddTextElement('SCAN TO ORDER', 18, 'extrabold')}
@@ -816,18 +945,6 @@ export default function AdminTemplateBuilderPage() {
                         className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-100 flex items-center gap-1.5"
                       >
                         <Plus size={12} className="stroke-[3px]" /> Footer Tagline
-                      </button>
-                      <button
-                        onClick={handleAddLogoElement}
-                        className="px-3 py-1.5 bg-blue-50 border border-blue-100 rounded-xl text-xs font-bold text-blue-700 hover:bg-blue-100 flex items-center gap-1.5"
-                      >
-                        <Plus size={12} className="stroke-[3px]" /> Brand Logo Slot
-                      </button>
-                      <button
-                        onClick={handleAddQrElement}
-                        className="px-3 py-1.5 bg-green-50 border border-green-100 rounded-xl text-xs font-bold text-green-700 hover:bg-green-100 flex items-center gap-1.5"
-                      >
-                        <Plus size={12} className="stroke-[3px]" /> QR Code Space
                       </button>
                     </div>
                   </div>
@@ -1165,6 +1282,28 @@ export default function AdminTemplateBuilderPage() {
             }}
             className="w-[280px] aspect-[4/6] border-[6px] rounded-[24px] shadow-2xl relative overflow-hidden bg-slate-900"
           >
+            {/* Subtle Grid Background */}
+            <div className="absolute inset-0 opacity-5 pointer-events-none" 
+                 style={{ 
+                   backgroundImage: 'linear-gradient(#fff 1px, transparent 1px), linear-gradient(90deg, #fff 1px, transparent 1px)',
+                   backgroundSize: '20px 20px' 
+                 }} 
+            />
+
+            {/* Smart Alignment Guides */}
+            {guides?.x !== undefined && (
+              <div 
+                className="absolute top-0 bottom-0 w-[1px] bg-magenta-500 shadow-[0_0_8px_rgba(236,72,153,0.5)] z-[60]"
+                style={{ left: `${guides.x}%`, backgroundColor: '#ec4899' }}
+              />
+            )}
+            {guides?.y !== undefined && (
+              <div 
+                className="absolute left-0 right-0 h-[1px] bg-magenta-500 shadow-[0_0_8px_rgba(236,72,153,0.5)] z-[60]"
+                style={{ top: `${guides.y}%`, backgroundColor: '#ec4899' }}
+              />
+            )}
+
             {/* Design header accent band */}
             <div 
               style={{ backgroundColor: accentColor }}
@@ -1174,6 +1313,42 @@ export default function AdminTemplateBuilderPage() {
             {/* Canvas Elements Renderer */}
             {elements.map((el) => {
               
+              const renderResizeHandles = (item: any) => {
+                if (selectedElementId !== item.id) return null;
+                const directions = ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'];
+                return directions.map((dir) => {
+                  const style: React.CSSProperties = {
+                    position: 'absolute',
+                    width: '10px',
+                    height: '10px',
+                    backgroundColor: '#2563EB',
+                    border: '1.5px solid white',
+                    borderRadius: '50%',
+                    zIndex: 100,
+                  };
+                  const offset = '-5px';
+                  switch (dir) {
+                    case 'nw': style.top = offset; style.left = offset; style.cursor = 'nw-resize'; break;
+                    case 'n': style.top = offset; style.left = '50%'; style.transform = 'translateX(-50%)'; style.cursor = 'n-resize'; break;
+                    case 'ne': style.top = offset; style.right = offset; style.cursor = 'ne-resize'; break;
+                    case 'e': style.top = '50%'; style.right = offset; style.transform = 'translateY(-50%)'; style.cursor = 'e-resize'; break;
+                    case 'se': style.bottom = offset; style.right = offset; style.cursor = 'se-resize'; break;
+                    case 's': style.bottom = offset; style.left = '50%'; style.transform = 'translateX(-50%)'; style.cursor = 's-resize'; break;
+                    case 'sw': style.bottom = offset; style.left = offset; style.cursor = 'sw-resize'; break;
+                    case 'w': style.top = '50%'; style.left = offset; style.transform = 'translateY(-50%)'; style.cursor = 'w-resize'; break;
+                  }
+                  return (
+                    <div
+                      key={dir}
+                      onMouseDown={(e) => handleResizeStart(item, e, dir)}
+                      onTouchStart={(e) => handleResizeStart(item, e, dir)}
+                      style={style}
+                      className="shadow-sm hover:scale-125 transition-transform"
+                    />
+                  );
+                });
+              };
+
               if (el.type === 'logo') {
                 return (
                   <motion.div
@@ -1205,15 +1380,8 @@ export default function AdminTemplateBuilderPage() {
                     </div>
                     Brand Logo
 
-                    {/* Drag to resize corner handle */}
-                    {selectedElementId === el.id && (
-                      <div
-                        onMouseDown={(e) => handleResizeStart(el, e)}
-                        onTouchStart={(e) => handleResizeStart(el, e)}
-                        className="absolute bottom-[-6px] right-[-6px] w-3 h-3 bg-blue-600 border border-white rounded-full cursor-se-resize z-50 shadow-md"
-                        title="Drag to resize logo"
-                      />
-                    )}
+                    {/* 8-Way Resize Handles */}
+                    {renderResizeHandles(el)}
                   </motion.div>
                 );
               }
@@ -1249,15 +1417,8 @@ export default function AdminTemplateBuilderPage() {
                       bgColor={qrBgColor || '#000000'}
                     />
 
-                    {/* Drag to resize corner handle */}
-                    {selectedElementId === el.id && (
-                      <div
-                        onMouseDown={(e) => handleResizeStart(el, e)}
-                        onTouchStart={(e) => handleResizeStart(el, e)}
-                        className="absolute bottom-[-6px] right-[-6px] w-3 h-3 bg-blue-600 border border-white rounded-full cursor-se-resize z-50 shadow-md"
-                        title="Drag to resize QR code"
-                      />
-                    )}
+                    {/* 8-Way Resize Handles */}
+                    {renderResizeHandles(el)}
                   </motion.div>
                 );
               }
@@ -1279,6 +1440,7 @@ export default function AdminTemplateBuilderPage() {
                     left: `${el.x}%`,
                     top: `${el.y}%`,
                     width: el.width ? `${el.width}%` : 'auto',
+                    height: el.height ? `${el.height}%` : 'auto',
                     maxWidth: '90%',
                     cursor: 'move',
                     color: el.color || '#FFFFFF',
@@ -1287,21 +1449,17 @@ export default function AdminTemplateBuilderPage() {
                     textAlign: el.alignment || 'center',
                     border: selectedElementId === el.id ? '2px dashed #2563EB' : '1px dashed transparent',
                     padding: '2px',
-                    zIndex: 10
+                    zIndex: 10,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: el.alignment === 'center' ? 'center' : el.alignment === 'right' ? 'flex-end' : 'flex-start'
                   }}
                   className="select-none leading-tight font-medium relative"
                 >
-                  {el.text}
+                  <span className="w-full">{el.text}</span>
 
-                  {/* Drag to resize corner handle */}
-                  {selectedElementId === el.id && (
-                    <div
-                      onMouseDown={(e) => handleResizeStart(el, e)}
-                      onTouchStart={(e) => handleResizeStart(el, e)}
-                      className="absolute bottom-[-6px] right-[-6px] w-3 h-3 bg-blue-600 border border-white rounded-full cursor-se-resize z-50 shadow-md"
-                      title="Drag to resize text font size"
-                    />
-                  )}
+                  {/* 8-Way Resize Handles */}
+                  {renderResizeHandles(el)}
                 </motion.div>
               );
             })}

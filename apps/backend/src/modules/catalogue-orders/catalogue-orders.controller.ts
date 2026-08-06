@@ -69,7 +69,7 @@ export class CatalogueOrdersController {
   @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
   @Get()
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.ADMIN, UserRole.STAFF)
-  @Permissions('catalogue')
+  @Permissions('pos')
   @ApiOperation({ summary: 'List orders for the business (Admin)' })
   async listOrders(
     @Query() query: CatalogueOrderQueryDto,
@@ -82,7 +82,7 @@ export class CatalogueOrdersController {
   @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
   @Get(':id')
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.ADMIN, UserRole.STAFF)
-  @Permissions('catalogue')
+  @Permissions('pos')
   @ApiOperation({ summary: 'Get order details (Admin)' })
   async getOrder(
     @Param('id', ParseUUIDPipe) id: string,
@@ -95,7 +95,7 @@ export class CatalogueOrdersController {
   @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
   @Patch(':id/status')
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.ADMIN, UserRole.STAFF)
-  @Permissions('catalogue')
+  @Permissions('pos')
   @ApiOperation({ summary: 'Update order status (Admin)' })
   async updateStatus(
     @Param('id', ParseUUIDPipe) id: string,
@@ -104,7 +104,7 @@ export class CatalogueOrdersController {
   ) {
     return this.orderService.updateStatus(
       id,
-      dto.status,
+      dto,
       req.user.businessId,
       req.user,
     );

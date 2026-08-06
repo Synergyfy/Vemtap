@@ -37,9 +37,10 @@ describe('CreditPlanService', () => {
   };
 
   const mockSettings = {
-    creditPriceSms: 15.00,
-    creditPriceWhatsapp: 25.00,
-    creditPriceEmail: 2.00,
+    creditPriceSms: 15.0,
+    creditPriceWhatsapp: 25.0,
+    creditPriceEmail: 2.0,
+    creditPriceAi: 50.0,
   };
 
   beforeEach(async () => {
@@ -147,9 +148,15 @@ describe('CreditPlanService', () => {
     });
 
     it('should short-circuit and return wallet if payment reference has already been processed (idempotency)', async () => {
-      jest.spyOn(paymentsService, 'findByReference').mockResolvedValueOnce({ id: 'pmt-123' } as any);
+      jest
+        .spyOn(paymentsService, 'findByReference')
+        .mockResolvedValueOnce({ id: 'pmt-123' } as any);
 
-      const result = await service.purchase('branch-123', 'plan-123', 'ref-processed');
+      const result = await service.purchase(
+        'branch-123',
+        'plan-123',
+        'ref-processed',
+      );
 
       expect(creditService.addCredits).not.toHaveBeenCalled();
       expect(result).toEqual(mockWallet);
@@ -163,19 +170,26 @@ describe('CreditPlanService', () => {
 
       jest.spyOn(paymentsService, 'verifyTransaction').mockResolvedValue({
         status: 'success',
-        amount: 60000, // (10 SMS * 15) + (10 WA * 25) + (100 EM * 2) = 150 + 250 + 200 = 600 NGN = 60000 kobo
+        amount: 110000, // (10 SMS * 15) + (10 WA * 25) + (100 EM * 2) + (10 AI * 50) = 150 + 250 + 200 + 500 = 1100 NGN = 110000 kobo
       });
 
-      const result = await service.purchaseCustom(branchId, reference, 10, 10, 100);
+      const result = await service.purchaseCustom(
+        branchId,
+        reference,
+        10,
+        10,
+        100,
+        10,
+      );
 
-      expect(creditService.addCredits).toHaveBeenCalledTimes(3);
+      expect(creditService.addCredits).toHaveBeenCalledTimes(4);
       expect(paymentsService.recordPayment).toHaveBeenCalled();
       expect(result).toEqual(mockWallet);
     });
 
     it('should throw BadRequestException if custom expected amount is <= 0', async () => {
       await expect(
-        service.purchaseCustom('branch-123', 'ref', 0, 0, 0),
+        service.purchaseCustom('branch-123', 'ref', 0, 0, 0, 0),
       ).rejects.toThrow(BadRequestException);
     });
 
@@ -183,7 +197,7 @@ describe('CreditPlanService', () => {
       jest.spyOn(paymentsService, 'verifyTransaction').mockResolvedValue(null);
 
       await expect(
-        service.purchaseCustom('branch-123', 'ref-fail', 10, 0, 0),
+        service.purchaseCustom('branch-123', 'ref-fail', 10, 0, 0, 0),
       ).rejects.toThrow(BadRequestException);
     });
 
@@ -193,14 +207,23 @@ describe('CreditPlanService', () => {
       });
 
       await expect(
-        service.purchaseCustom('branch-123', 'ref-low', 10, 0, 0),
+        service.purchaseCustom('branch-123', 'ref-low', 10, 0, 0, 0),
       ).rejects.toThrow(BadRequestException);
     });
 
     it('should short-circuit and return wallet if custom payment reference has already been processed (idempotency)', async () => {
-      jest.spyOn(paymentsService, 'findByReference').mockResolvedValueOnce({ id: 'pmt-456' } as any);
+      jest
+        .spyOn(paymentsService, 'findByReference')
+        .mockResolvedValueOnce({ id: 'pmt-456' } as any);
 
-      const result = await service.purchaseCustom('branch-123', 'ref-custom-processed', 10, 10, 10);
+      const result = await service.purchaseCustom(
+        'branch-123',
+        'ref-custom-processed',
+        10,
+        10,
+        10,
+        0,
+      );
 
       expect(creditService.addCredits).not.toHaveBeenCalled();
       expect(result).toEqual(mockWallet);
@@ -208,12 +231,13 @@ describe('CreditPlanService', () => {
   });
 
   describe('getRates', () => {
-    it('should retrieve rates from setting service', async () => {
+    it('should retrieve rates from setting service including AI credits', async () => {
       const result = await service.getRates();
       expect(result).toEqual({
-        creditPriceSms: 15.00,
-        creditPriceWhatsapp: 25.00,
-        creditPriceEmail: 2.00,
+        creditPriceSms: 15.0,
+        creditPriceWhatsapp: 25.0,
+        creditPriceEmail: 2.0,
+        creditPriceAi: 50.0,
       });
     });
   });

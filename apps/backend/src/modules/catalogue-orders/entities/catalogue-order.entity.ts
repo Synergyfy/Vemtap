@@ -13,6 +13,8 @@ export enum CatalogueOrderStatus {
   COMPLETED = 'completed',
   CANCELLED = 'cancelled',
   REJECTED = 'rejected',
+  REFUNDED = 'refunded',
+  PARTIAL_REFUND = 'partial_refund',
 }
 
 @Entity('catalogue_orders')
@@ -76,6 +78,35 @@ export class CatalogueOrder extends AbstractBaseEntity {
   @ApiProperty({ example: false })
   @Column({ default: false })
   stockDeducted: boolean;
+
+  @ApiProperty({ example: 'Customer request', nullable: true })
+  @Column({ type: 'text', nullable: true })
+  refundReason: string | null;
+
+  @ManyToOne(() => User, { onDelete: 'SET NULL', nullable: true })
+  @JoinColumn({ name: 'refundedById' })
+  refundedByUser: User;
+
+  @Column({ type: 'uuid', nullable: true })
+  refundedById: string | null;
+
+  @ApiProperty({
+    description: 'Staff who accepted/processed this order',
+    nullable: true,
+  })
+  @ManyToOne(() => User, { onDelete: 'SET NULL', nullable: true })
+  @JoinColumn({ name: 'attendedById' })
+  attendedByUser: User | null;
+
+  @ApiProperty({
+    description: 'ID of the staff member who accepted/processed this order',
+    nullable: true,
+  })
+  @Column({ type: 'uuid', nullable: true })
+  attendedById: string | null;
+
+  @Column({ type: 'timestamp', nullable: true })
+  refundedAt: Date | null;
 
   @OneToMany(
     () => CatalogueOrderItem,
