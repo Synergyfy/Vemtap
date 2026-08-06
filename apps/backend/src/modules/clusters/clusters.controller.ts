@@ -126,10 +126,12 @@ export class ClustersAdminController {
   @Post('auto-assign')
   @Roles(UserRole.ADMIN)
   @ApiOperation({
-    summary: 'Admin: Auto-assign unassigned branches to clusters',
+    summary: 'Admin: Auto-assign branches to clusters',
     description:
-      'Assigns branches without a cluster to the nearest cluster whose radius covers them. ' +
-      'Use dryRun=true to preview without persisting.',
+      'scope=unassigned (default) assigns only branches without a cluster to the nearest ' +
+      'covering cluster. scope=all also considers already-assigned branches and reassigns them ' +
+      'to a different, closer covering cluster (never unassigns). Use dryRun=true to preview ' +
+      'without persisting, or async=true to enqueue the run on the background worker and return immediately.',
   })
   autoAssign(@Body() dto: AutoAssignClustersDto) {
     return this.clustersService.autoAssign(dto);

@@ -1,5 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
+import { getQueueToken } from '@nestjs/bullmq';
 import { NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { ClustersService } from './clusters.service';
@@ -10,6 +11,11 @@ import { CatalogueOffer } from '../catalogue/entities/catalogue-offer.entity';
 import { CatalogueOfferClaim } from '../catalogue/entities/catalogue-offer-claim.entity';
 import { ClusterCacheService } from './cluster-cache.service';
 import { ClusterDealsSortBy } from './dto/cluster-deals-query.dto';
+import { AutoAssignScope } from './dto/cluster.dto';
+import {
+  CLUSTER_AUTO_ASSIGN_QUEUE,
+  CLUSTER_AUTO_ASSIGN_JOB_ID,
+} from './cluster-auto-assign.constants';
 
 function stableHash(input: string): number {
   let hash = 0;
@@ -44,7 +50,13 @@ describe('ClustersService', () => {
     update: jest.fn(),
     count: jest.fn(),
     createQueryBuilder: jest.fn(),
-    manager: { createQueryBuilder: jest.fn() },
+    manager: {
+      createQueryBuilder: jest.fn(),
+      query: jest.fn().mockResolvedValue([]) as jest.Mock<
+        Promise<any[]>,
+        [string]
+      >,
+    },
   };
 
   const offerRepo = {
@@ -78,6 +90,10 @@ describe('ClustersService', () => {
     }),
   };
 
+  const autoAssignQueue = {
+    add: jest.fn().mockResolvedValue({ id: 'job-1' }),
+  };
+
   function buildQb(overrides: Record<string, any> = {}) {
     const qb: any = {
       where: jest.fn().mockReturnThis(),
@@ -88,6 +104,7 @@ describe('ClustersService', () => {
       take: jest.fn().mockReturnThis(),
       orderBy: jest.fn().mockReturnThis(),
       skip: jest.fn().mockReturnThis(),
+      limit: jest.fn().mockReturnThis(),
       getMany: jest.fn(),
       getManyAndCount: jest.fn(),
       getCount: jest.fn(),
@@ -130,6 +147,10 @@ describe('ClustersService', () => {
         },
         { provide: ClusterCacheService, useValue: clusterCache },
         { provide: ConfigService, useValue: configService },
+        {
+          provide: getQueueToken(CLUSTER_AUTO_ASSIGN_QUEUE),
+          useValue: autoAssignQueue,
+        },
       ],
     }).compile();
 
@@ -750,6 +771,188 @@ describe('ClustersService', () => {
         city: 'Abuja',
         area: 'Banex',
       });
+    });
+  });
+
+  describe('auto-assign', () => {
+    function mockQueryRows(rows: any[]) {
+      branchRepo.manager.query.mockResolvedValue(rows);
+    }
+
+    it('computes nearest covering clusters in a single batch query', async () => {
+      mockQueryRows([
+        {
+          branchId: 'b-1',
+          currentClusterId: null,
+          clusterId: 'cl-1',
+          distanceMeters: 100,
+        },
+      ]);
+
+      await service.autoAssign({ dryRun: true });
+
+      expect(branchRepo.manager.query).toHaveBeenCalledTimes(1);
+      const sql = branchRepo.manager.query.mock.calls[0][0];
+      expect(sql).toContain('LEFT JOIN LATERAL');
+      expect(sql).toContain('COALESCE');
+      expect(branchRepo.createQueryBuilder).not.toHaveBeenCalled();
+    });
+
+    it('with default scope only considers branches without a cluster', async () => {
+      mockQueryRows([
+        {
+          branchId: 'b-1',
+          currentClusterId: null,
+          clusterId: 'cl-1',
+          distanceMeters: 100,
+        },
+        {
+          branchId: 'b-2',
+          currentClusterId: null,
+          clusterId: 'cl-1',
+          distanceMeters: 150,
+        },
+      ]);
+
+      const result = await service.autoAssign({ dryRun: true });
+
+      const sql = branchRepo.manager.query.mock.calls[0][0];
+      expect(sql).toContain('b."clusterId" IS NULL');
+      expect(result).toMatchObject({
+        dryRun: true,
+        scope: AutoAssignScope.UNASSIGNED,
+        totalCandidates: 2,
+        assigned: 2,
+        reassigned: 0,
+      });
+      expect(branchRepo.update).not.toHaveBeenCalled();
+    });
+
+    it('commits assignments and invalidates the new clusters when not a dry run', async () => {
+      mockQueryRows([
+        {
+          branchId: 'b-1',
+          currentClusterId: null,
+          clusterId: 'cl-1',
+          distanceMeters: 100,
+        },
+      ]);
+
+      clusterRepo.find.mockResolvedValue([
+        { id: 'cl-1', uniqueCode: 'CL-NEW' },
+      ]);
+
+      const result = await service.autoAssign({ dryRun: false });
+
+      expect(branchRepo.update).toHaveBeenCalledWith(
+        { id: 'b-1' },
+        { clusterId: 'cl-1' },
+      );
+      expect(clusterCache.invalidateCluster).toHaveBeenCalledWith('CL-NEW');
+      expect(result).toMatchObject({
+        dryRun: false,
+        assigned: 1,
+        reassigned: 0,
+      });
+    });
+
+    it("with scope 'all' reassigns a branch to a different covering cluster", async () => {
+      mockQueryRows([
+        {
+          branchId: 'b-1',
+          currentClusterId: 'cl-old',
+          clusterId: 'cl-new',
+          distanceMeters: 50,
+        },
+      ]);
+
+      clusterRepo.find.mockResolvedValue([
+        { id: 'cl-new', uniqueCode: 'CL-NEW' },
+        { id: 'cl-old', uniqueCode: 'CL-OLD' },
+      ]);
+
+      const result = await service.autoAssign({
+        scope: AutoAssignScope.ALL,
+      });
+
+      expect(branchRepo.update).toHaveBeenCalledWith(
+        { id: 'b-1' },
+        { clusterId: 'cl-new' },
+      );
+      expect(clusterCache.invalidateCluster).toHaveBeenCalledWith('CL-NEW');
+      expect(clusterCache.invalidateCluster).toHaveBeenCalledWith('CL-OLD');
+      expect(result).toMatchObject({
+        scope: AutoAssignScope.ALL,
+        assigned: 1,
+        reassigned: 1,
+      });
+    });
+
+    it("with scope 'all' leaves a branch untouched when no covering cluster exists", async () => {
+      mockQueryRows([
+        {
+          branchId: 'b-1',
+          currentClusterId: 'cl-old',
+          clusterId: null,
+          distanceMeters: null,
+        },
+      ]);
+
+      const result = await service.autoAssign({
+        scope: AutoAssignScope.ALL,
+      });
+
+      expect(branchRepo.update).not.toHaveBeenCalled();
+      expect(result).toMatchObject({ assigned: 0, reassigned: 0 });
+    });
+
+    it("with scope 'all' leaves a branch untouched when nearest cluster is already its cluster", async () => {
+      mockQueryRows([
+        {
+          branchId: 'b-1',
+          currentClusterId: 'cl-1',
+          clusterId: 'cl-1',
+          distanceMeters: 50,
+        },
+      ]);
+
+      const result = await service.autoAssign({
+        scope: AutoAssignScope.ALL,
+      });
+
+      expect(branchRepo.update).not.toHaveBeenCalled();
+      expect(result).toMatchObject({ assigned: 0, reassigned: 0 });
+    });
+
+    it('commits large reassignments in bounded parallel chunks', async () => {
+      const rows = Array.from({ length: 120 }, (_, i) => ({
+        branchId: `b-${i}`,
+        currentClusterId: 'cl-old',
+        clusterId: 'cl-new',
+        distanceMeters: 50,
+      }));
+      mockQueryRows(rows);
+      clusterRepo.find.mockResolvedValue([]);
+
+      const result = await service.autoAssign({ scope: AutoAssignScope.ALL });
+
+      expect(branchRepo.update).toHaveBeenCalledTimes(120);
+      expect(result).toMatchObject({ assigned: 120, reassigned: 120 });
+    });
+
+    it('with async=true enqueues a background job with a fixed jobId', async () => {
+      const result = await service.autoAssign({
+        async: true,
+        scope: AutoAssignScope.ALL,
+      });
+
+      expect(autoAssignQueue.add).toHaveBeenCalledWith(
+        'auto-assign',
+        { scope: AutoAssignScope.ALL },
+        expect.objectContaining({ jobId: CLUSTER_AUTO_ASSIGN_JOB_ID }),
+      );
+      expect(result).toEqual({ enqueued: true, jobId: 'job-1' });
+      expect(branchRepo.manager.query).not.toHaveBeenCalled();
     });
   });
 });

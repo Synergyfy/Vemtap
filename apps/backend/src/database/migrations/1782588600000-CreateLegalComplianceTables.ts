@@ -5,7 +5,7 @@ export class CreateLegalComplianceTables1782588600000 implements MigrationInterf
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(
-      `CREATE TABLE "legal_agreements" (
+      `CREATE TABLE IF NOT EXISTS "legal_agreements" (
         "id" uuid NOT NULL DEFAULT uuid_generate_v4(),
         "createdAt" TIMESTAMP NOT NULL DEFAULT now(),
         "updatedAt" TIMESTAMP NOT NULL DEFAULT now(),
@@ -21,7 +21,7 @@ export class CreateLegalComplianceTables1782588600000 implements MigrationInterf
       )`,
     );
     await queryRunner.query(
-      `CREATE TABLE "legal_agreement_acceptances" (
+      `CREATE TABLE IF NOT EXISTS "legal_agreement_acceptances" (
         "id" uuid NOT NULL DEFAULT uuid_generate_v4(),
         "createdAt" TIMESTAMP NOT NULL DEFAULT now(),
         "updatedAt" TIMESTAMP NOT NULL DEFAULT now(),
@@ -37,16 +37,20 @@ export class CreateLegalComplianceTables1782588600000 implements MigrationInterf
       )`,
     );
     await queryRunner.query(
-      `CREATE INDEX "IDX_legal_agreement_acceptances_agreement" ON "legal_agreement_acceptances" ("agreementId") `,
+      `CREATE INDEX IF NOT EXISTS "IDX_legal_agreement_acceptances_agreement" ON "legal_agreement_acceptances" ("agreementId") `,
     );
     await queryRunner.query(
-      `CREATE INDEX "IDX_legal_agreement_acceptances_user" ON "legal_agreement_acceptances" ("userId") `,
+      `CREATE INDEX IF NOT EXISTS "IDX_legal_agreement_acceptances_user" ON "legal_agreement_acceptances" ("userId") `,
     );
     await queryRunner.query(
-      `ALTER TABLE "legal_agreement_acceptances" ADD CONSTRAINT "FK_legal_agreement_acceptances_agreement" FOREIGN KEY ("agreementId") REFERENCES "legal_agreements"("id") ON DELETE CASCADE ON UPDATE NO ACTION`,
+      `DO $$ BEGIN
+        ALTER TABLE "legal_agreement_acceptances" ADD CONSTRAINT "FK_legal_agreement_acceptances_agreement" FOREIGN KEY ("agreementId") REFERENCES "legal_agreements"("id") ON DELETE CASCADE ON UPDATE NO ACTION;
+       EXCEPTION WHEN duplicate_object THEN NULL; END $$;`,
     );
     await queryRunner.query(
-      `ALTER TABLE "legal_agreement_acceptances" ADD CONSTRAINT "FK_legal_agreement_acceptances_user" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE NO ACTION`,
+      `DO $$ BEGIN
+        ALTER TABLE "legal_agreement_acceptances" ADD CONSTRAINT "FK_legal_agreement_acceptances_user" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE NO ACTION;
+       EXCEPTION WHEN duplicate_object THEN NULL; END $$;`,
     );
   }
 

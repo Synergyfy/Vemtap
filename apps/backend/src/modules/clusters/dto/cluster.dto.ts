@@ -208,6 +208,11 @@ export class AdminClusterQueryDto {
   search?: string;
 }
 
+export enum AutoAssignScope {
+  UNASSIGNED = 'unassigned',
+  ALL = 'all',
+}
+
 export class AutoAssignClustersDto {
   @ApiPropertyOptional({
     example: true,
@@ -217,4 +222,26 @@ export class AutoAssignClustersDto {
   @IsOptional()
   @IsBoolean()
   dryRun?: boolean;
+
+  @ApiPropertyOptional({
+    enum: AutoAssignScope,
+    example: AutoAssignScope.UNASSIGNED,
+    default: AutoAssignScope.UNASSIGNED,
+    description:
+      "'unassigned' only considers branches without a cluster. " +
+      "'all' considers every branch and reassigns it to a different, closer covering cluster when one exists.",
+  })
+  @IsOptional()
+  @IsEnum(AutoAssignScope)
+  scope?: AutoAssignScope = AutoAssignScope.UNASSIGNED;
+
+  @ApiPropertyOptional({
+    example: false,
+    description:
+      'When true (and dryRun is false), enqueue the assignment to the background worker and return immediately.',
+    default: false,
+  })
+  @IsOptional()
+  @IsBoolean()
+  async?: boolean;
 }

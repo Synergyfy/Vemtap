@@ -578,25 +578,35 @@ Releases all member branches (sets `branch.clusterId = null`) and soft-deletes t
 
 ### 4.6 `POST /admin/clusters/auto-assign` — bulk-assign branches
 
-Assigns every branch **without** a cluster to the nearest cluster whose radius covers it. Only active clusters with coordinates are considered.
+Assigns branches to the nearest cluster whose radius covers them. Only active clusters with coordinates are considered.
 
 **Request body**
 
 ```json
-{ "dryRun": true }
+{ "dryRun": true, "scope": "unassigned" }
 ```
 
-- `dryRun: true` → returns a preview and persists nothing.
-- `dryRun: false` or omitted → commits.
+Options:
+- `dryRun: true` → returns a preview and persists nothing. `false` or omitted → commits.
+- `scope: "unassigned"` (default) → considers only branches **without** a cluster.
+- `scope: "all"` → considers **every** branch with coordinates and reassigns it to a different, closer covering cluster when one exists. Branches are **never** unassigned: a branch with no covering cluster keeps its current one.
+- `async: true` → (only valid with `dryRun: false`/omitted) enqueues the run on the background worker and returns `{ enqueued: true, jobId }` immediately instead of running inline.
 
 **Response — dry run**
 
 ```ts
 interface AutoAssignDryRunResponse {
   dryRun: true;
-  totalCandidates: number;      // unassigned branches with coordinates
-  assigned: number;             // branches that would be assigned
-  assignments: Array<{ branchId: string; clusterId: string | null }>;
+  scope: 'unassigned' | 'all';
+  totalCandidates: number;      // branches considered
+  assigned: number;             // branches that would be (re)assigned
+  reassigned: number;           // branches moving from an existing cluster
+  assignments: Array<{
+    branchId: string;
+    clusterId: string | null;
+    previousClusterId?: string | null;  // present when reassigning an assigned branch
+    distanceMeters?: number | null;
+  }>;
 }
 ```
 
@@ -605,10 +615,21 @@ interface AutoAssignDryRunResponse {
 ```ts
 interface AutoAssignCommitResponse {
   dryRun: false;
+  scope: 'unassigned' | 'all';
   totalCandidates: number;
   assigned: number;
+  reassigned: number;
 }
 ```
+
+**Background worker**
+
+The endpoint is also driven by an automatic background worker (`cluster-auto-assign` BullMQ queue, processed by `ClusterAutoAssignProcessor`):
+
+- Every 15 minutes a cron enqueues a `scope: "unassigned"` run (cheap backfill).
+- Every hour a cron enqueues a `scope: "all"` run so branches are reassigned to newly created / closer clusters as accuracy improves.
+- All runs (cron, admin `async: true`, and manual commits) share one assignment algorithm. The worker uses a single fixed `jobId` so overlapping runs are deduplicated by BullMQ.
+- Each run invalidates the Redis cache for every affected cluster (both the new and, on reassignment, the previous cluster).
 
 ---
 
