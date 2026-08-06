@@ -58,7 +58,7 @@ import { Reward } from '../loyalty/entities/reward.entity';
     PaymentsModule,
     forwardRef(() => BranchesModule),
     forwardRef(() => MessagingModule),
-    AffiliatesModule,
+    forwardRef(() => AffiliatesModule),
     ExternalAffiliateModule,
     forwardRef(() => QrThriveModule),
     SettingsModule,

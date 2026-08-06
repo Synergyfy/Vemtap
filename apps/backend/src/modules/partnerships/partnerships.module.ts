@@ -4,9 +4,14 @@ import { Partnership } from './entities/partnership.entity';
 import { PartnershipsService } from './partnerships.service';
 import { PartnershipsController } from './partnerships.controller';
 import { BranchesModule } from '../branches/branches.module';
+import { BusinessesModule } from '../businesses/businesses.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Partnership]), BranchesModule],
+  imports: [
+    TypeOrmModule.forFeature([Partnership]),
+    BranchesModule,
+    BusinessesModule,
+  ],
   controllers: [PartnershipsController],
   providers: [PartnershipsService],
   exports: [PartnershipsService],

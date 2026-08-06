@@ -1,7 +1,7 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class AddOfflineSyncToPosSales20260628112600 implements MigrationInterface {
-  name = 'AddOfflineSyncToPosSales20260628112600';
+export class AddOfflineSyncToPosSales1782645960000 implements MigrationInterface {
+  name = 'AddOfflineSyncToPosSales1782645960000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`ALTER TABLE "pos_sales" ADD "clientRef" uuid`);

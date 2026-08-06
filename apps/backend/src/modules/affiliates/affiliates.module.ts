@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { HttpModule } from '@nestjs/axios';
 import { AffiliateProfile } from './entities/affiliate-profile.entity';
@@ -13,7 +13,7 @@ import { VemtapAffiliateAgentsService } from './vemtap-affiliate-agents.service'
 import { User } from '../users/entities/user.entity';
 import { SettingsModule } from '../settings/settings.module';
 import { NotificationsModule } from '../notifications/notifications.module';
-import { forwardRef } from '@nestjs/common';
+import { BusinessesModule } from '../businesses/businesses.module';
 
 @Module({
   imports: [
@@ -29,6 +29,7 @@ import { forwardRef } from '@nestjs/common';
     SettingsModule,
     NotificationsModule,
     ExternalAffiliateModule,
+    forwardRef(() => BusinessesModule),
   ],
   controllers: [AffiliatesController],
   providers: [AffiliatesService, VemtapAffiliateAgentsService],

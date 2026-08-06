@@ -46,6 +46,8 @@ import {
   RedeemRewardByIdDto,
   VerifyRedemptionDto,
   ApplyRewardTemplateDto,
+  ManualEarnPointsDto,
+  ManualEarnSource,
 } from './dto/loyalty.dto';
 import { UpdateLoyaltyRuleDto } from './dto/loyalty-rule.dto';
 import { VisitorPointsEarnDto } from './dto/visitor-loyalty.dto';
@@ -320,6 +322,57 @@ export class LoyaltyService {
     });
 
     return this.pointTransactionRepo.save(transaction);
+  }
+
+  async earnManualPoints(
+    user: User,
+    branchId: string,
+    dto: ManualEarnPointsDto,
+  ) {
+    const branch = await this.branchRepo.findOne({ where: { id: branchId } });
+    if (!branch) throw new NotFoundException('Branch not found');
+
+    const hasAccess = await this.branchesService.checkBranchAccess(
+      user,
+      branchId,
+    );
+    if (!hasAccess)
+      throw new ForbiddenException('You do not have access to this branch');
+
+    const customer = await this.userRepo.findOne({
+      where: { id: dto.userId, role: UserRole.CUSTOMER },
+    });
+    if (!customer) throw new NotFoundException('Loyalty profile not found');
+
+    if (!Number.isFinite(dto.points) || dto.points <= 0) {
+      throw new BadRequestException('points must be a positive number');
+    }
+
+    const source = dto.source ?? ManualEarnSource.MANUAL_AWARD;
+    const transaction = this.pointTransactionRepo.create({
+      amount: dto.points,
+      type: PointTransactionType.EARNED,
+      reason: dto.notes || `Manual award (${source})`,
+      referenceCode: dto.rewardId ?? undefined,
+      customerId: customer.id,
+      givenById: dto.awardedBy ?? user.id,
+      businessId: branch.businessId,
+      branchId: branch.id,
+    });
+    const saved = await this.pointTransactionRepo.save(transaction);
+
+    const newBalance = await this.getBusinessPoints(
+      customer.id,
+      branch.businessId,
+    );
+
+    return {
+      success: true,
+      pointsEarned: dto.points,
+      newBalance,
+      message: `${dto.points} points awarded successfully`,
+      transactionId: `txn-${saved.id}`,
+    };
   }
 
   async generatePointCode(staff: User, dto: GeneratePointCodeDto) {

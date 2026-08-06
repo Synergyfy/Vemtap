@@ -15,6 +15,7 @@ import { Reward } from '../loyalty/entities/reward.entity';
 import { Subscription } from '../subscriptions/entities/subscription.entity';
 import { Plan } from '../subscriptions/entities/plan.entity';
 import { SubscriptionsModule } from '../subscriptions/subscriptions.module';
+import { BusinessVerifiedGuard } from '../../common/guards/business-verified.guard';
 import {
   GeocodingProcessor,
   GEOCODING_QUEUE,
@@ -39,8 +40,8 @@ import {
     forwardRef(() => BranchesModule),
     forwardRef(() => SubscriptionsModule),
   ],
-  providers: [BusinessesService, GeocodingProcessor],
+  providers: [BusinessesService, GeocodingProcessor, BusinessVerifiedGuard],
   controllers: [BusinessesController, PublicBusinessesController],
-  exports: [BusinessesService],
+  exports: [TypeOrmModule, BusinessesService, BusinessVerifiedGuard],
 })
 export class BusinessesModule {}

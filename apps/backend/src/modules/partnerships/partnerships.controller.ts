@@ -19,10 +19,11 @@ import { Roles } from '../../common/decorators/roles.decorator';
 import { UserRole } from '../users/entities/user.entity';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
+import { BusinessVerifiedGuard } from '../../common/guards/business-verified.guard';
 
 @ApiTags('partnerships')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, BusinessVerifiedGuard)
 @Controller('partnerships')
 export class PartnershipsController {
   constructor(private readonly partnershipsService: PartnershipsService) {}

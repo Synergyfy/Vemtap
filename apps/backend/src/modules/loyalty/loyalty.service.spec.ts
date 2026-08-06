@@ -450,4 +450,125 @@ describe('LoyaltyService', () => {
       expect(result.customer.id).toBe('customer-1');
     });
   });
+
+  describe('earnManualPoints', () => {
+    const branch = { id: 'b1', businessId: 'biz1' } as any;
+    const staff = { id: 'staff-1', role: UserRole.MANAGER } as any;
+    const customer = {
+      id: 'customer-1',
+      role: UserRole.CUSTOMER,
+      firstName: 'Jane',
+      lastName: 'Doe',
+      uniqueCode: 'CUST-123456',
+    } as any;
+
+    beforeEach(() => {
+      mockBranchesService.checkBranchAccess.mockResolvedValue(true);
+    });
+
+    it('credits the customer and returns the award contract', async () => {
+      const findOne = mockRepository.findOne;
+      findOne
+        .mockResolvedValueOnce(branch)
+        .mockResolvedValueOnce(customer);
+
+      mockRepository.create.mockClear();
+      mockRepository.save.mockClear();
+      mockRepository.save.mockResolvedValueOnce({
+        id: 'abc-123-456',
+      } as any);
+
+      const result = await service.earnManualPoints(staff, 'b1', {
+        userId: 'customer-1',
+        points: 500,
+      });
+
+      expect(result).toMatchObject({
+        success: true,
+        pointsEarned: 500,
+        newBalance: 0,
+        message: '500 points awarded successfully',
+        transactionId: 'txn-abc-123-456',
+      });
+      expect(mockRepository.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          amount: 500,
+          type: 'earned',
+          customerId: 'customer-1',
+          givenById: 'staff-1',
+          businessId: 'biz1',
+          branchId: 'b1',
+        }),
+      );
+      expect(mockBranchesService.checkBranchAccess).toHaveBeenCalledWith(
+        staff,
+        'b1',
+      );
+    });
+
+    it('uses dto.awardedBy when provided', async () => {
+      const findOne = mockRepository.findOne;
+      findOne.mockResolvedValueOnce(branch).mockResolvedValueOnce(customer);
+      mockRepository.save.mockResolvedValueOnce({ id: 'txn-123' } as any);
+
+      await service.earnManualPoints(staff, 'b1', {
+        userId: 'customer-1',
+        points: 100,
+        awardedBy: 'other-staff',
+      });
+
+      expect(mockRepository.create).toHaveBeenCalledWith(
+        expect.objectContaining({ givenById: 'other-staff' }),
+      );
+    });
+
+    it('throws NotFoundException when the branch is unknown', async () => {
+      mockRepository.findOne.mockResolvedValueOnce(null);
+
+      await expect(
+        service.earnManualPoints(staff, 'b-missing', {
+          userId: 'customer-1',
+          points: 10,
+        }),
+      ).rejects.toThrow('Branch not found');
+    });
+
+    it('throws ForbiddenException when the user lacks branch access', async () => {
+      mockBranchesService.checkBranchAccess.mockResolvedValue(false);
+      mockRepository.findOne.mockResolvedValueOnce(branch);
+
+      await expect(
+        service.earnManualPoints(staff, 'b1', {
+          userId: 'customer-1',
+          points: 10,
+        }),
+      ).rejects.toThrow('You do not have access to this branch');
+    });
+
+    it('throws NotFoundException when the loyalty profile is unknown', async () => {
+      mockRepository.findOne
+        .mockResolvedValueOnce(branch)
+        .mockResolvedValueOnce(null);
+
+      await expect(
+        service.earnManualPoints(staff, 'b1', {
+          userId: 'customer-missing',
+          points: 10,
+        }),
+      ).rejects.toThrow('Loyalty profile not found');
+    });
+
+    it('rejects non-positive points', async () => {
+      mockRepository.findOne
+        .mockResolvedValueOnce(branch)
+        .mockResolvedValueOnce(customer);
+
+      await expect(
+        service.earnManualPoints(staff, 'b1', {
+          userId: 'customer-1',
+          points: 0,
+        } as any),
+      ).rejects.toThrow('points must be a positive number');
+    });
+  });
 });
