@@ -148,7 +148,9 @@ export class UsersService {
     });
   }
 
-  async getTwoFactorState(id: string): Promise<Pick<User, 'twoFactorEnabled' | 'twoFactorSecret'> | null> {
+  async getTwoFactorState(
+    id: string,
+  ): Promise<Pick<User, 'twoFactorEnabled' | 'twoFactorSecret'> | null> {
     return this.usersRepository.findOne({
       where: { id },
       select: ['id', 'twoFactorEnabled', 'twoFactorSecret'],
@@ -169,26 +171,41 @@ export class UsersService {
   }
 
   async findActiveSession(id: string, userId: string) {
-    return this.userSessionRepository.findOne({ where: { id, userId, revokedAt: IsNull() } });
+    return this.userSessionRepository.findOne({
+      where: { id, userId, revokedAt: IsNull() },
+    });
   }
 
   async listSessions(userId: string) {
     return this.userSessionRepository.find({
       where: { userId },
       order: { lastActiveAt: 'DESC' },
-      select: ['id', 'deviceName', 'platform', 'userAgent', 'ipAddress', 'lastActiveAt', 'revokedAt', 'createdAt'],
+      select: [
+        'id',
+        'deviceName',
+        'platform',
+        'userAgent',
+        'ipAddress',
+        'lastActiveAt',
+        'revokedAt',
+        'createdAt',
+      ],
     });
   }
 
   async renameSession(userId: string, sessionId: string, deviceName: string) {
-    const session = await this.userSessionRepository.findOne({ where: { id: sessionId, userId } });
+    const session = await this.userSessionRepository.findOne({
+      where: { id: sessionId, userId },
+    });
     if (!session) throw new NotFoundException('Linked device not found');
     session.deviceName = deviceName;
     return this.userSessionRepository.save(session);
   }
 
   async revokeSession(userId: string, sessionId: string) {
-    const session = await this.userSessionRepository.findOne({ where: { id: sessionId, userId } });
+    const session = await this.userSessionRepository.findOne({
+      where: { id: sessionId, userId },
+    });
     if (!session) throw new NotFoundException('Linked device not found');
     session.revokedAt = new Date();
     await this.userSessionRepository.save(session);

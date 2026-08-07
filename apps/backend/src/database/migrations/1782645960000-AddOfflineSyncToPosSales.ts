@@ -4,7 +4,9 @@ export class AddOfflineSyncToPosSales1782645960000 implements MigrationInterface
   name = 'AddOfflineSyncToPosSales1782645960000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`ALTER TABLE "pos_sales" ADD COLUMN IF NOT EXISTS "clientRef" uuid`);
+    await queryRunner.query(
+      `ALTER TABLE "pos_sales" ADD COLUMN IF NOT EXISTS "clientRef" uuid`,
+    );
     await queryRunner.query(
       `ALTER TABLE "pos_sales" ADD COLUMN IF NOT EXISTS "orderedAt" TIMESTAMP DEFAULT now()`,
     );

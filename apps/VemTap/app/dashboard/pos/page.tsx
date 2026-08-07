@@ -6,10 +6,12 @@ import POSHomeScreen from '@/components/dashboard/pos/POSHomeScreen';
 import { CartPanel } from '@/components/dashboard/pos/CartPanel';
 import { usePosStore } from '@/store/usePosStore';
 import { usePosSettingsStore } from '@/store/usePosSettingsStore';
-import { ShoppingCart, X, Share2, ExternalLink, ShoppingBag, Tag } from 'lucide-react';
+import { ShoppingCart, X, Share2, ExternalLink, ShoppingBag, Tag, RotateCcw } from 'lucide-react';
 import { useMyBusiness } from '@/services/businesses/hooks';
 import { useCatalogueOrders } from '@/services/catalogue/hooks';
 import { useActiveBranch } from '@/hooks/useActiveBranch';
+import { useHeldPosSales } from '@/services/pos/hooks';
+import { HeldSalesModal } from '@/components/dashboard/pos/HeldSalesModal';
 import toast from 'react-hot-toast';
 import OfflineBanner from '@/components/dashboard/pos/OfflineBanner';
 import PageLockWrapper from '@/components/dashboard/PageLockWrapper';
@@ -17,12 +19,15 @@ import PageLockWrapper from '@/components/dashboard/PageLockWrapper';
 export default function POSPage() {
   const router = useRouter();
   const [mobileCartOpen, setMobileCartOpen] = useState(false);
+  const [isHeldModalOpen, setIsHeldModalOpen] = useState(false);
   const { cart } = usePosStore();
   const itemCount = cart.reduce((acc, item) => acc + item.quantity, 0);
   const { data: business } = useMyBusiness();
   const loadFromBusiness = usePosSettingsStore((s) => s.loadFromBusiness);
   const businessCode = business?.uniqueCode;
   const { activeBranchId } = useActiveBranch();
+  const { data: heldSales = [] } = useHeldPosSales(activeBranchId ?? undefined);
+  const heldCount = heldSales.length;
 
   useEffect(() => {
     if (business) {
@@ -60,6 +65,18 @@ export default function POSPage() {
 
   const quickActions = (
     <>
+      <button
+        onClick={() => setIsHeldModalOpen(true)}
+        className="flex items-center justify-center gap-2 h-10 px-4 rounded-xl bg-white border border-gray-200 text-gray-700 text-[10px] font-black uppercase tracking-widest hover:bg-gray-50 hover:border-gray-300 transition-all relative"
+      >
+        <RotateCcw size={14} />
+        Held
+        {heldCount > 0 && (
+          <span className="absolute -top-2 -right-2 size-5 bg-amber-500 text-white text-[8px] font-black rounded-full flex items-center justify-center shadow-lg shadow-amber-500/30">
+            {heldCount > 9 ? '9+' : heldCount}
+          </span>
+        )}
+      </button>
       <button
         onClick={() => router.push('/dashboard/pos/mode')}
         className="flex items-center justify-center gap-1.5 h-10 px-3 rounded-xl bg-gray-900 text-white text-[10px] font-black uppercase tracking-widest hover:bg-black transition-all shadow-md"
@@ -128,7 +145,7 @@ export default function POSPage() {
       </div>
 
       {/* Desktop right-panel: Fixed cart — only cart items scroll internally */}
-      <div className="hidden md:flex w-[380px] lg:w-[420px] flex-col h-full sticky top-0 border-l border-gray-100 bg-white rounded-[32px] overflow-hidden">
+      <div className="hidden lg:flex w-[380px] xl:w-[420px] flex-col h-full sticky top-0 border-l border-gray-100 bg-white rounded-[32px] overflow-hidden">
         {/* CartPanel — only cart items scroll, totals/actions stay fixed */}
         <div className="flex-1 min-h-0 overflow-hidden">
           <CartPanel />
@@ -140,7 +157,7 @@ export default function POSPage() {
       {itemCount > 0 && !mobileCartOpen && (
         <button
           onClick={() => setMobileCartOpen(true)}
-          className="md:hidden fixed bottom-28 right-4 z-40 h-14 px-5 bg-[#066CF4] text-white rounded-full flex items-center gap-2 shadow-2xl shadow-blue-500/40 active:scale-95 transition-all animate-in slide-in-from-bottom-4"
+          className="lg:hidden fixed bottom-28 right-4 z-40 h-14 px-5 bg-[#066CF4] text-white rounded-full flex items-center gap-2 shadow-2xl shadow-blue-500/40 active:scale-95 transition-all animate-in slide-in-from-bottom-4"
         >
           <ShoppingCart size={20} />
           <span className="text-[12px] font-black uppercase tracking-widest">
@@ -154,16 +171,30 @@ export default function POSPage() {
 
       {/* ─── MOBILE: Cart Drawer Overlay ─── */}
       {mobileCartOpen && (
-        <div className="md:hidden fixed inset-0 z-[60] flex flex-col">
+        <div className="lg:hidden fixed inset-0 z-[60] flex flex-col">
           <div
             className="absolute inset-0 bg-black/40 backdrop-blur-sm"
             onClick={() => setMobileCartOpen(false)}
           />
 
-          <div className="absolute bottom-0 inset-x-0 bg-white rounded-t-[32px] shadow-2xl max-h-[92vh] flex flex-col animate-in slide-in-from-bottom duration-300">
+          <div className="absolute bottom-[60px] inset-x-0 bg-white rounded-t-[32px] shadow-2xl max-h-[85vh] flex flex-col animate-in slide-in-from-bottom duration-300">
             <div className="flex items-center justify-between px-6 pt-4 pb-2 shrink-0">
               <div className="w-10 h-1 bg-gray-200 rounded-full mx-auto absolute left-1/2 -translate-x-1/2 top-3" />
-              <span className="text-xs font-black text-gray-400 uppercase tracking-widest pt-2">Your Cart</span>
+              <div className="flex items-center gap-2 pt-2">
+                <span className="text-xs font-black text-gray-400 uppercase tracking-widest">Your Cart</span>
+                <button
+                  onClick={() => setIsHeldModalOpen(true)}
+                  className="relative inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-gray-500 bg-gray-100 hover:bg-gray-200 rounded-lg px-2.5 py-1.5 transition-colors"
+                >
+                  <RotateCcw size={12} />
+                  Held
+                  {heldCount > 0 && (
+                    <span className="absolute -top-1.5 -right-1.5 size-4 bg-amber-500 text-white text-[8px] font-black rounded-full flex items-center justify-center">
+                      {heldCount > 9 ? '9+' : heldCount}
+                    </span>
+                  )}
+                </button>
+              </div>
               <button
                 onClick={() => setMobileCartOpen(false)}
                 className="size-10 rounded-xl bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200 transition-colors mt-1"
@@ -178,6 +209,13 @@ export default function POSPage() {
           </div>
         </div>
       )}
+
+      {/* ─── HELD SALES MODAL ─── */}
+      <HeldSalesModal
+        isOpen={isHeldModalOpen}
+        onClose={() => setIsHeldModalOpen(false)}
+        branchId={activeBranchId ?? undefined}
+      />
     </div>
     </PageLockWrapper>
   );

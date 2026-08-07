@@ -468,9 +468,7 @@ describe('LoyaltyService', () => {
 
     it('credits the customer and returns the award contract', async () => {
       const findOne = mockRepository.findOne;
-      findOne
-        .mockResolvedValueOnce(branch)
-        .mockResolvedValueOnce(customer);
+      findOne.mockResolvedValueOnce(branch).mockResolvedValueOnce(customer);
 
       mockRepository.create.mockClear();
       mockRepository.save.mockClear();

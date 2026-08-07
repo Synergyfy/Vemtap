@@ -56,7 +56,8 @@ export class Banner extends AbstractBaseEntity {
   @ApiProperty({
     example: 'business',
     enum: ['business', 'customer'],
-    description: 'Where the banner is displayed (business dashboard or customer app)',
+    description:
+      'Where the banner is displayed (business dashboard or customer app)',
   })
   @Column({ default: 'business' })
   placement: 'business' | 'customer';
@@ -64,7 +65,8 @@ export class Banner extends AbstractBaseEntity {
   @ApiProperty({
     example: 'custom',
     enum: ['custom', 'deals-page', 'deal'],
-    description: 'What the banner CTA links to (custom URL, deals page, or a specific deal campaign)',
+    description:
+      'What the banner CTA links to (custom URL, deals page, or a specific deal campaign)',
   })
   @Column({ default: 'custom' })
   targetType: 'custom' | 'deals-page' | 'deal';

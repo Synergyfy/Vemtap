@@ -48,7 +48,11 @@ import { SupportFaqController } from './support-faq.controller';
       inject: [ConfigService],
     }),
   ],
-  controllers: [SupportController, AgentSupportController, SupportFaqController],
+  controllers: [
+    SupportController,
+    AgentSupportController,
+    SupportFaqController,
+  ],
   providers: [
     SupportService,
     SupportBotService,

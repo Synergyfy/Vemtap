@@ -163,15 +163,6 @@ export class AnalyticsService {
           trafficByEntrance: [
             { name: 'Main Entrance Counter', count: 0, percentage: '0%' },
           ],
-          visitDuration: {
-            averageStay: '0 mins',
-            trendText: '0%',
-            distribution: [
-              { label: 'Quick Tap (< 5 mins)', p: '0%', time: 'Quick Tap' },
-              { label: 'Short Stay (5-15 mins)', p: '0%', time: 'Short Visit' },
-              { label: 'Long Stay (15+ mins)', p: '0%', time: 'Long Stay' },
-            ],
-          },
         };
       }
 
@@ -202,9 +193,7 @@ export class AnalyticsService {
               'entrance',
             )
             .addSelect('COUNT(visit.id)', 'count')
-            .groupBy(
-              "COALESCE(device.name, device.code, 'Main Entrance')",
-            )
+            .groupBy("COALESCE(device.name, device.code, 'Main Entrance')")
             .getRawMany(),
         ]);
 
@@ -274,15 +263,6 @@ export class AnalyticsService {
                   percentage: '100%',
                 },
               ],
-        visitDuration: {
-          averageStay: '12 mins',
-          trendText: '+5%',
-          distribution: [
-            { label: 'Quick Tap (< 5 mins)', p: '35%', time: 'Quick Tap' },
-            { label: 'Short Stay (5-15 mins)', p: '45%', time: 'Short Visit' },
-            { label: 'Long Stay (15+ mins)', p: '20%', time: 'Long Stay' },
-          ],
-        },
       };
     } catch (error) {
       this.logger.error(
@@ -325,7 +305,7 @@ export class AnalyticsService {
             day,
             hours: new Array(10).fill(0),
           })),
-          smartSuggestion: { peakTime: 'N/A' },
+          smartSuggestion: null,
         };
       }
 
@@ -341,8 +321,9 @@ export class AnalyticsService {
 
       const matrix: number[][] = days.map(() => new Array(10).fill(0));
       let maxCount = 0;
-      let peakDay = 'Friday';
-      let peakHourLabel = '2 PM - 4 PM';
+      let hasPeak = false;
+      let peakDay = days[0];
+      let peakHourLabel = hoursLabels[0];
 
       (rawMatrix || []).forEach((row) => {
         const dow = parseInt(row.dow, 10);
@@ -356,6 +337,7 @@ export class AnalyticsService {
           matrix[dayIdx][hourIdx] = count;
           if (count > maxCount) {
             maxCount = count;
+            hasPeak = true;
             peakDay = days[dayIdx];
             peakHourLabel = hoursLabels[hourIdx] || `${hour}:00`;
           }
@@ -367,12 +349,14 @@ export class AnalyticsService {
         hours: matrix[idx],
       }));
 
+      const smartSuggestion = hasPeak
+        ? { peakTime: `${peakDay}s around ${peakHourLabel}` }
+        : null;
+
       return {
         hoursLabels,
         weeklyData,
-        smartSuggestion: {
-          peakTime: `${peakDay}s around ${peakHourLabel}`,
-        },
+        smartSuggestion,
       };
     } catch (error) {
       this.logger.error(

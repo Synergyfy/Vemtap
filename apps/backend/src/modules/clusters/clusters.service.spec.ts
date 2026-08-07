@@ -326,12 +326,22 @@ describe('ClustersService', () => {
       expect(result.data.map((d: any) => d.id)).toEqual(['o2', 'o1']);
     });
 
-    it('adds distance select and uses customer location when provided', async () => {
+    it('computes distance from branch coordinates and uses customer location when provided', async () => {
       const qb = buildQb();
       const o1 = makeOffer('o1', 'b1', '2026-01-05');
-      (o1 as any).distanceMeters = 300;
+      o1.branch = {
+        id: 'b1',
+        name: 'Branch b1',
+        latitude: 9.052,
+        longitude: 7.492,
+      };
       const o2 = makeOffer('o2', 'b2', '2026-01-04');
-      (o2 as any).distanceMeters = 120;
+      o2.branch = {
+        id: 'b2',
+        name: 'Branch b2',
+        latitude: 9.051,
+        longitude: 7.491,
+      };
       qb.getMany.mockResolvedValue([o1, o2]);
       offerRepo.createQueryBuilder.mockReturnValue(qb);
 
@@ -343,7 +353,8 @@ describe('ClustersService', () => {
 
       expect(result.reference.source).toBe('customer');
       expect(result.data.map((d: any) => d.id)).toEqual(['o2', 'o1']);
-      expect(qb.addSelect).toHaveBeenCalled();
+      expect(result.data[0].distanceMeters).toBeGreaterThan(0);
+      expect(qb.addSelect).not.toHaveBeenCalled();
     });
 
     it('uses cluster center as distance reference when no lat/lng provided', async () => {
@@ -650,7 +661,7 @@ describe('ClustersService', () => {
       expect(result.pinned.map((d: any) => d.id)).toEqual(['o2']);
       expect(result.total).toBe(2);
       expect(offerRepo.find).toHaveBeenCalledWith(
-        expect.objectContaining({ relations: ['branch', 'business'] }),
+        expect.objectContaining({ relations: ['branch', 'business', 'items'] }),
       );
     });
 
