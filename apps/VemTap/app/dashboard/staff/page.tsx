@@ -191,18 +191,7 @@ export default function StaffDirectory() {
   const togglePermission = (perm: string) => {
     setForm(p => {
       const isAdding = !p.permissions.includes(perm);
-      let updated = isAdding ? [...p.permissions, perm] : p.permissions.filter(x => x !== perm);
-      if (perm.includes(':')) {
-        const parentKey = perm.split(':')[0];
-        if (isAdding && !updated.includes(parentKey)) {
-          updated.push(parentKey);
-        } else if (!isAdding) {
-          const hasOtherSubItems = updated.some(x => x.startsWith(parentKey + ':') && x !== perm);
-          if (!hasOtherSubItems) {
-            updated = updated.filter(x => x !== parentKey);
-          }
-        }
-      }
+      const updated = isAdding ? [...p.permissions, perm] : p.permissions.filter(x => x !== perm);
       return { ...p, permissions: updated };
     });
   };

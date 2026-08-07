@@ -191,11 +191,11 @@ export default function POSHomeScreen({ onOpenCart, businessCode, isPublic = fal
             </button>
           </div>
           {headerActions && (
-            <div className="hidden md:flex items-center gap-2 shrink-0">
+            <div className="hidden md:flex items-center gap-2 overflow-x-auto scrollbar-hide">
               {headerActions}
               <button
                 onClick={() => router.push('/dashboard/pos/sales')}
-                className="flex items-center justify-center gap-1.5 h-10 px-3 rounded-xl bg-white border border-gray-200 text-gray-700 text-[10px] font-black uppercase tracking-widest hover:bg-gray-50 hover:border-gray-300 transition-all"
+                className="flex items-center justify-center gap-1.5 h-10 px-3 rounded-xl bg-white border border-gray-200 text-gray-700 text-[10px] font-black uppercase tracking-widest hover:bg-gray-50 hover:border-gray-300 transition-all shrink-0"
               >
                 <Clock size={12} /> History
               </button>
@@ -303,7 +303,7 @@ export default function POSHomeScreen({ onOpenCart, businessCode, isPublic = fal
       <div className="flex-1 overflow-y-auto px-1 md:px-4 pb-6">
         {filteredProducts.length > 0 ? (
           viewMode === 'grid' ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-2.5 sm:gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-8 gap-2 sm:gap-2.5 md:gap-3">
             {filteredProducts.map((product: any) => {
               const stockWarning = product.stockQuantity <= (product.minStock || 5) && product.stockQuantity > 0;
               const outOfStock = product.stockQuantity === 0;
@@ -334,7 +334,7 @@ export default function POSHomeScreen({ onOpenCart, businessCode, isPublic = fal
                     }
                   }}
                   className={cn(
-                    "flex flex-col text-left bg-white border rounded-2xl md:rounded-[28px] p-3 shadow-sm transition-all relative group",
+                    "flex flex-col text-left bg-white border rounded-2xl md:rounded-[28px] p-3 shadow-sm transition-all relative group overflow-hidden",
                     outOfStock
                       ? "opacity-50 cursor-not-allowed grayscale border-gray-100"
                       : inCart
@@ -365,10 +365,10 @@ export default function POSHomeScreen({ onOpenCart, businessCode, isPublic = fal
                     <h3 className="text-xs md:text-sm font-black text-gray-900 truncate mb-1" title={product.name}>
                       {product.name}
                     </h3>
-                    <p className="text-xs font-extrabold text-[#066CF4]">
-                      ₦{getFinalPrice(product).toLocaleString()}
-                      {hasDiscount(product) && <span className="text-[9px] font-bold text-gray-400 line-through ml-1">₦{Number(product.price).toLocaleString()}</span>}
-                    </p>
+                    <div className="flex flex-wrap items-baseline gap-x-1">
+                      <span className="text-xs font-extrabold text-[#066CF4] whitespace-nowrap">₦{getFinalPrice(product).toLocaleString()}</span>
+                      {hasDiscount(product) && <span className="text-[9px] font-bold text-gray-400 line-through whitespace-nowrap">₦{Number(product.price).toLocaleString()}</span>}
+                    </div>
                     <p className="text-[10px] font-bold text-gray-400 mt-0.5 uppercase tracking-widest">
                       {product.stockQuantity} left
                     </p>

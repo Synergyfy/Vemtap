@@ -265,7 +265,7 @@ export default function DashboardSidebar({ children }: SidebarProps) {
     };
 
     const businessLogo = myBusiness?.logoUrl || defaultLogo;
-    const businessName = myBusiness?.name || user?.businessName || 'Business Profile';
+    const businessName = myBusiness?.name || 'Business Profile';
     const publicProfileHref = getLinkWithBranch(myBusiness?.uniqueCode ? `/b/${myBusiness.uniqueCode}` : `/dashboard/settings/profile`);
 
     return (

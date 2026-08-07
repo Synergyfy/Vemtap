@@ -4,12 +4,19 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import POSHomeScreen from '@/components/dashboard/pos/POSHomeScreen';
 import { CartPanel } from '@/components/dashboard/pos/CartPanel';
-import { ArrowLeft, ShoppingBag, Maximize2, Minimize2, Clock } from 'lucide-react';
+import { ArrowLeft, ShoppingBag, Maximize2, Minimize2, Clock, RotateCcw } from 'lucide-react';
 import OfflineBanner from '@/components/dashboard/pos/OfflineBanner';
+import { HeldSalesModal } from '@/components/dashboard/pos/HeldSalesModal';
+import { useActiveBranch } from '@/hooks/useActiveBranch';
+import { useHeldPosSales } from '@/services/pos/hooks';
 
 export default function DedicatedPOSModePage() {
   const router = useRouter();
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isHeldModalOpen, setIsHeldModalOpen] = useState(false);
+  const { activeBranchId } = useActiveBranch();
+  const { data: heldSales = [] } = useHeldPosSales(activeBranchId ?? undefined);
+  const heldCount = heldSales.length;
 
   useEffect(() => {
     const handler = () => setIsFullscreen(!!document.fullscreenElement);
@@ -24,6 +31,14 @@ export default function DedicatedPOSModePage() {
       document.documentElement.requestFullscreen();
     }
   };
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setIsHeldModalOpen(false);
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, []);
 
   return (
     <div className="fixed inset-0 z-[400] bg-gray-900 flex flex-col overflow-hidden select-none p-3 sm:p-5">
@@ -80,6 +95,19 @@ export default function DedicatedPOSModePage() {
               Sales History
             </button>
             <button
+              onClick={() => setIsHeldModalOpen(true)}
+              className="relative flex items-center gap-1.5 h-10 px-4 text-xs font-black uppercase tracking-widest rounded-xl bg-gray-800/80 text-gray-300 hover:bg-gray-700 hover:text-white transition-all border border-gray-700/60"
+              title="Held Sales"
+            >
+              <RotateCcw size={14} />
+              Held
+              {heldCount > 0 && (
+                <span className="absolute -top-2 -right-2 size-5 bg-amber-500 text-white text-[8px] font-black rounded-full flex items-center justify-center shadow-lg shadow-amber-500/30">
+                  {heldCount > 9 ? '9+' : heldCount}
+                </span>
+              )}
+            </button>
+            <button
               onClick={() => router.push('/dashboard/pos/orders')}
               className="flex items-center gap-1.5 h-10 px-4 text-xs font-black uppercase tracking-widest rounded-xl bg-gray-800/80 text-gray-300 hover:bg-gray-700 hover:text-white transition-all border border-gray-700/60"
               title="Orders"
@@ -103,6 +131,13 @@ export default function DedicatedPOSModePage() {
           <CartPanel />
         </div>
       </div>
+
+      {/* Held Sales Modal */}
+      <HeldSalesModal
+        isOpen={isHeldModalOpen}
+        onClose={() => setIsHeldModalOpen(false)}
+        branchId={activeBranchId ?? undefined}
+      />
     </div>
   );
 }
