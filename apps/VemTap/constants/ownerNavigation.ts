@@ -169,6 +169,7 @@ export const NAVIGATION_SECTIONS: NavSection[] = [
                 permission: 'discovery',
                 submenu: [
                     { label: 'Get Customers', href: '/dashboard/discovery' },
+                    { label: 'Deals', href: '/dashboard/discovery/deals' },
                     { label: 'Business Partnership', href: '/dashboard/business-partnership' },
                 ],
                 keywords: ['network', 'marketplace', 'discovery', 'leads', 'traffic', 'promotions', 'partner', 'partnership', 'referral', 'commission', 'invite', 'collaborate']

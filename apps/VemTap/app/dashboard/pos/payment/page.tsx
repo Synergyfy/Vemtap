@@ -116,6 +116,44 @@ export default function PaymentScreen() {
   const splitSum = splitCashNum + splitCardNum + splitTransferNum;
   const splitRemaining = totalAfterReward - splitSum;
 
+  // ── Split auto-complete ─────────────────────────────────────────────
+  // When two of the three fields already have amounts, suggest the exact
+  // remaining balance on the still-empty field so the cashier can tap to
+  // fill it (or keep typing manually).
+  const splitFieldValue = (field: 'cash' | 'card' | 'transfer') =>
+    field === 'cash' ? splitCashNum : field === 'card' ? splitCardNum : splitTransferNum;
+
+  const splitOthersFilled = (field: 'cash' | 'card' | 'transfer') => {
+    const others = field === 'cash'
+      ? [splitCardNum, splitTransferNum]
+      : field === 'card'
+        ? [splitCashNum, splitTransferNum]
+        : [splitCashNum, splitCardNum];
+    return others.every(v => v > 0);
+  };
+
+  const splitSuggestion = (field: 'cash' | 'card' | 'transfer'): number | null => {
+    if (!splitOthersFilled(field)) return null;
+    if (splitFieldValue(field) > 0) return null;
+    const othersSum = field === 'cash'
+      ? splitCardNum + splitTransferNum
+      : field === 'card'
+        ? splitCashNum + splitTransferNum
+        : splitCashNum + splitCardNum;
+    const suggestion = totalAfterReward - othersSum;
+    if (suggestion <= 0) return null;
+    return Math.round(suggestion * 100) / 100;
+  };
+
+  const applySplitSuggestion = (field: 'cash' | 'card' | 'transfer') => {
+    const s = splitSuggestion(field);
+    if (s == null) return;
+    const raw = String(s);
+    if (field === 'cash') setSplitCash(raw);
+    else if (field === 'card') setSplitCard(raw);
+    else setSplitTransfer(raw);
+  };
+
   // Keep the latest attached customer readable from async callbacks (the
   // customer prompt flow runs executePayment after a delay, and closures
   // otherwise capture a stale `attachedCustomer`).
@@ -656,6 +694,15 @@ export default function PaymentScreen() {
                         placeholder="0"
                       />
                     </div>
+                    {splitSuggestion('cash') != null && (
+                      <button
+                        type="button"
+                        onClick={() => applySplitSuggestion('cash')}
+                        className="mt-1.5 w-full h-8 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-600 text-[10px] font-black uppercase tracking-wider flex items-center justify-center gap-1 hover:bg-emerald-100 active:scale-95 transition-all"
+                      >
+                        Use ₦{splitSuggestion('cash')!.toLocaleString()}
+                      </button>
+                    )}
                   </div>
 
                   <div
@@ -675,6 +722,15 @@ export default function PaymentScreen() {
                         placeholder="0"
                       />
                     </div>
+                    {splitSuggestion('card') != null && (
+                      <button
+                        type="button"
+                        onClick={() => applySplitSuggestion('card')}
+                        className="mt-1.5 w-full h-8 rounded-lg bg-purple-50 border border-purple-200 text-purple-600 text-[10px] font-black uppercase tracking-wider flex items-center justify-center gap-1 hover:bg-purple-100 active:scale-95 transition-all"
+                      >
+                        Use ₦{splitSuggestion('card')!.toLocaleString()}
+                      </button>
+                    )}
                   </div>
 
                   <div
@@ -694,6 +750,15 @@ export default function PaymentScreen() {
                         placeholder="0"
                       />
                     </div>
+                    {splitSuggestion('transfer') != null && (
+                      <button
+                        type="button"
+                        onClick={() => applySplitSuggestion('transfer')}
+                        className="mt-1.5 w-full h-8 rounded-lg bg-blue-50 border border-blue-200 text-blue-600 text-[10px] font-black uppercase tracking-wider flex items-center justify-center gap-1 hover:bg-blue-100 active:scale-95 transition-all"
+                      >
+                        Use ₦{splitSuggestion('transfer')!.toLocaleString()}
+                      </button>
+                    )}
                   </div>
                 </div>
 
