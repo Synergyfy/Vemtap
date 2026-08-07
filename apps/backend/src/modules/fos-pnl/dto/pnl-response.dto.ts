@@ -18,16 +18,36 @@ export class PnlStatementResponseDto {
 
   @ApiProperty({ example: 70.0 })
   profitMarginPercentage: number;
+
+  @ApiProperty({
+    example: [{ name: 'Subscription', value: 3500000 }],
+  })
+  revenueByCategory: { name: string; value: number }[];
+
+  @ApiProperty({
+    example: [
+      { name: 'QRThrive', revenue: 1200000, profit: 900000, margin: 75.0 },
+    ],
+  })
+  productProfitability: {
+    name: string;
+    revenue: number;
+    profit: number;
+    margin: number;
+  }[];
 }
 
 export class RevenueTrendDto {
   @ApiProperty({ example: '2026-01' })
-  date: string;
+  month: string;
 
   @ApiProperty({ example: 450000 })
   revenue: number;
 
   @ApiProperty({ example: 400000 })
+  costs: number;
+
+  @ApiProperty({ example: 50000 })
   profit: number;
 }
 
@@ -46,6 +66,15 @@ export class CashFlowRunwayResponseDto {
 
   @ApiProperty({ example: 5 })
   runwayMonths: number;
+
+  @ApiProperty({ example: 1260000 })
+  availableCash: number;
+
+  @ApiProperty({ example: 525000 })
+  committedCash: number;
+
+  @ApiProperty({ example: 315000 })
+  reservedCash: number;
 }
 
 export class CostBreakEvenResponseDto {

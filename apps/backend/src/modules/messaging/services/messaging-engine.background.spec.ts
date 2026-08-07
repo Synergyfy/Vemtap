@@ -73,9 +73,11 @@ describe('MessagingEngineService (Background Processing)', () => {
         {
           provide: getRepositoryToken(ConversationThread),
           useValue: {
-            findOne: jest
-              .fn()
-              .mockResolvedValue({ id: 't1', branchId: 'br1', customerId: 'c1' }),
+            findOne: jest.fn().mockResolvedValue({
+              id: 't1',
+              branchId: 'br1',
+              customerId: 'c1',
+            }),
             create: jest.fn().mockImplementation((dto) => dto),
             save: jest
               .fn()

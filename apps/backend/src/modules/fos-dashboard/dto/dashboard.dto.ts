@@ -30,6 +30,15 @@ export class DashboardStatsResponseDto {
   @ApiProperty({ example: 2500000 })
   cashBalance: number;
 
+  @ApiProperty({ example: 1500000 })
+  availableCash: number;
+
+  @ApiProperty({ example: 625000 })
+  committedCash: number;
+
+  @ApiProperty({ example: 375000 })
+  reservedCash: number;
+
   @ApiProperty({ example: 5.2 })
   churnRate: number;
 

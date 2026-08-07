@@ -55,7 +55,10 @@ export class CategoriesService {
     return category;
   }
 
-  async update(id: string, dto: UpdateMarketingCategoryDto): Promise<MarketingCategory> {
+  async update(
+    id: string,
+    dto: UpdateMarketingCategoryDto,
+  ): Promise<MarketingCategory> {
     const category = await this.findOne(id);
     if (dto.name && !dto.slug) {
       (dto as any).slug = dto.name

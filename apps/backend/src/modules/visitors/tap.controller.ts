@@ -1,5 +1,17 @@
-import { Controller, Headers, Param, Post, Req, UseGuards } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import {
+  Controller,
+  Headers,
+  Param,
+  Post,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
+import {
+  ApiBearerAuth,
+  ApiOperation,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -22,9 +34,13 @@ export class TapController {
   })
   async record(@Param('code') code: string, @Req() req: any) {
     const forwardedFor = req.headers['x-forwarded-for'];
-    const ipAddress = (typeof forwardedFor === 'string'
-      ? forwardedFor.split(',')[0]
-      : undefined)?.trim() ?? req.socket?.remoteAddress ?? req.ip;
+    const ipAddress =
+      (typeof forwardedFor === 'string'
+        ? forwardedFor.split(',')[0]
+        : undefined
+      )?.trim() ??
+      req.socket?.remoteAddress ??
+      req.ip;
 
     return this.visitorsService.recordPortalVisit({
       customerId: req.user.id,

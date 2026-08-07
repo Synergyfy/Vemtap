@@ -12,12 +12,23 @@ import {
 import { UserRole } from '../../users/entities/user.entity';
 
 export class RegisterDto {
+  @ApiPropertyOptional({
+    example: 'Jane Doe',
+    description:
+      'Full name. Alternative to firstName/lastName; split automatically when provided.',
+  })
+  @IsOptional()
+  @IsString()
+  name?: string;
+
   @ApiProperty({ example: 'John', description: 'First name of the user' })
+  @ValidateIf((o) => !o.name)
   @IsString()
   @IsNotEmpty()
   firstName: string;
 
   @ApiProperty({ example: 'Smith', description: 'Last name of the user' })
+  @ValidateIf((o) => !o.name)
   @IsString()
   @IsNotEmpty()
   lastName: string;

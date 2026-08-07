@@ -34,9 +34,14 @@ export class NotificationsService {
     };
   }
 
-  async updatePreferences(userId: string, preferences: Record<string, boolean>) {
+  async updatePreferences(
+    userId: string,
+    preferences: Record<string, boolean>,
+  ) {
     const updated = { ...(await this.getPreferences(userId)), ...preferences };
-    await this.userRepository.update(userId, { notificationPreferences: updated });
+    await this.userRepository.update(userId, {
+      notificationPreferences: updated,
+    });
     return updated;
   }
 
@@ -81,7 +86,14 @@ export class NotificationsService {
   }
 
   async markAsRead(id: string) {
-    return this.notificationsRepository.update(id, { isRead: true });
+    const notification = await this.notificationsRepository.findOne({
+      where: { id },
+    });
+    if (!notification) {
+      throw new NotFoundException(`Notification with id ${id} not found`);
+    }
+    notification.isRead = true;
+    return this.notificationsRepository.save(notification);
   }
 
   async markAllAsRead(userId: string) {
