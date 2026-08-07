@@ -193,9 +193,7 @@ export class AnalyticsService {
               'entrance',
             )
             .addSelect('COUNT(visit.id)', 'count')
-            .groupBy(
-              "COALESCE(device.name, device.code, 'Main Entrance')",
-            )
+            .groupBy("COALESCE(device.name, device.code, 'Main Entrance')")
             .getRawMany(),
         ]);
 

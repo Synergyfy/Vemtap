@@ -22,6 +22,8 @@ import { UserSession } from './user-session.entity';
 import { ApiProperty } from '@nestjs/swagger';
 
 export enum UserRole {
+  USER = 'USER',
+  SUPER_ADMIN = 'SUPER_ADMIN',
   OWNER = 'Owner',
   MANAGER = 'Manager',
   STAFF = 'Staff',

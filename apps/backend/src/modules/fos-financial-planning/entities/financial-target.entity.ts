@@ -1,5 +1,6 @@
 import { Entity, Column } from 'typeorm';
 import { AbstractBaseEntity } from '../../../common/entities/base.entity';
+import { numericTransformer } from '../../../common/transformers/numeric.transformer';
 
 export enum TargetPeriodType {
   DAILY = 'daily',
@@ -13,7 +14,12 @@ export class FinancialTarget extends AbstractBaseEntity {
   @Column({ type: 'enum', enum: TargetPeriodType })
   periodType: TargetPeriodType;
 
-  @Column('decimal', { precision: 15, scale: 2, default: 0 })
+  @Column('decimal', {
+    precision: 15,
+    scale: 2,
+    default: 0,
+    transformer: numericTransformer,
+  })
   targetRevenue: number;
 
   @Column({ default: 0 })
@@ -25,7 +31,12 @@ export class FinancialTarget extends AbstractBaseEntity {
   @Column({ default: 0 })
   targetEmailUsage: number;
 
-  @Column('decimal', { precision: 5, scale: 2, default: 0 })
+  @Column('decimal', {
+    precision: 5,
+    scale: 2,
+    default: 0,
+    transformer: numericTransformer,
+  })
   profitMargin: number;
 
   @Column({ type: 'date' })

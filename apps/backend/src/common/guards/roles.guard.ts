@@ -74,6 +74,18 @@ export class RolesGuard implements CanActivate {
 
     const userRole = this.normalizeRole(user?.role);
 
+    // SUPER_ADMIN is a superset of ADMIN: it may act anywhere ADMIN may.
+    if (
+      requiredRoles.some(
+        (role) =>
+          this.normalizeRole(String(role)) ===
+          this.normalizeRole(UserRole.ADMIN),
+      ) &&
+      userRole === this.normalizeRole(UserRole.SUPER_ADMIN)
+    ) {
+      return true;
+    }
+
     return requiredRoles.some(
       (role) => this.normalizeRole(String(role)) === userRole,
     );

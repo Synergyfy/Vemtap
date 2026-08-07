@@ -9,10 +9,7 @@ import { Repository } from 'typeorm';
 import { KbCategory } from './entities/kb-category.entity';
 import { KbSection } from './entities/kb-section.entity';
 import { KbPage } from './entities/kb-page.entity';
-import {
-  CreateKbCategoryDto,
-  UpdateKbCategoryDto,
-} from './dto/category.dto';
+import { CreateKbCategoryDto, UpdateKbCategoryDto } from './dto/category.dto';
 import { CreateKbSectionDto, UpdateKbSectionDto } from './dto/section.dto';
 import { CreateKbPageDto, UpdateKbPageDto } from './dto/page.dto';
 
@@ -94,7 +91,9 @@ export class KnowledgeBaseService {
     }
     const page = await this.pageRepo.findOne({ where: { path } });
     if (!page) {
-      throw new NotFoundException(`Knowledge base page with path '${path}' not found`);
+      throw new NotFoundException(
+        `Knowledge base page with path '${path}' not found`,
+      );
     }
     return {
       id: page.id,
@@ -179,7 +178,9 @@ export class KnowledgeBaseService {
       where: { path: dto.path },
     });
     if (existingPath) {
-      throw new ConflictException(`Page with path '${dto.path}' already exists`);
+      throw new ConflictException(
+        `Page with path '${dto.path}' already exists`,
+      );
     }
 
     const category = await this.categoryRepo.findOne({
@@ -211,7 +212,9 @@ export class KnowledgeBaseService {
         where: { path: dto.path },
       });
       if (existingPath) {
-        throw new ConflictException(`Page with path '${dto.path}' already exists`);
+        throw new ConflictException(
+          `Page with path '${dto.path}' already exists`,
+        );
       }
     }
 

@@ -7,6 +7,7 @@ import {
   FosTransactionType,
   FosPlatform,
 } from '../fos-core/entities/financial-transaction.entity';
+import { CashFlow } from '../fos-core/entities/cash-flow.entity';
 import { MetricsSnapshot } from './entities/metrics-snapshot.entity';
 
 describe('FosDashboardService', () => {
@@ -16,6 +17,10 @@ describe('FosDashboardService', () => {
 
   const mockTransactionRepo = {
     find: jest.fn(),
+  };
+
+  const mockCashFlowRepo = {
+    find: jest.fn().mockResolvedValue([]),
   };
 
   const mockSnapshotRepo = {
@@ -30,6 +35,10 @@ describe('FosDashboardService', () => {
         {
           provide: getRepositoryToken(FinancialTransaction),
           useValue: mockTransactionRepo,
+        },
+        {
+          provide: getRepositoryToken(CashFlow),
+          useValue: mockCashFlowRepo,
         },
         {
           provide: getRepositoryToken(MetricsSnapshot),

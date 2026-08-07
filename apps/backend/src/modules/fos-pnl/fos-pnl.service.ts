@@ -1,15 +1,17 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import {
   FinancialTransaction,
   FosTransactionType,
+  FosPlatform,
 } from '../fos-core/entities/financial-transaction.entity';
 import { Expense } from '../fos-core/entities/expense.entity';
 import { CashFlow, CashFlowType } from '../fos-core/entities/cash-flow.entity';
 import { MetricsSnapshot } from '../fos-dashboard/entities/metrics-snapshot.entity';
 import { BreakEvenResponseDto, RunwayResponseDto } from './dto/pnl.dto';
 import { CreateExpenseDto } from './dto/create-expense.dto';
+import { UpdateExpenseDto } from './dto/update-expense.dto';
 import { ListExpensesQueryDto } from './dto/list-expenses-query.dto';
 import { CreateCashFlowDto } from './dto/create-cashflow.dto';
 import { ListCashFlowsQueryDto } from './dto/list-cashflows-query.dto';
@@ -231,6 +233,82 @@ export class FosPnlService {
     };
   }
 
+  async updateExpense(id: string, dto: UpdateExpenseDto) {
+    const expense = await this.expenseRepo.findOne({ where: { id } });
+    if (!expense) {
+      throw new NotFoundException(`Expense with id ${id} not found`);
+    }
+
+    const previous = { ...expense };
+
+    if (dto.category !== undefined) expense.category = dto.category;
+    if (dto.amount !== undefined) expense.amount = dto.amount;
+    if (dto.frequency !== undefined) expense.frequency = dto.frequency;
+
+    const saved = await this.expenseRepo.save(expense);
+
+    if (
+      dto.amount !== undefined ||
+      dto.category !== undefined ||
+      dto.frequency !== undefined
+    ) {
+      const paired = await this.cashFlowRepo.find({
+        where: {
+          type: CashFlowType.OUTFLOW,
+          category: previous.category,
+          amount: this.toNumber(previous.amount),
+          date: previous.date,
+        },
+      });
+      if (paired.length > 0) {
+        const target = paired.sort(
+          (a, b) => a.createdAt.getTime() - b.createdAt.getTime(),
+        )[0];
+        target.amount = saved.amount;
+        if (dto.category !== undefined) target.category = saved.category;
+        await this.cashFlowRepo.save(target);
+      }
+    }
+
+    return {
+      success: true,
+      data: {
+        id: saved.id,
+        category: saved.category,
+        amount: Number(saved.amount),
+        frequency: saved.frequency,
+        date: saved.date,
+        createdAt: saved.createdAt,
+      },
+    };
+  }
+
+  async deleteExpense(id: string) {
+    const expense = await this.expenseRepo.findOne({ where: { id } });
+    if (!expense) {
+      throw new NotFoundException(`Expense with id ${id} not found`);
+    }
+
+    const paired = await this.cashFlowRepo.find({
+      where: {
+        type: CashFlowType.OUTFLOW,
+        category: expense.category,
+        amount: this.toNumber(expense.amount),
+        date: expense.date,
+      },
+    });
+    if (paired.length > 0) {
+      const target = paired.sort(
+        (a, b) => a.createdAt.getTime() - b.createdAt.getTime(),
+      )[0];
+      await this.cashFlowRepo.remove(target);
+    }
+
+    await this.expenseRepo.remove(expense);
+
+    return { message: 'Expense deleted successfully' };
+  }
+
   // ==================== New: P&L Statement ====================
 
   async getPnlStatement(): Promise<{
@@ -274,6 +352,51 @@ export class FosPnlService {
         ? Math.round((netProfit / grossRevenue) * 100 * 10) / 10
         : 0;
 
+    const categoryMap = new Map<string, number>();
+    for (const t of revenueTransactions) {
+      const key =
+        t.type === FosTransactionType.SMS
+          ? 'SMS'
+          : t.type === FosTransactionType.COMMISSION
+            ? 'Commissions'
+            : t.platform === FosPlatform.QRTHRIVE
+              ? 'QRThrive'
+              : 'Subscription';
+      categoryMap.set(
+        key,
+        (categoryMap.get(key) || 0) + this.toNumber(t.amount),
+      );
+    }
+    const revenueByCategory = Array.from(categoryMap.entries()).map(
+      ([name, value]) => ({ name, value: Math.round(value * 100) / 100 }),
+    );
+
+    const platformRevenue = new Map<string, number>();
+    const platformCost = new Map<string, number>();
+    for (const t of revenueTransactions) {
+      const key = t.platform === FosPlatform.QRTHRIVE ? 'QRThrive' : 'VemTap';
+      platformRevenue.set(
+        key,
+        (platformRevenue.get(key) || 0) + this.toNumber(t.amount),
+      );
+      platformCost.set(
+        key,
+        (platformCost.get(key) || 0) + this.toNumber(t.cost),
+      );
+    }
+    const productProfitability = Array.from(platformRevenue.entries()).map(
+      ([name, revenue]) => {
+        const cost = platformCost.get(name) || 0;
+        const profit = revenue - cost;
+        return {
+          name,
+          revenue: Math.round(revenue * 100) / 100,
+          profit: Math.round(profit * 100) / 100,
+          margin: revenue > 0 ? Math.round((profit / revenue) * 1000) / 10 : 0,
+        };
+      },
+    );
+
     return {
       success: true,
       data: {
@@ -283,6 +406,8 @@ export class FosPnlService {
         opexPaid: Math.round(opexPaid * 100) / 100,
         netProfit: Math.round(netProfit * 100) / 100,
         profitMarginPercentage,
+        revenueByCategory,
+        productProfitability,
       },
     };
   }
@@ -293,32 +418,60 @@ export class FosPnlService {
     success: boolean;
     data: RevenueTrendDto[];
   }> {
-    const transactions = await this.transactionRepo.find({
-      where: [
-        { type: FosTransactionType.SUBSCRIPTION },
-        { type: FosTransactionType.SMS },
-      ],
-    });
+    const transactions = await this.transactionRepo.find();
+    const expenses = await this.expenseRepo.find();
 
-    const monthlyMap = new Map<string, { revenue: number; profit: number }>();
+    const monthlyMap = new Map<
+      string,
+      { revenue: number; profit: number; costs: number }
+    >();
+
+    const addMonth = (
+      month: string,
+      partial: Partial<{ revenue: number; profit: number; costs: number }>,
+    ) => {
+      const existing = monthlyMap.get(month) || {
+        revenue: 0,
+        profit: 0,
+        costs: 0,
+      };
+      monthlyMap.set(month, {
+        revenue: existing.revenue + (partial.revenue || 0),
+        profit: existing.profit + (partial.profit || 0),
+        costs: existing.costs + (partial.costs || 0),
+      });
+    };
 
     for (const t of transactions) {
       const month = t.date.substring(0, 7);
-      const existing = monthlyMap.get(month) || { revenue: 0, profit: 0 };
-      const amount = this.toNumber(t.amount);
-      const profit = amount - this.toNumber(t.cost);
-      existing.revenue += amount;
-      existing.profit += profit;
-      monthlyMap.set(month, existing);
+      if (
+        t.type === FosTransactionType.SUBSCRIPTION ||
+        t.type === FosTransactionType.SMS
+      ) {
+        const amount = this.toNumber(t.amount);
+        const cost = this.toNumber(t.cost);
+        addMonth(month, { revenue: amount, costs: cost });
+      } else if (
+        t.type === FosTransactionType.COMMISSION ||
+        t.type === FosTransactionType.EXPENSE
+      ) {
+        addMonth(month, { costs: this.toNumber(t.amount) });
+      }
+    }
+
+    for (const e of expenses) {
+      const month = e.date.substring(0, 7);
+      addMonth(month, { costs: this.toNumber(e.amount) });
     }
 
     const trends: RevenueTrendDto[] = Array.from(monthlyMap.entries())
-      .map(([date, { revenue, profit }]) => ({
-        date,
+      .map(([month, { revenue, profit, costs }]) => ({
+        month,
         revenue: Math.round(revenue * 100) / 100,
-        profit: Math.round(profit * 100) / 100,
+        costs: Math.round(costs * 100) / 100,
+        profit: Math.round((revenue - costs) * 100) / 100,
       }))
-      .sort((a, b) => a.date.localeCompare(b.date));
+      .sort((a, b) => a.month.localeCompare(b.month));
 
     return { success: true, data: trends };
   }
@@ -417,6 +570,25 @@ export class FosPnlService {
     const monthCount = Math.max(monthsSet.size, 1);
     const closingCashBalance = totalInflow - totalOutflow;
 
+    const reservedCash = cashflows
+      .filter(
+        (cf) =>
+          cf.type === CashFlowType.OUTFLOW &&
+          (cf.category ?? '').toLowerCase().includes('reserve'),
+      )
+      .reduce((sum, cf) => sum + this.toNumber(cf.amount), 0);
+    const committedCash = cashflows
+      .filter(
+        (cf) =>
+          cf.type === CashFlowType.OUTFLOW &&
+          (cf.category ?? '').toLowerCase().includes('committed'),
+      )
+      .reduce((sum, cf) => sum + this.toNumber(cf.amount), 0);
+    const availableCash = Math.max(
+      0,
+      closingCashBalance - committedCash - reservedCash,
+    );
+
     const currentMonth = new Date().toISOString().substring(0, 7);
     let openingInflow = 0;
     let openingOutflow = 0;
@@ -450,6 +622,9 @@ export class FosPnlService {
         monthlyNetCashFlow: Math.round(monthlyNetCashFlow * 100) / 100,
         monthlyBurnRate: Math.round(monthlyBurnRate * 100) / 100,
         runwayMonths,
+        availableCash: Math.round(availableCash * 100) / 100,
+        committedCash: Math.round(committedCash * 100) / 100,
+        reservedCash: Math.round(reservedCash * 100) / 100,
       },
     };
   }

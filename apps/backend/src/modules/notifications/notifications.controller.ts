@@ -48,15 +48,28 @@ export class NotificationsController {
   })
   @ApiResponse({ status: 201, description: 'Token registered successfully' })
   async registerPushToken(@Body() dto: RegisterPushTokenDto, @Request() req) {
-    return this.pushNotificationService.registerToken(req.user.id, dto.token, true);
+    return this.pushNotificationService.registerToken(
+      req.user.id,
+      dto.token,
+      true,
+    );
   }
 
   @Post('device-token')
-  @ApiOperation({ summary: 'Register a device/FCM push token for the current user' })
+  @ApiOperation({
+    summary: 'Register a device/FCM push token for the current user',
+  })
   @ApiBody({ type: RegisterPushTokenDto })
-  @ApiResponse({ status: 201, description: 'Device token registered successfully' })
+  @ApiResponse({
+    status: 201,
+    description: 'Device token registered successfully',
+  })
   async registerDeviceToken(@Body() dto: RegisterPushTokenDto, @Request() req) {
-    return this.pushNotificationService.registerToken(req.user.id, dto.token, true);
+    return this.pushNotificationService.registerToken(
+      req.user.id,
+      dto.token,
+      true,
+    );
   }
 
   @Post('visitor/push-token')
@@ -71,7 +84,10 @@ export class NotificationsController {
     },
   })
   @ApiResponse({ status: 201, description: 'Token registered successfully' })
-  async registerVisitorPushToken(@Body() dto: RegisterPushTokenDto, @Request() req) {
+  async registerVisitorPushToken(
+    @Body() dto: RegisterPushTokenDto,
+    @Request() req,
+  ) {
     return this.pushNotificationService.registerToken(
       req.user.id,
       dto.token,
@@ -80,17 +96,41 @@ export class NotificationsController {
   }
 
   @Get('preferences')
-  @Roles(UserRole.ADMIN, UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF, UserRole.AGENT, UserRole.CUSTOMER)
-  @ApiOperation({ summary: 'Get notification preferences for the current user' })
+  @Roles(
+    UserRole.ADMIN,
+    UserRole.OWNER,
+    UserRole.MANAGER,
+    UserRole.STAFF,
+    UserRole.AGENT,
+    UserRole.CUSTOMER,
+  )
+  @ApiOperation({
+    summary: 'Get notification preferences for the current user',
+  })
   async getPreferences(@Request() req) {
     return this.notificationsService.getPreferences(req.user.id);
   }
 
   @Patch('preferences')
-  @Roles(UserRole.ADMIN, UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF, UserRole.AGENT, UserRole.CUSTOMER)
-  @ApiOperation({ summary: 'Update notification preferences for the current user' })
-  async updatePreferences(@Request() req, @Body() dto: UpdateNotificationPreferencesDto) {
-    return this.notificationsService.updatePreferences(req.user.id, dto as Record<string, boolean>);
+  @Roles(
+    UserRole.ADMIN,
+    UserRole.OWNER,
+    UserRole.MANAGER,
+    UserRole.STAFF,
+    UserRole.AGENT,
+    UserRole.CUSTOMER,
+  )
+  @ApiOperation({
+    summary: 'Update notification preferences for the current user',
+  })
+  async updatePreferences(
+    @Request() req,
+    @Body() dto: UpdateNotificationPreferencesDto,
+  ) {
+    return this.notificationsService.updatePreferences(
+      req.user.id,
+      dto as Record<string, boolean>,
+    );
   }
 
   @Get()
@@ -100,8 +140,9 @@ export class NotificationsController {
     description: 'List of notifications',
     type: [NotificationResponseDto],
   })
-  findAll(@Request() req) {
-    return this.notificationsService.findByUser(req.user.id);
+  async findAll(@Request() req) {
+    const items = await this.notificationsService.findByUser(req.user.id);
+    return items.map((n) => ({ ...n, read: n.isRead }));
   }
 
   @Get('unread-count')
@@ -119,20 +160,30 @@ export class NotificationsController {
   @Patch('mark-all-read')
   @ApiOperation({ summary: 'Mark all notifications as read for current user' })
   @ApiResponse({ status: 200, description: 'All notifications marked as read' })
-  markAllAsRead(@Request() req) {
-    return this.notificationsService.markAllAsRead(req.user.id);
+  async markAllAsRead(@Request() req) {
+    await this.notificationsService.markAllAsRead(req.user.id);
+    return { success: true };
+  }
+
+  @Patch('read-all')
+  @ApiOperation({ summary: 'Mark all notifications as read for current user' })
+  @ApiResponse({ status: 200, description: 'All notifications marked as read' })
+  async markAllAsReadAlias(@Request() req) {
+    await this.notificationsService.markAllAsRead(req.user.id);
+    return { success: true };
   }
 
   @Patch(':id/read')
   @ApiOperation({ summary: 'Mark a specific notification as read' })
   @ApiResponse({ status: 200, description: 'Notification marked as read' })
-  markAsRead(@Param('id') id: string) {
-    return this.notificationsService.markAsRead(id);
+  async markAsRead(@Param('id') id: string) {
+    const notification = await this.notificationsService.markAsRead(id);
+    return { ...notification, read: notification.isRead };
   }
 
   @Post('broadcast')
   @UseGuards(RolesGuard)
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @ApiOperation({
     summary: 'Broadcast a notification to all agents (affiliates)',
   })
@@ -146,7 +197,7 @@ export class NotificationsController {
 
   @Get('admin/history/broadcasts')
   @UseGuards(RolesGuard)
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Get broadcast history for admins' })
   async getHistory() {
     return this.notificationsService.getBroadcastHistory();

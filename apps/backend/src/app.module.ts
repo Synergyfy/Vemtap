@@ -18,10 +18,11 @@ import { SurveysModule } from './modules/surveys/surveys.module';
 import { ProductsModule } from './modules/products/products.module';
 import { AnalyticsModule } from './modules/analytics/analytics.module';
 import { SubscriptionsModule } from './modules/subscriptions/subscriptions.module';
-import { APP_GUARD } from '@nestjs/core';
+import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
 import { UserStatusGuard } from './common/guards/user-status.guard';
 import { RolesGuard } from './common/guards/roles.guard';
+import { FosEnvelopeInterceptor } from './common/interceptors/fos-envelope.interceptor';
 import { SubscriptionGuard } from './modules/subscriptions/guards/subscription.guard';
 import { CapabilityGuard } from './modules/subscriptions/guards/capability.guard';
 import { SettingsModule } from './modules/settings/settings.module';
@@ -55,6 +56,18 @@ import { FosPnlModule } from './modules/fos-pnl/fos-pnl.module';
 import { FosFinancialPlanningModule } from './modules/fos-financial-planning/fos-financial-planning.module';
 import { FosForecastingModule } from './modules/fos-forecasting/fos-forecasting.module';
 import { FosRevenueAnalyticsModule } from './modules/fos-revenue-analytics/fos-revenue-analytics.module';
+import { FosBudgetsModule } from './modules/fos-budgets/fos-budgets.module';
+import { FosGoalsModule } from './modules/fos-goals/fos-goals.module';
+import { FosLedgerModule } from './modules/fos-ledger/fos-ledger.module';
+import { FosMessagingModule } from './modules/fos-messaging/fos-messaging.module';
+import { FosFunnelModule } from './modules/fos-funnel/fos-funnel.module';
+import { FosSettingsModule } from './modules/fos-settings/fos-settings.module';
+import { FosReportsModule } from './modules/fos-reports/fos-reports.module';
+import { FosAiAssistantModule } from './modules/fos-ai-assistant/fos-ai-assistant.module';
+import { FosRecordsModule } from './modules/fos-records/fos-records.module';
+import { FosTransfersModule } from './modules/fos-transfers/fos-transfers.module';
+import { FosPlanningModule } from './modules/fos-planning/fos-planning.module';
+import { FosProfileModule } from './modules/fos-profile/fos-profile.module';
 
 import { dataSourceOptions } from './database/data-source';
 import { CatalogueCartModule } from './modules/catalogue-cart/catalogue-cart.module';
@@ -177,6 +190,18 @@ import { ClustersModule } from './modules/clusters/clusters.module';
     FosFinancialPlanningModule,
     FosForecastingModule,
     FosRevenueAnalyticsModule,
+    FosBudgetsModule,
+    FosGoalsModule,
+    FosLedgerModule,
+    FosMessagingModule,
+    FosFunnelModule,
+    FosSettingsModule,
+    FosReportsModule,
+    FosAiAssistantModule,
+    FosRecordsModule,
+    FosTransfersModule,
+    FosPlanningModule,
+    FosProfileModule,
     PosModule,
     InventoryCountingModule,
     LegalComplianceModule,
@@ -221,6 +246,10 @@ import { ClustersModule } from './modules/clusters/clusters.module';
     {
       provide: APP_GUARD,
       useClass: CapabilityGuard,
+    },
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: FosEnvelopeInterceptor,
     },
   ],
 })

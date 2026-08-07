@@ -191,7 +191,10 @@ export class MessagingGateway
       if (messages.length === 0) return;
 
       const ids = messages.map((m) => m.id);
-      await this.messageRepo.update({ id: In(ids) }, { status: MessageStatus.READ });
+      await this.messageRepo.update(
+        { id: In(ids) },
+        { status: MessageStatus.READ },
+      );
 
       this.server.to(`thread_${threadId}`).emit('messageRead', {
         threadId,

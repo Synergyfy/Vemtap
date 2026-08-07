@@ -28,6 +28,8 @@
     "seed:fos-transactions:prod": "cross-env NODE_ENV=prod dotenv -e .env.prod -- ts-node -r tsconfig-paths/register src/seed-fos-transactions.ts",
     "seed:fos-cashflows": "dotenv -e .env -- ts-node -r tsconfig-paths/register src/seed-fos-cashflows.ts",
     "seed:fos-cashflows:prod": "cross-env NODE_ENV=prod dotenv -e .env.prod -- ts-node -r tsconfig-paths/register src/seed-fos-cashflows.ts",
+    "seed:fos-budgets-goals": "dotenv -e .env -- ts-node -r tsconfig-paths/register src/seed-fos-budgets-goals.ts",
+    "seed:fos-budgets-goals:prod": "cross-env NODE_ENV=prod dotenv -e .env.prod -- ts-node -r tsconfig-paths/register src/seed-fos-budgets-goals.ts",
     "seed:cluster-deals": "dotenv -e .env -- ts-node -r tsconfig-paths/register src/seed-cluster-deals.ts",
     "verify:fos": "dotenv -e .env -- ts-node -r tsconfig-paths/register src/verify-fos-seed.ts",
     "verify:fos:prod": "cross-env NODE_ENV=prod dotenv -e .env.prod -- ts-node -r tsconfig-paths/register src/verify-fos-seed.ts",

@@ -10,7 +10,9 @@ export class PublicKnowledgeBaseController {
 
   @Public()
   @Get()
-  @ApiOperation({ summary: 'Get full knowledge base category/section/page tree' })
+  @ApiOperation({
+    summary: 'Get full knowledge base category/section/page tree',
+  })
   async getTree() {
     return this.kbService.getPublicTree();
   }

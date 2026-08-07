@@ -8,13 +8,13 @@ import { DataSource } from 'typeorm';
 
 describe('AuthModule Startup', () => {
   beforeAll(() => {
-    jest
-      .spyOn(DataSource.prototype, 'initialize')
-      .mockImplementation(function (this: any) {
-        this.options = this.options || {};
-        if (!this.options.entities) this.options.entities = [];
-        return Promise.resolve(this);
-      });
+    jest.spyOn(DataSource.prototype, 'initialize').mockImplementation(function (
+      this: any,
+    ) {
+      this.options = this.options || {};
+      if (!this.options.entities) this.options.entities = [];
+      return Promise.resolve(this);
+    });
   });
 
   afterAll(() => {

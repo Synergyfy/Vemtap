@@ -4,6 +4,7 @@ import { FosPnlService } from './fos-pnl.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
+import { FosEnvelope } from '../../common/decorators/fos-envelope.decorator';
 import { UserRole } from '../users/entities/user.entity';
 import { CreateCashFlowDto } from './dto/create-cashflow.dto';
 import { ListCashFlowsQueryDto } from './dto/list-cashflows-query.dto';
@@ -11,6 +12,7 @@ import { ListCashFlowsQueryDto } from './dto/list-cashflows-query.dto';
 @ApiTags('FOS PnL')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard, RolesGuard)
+@FosEnvelope()
 @Controller('pnl')
 export class FosPnlController {
   constructor(private readonly pnlService: FosPnlService) {}
@@ -18,14 +20,14 @@ export class FosPnlController {
   // === Existing Endpoints (unchanged) ===
 
   @Get('break-even')
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Get break-even analysis data (legacy)' })
   async getBreakEven() {
     return this.pnlService.getBreakEven();
   }
 
   @Get('runway')
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Get cash runway analysis (legacy)' })
   async getRunway() {
     return this.pnlService.getRunway();
@@ -34,7 +36,7 @@ export class FosPnlController {
   // === New: P&L Statement ===
 
   @Get('statement')
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Get profit and loss statement' })
   async getPnlStatement() {
     return this.pnlService.getPnlStatement();
@@ -43,7 +45,7 @@ export class FosPnlController {
   // === New: Monthly Revenue Trends ===
 
   @Get('revenue-trends')
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Get monthly revenue and profit trends' })
   async getRevenueTrends() {
     return this.pnlService.getRevenueTrends();
@@ -52,7 +54,7 @@ export class FosPnlController {
   // === New: Cash Flows ===
 
   @Get('cashflows')
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @ApiOperation({
     summary: 'List cash flows with pagination and optional type filter',
   })
@@ -61,7 +63,7 @@ export class FosPnlController {
   }
 
   @Post('cashflows')
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Create a cash flow entry' })
   async createCashflow(@Body() dto: CreateCashFlowDto) {
     return this.pnlService.createCashflow(dto);
@@ -70,7 +72,7 @@ export class FosPnlController {
   // === New: Cash Flow Runway ===
 
   @Get('cashflow-runway')
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @ApiOperation({
     summary: 'Get cash flow runway analysis from cash_flows table',
   })
@@ -81,7 +83,7 @@ export class FosPnlController {
   // === New: Cost Break-Even ===
 
   @Get('cost-break-even')
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @ApiOperation({
     summary: 'Get cost-based break-even analysis from expenses and cash_flows',
   })

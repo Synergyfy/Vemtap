@@ -23,7 +23,9 @@ export class BannersService {
   ) {}
 
   async findAll(placement?: 'business' | 'customer'): Promise<Banner[]> {
-    const cacheKey = placement ? `${CACHE_KEY_ALL}:${placement}` : CACHE_KEY_ALL;
+    const cacheKey = placement
+      ? `${CACHE_KEY_ALL}:${placement}`
+      : CACHE_KEY_ALL;
     const cached = await this.cacheManager.get<Banner[]>(cacheKey);
     if (cached) return cached;
     const banners = await this.bannerRepository.find({
@@ -35,7 +37,9 @@ export class BannersService {
   }
 
   async findActive(placement?: 'business' | 'customer'): Promise<Banner[]> {
-    const cacheKey = placement ? `${CACHE_KEY_ACTIVE}:${placement}` : CACHE_KEY_ACTIVE;
+    const cacheKey = placement
+      ? `${CACHE_KEY_ACTIVE}:${placement}`
+      : CACHE_KEY_ACTIVE;
     const cached = await this.cacheManager.get<Banner[]>(cacheKey);
     if (cached) return cached;
     const banners = await this.bannerRepository.find({

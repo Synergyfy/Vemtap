@@ -4,7 +4,11 @@ import { KnowledgeBaseService } from './knowledge-base.service';
 import { KbCategory } from './entities/kb-category.entity';
 import { KbSection } from './entities/kb-section.entity';
 import { KbPage } from './entities/kb-page.entity';
-import { NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
+import {
+  NotFoundException,
+  ConflictException,
+  BadRequestException,
+} from '@nestjs/common';
 
 describe('KnowledgeBaseService', () => {
   let service: KnowledgeBaseService;
@@ -13,21 +17,27 @@ describe('KnowledgeBaseService', () => {
     find: jest.fn(),
     findOne: jest.fn(),
     create: jest.fn().mockImplementation((dto) => dto),
-    save: jest.fn().mockImplementation((cat) => Promise.resolve({ id: 'cat-1', ...cat })),
+    save: jest
+      .fn()
+      .mockImplementation((cat) => Promise.resolve({ id: 'cat-1', ...cat })),
     remove: jest.fn(),
   };
 
   const mockSectionRepo = {
     findOne: jest.fn(),
     create: jest.fn().mockImplementation((dto) => dto),
-    save: jest.fn().mockImplementation((sec) => Promise.resolve({ id: 'sec-1', ...sec })),
+    save: jest
+      .fn()
+      .mockImplementation((sec) => Promise.resolve({ id: 'sec-1', ...sec })),
     remove: jest.fn(),
   };
 
   const mockPageRepo = {
     findOne: jest.fn(),
     create: jest.fn().mockImplementation((dto) => dto),
-    save: jest.fn().mockImplementation((page) => Promise.resolve({ id: 'page-1', ...page })),
+    save: jest
+      .fn()
+      .mockImplementation((page) => Promise.resolve({ id: 'page-1', ...page })),
     remove: jest.fn(),
   };
 
@@ -88,7 +98,9 @@ describe('KnowledgeBaseService', () => {
       expect(tree.categories).toHaveLength(1);
       expect(tree.categories[0].sections).toHaveLength(1);
       expect(tree.categories[0].sections[0].pages).toHaveLength(1);
-      expect(tree.categories[0].sections[0].pages[0].path).toBe('pos/getting-started');
+      expect(tree.categories[0].sections[0].pages[0].path).toBe(
+        'pos/getting-started',
+      );
     });
   });
 
@@ -114,7 +126,9 @@ describe('KnowledgeBaseService', () => {
 
     it('should throw NotFoundException when path is not found', async () => {
       mockPageRepo.findOne.mockResolvedValue(null);
-      await expect(service.getPageByPath('non-existent')).rejects.toThrow(NotFoundException);
+      await expect(service.getPageByPath('non-existent')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 

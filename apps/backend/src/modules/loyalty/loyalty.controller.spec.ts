@@ -91,7 +91,7 @@ describe('LoyaltyController', () => {
     it('delegates with the caller, branchId query and dto', async () => {
       const req = { user: { id: 'u1', role: UserRole.OWNER } };
       const dto = { userId: 'customer-1', points: 500 };
-      await controller.earnManualPoints(req as any, 'b1', dto as any);
+      await controller.earnManualPoints(req as any, 'b1', dto);
       expect(service.earnManualPoints).toHaveBeenCalledWith(
         req.user,
         'b1',

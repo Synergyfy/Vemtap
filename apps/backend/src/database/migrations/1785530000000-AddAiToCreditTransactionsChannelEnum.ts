@@ -1,8 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class AddAiToCreditTransactionsChannelEnum1785530000000
-  implements MigrationInterface
-{
+export class AddAiToCreditTransactionsChannelEnum1785530000000 implements MigrationInterface {
   name = 'AddAiToCreditTransactionsChannelEnum1785530000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
