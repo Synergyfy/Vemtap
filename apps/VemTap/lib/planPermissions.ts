@@ -106,10 +106,30 @@ function deriveFeatureId(navItemId: string, label: string, parentLabel?: string)
     return navItemId;
 }
 
+// Extra capabilities that aren't represented as their own nav item but still
+// map to a PricingPlan field. Injected right after their parent feature.
+function injectExtraFeatures(sections: PermissionSection[]): PermissionSection[] {
+    return sections.map(section => {
+        const catIdx = section.features.findIndex(f => f.id === 'catalogue');
+        if (catIdx === -1) return section;
+        const features = [...section.features];
+        features.splice(catIdx + 1, 0, {
+            id: 'catalogue-offers',
+            label: 'Catalogue Offers',
+            parentId: section.features[catIdx].parentId,
+            defaultLevel: 'limited',
+            defaultLimit: 50,
+            limitUnit: 'offers',
+            limitPlaceholder: 'Max offers',
+        });
+        return { ...section, features };
+    });
+}
+
 // ─── Build permission sections from the sidebar navigation tree ──────────
 
 export function buildPermissionSectionsFromNavigation(): PermissionSection[] {
-    return NAVIGATION_SECTIONS
+    const sections = NAVIGATION_SECTIONS
         .filter(s => s.items.length > 0)
         .map(section => {
             const sectionLabel = section.label || section.items[0]?.label || 'General';
@@ -155,6 +175,8 @@ export function buildPermissionSectionsFromNavigation(): PermissionSection[] {
                 features,
             };
         });
+
+    return injectExtraFeatures(sections);
 }
 
 // ─── Known permission IDs that map to PricingPlan fields ───────────
@@ -163,6 +185,7 @@ const PLANNED_FEATURE_DEFAULTS: Record<string, { level: PermissionLevel; limit?:
     'dashboard': { level: 'yes' },
     'products-stock': { level: 'yes' },
     'catalogue': { level: 'limited', limit: 50, unit: 'items', placeholder: 'Max items' },
+    'catalogue-offers': { level: 'limited', limit: 50, unit: 'offers', placeholder: 'Max offers' },
     'inventory': { level: 'yes', unit: 'items', placeholder: 'Max items' },
     'sales': { level: 'yes' },
     'pos': { level: 'yes' },
@@ -192,7 +215,7 @@ const PLANNED_FEATURE_DEFAULTS: Record<string, { level: PermissionLevel; limit?:
 // Features that offer three configurable states (Yes / Limited / No).
 // All other features are boolean-only toggles (Yes / No).
 const THREE_STATE_FEATURES = new Set([
-    'catalogue', 'loyalty', 'forms', 'marketing-kit',
+    'catalogue', 'catalogue-offers', 'loyalty', 'forms', 'marketing-kit',
     'staff', 'staff-roles', 'locations', 'branches', 'qr-codes', 'ai-copilot',
     'analytics',
 ]);
@@ -297,6 +320,7 @@ export function mapPlanToConfig(plan: PricingPlan): PlanPermissionConfig {
     // Known PricingPlan-backed features
     if (plan) {
         features['catalogue'] = getPerm(plan.catalogueEnabled, plan.maxCatalogueItems);
+        features['catalogue-offers'] = getPerm(plan.catalogueEnabled, plan.maxCatalogueOffers);
         features['inventory'] = getPerm(!!plan.inventoryEnabled, plan.inventoryLimit);
         features['pos'] = getPerm(!!plan.posEnabled, plan.posTerminalLimit);
         features['loyalty'] = getPerm(plan.loyaltyEnabled, plan.loyaltyLimit);
@@ -365,12 +389,10 @@ export function mapConfigToPlanDto(
     const catalogue = getEnabledAndLimit('catalogue');
     dto.catalogueEnabled = catalogue.enabled;
     dto.maxCatalogueItems = catalogue.limit;
-    // Offers inherit the catalogue level so "unlimited" catalogue isn't
-    // throttled by a stale maxCatalogueOffers value.
-    dto.maxCatalogueOffers = catalogue.limit;
+    const catalogueOffers = getEnabledAndLimit('catalogue-offers');
+    dto.maxCatalogueOffers = catalogue.enabled ? catalogueOffers.limit : null;
     if (existingPlan) {
         dto.maxCatalogueCategories = catalogue.enabled ? existingPlan.maxCatalogueCategories : null;
-        if (!catalogue.enabled) dto.maxCatalogueOffers = null;
     }
 
     const inventory = getEnabledAndLimit('inventory');
