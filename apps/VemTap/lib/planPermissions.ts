@@ -107,16 +107,19 @@ function deriveFeatureId(navItemId: string, label: string, parentLabel?: string)
 }
 
 // Extra capabilities that aren't represented as their own nav item but still
-// map to a PricingPlan field. Injected right after their parent feature.
+// map to a PricingPlan field. Injected under their associated parent feature.
 function injectExtraFeatures(sections: PermissionSection[]): PermissionSection[] {
     return sections.map(section => {
-        const catIdx = section.features.findIndex(f => f.id === 'catalogue');
-        if (catIdx === -1) return section;
+        // "Catalogue Offers" (deals) is grouped under the "Get Customers"
+        // (discovery) head nav since deals live on the Discovery page, not in
+        // the product catalogue. Inject it as a child of that parent.
+        const discoveryIdx = section.features.findIndex(f => f.id === 'discovery' && !f.parentId);
+        if (discoveryIdx === -1) return section;
         const features = [...section.features];
-        features.splice(catIdx + 1, 0, {
+        features.splice(discoveryIdx + 1, 0, {
             id: 'catalogue-offers',
-            label: 'Catalogue Offers',
-            parentId: section.features[catIdx].parentId,
+            label: 'Deals',
+            parentId: section.features[discoveryIdx].id,
             defaultLevel: 'limited',
             defaultLimit: 50,
             limitUnit: 'offers',
