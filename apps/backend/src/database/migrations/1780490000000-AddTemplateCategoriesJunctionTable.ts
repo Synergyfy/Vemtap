@@ -1,11 +1,11 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class AddTemplateCategoriesJunctionTable20260603111945 implements MigrationInterface {
-  name = 'AddTemplateCategoriesJunctionTable20260603111945';
+export class AddTemplateCategoriesJunctionTable1780490000000 implements MigrationInterface {
+  name = 'AddTemplateCategoriesJunctionTable1780490000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(
-      `DO $$ BEGIN IF EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'marketing_templates') THEN ALTER TABLE "marketing_templates" DROP CONSTRAINT IF EXISTS "FK_marketing_templates_categoryId"; END IF; END $$;`,
+      `DO $$ BEGIN IF EXISTS (SELECT FROM information_schema.columns WHERE table_name = 'marketing_templates' AND column_name = 'categoryId') THEN ALTER TABLE "marketing_templates" DROP CONSTRAINT IF EXISTS "FK_marketing_templates_categoryId"; END IF; END $$;`,
     );
 
     await queryRunner.query(`CREATE TABLE IF NOT EXISTS "marketing_template_categories" (
@@ -15,7 +15,7 @@ export class AddTemplateCategoriesJunctionTable20260603111945 implements Migrati
         )`);
 
     await queryRunner.query(
-      `DO $$ BEGIN IF EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'marketing_templates') THEN INSERT INTO "marketing_template_categories" ("templateId", "categoryId") SELECT "id", "categoryId" FROM "marketing_templates" WHERE "categoryId" IS NOT NULL; END IF; END $$;`,
+      `DO $$ BEGIN IF EXISTS (SELECT FROM information_schema.columns WHERE table_name = 'marketing_templates' AND column_name = 'categoryId') THEN INSERT INTO "marketing_template_categories" ("templateId", "categoryId") SELECT "id", "categoryId" FROM "marketing_templates" WHERE "categoryId" IS NOT NULL; END IF; END $$;`,
     );
 
     await queryRunner.query(
@@ -26,7 +26,7 @@ export class AddTemplateCategoriesJunctionTable20260603111945 implements Migrati
     );
 
     await queryRunner.query(
-      `DO $$ BEGIN IF EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'marketing_templates') THEN ALTER TABLE "marketing_templates" DROP COLUMN "categoryId"; END IF; END $$;`,
+      `DO $$ BEGIN IF EXISTS (SELECT FROM information_schema.columns WHERE table_name = 'marketing_templates' AND column_name = 'categoryId') THEN ALTER TABLE "marketing_templates" DROP COLUMN "categoryId"; END IF; END $$;`,
     );
   }
 

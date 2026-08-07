@@ -15,7 +15,9 @@ declare module '@react-google-maps/api' {
     export interface MarkerFProps {
         position: google.maps.LatLngLiteral;
         icon?: string | google.maps.Icon | google.maps.Symbol;
+        draggable?: boolean;
         onClick?: () => void;
+        onDragEnd?: (e: google.maps.MapMouseEvent) => void;
         title?: string;
         zIndex?: number;
     }

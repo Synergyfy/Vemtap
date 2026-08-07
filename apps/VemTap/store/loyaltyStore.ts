@@ -55,6 +55,13 @@ interface LoyaltyState {
   fetchTransactions: (profileId: string) => Promise<void>;
   fetchAnalytics: () => Promise<void>;
   earnPoints: (request: PointEarnRequest) => Promise<{ success: boolean; pointsEarned: number; message: string; newBalance?: number; breakdown?: any }>;
+  awardManualPoints: (request: {
+    userId: string;
+    branchId: string;
+    points: number;
+    rewardId?: string;
+    notes?: string;
+  }) => Promise<{ success: boolean; pointsEarned: number; message: string; newBalance?: number }>;
   redeemReward: (loyaltyProfileId: string, rewardId: string) => Promise<{ success: boolean; redemption?: Redemption; error?: string }>;
   setLastEarnedResponse: (response: LoyaltyState['lastEarnedResponse']) => void;
   clearLoyaltyData: () => void;
@@ -165,6 +172,29 @@ export const useLoyaltyStore = create<LoyaltyState>((set, get) => ({
     } catch (error) {
       console.error('Failed to earn points:', error);
       set({ isLoading: false, error: 'Failed to process points' });
+      return { success: false, pointsEarned: 0, message: 'Server error occurred', newBalance: 0 };
+    }
+  },
+
+  awardManualPoints: async (request) => {
+    set({ isLoading: true, error: null });
+    try {
+      const response = await loyaltyApi.earnManualPoints(request);
+      if (response.success) {
+        await get().fetchLoyaltyProfile(request.userId, request.branchId);
+        set({
+          lastEarnedResponse: {
+            pointsEarned: response.pointsEarned,
+            newBalance: response.newBalance || 0,
+            message: response.message,
+          }
+        });
+      }
+      set({ isLoading: false });
+      return response;
+    } catch (error) {
+      console.error('Failed to award points:', error);
+      set({ isLoading: false, error: 'Failed to award points' });
       return { success: false, pointsEarned: 0, message: 'Server error occurred', newBalance: 0 };
     }
   },

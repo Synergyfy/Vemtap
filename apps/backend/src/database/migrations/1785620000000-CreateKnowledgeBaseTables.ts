@@ -1,9 +1,9 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class CreateKnowledgeBaseTables20260801160000
+export class CreateKnowledgeBaseTables1785620000000
   implements MigrationInterface
 {
-  name = 'CreateKnowledgeBaseTables20260801160000';
+  name = 'CreateKnowledgeBaseTables1785620000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`

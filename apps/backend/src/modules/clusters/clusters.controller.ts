@@ -33,6 +33,10 @@ import {
   AutoAssignClustersDto,
   AddBranchDto,
 } from './dto/cluster.dto';
+import {
+  ClusterOffersQueryDto,
+  SetClusterOfferPinnedDto,
+} from './dto/cluster-offer.dto';
 
 @ApiTags('Clusters (Public)')
 @Controller('clusters')
@@ -122,10 +126,12 @@ export class ClustersAdminController {
   @Post('auto-assign')
   @Roles(UserRole.ADMIN)
   @ApiOperation({
-    summary: 'Admin: Auto-assign unassigned branches to clusters',
+    summary: 'Admin: Auto-assign branches to clusters',
     description:
-      'Assigns branches without a cluster to the nearest cluster whose radius covers them. ' +
-      'Use dryRun=true to preview without persisting.',
+      'scope=unassigned (default) assigns only branches without a cluster to the nearest ' +
+      'covering cluster. scope=all also considers already-assigned branches and reassigns them ' +
+      'to a different, closer covering cluster (never unassigns). Use dryRun=true to preview ' +
+      'without persisting, or async=true to enqueue the run on the background worker and return immediately.',
   })
   autoAssign(@Body() dto: AutoAssignClustersDto) {
     return this.clustersService.autoAssign(dto);
@@ -140,6 +146,50 @@ export class ClustersAdminController {
   })
   update(@Param('id') id: string, @Body() dto: UpdateClusterDto) {
     return this.clustersService.update(id, dto);
+  }
+
+  @Get(':id/offers')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({
+    summary: 'Admin: List auto-matched and pinned offers for a cluster',
+    description:
+      'Returns offers that automatically appear for the cluster (from member branches) ' +
+      'plus the offers an admin has explicitly pinned.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Cluster offers retrieved',
+    schema: {
+      example: {
+        autoMatched: [],
+        pinned: [],
+        total: 0,
+      },
+    },
+  })
+  getOffers(@Param('id') id: string, @Query() query: ClusterOffersQueryDto) {
+    return this.clustersService.getClusterOffers(id, query);
+  }
+
+  @Patch(':id/offers/:offerId')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({
+    summary: 'Admin: Pin or unpin an offer for a cluster',
+    description:
+      'Pinned offers always appear in the cluster deals feed and are ranked first.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Offer pin state updated',
+    schema: { example: { pinned: true, offerId: 'uuid', clusterId: 'uuid' } },
+  })
+  setOfferPinned(
+    @Param('id') id: string,
+    @Param('offerId') offerId: string,
+    @Body() dto: SetClusterOfferPinnedDto,
+    @Req() req: any,
+  ) {
+    return this.clustersService.setOfferPinned(id, offerId, dto, req.user?.id);
   }
 
   @Delete(':id')

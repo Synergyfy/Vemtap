@@ -1,7 +1,7 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class AddBarcodeToCatalogueItems20260622121022 implements MigrationInterface {
-  name = 'AddBarcodeToCatalogueItems20260622121022';
+export class AddBarcodeToCatalogueItems1782130222000 implements MigrationInterface {
+  name = 'AddBarcodeToCatalogueItems1782130222000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(

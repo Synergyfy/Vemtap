@@ -365,9 +365,12 @@ export function mapConfigToPlanDto(
     const catalogue = getEnabledAndLimit('catalogue');
     dto.catalogueEnabled = catalogue.enabled;
     dto.maxCatalogueItems = catalogue.limit;
+    // Offers inherit the catalogue level so "unlimited" catalogue isn't
+    // throttled by a stale maxCatalogueOffers value.
+    dto.maxCatalogueOffers = catalogue.limit;
     if (existingPlan) {
         dto.maxCatalogueCategories = catalogue.enabled ? existingPlan.maxCatalogueCategories : null;
-        dto.maxCatalogueOffers = catalogue.enabled ? existingPlan.maxCatalogueOffers : null;
+        if (!catalogue.enabled) dto.maxCatalogueOffers = null;
     }
 
     const inventory = getEnabledAndLimit('inventory');

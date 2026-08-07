@@ -4,15 +4,15 @@ export class CheckPendingChanges1785856759487 implements MigrationInterface {
     name = 'CheckPendingChanges1785856759487'
 
     public async up(queryRunner: QueryRunner): Promise<void> {
-        await queryRunner.query(`ALTER TABLE "user_sessions" DROP CONSTRAINT "FK_user_sessions_userId"`);
-        await queryRunner.query(`ALTER TABLE "pos_cash_drops" DROP CONSTRAINT "FK_pos_cash_drops_register_session"`);
-        await queryRunner.query(`ALTER TABLE "stock_movements" DROP CONSTRAINT "FK_cbe1eb6c727a7f30bbefc062e84"`);
-        await queryRunner.query(`ALTER TABLE "stock_movements" DROP CONSTRAINT "FK_847ae48018bbd08f4fbbac53006"`);
-        await queryRunner.query(`ALTER TABLE "stock_movements" DROP CONSTRAINT "FK_3dbc4d2ce7b9eecc9f284b925cd"`);
-        await queryRunner.query(`ALTER TABLE "stock_movements" DROP CONSTRAINT "FK_4fc9f6fc2db22fc301f7c1c918b"`);
-        await queryRunner.query(`DROP INDEX "public"."IDX_user_sessions_userId"`);
-        await queryRunner.query(`DROP INDEX "public"."IDX_pos_cash_drops_session_created"`);
-        await queryRunner.query(`DROP INDEX "public"."IDX_stock_movements_business_branch_created"`);
+        await queryRunner.query(`ALTER TABLE IF EXISTS "user_sessions" DROP CONSTRAINT IF EXISTS "FK_user_sessions_userId"`);
+        await queryRunner.query(`ALTER TABLE IF EXISTS "pos_cash_drops" DROP CONSTRAINT IF EXISTS "FK_pos_cash_drops_register_session"`);
+        await queryRunner.query(`ALTER TABLE IF EXISTS "stock_movements" DROP CONSTRAINT IF EXISTS "FK_cbe1eb6c727a7f30bbefc062e84"`);
+        await queryRunner.query(`ALTER TABLE IF EXISTS "stock_movements" DROP CONSTRAINT IF EXISTS "FK_847ae48018bbd08f4fbbac53006"`);
+        await queryRunner.query(`ALTER TABLE IF EXISTS "stock_movements" DROP CONSTRAINT IF EXISTS "FK_3dbc4d2ce7b9eecc9f284b925cd"`);
+        await queryRunner.query(`ALTER TABLE IF EXISTS "stock_movements" DROP CONSTRAINT IF EXISTS "FK_4fc9f6fc2db22fc301f7c1c918b"`);
+        await queryRunner.query(`DROP INDEX IF EXISTS "public"."IDX_user_sessions_userId"`);
+        await queryRunner.query(`DROP INDEX IF EXISTS "public"."IDX_pos_cash_drops_session_created"`);
+        await queryRunner.query(`DROP INDEX IF EXISTS "public"."IDX_stock_movements_business_branch_created"`);
         await queryRunner.query(`ALTER TABLE "settings" ALTER COLUMN "messagingCostSms" SET DEFAULT '0.05'`);
         await queryRunner.query(`ALTER TABLE "settings" ALTER COLUMN "messagingCostWhatsapp" SET DEFAULT '0.08'`);
         await queryRunner.query(`ALTER TABLE "settings" ALTER COLUMN "messagingCostEmail" SET DEFAULT '0.01'`);

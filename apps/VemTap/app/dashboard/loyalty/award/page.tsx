@@ -28,7 +28,7 @@ import { PageGuideButton, AICopilotButton } from '@/components/ai';
 export default function AwardPointsPage() {
     const router = useRouter();
     const { activeBranchId } = useActiveBranch();
-    const { availableRewards, fetchRewards, earnPoints, isLoading: isActionLoading } = useLoyaltyStore();
+    const { availableRewards, fetchRewards, awardManualPoints, isLoading: isActionLoading } = useLoyaltyStore();
     const { user } = useAuthStore();
     
     const [selectedProgramId, setSelectedProgramId] = useState<string>('');
@@ -76,11 +76,18 @@ export default function AwardPointsPage() {
 
         try {
             let successCount = 0;
+            const pointsPerCustomer = customPoints || selectedProgram?.pointCost || 0;
+            if (pointsPerCustomer <= 0) {
+                toast.error('Please enter a points amount');
+                return;
+            }
             for (const userId of selectedCustomerIds) {
-                const response = await earnPoints({
+                const response = await awardManualPoints({
                     userId,
                     branchId: activeBranchId || user?.branchId || '',
-                    isVisit: false
+                    points: pointsPerCustomer,
+                    rewardId: selectedProgramId || undefined,
+                    notes: `Manual award${selectedProgram ? ` — ${selectedProgram.name}` : ''}`
                 });
                 if (response.success) successCount++;
             }
