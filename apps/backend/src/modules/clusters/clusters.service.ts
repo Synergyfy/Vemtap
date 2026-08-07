@@ -58,6 +58,25 @@ function stableHash(input: string): number {
   return Math.abs(hash);
 }
 
+function haversineMeters(
+  lat1: number,
+  lng1: number,
+  lat2: number,
+  lng2: number,
+): number {
+  const R = 6371000;
+  const toRad = (deg: number) => (deg * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLng = toRad(lng2 - lng1);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(toRad(lat1)) *
+      Math.cos(toRad(lat2)) *
+      Math.sin(dLng / 2) *
+      Math.sin(dLng / 2);
+  return 2 * R * Math.asin(Math.sqrt(a));
+}
+
 @Injectable()
 export class ClustersService {
   private readonly logger = new Logger(ClustersService.name);
@@ -223,6 +242,7 @@ export class ClustersService {
       .createQueryBuilder('offer')
       .leftJoinAndSelect('offer.branch', 'branch')
       .leftJoinAndSelect('offer.business', 'business')
+      .leftJoinAndSelect('offer.items', 'offerItems')
       .where('branch.clusterId = :clusterId', { clusterId })
       .andWhere('offer.status = :status', {
         status: CatalogueOfferStatus.ACTIVE,
@@ -277,11 +297,6 @@ export class ClustersService {
           source: 'customer',
         };
       }
-      qb.addSelect(
-        `ST_Distance(branch.location, ST_SetSRID(ST_MakePoint(:refLng, :refLat), 4326)::geography)`,
-        'distanceMeters',
-      );
-      qb.setParameters({ refLng: reference.lng, refLat: reference.lat });
     }
 
     qb.orderBy('offer.createdAt', 'DESC');
@@ -331,9 +346,18 @@ export class ClustersService {
         (a, b) => Number(b.calculatedPrice) - Number(a.calculatedPrice),
       );
     } else if (isDistanceSort) {
-      const getDist = (o: any) => Number(o.distanceMeters ?? Infinity);
       const dir = sortBy === ClusterDealsSortBy.DISTANCE_ASC ? 1 : -1;
-      offers.sort((a, b) => (getDist(a) - getDist(b)) * dir);
+      offers.sort((a, b) => {
+        const dA = this.distanceFromReference(a, reference);
+        const dB = this.distanceFromReference(b, reference);
+        return (dA - dB) * dir;
+      });
+      for (const offer of offers) {
+        const d = this.distanceFromReference(offer, reference);
+        (
+          offer as CatalogueOffer & { distanceMeters?: number | null }
+        ).distanceMeters = Number.isFinite(d) ? Math.round(d) : null;
+      }
     }
 
     if (pinnedIds.size > 0) {
@@ -417,6 +441,28 @@ export class ClustersService {
       lng: Number(cluster.longitude),
       source: 'cluster_center' as const,
     };
+  }
+
+  private distanceFromReference(
+    offer: CatalogueOffer,
+    ref: { lat: number; lng: number },
+  ): number {
+    const branch = offer.branch;
+    if (
+      !branch ||
+      branch.latitude == null ||
+      branch.longitude == null ||
+      ref.lat == null ||
+      ref.lng == null
+    ) {
+      return Infinity;
+    }
+    return haversineMeters(
+      ref.lat,
+      ref.lng,
+      Number(branch.latitude),
+      Number(branch.longitude),
+    );
   }
 
   private async mapDeal(offer: CatalogueOffer) {
@@ -755,7 +801,7 @@ export class ClustersService {
       const pinnedOfferIds = pinnedRows.map((row) => row.offerId);
       const pinnedOffers = await this.offerRepository.find({
         where: { id: In(pinnedOfferIds) },
-        relations: ['branch', 'business'],
+        relations: ['branch', 'business', 'items'],
       });
       const pinnedById = new Map(pinnedOffers.map((o) => [o.id, o]));
       pinned = (
