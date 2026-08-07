@@ -27,13 +27,14 @@ import { cn, formatPrice } from '@/lib/utils';
 import { toast } from 'react-hot-toast';
 import { StepForm, StepFormData } from '@/components/visitor/StepForm';
 import { api } from '@/lib/api';
+import { signupVisitorAndLogin } from '@/lib/visitorAuth';
 import { User } from '@/store/useAuthStore';
 
 export default function ProductDetailPage() {
     const params = useParams();
     const router = useRouter();
     const { branchId, storeName, logoUrl, setUserData } = useCustomerFlowStore();
-    const { isAuthenticated, user, login } = useAuthStore();
+    const { isAuthenticated, user } = useAuthStore();
     
     const { data: product, isLoading } = useCatalogueItem(params.id as string, branchId || undefined);
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -81,19 +82,13 @@ export default function ProductDetailPage() {
     const onAuthComplete = async (data: StepFormData) => {
         setIsSubmitting(true);
         try {
-            const nameParts = data.name?.trim().split(/\s+/) || ['Visitor'];
-            const firstName = nameParts[0];
-            const lastName = nameParts.slice(1).join(' ') || ' ';
-            
-            await api.post(`/visitors/signup`, { firstName, lastName, email: data.email, phone: data.phone || undefined });
-            const authResponse = await api.post('/auth/login', { identifier: data.email, password: '123456' });
+            await signupVisitorAndLogin({ email: data.email, phone: data.phone, name: data.name });
 
-            if (authResponse?.access_token) {
-                login(authResponse.user, authResponse.access_token);
+            if (useAuthStore.getState().isAuthenticated) {
                 setUserData(data);
                 setShowAuthForm(false);
                 // Trigger order after auth
-                const currentUser = authResponse.user as User;
+                const currentUser = useAuthStore.getState().user as User;
                 const payload = {
                     branchId: branchId!,
                     deviceId: useCustomerFlowStore.getState().deviceId || undefined,

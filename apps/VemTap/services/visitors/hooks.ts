@@ -102,7 +102,7 @@ export const useVisitors = (branchId?: string, query?: Record<string, any>, enab
     });
 };
 
-export const useVisitor = (id: string, branchId?: string) => {
+export const useVisitor = (id: string, branchId?: string | null) => {
     return useQuery<Visitor, Error>({
         queryKey: ['visitors', id, branchId],
         queryFn: async () => {

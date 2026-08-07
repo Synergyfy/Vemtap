@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import PageHeader from '@/components/dashboard/PageHeader';
 import { useAuthStore } from '@/store/useAuthStore';
 import Link from 'next/link';
@@ -43,14 +43,21 @@ export default function DashboardPricingPage() {
         return base + visitorCost + tagCost;
     };
 
-    const { activeSubscription: subscription, fetchSubscriptionData, isLoading: subLoading } = useSubscriptionStore();
+    const { activeSubscription: subscription, capabilities, refreshSubscriptionData, isLoading: subLoading } = useSubscriptionStore();
     const subscribeMutation = useSubscribe();
+
+    // Always refetch the latest subscription on mount so the page never
+    // renders a stale persisted plan after an upgrade/downgrade
+    useEffect(() => {
+        refreshSubscriptionData();
+    }, [refreshSubscriptionData]);
     const { data: addons = [], isLoading: addonsLoading } = useAddOns();
     const { data: myActiveAddons = [], isLoading: myAddonsLoading } = useMyActiveAddOns();
     const { data: discountRules = [] } = useBundleDiscounts();
     const purchaseAddOnMutation = usePurchaseAddOn();
 
     const isLoading = plansLoading || subLoading || addonsLoading;
+    const hasSubscriptionData = Boolean(capabilities);
     const freePlan = plans.find((p: PricingPlan) => p.isFree);
     
     // Robust active plan detection
@@ -107,7 +114,7 @@ export default function DashboardPricingPage() {
             }, {
                 onSuccess: () => {
                     toast.success(trialDays > 0 ? `Started ${trialDays}-Day Free Trial!` : 'Switched to Free plan!');
-                    fetchSubscriptionData();
+                    refreshSubscriptionData();
                     setTimeout(() => {
                         router.push('/dashboard/business-link');
                     }, 100);
@@ -199,7 +206,7 @@ export default function DashboardPricingPage() {
         };
     };
 
-    if (isLoading) return (
+    if (isLoading && !hasSubscriptionData) return (
         <div className="flex items-center justify-center min-h-[400px] text-center">
             <div>
                 <Loader2 className="animate-spin mx-auto text-primary" size={32} />
@@ -807,7 +814,7 @@ export default function DashboardPricingPage() {
                             title: "Subscription Active!",
                             message: `You have successfully subscribed to the ${checkoutPlan.name} plan. Your business is now powered up!`
                         });
-                        fetchSubscriptionData();
+                        refreshSubscriptionData();
                     }}
                 />
             )}
@@ -827,7 +834,7 @@ export default function DashboardPricingPage() {
                             title: "Power-Up Activated!",
                             message: `Your selected Power-Ups have been successfully added to your account and are now active.`
                         });
-                        fetchSubscriptionData();
+                        refreshSubscriptionData();
                     }}
                 />
             )}

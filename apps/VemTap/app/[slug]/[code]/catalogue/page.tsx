@@ -47,6 +47,7 @@ import { PremiumBottomNav } from '@/components/visitor/PremiumBottomNav';
 import { FloatingCartSummary } from '@/components/visitor/FloatingCartSummary';
 import { StepForm, StepFormData } from '@/components/visitor/StepForm';
 import { api } from '@/lib/api';
+import { signupVisitorAndLogin } from '@/lib/visitorAuth';
 import { User } from '@/store/useAuthStore';
 
 type CatalogueTab = 'products' | 'services' | 'offers';
@@ -55,7 +56,7 @@ export default function CataloguePage() {
     const params = useParams();
     const router = useRouter();
     const { branchId, storeName, logoUrl, setUserData, productCount, serviceCount, offerCount } = useCustomerFlowStore();
-    const { isAuthenticated, user, login } = useAuthStore();
+    const { isAuthenticated, user } = useAuthStore();
     const guestCart = useGuestCartStore();
 
     const addToCartMutation = useAddToCart();
@@ -233,15 +234,9 @@ export default function CataloguePage() {
     const onAuthComplete = async (data: StepFormData) => {
         setIsSubmitting(true);
         try {
-            const nameParts = data.name?.trim().split(/\s+/) || ['Visitor'];
-            const firstName = nameParts[0];
-            const lastName = nameParts.slice(1).join(' ') || ' ';
+            await signupVisitorAndLogin({ email: data.email, phone: data.phone, name: data.name });
 
-            await api.post(`/visitors/signup`, { firstName, lastName, email: data.email, phone: data.phone || undefined });
-            const authResponse = await api.post('/auth/login', { identifier: data.email, password: '123456' });
-
-            if (authResponse?.access_token) {
-                login(authResponse.user, authResponse.access_token);
+            if (useAuthStore.getState().isAuthenticated) {
                 setUserData(data);
                 setShowAuthForm(false);
                 if (pendingOrder) {

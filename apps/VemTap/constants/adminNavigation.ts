@@ -1,7 +1,8 @@
 import {
     Home, Store, Users, Nfc, CreditCard, BarChart, MessageSquare, Activity,
     Settings, ShieldCheck, Gift, Package, FileText, Tag, Workflow, Eye, Zap, ClipboardList, Headset, Megaphone, Palette,
-    Handshake, BookOpen
+    Handshake, BookOpen, MapPin,
+    type LucideIcon
 } from 'lucide-react';
 
 export interface SubmenuItem {
@@ -13,7 +14,7 @@ export interface SubmenuItem {
 export interface MenuItem {
     id: string;
     label: string;
-    icon: any;
+    icon: LucideIcon;
     href?: string;
     submenu?: SubmenuItem[];
     permission?: string;
@@ -115,6 +116,14 @@ export const ADMIN_MENU_ITEMS: MenuItem[] = [
         href: '/admin/discovery/dashboard',
         permission: 'admin:all',
         keywords: ['discovery', 'network', 'referrals', 'attribution', 'partnerships', 'nearby']
+    },
+    {
+        id: 'clusters',
+        label: 'Cluster Management',
+        icon: MapPin,
+        href: '/admin/clusters',
+        permission: 'admin:all',
+        keywords: ['locations', 'zones', 'regions', 'clusters', 'qr', 'deals', 'groups', 'areas', 'markets']
     },
     {
         id: 'business-partnership',
@@ -222,7 +231,10 @@ export const ADMIN_MENU_ITEMS: MenuItem[] = [
         id: 'health',
         label: 'System Health',
         icon: Activity,
-        href: '/admin/health',
+        submenu: [
+            { label: 'Health Monitor', href: '/admin/health', keywords: ['monitor', 'cpu', 'memory', 'infrastructure', 'live'] },
+            { label: 'Status Page', href: '/admin/status', keywords: ['components', 'incidents', 'uptime', 'public', 'systems'] },
+        ],
         permission: 'admin:health',
         keywords: ['status', 'uptime', 'database', 'servers', 'monitoring', 'cpu']
     },

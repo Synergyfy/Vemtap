@@ -59,19 +59,23 @@ export function CartPanel({ onNavigate, isPublic = false, branchId: publicBranch
   const tax = getCartTax();
   const itemCount = cart.reduce((acc, item) => acc + item.quantity, 0);
 
-  const handlePlaceOrder = async () => {
-    if (!attachedCustomer) {
+  const handlePlaceOrder = async (customerOverride?: { name: string; phone: string; email?: string }) => {
+    // Read the customer from the fresh store state (or the value just submitted)
+    // so a leftover persisted customer never silently replaces the details the
+    // cashier/customer just entered.
+    const customer = customerOverride ?? usePosStore.getState().attachedCustomer;
+    if (!customer) {
       setIsCustomerModalOpen(true);
       return;
     }
-    
+
     setIsSubmitting(true);
     try {
       await createOrder.mutateAsync({
-        firstName: attachedCustomer.name.split(' ')[0] || 'Customer',
-        lastName: attachedCustomer.name.split(' ').slice(1).join(' ') || attachedCustomer.name.split(' ')[0] || 'Customer',
-        phone: attachedCustomer.phone,
-        email: attachedCustomer.email || undefined,
+        firstName: customer.name.split(' ')[0] || 'Customer',
+        lastName: customer.name.split(' ').slice(1).join(' ') || customer.name.split(' ')[0] || 'Customer',
+        phone: customer.phone,
+        email: customer.email || undefined,
         branchId: isPublic ? (publicBranchId ?? '') : (activeBranchId ?? ''),
         tableNumber: undefined,
         notes: isPublic ? 'Public POS Order' : 'POS Order',
@@ -80,7 +84,7 @@ export function CartPanel({ onNavigate, isPublic = false, branchId: publicBranch
           quantity: i.quantity,
         })),
       });
-      
+
       clearCart();
       toast.success('Order placed successfully!');
       onNavigate?.();
@@ -131,8 +135,9 @@ export function CartPanel({ onNavigate, isPublic = false, branchId: publicBranch
           onSubmit={(customer) => {
             attachCustomer({ id: '', name: customer.name, phone: customer.phone, email: customer.email });
             setIsCustomerModalOpen(false);
-            // Delayed call to let state settle
-            setTimeout(() => handlePlaceOrder(), 50);
+            // Place the order with the exact details just submitted — no
+            // setTimeout / stale closure that could reuse an old customer.
+            void handlePlaceOrder(customer);
           }}
           onClose={() => setIsCustomerModalOpen(false)}
         />
@@ -395,7 +400,7 @@ export function CartPanel({ onNavigate, isPublic = false, branchId: publicBranch
           </div>
         ) : (
           <button 
-            onClick={handlePlaceOrder}
+            onClick={() => setIsCustomerModalOpen(true)}
             disabled={isSubmitting}
             className="w-full h-14 bg-[#066CF4] text-white rounded-[20px] flex items-center justify-center gap-2 shadow-xl shadow-blue-500/20 hover:bg-blue-600 active:scale-95 transition-all disabled:opacity-50"
           >

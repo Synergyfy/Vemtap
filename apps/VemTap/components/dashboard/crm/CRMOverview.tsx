@@ -23,9 +23,9 @@ export function CRMOverviewHeader() {
                     <Users size={28} />
                 </div>
                 <div>
-                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 leading-none mb-2">Management</p>
+                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 leading-none mb-2">CRM</p>
                     <div className="flex items-center gap-2">
-                        <h1 className="text-2xl font-black text-gray-900 leading-none">Customers</h1>
+                        <h1 className="text-2xl font-black text-gray-900 leading-none">Customer Overview</h1>
                         <PageGuideButton />
                         <AICopilotButton />
                     </div>

@@ -242,3 +242,54 @@ All fields are optional:
     *   No `refundItems` provided when status is set to `partial_refund`.
     *   Requested refund quantity exceeds remaining item quantity.
 *   **404 Not Found:** Order or requested line item does not exist.
+
+---
+
+## 5. Loyalty — Manual Points Award
+
+### `POST /loyalty/earn/manual`
+
+*   **Description:** Allows business owners and managers to manually award a specific number of loyalty points to one or more customers. The existing `POST /loyalty/earn` endpoint only supports visit-based earning (computes points from rules/spending). This new endpoint lets staff directly credit a chosen point amount — used for promotions, compensation, or one-off rewards.
+*   **Access Level:** Owner or Manager role.
+*   **Method & Endpoint:** `POST /api/v1/loyalty/earn/manual?branchId={branchId}`
+
+#### Request Payload
+
+| Field | Type | Required? | Description |
+| :--- | :--- | :--- | :--- |
+| `userId` | `string` (UUID) | **Yes** | The loyalty user ID (profile) to credit. |
+| `points` | `number` | **Yes** | Number of points to award. Must be > 0. |
+| `source` | `string` | No | Reason/origin: `"manual_award"`, `"promotion"`, `"compensation"`, etc. |
+| `rewardId` | `string` (UUID) | No | ID of the reward program this award relates to (if any). |
+| `awardedBy` | `string` (UUID) | No | Staff member performing the award (from auth token). |
+| `notes` | `string` | No | Free-text note for audit trail. |
+
+#### Sample Request
+```json
+{
+  "userId": "usr-7bff4c44-e613-49ec-b4aa-ce2baaca1cf3",
+  "points": 500,
+  "source": "manual_award",
+  "rewardId": "rwd-a1b2c3d4-e5f6-4g7h-8i9j-klmnopqrstuv",
+  "notes": "Birthday bonus from manager"
+}
+```
+
+#### Sample Response (201 Created)
+```json
+{
+  "success": true,
+  "pointsEarned": 500,
+  "newBalance": 1500,
+  "message": "500 points awarded successfully",
+  "transactionId": "txn-9f8e7d6c-5b4a-3c2d-1e0f-fedcba987654"
+}
+```
+
+#### Error Scenarios
+*   **400 Bad Request:**
+    *   `points` is missing, zero, or negative.
+    *   `userId` does not exist or is not linked to this branch/business.
+*   **401 Unauthorized:** Missing or invalid token.
+*   **403 Forbidden:** User is not Owner or Manager.
+*   **404 Not Found:** Loyalty profile not found for the given `userId` in this branch.

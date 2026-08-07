@@ -61,6 +61,12 @@ const FEATURE_ID_MAP: Record<string, string> = {
     'peak times': 'analytics-peak-times',
     'get customers': 'discovery',
     'business partnership': 'business-partnership',
+    // Leaf nav items whose labels must resolve to the canonical feature id used by
+    // mapPlanToConfig / mapConfigToPlanDto / getPlanFieldUpdates (otherwise the
+    // admin permission toggle falls through to the default case and never saves).
+    'marketing kit': 'marketing-kit',
+    'my business qr': 'business-qr',
+    'forms': 'forms',
 };
 
 // Label→ID for parent nav items (used as fallback featureId)
@@ -100,10 +106,33 @@ function deriveFeatureId(navItemId: string, label: string, parentLabel?: string)
     return navItemId;
 }
 
+// Extra capabilities that aren't represented as their own nav item but still
+// map to a PricingPlan field. Injected under their associated parent feature.
+function injectExtraFeatures(sections: PermissionSection[]): PermissionSection[] {
+    return sections.map(section => {
+        // "Catalogue Offers" (deals) is grouped under the "Get Customers"
+        // (discovery) head nav since deals live on the Discovery page, not in
+        // the product catalogue. Inject it as a child of that parent.
+        const discoveryIdx = section.features.findIndex(f => f.id === 'discovery' && !f.parentId);
+        if (discoveryIdx === -1) return section;
+        const features = [...section.features];
+        features.splice(discoveryIdx + 1, 0, {
+            id: 'catalogue-offers',
+            label: 'Deals',
+            parentId: section.features[discoveryIdx].id,
+            defaultLevel: 'limited',
+            defaultLimit: 50,
+            limitUnit: 'offers',
+            limitPlaceholder: 'Max offers',
+        });
+        return { ...section, features };
+    });
+}
+
 // ─── Build permission sections from the sidebar navigation tree ──────────
 
 export function buildPermissionSectionsFromNavigation(): PermissionSection[] {
-    return NAVIGATION_SECTIONS
+    const sections = NAVIGATION_SECTIONS
         .filter(s => s.items.length > 0)
         .map(section => {
             const sectionLabel = section.label || section.items[0]?.label || 'General';
@@ -149,6 +178,8 @@ export function buildPermissionSectionsFromNavigation(): PermissionSection[] {
                 features,
             };
         });
+
+    return injectExtraFeatures(sections);
 }
 
 // ─── Known permission IDs that map to PricingPlan fields ───────────
@@ -157,6 +188,7 @@ const PLANNED_FEATURE_DEFAULTS: Record<string, { level: PermissionLevel; limit?:
     'dashboard': { level: 'yes' },
     'products-stock': { level: 'yes' },
     'catalogue': { level: 'limited', limit: 50, unit: 'items', placeholder: 'Max items' },
+    'catalogue-offers': { level: 'limited', limit: 50, unit: 'offers', placeholder: 'Max offers' },
     'inventory': { level: 'yes', unit: 'items', placeholder: 'Max items' },
     'sales': { level: 'yes' },
     'pos': { level: 'yes' },
@@ -186,7 +218,7 @@ const PLANNED_FEATURE_DEFAULTS: Record<string, { level: PermissionLevel; limit?:
 // Features that offer three configurable states (Yes / Limited / No).
 // All other features are boolean-only toggles (Yes / No).
 const THREE_STATE_FEATURES = new Set([
-    'catalogue', 'loyalty', 'forms', 'marketing-kit',
+    'catalogue', 'catalogue-offers', 'loyalty', 'forms', 'marketing-kit',
     'staff', 'staff-roles', 'locations', 'branches', 'qr-codes', 'ai-copilot',
     'analytics',
 ]);
@@ -291,6 +323,7 @@ export function mapPlanToConfig(plan: PricingPlan): PlanPermissionConfig {
     // Known PricingPlan-backed features
     if (plan) {
         features['catalogue'] = getPerm(plan.catalogueEnabled, plan.maxCatalogueItems);
+        features['catalogue-offers'] = getPerm(plan.catalogueEnabled, plan.maxCatalogueOffers);
         features['inventory'] = getPerm(!!plan.inventoryEnabled, plan.inventoryLimit);
         features['pos'] = getPerm(!!plan.posEnabled, plan.posTerminalLimit);
         features['loyalty'] = getPerm(plan.loyaltyEnabled, plan.loyaltyLimit);
@@ -359,9 +392,10 @@ export function mapConfigToPlanDto(
     const catalogue = getEnabledAndLimit('catalogue');
     dto.catalogueEnabled = catalogue.enabled;
     dto.maxCatalogueItems = catalogue.limit;
+    const catalogueOffers = getEnabledAndLimit('catalogue-offers');
+    dto.maxCatalogueOffers = catalogue.enabled ? catalogueOffers.limit : null;
     if (existingPlan) {
         dto.maxCatalogueCategories = catalogue.enabled ? existingPlan.maxCatalogueCategories : null;
-        dto.maxCatalogueOffers = catalogue.enabled ? existingPlan.maxCatalogueOffers : null;
     }
 
     const inventory = getEnabledAndLimit('inventory');

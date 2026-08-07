@@ -27,6 +27,7 @@ export interface Visitor {
     time?: string;       // Fallback mapping for UI
     status: string;
     totalSpent: string;
+    source?: 'pos' | 'qr' | 'ubl' | 'deals' | 'registration' | string;
     // Optional fields used by UI columns and modal props
     optIn?: boolean;
     surveyAnswers?: Record<string, any>;
