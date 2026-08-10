@@ -69,6 +69,30 @@ const FEATURE_ID_MAP: Record<string, string> = {
     'forms': 'forms',
 };
 
+// Maps sub-page feature IDs to their plan-backed parent feature.
+// Used by getPlanFieldUpdates to resolve sub-feature toggles to plan fields,
+// and by mapPlanToConfig to inherit parent level in the public comparison table.
+export const SUBFEATURE_TO_PARENT: Record<string, string> = {
+    // POS sub-pages → pos
+    'sales-dashboard': 'pos',
+    'pos-orders': 'pos',
+    'pos-help': 'pos',
+    'settings': 'pos', // POS Settings page (Sales submenu)
+    // Analytics sub-pages → analytics
+    'ai-reports': 'analytics',
+    'analytics-sales': 'analytics',
+    'analytics-inventory': 'analytics',
+    'analytics-customers': 'analytics',
+    'analytics-discovery': 'analytics',
+    'analytics-footfall': 'analytics',
+    'analytics-marketing': 'analytics',
+    'analytics-peak-times': 'analytics',
+    // Customers sub-pages → visitors
+    'customer-list': 'visitors',
+    // Get Customers sub-pages → discovery
+    'business-partnership': 'discovery',
+};
+
 // Label→ID for parent nav items (used as fallback featureId)
 const PARENT_FEATURE_ID_MAP: Record<string, string> = {
     'dashboard': 'dashboard',
@@ -135,6 +159,7 @@ export function buildPermissionSectionsFromNavigation(): PermissionSection[] {
         .map(section => {
             const sectionLabel = section.label || section.items[0]?.label || 'General';
             const features: PlanFeature[] = [];
+            const seenIds = new Set<string>();
 
             section.items.forEach(item => {
                 const itemFeatureId = deriveFeatureId(item.id, item.label);
@@ -145,6 +170,8 @@ export function buildPermissionSectionsFromNavigation(): PermissionSection[] {
                     item.submenu.forEach(sub => {
                         if (sub.label.toLowerCase() === 'deals') return;
                         const subId = deriveFeatureId(sub.label.toLowerCase(), sub.label, item.label);
+                        if (seenIds.has(subId)) return; // Deduplicate (e.g. "Overview" in multiple submenus)
+                        seenIds.add(subId);
                         features.push({
                             id: subId,
                             label: sub.label,
@@ -154,6 +181,8 @@ export function buildPermissionSectionsFromNavigation(): PermissionSection[] {
                         });
                     });
                 } else {
+                    if (seenIds.has(itemFeatureId)) return;
+                    seenIds.add(itemFeatureId);
                     features.push({
                         id: itemFeatureId,
                         label: item.label,
@@ -308,8 +337,8 @@ export function mapPlanToConfig(plan: PricingPlan): PlanPermissionConfig {
     const features: Record<string, FeaturePermission> = {};
     const sections = PERMISSION_SECTIONS;
 
-    // Always-enabled core features
-    const alwaysYes = ['dashboard', 'products-stock', 'sales', 'customers', 'customer-list', 'settings', 'profile', 'subscription', 'support'];
+    // Always-enabled core features (account-level, not plan-gated)
+    const alwaysYes = ['dashboard', 'profile', 'subscription', 'support'];
     alwaysYes.forEach(id => { features[id] = { level: 'yes' }; });
 
     // Known PricingPlan-backed features
@@ -326,8 +355,6 @@ export function mapPlanToConfig(plan: PricingPlan): PlanPermissionConfig {
         features['business-qr'] = { level: plan.businessQrEnabled ? 'yes' : 'no' };
         features['marketing-kit'] = getPerm(!!plan.marketingKitEnabled, plan.marketingKitLimit);
         features['discovery'] = { level: plan.discoveryEnabled ? 'yes' : 'no' };
-        features['business-partnership'] = features['discovery']; // Nav-tree alias
-        features['settings'] = { level: 'yes' };
         features['profile'] = { level: 'yes' };
         features['subscription'] = { level: 'yes' };
         features['support'] = { level: 'yes' };
@@ -348,6 +375,13 @@ export function mapPlanToConfig(plan: PricingPlan): PlanPermissionConfig {
 
         features['ai-copilot'] = getPerm(!!plan.aiCopilotEnabled, plan.aiCredits);
     }
+
+    // Sub-features inherit their parent's level (e.g. Sales Dashboard follows POS)
+    Object.entries(SUBFEATURE_TO_PARENT).forEach(([subId, parentId]) => {
+        if (features[parentId]) {
+            features[subId] = { ...features[parentId] };
+        }
+    });
 
     // Fill remaining features from nav tree defaults
     sections.forEach(section => {
