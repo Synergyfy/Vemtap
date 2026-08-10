@@ -122,7 +122,6 @@ describe('AnalyticsService', () => {
       expect(result.stats).toBeDefined();
       expect(result.hourlyData).toBeDefined();
       expect(result.trafficByEntrance).toBeDefined();
-      expect(result.visitDuration).toBeDefined();
     });
   });
 

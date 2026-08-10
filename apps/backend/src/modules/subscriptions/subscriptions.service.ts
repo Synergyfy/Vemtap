@@ -768,8 +768,17 @@ export class SubscriptionsService {
         ? baseCatalogueCategoriesLimit + addonCatalogueCategories
         : baseCatalogueCategoriesLimit;
 
+    // Offers are a capability of the catalogue. When the catalogue itself is
+    // unlimited (maxCatalogueItems === -1) and no explicit offers limit has
+    // been configured, treat offers as unlimited too. This prevents a stale /
+    // defaulted maxCatalogueOffers (0 or null) from silently blocking deal
+    // creation for plans whose catalogue is set to Unlimited.
+    const catalogueIsUnlimited = plan.maxCatalogueItems === -1;
+    const offersHasExplicitLimit =
+      plan.maxCatalogueOffers != null && plan.maxCatalogueOffers > 0;
     const baseCatalogueOffersLimit =
-      plan.maxCatalogueOffers === -1
+      plan.maxCatalogueOffers === -1 ||
+      (catalogueIsUnlimited && !offersHasExplicitLimit)
         ? 'unlimited'
         : (plan.maxCatalogueOffers ?? 0);
     const finalCatalogueOffersLimit =

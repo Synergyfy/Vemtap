@@ -6,6 +6,7 @@ import PageGuide from '@/components/dashboard/PageGuide';
 import PermissionRouteGuard from '@/components/dashboard/PermissionRouteGuard';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useEventsSocket } from '@/hooks/useEventsSocket';
+import { usersApi } from '@/lib/api/users';
 
 export default function DashboardLayout({
     children,
@@ -13,6 +14,7 @@ export default function DashboardLayout({
     children: React.ReactNode;
 }) {
     const accessToken = useAuthStore((state) => state.access_token);
+    const user = useAuthStore((state) => state.user);
 
     // Sync auth cookie for existing sessions (pre-middleware users)
     useEffect(() => {
@@ -20,6 +22,19 @@ export default function DashboardLayout({
             const maxAge = 30 * 24 * 60 * 60;
             document.cookie = `vemtap-auth-token=${accessToken}; path=/; max-age=${maxAge}; SameSite=Lax`;
         }
+    }, [accessToken]);
+
+    // Refresh user profile from API so permissions stay in sync when
+    // an admin updates them from another session.
+    useEffect(() => {
+        if (!accessToken || !user) return;
+        usersApi.getMe().then((fresh) => {
+            if (fresh?.permissions) {
+                useAuthStore.setState((s) => ({
+                    user: s.user ? { ...s.user, ...fresh } : s.user,
+                }));
+            }
+        }).catch(() => {});
     }, [accessToken]);
 
     useEventsSocket({ enabled: !!accessToken });

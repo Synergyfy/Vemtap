@@ -567,6 +567,17 @@ export class AuthService {
 
     const metadata = otpRecord.metadata || {};
 
+    const nameParts = (registrationData.name || '')
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean);
+    if (!registrationData.firstName && nameParts[0]) {
+      registrationData.firstName = nameParts[0];
+    }
+    if (!registrationData.lastName && nameParts.length > 1) {
+      registrationData.lastName = nameParts.slice(1).join(' ');
+    }
+
     const existingUser = await this.usersService.findByEmail(
       registrationData.email,
     );
@@ -914,14 +925,21 @@ export class AuthService {
       throw new ConflictException('Email already exists');
     }
 
-    // Create User (Admin)
+    const nameParts = (dto.name || '').trim().split(/\s+/).filter(Boolean);
+    const firstName =
+      dto.firstName || (nameParts[0] ? nameParts[0] : dto.email.split('@')[0]);
+    const lastName =
+      dto.lastName ||
+      (nameParts.length > 1 ? nameParts.slice(1).join(' ') : '');
+
+    // Create User (Super Admin)
     const hashedPassword = await bcrypt.hash(dto.password, 10);
     const user = await this.usersService.create({
-      firstName: dto.firstName,
-      lastName: dto.lastName,
+      firstName,
+      lastName,
       email: dto.email,
       password: hashedPassword,
-      role: UserRole.ADMIN, // Explicitly ADMIN
+      role: UserRole.SUPER_ADMIN, // Platform operator role
       status: UserStatus.ACTIVE,
       phone: dto.phone || undefined,
     });

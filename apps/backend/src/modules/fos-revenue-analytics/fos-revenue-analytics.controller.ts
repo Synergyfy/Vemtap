@@ -11,6 +11,7 @@ import { FosRevenueAnalyticsService } from './fos-revenue-analytics.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
+import { FosEnvelope } from '../../common/decorators/fos-envelope.decorator';
 import { UserRole } from '../users/entities/user.entity';
 import {
   RevenueTransactionsQueryDto,
@@ -27,12 +28,13 @@ import { DateRangeQueryDto } from '../fos-core/dto/create-financial-transaction.
 @ApiTags('FOS Revenue Analytics')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard, RolesGuard)
+@FosEnvelope()
 @Controller('revenue')
 export class FosRevenueAnalyticsController {
   constructor(private readonly revenueService: FosRevenueAnalyticsService) {}
 
   @Get('transactions')
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Get paginated, filtered revenue transactions' })
   async getTransactions(
     @Query(new ValidationPipe({ transform: true }))
@@ -42,14 +44,14 @@ export class FosRevenueAnalyticsController {
   }
 
   @Get('aggregates')
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Get summary financial aggregates' })
   async getAggregates(): Promise<RevenueAggregatesResponseDto> {
     return this.revenueService.getAggregates();
   }
 
   @Get('trends')
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @ApiOperation({
     summary: 'Get daily revenue and profit trends for area chart',
   })
@@ -61,7 +63,7 @@ export class FosRevenueAnalyticsController {
   }
 
   @Get('chart-data')
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @ApiOperation({
     summary: 'Get server-computed chart data for platform and type charts',
   })
@@ -73,7 +75,7 @@ export class FosRevenueAnalyticsController {
   }
 
   @Get('business/:businessId/history')
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @ApiOperation({
     summary: 'Get full transaction history for a specific business',
   })

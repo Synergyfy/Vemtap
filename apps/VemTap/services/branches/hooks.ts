@@ -5,12 +5,14 @@ import { useAuthStore } from '@/store/useAuthStore';
 
 // ─── Fetch all branches for the authenticated user's business ─────────────────
 export const useBranches = (enabled: boolean = true) => {
-    const { user } = useAuthStore();
+    const user = useAuthStore((state) => state.user);
+    const token = useAuthStore((state) => state.access_token);
     const businessId = user?.businessId ?? user?.id;
     return useQuery<Branch[], Error>({
-        // Scope the key to the current business so a stale cache entry from a
-        // previous account can never be served on a different account.
-        queryKey: ['branches', businessId],
+        // Scope the key to the current business AND the session token so a stale
+        // cache entry from a previous account can never be served on a different
+        // account, even across a client-side (no page reload) account switch.
+        queryKey: ['branches', businessId, token ?? 'anon'],
         queryFn: async () => await api.get('/branches'),
         staleTime: 1000 * 60 * 5, // cache for 5 minutes
         enabled,

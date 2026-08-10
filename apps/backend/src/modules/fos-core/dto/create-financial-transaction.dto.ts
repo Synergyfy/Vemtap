@@ -45,9 +45,9 @@ export class CreateFinancialTransactionDto {
   @Min(0)
   cost?: number;
 
-  @ApiPropertyOptional({ example: 0, default: 0 })
+  @ApiPropertyOptional({ example: 'CARD', default: 'CARD' })
   @IsOptional()
-  @IsNumber()
+  @IsString()
   paymentMethod?: string;
 
   @ApiPropertyOptional()

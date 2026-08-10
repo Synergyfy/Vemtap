@@ -1,0 +1,14 @@
+
+> @vemtap/frontend@0.1.0 type-check
+> tsc --noEmit
+
+.next/dev/types/routes.d.ts(471,4): error TS1109: Expression expected.
+.next/dev/types/routes.d.ts(471,5): error TS1161: Unterminated regular expression literal.
+.next/dev/types/routes.d.ts(475,1): error TS1128: Declaration or statement expected.
+.next/dev/types/validator.ts(3644,1): error TS1128: Declaration or statement expected.
+.next/dev/types/validator.ts(3644,2): error TS1128: Declaration or statement expected.
+.next/dev/types/validator.ts(3644,8): error TS1003: Identifier expected.
+.next/dev/types/validator.ts(3644,9): error TS1003: Identifier expected.
+.next/dev/types/validator.ts(3644,31): error TS1005: ';' expected.
+.next/dev/types/validator.ts(3644,33): error TS1002: Unterminated string literal.
+.next/dev/types/validator.ts(3648,1): error TS1128: Declaration or statement expected.

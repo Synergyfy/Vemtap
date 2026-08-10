@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { Plus, Loader2, MapPin } from 'lucide-react';
+import { Plus, Loader2, MapPin, Zap } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { adminClustersApi } from '@/lib/api/clusters';
 import type { Cluster } from '@/lib/api/clusters';
@@ -11,6 +11,7 @@ import ClusterMapOverlay from '@/components/admin/clusters/ClusterMapOverlay';
 import ClusterFormModal from '@/components/admin/clusters/ClusterFormModal';
 import ClusterQrModal from '@/components/admin/clusters/ClusterQrModal';
 import ClusterOffersModal from '@/components/admin/clusters/ClusterOffersModal';
+import ClusterBranchesModal from '@/components/admin/clusters/ClusterBranchesModal';
 
 export default function AdminClusterManagementPage() {
     const [clusters, setClusters] = useState<Cluster[]>([]);
@@ -23,6 +24,7 @@ export default function AdminClusterManagementPage() {
 
     const [qrCluster, setQrCluster] = useState<Cluster | null>(null);
     const [offersCluster, setOffersCluster] = useState<Cluster | null>(null);
+    const [branchesCluster, setBranchesCluster] = useState<Cluster | null>(null);
 
     const selectedCluster = clusters.find(c => c.id === selectedClusterId) || null;
 
@@ -76,6 +78,20 @@ export default function AdminClusterManagementPage() {
         setSelectedClusterId(prev => prev === id ? null : id);
     }, []);
 
+    const [autoAssigning, setAutoAssigning] = useState(false);
+    const handleGlobalAutoAssign = async () => {
+        setAutoAssigning(true);
+        try {
+            const result = await adminClustersApi.autoAssign(false);
+            toast.success(`Assigned ${result.assigned} branch${result.assigned !== 1 ? 'es' : ''} to clusters`);
+            await reload();
+        } catch {
+            toast.error('Auto-assign failed');
+        } finally {
+            setAutoAssigning(false);
+        }
+    };
+
     return (
         <div className="h-[calc(100vh-4rem)] flex flex-col">
             <div className="shrink-0 px-6 py-4 bg-white border-b border-gray-100 flex items-center justify-between">
@@ -85,13 +101,23 @@ export default function AdminClusterManagementPage() {
                         {clusters.length} clusters · Group businesses by location and publish deal collections via QR.
                     </p>
                 </div>
-                <button
-                    onClick={openCreate}
-                    className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-primary-hover shadow-lg shadow-primary/20 transition-all"
-                >
-                    <Plus size={16} />
-                    Add Cluster
-                </button>
+                <div className="flex items-center gap-2">
+                    <button
+                        onClick={handleGlobalAutoAssign}
+                        disabled={autoAssigning || clusters.length === 0}
+                        className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 text-text-secondary rounded-xl text-xs font-black uppercase tracking-widest hover:border-blue-300 hover:text-blue-600 transition-all disabled:opacity-50"
+                    >
+                        {autoAssigning ? <Loader2 size={14} className="animate-spin" /> : <Zap size={14} />}
+                        Auto-Assign
+                    </button>
+                    <button
+                        onClick={openCreate}
+                        className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-primary-hover shadow-lg shadow-primary/20 transition-all"
+                    >
+                        <Plus size={16} />
+                        Add Cluster
+                    </button>
+                </div>
             </div>
 
             <div className="flex-1 flex min-h-0">
@@ -124,6 +150,7 @@ export default function AdminClusterManagementPage() {
                             onEdit={() => openEdit(selectedCluster)}
                             onQr={() => setQrCluster(selectedCluster)}
                             onDeals={() => setOffersCluster(selectedCluster)}
+                            onBranches={() => setBranchesCluster(selectedCluster)}
                             onDelete={() => handleDelete(selectedCluster)}
                             onClose={() => setSelectedClusterId(null)}
                         />
@@ -172,6 +199,13 @@ export default function AdminClusterManagementPage() {
                 open={!!offersCluster}
                 cluster={offersCluster}
                 onClose={() => setOffersCluster(null)}
+                onChanged={reload}
+            />
+
+            <ClusterBranchesModal
+                open={!!branchesCluster}
+                cluster={branchesCluster}
+                onClose={() => setBranchesCluster(null)}
                 onChanged={reload}
             />
         </div>

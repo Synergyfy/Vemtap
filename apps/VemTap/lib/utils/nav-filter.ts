@@ -3,17 +3,29 @@ export interface NavFilterItem {
   permission?: string;
 }
 
+function hasAccessToSection(userPermissions: string[], permission: string): boolean {
+  return userPermissions.includes(permission) ||
+    userPermissions.some(p => p.startsWith(permission + ':'));
+}
+
 export function canAccessMenuItem(
   item: NavFilterItem,
   userRole: string,
   userPermissions: string[],
   isOwnerOrAdmin: boolean,
 ): boolean {
+  if (isOwnerOrAdmin) return true;
+
+  // An explicitly granted permission (exact or sub-permission) overrides the
+  // coarse role gate. e.g. staff granted `settings:profile` must see the
+  // Settings section even though its roles default to owner/manager.
+  if (item.permission && hasAccessToSection(userPermissions, item.permission)) {
+    return true;
+  }
+
   if (item.roles && !item.roles.includes(userRole)) {
     return false;
   }
-
-  if (isOwnerOrAdmin) return true;
 
   if (item.permission) {
     return userPermissions.includes(item.permission);
@@ -70,6 +82,12 @@ export function getFirstPermittedDashboardRoute(userRole: string, userPermission
   for (const item of getDashboardNavItems()) {
     if (!item.href) continue;
     if (canAccessMenuItem(item, userRole, userPermissions, false)) {
+      if (item.permission && item.submenu) {
+        for (const sub of item.submenu) {
+          const subKey = `${item.permission}:${sub.label.toLowerCase().replace(/\s+/g, '-')}`;
+          if (userPermissions.includes(subKey)) return sub.href;
+        }
+      }
       return item.href;
     }
   }

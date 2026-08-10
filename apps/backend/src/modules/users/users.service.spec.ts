@@ -60,7 +60,11 @@ describe('UsersService', () => {
           provide: getRepositoryToken(UserSession),
           useValue: {
             create: jest.fn().mockImplementation((session) => session),
-            save: jest.fn().mockImplementation((session) => Promise.resolve({ id: 'session-1', ...session })),
+            save: jest
+              .fn()
+              .mockImplementation((session) =>
+                Promise.resolve({ id: 'session-1', ...session }),
+              ),
             findOne: jest.fn(),
             find: jest.fn(),
             createQueryBuilder: jest.fn(),

@@ -10,10 +10,7 @@ import {
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { KnowledgeBaseService } from './knowledge-base.service';
-import {
-  CreateKbCategoryDto,
-  UpdateKbCategoryDto,
-} from './dto/category.dto';
+import { CreateKbCategoryDto, UpdateKbCategoryDto } from './dto/category.dto';
 import { CreateKbSectionDto, UpdateKbSectionDto } from './dto/section.dto';
 import { CreateKbPageDto, UpdateKbPageDto } from './dto/page.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -46,7 +43,9 @@ export class AdminKnowledgeBaseController {
   }
 
   @Delete('categories/:id')
-  @ApiOperation({ summary: 'Delete a knowledge base category (cascades sections and pages)' })
+  @ApiOperation({
+    summary: 'Delete a knowledge base category (cascades sections and pages)',
+  })
   async deleteCategory(@Param('id', ParseUUIDPipe) id: string) {
     return this.kbService.deleteCategory(id);
   }

@@ -6,6 +6,7 @@ import {
   FosTransactionType,
   FosPlatform,
 } from '../fos-core/entities/financial-transaction.entity';
+import { CashFlow, CashFlowType } from '../fos-core/entities/cash-flow.entity';
 import { MetricsSnapshot } from './entities/metrics-snapshot.entity';
 import {
   DashboardStatsResponseDto,
@@ -20,6 +21,8 @@ export class FosDashboardService {
   constructor(
     @InjectRepository(FinancialTransaction)
     private readonly transactionRepo: Repository<FinancialTransaction>,
+    @InjectRepository(CashFlow)
+    private readonly cashFlowRepo: Repository<CashFlow>,
     @InjectRepository(MetricsSnapshot)
     private readonly snapshotRepo: Repository<MetricsSnapshot>,
   ) {}
@@ -76,6 +79,28 @@ export class FosDashboardService {
       .filter((t) => Number(t.cost) > 0)
       .reduce((sum, t) => sum + Number(t.cost), 0);
 
+    const cashBalance = cashInflows - cashOutflows;
+
+    const cashFlows = await this.cashFlowRepo.find();
+    const reservedCash = cashFlows
+      .filter(
+        (cf) =>
+          cf.type === CashFlowType.OUTFLOW &&
+          (cf.category ?? '').toLowerCase().includes('reserve'),
+      )
+      .reduce((sum, cf) => sum + Number(cf.amount), 0);
+    const committedCash = cashFlows
+      .filter(
+        (cf) =>
+          cf.type === CashFlowType.OUTFLOW &&
+          (cf.category ?? '').toLowerCase().includes('committed'),
+      )
+      .reduce((sum, cf) => sum + Number(cf.amount), 0);
+    const availableCash = Math.max(
+      0,
+      cashBalance - committedCash - reservedCash,
+    );
+
     return {
       totalRevenue,
       netProfit,
@@ -85,7 +110,10 @@ export class FosDashboardService {
       vemtapRevenue,
       qrthriveRevenue,
       commissionsPaid,
-      cashBalance: cashInflows - cashOutflows,
+      cashBalance,
+      availableCash: Math.round(availableCash * 100) / 100,
+      committedCash: Math.round(committedCash * 100) / 100,
+      reservedCash: Math.round(reservedCash * 100) / 100,
       churnRate: latestSnapshot ? Number(latestSnapshot.churnRate) : 0,
       conversionRate: latestSnapshot
         ? Number(latestSnapshot.conversionRate)

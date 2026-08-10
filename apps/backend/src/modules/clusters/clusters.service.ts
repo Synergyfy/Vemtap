@@ -7,7 +7,11 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
-import { Cluster } from './entities/cluster.entity';
+import { InjectQueue } from '@nestjs/bullmq';
+import { Queue } from 'bullmq';
+import { Cron } from '@nestjs/schedule';
+import { Cluster, ClusterType } from './entities/cluster.entity';
+import { ClusterOffer } from './entities/cluster-offer.entity';
 import { Branch } from '../branches/entities/branch.entity';
 import {
   CatalogueOffer,
@@ -31,7 +35,17 @@ import {
   UpdateClusterDto,
   AdminClusterQueryDto,
   AutoAssignClustersDto,
+  AutoAssignScope,
 } from './dto/cluster.dto';
+import {
+  CLUSTER_AUTO_ASSIGN_QUEUE,
+  CLUSTER_AUTO_ASSIGN_JOB_ID,
+  ClusterAutoAssignJobData,
+} from './cluster-auto-assign.constants';
+import {
+  ClusterOffersQueryDto,
+  SetClusterOfferPinnedDto,
+} from './dto/cluster-offer.dto';
 
 const ROTATION_BUCKET_MS = 15 * 60 * 1000;
 const MAX_OFFERS_FETCH = 1000;
@@ -44,6 +58,25 @@ function stableHash(input: string): number {
   return Math.abs(hash);
 }
 
+function haversineMeters(
+  lat1: number,
+  lng1: number,
+  lat2: number,
+  lng2: number,
+): number {
+  const R = 6371000;
+  const toRad = (deg: number) => (deg * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLng = toRad(lng2 - lng1);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(toRad(lat1)) *
+      Math.cos(toRad(lat2)) *
+      Math.sin(dLng / 2) *
+      Math.sin(dLng / 2);
+  return 2 * R * Math.asin(Math.sqrt(a));
+}
+
 @Injectable()
 export class ClustersService {
   private readonly logger = new Logger(ClustersService.name);
@@ -51,6 +84,8 @@ export class ClustersService {
   constructor(
     @InjectRepository(Cluster)
     private readonly clusterRepository: Repository<Cluster>,
+    @InjectRepository(ClusterOffer)
+    private readonly clusterOfferRepository: Repository<ClusterOffer>,
     @InjectRepository(Branch)
     private readonly branchRepository: Repository<Branch>,
     @InjectRepository(CatalogueOffer)
@@ -59,6 +94,8 @@ export class ClustersService {
     private readonly claimRepository: Repository<CatalogueOfferClaim>,
     private readonly clusterCache: ClusterCacheService,
     private readonly configService: ConfigService,
+    @InjectQueue(CLUSTER_AUTO_ASSIGN_QUEUE)
+    private readonly autoAssignQueue: Queue,
   ) {}
 
   // ------------------------------------------------------------------
@@ -191,16 +228,22 @@ export class ClustersService {
     return result;
   }
 
-  private async computeDeals(cluster: Cluster, query: ClusterDealsQueryDto) {
-    const page = Number(query.page ?? 1);
-    const limit = Number(query.limit ?? 10);
-    const sortBy = query.sortBy ?? ClusterDealsSortBy.FAIR;
-
+  /**
+   * Base query for offers that auto-match a cluster: active offers from member
+   * branches that have opted into the discovery network. Shared by the public
+   * deals feed and the admin auto-match list.
+   */
+  private buildOfferQuery(
+    clusterId: string,
+    search?: string,
+    categoryId?: string,
+  ) {
     const qb = this.offerRepository
       .createQueryBuilder('offer')
       .leftJoinAndSelect('offer.branch', 'branch')
       .leftJoinAndSelect('offer.business', 'business')
-      .where('branch.clusterId = :clusterId', { clusterId: cluster.id })
+      .leftJoinAndSelect('offer.items', 'offerItems')
+      .where('branch.clusterId = :clusterId', { clusterId })
       .andWhere('offer.status = :status', {
         status: CatalogueOfferStatus.ACTIVE,
       })
@@ -213,7 +256,6 @@ export class ClustersService {
         allowPromotions: true,
       });
 
-    const { search, categoryId } = query;
     if (search) {
       qb.andWhere(
         '(offer.name ILIKE :search OR offer.description ILIKE :search OR business.name ILIKE :search)',
@@ -224,6 +266,15 @@ export class ClustersService {
       qb.andWhere('business.categoryId = :categoryId', { categoryId });
     }
 
+    return qb;
+  }
+
+  private async computeDeals(cluster: Cluster, query: ClusterDealsQueryDto) {
+    const page = Number(query.page ?? 1);
+    const limit = Number(query.limit ?? 10);
+    const sortBy = query.sortBy ?? ClusterDealsSortBy.FAIR;
+
+    const qb = this.buildOfferQuery(cluster.id, query.search, query.categoryId);
     let reference: {
       lat: number;
       lng: number;
@@ -246,11 +297,6 @@ export class ClustersService {
           source: 'customer',
         };
       }
-      qb.addSelect(
-        `ST_Distance(branch.location, ST_SetSRID(ST_MakePoint(:refLng, :refLat), 4326)::geography)`,
-        'distanceMeters',
-      );
-      qb.setParameters({ refLng: reference.lng, refLat: reference.lat });
     }
 
     qb.orderBy('offer.createdAt', 'DESC');
@@ -272,6 +318,15 @@ export class ClustersService {
       };
     }
 
+    const pinned = await this.clusterOfferRepository.find({
+      where: { clusterId: cluster.id, isPinned: true },
+      select: ['offerId', 'pinnedAt'],
+    });
+    const pinnedIds = new Set(pinned.map((p) => p.offerId));
+    const pinnedAt = new Map(
+      pinned.map((p) => [p.offerId, p.pinnedAt ?? p.createdAt]),
+    );
+
     // Ordering
     let seed: number | null = null;
     let bucket: number | null = null;
@@ -291,9 +346,22 @@ export class ClustersService {
         (a, b) => Number(b.calculatedPrice) - Number(a.calculatedPrice),
       );
     } else if (isDistanceSort) {
-      const getDist = (o: any) => Number(o.distanceMeters ?? Infinity);
       const dir = sortBy === ClusterDealsSortBy.DISTANCE_ASC ? 1 : -1;
-      offers.sort((a, b) => (getDist(a) - getDist(b)) * dir);
+      offers.sort((a, b) => {
+        const dA = this.distanceFromReference(a, reference);
+        const dB = this.distanceFromReference(b, reference);
+        return (dA - dB) * dir;
+      });
+      for (const offer of offers) {
+        const d = this.distanceFromReference(offer, reference);
+        (
+          offer as CatalogueOffer & { distanceMeters?: number | null }
+        ).distanceMeters = Number.isFinite(d) ? Math.round(d) : null;
+      }
+    }
+
+    if (pinnedIds.size > 0) {
+      offers = this.orderPinnedFirst(offers, pinnedIds, pinnedAt);
     }
 
     const start = (page - 1) * limit;
@@ -346,12 +414,55 @@ export class ClustersService {
     });
   }
 
+  /**
+   * Pinned offers always lead the ordering (oldest pin first, then newest
+   * offer) regardless of the active sort, so admin-curated deals stay on top.
+   */
+  private orderPinnedFirst(
+    offers: CatalogueOffer[],
+    pinnedIds: Set<string>,
+    pinnedAt: Map<string, Date>,
+  ): CatalogueOffer[] {
+    const pinned = offers
+      .filter((o) => pinnedIds.has(o.id))
+      .sort((a, b) => {
+        const aAt = pinnedAt.get(a.id)?.getTime() ?? 0;
+        const bAt = pinnedAt.get(b.id)?.getTime() ?? 0;
+        if (aAt !== bAt) return aAt - bAt;
+        return b.createdAt.getTime() - a.createdAt.getTime();
+      });
+    const rest = offers.filter((o) => !pinnedIds.has(o.id));
+    return [...pinned, ...rest];
+  }
+
   private referenceFromCluster(cluster: Cluster) {
     return {
       lat: Number(cluster.latitude),
       lng: Number(cluster.longitude),
       source: 'cluster_center' as const,
     };
+  }
+
+  private distanceFromReference(
+    offer: CatalogueOffer,
+    ref: { lat: number; lng: number },
+  ): number {
+    const branch = offer.branch;
+    if (
+      !branch ||
+      branch.latitude == null ||
+      branch.longitude == null ||
+      ref.lat == null ||
+      ref.lng == null
+    ) {
+      return Infinity;
+    }
+    return haversineMeters(
+      ref.lat,
+      ref.lng,
+      Number(branch.latitude),
+      Number(branch.longitude),
+    );
   }
 
   private async mapDeal(offer: CatalogueOffer) {
@@ -522,6 +633,12 @@ export class ClustersService {
         return {
           id: cluster.id,
           name: cluster.name,
+          type: cluster.type,
+          parentId: cluster.parentId,
+          country: cluster.country,
+          state: cluster.state,
+          city: cluster.city,
+          area: cluster.area,
           uniqueCode: cluster.uniqueCode,
           description: cluster.description,
           latitude: cluster.latitude,
@@ -561,9 +678,25 @@ export class ClustersService {
       ],
     });
 
+    const parent = cluster.parentId
+      ? await this.clusterRepository.findOne({
+          where: { id: cluster.parentId },
+          select: ['id', 'name', 'type'],
+        })
+      : null;
+
     return {
       id: cluster.id,
       name: cluster.name,
+      type: cluster.type,
+      parentId: cluster.parentId,
+      parent: parent
+        ? { id: parent.id, name: parent.name, type: parent.type }
+        : null,
+      country: cluster.country,
+      state: cluster.state,
+      city: cluster.city,
+      area: cluster.area,
       uniqueCode: cluster.uniqueCode,
       description: cluster.description,
       latitude: cluster.latitude,
@@ -593,8 +726,21 @@ export class ClustersService {
     if (dto.latitude == null || dto.longitude == null) {
       throw new BadRequestException('latitude and longitude are required');
     }
+    if (dto.parentId) {
+      const parent = await this.clusterRepository.findOne({
+        where: { id: dto.parentId },
+        select: ['id'],
+      });
+      if (!parent) throw new NotFoundException('Parent cluster not found');
+    }
     const cluster = this.clusterRepository.create({
       name: dto.name,
+      type: dto.type ?? ClusterType.MARKET,
+      parentId: dto.parentId,
+      country: dto.country,
+      state: dto.state,
+      city: dto.city,
+      area: dto.area,
       description: dto.description,
       latitude: dto.latitude,
       longitude: dto.longitude,
@@ -611,10 +757,118 @@ export class ClustersService {
     const cluster = await this.clusterRepository.findOne({ where: { id } });
     if (!cluster) throw new NotFoundException('Cluster not found');
 
+    if (dto.parentId === cluster.id) {
+      throw new BadRequestException('A cluster cannot be its own parent');
+    }
+    if (dto.parentId) {
+      const parent = await this.clusterRepository.findOne({
+        where: { id: dto.parentId },
+        select: ['id'],
+      });
+      if (!parent) throw new NotFoundException('Parent cluster not found');
+    }
+
     Object.assign(cluster, dto);
     const saved = await this.clusterRepository.save(cluster);
     await this.clusterCache.invalidateCluster(saved.uniqueCode);
     return this.getDetail(saved.id);
+  }
+
+  // ------------------------------------------------------------------
+  // Admin: offers (auto-match + pin/unpin)
+  // ------------------------------------------------------------------
+  async getClusterOffers(clusterId: string, query: ClusterOffersQueryDto) {
+    const cluster = await this.clusterRepository.findOne({
+      where: { id: clusterId },
+      select: ['id'],
+    });
+    if (!cluster) throw new NotFoundException('Cluster not found');
+
+    const qb = this.buildOfferQuery(clusterId, query.search, query.categoryId);
+    qb.orderBy('offer.createdAt', 'DESC');
+    const offers = await qb.getMany();
+    const autoMatched = await Promise.all(
+      offers.map((offer) => this.mapDeal(offer)),
+    );
+
+    const pinnedRows = await this.clusterOfferRepository.find({
+      where: { clusterId, isPinned: true },
+      order: { pinnedAt: 'ASC' },
+    });
+
+    let pinned: any[] = [];
+    if (pinnedRows.length > 0) {
+      const pinnedOfferIds = pinnedRows.map((row) => row.offerId);
+      const pinnedOffers = await this.offerRepository.find({
+        where: { id: In(pinnedOfferIds) },
+        relations: ['branch', 'business', 'items'],
+      });
+      const pinnedById = new Map(pinnedOffers.map((o) => [o.id, o]));
+      pinned = (
+        await Promise.all(
+          pinnedRows.map(async (row) => {
+            const offer = pinnedById.get(row.offerId);
+            if (!offer) return null;
+            const deal = await this.mapDeal(offer);
+            return { ...deal, pinnedAt: row.pinnedAt ?? row.createdAt };
+          }),
+        )
+      ).filter(Boolean);
+    }
+
+    return {
+      autoMatched,
+      pinned,
+      total: autoMatched.length,
+    };
+  }
+
+  async setOfferPinned(
+    clusterId: string,
+    offerId: string,
+    dto: SetClusterOfferPinnedDto,
+    adminId: string,
+  ) {
+    const cluster = await this.clusterRepository.findOne({
+      where: { id: clusterId },
+      select: ['id', 'uniqueCode'],
+    });
+    if (!cluster) throw new NotFoundException('Cluster not found');
+
+    const offer = await this.offerRepository.findOne({
+      where: { id: offerId },
+      select: ['id'],
+    });
+    if (!offer) throw new NotFoundException('Offer not found');
+
+    const existing = await this.clusterOfferRepository.findOne({
+      where: { clusterId, offerId },
+    });
+
+    if (dto.pinned) {
+      if (existing) {
+        existing.isPinned = true;
+        existing.pinnedBy = adminId;
+        existing.pinnedAt = new Date();
+        await this.clusterOfferRepository.save(existing);
+      } else {
+        await this.clusterOfferRepository.save(
+          this.clusterOfferRepository.create({
+            clusterId,
+            offerId,
+            isPinned: true,
+            pinnedBy: adminId,
+            pinnedAt: new Date(),
+          }),
+        );
+      }
+    } else if (existing) {
+      await this.clusterOfferRepository.remove(existing);
+    }
+
+    await this.clusterCache.invalidateCluster(cluster.uniqueCode);
+
+    return { pinned: dto.pinned, offerId, clusterId };
   }
 
   async remove(id: string) {
@@ -690,79 +944,171 @@ export class ClustersService {
   // Admin: auto-assign
   // ------------------------------------------------------------------
   async autoAssign(dto: AutoAssignClustersDto) {
-    const clusters = await this.clusterRepository.find({
-      where: { isActive: true },
-    });
-    const geoClusters = clusters.filter(
-      (c) => c.latitude != null && c.longitude != null,
+    const scope = dto.scope ?? AutoAssignScope.UNASSIGNED;
+
+    if (dto.async && !dto.dryRun) {
+      return this.enqueueAutoAssign(scope);
+    }
+
+    return this.runAutoAssign(scope, dto.dryRun ?? false);
+  }
+
+  // Enqueues a single background job. The fixed jobId means BullMQ dedups
+  // concurrent/queued runs regardless of whether the trigger was the cron,
+  // an admin, or a deployment restart.
+  private async enqueueAutoAssign(scope: AutoAssignScope) {
+    const job = await this.autoAssignQueue.add(
+      'auto-assign',
+      { scope } satisfies ClusterAutoAssignJobData,
+      {
+        jobId: CLUSTER_AUTO_ASSIGN_JOB_ID,
+        removeOnComplete: true,
+        attempts: 3,
+        backoff: { type: 'exponential', delay: 5_000 },
+      },
     );
+    return { enqueued: true, jobId: job.id };
+  }
 
-    const unassignedBranches = await this.branchRepository
-      .createQueryBuilder('branch')
-      .where('branch.clusterId IS NULL')
-      .andWhere('branch.latitude IS NOT NULL')
-      .andWhere('branch.longitude IS NOT NULL')
-      .getMany();
+  @Cron('*/15 * * * *')
+  async backfillUnassignedBranches() {
+    await this.enqueueAutoAssign(AutoAssignScope.UNASSIGNED);
+  }
 
-    const assignments: { branchId: string; clusterId: string | null }[] = [];
+  @Cron('0 * * * *')
+  async reassignClustersInBackground() {
+    await this.enqueueAutoAssign(AutoAssignScope.ALL);
+  }
 
-    for (const branch of unassignedBranches) {
-      let nearest: Cluster | null = null;
-      let nearestDistance: number | null = null;
-
-      for (const cluster of geoClusters) {
-        const row: any = await this.branchRepository.manager
-          .createQueryBuilder()
-          .select(
-            `ST_Distance(ST_SetSRID(ST_MakePoint(:lng, :lat), 4326)::geography, cluster.location)`,
-            'distance',
+  async runAutoAssign(
+    scope: AutoAssignScope,
+    dryRun: boolean,
+  ): Promise<{
+    dryRun: boolean;
+    scope: AutoAssignScope;
+    totalCandidates: number;
+    assigned: number;
+    reassigned: number;
+    assignments?: {
+      branchId: string;
+      clusterId: string | null;
+      previousClusterId?: string | null;
+      distanceMeters?: number | null;
+    }[];
+  }> {
+    // The nearest-covering-cluster lookup is a LATERAL join, which TypeORM's
+    // QueryBuilder cannot express — hence this static, parameter-free raw query.
+    // COALESCE on location covers clusters created before the PostGIS trigger
+    // kept clusters.location in sync with latitude/longitude.
+    const scopeFilter =
+      scope === AutoAssignScope.ALL ? '' : 'AND b."clusterId" IS NULL';
+    const sql = `
+      SELECT
+        b."id" AS "branchId",
+        b."clusterId" AS "currentClusterId",
+        c."id" AS "clusterId",
+        ST_Distance(
+          COALESCE(c."location", ST_SetSRID(ST_MakePoint(c."longitude"::float8, c."latitude"::float8), 4326)::geography),
+          ST_SetSRID(ST_MakePoint(b."longitude"::float8, b."latitude"::float8), 4326)::geography
+        ) AS "distanceMeters"
+      FROM "branches" b
+      LEFT JOIN LATERAL (
+        SELECT c2."id", c2."location", c2."longitude", c2."latitude"
+        FROM "clusters" c2
+        WHERE c2."isActive" = true
+          AND c2."latitude" IS NOT NULL
+          AND c2."longitude" IS NOT NULL
+          AND ST_DWithin(
+            COALESCE(c2."location", ST_SetSRID(ST_MakePoint(c2."longitude"::float8, c2."latitude"::float8), 4326)::geography),
+            ST_SetSRID(ST_MakePoint(b."longitude"::float8, b."latitude"::float8), 4326)::geography,
+            c2."radiusMeters"
           )
-          .from(Cluster, 'cluster')
-          .where('cluster.id = :clusterId', { clusterId: cluster.id })
-          .andWhere(
-            `ST_DWithin(cluster.location, ST_SetSRID(ST_MakePoint(:lng, :lat), 4326)::geography, :radius)`,
-            { radius: cluster.radiusMeters },
-          )
-          .setParameters({
-            lng: Number(branch.longitude),
-            lat: Number(branch.latitude),
-          })
-          .getRawOne();
+        ORDER BY ST_Distance(
+          COALESCE(c2."location", ST_SetSRID(ST_MakePoint(c2."longitude"::float8, c2."latitude"::float8), 4326)::geography),
+          ST_SetSRID(ST_MakePoint(b."longitude"::float8, b."latitude"::float8), 4326)::geography
+        ) ASC
+        LIMIT 1
+      ) c ON true
+      WHERE b."latitude" IS NOT NULL
+        AND b."longitude" IS NOT NULL
+        ${scopeFilter}
+    `;
 
-        if (row && row.distance != null) {
-          const distance = Number(row.distance);
-          if (nearestDistance == null || distance < nearestDistance) {
-            nearestDistance = distance;
-            nearest = cluster;
-          }
-        }
+    const rows: {
+      branchId: string;
+      currentClusterId: string | null;
+      clusterId: string | null;
+      distanceMeters: number | null;
+    }[] = await this.branchRepository.manager.query(sql);
+
+    const assignments: {
+      branchId: string;
+      clusterId: string | null;
+      previousClusterId?: string | null;
+      distanceMeters?: number | null;
+    }[] = [];
+
+    for (const row of rows) {
+      const distanceMeters =
+        row.distanceMeters != null ? Number(row.distanceMeters) : null;
+
+      if (scope === AutoAssignScope.UNASSIGNED) {
+        assignments.push({
+          branchId: row.branchId,
+          clusterId: row.clusterId,
+          distanceMeters,
+        });
+        continue;
       }
 
+      // Reassign scope: never unassign. Only move a branch when a different
+      // covering cluster is strictly closer than its current one.
+      if (!row.clusterId) continue;
+      if (row.clusterId === row.currentClusterId) continue;
+
       assignments.push({
-        branchId: branch.id,
-        clusterId: nearest?.id ?? null,
+        branchId: row.branchId,
+        clusterId: row.clusterId,
+        previousClusterId: row.currentClusterId,
+        distanceMeters,
       });
     }
 
-    if (dto.dryRun) {
+    const committed = assignments.filter((a) => a.clusterId);
+    const reassigned = assignments.filter((a) => a.previousClusterId).length;
+
+    if (dryRun) {
       return {
         dryRun: true,
-        totalCandidates: unassignedBranches.length,
-        assigned: assignments.filter((a) => a.clusterId).length,
+        scope,
+        totalCandidates: rows.length,
+        assigned: committed.length,
+        reassigned,
         assignments,
       };
     }
 
-    for (const assignment of assignments) {
-      if (!assignment.clusterId) continue;
-      await this.branchRepository.update(
-        { id: assignment.branchId },
-        { clusterId: assignment.clusterId },
+    const UPDATE_CHUNK = 50;
+    for (let i = 0; i < committed.length; i += UPDATE_CHUNK) {
+      await Promise.all(
+        committed
+          .slice(i, i + UPDATE_CHUNK)
+          .map((a) =>
+            this.branchRepository.update(
+              { id: a.branchId },
+              { clusterId: a.clusterId },
+            ),
+          ),
       );
     }
 
     const affectedClusterIds = [
-      ...new Set(assignments.map((a) => a.clusterId).filter(Boolean)),
+      ...new Set(
+        assignments
+          .map((a) => [a.clusterId, a.previousClusterId])
+          .flat()
+          .filter(Boolean),
+      ),
     ];
     if (affectedClusterIds.length > 0) {
       const affected = await this.clusterRepository.find({
@@ -776,8 +1122,10 @@ export class ClustersService {
 
     return {
       dryRun: false,
-      totalCandidates: unassignedBranches.length,
-      assigned: assignments.filter((a) => a.clusterId).length,
+      scope,
+      totalCandidates: rows.length,
+      assigned: committed.length,
+      reassigned,
     };
   }
 
@@ -786,11 +1134,7 @@ export class ClustersService {
   // ------------------------------------------------------------------
   private async incrementScan(uniqueCode: string): Promise<void> {
     try {
-      await this.clusterRepository.increment(
-        { uniqueCode },
-        'scanCount',
-        1,
-      );
+      await this.clusterRepository.increment({ uniqueCode }, 'scanCount', 1);
     } catch (err) {
       this.logger.warn(
         `Failed to increment scanCount for cluster ${uniqueCode}: ${err.message}`,

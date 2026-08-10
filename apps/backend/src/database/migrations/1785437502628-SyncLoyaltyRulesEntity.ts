@@ -69,7 +69,9 @@ export class SyncLoyaltyRulesEntity1785437502628 implements MigrationInterface {
         `SELECT 1 FROM pg_type WHERE typname = 'loyalty_rules_ruletype_enum'`,
       );
       if (enumExists.length > 0) {
-        await queryRunner.query(`DROP TYPE "public"."loyalty_rules_ruletype_enum"`);
+        await queryRunner.query(
+          `DROP TYPE "public"."loyalty_rules_ruletype_enum"`,
+        );
       }
     }
   }

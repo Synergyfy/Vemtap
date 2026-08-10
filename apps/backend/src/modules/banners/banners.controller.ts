@@ -37,7 +37,9 @@ export class BannersController {
     description: 'Active banners retrieved',
     type: [Banner],
   })
-  async getActiveBanners(@Query('placement') placement?: 'business' | 'customer') {
+  async getActiveBanners(
+    @Query('placement') placement?: 'business' | 'customer',
+  ) {
     return this.bannersService.findActive(placement);
   }
 }

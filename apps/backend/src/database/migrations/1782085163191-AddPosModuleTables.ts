@@ -9,32 +9,50 @@ export class AddPosModuleTables1782085163191 implements MigrationInterface {
       'DROP TYPE IF EXISTS "public"."pos_products_status_enum"',
     );
     await queryRunner.query(
-      `ALTER TABLE "marketing_template_categories" DROP CONSTRAINT "FK_mtc_templateId"`,
+      `ALTER TABLE IF EXISTS "marketing_template_categories" DROP CONSTRAINT IF EXISTS "FK_mtc_templateId"`,
     );
     await queryRunner.query(
-      `ALTER TABLE "marketing_template_categories" DROP CONSTRAINT "FK_mtc_categoryId"`,
-    );
-    await queryRunner.query(`DROP INDEX "public"."IDX_fos_snapshots_date"`);
-    await queryRunner.query(`DROP INDEX "public"."IDX_fos_transactions_type"`);
-    await queryRunner.query(
-      `DROP INDEX "public"."IDX_fos_transactions_platform"`,
+      `ALTER TABLE IF EXISTS "marketing_template_categories" DROP CONSTRAINT IF EXISTS "FK_mtc_categoryId"`,
     );
     await queryRunner.query(
-      `DROP INDEX "public"."IDX_fos_transactions_businessId"`,
+      `DROP INDEX IF EXISTS "public"."IDX_fos_snapshots_date"`,
     );
     await queryRunner.query(
-      `DROP INDEX "public"."IDX_fos_transactions_agentId"`,
+      `DROP INDEX IF EXISTS "public"."IDX_fos_transactions_type"`,
     );
     await queryRunner.query(
-      `DROP INDEX "public"."IDX_fos_transactions_referenceId"`,
+      `DROP INDEX IF EXISTS "public"."IDX_fos_transactions_platform"`,
     );
-    await queryRunner.query(`DROP INDEX "public"."IDX_fos_transactions_date"`);
-    await queryRunner.query(`DROP INDEX "public"."IDX_expenses_date"`);
-    await queryRunner.query(`DROP INDEX "public"."IDX_expenses_category"`);
-    await queryRunner.query(`DROP INDEX "public"."IDX_expenses_frequency"`);
-    await queryRunner.query(`DROP INDEX "public"."IDX_cash_flows_date"`);
-    await queryRunner.query(`DROP INDEX "public"."IDX_cash_flows_type"`);
-    await queryRunner.query(`DROP INDEX "public"."IDX_cash_flows_category"`);
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS "public"."IDX_fos_transactions_businessId"`,
+    );
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS "public"."IDX_fos_transactions_agentId"`,
+    );
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS "public"."IDX_fos_transactions_referenceId"`,
+    );
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS "public"."IDX_fos_transactions_date"`,
+    );
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS "public"."IDX_expenses_date"`,
+    );
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS "public"."IDX_expenses_category"`,
+    );
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS "public"."IDX_expenses_frequency"`,
+    );
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS "public"."IDX_cash_flows_date"`,
+    );
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS "public"."IDX_cash_flows_type"`,
+    );
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS "public"."IDX_cash_flows_category"`,
+    );
     await queryRunner.query(
       `CREATE TABLE "pos_sale_items" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "createdAt" TIMESTAMP NOT NULL DEFAULT now(), "updatedAt" TIMESTAMP NOT NULL DEFAULT now(), "deletedAt" TIMESTAMP, "saleId" uuid NOT NULL, "productId" uuid, "productName" character varying NOT NULL, "sku" character varying, "barcode" character varying, "unitPrice" numeric(12,2) NOT NULL, "costPrice" numeric(12,2), "quantity" integer NOT NULL, "discount" numeric(12,2) NOT NULL DEFAULT '0', "totalPrice" numeric(12,2) NOT NULL, CONSTRAINT "PK_5711893fa1eb60d2de0bd22ba07" PRIMARY KEY ("id"))`,
     );

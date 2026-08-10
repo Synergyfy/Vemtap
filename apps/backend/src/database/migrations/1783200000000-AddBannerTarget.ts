@@ -7,7 +7,9 @@ export class AddBannerTarget1783200000000 implements MigrationInterface {
     await queryRunner.query(
       `ALTER TABLE "banners" ADD "targetType" character varying NOT NULL DEFAULT 'custom'`,
     );
-    await queryRunner.query(`ALTER TABLE "banners" ADD "targetId" character varying`);
+    await queryRunner.query(
+      `ALTER TABLE "banners" ADD "targetId" character varying`,
+    );
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {

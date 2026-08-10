@@ -39,6 +39,7 @@ import {
   VerifyRedemptionDto,
   ApplyRewardTemplateDto,
   BranchIdParamDto,
+  ManualEarnPointsDto,
 } from './dto/loyalty.dto';
 import { UpdateLoyaltyRuleDto } from './dto/loyalty-rule.dto';
 import { PaginationQueryDto } from '../../common/dto/pagination.dto';
@@ -121,6 +122,44 @@ export class LoyaltyController {
       branchId,
       isVisit: dto.isVisit,
     });
+  }
+
+  @Post('earn/manual')
+  @Roles(UserRole.OWNER, UserRole.MANAGER)
+  @ApiOperation({
+    summary: 'Owner/Manager manually awards points to a customer',
+    description:
+      'Awards a specific point amount to a customer loyalty profile for the branch. ' +
+      'Does not require an active loyalty rule. Access: OWNER, MANAGER',
+  })
+  @ApiQuery({
+    name: 'branchId',
+    required: true,
+    description: 'Branch under which points are awarded',
+  })
+  @ApiBody({ type: ManualEarnPointsDto })
+  @ApiResponse({
+    status: 201,
+    description: 'Points awarded',
+    schema: {
+      example: {
+        success: true,
+        pointsEarned: 500,
+        newBalance: 1500,
+        message: '500 points awarded successfully',
+        transactionId: 'txn-uuid',
+      },
+    },
+  })
+  @ApiResponse({ status: 400, description: 'Invalid points or userId' })
+  @ApiResponse({ status: 403, description: 'Not owner or manager' })
+  @ApiResponse({ status: 404, description: 'Profile or branch not found' })
+  async earnManualPoints(
+    @Request() req: { user: User },
+    @Query('branchId') branchId: string,
+    @Body() dto: ManualEarnPointsDto,
+  ) {
+    return this.loyaltyService.earnManualPoints(req.user, branchId, dto);
   }
 
   // --- Point Logs ---

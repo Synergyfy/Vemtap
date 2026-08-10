@@ -38,7 +38,6 @@ const FEATURE_ID_MAP: Record<string, string> = {
     'orders': 'pos-orders',
     'settings': 'settings',
     'help': 'pos-help',
-    'overview': 'nav-overview',
     'customer list': 'customer-list',
     'loyalty': 'loyalty',
     'visitors': 'visitors',
@@ -67,6 +66,34 @@ const FEATURE_ID_MAP: Record<string, string> = {
     'marketing kit': 'marketing-kit',
     'my business qr': 'business-qr',
     'forms': 'forms',
+};
+
+// Maps sub-page feature IDs to their plan-backed parent feature.
+// Used by getPlanFieldUpdates to resolve sub-feature toggles to plan fields,
+// and by mapPlanToConfig to inherit parent level in the public comparison table.
+export const SUBFEATURE_TO_PARENT: Record<string, string> = {
+    // POS sub-pages → pos
+    'sales-dashboard': 'pos',
+    'pos-orders': 'pos',
+    'pos-help': 'pos',
+    'settings': 'pos', // POS Settings page (Sales submenu)
+    // Products & Stock sub-pages → inventory
+    'products-stock-overview': 'inventory',
+    // Customers sub-pages → visitors
+    'customers-overview': 'visitors',
+    'customer-list': 'visitors',
+    // Analytics sub-pages → analytics
+    'analytics-overview': 'analytics',
+    'ai-reports': 'analytics',
+    'analytics-sales': 'analytics',
+    'analytics-inventory': 'analytics',
+    'analytics-customers': 'analytics',
+    'analytics-discovery': 'analytics',
+    'analytics-footfall': 'analytics',
+    'analytics-marketing': 'analytics',
+    'analytics-peak-times': 'analytics',
+    // Get Customers sub-pages → discovery
+    'business-partnership': 'discovery',
 };
 
 // Label→ID for parent nav items (used as fallback featureId)
@@ -106,39 +133,59 @@ function deriveFeatureId(navItemId: string, label: string, parentLabel?: string)
     return navItemId;
 }
 
+// Extra capabilities that aren't represented as their own nav item but still
+// Inject "Deals" (catalogue-offers) as a top-level feature under the
+// "Get Customers" section, matching the sidebar's flat structure.
+function injectExtraFeatures(sections: PermissionSection[]): PermissionSection[] {
+    return sections.map(section => {
+        const discoveryIdx = section.features.findIndex(f => f.id === 'discovery' && !f.parentId);
+        if (discoveryIdx === -1) return section;
+        const features = [...section.features];
+        features.splice(discoveryIdx + 1, 0, {
+            id: 'catalogue-offers',
+            label: 'Deals',
+            parentId: undefined,
+            defaultLevel: 'limited',
+            defaultLimit: 50,
+            limitUnit: 'offers',
+            limitPlaceholder: 'Max offers',
+        });
+        return { ...section, features };
+    });
+}
+
 // ─── Build permission sections from the sidebar navigation tree ──────────
 
 export function buildPermissionSectionsFromNavigation(): PermissionSection[] {
-    return NAVIGATION_SECTIONS
+    const sections = NAVIGATION_SECTIONS
         .filter(s => s.items.length > 0)
         .map(section => {
             const sectionLabel = section.label || section.items[0]?.label || 'General';
             const features: PlanFeature[] = [];
+            const seenIds = new Set<string>();
 
             section.items.forEach(item => {
                 const itemFeatureId = deriveFeatureId(item.id, item.label);
 
                 if (item.submenu && item.submenu.length > 0) {
-                    // Parent item represents the category
-                    features.push({
-                        id: itemFeatureId,
-                        label: item.label,
-                        parentId: undefined,
-                        defaultLevel: 'yes',
-                        defaultLimit: undefined,
-                    });
-                    // Submenu items are children
+                    // Submenu items are direct features (matching sidebar structure).
+                    // Skip "Deals" — it's injected separately with a limit control.
                     item.submenu.forEach(sub => {
+                        if (sub.label.toLowerCase() === 'deals') return;
                         const subId = deriveFeatureId(sub.label.toLowerCase(), sub.label, item.label);
+                        if (seenIds.has(subId)) return; // Deduplicate (e.g. "Overview" in multiple submenus)
+                        seenIds.add(subId);
                         features.push({
                             id: subId,
                             label: sub.label,
-                            parentId: itemFeatureId,
+                            parentId: undefined,
                             defaultLevel: 'yes',
                             defaultLimit: undefined,
                         });
                     });
                 } else {
+                    if (seenIds.has(itemFeatureId)) return;
+                    seenIds.add(itemFeatureId);
                     features.push({
                         id: itemFeatureId,
                         label: item.label,
@@ -155,6 +202,8 @@ export function buildPermissionSectionsFromNavigation(): PermissionSection[] {
                 features,
             };
         });
+
+    return injectExtraFeatures(sections);
 }
 
 // ─── Known permission IDs that map to PricingPlan fields ───────────
@@ -163,6 +212,7 @@ const PLANNED_FEATURE_DEFAULTS: Record<string, { level: PermissionLevel; limit?:
     'dashboard': { level: 'yes' },
     'products-stock': { level: 'yes' },
     'catalogue': { level: 'limited', limit: 50, unit: 'items', placeholder: 'Max items' },
+    'catalogue-offers': { level: 'limited', limit: 50, unit: 'offers', placeholder: 'Max offers' },
     'inventory': { level: 'yes', unit: 'items', placeholder: 'Max items' },
     'sales': { level: 'yes' },
     'pos': { level: 'yes' },
@@ -192,7 +242,7 @@ const PLANNED_FEATURE_DEFAULTS: Record<string, { level: PermissionLevel; limit?:
 // Features that offer three configurable states (Yes / Limited / No).
 // All other features are boolean-only toggles (Yes / No).
 const THREE_STATE_FEATURES = new Set([
-    'catalogue', 'loyalty', 'forms', 'marketing-kit',
+    'catalogue', 'catalogue-offers', 'loyalty', 'forms', 'marketing-kit',
     'staff', 'staff-roles', 'locations', 'branches', 'qr-codes', 'ai-copilot',
     'analytics',
 ]);
@@ -290,13 +340,14 @@ export function mapPlanToConfig(plan: PricingPlan): PlanPermissionConfig {
     const features: Record<string, FeaturePermission> = {};
     const sections = PERMISSION_SECTIONS;
 
-    // Always-enabled core features
-    const alwaysYes = ['dashboard', 'products-stock', 'sales', 'customers', 'customer-list', 'settings', 'profile', 'subscription', 'support'];
+    // Always-enabled core features (account-level, not plan-gated)
+    const alwaysYes = ['dashboard', 'profile', 'subscription', 'support'];
     alwaysYes.forEach(id => { features[id] = { level: 'yes' }; });
 
     // Known PricingPlan-backed features
     if (plan) {
         features['catalogue'] = getPerm(plan.catalogueEnabled, plan.maxCatalogueItems);
+        features['catalogue-offers'] = getPerm(plan.catalogueEnabled, plan.maxCatalogueOffers);
         features['inventory'] = getPerm(!!plan.inventoryEnabled, plan.inventoryLimit);
         features['pos'] = getPerm(!!plan.posEnabled, plan.posTerminalLimit);
         features['loyalty'] = getPerm(plan.loyaltyEnabled, plan.loyaltyLimit);
@@ -307,8 +358,6 @@ export function mapPlanToConfig(plan: PricingPlan): PlanPermissionConfig {
         features['business-qr'] = { level: plan.businessQrEnabled ? 'yes' : 'no' };
         features['marketing-kit'] = getPerm(!!plan.marketingKitEnabled, plan.marketingKitLimit);
         features['discovery'] = { level: plan.discoveryEnabled ? 'yes' : 'no' };
-        features['business-partnership'] = features['discovery']; // Nav-tree alias
-        features['settings'] = { level: 'yes' };
         features['profile'] = { level: 'yes' };
         features['subscription'] = { level: 'yes' };
         features['support'] = { level: 'yes' };
@@ -329,6 +378,13 @@ export function mapPlanToConfig(plan: PricingPlan): PlanPermissionConfig {
 
         features['ai-copilot'] = getPerm(!!plan.aiCopilotEnabled, plan.aiCredits);
     }
+
+    // Sub-features inherit their parent's level (e.g. Sales Dashboard follows POS)
+    Object.entries(SUBFEATURE_TO_PARENT).forEach(([subId, parentId]) => {
+        if (features[parentId]) {
+            features[subId] = { ...features[parentId] };
+        }
+    });
 
     // Fill remaining features from nav tree defaults
     sections.forEach(section => {
@@ -365,9 +421,10 @@ export function mapConfigToPlanDto(
     const catalogue = getEnabledAndLimit('catalogue');
     dto.catalogueEnabled = catalogue.enabled;
     dto.maxCatalogueItems = catalogue.limit;
+    const catalogueOffers = getEnabledAndLimit('catalogue-offers');
+    dto.maxCatalogueOffers = catalogue.enabled ? catalogueOffers.limit : null;
     if (existingPlan) {
         dto.maxCatalogueCategories = catalogue.enabled ? existingPlan.maxCatalogueCategories : null;
-        dto.maxCatalogueOffers = catalogue.enabled ? existingPlan.maxCatalogueOffers : null;
     }
 
     const inventory = getEnabledAndLimit('inventory');

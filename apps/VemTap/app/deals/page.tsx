@@ -19,30 +19,30 @@ import { reverseGeocode, type GeolocationCoordinates } from '@/lib/geolocation';
 
 function toPromotionBusiness(offer: DealOffer): PromotionBusiness {
     const branch = offer.branch;
-    if (!branch) {
+    if (branch) {
         return {
-            id: '',
-            name: 'Unknown Business',
-            slug: '',
-            logo: '',
+            id: branch.id,
+            name: branch.name,
+            slug: branch.username || branch.uniqueCode || '',
+            logo: branch.logoUrl || '',
             photos: [],
             categoryId: '',
             categoryName: '',
-            address: '',
+            address: branch.address || '',
             hours: [],
             rating: 0,
             totalReviews: 0,
         };
     }
     return {
-        id: branch.id,
-        name: branch.name,
-        slug: branch.username || branch.uniqueCode || '',
-        logo: branch.logoUrl || '',
+        id: offer.branchId || '',
+        name: offer.branchName || offer.business?.name || 'Unknown Business',
+        slug: '',
+        logo: offer.business?.logo || '',
         photos: [],
         categoryId: '',
         categoryName: '',
-        address: branch.address || '',
+        address: offer.business?.address || '',
         hours: [],
         rating: 0,
         totalReviews: 0,
@@ -178,7 +178,7 @@ export default function PromotionsPage() {
         const now = new Date();
         return offersData.data
             .filter((offer): offer is DealOffer => {
-                if (!offer || !offer.id || !offer.branch) return false;
+                if (!offer || !offer.id || (!offer.branch && !offer.branchId)) return false;
                 if (!offer.startDate && !offer.endDate) return false;
                 if (offer.endDate && new Date(offer.endDate) < now) return false;
                 if (offer.startDate && new Date(offer.startDate) > now) return false;
