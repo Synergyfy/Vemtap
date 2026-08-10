@@ -18,6 +18,7 @@ import {
     buildDefaultPermissions,
     mapPlanToConfig,
     featureSupportsLimit,
+    SUBFEATURE_TO_PARENT,
 } from '@/lib/planPermissions';
 import { cn } from '@/lib/utils';
 import { Switch } from '@/components/ui/switch';
@@ -61,7 +62,10 @@ export default function PlanPermissionsTab({ plans, isLoading }: PlanPermissions
             { branches: 'locations', 'business-partnership': 'discovery' } as Record<string, string>
         )[featureId] || featureId;
 
-        switch (canonicalId) {
+        // Resolve sub-features to their plan-backed parent (e.g. sales-dashboard → pos)
+        const resolvedId = SUBFEATURE_TO_PARENT[canonicalId] || canonicalId;
+
+        switch (resolvedId) {
             case 'catalogue':
                 return {
                     catalogueEnabled: level !== 'no',
