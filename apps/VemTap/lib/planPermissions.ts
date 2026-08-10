@@ -38,7 +38,6 @@ const FEATURE_ID_MAP: Record<string, string> = {
     'orders': 'pos-orders',
     'settings': 'settings',
     'help': 'pos-help',
-    'overview': 'nav-overview',
     'customer list': 'customer-list',
     'loyalty': 'loyalty',
     'visitors': 'visitors',
@@ -67,6 +66,34 @@ const FEATURE_ID_MAP: Record<string, string> = {
     'marketing kit': 'marketing-kit',
     'my business qr': 'business-qr',
     'forms': 'forms',
+};
+
+// Maps sub-page feature IDs to their plan-backed parent feature.
+// Used by getPlanFieldUpdates to resolve sub-feature toggles to plan fields,
+// and by mapPlanToConfig to inherit parent level in the public comparison table.
+export const SUBFEATURE_TO_PARENT: Record<string, string> = {
+    // POS sub-pages → pos
+    'sales-dashboard': 'pos',
+    'pos-orders': 'pos',
+    'pos-help': 'pos',
+    'settings': 'pos', // POS Settings page (Sales submenu)
+    // Products & Stock sub-pages → inventory
+    'products-stock-overview': 'inventory',
+    // Customers sub-pages → visitors
+    'customers-overview': 'visitors',
+    'customer-list': 'visitors',
+    // Analytics sub-pages → analytics
+    'analytics-overview': 'analytics',
+    'ai-reports': 'analytics',
+    'analytics-sales': 'analytics',
+    'analytics-inventory': 'analytics',
+    'analytics-customers': 'analytics',
+    'analytics-discovery': 'analytics',
+    'analytics-footfall': 'analytics',
+    'analytics-marketing': 'analytics',
+    'analytics-peak-times': 'analytics',
+    // Get Customers sub-pages → discovery
+    'business-partnership': 'discovery',
 };
 
 // Label→ID for parent nav items (used as fallback featureId)
@@ -107,19 +134,17 @@ function deriveFeatureId(navItemId: string, label: string, parentLabel?: string)
 }
 
 // Extra capabilities that aren't represented as their own nav item but still
-// map to a PricingPlan field. Injected under their associated parent feature.
+// Inject "Deals" (catalogue-offers) as a top-level feature under the
+// "Get Customers" section, matching the sidebar's flat structure.
 function injectExtraFeatures(sections: PermissionSection[]): PermissionSection[] {
     return sections.map(section => {
-        // "Catalogue Offers" (deals) is grouped under the "Get Customers"
-        // (discovery) head nav since deals live on the Discovery page, not in
-        // the product catalogue. Inject it as a child of that parent.
         const discoveryIdx = section.features.findIndex(f => f.id === 'discovery' && !f.parentId);
         if (discoveryIdx === -1) return section;
         const features = [...section.features];
         features.splice(discoveryIdx + 1, 0, {
             id: 'catalogue-offers',
             label: 'Deals',
-            parentId: section.features[discoveryIdx].id,
+            parentId: undefined,
             defaultLevel: 'limited',
             defaultLimit: 50,
             limitUnit: 'offers',
@@ -137,31 +162,30 @@ export function buildPermissionSectionsFromNavigation(): PermissionSection[] {
         .map(section => {
             const sectionLabel = section.label || section.items[0]?.label || 'General';
             const features: PlanFeature[] = [];
+            const seenIds = new Set<string>();
 
             section.items.forEach(item => {
                 const itemFeatureId = deriveFeatureId(item.id, item.label);
 
                 if (item.submenu && item.submenu.length > 0) {
-                    // Parent item represents the category
-                    features.push({
-                        id: itemFeatureId,
-                        label: item.label,
-                        parentId: undefined,
-                        defaultLevel: 'yes',
-                        defaultLimit: undefined,
-                    });
-                    // Submenu items are children
+                    // Submenu items are direct features (matching sidebar structure).
+                    // Skip "Deals" — it's injected separately with a limit control.
                     item.submenu.forEach(sub => {
+                        if (sub.label.toLowerCase() === 'deals') return;
                         const subId = deriveFeatureId(sub.label.toLowerCase(), sub.label, item.label);
+                        if (seenIds.has(subId)) return; // Deduplicate (e.g. "Overview" in multiple submenus)
+                        seenIds.add(subId);
                         features.push({
                             id: subId,
                             label: sub.label,
-                            parentId: itemFeatureId,
+                            parentId: undefined,
                             defaultLevel: 'yes',
                             defaultLimit: undefined,
                         });
                     });
                 } else {
+                    if (seenIds.has(itemFeatureId)) return;
+                    seenIds.add(itemFeatureId);
                     features.push({
                         id: itemFeatureId,
                         label: item.label,
@@ -316,8 +340,8 @@ export function mapPlanToConfig(plan: PricingPlan): PlanPermissionConfig {
     const features: Record<string, FeaturePermission> = {};
     const sections = PERMISSION_SECTIONS;
 
-    // Always-enabled core features
-    const alwaysYes = ['dashboard', 'products-stock', 'sales', 'customers', 'customer-list', 'settings', 'profile', 'subscription', 'support'];
+    // Always-enabled core features (account-level, not plan-gated)
+    const alwaysYes = ['dashboard', 'profile', 'subscription', 'support'];
     alwaysYes.forEach(id => { features[id] = { level: 'yes' }; });
 
     // Known PricingPlan-backed features
@@ -334,8 +358,6 @@ export function mapPlanToConfig(plan: PricingPlan): PlanPermissionConfig {
         features['business-qr'] = { level: plan.businessQrEnabled ? 'yes' : 'no' };
         features['marketing-kit'] = getPerm(!!plan.marketingKitEnabled, plan.marketingKitLimit);
         features['discovery'] = { level: plan.discoveryEnabled ? 'yes' : 'no' };
-        features['business-partnership'] = features['discovery']; // Nav-tree alias
-        features['settings'] = { level: 'yes' };
         features['profile'] = { level: 'yes' };
         features['subscription'] = { level: 'yes' };
         features['support'] = { level: 'yes' };
@@ -356,6 +378,13 @@ export function mapPlanToConfig(plan: PricingPlan): PlanPermissionConfig {
 
         features['ai-copilot'] = getPerm(!!plan.aiCopilotEnabled, plan.aiCredits);
     }
+
+    // Sub-features inherit their parent's level (e.g. Sales Dashboard follows POS)
+    Object.entries(SUBFEATURE_TO_PARENT).forEach(([subId, parentId]) => {
+        if (features[parentId]) {
+            features[subId] = { ...features[parentId] };
+        }
+    });
 
     // Fill remaining features from nav tree defaults
     sections.forEach(section => {
