@@ -38,7 +38,6 @@ const FEATURE_ID_MAP: Record<string, string> = {
     'orders': 'pos-orders',
     'settings': 'settings',
     'help': 'pos-help',
-    'overview': 'nav-overview',
     'customer list': 'customer-list',
     'loyalty': 'loyalty',
     'visitors': 'visitors',
@@ -78,7 +77,13 @@ export const SUBFEATURE_TO_PARENT: Record<string, string> = {
     'pos-orders': 'pos',
     'pos-help': 'pos',
     'settings': 'pos', // POS Settings page (Sales submenu)
+    // Products & Stock sub-pages → inventory
+    'products-stock-overview': 'inventory',
+    // Customers sub-pages → visitors
+    'customers-overview': 'visitors',
+    'customer-list': 'visitors',
     // Analytics sub-pages → analytics
+    'analytics-overview': 'analytics',
     'ai-reports': 'analytics',
     'analytics-sales': 'analytics',
     'analytics-inventory': 'analytics',
@@ -87,8 +92,6 @@ export const SUBFEATURE_TO_PARENT: Record<string, string> = {
     'analytics-footfall': 'analytics',
     'analytics-marketing': 'analytics',
     'analytics-peak-times': 'analytics',
-    // Customers sub-pages → visitors
-    'customer-list': 'visitors',
     // Get Customers sub-pages → discovery
     'business-partnership': 'discovery',
 };
