@@ -107,19 +107,17 @@ function deriveFeatureId(navItemId: string, label: string, parentLabel?: string)
 }
 
 // Extra capabilities that aren't represented as their own nav item but still
-// map to a PricingPlan field. Injected under their associated parent feature.
+// Inject "Deals" (catalogue-offers) as a top-level feature under the
+// "Get Customers" section, matching the sidebar's flat structure.
 function injectExtraFeatures(sections: PermissionSection[]): PermissionSection[] {
     return sections.map(section => {
-        // "Catalogue Offers" (deals) is grouped under the "Get Customers"
-        // (discovery) head nav since deals live on the Discovery page, not in
-        // the product catalogue. Inject it as a child of that parent.
         const discoveryIdx = section.features.findIndex(f => f.id === 'discovery' && !f.parentId);
         if (discoveryIdx === -1) return section;
         const features = [...section.features];
         features.splice(discoveryIdx + 1, 0, {
             id: 'catalogue-offers',
             label: 'Deals',
-            parentId: section.features[discoveryIdx].id,
+            parentId: undefined,
             defaultLevel: 'limited',
             defaultLimit: 50,
             limitUnit: 'offers',
@@ -142,21 +140,15 @@ export function buildPermissionSectionsFromNavigation(): PermissionSection[] {
                 const itemFeatureId = deriveFeatureId(item.id, item.label);
 
                 if (item.submenu && item.submenu.length > 0) {
-                    // Parent item represents the category
-                    features.push({
-                        id: itemFeatureId,
-                        label: item.label,
-                        parentId: undefined,
-                        defaultLevel: 'yes',
-                        defaultLimit: undefined,
-                    });
-                    // Submenu items are children
+                    // Submenu items are direct features (matching sidebar structure).
+                    // Skip "Deals" — it's injected separately with a limit control.
                     item.submenu.forEach(sub => {
+                        if (sub.label.toLowerCase() === 'deals') return;
                         const subId = deriveFeatureId(sub.label.toLowerCase(), sub.label, item.label);
                         features.push({
                             id: subId,
                             label: sub.label,
-                            parentId: itemFeatureId,
+                            parentId: undefined,
                             defaultLevel: 'yes',
                             defaultLimit: undefined,
                         });
