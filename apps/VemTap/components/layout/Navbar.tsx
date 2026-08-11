@@ -43,8 +43,8 @@ export default function Navbar() {
         )}>
             <nav className="container mx-auto px-6 flex items-center justify-between">
                 {/* Logo */}
-                <Link href="/" className="relative z-10 flex items-center">
-                    <Logo className="h-8" />
+                <Link href="/" className="relative z-10 lg:z-auto flex items-center">
+                    <Logo className="flex items-center h-12 lg:h-16" />
                 </Link>
 
                 {/* Desktop Navigation */}
@@ -104,7 +104,7 @@ export default function Navbar() {
                     className="fixed inset-0 z-[200] lg:hidden flex flex-col bg-white"
                 >
                     <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b border-gray-100">
-                        <Logo className="h-7" />
+                        <Logo className="flex items-center h-9 lg:h-11" />
                         <button onClick={() => setIsOpen(false)} className="p-2 text-gray-900 hover:text-[#066CF4]">
                             <X size={28} />
                         </button>

@@ -86,10 +86,10 @@ export default function HardwareWhitepaperPage() {
                         <div className="absolute top-0 right-0 w-full h-full bg-linear-to-br from-primary/5 via-transparent to-transparent opacity-50"></div>
 
                         <div className="relative z-10 flex flex-col items-center text-center">
-                            <span className="px-5 py-2 bg-primary/10 text-primary rounded-full text-[10px] font-black uppercase tracking-[0.3em] mb-8">
+                            <span className="px-5 py-2 bg-primary/10 text-primary rounded-full text-[10px] font-bold uppercase tracking-wider mb-8">
                                 Official Whitepaper 2026
                             </span>
-                            <h1 className="text-4xl md:text-6xl font-display font-bold text-slate-900 mb-6 tracking-tight">
+                            <h1 className="text-[30px] sm:text-4xl md:text-5xl lg:text-6xl font-bold text-slate-900 mb-6 tracking-tight leading-[1.15]">
                                 NFC Hardware & <br /> White-Label Infrastructure
                             </h1>
                             <p className="text-lg md:text-xl text-slate-500 font-medium max-w-2xl leading-relaxed mb-10">
@@ -97,7 +97,7 @@ export default function HardwareWhitepaperPage() {
                             </p>
 
                             <div className="flex flex-wrap justify-center gap-4">
-                                <button className="h-14 px-8 bg-slate-900 text-white font-bold rounded-2xl flex items-center gap-3 hover:bg-slate-800 transition-all shadow-xl active:scale-95">
+                                <button className="h-12 px-8 bg-primary text-white font-bold rounded-xl flex items-center gap-3 hover:bg-primary-hover transition-all shadow-lg shadow-primary/20 active:scale-95">
                                     <Download size={20} />
                                     Download PDF Version
                                 </button>
@@ -146,10 +146,10 @@ export default function HardwareWhitepaperPage() {
                             <table className="w-full">
                                 <thead>
                                     <tr className="border-b border-slate-100">
-                                        <th className="text-left pb-6 text-[10px] font-black uppercase tracking-widest text-slate-400">Unit Type</th>
-                                        <th className="text-left pb-6 text-[10px] font-black uppercase tracking-widest text-slate-400">Best For</th>
-                                        <th className="text-left pb-6 text-[10px] font-black uppercase tracking-widest text-slate-400">Build Quality</th>
-                                        <th className="text-right pb-6 text-[10px] font-black uppercase tracking-widest text-slate-400">Rate (Starting)</th>
+                                        <th className="text-left pb-6 text-[10px] font-bold uppercase tracking-wider text-slate-400">Unit Type</th>
+                                        <th className="text-left pb-6 text-[10px] font-bold uppercase tracking-wider text-slate-400">Best For</th>
+                                        <th className="text-left pb-6 text-[10px] font-bold uppercase tracking-wider text-slate-400">Build Quality</th>
+                                        <th className="text-right pb-6 text-[10px] font-bold uppercase tracking-wider text-slate-400">Rate (Starting)</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-50">
@@ -174,58 +174,58 @@ export default function HardwareWhitepaperPage() {
                     </div>
 
                     {/* White Label Program */}
-                    <div className="bg-slate-900 rounded-[3rem] p-12 md:p-20 text-white relative overflow-hidden">
+                    <div className="bg-gray-50 border border-gray-100 rounded-[2rem] p-10 md:p-14 relative overflow-hidden">
                         <div className="absolute top-0 right-0 w-96 h-96 bg-primary/20 rounded-full translate-x-32 -translate-y-32 blur-3xl"></div>
 
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center relative z-10">
                             <div>
-                                <h2 className="text-4xl font-display font-bold mb-6">The Elite White-Label <br /> Partnership</h2>
-                                <p className="text-lg text-slate-400 font-medium mb-10 leading-relaxed">
+                                <h2 className="text-2xl md:text-4xl lg:text-5xl font-bold mb-6 tracking-tight">The Elite White-Label <br /> Partnership</h2>
+                                <p className="text-base md:text-lg lg:text-xl text-gray-500 font-normal mb-10 leading-relaxed">
                                     Remove all traces of VemTap and present our technology as your own proprietary solution. Perfect for agencies, franchises, and large-scale enterprises.
                                 </p>
 
                                 <div className="space-y-6">
                                     <div className="flex items-start gap-4">
-                                        <div className="w-12 h-12 bg-white/10 rounded-xl flex items-center justify-center shrink-0">
+                                        <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center shrink-0">
                                             <Globe size={24} className="text-primary" />
                                         </div>
                                         <div>
-                                            <h4 className="font-bold text-white mb-1">Custom Domain Routing</h4>
-                                            <p className="text-sm text-slate-400">Your clients access the dashboard and tap links via your own domain names.</p>
+                                            <h4 className="font-semibold text-text-main mb-1">Custom Domain Routing</h4>
+                                            <p className="text-sm text-gray-500">Your clients access the dashboard and tap links via your own domain names.</p>
                                         </div>
                                     </div>
                                     <div className="flex items-start gap-4">
-                                        <div className="w-12 h-12 bg-white/10 rounded-xl flex items-center justify-center shrink-0">
+                                        <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center shrink-0">
                                             <Palette size={24} className="text-primary" />
                                         </div>
                                         <div>
-                                            <h4 className="font-bold text-white mb-1">Full Aesthetics Control</h4>
-                                            <p className="text-sm text-slate-400">Inject custom CSS and branding assets to match your company's identity perfectly.</p>
+                                            <h4 className="font-semibold text-text-main mb-1">Full Aesthetics Control</h4>
+                                            <p className="text-sm text-gray-500">Inject custom CSS and branding assets to match your company's identity perfectly.</p>
                                         </div>
                                     </div>
                                 </div>
                             </div>
 
-                            <div className="bg-white/5 backdrop-blur-xl rounded-[2.5rem] p-10 border border-white/10 border-dashed">
+                            <div className="bg-white rounded-2xl p-6 md:p-8 border border-gray-100 shadow-sm">
                                 <div className="text-center mb-8">
-                                    <p className="text-[10px] font-black uppercase tracking-[0.3em] text-primary mb-2">License Setup</p>
-                                    <p className="text-3xl font-display font-bold text-white">Project Quote Basis</p>
+                                    <p className="text-[10px] font-bold uppercase tracking-wider text-primary mb-2">License Setup</p>
+                                    <p className="text-2xl font-bold text-text-main">Project Quote Basis</p>
                                 </div>
                                 <div className="space-y-4 mb-10">
-                                    <div className="flex items-center justify-between text-sm py-3 border-b border-white/5">
+                                    <div className="flex items-center justify-between text-sm py-3 border-b border-gray-100">
                                         <span className="text-slate-400 font-medium">Setup Fee</span>
-                                        <span className="text-white font-bold">Inquire for Quote</span>
+                                        <span className="text-text-main font-bold">Inquire for Quote</span>
                                     </div>
-                                    <div className="flex items-center justify-between text-sm py-3 border-b border-white/5">
+                                    <div className="flex items-center justify-between text-sm py-3 border-b border-gray-100">
                                         <span className="text-slate-400 font-medium">Monthly Infrastructure</span>
-                                        <span className="text-white font-bold">Volume-Based</span>
+                                        <span className="text-text-main font-bold">Volume-Based</span>
                                     </div>
                                     <div className="flex items-center justify-between text-sm py-3">
                                         <span className="text-slate-400 font-medium">Minimum Hardware Order</span>
-                                        <span className="text-white font-bold">Custom Volume</span>
+                                        <span className="text-text-main font-bold">Custom Volume</span>
                                     </div>
                                 </div>
-                                <button className="w-full h-16 bg-primary text-white font-black uppercase tracking-widest text-xs rounded-2xl hover:bg-primary-hover shadow-2xl shadow-primary/30 transition-all active:scale-95">
+                                <button className="w-full h-12 bg-primary text-white font-bold uppercase tracking-wider text-xs rounded-xl hover:bg-primary-hover shadow-lg shadow-primary/20 transition-all active:scale-95">
                                     Apply for Partnership
                                 </button>
                             </div>
@@ -234,7 +234,7 @@ export default function HardwareWhitepaperPage() {
 
                     {/* Footer Call to Action */}
                     <div className="mt-20 text-center">
-                        <p className="text-sm text-slate-400 font-bold uppercase tracking-widest mb-4">Have questions?</p>
+                        <p className="text-sm text-gray-500 font-bold uppercase tracking-wider mb-4">Have questions?</p>
                         <div className="flex justify-center gap-8">
                             <a href="mailto:sales@vemtap.com" className="flex items-center gap-2 text-slate-600 font-bold hover:text-primary transition-colors">
                                 <Mail size={18} />

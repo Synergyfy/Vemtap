@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { useState } from 'react';
 import { CheckCircle2 } from 'lucide-react';
@@ -128,8 +128,8 @@ export default function Pricing() {
         <section id="pricing" className="py-12 md:py-16 bg-white overflow-hidden relative border-t border-gray-100">
             <div className="max-w-7xl mx-auto px-6 sm:px-10 py-10">
                 <div className="text-center max-w-2xl mx-auto mb-10">
-                    <h2 className="text-3xl md:text-5xl font-display font-bold text-text-main mb-3">Enterprise-Grade <span className="text-primary">Licensing</span></h2>
-                    <p className="text-base text-text-secondary font-medium">Clear pricing with no hidden fees.</p>
+                    <h2 className="text-2xl md:text-4xl font-bold text-text-main mb-3">Enterprise-Grade <span className="text-primary">Licensing</span></h2>
+                    <p className="text-base text-text-secondary font-normal">Clear pricing with no hidden fees.</p>
                 </div>
 
                 {/* Billing Toggle */}
@@ -140,7 +140,7 @@ export default function Pricing() {
                                 key={cycle}
                                 onClick={() => setBillingPeriod(cycle)}
                                 className={`
-                                    flex-1 flex items-center justify-center py-3.5 rounded-xl text-[9px] sm:text-xs font-black uppercase tracking-tighter sm:tracking-widest transition-all
+                                    flex-1 flex items-center justify-center py-3.5 rounded-xl text-[9px] sm:text-xs font-bold uppercase tracking-wider transition-all
                                     ${billingPeriod === cycle
                                         ? 'bg-white text-primary shadow-md scale-105'
                                         : 'text-text-secondary hover:text-text-main hover:bg-white/50'
@@ -169,7 +169,7 @@ export default function Pricing() {
                             <div
                                 key={index}
                                 className={`
-                                    relative flex flex-col p-6 rounded-[2.5rem] transition-all duration-300
+                                    relative flex flex-col p-6 rounded-2xl transition-all duration-300
                                     ${highlight
                                         ? 'bg-primary shadow-2xl shadow-primary/20 text-white z-10 border-2 border-white/10 scale-105'
                                         : 'bg-white border border-gray-100 shadow-xl hover:shadow-2xl'
@@ -191,12 +191,12 @@ export default function Pricing() {
                                 </div>
                                 <div className="mb-2">
                                     {plan.isFree ? (
-                                        <span className="text-4xl font-display font-bold">₦0</span>
+                                        <span className="text-3xl font-display font-bold">â‚¦0</span>
                                     ) : (
                                         <>
                                             <div className="flex items-end gap-1">
-                                                <span className="text-4xl font-display font-bold">
-                                                    ₦{perMonthPrice.toLocaleString()}
+                                                <span className="text-3xl font-display font-bold">
+                                                    â‚¦{perMonthPrice.toLocaleString()}
                                                 </span>
                                                 <span className={`text-sm font-bold mb-1 ${highlight ? 'text-white/70' : 'text-text-secondary'}`}>
                                                     /mo
@@ -204,7 +204,7 @@ export default function Pricing() {
                                             </div>
                                             {billingPeriod !== 'monthly' && (
                                                 <p className={`text-[10px] font-medium mt-1 ${highlight ? 'text-white/60' : 'text-text-secondary'}`}>
-                                                    ₦{billingTotal.toLocaleString()} {getBillingLabel(billingPeriod)}
+                                                    â‚¦{billingTotal.toLocaleString()} {getBillingLabel(billingPeriod)}
                                                 </p>
                                             )}
                                         </>
@@ -213,7 +213,7 @@ export default function Pricing() {
                                 <div className="space-y-5 mb-8 flex-1 mt-4">
                                     {features.included.length > 0 && (
                                         <div>
-                                            <p className={`text-[10px] font-black uppercase tracking-widest mb-3 ${highlight ? 'text-white/70' : 'text-text-secondary'}`}>
+                                            <p className={`text-[10px] font-bold uppercase tracking-wider mb-3 ${highlight ? 'text-white/70' : 'text-text-secondary'}`}>
                                                 Included Features
                                             </p>
                                             <ul className="space-y-3">
@@ -230,7 +230,7 @@ export default function Pricing() {
                                     )}
                                     {features.limits.length > 0 && (
                                         <div>
-                                            <p className={`text-[10px] font-black uppercase tracking-widest mb-3 ${highlight ? 'text-white/70' : 'text-text-secondary'}`}>
+                                            <p className={`text-[10px] font-bold uppercase tracking-wider mb-3 ${highlight ? 'text-white/70' : 'text-text-secondary'}`}>
                                                 Usage Limits
                                             </p>
                                             <ul className="space-y-3">
@@ -252,7 +252,7 @@ export default function Pricing() {
                                         <button
                                             onClick={() => handleSubscription(plan, true)}
                                             className={`
-                                                w-full py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-widest text-center transition-all cursor-pointer shadow-lg active:scale-[0.98]
+                                                w-full py-3.5 rounded-xl text-[10px] font-bold uppercase tracking-wider text-center transition-all cursor-pointer shadow-lg active:scale-[0.98]
                                                 ${highlight
                                                     ? 'bg-white text-primary hover:bg-gray-50 shadow-white/10'
                                                     : 'bg-primary text-white hover:bg-primary-hover shadow-primary/20'
@@ -265,7 +265,7 @@ export default function Pricing() {
                                     <button
                                         onClick={() => handleSubscription(plan)}
                                         className={`
-                                            w-full py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest text-center transition-all cursor-pointer shadow-lg active:scale-[0.98]
+                                            w-full py-4 rounded-xl text-[10px] font-bold uppercase tracking-wider text-center transition-all cursor-pointer shadow-lg active:scale-[0.98]
                                             ${highlight
                                                 ? trialDays > 0
                                                     ? 'bg-primary border border-white/20 text-white hover:bg-primary-hover shadow-none'
@@ -335,19 +335,19 @@ export default function Pricing() {
                 {addons.length > 0 && (
                     <div className="mt-24">
                         <div className="text-center max-w-2xl mx-auto mb-12">
-                            <div className="inline-flex items-center gap-2 px-3 py-1 bg-primary/10 text-primary rounded-full text-[10px] font-black uppercase tracking-widest mb-4">
+                            <div className="inline-flex items-center gap-2 px-3 py-1 bg-primary/10 text-primary rounded-full text-[10px] font-bold uppercase tracking-wider mb-4">
                                 <Sparkles size={12} />
                                 Power-Ups
                             </div>
-                            <h3 className="text-2xl md:text-4xl font-display font-bold text-text-main mb-4">Modular <span className="text-primary">Add-ons</span></h3>
-                            <p className="text-sm text-text-secondary font-medium px-4">Need more? Scale your business with specialized add-ons that plug directly into your base plan.</p>
+                            <h3 className="text-xl md:text-3xl font-bold text-text-main mb-4">Modular <span className="text-primary">Add-ons</span></h3>
+                            <p className="text-sm text-text-secondary font-normal px-4">Need more? Scale your business with specialized add-ons that plug directly into your base plan.</p>
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                             {addons.filter(a => a.isActive).map((addon) => (
                                 <div 
                                     key={addon.id}
-                                    className="group p-6 rounded-[2rem] bg-gray-50 border border-gray-100 hover:bg-white hover:border-primary/20 hover:shadow-xl transition-all duration-300"
+                                    className="group p-6 rounded-2xl bg-gray-50 border border-gray-100 hover:bg-white hover:border-primary/20 hover:shadow-xl transition-all duration-300"
                                 >
                                     <div className={`size-12 rounded-2xl flex items-center justify-center mb-4 transition-transform group-hover:scale-110 ${
                                         addon.type === 'RESOURCE' ? 'bg-blue-100 text-blue-600' : 'bg-amber-100 text-amber-600'
@@ -355,7 +355,7 @@ export default function Pricing() {
                                         {addon.type === 'RESOURCE' ? <Box size={24} /> : <Zap size={24} />}
                                     </div>
                                     <div className="flex items-center justify-between gap-3 mb-2">
-                                        <h4 className="text-lg font-black text-slate-900 tracking-tight">{addon.name}</h4>
+                                        <h4 className="text-base font-bold text-slate-900 tracking-tight">{addon.name}</h4>
                                         {addon.type === 'RESOURCE' && addon.additionalLimit && (
                                             <span className="px-3 py-1 bg-gradient-to-r from-emerald-500 to-teal-500 text-white text-[9px] rounded-full font-black shadow-lg shadow-emerald-500/20 flex items-center gap-1 animate-in slide-in-from-right duration-500">
                                                 <TrendingUp size={10} strokeWidth={3} />
@@ -367,10 +367,10 @@ export default function Pricing() {
                                         {addon.description}
                                     </p>
                                     <div className="flex items-center justify-between mt-auto pt-4 border-t border-gray-200/50">
-                                        <span className="text-sm font-black text-slate-900">₦{addon.price.toLocaleString()}<span className="text-[10px] text-slate-400 font-bold ml-1">/mo</span></span>
+                                        <span className="text-sm font-bold text-slate-900">â‚¦{addon.price.toLocaleString()}<span className="text-[10px] text-slate-400 font-bold ml-1">/mo</span></span>
                                         <button 
                                             onClick={() => router.push('/get-started')}
-                                            className="text-[10px] font-black uppercase tracking-widest text-primary hover:underline"
+                                            className="text-[10px] font-bold uppercase tracking-wider text-primary hover:underline"
                                         >
                                             Learn More
                                         </button>
@@ -406,20 +406,20 @@ export default function Pricing() {
                             }} className="p-8 space-y-5">
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
-                                        <label className="block text-[10px] font-black uppercase text-gray-400 mb-1.5 ml-1">Full Name</label>
+                                        <label className="block text-[10px] font-bold uppercase text-gray-400 mb-1.5 ml-1">Full Name</label>
                                         <input type="text" defaultValue={user?.name || ''} required placeholder="John Doe" className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 outline-none font-medium" />
                                     </div>
                                     <div>
-                                        <label className="block text-[10px] font-black uppercase text-gray-400 mb-1.5 ml-1">Email Address</label>
+                                        <label className="block text-[10px] font-bold uppercase text-gray-400 mb-1.5 ml-1">Email Address</label>
                                         <input type="email" defaultValue={user?.email || ''} required placeholder="john@company.com" className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 outline-none font-medium" />
                                     </div>
                                 </div>
                                 <div>
-                                    <label className="block text-[10px] font-black uppercase text-gray-400 mb-1.5 ml-1">Company / Business Name</label>
+                                    <label className="block text-[10px] font-bold uppercase text-gray-400 mb-1.5 ml-1">Company / Business Name</label>
                                     <input type="text" required placeholder="Your Company Ltd." className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 outline-none font-medium" />
                                 </div>
                                 <div>
-                                    <label className="block text-[10px] font-black uppercase text-gray-400 mb-1.5 ml-1">Subject</label>
+                                    <label className="block text-[10px] font-bold uppercase text-gray-400 mb-1.5 ml-1">Subject</label>
                                     <select className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 outline-none font-bold text-sm">
                                         <option>Enterprise Licensing</option>
                                         <option>White-label Solutions</option>
@@ -428,14 +428,14 @@ export default function Pricing() {
                                     </select>
                                 </div>
                                 <div>
-                                    <label className="block text-[10px] font-black uppercase text-gray-400 mb-1.5 ml-1">Your Message</label>
+                                    <label className="block text-[10px] font-bold uppercase text-gray-400 mb-1.5 ml-1">Your Message</label>
                                     <textarea rows={4} required placeholder="Tell us about your requirements..." className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 outline-none font-medium resize-none"></textarea>
                                 </div>
 
                                 <button
                                     type="submit"
                                     disabled={isSubmitting}
-                                    className="w-full py-4 bg-primary text-white font-black uppercase tracking-widest rounded-2xl hover:bg-primary-hover shadow-xl shadow-primary/20 transition-all active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-3"
+                                    className="w-full py-4 bg-primary text-white font-bold uppercase tracking-wider rounded-xl hover:bg-primary-hover shadow-xl shadow-primary/20 transition-all active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-3"
                                 >
                                     {isSubmitting ? <Loader2 className="animate-spin" size={20} /> : <><Mail size={18} /> Send Message</>}
                                 </button>

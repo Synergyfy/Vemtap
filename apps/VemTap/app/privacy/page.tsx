@@ -40,11 +40,11 @@ export default function PrivacyPolicy() {
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="max-w-3xl">
                         <div className="flex items-center gap-3 mb-6">
-                            <span className="px-3 py-1 bg-primary/10 text-primary text-[10px] font-black uppercase tracking-widest rounded-full">Legal Document</span>
+                            <span className="px-3 py-1 bg-primary/10 text-primary text-[10px] font-bold uppercase tracking-wider rounded-full">Legal Document</span>
                             <span className="h-px w-8 bg-gray-200"></span>
-                            <span className="text-text-secondary text-[10px] font-bold uppercase tracking-widest">v2.0</span>
+                            <span className="text-text-secondary text-[10px] font-bold uppercase tracking-wider">v2.0</span>
                         </div>
-                        <h1 className="text-5xl md:text-6xl font-display font-bold text-text-main mb-8 leading-tight">
+                        <h1 className="text-[30px] sm:text-4xl md:text-5xl lg:text-6xl font-bold text-text-main mb-8 leading-[1.15] tracking-tight">
                             Privacy <span className="blue-text-gradient">Policy</span>
                         </h1>
                         <div className="flex flex-wrap items-center gap-6 text-sm">
@@ -66,7 +66,7 @@ export default function PrivacyPolicy() {
                     
                     <aside className="hidden lg:block w-64 flex-shrink-0">
                         <div className="sticky top-32">
-                            <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 mb-8">Table of Contents</h4>
+                            <h4 className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-8">Table of Contents</h4>
                             <nav className="space-y-1 border-l border-gray-100 max-h-[60vh] overflow-y-auto custom-scrollbar pr-4">
                                 {sections.map((section) => (
                                     <a 
@@ -130,7 +130,7 @@ export default function PrivacyPolicy() {
                                         
                                         <div className="space-y-12">
                                             <div>
-                                                <h4 className="text-xs font-black uppercase tracking-widest text-primary mb-6">3.1 Personal Data</h4>
+                                                <h4 className="text-xs font-bold uppercase tracking-wider text-primary mb-6">3.1 Personal Data</h4>
                                                 <div className="flex flex-wrap gap-3">
                                                     {['Full Name', 'Phone Number', 'Email Address', 'Business Details'].map(tag => (
                                                         <span key={tag} className="px-4 py-2 bg-gray-100 rounded-lg text-xs font-bold text-text-secondary">{tag}</span>
@@ -139,7 +139,7 @@ export default function PrivacyPolicy() {
                                             </div>
 
                                             <div>
-                                                <h4 className="text-xs font-black uppercase tracking-widest text-primary mb-6">3.2 Customer Interaction</h4>
+                                                <h4 className="text-xs font-bold uppercase tracking-wider text-primary mb-6">3.2 Customer Interaction</h4>
                                                 <p className="text-text-secondary leading-relaxed font-medium mb-4">Data captured during platform engagement:</p>
                                                 <ul className="grid sm:grid-cols-2 gap-x-8 gap-y-3">
                                                     {['QR Code Scans', 'Orders & Requests', 'Form Submissions', 'Messages & Inquiries'].map(li => (
@@ -152,7 +152,7 @@ export default function PrivacyPolicy() {
                                             </div>
 
                                             <div>
-                                                <h4 className="text-xs font-black uppercase tracking-widest text-primary mb-6">3.3 Technical Data</h4>
+                                                <h4 className="text-xs font-bold uppercase tracking-wider text-primary mb-6">3.3 Technical Data</h4>
                                                 <ul className="grid sm:grid-cols-2 gap-x-8 gap-y-3">
                                                     {['IP address', 'Browser version', 'Device type', 'Access logs'].map(li => (
                                                         <li key={li} className="flex items-center gap-3 text-sm font-bold text-text-secondary italic">
@@ -164,7 +164,7 @@ export default function PrivacyPolicy() {
                                             </div>
 
                                             <div className="p-8 bg-primary/[0.02] rounded-3xl border border-primary/5">
-                                                <h4 className="text-xs font-black uppercase tracking-widest text-primary mb-4 text-center">3.4 Behavioral & Cookies</h4>
+                                                <h4 className="text-xs font-bold uppercase tracking-wider text-primary mb-4 text-center">3.4 Behavioral & Cookies</h4>
                                                 <p className="text-center text-sm text-text-secondary font-medium italic">We track usage patterns (pages visited, features used) and employ cookies (session, analytics, preference) to optimize your experience.</p>
                                             </div>
                                         </div>
@@ -308,7 +308,7 @@ export default function PrivacyPolicy() {
                                         <div className="grid grid-cols-2 sm:grid-cols-3 gap-6">
                                             {['Access Data', 'Correct Data', 'Request Deletion', 'Withdraw Consent', 'Object Processing', 'Data Portability'].map(right => (
                                                 <div key={right} className="aspect-square flex flex-col items-center justify-center p-6 bg-white rounded-3xl border border-gray-100 shadow-sm hover:shadow-md transition-all">
-                                                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-primary mb-2 text-center">{right}</span>
+                                                    <span className="text-[10px] font-bold uppercase tracking-wider text-primary mb-2 text-center">{right}</span>
                                                 </div>
                                             ))}
                                         </div>
@@ -433,7 +433,7 @@ export default function PrivacyPolicy() {
                                     </div>
                                     <a 
                                         href="mailto:[Insert Email]" 
-                                        className="inline-flex items-center justify-center px-10 py-5 bg-text-main text-white font-black uppercase tracking-widest text-xs rounded-full hover:bg-primary transition-all shadow-xl shadow-gray-200"
+                                        className="inline-flex items-center justify-center px-10 py-5 bg-text-main text-white font-bold uppercase tracking-wider text-xs rounded-full hover:bg-primary transition-all shadow-xl shadow-gray-200"
                                     >
                                         Message Privacy Team
                                     </a>
@@ -445,7 +445,7 @@ export default function PrivacyPolicy() {
                                 <div className="p-10 bg-gray-100 rounded-[2rem] border border-gray-200 text-center">
                                     <h2 className="text-2xl font-display font-bold text-text-main mb-4">Regulatory Compliance</h2>
                                     <p className="text-sm font-bold text-text-secondary italic">This Privacy Policy complies with the Nigeria Data Protection Act (NDPA) and applicable international data protection standards.</p>
-                                    <p className="mt-8 text-[10px] font-black uppercase tracking-[0.4em] text-gray-400 italic">Vemtap – Enterprise-Grade Data Protection</p>
+                                    <p className="mt-8 text-[10px] font-bold uppercase tracking-wider text-gray-400 italic">Vemtap – Enterprise-Grade Data Protection</p>
                                 </div>
                             </section>
 

@@ -208,7 +208,7 @@ export default function PromotionsPage() {
                             className="inline-flex items-center gap-1.5 bg-primary/5 border border-primary/10 rounded-lg px-3 py-1 mb-5"
                         >
                             <Sparkles size={12} className="text-primary" />
-                            <span className="text-[10px] font-black text-primary uppercase tracking-widest">
+                            <span className="text-[10px] font-bold text-primary uppercase tracking-wider">
                                 Explore Deals
                             </span>
                         </motion.div>
@@ -217,7 +217,7 @@ export default function PromotionsPage() {
                             initial={{ opacity: 0, y: 10 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: 0.05 }}
-                            className="text-3xl md:text-5xl font-headline font-black text-gray-900 tracking-tight leading-tight"
+                            className="text-[30px] sm:text-4xl md:text-5xl lg:text-6xl font-headline font-bold text-gray-900 tracking-tight leading-[1.15]"
                         >
                             Discover the best deals
                             <br />
@@ -228,7 +228,7 @@ export default function PromotionsPage() {
                             initial={{ opacity: 0, y: 10 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: 0.1 }}
-                            className="text-gray-500 font-medium text-sm md:text-base mt-3 max-w-lg"
+                            className="text-gray-500 font-normal text-sm md:text-base mt-3 max-w-lg"
                         >
                             Browse exclusive promotions from top businesses. Check VemTap before you shop.
                         </motion.p>
@@ -239,7 +239,7 @@ export default function PromotionsPage() {
                                 animate={{ opacity: 1, y: 0 }}
                                 transition={{ delay: 0.15 }}
                                 onClick={() => setShowLocationModal(true)}
-                                className="mt-4 inline-flex items-center gap-2 text-sm font-bold text-primary hover:underline"
+                                className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-primary hover:underline"
                             >
                                 <MapPin size={14} />
                                 Set your location for nearby deals
@@ -309,7 +309,7 @@ export default function PromotionsPage() {
                             <p className="text-sm font-bold text-gray-500">Failed to load deals</p>
                             <button
                                 onClick={() => refetch()}
-                                className="text-xs font-black text-primary hover:underline"
+                                className="text-xs font-bold text-primary hover:underline"
                             >
                                 Try again
                             </button>
@@ -328,7 +328,7 @@ export default function PromotionsPage() {
                             <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-2">
                                     <TrendingUp size={14} className="text-primary" />
-                                    <span className="text-xs font-black text-gray-500 uppercase tracking-widest">
+                                    <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">
                                         {filteredPromotions.length} {filteredPromotions.length === 1 ? 'deal' : 'deals'}
                                         {selectedCategory && (
                                             <> in <span className="text-primary">this category</span></>
@@ -360,7 +360,7 @@ export default function PromotionsPage() {
                                     </p>
                                     <button
                                         onClick={() => { setSelectedCategory(null); setSearch(''); }}
-                                        className="text-xs font-black text-primary hover:underline"
+                                        className="text-xs font-bold text-primary hover:underline"
                                     >
                                         Clear all filters
                                     </button>

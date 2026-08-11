@@ -157,7 +157,7 @@ export default function MarketplacePage() {
 
                     <div className="mb-12 flex flex-col md:flex-row md:items-end justify-between gap-6">
                         <div>
-                            <h2 className="font-display font-bold text-4xl text-text-main mb-2">Our Marketplace</h2>
+                            <h2 className="font-display font-bold text-4xl lg:text-5xl text-text-main mb-2">Our Marketplace</h2>
                             <p className="text-text-secondary text-lg">Explore our industrial-grade NFC hardware and identification solutions.</p>
                         </div>
                         {user && (
@@ -520,7 +520,7 @@ export default function MarketplacePage() {
                                                     maxLength={6}
                                                     value={otp}
                                                     onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
-                                                    className="w-full px-4 py-4 bg-gray-50 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none font-bold text-2xl text-center tracking-widest"
+                                                    className="w-full px-4 py-4 bg-gray-50 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none font-bold text-2xl text-center tracking-wider"
                                                     required
                                                 />
                                                 <p className="text-xs text-text-secondary text-center mt-3">
