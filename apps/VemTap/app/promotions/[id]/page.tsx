@@ -73,7 +73,7 @@ export default function PromotionDetailPage() {
                 <Navbar />
                 <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
                     <Loader2 size={40} className="animate-spin text-primary mb-4" />
-                    <h1 className="text-2xl font-black text-gray-900 mb-2">Loading deal...</h1>
+                    <h1 className="text-2xl font-bold text-gray-900 mb-2">Loading deal...</h1>
                 </div>
                 <Footer />
             </div>
@@ -86,13 +86,13 @@ export default function PromotionDetailPage() {
                 <Navbar />
                 <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
                     <Gift size={64} className="text-gray-200 mb-4" />
-                    <h1 className="text-2xl font-black text-gray-900 mb-2">{isError ? 'Failed to load' : 'Promotion Not Found'}</h1>
+                    <h1 className="text-2xl font-bold text-gray-900 mb-2">{isError ? 'Failed to load' : 'Promotion Not Found'}</h1>
                     <p className="text-gray-500 font-bold mb-8">
                         {isError ? 'Unable to fetch this deal. Please try again.' : 'This deal may have expired or doesn&apos;t exist.'}
                     </p>
                     <Link
-                        href="/deals"
-                        className="px-8 h-12 bg-primary text-white font-black uppercase tracking-widest text-xs rounded-xl shadow-lg shadow-primary/20 flex items-center gap-2"
+href="/deals"
+                        className="px-8 h-12 bg-primary text-white font-bold uppercase tracking-wider text-xs rounded-xl shadow-lg shadow-primary/20 flex items-center gap-2"
                     >
                         <ArrowLeft size={16} /> Browse Deals
                     </Link>
@@ -208,12 +208,12 @@ export default function PromotionDetailPage() {
 
                         {/* Discount badge */}
                         {promotion.discountPercent && (
-                            <div className="absolute top-4 left-4 bg-red-500 text-white px-4 py-1.5 rounded-full text-sm font-black shadow-lg">
+                            <div className="absolute top-4 left-4 bg-red-500 text-white px-4 py-1.5 rounded-full text-sm font-bold shadow-lg">
                                 {promotion.discountPercent}% OFF
                             </div>
                         )}
                         {promotion.discountAmount && !promotion.discountPercent && (
-                            <div className="absolute top-4 left-4 bg-red-500 text-white px-4 py-1.5 rounded-full text-sm font-black shadow-lg">
+                            <div className="absolute top-4 left-4 bg-red-500 text-white px-4 py-1.5 rounded-full text-sm font-bold shadow-lg">
                                 SAVE {formatPromoPrice(promotion.discountAmount)}
                             </div>
                         )}
@@ -229,10 +229,10 @@ export default function PromotionDetailPage() {
 
                         {/* Bottom overlay info */}
                         <div className="absolute bottom-0 left-0 right-0 p-6 md:p-8">
-                            <p className="text-white/70 text-xs font-bold uppercase tracking-widest mb-2">
+                            <p className="text-white/70 text-xs font-bold uppercase tracking-wider mb-2">
                                 {promotion.businessName}
                             </p>
-                            <h1 className="text-3xl md:text-4xl font-headline font-black text-white tracking-tight">
+                            <h1 className="text-3xl md:text-4xl font-headline font-bold text-white tracking-tight">
                                 {promotion.name}
                             </h1>
                         </div>
@@ -252,7 +252,7 @@ export default function PromotionDetailPage() {
                                 className="bg-gray-50 rounded-2xl p-6 border border-gray-100"
                             >
                                 <div className="flex items-end gap-3 mb-4">
-                                    <span className="text-4xl font-black text-primary font-display tracking-tight">
+                                    <span className="text-4xl font-bold text-primary font-display tracking-tight">
                                         {formatPromoPrice(promotion.dealPrice)}
                                     </span>
                                     {promotion.originalPrice > promotion.dealPrice && (
@@ -350,7 +350,7 @@ export default function PromotionDetailPage() {
 
                                 <button
                                     onClick={() => setShowClaimModal(true)}
-                                    className="w-full h-14 bg-primary text-white font-black uppercase tracking-widest text-sm rounded-2xl shadow-lg shadow-primary/20 hover:bg-primary/90 transition-colors flex items-center justify-center gap-2"
+                                    className="w-full h-14 bg-primary text-white font-bold uppercase tracking-wider text-sm rounded-2xl shadow-lg shadow-primary/20 hover:bg-primary/90 transition-colors flex items-center justify-center gap-2"
                                 >
                                     <Gift size={18} /> Claim This Deal
                                 </button>
@@ -364,7 +364,7 @@ export default function PromotionDetailPage() {
 
                                 {/* Business info */}
                                 <div className="pt-4 border-t border-gray-100 space-y-3">
-                                    <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Offered by</p>
+                                    <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Offered by</p>
                                     <div>
                                         <p className="text-sm font-bold text-gray-900">{promotion.businessName}</p>
                                         <p className="text-xs text-gray-400 font-bold flex items-center gap-1 mt-1">
@@ -528,7 +528,7 @@ export default function PromotionDetailPage() {
 
                                         <div className="space-y-4">
                                             <div>
-                                                <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1.5 block">Full Name *</label>
+                                                <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1.5 block">Full Name *</label>
                                                 <input
                                                     type="text"
                                                     value={claimName}
@@ -538,7 +538,7 @@ export default function PromotionDetailPage() {
                                                 />
                                             </div>
                                             <div>
-                                                <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1.5 block">Email Address *</label>
+                                                <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1.5 block">Email Address *</label>
                                                 <input
                                                     type="email"
                                                     value={claimEmail}
@@ -548,7 +548,7 @@ export default function PromotionDetailPage() {
                                                 />
                                             </div>
                                             <div>
-                                                <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1.5 block">Phone Number *</label>
+                                                <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1.5 block">Phone Number *</label>
                                                 <div className="relative">
                                                     <Phone size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                                                     <input
@@ -565,7 +565,7 @@ export default function PromotionDetailPage() {
                                         <button
                                             onClick={handlePhoneSubmit}
                                             disabled={isSubmitting}
-                                            className="w-full h-13 bg-primary text-white font-black uppercase tracking-widest text-sm rounded-2xl shadow-lg shadow-primary/20 hover:bg-primary/90 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+                                            className="w-full h-13 bg-primary text-white font-bold uppercase tracking-wider text-sm rounded-2xl shadow-lg shadow-primary/20 hover:bg-primary/90 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
                                         >
                                             {isSubmitting ? (
                                                 <Loader2 size={18} className="animate-spin" />
@@ -602,14 +602,14 @@ export default function PromotionDetailPage() {
                                         </div>
 
                                         <div>
-                                            <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1.5 block">
+                                            <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1.5 block">
                                                 Verification Code
                                             </label>
                                             <input
                                                 type="text"
                                                 value={otp}
                                                 onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                                                className="w-full h-14 px-4 bg-gray-50 border border-gray-200 rounded-xl text-center text-2xl font-black tracking-[0.5em] focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/30"
+                                                className="w-full h-14 px-4 bg-gray-50 border border-gray-200 rounded-xl text-center text-2xl font-bold tracking-wider focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/30"
                                                 placeholder="000000"
                                                 maxLength={6}
                                             />
@@ -618,7 +618,7 @@ export default function PromotionDetailPage() {
                                         <button
                                             onClick={handleOtpVerify}
                                             disabled={isSubmitting}
-                                            className="w-full h-13 bg-primary text-white font-black uppercase tracking-widest text-sm rounded-2xl shadow-lg shadow-primary/20 hover:bg-primary/90 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+                                            className="w-full h-13 bg-primary text-white font-bold uppercase tracking-wider text-sm rounded-2xl shadow-lg shadow-primary/20 hover:bg-primary/90 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
                                         >
                                             {isSubmitting ? (
                                                 <Loader2 size={18} className="animate-spin" />
@@ -661,10 +661,10 @@ export default function PromotionDetailPage() {
                                         </div>
 
                                         <div className="bg-gray-50 rounded-2xl p-6 border border-gray-100">
-                                            <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">
+                                            <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-2">
                                                 Your Claim Code
                                             </p>
-                                            <p className="text-3xl font-black text-primary tracking-[0.3em] font-display">
+                                            <p className="text-3xl font-bold text-primary tracking-wider font-display">
                                                 {couponCode}
                                             </p>
                                         </div>
@@ -683,7 +683,7 @@ export default function PromotionDetailPage() {
                                             <Link
                                                 href="/deals"
                                                 onClick={resetModal}
-                                                className="w-full h-12 bg-primary text-white font-black uppercase tracking-widest text-xs rounded-2xl shadow-lg shadow-primary/20 flex items-center justify-center gap-2"
+                                                className="w-full h-12 bg-primary text-white font-bold uppercase tracking-wider text-xs rounded-2xl shadow-lg shadow-primary/20 flex items-center justify-center gap-2"
                                             >
                                                 Browse More Deals
                                             </Link>

@@ -83,11 +83,11 @@ export default function PromotionsPage() {
                         >
                             <div className="inline-flex items-center gap-2 bg-primary/5 border border-primary/10 rounded-full px-4 py-1.5">
                                 <Sparkles size={14} className="text-primary" />
-                                <span className="text-xs font-black text-primary uppercase tracking-widest">
+                                <span className="text-xs font-bold text-primary uppercase tracking-wider">
                                     Offers Near You
                                 </span>
                             </div>
-                            <h1 className="text-3xl md:text-5xl font-headline font-black text-gray-900 tracking-tight leading-tight">
+                            <h1 className="text-[30px] sm:text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 tracking-tight leading-[1.15]">
                                 Explore Deals
                                 <br />
                                 <span className="bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">Near You</span>
@@ -117,7 +117,7 @@ export default function PromotionsPage() {
 
                             <button
                                 onClick={handleUseCurrentLocation}
-                                className="w-full max-w-md mx-auto flex items-center justify-center gap-2 h-12 bg-primary text-white font-black uppercase tracking-widest text-xs rounded-2xl shadow-lg shadow-primary/20 hover:bg-primary/90 transition-all"
+                                className="w-full max-w-md mx-auto flex items-center justify-center gap-2 h-12 bg-primary text-white font-bold uppercase tracking-wider text-xs rounded-2xl shadow-lg shadow-primary/20 hover:bg-primary/90 transition-all"
                             >
                                 <Crosshair size={16} />
                                 Use My Current Location
@@ -132,7 +132,7 @@ export default function PromotionsPage() {
                                 transition={{ delay: 0.3 }}
                                 className="space-y-4 pt-2 px-4 md:px-0"
                             >
-                                <p className="text-xs font-black uppercase tracking-widest text-gray-400">Popular Categories</p>
+                                <p className="text-xs font-bold uppercase tracking-wider text-gray-400">Popular Categories</p>
                                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 max-w-md mx-auto">
                                     {popularCategories.map((cat) => (
                                         <button
@@ -162,17 +162,17 @@ export default function PromotionsPage() {
                                 <div className="space-y-1">
                                     <div className="flex items-center gap-2">
                                         <MapPin size={14} className="text-primary shrink-0" />
-                                        <span className="text-xs font-black text-gray-400 uppercase tracking-widest">
+                                        <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">
                                             {selectedLocation || 'Near You'}
                                         </span>
                                         <button
                                             onClick={() => setShowLocationPicker(true)}
-                                            className="text-[10px] font-black text-primary hover:underline ml-1"
+                                            className="text-[10px] font-bold text-primary hover:underline ml-1"
                                         >
                                             Change
                                         </button>
                                     </div>
-                                    <h1 className="text-2xl md:text-4xl font-headline font-black text-gray-900 tracking-tight">
+                                    <h1 className="text-2xl md:text-4xl font-headline font-bold text-gray-900 tracking-tight">
                                         {activeCategory !== 'All' ? (
                                           <>{getCategoryIcon(activeCategory)} {activeCategory}s with Offers</>
                                         ) : (
@@ -192,7 +192,7 @@ export default function PromotionsPage() {
                                             key={opt.value}
                                             onClick={() => setSortBy(opt.value)}
                                             className={cn(
-                                                "px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider whitespace-nowrap transition-all",
+                                                "px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider whitespace-nowrap transition-all",
                                                 sortBy === opt.value
                                                     ? "bg-white text-primary shadow-sm"
                                                     : "text-gray-400 hover:text-gray-600"
@@ -209,7 +209,7 @@ export default function PromotionsPage() {
                                 <div className="space-y-3">
                                     <div className="flex items-center gap-2">
                                         <Flame size={16} className="text-orange-500 shrink-0" />
-                                        <span className="text-xs font-black text-gray-800 uppercase tracking-wider">Trending Today</span>
+                                        <span className="text-xs font-bold text-gray-800 uppercase tracking-wider">Trending Today</span>
                                     </div>
                                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                                         {trendingPromotions.map((promo, i) => (
@@ -219,7 +219,7 @@ export default function PromotionsPage() {
                                                 </div>
                                                 <div className="min-w-0 flex-1">
                                                     <p className="text-xs font-bold text-gray-800 line-clamp-1">{promo.businessName}</p>
-                                                    <p className="text-[10px] text-orange-600 font-black uppercase tracking-widest mt-0.5">
+                                                    <p className="text-[10px] text-orange-600 font-bold uppercase tracking-wider mt-0.5">
                                                         {promo.discountPercent ? `${promo.discountPercent}% Off` : promo.discountAmount ? `Save ₦${promo.discountAmount.toLocaleString()}` : ''}
                                                     </p>
                                                     <div className="flex items-center gap-1 mt-1 text-orange-500">
@@ -227,7 +227,7 @@ export default function PromotionsPage() {
                                                         <span className="text-[9px] font-bold">{promo.claimedCount} {promo.claimedCount === 1 ? 'person' : 'people'} claimed this</span>
                                                     </div>
                                                     {getPromoDaysLeft(promo.endDate) <= 1 && (
-                                                        <p className="text-[9px] font-black text-red-500 uppercase tracking-widest mt-0.5">
+                                                        <p className="text-[9px] font-bold text-red-500 uppercase tracking-wider mt-0.5">
                                                             Ends {getPromoDaysLeft(promo.endDate) === 0 ? 'Today' : 'Tomorrow'}
                                                         </p>
                                                     )}
@@ -245,7 +245,7 @@ export default function PromotionsPage() {
                                         key={cat}
                                         onClick={() => setActiveCategory(cat)}
                                         className={cn(
-                                            "flex items-center gap-1.5 px-3 md:px-4 py-2 rounded-full text-[10px] md:text-xs font-black uppercase tracking-wider whitespace-nowrap transition-all duration-200 shrink-0",
+                                            "flex items-center gap-1.5 px-3 md:px-4 py-2 rounded-full text-[10px] md:text-xs font-bold uppercase tracking-wider whitespace-nowrap transition-all duration-200 shrink-0",
                                             activeCategory === cat
                                                 ? "bg-primary text-white shadow-lg shadow-primary/20"
                                                 : "bg-gray-100 text-gray-500 hover:bg-gray-200"
@@ -260,7 +260,7 @@ export default function PromotionsPage() {
                             {/* Results count */}
                             <div className="flex items-center gap-2">
                                 <TrendingUp size={14} className="text-primary shrink-0" />
-                                <span className="text-xs font-black text-gray-400 uppercase tracking-widest">
+                                <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">
                                     {filteredPromotions.length} {filteredPromotions.length === 1 ? 'deal' : 'deals'} found
                                 </span>
                             </div>
@@ -284,7 +284,7 @@ export default function PromotionsPage() {
                                     <p className="text-gray-400 font-bold text-sm">No promotions match your category.</p>
                                     <button
                                         onClick={() => setActiveCategory('All')}
-                                        className="text-xs font-black text-primary hover:underline"
+                                        className="text-xs font-bold text-primary hover:underline"
                                     >
                                         View all deals
                                     </button>

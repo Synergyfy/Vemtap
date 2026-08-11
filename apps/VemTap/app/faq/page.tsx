@@ -75,8 +75,8 @@ export default function FAQPage() {
             <main className="pt-40 pb-32">
                 <section className="px-4 sm:px-6 lg:px-8">
                     <div className="max-w-4xl mx-auto text-center mb-20">
-                        <span className="text-primary font-bold tracking-widest text-[10px] uppercase mb-4 block">Help Center</span>
-                        <h1 className="text-5xl md:text-7xl font-display font-black text-text-main mb-8 leading-tight tracking-tight">
+                        <span className="text-primary font-bold tracking-wider text-[10px] uppercase mb-4 block">Help Center</span>
+                        <h1 className="text-[30px] sm:text-4xl md:text-5xl lg:text-6xl font-bold text-text-main mb-8 leading-[1.15] tracking-tight">
                             Frequently Asked <br />
                             <span className="text-gradient">Questions</span>
                         </h1>
@@ -93,7 +93,7 @@ export default function FAQPage() {
                                         <div className="size-12 rounded-2xl bg-primary/5 text-primary flex items-center justify-center">
                                             <span className="material-icons-round">{category.icon}</span>
                                         </div>
-                                        <h2 className="text-2xl font-display font-black text-text-main">{category.title}</h2>
+                                        <h2 className="text-2xl font-display font-bold text-text-main">{category.title}</h2>
                                     </div>
 
                                     <div className="space-y-4">
