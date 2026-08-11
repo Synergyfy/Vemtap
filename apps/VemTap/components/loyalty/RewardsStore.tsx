@@ -17,7 +17,7 @@ export const RewardsStore: React.FC<RewardsStoreProps> = ({ rewards, userPoints,
     return (
         <div className={cn("grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6", className)}>
             {rewards.map((reward, index) => {
-                const isLocked = userPoints < reward.pointCost;
+                const isLocked = userPoints < (reward.pointCost ?? reward.pointsRequired ?? 0);
 
                 return (
                     <motion.div
@@ -54,7 +54,7 @@ export const RewardsStore: React.FC<RewardsStoreProps> = ({ rewards, userPoints,
                                     "text-xs font-black uppercase tracking-widest px-3 py-1.5 rounded-xl border shadow-sm",
                                     isLocked ? "bg-slate-50 text-slate-400 border-slate-200" : "bg-white text-primary border-primary/20"
                                 )}>
-                                    {reward.pointCost.toLocaleString()} Pts
+                                    {(reward.pointCost ?? reward.pointsRequired ?? 0).toLocaleString()} Pts
                                 </span>
                             </div>
                         </div>
@@ -99,7 +99,7 @@ export const RewardsStore: React.FC<RewardsStoreProps> = ({ rewards, userPoints,
                                     )}
                                 >
                                     {isLocked ? (
-                                        `Earn ${reward.pointCost - userPoints} more pts`
+                                        `Earn ${(reward.pointCost ?? reward.pointsRequired ?? 0) - userPoints} more pts`
                                     ) : (
                                         <>
                                             Redeem Prize

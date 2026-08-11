@@ -87,16 +87,15 @@ export const NAVIGATION_SECTIONS: NavSection[] = [
                 id: 'commerce-customers',
                 label: 'Customers',
                 icon: Users,
-                href: '/dashboard/customers',
+                href: '/dashboard/visitors',
                 roles: ['owner', 'manager', 'cashier', 'customer_service', 'staff'],
                 permission: 'visitors',
                 submenu: [
-                    { label: 'Overview', href: '/dashboard/customers' },
-                    { label: 'Customer List', href: '/dashboard/pos/customers' },
+                    { label: 'Overview', href: '/dashboard/visitors' },
+                    { label: 'Customer List', href: '/dashboard/visitors/all' },
                     { label: 'Loyalty', href: '/dashboard/loyalty' },
-                    { label: 'Visitors', href: '/dashboard/visitors' },
                 ],
-                keywords: ['customers', 'contacts', 'users', 'shoppers', 'database', 'audience', 'loyalty']
+                keywords: ['customers', 'contacts', 'users', 'shoppers', 'database', 'audience', 'loyalty', 'crm', 'visitors']
             }
         ]
     },
@@ -170,6 +169,7 @@ export const NAVIGATION_SECTIONS: NavSection[] = [
                 permission: 'discovery',
                 submenu: [
                     { label: 'Get Customers', href: '/dashboard/discovery' },
+                    { label: 'Deals', href: '/dashboard/discovery/deals' },
                     { label: 'Business Partnership', href: '/dashboard/business-partnership' },
                 ],
                 keywords: ['network', 'marketplace', 'discovery', 'leads', 'traffic', 'promotions', 'partner', 'partnership', 'referral', 'commission', 'invite', 'collaborate']

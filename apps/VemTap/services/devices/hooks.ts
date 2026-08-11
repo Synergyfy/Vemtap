@@ -107,7 +107,7 @@ export const useDeviceTapContext = (code: string) => {
 };
 
 export const useRecordDeviceVisit = (code: string) => {
-    return useMutation<any, Error, { visitorId?: string; name?: string; email?: string; phone?: string }>({
+    return useMutation<{ visitId: string; sessionToken: string; isNewVisit: boolean }, Error, { visitorId?: string; name?: string; email?: string; phone?: string }>({
         mutationFn: async (payload) => {
             return await api.post(`/tap/record/${code}`, payload);
         },

@@ -18,6 +18,7 @@ import {
     buildDefaultPermissions,
     mapPlanToConfig,
     featureSupportsLimit,
+    SUBFEATURE_TO_PARENT,
 } from '@/lib/planPermissions';
 import { cn } from '@/lib/utils';
 import { Switch } from '@/components/ui/switch';
@@ -41,7 +42,7 @@ export default function PlanPermissionsTab({ plans, isLoading }: PlanPermissions
     const [pendingChanges, setPendingChanges] = useState<Partial<PricingPlan>>({});
 
     // Normalise nav-tree feature IDs to canonical config IDs used by mapConfigToPlanDto
-    const FEATURE_ID_ALIASES: Record<string, string> = { branches: 'locations' };
+    const FEATURE_ID_ALIASES: Record<string, string> = { branches: 'locations', 'business-partnership': 'discovery' };
 
     const getAliasUpdates = useCallback((featureId: string, level: PermissionLevel, limit?: number): Record<string, FeaturePermission> => {
         const canonicalId = FEATURE_ID_ALIASES[featureId];
@@ -58,14 +59,21 @@ export default function PlanPermissionsTab({ plans, isLoading }: PlanPermissions
     ): Partial<PricingPlan> => {
         // Normalise nav-tree IDs to canonical feature IDs used in mapPlanToConfig
         const canonicalId = (
-            { branches: 'locations' } as Record<string, string>
+            { branches: 'locations', 'business-partnership': 'discovery' } as Record<string, string>
         )[featureId] || featureId;
 
-        switch (canonicalId) {
+        // Resolve sub-features to their plan-backed parent (e.g. sales-dashboard → pos)
+        const resolvedId = SUBFEATURE_TO_PARENT[canonicalId] || canonicalId;
+
+        switch (resolvedId) {
             case 'catalogue':
                 return {
                     catalogueEnabled: level !== 'no',
                     maxCatalogueItems: level === 'yes' ? -1 : (level === 'limited' ? (limit ?? 50) : null),
+                };
+            case 'catalogue-offers':
+                return {
+                    maxCatalogueOffers: level === 'yes' ? -1 : (level === 'limited' ? (limit ?? 50) : null),
                 };
             case 'inventory':
                 return {

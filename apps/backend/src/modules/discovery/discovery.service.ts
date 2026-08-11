@@ -1989,4 +1989,27 @@ export class DiscoveryService {
     await this.settingRepository.save(settings);
     return { success: true, ...dto };
   }
+
+  async getPartnershipRewardTiers() {
+    const settings = await this.settingRepository.findOne({
+      where: {},
+      order: { createdAt: 'DESC' },
+    });
+    return (
+      settings?.partnershipRewardTiers || { tiers: [], defaultMultiplier: 1.0 }
+    );
+  }
+
+  async updatePartnershipRewardTiers(payload: any) {
+    let settings = await this.settingRepository.findOne({
+      where: {},
+      order: { createdAt: 'DESC' },
+    });
+    if (!settings) {
+      settings = this.settingRepository.create();
+    }
+    settings.partnershipRewardTiers = payload;
+    await this.settingRepository.save(settings);
+    return { success: true, tiers: settings.partnershipRewardTiers };
+  }
 }

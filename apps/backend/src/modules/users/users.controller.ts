@@ -40,6 +40,7 @@ import { Public } from '../../common/decorators/public.decorator';
 import { ParseUUIDPipe, Inject, forwardRef } from '@nestjs/common';
 import { QrThriveService } from '../qr-thrive/qr-thrive.service';
 import { BusinessesService } from '../businesses/businesses.service';
+import { RenameSessionDto } from './dto/rename-session.dto';
 
 @ApiTags('Users')
 @ApiBearerAuth()
@@ -102,6 +103,55 @@ export class UsersController {
   async updateProfile(@Request() req, @Body() updates: UpdateUserProfileDto) {
     const targetUserId = await this.getTargetUserId(req);
     return this.usersService.updateProfile(targetUserId, updates);
+  }
+
+  @Get('linked-devices')
+  @Roles(
+    UserRole.ADMIN,
+    UserRole.OWNER,
+    UserRole.MANAGER,
+    UserRole.STAFF,
+    UserRole.AGENT,
+    UserRole.CUSTOMER,
+  )
+  @ApiOperation({ summary: 'List linked login devices for the current user' })
+  async getLinkedDevices(@Request() req) {
+    return this.usersService.listSessions(req.user.id);
+  }
+
+  @Patch('linked-devices/:id')
+  @Roles(
+    UserRole.ADMIN,
+    UserRole.OWNER,
+    UserRole.MANAGER,
+    UserRole.STAFF,
+    UserRole.AGENT,
+    UserRole.CUSTOMER,
+  )
+  @ApiOperation({ summary: 'Rename a linked login device' })
+  async renameLinkedDevice(
+    @Request() req,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: RenameSessionDto,
+  ) {
+    return this.usersService.renameSession(req.user.id, id, dto.deviceName);
+  }
+
+  @Delete('linked-devices/:id')
+  @Roles(
+    UserRole.ADMIN,
+    UserRole.OWNER,
+    UserRole.MANAGER,
+    UserRole.STAFF,
+    UserRole.AGENT,
+    UserRole.CUSTOMER,
+  )
+  @ApiOperation({ summary: 'Revoke a linked login device' })
+  async revokeLinkedDevice(
+    @Request() req,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    return this.usersService.revokeSession(req.user.id, id);
   }
 
   // --- QR-Thrive Integration ---

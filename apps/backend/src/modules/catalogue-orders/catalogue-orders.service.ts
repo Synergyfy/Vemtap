@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Not, IsNull } from 'typeorm';
+import { randomBytes } from 'crypto';
 import {
   CatalogueOrder,
   CatalogueOrderStatus,
@@ -127,7 +128,7 @@ export class CatalogueOrderService {
     }
 
     if (!customer) {
-      const defaultPassword = '123456';
+      const defaultPassword = randomBytes(9).toString('base64url').slice(0, 12);
       const hashedPassword = await bcrypt.hash(defaultPassword, 10);
 
       // Use provided email or generate a dummy one

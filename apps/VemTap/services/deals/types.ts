@@ -45,6 +45,7 @@ export interface DealOffer {
     business?: DealBusiness;
     branch?: any;
     branchId?: string;
+    branchName?: string;
     businessId?: string;
     originalPrice?: number;
     dealPrice?: string;

@@ -6,6 +6,8 @@ import { StockCountSession } from './entities/stock-count-session.entity';
 import { StockCountItem } from './entities/stock-count-item.entity';
 import { CatalogueItem } from '../catalogue/entities/catalogue-item.entity';
 import { Branch } from '../branches/entities/branch.entity';
+import { StockMovement } from './entities/stock-movement.entity';
+import { StockMovementService } from './stock-movement.service';
 
 @Module({
   imports: [
@@ -14,10 +16,11 @@ import { Branch } from '../branches/entities/branch.entity';
       StockCountItem,
       CatalogueItem,
       Branch,
+      StockMovement,
     ]),
   ],
   controllers: [InventoryCountingController],
-  providers: [InventoryCountingService],
-  exports: [InventoryCountingService],
+  providers: [InventoryCountingService, StockMovementService],
+  exports: [InventoryCountingService, StockMovementService],
 })
 export class InventoryCountingModule {}

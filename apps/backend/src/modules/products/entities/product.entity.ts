@@ -3,6 +3,7 @@ import { ApiProperty } from '@nestjs/swagger';
 import { AbstractBaseEntity } from '../../../common/entities/base.entity';
 import { Quote } from './quote.entity';
 import { ProductType } from './product-type.entity';
+import { ProductReview } from './product-review.entity';
 
 export enum ProductStatus {
   PUBLISHED = 'Published',
@@ -86,6 +87,10 @@ export class Product extends AbstractBaseEntity {
   @Column('float', { default: 5 })
   rating: number;
 
+  @ApiProperty({ example: 12, description: 'Number of approved reviews' })
+  @Column('int', { default: 0 })
+  reviewCount: number;
+
   @ApiProperty({ example: 50 })
   @Column({ default: 1 })
   moq: number;
@@ -126,4 +131,7 @@ export class Product extends AbstractBaseEntity {
 
   @OneToMany(() => Quote, (quote) => quote.product)
   quotes: Quote[];
+
+  @OneToMany(() => ProductReview, (review) => review.product)
+  reviews: ProductReview[];
 }

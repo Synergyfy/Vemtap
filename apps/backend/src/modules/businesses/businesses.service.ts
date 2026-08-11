@@ -16,6 +16,7 @@ import { UpdateBusinessDto } from './dto/update-business.dto';
 import { AdminCreateBusinessDto } from './dto/admin-create-business.dto';
 import { User, UserRole, UserStatus } from '../users/entities/user.entity';
 import * as bcrypt from 'bcrypt';
+import { randomBytes } from 'crypto';
 import { ImportCustomersDto } from './dto/import-customers.dto';
 import { MailService } from '../mail/mail.service';
 import { Branch } from '../branches/entities/branch.entity';
@@ -29,6 +30,8 @@ import {
   SubscriptionStatus,
 } from '../subscriptions/entities/subscription.entity';
 import { Plan } from '../subscriptions/entities/plan.entity';
+import { MessageLog } from '../messaging/entities/message-log.entity';
+import { FinancialTransaction } from '../fos-core/entities/financial-transaction.entity';
 import {
   GEOCODING_QUEUE,
   GeocodingJobData,
@@ -373,8 +376,6 @@ export class BusinessesService {
   }
 
   async importCustomers(branchId: string, importDto: ImportCustomersDto) {
-    const defaultPassword = '123456';
-    const hashedPassword = await bcrypt.hash(defaultPassword, 10);
     const results = {
       imported: 0,
       skipped: 0,
@@ -392,6 +393,11 @@ export class BusinessesService {
           results.skipped++;
           continue;
         }
+
+        // Each imported customer gets a unique random password (emailed to
+        // them) — never a shared constant.
+        const tempPassword = randomBytes(9).toString('base64url').slice(0, 12);
+        const hashedPassword = await bcrypt.hash(tempPassword, 10);
 
         const newUser = this.usersRepository.create({
           firstName: customerData.firstName,
@@ -412,7 +418,7 @@ export class BusinessesService {
           .sendWelcomeEmail(
             email,
             `${customerData.firstName} ${customerData.lastName}`,
-            defaultPassword,
+            tempPassword,
           )
           .catch((err) =>
             console.error(`Failed to send welcome email to ${email}:`, err),
@@ -488,6 +494,23 @@ export class BusinessesService {
     const businesses = result.data;
     const total = result.total;
 
+    const fosFields = await this.buildFosBusinessFields(
+      businesses.map((b) => b.id),
+    );
+
+    const data = businesses.map((b) => ({
+      ...b,
+      status: String(b.status).toUpperCase(),
+      joinDate: b.createdAt
+        ? new Date(b.createdAt).toISOString().split('T')[0]
+        : null,
+      ownerName: b.owner
+        ? `${b.owner.firstName || ''} ${b.owner.lastName || ''}`.trim() ||
+          b.owner.email
+        : null,
+      ...(fosFields.get(b.id) || {}),
+    }));
+
     // Stats
     const activeCount = await this.businessesRepository.count({
       where: { status: BusinessStatus.ACTIVE },
@@ -524,7 +547,7 @@ export class BusinessesService {
       : '0.0';
 
     return {
-      data: businesses,
+      data,
       meta: {
         total,
         page,
@@ -538,6 +561,168 @@ export class BusinessesService {
         approvedToday,
         avgWaitTime: avgWaitHours,
       },
+    };
+  }
+
+  /**
+   * Enriches businesses with FOS-facing fields: plan, MRR, renewal date,
+   * SMS/email usage and (future) agent linkage. Derived from subscriptions
+   * and message_logs so the FOS admin UI doesn't have to compute them.
+   */
+  private async buildFosBusinessFields(ids: string[]) {
+    const fields = new Map<
+      string,
+      {
+        plan: string | null;
+        mrr: number;
+        renewalDate: string | null;
+        lastPaymentDate: string | null;
+        agentId: string | null;
+        agentName: string | null;
+        smsUsed: number;
+        emailUsed: number;
+      }
+    >();
+    if (ids.length === 0) return fields;
+
+    const subscriptions = await this.subscriptionRepository.find({
+      where: { businessId: In(ids), status: SubscriptionStatus.ACTIVE },
+      relations: ['plan'],
+      order: { endDate: 'DESC' },
+    });
+
+    for (const sub of subscriptions) {
+      if (!fields.has(sub.businessId)) {
+        fields.set(sub.businessId, {
+          plan: sub.plan?.name ?? null,
+          mrr: this.toNumber(sub.plan?.monthlyPrice ?? 0),
+          renewalDate: sub.endDate
+            ? new Date(sub.endDate).toISOString().split('T')[0]
+            : null,
+          lastPaymentDate: null,
+          agentId: null,
+          agentName: null,
+          smsUsed: 0,
+          emailUsed: 0,
+        });
+      }
+    }
+
+    let usageRaw: { businessId: string; channel: string; units: string }[] = [];
+    try {
+      usageRaw = await this.businessesRepository.manager
+        .createQueryBuilder()
+        .select('br."businessId"', 'businessId')
+        .addSelect('ml.channel', 'channel')
+        .addSelect('COALESCE(SUM(ml.units), 0)', 'units')
+        .from(MessageLog, 'ml')
+        .innerJoin(Branch, 'br', 'br.id = ml."branchId"')
+        .where('br."businessId" IN (:...ids)', { ids })
+        .groupBy('br."businessId"')
+        .addGroupBy('ml.channel')
+        .getRawMany();
+    } catch (error) {
+      // best-effort aggregation; usage falls back to zero when unavailable
+    }
+
+    for (const row of usageRaw) {
+      const entry = fields.get(row.businessId) ?? {
+        plan: null,
+        mrr: 0,
+        renewalDate: null,
+        lastPaymentDate: null,
+        agentId: null,
+        agentName: null,
+        smsUsed: 0,
+        emailUsed: 0,
+      };
+      const units = parseInt(row.units || '0', 10) || 0;
+      if (String(row.channel).toUpperCase() === 'SMS') {
+        entry.smsUsed += units;
+      } else if (String(row.channel).toUpperCase() === 'EMAIL') {
+        entry.emailUsed += units;
+      }
+      fields.set(row.businessId, entry);
+    }
+
+    return fields;
+  }
+
+  /**
+   * Admin detail for a single business in the FOS shape, including the
+   * business's financial transaction history.
+   */
+  async getAdminDetail(id: string) {
+    const business = await this.businessesRepository.findOne({
+      where: { id },
+      relations: ['owner', 'category', 'subcategory', 'branches'],
+    });
+    if (!business) {
+      throw new NotFoundException(`Business with id ${id} not found`);
+    }
+
+    const fosFields = await this.buildFosBusinessFields([id]);
+    const field = fosFields.get(id) ?? {
+      plan: null,
+      mrr: 0,
+      renewalDate: null,
+      lastPaymentDate: null,
+      agentId: null,
+      agentName: null,
+      smsUsed: 0,
+      emailUsed: 0,
+    };
+
+    let transactions: {
+      id: string;
+      type: string;
+      amount: number;
+      profit: number;
+      date: string;
+    }[] = [];
+    try {
+      transactions = await this.businessesRepository.manager
+        .createQueryBuilder()
+        .select('ft.id', 'id')
+        .addSelect('ft.type', 'type')
+        .addSelect('ft.amount', 'amount')
+        .addSelect('ft.profit', 'profit')
+        .addSelect('ft.date', 'date')
+        .from(FinancialTransaction, 'ft')
+        .where('ft."businessId" = :id', { id })
+        .orderBy('ft.date', 'DESC')
+        .getRawMany();
+      transactions = transactions.map((t) => ({
+        ...t,
+        amount: this.toNumber(t.amount),
+        profit: this.toNumber(t.profit),
+      }));
+    } catch (error) {
+      // best-effort aggregation; transaction history falls back to empty
+    }
+
+    const ownerName = business.owner
+      ? `${business.owner.firstName || ''} ${business.owner.lastName || ''}`.trim() ||
+        business.owner.email
+      : null;
+
+    return {
+      id: business.id,
+      name: business.name,
+      owner: ownerName,
+      plan: field.plan,
+      mrr: field.mrr,
+      status: String(business.status).toUpperCase(),
+      joinDate: business.createdAt
+        ? new Date(business.createdAt).toISOString().split('T')[0]
+        : null,
+      renewalDate: field.renewalDate,
+      lastPaymentDate: field.lastPaymentDate,
+      agentId: field.agentId,
+      agentName: field.agentName,
+      smsUsed: field.smsUsed,
+      emailUsed: field.emailUsed,
+      transactions,
     };
   }
 
@@ -870,7 +1055,7 @@ export class BusinessesService {
       ]);
 
     const statusDistribution = statusRaw.map((r) => ({
-      status: r.status,
+      status: String(r.status).toUpperCase(),
       count: parseInt(r.count, 10),
     }));
 

@@ -3,6 +3,8 @@ import { MessagingGateway } from './messaging.gateway';
 import { JwtService } from '@nestjs/jwt';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { User } from '../users/entities/user.entity';
+import { Message } from './entities/message.entity';
+import { ConversationThread } from './entities/conversation-thread.entity';
 import { Server, Socket } from 'socket.io';
 
 describe('MessagingGateway', () => {
@@ -47,6 +49,8 @@ describe('MessagingGateway', () => {
           provide: getRepositoryToken(User),
           useValue: userRepo,
         },
+        { provide: getRepositoryToken(Message), useValue: {} },
+        { provide: getRepositoryToken(ConversationThread), useValue: {} },
       ],
     }).compile();
 

@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import DiscoveryNav from '@/components/admin/discovery/DiscoveryNav';
+import { useAdminPartnerships } from '@/services/discovery/hooks';
 import {
     Handshake, UserPlus, Store, Gift, DollarSign,
     BarChart3, Bell, Shield, MessageCircle, Settings,
@@ -25,19 +26,6 @@ interface Partnership {
     dateCreated: string;
     initiatedBy: string;
 }
-
-const MOCK_PARTNERSHIPS: Partnership[] = [
-    { id: 'PRT-001', businessA: { name: 'Fashion Hub', category: 'Fashion', location: 'Ikeja, Lagos' }, businessB: { name: 'The Grill House', category: 'Restaurant', location: 'Ikeja, Lagos' }, status: 'Active', customersShared: 145, revenueGenerated: 280000, dateCreated: '2026-03-12', initiatedBy: 'Fashion Hub' },
-    { id: 'PRT-002', businessA: { name: 'Supermarket Plus', category: 'Retail', location: 'Surulere, Lagos' }, businessB: { name: 'Sharp Cuts', category: 'Salon', location: 'Surulere, Lagos' }, status: 'Pending', customersShared: 0, revenueGenerated: 0, dateCreated: '2026-06-01', initiatedBy: 'Supermarket Plus' },
-    { id: 'PRT-003', businessA: { name: 'The Grill House', category: 'Restaurant', location: 'Ikeja, Lagos' }, businessB: { name: 'Juice Paradise', category: 'Restaurant', location: 'Victoria Island, Lagos' }, status: 'Active', customersShared: 89, revenueGenerated: 120000, dateCreated: '2026-04-20', initiatedBy: 'The Grill House' },
-    { id: 'PRT-004', businessA: { name: 'Tech Solutions', category: 'Technology', location: 'Yaba, Lagos' }, businessB: { name: 'PrintMaster', category: 'Services', location: 'Yaba, Lagos' }, status: 'Active', customersShared: 234, revenueGenerated: 520000, dateCreated: '2026-01-15', initiatedBy: 'Tech Solutions' },
-    { id: 'PRT-005', businessA: { name: 'Green Grocers', category: 'Retail', location: 'Lekki, Lagos' }, businessB: { name: 'FitLife Gym', category: 'Fitness', location: 'Lekki, Lagos' }, status: 'Suspended', customersShared: 45, revenueGenerated: 78000, dateCreated: '2026-02-10', initiatedBy: 'Green Grocers' },
-    { id: 'PRT-006', businessA: { name: 'Book Nook', category: 'Education', location: 'Ibadan' }, businessB: { name: 'Cafe Mocha', category: 'Restaurant', location: 'Ibadan' }, status: 'Declined', customersShared: 0, revenueGenerated: 0, dateCreated: '2026-05-20', initiatedBy: 'Book Nook' },
-    { id: 'PRT-007', businessA: { name: 'AutoCare', category: 'Automotive', location: 'Port Harcourt' }, businessB: { name: 'TireZone', category: 'Automotive', location: 'Port Harcourt' }, status: 'Active', customersShared: 312, revenueGenerated: 890000, dateCreated: '2025-11-01', initiatedBy: 'AutoCare' },
-    { id: 'PRT-008', businessA: { name: 'PharmaPlus', category: 'Health', location: 'Abuja' }, businessB: { name: 'MediLab Diagnostics', category: 'Health', location: 'Abuja' }, status: 'Pending', customersShared: 0, revenueGenerated: 0, dateCreated: '2026-06-15', initiatedBy: 'PharmaPlus' },
-    { id: 'PRT-009', businessA: { name: 'Fashion Hub', category: 'Fashion', location: 'Ikeja, Lagos' }, businessB: { name: 'Shoe Palace', category: 'Fashion', location: 'Ikeja, Lagos' }, status: 'Active', customersShared: 67, revenueGenerated: 95000, dateCreated: '2026-04-05', initiatedBy: 'Fashion Hub' },
-    { id: 'PRT-010', businessA: { name: 'Décor Studio', category: 'Home', location: 'Lekki, Lagos' }, businessB: { name: 'EventPro', category: 'Services', location: 'Lekki, Lagos' }, status: 'Ended', customersShared: 23, revenueGenerated: 34000, dateCreated: '2026-01-20', initiatedBy: 'Décor Studio' },
-];
 
 const ITEMS_PER_PAGE = 5;
 
@@ -63,12 +51,30 @@ const sectionCards = [
 ];
 
 export default function DiscoveryPartnershipsPage() {
-    const [partnerships, setPartnerships] = useState<Partnership[]>(MOCK_PARTNERSHIPS);
+    const { data, isLoading } = useAdminPartnerships({ limit: 100 });
+    const apiPartnerships = data?.data || [];
+    const [partnerships, setPartnerships] = useState<Partnership[]>([]);
     const [search, setSearch] = useState('');
     const [statusTab, setStatusTab] = useState<'all' | PartnershipStatus>('all');
     const [currentPage, setCurrentPage] = useState(1);
     const [confirmAction, setConfirmAction] = useState<{ type: string; id: string } | null>(null);
     const [showHub, setShowHub] = useState(true);
+
+    useEffect(() => {
+        if (!isLoading && apiPartnerships.length) {
+            const mapped: Partnership[] = apiPartnerships.map((p: any) => ({
+                id: p.id,
+                businessA: { name: p.businessA, category: '—', location: '—' },
+                businessB: { name: p.businessB, category: '—', location: '—' },
+                status: p.status,
+                customersShared: p.customersShared,
+                revenueGenerated: p.revenueGenerated,
+                dateCreated: p.dateCreated,
+                initiatedBy: p.businessA,
+            }));
+            setPartnerships(mapped);
+        }
+    }, [isLoading, apiPartnerships]);
 
     const filtered = useMemo(() => {
         return partnerships.filter((p) => {
@@ -238,7 +244,13 @@ export default function DiscoveryPartnershipsPage() {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-50 text-sm">
-                            {paginated.map((prt) => (
+                            {isLoading ? (
+                                Array.from({ length: 5 }).map((_, i) => (
+                                    <tr key={i} className="animate-pulse">
+                                        <td colSpan={8} className="px-5 py-4 bg-gray-50/50 h-16"></td>
+                                    </tr>
+                                ))
+                            ) : paginated.map((prt) => (
                                 <tr key={prt.id} className="hover:bg-gray-50/50 transition-colors group">
                                     <td className="px-5 py-4"><span className="text-xs font-bold text-text-secondary font-mono">{prt.id}</span></td>
                                     <td className="px-5 py-4">

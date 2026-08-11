@@ -1,11 +1,18 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { Branch, CreateBranchRequest, UpdateBranchRequest } from './types';
+import { useAuthStore } from '@/store/useAuthStore';
 
 // ─── Fetch all branches for the authenticated user's business ─────────────────
 export const useBranches = (enabled: boolean = true) => {
+    const user = useAuthStore((state) => state.user);
+    const token = useAuthStore((state) => state.access_token);
+    const businessId = user?.businessId ?? user?.id;
     return useQuery<Branch[], Error>({
-        queryKey: ['branches'],
+        // Scope the key to the current business AND the session token so a stale
+        // cache entry from a previous account can never be served on a different
+        // account, even across a client-side (no page reload) account switch.
+        queryKey: ['branches', businessId, token ?? 'anon'],
         queryFn: async () => await api.get('/branches'),
         staleTime: 1000 * 60 * 5, // cache for 5 minutes
         enabled,
@@ -14,8 +21,10 @@ export const useBranches = (enabled: boolean = true) => {
 
 // ─── Fetch a single branch ────────────────────────────────────────────────────
 export const useBranch = (id: string) => {
+    const { user } = useAuthStore();
+    const businessId = user?.businessId ?? user?.id;
     return useQuery<Branch, Error>({
-        queryKey: ['branches', id],
+        queryKey: ['branch', businessId, id],
         queryFn: async () => await api.get(`/branches/${id}`),
         enabled: !!id,
     });
@@ -37,9 +46,9 @@ export const useUpdateBranch = () => {
     const queryClient = useQueryClient();
     return useMutation<Branch, Error, { id: string; updates: UpdateBranchRequest }>({
         mutationFn: async ({ id, updates }) => await api.patch(`/branches/${id}`, updates),
-        onSuccess: (_, { id }) => {
+        onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['branches'] });
-            queryClient.invalidateQueries({ queryKey: ['branches', id] });
+            queryClient.invalidateQueries({ queryKey: ['branch'] });
             queryClient.invalidateQueries({ queryKey: ['my-business'] });
         },
     });

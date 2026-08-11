@@ -36,13 +36,14 @@ import { toast } from 'react-hot-toast';
 import { PremiumBottomNav } from '@/components/visitor/PremiumBottomNav';
 import { StepForm, StepFormData } from '@/components/visitor/StepForm';
 import { api } from '@/lib/api';
+import { signupVisitorAndLogin } from '@/lib/visitorAuth';
 import { User } from '@/store/useAuthStore';
 
 export default function OffersPage() {
     const params = useParams();
     const router = useRouter();
     const { branchId, storeName, logoUrl, setUserData } = useCustomerFlowStore();
-    const { isAuthenticated, user, login } = useAuthStore();
+    const { isAuthenticated, user } = useAuthStore();
     const guestCart = useGuestCartStore();
     const addToCartMutation = useAddToCart();
     useCartMergeOnLogin(branchId);
@@ -133,15 +134,9 @@ export default function OffersPage() {
     const onAuthComplete = async (data: StepFormData) => {
         setIsSubmitting(true);
         try {
-            const nameParts = data.name?.trim().split(/\s+/) || ['Visitor'];
-            const firstName = nameParts[0];
-            const lastName = nameParts.slice(1).join(' ') || ' ';
-            
-            await api.post(`/visitors/signup`, { firstName, lastName, email: data.email, phone: data.phone || undefined });
-            const authResponse = await api.post('/auth/login', { identifier: data.email, password: '123456' });
+            await signupVisitorAndLogin({ email: data.email, phone: data.phone, name: data.name });
 
-            if (authResponse?.access_token) {
-                login(authResponse.user, authResponse.access_token);
+            if (useAuthStore.getState().isAuthenticated) {
                 setUserData(data);
                 setShowAuthForm(false);
                 if (pendingOffer) {

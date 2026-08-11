@@ -8,6 +8,7 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Between, ILike, DataSource, EntityManager } from 'typeorm';
 import * as bcrypt from 'bcrypt';
+import { randomBytes } from 'crypto';
 import { PosSale } from './entities/pos-sale.entity';
 import { PaymentMethod, SaleStatus } from './entities/pos-enums';
 import { PosSaleItem } from './entities/pos-sale-item.entity';
@@ -52,6 +53,10 @@ import { PushNotificationService } from '../notifications/push-notification.serv
 import { LoyaltyService } from '../loyalty/loyalty.service';
 import { PosRefund } from './entities/pos-refund.entity';
 import { PosRefundItem } from './entities/pos-refund-item.entity';
+import { PosCashDrop } from './entities/pos-cash-drop.entity';
+import { CashDropDto } from './dto/cash-drop.dto';
+import { StockMovementService } from '../inventory-counting/stock-movement.service';
+import { StockMovementType } from '../inventory-counting/entities/stock-movement.entity';
 
 @Injectable()
 export class PosService {
@@ -72,6 +77,8 @@ export class PosService {
     private readonly refundRepository: Repository<PosRefund>,
     @InjectRepository(PosRefundItem)
     private readonly refundItemRepository: Repository<PosRefundItem>,
+    @InjectRepository(PosCashDrop)
+    private readonly cashDropRepository: Repository<PosCashDrop>,
     @InjectRepository(CatalogueItem)
     private readonly productRepository: Repository<CatalogueItem>,
     @InjectRepository(CatalogueOffer)
@@ -93,6 +100,7 @@ export class PosService {
     private readonly catalogueOrderService: CatalogueOrderService,
     @Inject(forwardRef(() => LoyaltyService))
     private readonly loyaltyService: LoyaltyService,
+    private readonly stockMovementService: StockMovementService,
   ) {}
 
   async completeSale(dto: CreatePosSaleDto, cashier: User) {
@@ -176,8 +184,19 @@ export class PosService {
         subtotal += Number(product.price) * itemDto.quantity;
         totalDiscount += itemDiscount;
 
+        const previousQuantity = product.stockQuantity ?? 0;
         this.deductStock(product, itemDto.quantity);
         await productRepo.save(product);
+        await this.stockMovementService.record({
+          itemId: product.id,
+          businessId: branch.businessId,
+          branchId: branch.id,
+          userId: cashier.id,
+          type: StockMovementType.SALE,
+          previousQuantity,
+          newQuantity: product.stockQuantity ?? previousQuantity,
+          reason: 'POS sale',
+        });
       }
 
       const cartDiscount = dto.cartDiscountAmount || 0;
@@ -443,7 +462,9 @@ export class PosService {
         });
       }
       if (!customer) {
-        const defaultPassword = '123456';
+        const defaultPassword = randomBytes(9)
+          .toString('base64url')
+          .slice(0, 12);
         const hashedPassword = await bcrypt.hash(defaultPassword, 10);
         const dummyEmail = `guest_${dto.phone.replace(/\+/g, '')}@vemtap.dummy`;
         customer = this.userRepository.create({
@@ -785,9 +806,20 @@ export class PosService {
     });
     if (!product) throw new NotFoundException('Product not found');
 
+    const previousQuantity = product.stockQuantity ?? 0;
     product.stockQuantity = quantity;
     this.autoUpdateStatus(product);
-    return this.productRepository.save(product);
+    const saved = await this.productRepository.save(product);
+    await this.stockMovementService.record({
+      itemId: product.id,
+      businessId,
+      branchId: null,
+      type: StockMovementType.ADJUST,
+      previousQuantity,
+      newQuantity: quantity,
+      reason: 'Manual stock adjustment',
+    });
+    return saved;
   }
 
   async findAllSales(businessId: string, query: PosSaleQueryDto) {
@@ -903,8 +935,20 @@ export class PosService {
               where: { id: item.productId, businessId },
             });
             if (product) {
+              const previousQuantity = product.stockQuantity ?? 0;
               this.restoreStock(product, remainingQty);
               await this.productRepository.save(product);
+              await this.stockMovementService.record({
+                itemId: product.id,
+                businessId,
+                branchId: sale.branchId,
+                userId: refundedById,
+                type: StockMovementType.RETURN,
+                previousQuantity,
+                newQuantity: product.stockQuantity ?? previousQuantity,
+                reason: 'POS sale refund',
+                referenceId: sale.id,
+              });
             }
           }
           const itemPrice = Number(item.unitPrice);
@@ -963,8 +1007,20 @@ export class PosService {
             where: { id: item.productId, businessId },
           });
           if (product) {
+            const previousQuantity = product.stockQuantity ?? 0;
             this.restoreStock(product, refundItemDto.quantity);
             await this.productRepository.save(product);
+            await this.stockMovementService.record({
+              itemId: product.id,
+              businessId,
+              branchId: sale.branchId,
+              userId: refundedById,
+              type: StockMovementType.RETURN,
+              previousQuantity,
+              newQuantity: product.stockQuantity ?? previousQuantity,
+              reason: 'POS partial refund',
+              referenceId: sale.id,
+            });
           }
         }
 
@@ -1167,6 +1223,75 @@ export class PosService {
     });
 
     return { isOpen: !!session, session: session || null };
+  }
+
+  async cashDrop(dto: CashDropDto, cashier: User) {
+    const session = await this.registerSessionRepository.findOne({
+      where: {
+        cashierId: cashier.id,
+        branchId: cashier.branchId,
+        status: RegisterSessionStatus.OPEN,
+      },
+    });
+    if (!session)
+      throw new BadRequestException('No open register session found');
+
+    const drop = this.cashDropRepository.create({
+      registerSessionId: session.id,
+      businessId: session.businessId,
+      branchId: session.branchId,
+      droppedById: cashier.id,
+      amount: dto.amount,
+      reason: dto.reason.trim(),
+    });
+    return this.cashDropRepository.save(drop);
+  }
+
+  async getZReport(cashier: User) {
+    const session = await this.registerSessionRepository.findOne({
+      where: [
+        { cashierId: cashier.id, status: RegisterSessionStatus.OPEN },
+        { cashierId: cashier.id, status: RegisterSessionStatus.CLOSED },
+      ],
+      order: { openedAt: 'DESC' },
+    });
+    if (!session) throw new NotFoundException('Register session not found');
+
+    const sales = await this.saleRepository.find({
+      where: {
+        businessId: session.businessId,
+        branchId: session.branchId,
+        cashierId: session.cashierId,
+        status: SaleStatus.COMPLETED,
+        createdAt: Between(session.openedAt, session.closedAt || new Date()),
+      },
+    });
+    const drops = await this.cashDropRepository.find({
+      where: { registerSessionId: session.id },
+    });
+    const cashSales = sales
+      .filter((sale) => sale.paymentMethod === PaymentMethod.CASH)
+      .reduce((sum, sale) => sum + Number(sale.total), 0);
+    const cashDrops = drops.reduce((sum, drop) => sum + Number(drop.amount), 0);
+    const totalSales = sales.reduce((sum, sale) => sum + Number(sale.total), 0);
+
+    return {
+      registerSessionId: session.id,
+      status: session.status,
+      openedAt: session.openedAt,
+      closedAt: session.closedAt,
+      openingCash: Number(session.openingCash),
+      totalSales,
+      transactionCount: sales.length,
+      cashSales,
+      cashDrops,
+      expectedCash: Number(session.openingCash) + cashSales - cashDrops,
+      paymentBreakdown: sales.reduce<Record<string, number>>((result, sale) => {
+        result[sale.paymentMethod] =
+          (result[sale.paymentMethod] || 0) + Number(sale.total);
+        return result;
+      }, {}),
+    };
   }
 
   async getRegisterHistory(businessId: string, query: RegisterHistoryQueryDto) {

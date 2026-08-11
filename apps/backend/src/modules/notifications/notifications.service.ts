@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Notification } from './entities/notification.entity';
@@ -12,6 +12,38 @@ export class NotificationsService {
     @InjectRepository(User)
     private userRepository: Repository<User>,
   ) {}
+
+  async getPreferences(userId: string) {
+    const user = await this.userRepository.findOne({
+      where: { id: userId },
+      select: ['id', 'notificationPreferences'],
+    });
+    if (!user) throw new NotFoundException('User not found');
+    return {
+      push: true,
+      email: true,
+      sms: true,
+      marketing: true,
+      orderUpdates: true,
+      loyalty: true,
+      support: true,
+      rewardAlerts: true,
+      activityDigest: true,
+      smsSecurity: false,
+      ...(user.notificationPreferences || {}),
+    };
+  }
+
+  async updatePreferences(
+    userId: string,
+    preferences: Record<string, boolean>,
+  ) {
+    const updated = { ...(await this.getPreferences(userId)), ...preferences };
+    await this.userRepository.update(userId, {
+      notificationPreferences: updated,
+    });
+    return updated;
+  }
 
   async broadcastToRole(
     role: UserRole,
@@ -54,7 +86,14 @@ export class NotificationsService {
   }
 
   async markAsRead(id: string) {
-    return this.notificationsRepository.update(id, { isRead: true });
+    const notification = await this.notificationsRepository.findOne({
+      where: { id },
+    });
+    if (!notification) {
+      throw new NotFoundException(`Notification with id ${id} not found`);
+    }
+    notification.isRead = true;
+    return this.notificationsRepository.save(notification);
   }
 
   async markAllAsRead(userId: string) {

@@ -60,7 +60,7 @@ export default function ProductDetailsPage() {
         if (item.discountType === 'percentage') {
             return Number(item.price) - (Number(item.price) * (Number(item.discountValue) / 100));
         }
-        return Number(item.discountValue);
+        return Number(item.price) - Number(item.discountValue);
     };
 
     const discountedPrice = calculateDiscountedPrice(item);

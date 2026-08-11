@@ -101,7 +101,7 @@ export interface Business {
     youtubeUrl?: string;
     customLink?: string;
     isActive: boolean;
-    status: 'pending' | 'APPROVED' | 'REJECTED' | 'SUSPENDED';
+    status: 'pending' | 'active' | 'suspended';
     linkedinUrl?: string;
     reviewUrl?: string;
     trustpilotUrl?: string;

@@ -202,8 +202,7 @@ export default function AdminSearch() {
     const handleSelect = (item: SearchResult) => {
         closePalette();
         if (item.type === 'action' && item.actionType === 'logout') {
-            logout();
-            router.push('/login');
+            logout().then(() => router.push('/login'));
         } else {
             router.push(item.href);
         }

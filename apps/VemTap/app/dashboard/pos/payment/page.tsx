@@ -23,6 +23,19 @@ import { saveOfflineOrder, addToSyncQueue } from '@/lib/offline/db';
 import { v4 as uuidv4 } from 'uuid';
 import toast from 'react-hot-toast';
 
+// Allows digits + a single decimal point with up to 2 decimal places, so split
+// payments can match fractional totals (discounts/rewards in kobo).
+const sanitizeMoney = (raw: string): string => {
+  let s = raw.replace(/[^0-9.]/g, '');
+  const firstDot = s.indexOf('.');
+  if (firstDot !== -1) {
+    const before = s.slice(0, firstDot);
+    const after = s.slice(firstDot + 1).replace(/\./g, '');
+    s = `${before}.${after.slice(0, 2)}`;
+  }
+  return s.slice(0, 12);
+};
+
 export default function PaymentScreen() {
   const router = useRouter();
   const { activeBranchId } = useActiveBranch();
@@ -97,11 +110,55 @@ export default function PaymentScreen() {
   const receivedNum = parseFloat(amountReceived.replace(/,/g, '')) || 0;
   const change = Math.max(0, receivedNum - totalAfterReward);
 
-  const splitCashNum = parseFloat(splitCash.replace(/,/g, '')) || 0;
-  const splitCardNum = parseFloat(splitCard.replace(/,/g, '')) || 0;
-  const splitTransferNum = parseFloat(splitTransfer.replace(/,/g, '')) || 0;
+  const splitCashNum = parseFloat(splitCash) || 0;
+  const splitCardNum = parseFloat(splitCard) || 0;
+  const splitTransferNum = parseFloat(splitTransfer) || 0;
   const splitSum = splitCashNum + splitCardNum + splitTransferNum;
   const splitRemaining = totalAfterReward - splitSum;
+
+  // ── Split auto-complete ─────────────────────────────────────────────
+  // When two of the three fields already have amounts, suggest the exact
+  // remaining balance on the still-empty field so the cashier can tap to
+  // fill it (or keep typing manually).
+  const splitFieldValue = (field: 'cash' | 'card' | 'transfer') =>
+    field === 'cash' ? splitCashNum : field === 'card' ? splitCardNum : splitTransferNum;
+
+  const splitOthersFilled = (field: 'cash' | 'card' | 'transfer') => {
+    const others = field === 'cash'
+      ? [splitCardNum, splitTransferNum]
+      : field === 'card'
+        ? [splitCashNum, splitTransferNum]
+        : [splitCashNum, splitCardNum];
+    return others.every(v => v > 0);
+  };
+
+  const splitSuggestion = (field: 'cash' | 'card' | 'transfer'): number | null => {
+    if (!splitOthersFilled(field)) return null;
+    if (splitFieldValue(field) > 0) return null;
+    const othersSum = field === 'cash'
+      ? splitCardNum + splitTransferNum
+      : field === 'card'
+        ? splitCashNum + splitTransferNum
+        : splitCashNum + splitCardNum;
+    const suggestion = totalAfterReward - othersSum;
+    if (suggestion <= 0) return null;
+    return Math.round(suggestion * 100) / 100;
+  };
+
+  const applySplitSuggestion = (field: 'cash' | 'card' | 'transfer') => {
+    const s = splitSuggestion(field);
+    if (s == null) return;
+    const raw = String(s);
+    if (field === 'cash') setSplitCash(raw);
+    else if (field === 'card') setSplitCard(raw);
+    else setSplitTransfer(raw);
+  };
+
+  // Keep the latest attached customer readable from async callbacks (the
+  // customer prompt flow runs executePayment after a delay, and closures
+  // otherwise capture a stale `attachedCustomer`).
+  const attachedCustomerRef = React.useRef(attachedCustomer);
+  React.useEffect(() => { attachedCustomerRef.current = attachedCustomer; }, [attachedCustomer]);
 
   const isSufficient = selectedMethod === 'cash' 
     ? receivedNum >= totalAfterReward 
@@ -111,14 +168,15 @@ export default function PaymentScreen() {
 
   const goToSuccess = (sale: any) => {
     setLastCompletedSale(sale);
-    if (attachedCustomer) {
+    const customer = attachedCustomerRef.current;
+    if (customer) {
       const autoPts = cart.reduce((sum, item) =>
         item.enableLoyaltyPoints && item.loyaltyPointsValue ? sum + item.loyaltyPointsValue * item.quantity : sum, 0);
       const totalPoints = (autoPts > 0 ? autoPts : ruleBasedPoints) + manualLoyaltyPoints;
       if (totalPoints > 0) {
         const { addPoints, setLastEarned } = usePosLoyaltyStore.getState();
-        addPoints(attachedCustomer.id, totalPoints);
-        setLastEarned(attachedCustomer.id, totalPoints);
+        addPoints(customer.id, totalPoints);
+        setLastEarned(customer.id, totalPoints);
       }
     }
     clearCart();
@@ -156,7 +214,7 @@ export default function PaymentScreen() {
       items,
       payment,
       branchId: activeBranchId,
-      customerId: attachedCustomer?.id && UUID_RE.test(attachedCustomer.id) ? attachedCustomer.id : undefined,
+      customerId: attachedCustomerRef.current?.id && UUID_RE.test(attachedCustomerRef.current.id) ? attachedCustomerRef.current.id : undefined,
       cartDiscountAmount: (cartDiscount ? (cartDiscount.type === 'percentage' ? getCartDiscountAmount() : cartDiscount.value) : 0) + rewardDiscount,
       hideCustomerInfoOnReceipt,
       clientRef,
@@ -166,6 +224,7 @@ export default function PaymentScreen() {
 
     const buildOfflineSale = () => {
       const orderId = uuidv4();
+      const customer = attachedCustomerRef.current;
       return {
         id: orderId,
         receiptNumber: `OFFLINE-${orderId.slice(0, 8).toUpperCase()}`,
@@ -173,13 +232,13 @@ export default function PaymentScreen() {
         branchId: activeBranchId!,
         cashierId: cashier?.id ?? '',
         cashierName: cashier ? `${cashier.firstName} ${cashier.lastName}` : '',
-        customerId: attachedCustomer?.id ?? null,
-        customer: attachedCustomer ? {
-          id: attachedCustomer.id,
-          firstName: attachedCustomer.name.split(' ')[0] || '',
-          lastName: attachedCustomer.name.split(' ').slice(1).join(' ') || '',
-          phone: attachedCustomer.phone,
-          email: attachedCustomer.email || '',
+        customerId: customer?.id ?? null,
+        customer: customer ? {
+          id: customer.id,
+          firstName: customer.name.split(' ')[0] || '',
+          lastName: customer.name.split(' ').slice(1).join(' ') || '',
+          phone: customer.phone,
+          email: customer.email || '',
         } : null,
         subtotal: getCartSubtotal(),
         discountAmount: getCartDiscountAmount(),
@@ -278,9 +337,26 @@ export default function PaymentScreen() {
   };
 
   const handleComplete = () => {
-    if (!selectedMethod || !isSufficient || isProcessing) return;
+    if (!selectedMethod || isProcessing) return;
 
-    if (!attachedCustomer) {
+    if (selectedMethod === 'split') {
+      const usedMethods = [splitCashNum, splitCardNum, splitTransferNum].filter(a => a > 0);
+      if (usedMethods.length < 2) {
+        toast.error('Split payment needs at least 2 payment methods (cash, card or transfer).');
+        return;
+      }
+      if (Math.abs(splitSum - totalAfterReward) > 0.005) {
+        const message = splitRemaining > 0
+          ? `Split amounts must add up to ₦${totalAfterReward.toLocaleString()} — ₦${splitRemaining.toLocaleString()} still remaining.`
+          : `Split amounts add up to more than the total (₦${Math.abs(splitRemaining).toLocaleString()} over).`;
+        toast.error(message);
+        return;
+      }
+    } else if (!isSufficient) {
+      return;
+    }
+
+    if (!attachedCustomerRef.current) {
       setCustomerPromptSource('payment');
       setShowCustomerPrompt(true);
       return;
@@ -601,71 +677,89 @@ export default function PaymentScreen() {
               <div className="mb-8 p-6 bg-gray-50 rounded-[24px] border border-gray-100 space-y-6">
                 <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 mb-1">Split Payment Details</label>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  <button
-                    type="button"
+                  <div
                     onClick={() => setActiveSplitField('cash')}
-                    className={cn("p-3 rounded-2xl border-2 text-left transition-all", activeSplitField === 'cash' ? "border-emerald-500 bg-emerald-50/50" : "border-gray-200 bg-white")}
+                    className={cn("p-3 rounded-2xl border-2 text-left transition-all cursor-pointer", activeSplitField === 'cash' ? "border-emerald-500 bg-emerald-50/50" : "border-gray-200 bg-white")}
                   >
                     <label className="block text-[9px] font-black uppercase tracking-[0.2em] text-emerald-600 mb-1 cursor-pointer">Cash Amount (₦)</label>
                     <div className="relative">
                       <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-400">₦</span>
                       <input
                         type="text"
+                        inputMode="decimal"
                         value={splitCash}
                         onFocus={() => setActiveSplitField('cash')}
-                        onChange={(e) => {
-                          const val = e.target.value.replace(/[^0-9]/g, '');
-                          setSplitCash(val ? Number(val).toLocaleString() : '');
-                        }}
+                        onChange={(e) => setSplitCash(sanitizeMoney(e.target.value))}
                         className="w-full h-11 pl-7 pr-3 rounded-xl border border-gray-200 bg-white text-sm font-bold text-gray-900 focus:outline-none focus:border-emerald-500"
                         placeholder="0"
                       />
                     </div>
-                  </button>
+                    {splitSuggestion('cash') != null && (
+                      <button
+                        type="button"
+                        onClick={() => applySplitSuggestion('cash')}
+                        className="mt-1.5 w-full h-8 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-600 text-[10px] font-black uppercase tracking-wider flex items-center justify-center gap-1 hover:bg-emerald-100 active:scale-95 transition-all"
+                      >
+                        Use ₦{splitSuggestion('cash')!.toLocaleString()}
+                      </button>
+                    )}
+                  </div>
 
-                  <button
-                    type="button"
+                  <div
                     onClick={() => setActiveSplitField('card')}
-                    className={cn("p-3 rounded-2xl border-2 text-left transition-all", activeSplitField === 'card' ? "border-purple-500 bg-purple-50/50" : "border-gray-200 bg-white")}
+                    className={cn("p-3 rounded-2xl border-2 text-left transition-all cursor-pointer", activeSplitField === 'card' ? "border-purple-500 bg-purple-50/50" : "border-gray-200 bg-white")}
                   >
                     <label className="block text-[9px] font-black uppercase tracking-[0.2em] text-purple-600 mb-1 cursor-pointer">Card Amount (₦)</label>
                     <div className="relative">
                       <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-400">₦</span>
                       <input
                         type="text"
+                        inputMode="decimal"
                         value={splitCard}
                         onFocus={() => setActiveSplitField('card')}
-                        onChange={(e) => {
-                          const val = e.target.value.replace(/[^0-9]/g, '');
-                          setSplitCard(val ? Number(val).toLocaleString() : '');
-                        }}
+                        onChange={(e) => setSplitCard(sanitizeMoney(e.target.value))}
                         className="w-full h-11 pl-7 pr-3 rounded-xl border border-gray-200 bg-white text-sm font-bold text-gray-900 focus:outline-none focus:border-purple-500"
                         placeholder="0"
                       />
                     </div>
-                  </button>
+                    {splitSuggestion('card') != null && (
+                      <button
+                        type="button"
+                        onClick={() => applySplitSuggestion('card')}
+                        className="mt-1.5 w-full h-8 rounded-lg bg-purple-50 border border-purple-200 text-purple-600 text-[10px] font-black uppercase tracking-wider flex items-center justify-center gap-1 hover:bg-purple-100 active:scale-95 transition-all"
+                      >
+                        Use ₦{splitSuggestion('card')!.toLocaleString()}
+                      </button>
+                    )}
+                  </div>
 
-                  <button
-                    type="button"
+                  <div
                     onClick={() => setActiveSplitField('transfer')}
-                    className={cn("p-3 rounded-2xl border-2 text-left transition-all", activeSplitField === 'transfer' ? "border-blue-500 bg-blue-50/50" : "border-gray-200 bg-white")}
+                    className={cn("p-3 rounded-2xl border-2 text-left transition-all cursor-pointer", activeSplitField === 'transfer' ? "border-blue-500 bg-blue-50/50" : "border-gray-200 bg-white")}
                   >
                     <label className="block text-[9px] font-black uppercase tracking-[0.2em] text-blue-600 mb-1 cursor-pointer">Transfer Amount (₦)</label>
                     <div className="relative">
                       <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-400">₦</span>
                       <input
                         type="text"
+                        inputMode="decimal"
                         value={splitTransfer}
                         onFocus={() => setActiveSplitField('transfer')}
-                        onChange={(e) => {
-                          const val = e.target.value.replace(/[^0-9]/g, '');
-                          setSplitTransfer(val ? Number(val).toLocaleString() : '');
-                        }}
+                        onChange={(e) => setSplitTransfer(sanitizeMoney(e.target.value))}
                         className="w-full h-11 pl-7 pr-3 rounded-xl border border-gray-200 bg-white text-sm font-bold text-gray-900 focus:outline-none focus:border-blue-500"
                         placeholder="0"
                       />
                     </div>
-                  </button>
+                    {splitSuggestion('transfer') != null && (
+                      <button
+                        type="button"
+                        onClick={() => applySplitSuggestion('transfer')}
+                        className="mt-1.5 w-full h-8 rounded-lg bg-blue-50 border border-blue-200 text-blue-600 text-[10px] font-black uppercase tracking-wider flex items-center justify-center gap-1 hover:bg-blue-100 active:scale-95 transition-all"
+                      >
+                        Use ₦{splitSuggestion('transfer')!.toLocaleString()}
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 {/* Touch Keypad for Split Payment */}
@@ -674,13 +768,13 @@ export default function PaymentScreen() {
                     Enter Amount for <strong className="text-[#066CF4] uppercase">{activeSplitField}</strong>
                   </span>
                   <TouchKeypad
-                    value={(activeSplitField === 'cash' ? splitCash : activeSplitField === 'card' ? splitCard : splitTransfer).replace(/,/g, '')}
+                    allowDecimal
+                    value={activeSplitField === 'cash' ? splitCash : activeSplitField === 'card' ? splitCard : splitTransfer}
                     onChange={(val) => {
-                      const raw = val.replace(/[^0-9]/g, '');
-                      const formatted = raw ? Number(raw).toLocaleString() : '';
-                      if (activeSplitField === 'cash') setSplitCash(formatted);
-                      else if (activeSplitField === 'card') setSplitCard(formatted);
-                      else setSplitTransfer(formatted);
+                      const clean = sanitizeMoney(val);
+                      if (activeSplitField === 'cash') setSplitCash(clean);
+                      else if (activeSplitField === 'card') setSplitCard(clean);
+                      else setSplitTransfer(clean);
                     }}
                     onClear={() => {
                       if (activeSplitField === 'cash') setSplitCash('');
@@ -727,10 +821,10 @@ export default function PaymentScreen() {
             <div className="mt-8">
               <button
                 onClick={handleComplete}
-                disabled={!selectedMethod || !isSufficient || isProcessing}
+                disabled={!selectedMethod || isProcessing}
                 className={cn(
                   "w-full h-16 rounded-[24px] flex items-center justify-center text-[12px] font-black uppercase tracking-[0.2em] transition-all shadow-xl",
-                  selectedMethod && isSufficient && !isProcessing
+                  selectedMethod && (selectedMethod === 'split' || isSufficient) && !isProcessing
                     ? "bg-[#066CF4] text-white shadow-blue-500/25 hover:bg-blue-600 active:scale-[0.98]"
                     : "bg-gray-100 text-gray-400 cursor-not-allowed shadow-none"
                 )}

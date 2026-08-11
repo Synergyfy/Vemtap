@@ -1,8 +1,13 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Between, Not, IsNull, FindOptionsWhere } from 'typeorm';
 import {
   SupportTicket,
+  TicketPriority,
   TicketStatus,
   TicketType,
 } from './entities/support-ticket.entity';
@@ -12,6 +17,7 @@ import { CreateTicketDto } from './dto/create-ticket.dto';
 import { User, UserRole } from '../users/entities/user.entity';
 import { AgentStatsDto } from './dto/agent-stats.dto';
 import { UpdateAgentProfileDto } from './dto/update-agent-profile.dto';
+import { AddTicketAttachmentsDto } from './dto/ticket-attachment.dto';
 
 import { SupportGateway } from './support.gateway';
 import { ConversationContextService } from './conversation-context.service';
@@ -135,6 +141,7 @@ export class SupportService {
       subject: dto.subject,
       category: dto.category,
       status: TicketStatus.PENDING,
+      priority: dto.priority ?? TicketPriority.NORMAL,
       type: TicketType.TICKET,
     });
     await this.ticketRepository.save(ticket);
@@ -224,6 +231,78 @@ export class SupportService {
     this.supportGateway.emitNewMessage(ticket.id, savedMessage);
 
     return savedMessage;
+  }
+
+  async addAttachments(
+    ticketId: string,
+    userId: string,
+    dto: AddTicketAttachmentsDto,
+  ): Promise<TicketMessage> {
+    if (!dto.attachments?.length) {
+      throw new BadRequestException('At least one attachment is required');
+    }
+
+    const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB per file
+    const MAX_TOTAL_SIZE = 25 * 1024 * 1024; // 25 MB total
+
+    let totalSize = 0;
+    for (const file of dto.attachments) {
+      const actualSize = this.estimateAttachmentSize(file.url, file.size);
+      if (actualSize > MAX_FILE_SIZE) {
+        throw new BadRequestException(
+          `File "${file.name}" exceeds the 10 MB per-file limit`,
+        );
+      }
+      totalSize += actualSize;
+    }
+    if (totalSize > MAX_TOTAL_SIZE) {
+      throw new BadRequestException(
+        'Total attachment size exceeds the 25 MB limit',
+      );
+    }
+
+    const ticket = await this.findOne(ticketId, userId);
+
+    const message = this.messageRepository.create({
+      ticketId: ticket.id,
+      senderId: userId,
+      senderRole: 'CUSTOMER',
+      message: dto.message?.trim() || '<attachment>',
+      attachments: dto.attachments,
+    });
+
+    if (
+      ticket.status === TicketStatus.RESOLVED ||
+      ticket.status === TicketStatus.CANCELLED
+    ) {
+      ticket.status = TicketStatus.IN_PROGRESS;
+      await this.ticketRepository.save(ticket);
+      await this.logActivity(ticket.id, 'Ticket reopened', 'Customer');
+    }
+
+    const savedMessage = await this.messageRepository.save(message);
+
+    this.supportGateway.emitNewMessage(ticket.id, savedMessage);
+
+    return savedMessage;
+  }
+
+  private estimateAttachmentSize(url: string, reportedSize: number): number {
+    // For base64 data URLs, compute the real decoded byte length so a spoofed
+    // `size` field can't bypass the upload limits. Remote URLs are trusted
+    // metadata (size is not verifiable without downloading).
+    if (url.startsWith('data:')) {
+      const commaIndex = url.indexOf(',');
+      if (commaIndex >= 0) {
+        const b64 = url.slice(commaIndex + 1);
+        const padding = b64.endsWith('==') ? 2 : b64.endsWith('=') ? 1 : 0;
+        return Math.max(
+          reportedSize,
+          Math.floor((b64.length * 3) / 4) - padding,
+        );
+      }
+    }
+    return reportedSize;
   }
 
   // --- Agent Methods ---

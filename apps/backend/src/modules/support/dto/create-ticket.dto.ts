@@ -1,5 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, IsString } from 'class-validator';
+import { IsEnum, IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { TicketPriority } from '../entities/support-ticket.entity';
 
 export class CreateTicketDto {
   @ApiProperty({ example: 'Issue with Points' })
@@ -16,4 +17,13 @@ export class CreateTicketDto {
   @IsNotEmpty()
   @IsString()
   message: string;
+
+  @ApiProperty({
+    enum: TicketPriority,
+    example: TicketPriority.NORMAL,
+    required: false,
+  })
+  @IsOptional()
+  @IsEnum(TicketPriority)
+  priority?: TicketPriority = TicketPriority.NORMAL;
 }

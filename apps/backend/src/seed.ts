@@ -7,7 +7,68 @@ import { BranchesService } from './modules/branches/branches.service';
 import { CategoriesService } from './modules/categories/categories.service';
 import { PlansService } from './modules/subscriptions/plans.service';
 import { SupportBotService } from './modules/support/support-bot.service';
+import { StatusService } from './modules/status/status.service';
+import { SystemComponentStatus } from './modules/status/entities/status-component.entity';
 import * as bcrypt from 'bcrypt';
+
+const INITIAL_STATUS_COMPONENTS = [
+  {
+    slug: 'database',
+    name: 'Database',
+    status: SystemComponentStatus.OPERATIONAL,
+    latencyMs: 4,
+    uptime90d: '99.99%',
+    sortOrder: 0,
+  },
+  {
+    slug: 'nfc-response-api',
+    name: 'NFC Response API',
+    status: SystemComponentStatus.OPERATIONAL,
+    latencyMs: 12,
+    uptime90d: '99.99%',
+    sortOrder: 1,
+  },
+  {
+    slug: 'dashboard-web-app',
+    name: 'Dashboard Web App',
+    status: SystemComponentStatus.OPERATIONAL,
+    latencyMs: 142,
+    uptime90d: '99.95%',
+    sortOrder: 2,
+  },
+  {
+    slug: 'analytics-engine',
+    name: 'Real-time Analytics Engine',
+    status: SystemComponentStatus.OPERATIONAL,
+    latencyMs: 45,
+    uptime90d: '99.98%',
+    sortOrder: 3,
+  },
+  {
+    slug: 'nfc-hardware-sync',
+    name: 'NFC Hardware Sync',
+    status: SystemComponentStatus.OPERATIONAL,
+    latencyMs: 8,
+    uptime90d: '100%',
+    sortOrder: 4,
+  },
+  {
+    slug: 'email-notification-service',
+    name: 'Email & Notification Service',
+    status: SystemComponentStatus.OPERATIONAL,
+    latencyMs: 1200,
+    uptime90d: '99.90%',
+    sortOrder: 5,
+  },
+  {
+    slug: 'crm-webhook-delivery',
+    name: 'CRM Webhook Delivery',
+    status: SystemComponentStatus.DEGRADED,
+    latencyMs: 4500,
+    uptime90d: '98.50%',
+    sortOrder: 6,
+  },
+];
 
 const INITIAL_KNOWLEDGE = [
   {
@@ -99,6 +160,7 @@ async function bootstrap() {
   const categoriesService = app.get(CategoriesService);
   const plansService = app.get(PlansService);
   const botService = app.get(SupportBotService);
+  const statusService = app.get(StatusService);
 
   console.log('Seeding data...');
 
@@ -333,6 +395,20 @@ async function bootstrap() {
       console.log(`  Added Knowledge: ${item.question}`);
     } catch (e) {
       console.error(`  Failed to add Knowledge: ${item.question}`, e.message);
+    }
+  }
+
+  // 9. Seed Status Page Components
+  console.log('Seeding status page components...');
+  for (const component of INITIAL_STATUS_COMPONENTS) {
+    try {
+      await statusService.createComponent(component);
+      console.log(`  Added Status Component: ${component.name}`);
+    } catch (e) {
+      console.error(
+        `  Failed to add Status Component: ${component.name}`,
+        e.message,
+      );
     }
   }
 

@@ -30,6 +30,7 @@ import { InboxService } from '../services/inbox.service';
 import { SendMessageDto } from '../dto/send-message.dto';
 import { UpdateMessageDto } from '../dto/update-message.dto';
 import { CreateMessagingTemplateDto } from '../dto/template/create-template.dto';
+import { UpdateTemplateStatusDto } from '../dto/template/update-template-status.dto';
 import { ReplyDto } from '../dto/reply.dto';
 import { Channel } from '../enums/channel.enum';
 import { User, UserRole } from '../../users/entities/user.entity';
@@ -160,6 +161,41 @@ export class MessagingController {
     @Request() req: { user: User },
   ) {
     return this.templateService.updateTemplate(id, dto, req.user);
+  }
+
+  @Get('admin/templates')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({
+    summary: 'Admin: Get all messaging templates platform-wide',
+    description: 'Retrieves all messaging templates. Access: ADMIN',
+  })
+  @ApiResponse({ status: 200, description: 'Templates retrieved successfully' })
+  async getAdminTemplates() {
+    return this.templateService.findAllAdmin();
+  }
+
+  @Post('admin/templates/:id/status')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({
+    summary: 'Admin: Update template status',
+    description:
+      'Updates template status (approved, rejected, pending). Access: ADMIN',
+  })
+  @ApiParam({ name: 'id', description: 'Template UUID' })
+  @ApiBody({ type: UpdateTemplateStatusDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Template status updated successfully',
+  })
+  async updateAdminTemplateStatus(
+    @Param() { id }: IdDto,
+    @Body() dto: UpdateTemplateStatusDto,
+  ) {
+    return this.templateService.updateStatus(id, dto.status);
   }
 
   @Get('campaigns')

@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { NotificationsService } from './notifications.service';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Notification } from './entities/notification.entity';
+import { User } from '../users/entities/user.entity';
 
 describe('NotificationsService', () => {
   let service: NotificationsService;
@@ -28,6 +29,10 @@ describe('NotificationsService', () => {
       providers: [
         NotificationsService,
         { provide: getRepositoryToken(Notification), useValue: mockRepository },
+        {
+          provide: getRepositoryToken(User),
+          useValue: { find: jest.fn(), findOne: jest.fn(), update: jest.fn() },
+        },
       ],
     }).compile();
 

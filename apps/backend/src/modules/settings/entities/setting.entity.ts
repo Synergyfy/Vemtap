@@ -20,6 +20,22 @@ export class Setting extends AbstractBaseEntity {
   @Column({ default: 'Africa/Lagos' })
   timezone: string;
 
+  @ApiProperty({ example: 'DD/MM/YYYY', description: 'Date format' })
+  @Column({ default: 'DD/MM/YYYY' })
+  dateFormat: string;
+
+  @ApiProperty({ example: 'light', description: 'UI theme' })
+  @Column({ default: 'light' })
+  theme: string;
+
+  @ApiProperty({ example: 'sk_test_xxxx', description: 'Paystack secret key' })
+  @Column({ nullable: true })
+  paystackSecretKey: string;
+
+  @ApiProperty({ example: 'TL_xxxx', description: 'Termii API key' })
+  @Column({ nullable: true })
+  termiiApiKey: string;
+
   @ApiProperty({ example: true, description: 'Enforce 2FA for Admins' })
   @Column({ default: true })
   enforce2FA: boolean;
@@ -164,4 +180,11 @@ export class Setting extends AbstractBaseEntity {
   })
   @Column({ default: true })
   discoveryApprovalRequired: boolean;
+
+  @ApiProperty({
+    example: [],
+    description: 'B2B Partnership reward tiers configuration',
+  })
+  @Column({ type: 'json', nullable: true })
+  partnershipRewardTiers: any;
 }

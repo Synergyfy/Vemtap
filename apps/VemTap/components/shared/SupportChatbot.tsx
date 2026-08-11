@@ -2,14 +2,14 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { usePathname } from 'next/navigation';
-import { X, Send, Minimize2, Maximize2, MessageCircle, User, Headset, Loader2, Trash2, Mail, Info, CheckCircle2, Briefcase, Users } from 'lucide-react';
+import { X, Send, Minimize2, Maximize2, MessageCircle, User, Headset, Loader2, Trash2, Mail, Info, CheckCircle2, Briefcase, Users, Paperclip, FileText } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Draggable from 'react-draggable';
 import { useChatStore } from '@/store/chatStore';
 import { useAuthStore } from '@/store/useAuthStore';
 import { api } from '@/lib/api';
 import { cn } from '@/lib/utils';
-import { useEscalateChat, useSendSupportMessage, useSupportTicket, useUserSupportTickets } from '@/services/support/hooks';
+import { useEscalateChat, useSendSupportMessage, useSupportTicket, useUserSupportTickets, useAddTicketAttachments } from '@/services/support/hooks';
 import { useSupportSocket } from '@/hooks/useSupportSocket';
 import { toast } from 'react-hot-toast';
 
@@ -37,6 +37,8 @@ export default function SupportChatbot() {
     const [liveTicketId, setLiveTicketId] = useState<string | null>(null);
     const [isGuestIdentified, setIsGuestIdentified] = useState(false);
     const [sessionId, setSessionId] = useState<string | null>(null);
+    const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     const [userRole, setUserRole] = useState<UserRole>(() => {
         if (typeof window !== 'undefined') {
@@ -57,6 +59,7 @@ export default function SupportChatbot() {
     const { socket, isConnected } = useSupportSocket({ enabled: handedToAgent });
     const { data: ticketData, refetch: refetchTicket } = useSupportTicket(liveTicketId || '', false);
     const { data: userTicketsData } = useUserSupportTickets(1, 5, isAuthenticated);
+    const attachmentsMutation = useAddTicketAttachments(liveTicketId || '');
     
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const chatbotRef = useRef<HTMLDivElement>(null);
@@ -201,12 +204,6 @@ export default function SupportChatbot() {
         scrollToBottom();
     }, [history, isLoading, isTyping]);
 
-    // Hide floating chatbot inside the authenticated dashboard
-    // (placed after all hooks to satisfy the Rules of Hooks)
-    if (pathname?.startsWith('/dashboard') || pathname?.startsWith('/dashboard/')) {
-        return null;
-    }
-
     const getContext = () => {
         let context = "General Dashboard";
         if (pathname?.includes('messaging')) context = "Message Management";
@@ -327,11 +324,77 @@ export default function SupportChatbot() {
         }
     };
 
+    const readFileAsDataUrl = (file: File): Promise<string> => new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+    });
+
+    const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const files = Array.from(e.target.files || []);
+        e.target.value = '';
+        if (files.length === 0) return;
+        if (selectedFiles.length + files.length > 10) {
+            toast.error('You can attach up to 10 files');
+            return;
+        }
+        const MAX_FILE_SIZE = 10 * 1024 * 1024;
+        const MAX_TOTAL_SIZE = 25 * 1024 * 1024;
+        const all = [...selectedFiles, ...files];
+        if (all.some((f) => f.size > MAX_FILE_SIZE)) {
+            toast.error('Each file must be smaller than 10 MB');
+            return;
+        }
+        if (all.reduce((sum, f) => sum + f.size, 0) > MAX_TOTAL_SIZE) {
+            toast.error('Total attachments must be smaller than 25 MB');
+            return;
+        }
+        setSelectedFiles(all);
+    };
+
+    const removeFile = (index: number) => {
+        setSelectedFiles((prev) => prev.filter((_, i) => i !== index));
+    };
+
     const handleSendMessage = async () => {
-        if (!inputValue.trim() || isLoading) return;
+        if ((!inputValue.trim() && selectedFiles.length === 0) || isLoading) return;
+
+        if (selectedFiles.length > 0 && !(handedToAgent && liveTicketId)) {
+            toast.error('Connect to a human agent first to send files');
+            return;
+        }
 
         const userText = inputValue;
         setInputValue('');
+
+        if (selectedFiles.length > 0 && liveTicketId) {
+            addMessage({
+                role: 'user',
+                content: userText || `📎 ${selectedFiles.map((f) => f.name).join(', ')}`
+            });
+            setIsLoading(true);
+            try {
+                const attachments = await Promise.all(selectedFiles.map(async (file) => ({
+                    url: await readFileAsDataUrl(file),
+                    name: file.name,
+                    mimeType: file.type || 'application/octet-stream',
+                    size: file.size
+                })));
+                await attachmentsMutation.mutateAsync({
+                    message: userText || undefined,
+                    attachments
+                });
+                setSelectedFiles([]);
+                refetchTicket();
+            } catch (error) {
+                toast.error("Attachments not sent. Check your connection.");
+            } finally {
+                setIsLoading(false);
+            }
+            return;
+        }
+
         addMessage({ role: 'user', content: userText });
         
         if (handedToAgent && liveTicketId) {
@@ -375,7 +438,7 @@ export default function SupportChatbot() {
         <div className="font-sans">
             <AnimatePresence>
                 {!isOpen && isVisible && (
-                    <motion.button
+                    <motion.div
                         initial={{ scale: 0, opacity: 0 }}
                         animate={{ scale: 1, opacity: 1 }}
                         exit={{ scale: 0, opacity: 0 }}
@@ -398,7 +461,7 @@ className="fixed bottom-6 right-6 z-60 hidden md:block"
                                 </button>
                             </div>
                         </Draggable>
-                    </motion.button>
+                    </motion.div>
                 )}
             </AnimatePresence>
 
@@ -610,9 +673,31 @@ className="fixed bottom-6 right-6 z-60 hidden md:block"
                                                 <div ref={messagesEndRef} />
                                             </div>
                                             <div className="px-6 py-6 bg-white border-t border-gray-100 shrink-0 shadow-[0_-10px_20px_-10px_rgba(0,0,0,0.05)]">
+                                                {selectedFiles.length > 0 && (
+                                                    <div className="flex flex-wrap gap-2 mb-3">
+                                                        {selectedFiles.map((file, fi) => (
+                                                            <div key={fi} className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-xl pl-3 pr-2 py-1.5">
+                                                                <FileText size={14} className="text-indigo-600 shrink-0" />
+                                                                <span className="text-xs font-medium text-gray-700 max-w-[140px] truncate">{file.name}</span>
+                                                                <button onClick={() => removeFile(fi)} className="text-gray-400 hover:text-red-500 transition-colors">
+                                                                    <X size={14} />
+                                                                </button>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
                                                 <div className="flex items-end gap-3 bg-gray-50 border border-gray-100 rounded-[2rem] p-2 pr-3 focus-within:bg-white focus-within:border-indigo-200 focus-within:ring-4 focus-within:ring-indigo-50 transition-all duration-300">
+                                                    <input ref={fileInputRef} type="file" multiple className="hidden" onChange={handleFileSelect} />
+                                                    <button
+                                                        onClick={() => fileInputRef.current?.click()}
+                                                        disabled={isLoading || !handedToAgent}
+                                                        title={handedToAgent ? 'Attach files (max 10, 10 MB each)' : 'Connect to an agent to send files'}
+                                                        className="w-12 h-12 shrink-0 flex items-center justify-center text-indigo-600 hover:bg-indigo-50 rounded-2xl transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                                                    >
+                                                        <Paperclip size={20} />
+                                                    </button>
                                                     <textarea value={inputValue} onChange={(e) => setInputValue(e.target.value)} onKeyDown={handleKeyPress} placeholder="Message the team..." rows={1} disabled={isLoading} className="flex-1 px-4 py-3 bg-transparent border-none outline-none resize-none text-[13px] font-medium placeholder:text-gray-400 min-h-[48px] max-h-[120px]" />
-                                                    <button onClick={handleSendMessage} disabled={!inputValue.trim() || isLoading} className="w-12 h-12 bg-indigo-600 text-white rounded-2xl hover:bg-indigo-700 transition-all shadow-lg hover:shadow-indigo-200 active:scale-90 flex items-center justify-center shrink-0 disabled:opacity-30">
+                                                    <button onClick={handleSendMessage} disabled={(!inputValue.trim() && selectedFiles.length === 0) || isLoading} className="w-12 h-12 bg-indigo-600 text-white rounded-2xl hover:bg-indigo-700 transition-all shadow-lg hover:shadow-indigo-200 active:scale-90 flex items-center justify-center shrink-0 disabled:opacity-30">
                                                         <Send size={20} />
                                                     </button>
                                                 </div>

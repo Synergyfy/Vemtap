@@ -3,6 +3,7 @@ import { ProductsService } from './products.service';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { ProductType } from './entities/product-type.entity';
 import { Product } from './entities/product.entity';
+import { ProductReview } from './entities/product-review.entity';
 import { Quote } from './entities/quote.entity';
 import { Order } from './entities/order.entity';
 import { QuoteNegotiation } from './entities/quote-negotiation.entity';
@@ -29,6 +30,11 @@ describe('ProductsService - Product Types', () => {
     find: jest.fn(),
     findOne: jest.fn(),
   };
+  const mockProductReviewRepo = {
+    create: jest.fn(),
+    save: jest.fn(),
+    findOne: jest.fn(),
+  };
   const mockOrderRepo = {};
   const mockQuoteRepo = {};
   const mockNegotiationRepo = {};
@@ -43,6 +49,10 @@ describe('ProductsService - Product Types', () => {
           useValue: mockProductTypeRepo,
         },
         { provide: getRepositoryToken(Product), useValue: mockProductRepo },
+        {
+          provide: getRepositoryToken(ProductReview),
+          useValue: mockProductReviewRepo,
+        },
         { provide: getRepositoryToken(Order), useValue: mockOrderRepo },
         { provide: getRepositoryToken(Quote), useValue: mockQuoteRepo },
         {

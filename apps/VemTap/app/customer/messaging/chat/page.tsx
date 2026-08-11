@@ -18,7 +18,7 @@ function CustomerChatContent() {
     const showSidebarOnMobile = !activeConversationId && !hasBranchTarget;
 
     return (
-        <div className="flex flex-col md:flex-row h-[calc(100dvh-64px)] md:h-[calc(100vh-96px)] bg-white md:rounded-xl border-y md:border border-gray-200 shadow-sm overflow-hidden md:mt-4 md:mb-0">
+        <div className="flex flex-col md:flex-row h-full min-h-0 bg-white md:rounded-xl border-y md:border border-gray-200 shadow-sm overflow-hidden md:mx-0 md:mt-0 md:mb-0">
             {/* Sidebar: Hidden on mobile if a chat is active or if navigating with a branch target */}
             <div className={`w-full md:w-80 lg:w-96 flex-col h-full shrink-0 ${showSidebarOnMobile ? 'flex' : 'hidden md:flex'}`}>
                 <ChatSidebar />

@@ -107,8 +107,8 @@ export default function CustomerSidebar({ children }: CustomerSidebarProps) {
     const readNotificationMutation = useMarkAsRead();
     const readAllMutation = useMarkAllAsRead();
 
-    const handleLogout = () => {
-        logout();
+    const handleLogout = async () => {
+        await logout();
         router.push('/login');
     };
 
@@ -432,7 +432,6 @@ export default function CustomerSidebar({ children }: CustomerSidebarProps) {
                     </div>
                 </header>
 
-                {/* Main Content */}
                 <main className={`flex-1 overflow-y-auto bg-gray-50 ${pathname.startsWith('/customer/messaging') ? 'pb-0' : 'pb-28 lg:pb-8'}`}>
                     {children}
                 </main>

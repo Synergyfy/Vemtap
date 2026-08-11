@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { ProductsService } from './products.service';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Product } from './entities/product.entity';
+import { ProductReview } from './entities/product-review.entity';
 import { Quote } from './entities/quote.entity';
 import { Order, OrderStatus, PaymentStatus } from './entities/order.entity';
 import { QuoteNegotiation } from './entities/quote-negotiation.entity';
@@ -14,11 +15,25 @@ import { PaymentsService } from '../payments/payments.service';
 describe('ProductsService - Pricing & Payment', () => {
   let service: ProductsService;
 
+  const reviewQb = {
+    select: jest.fn().mockReturnThis(),
+    where: jest.fn().mockReturnThis(),
+    andWhere: jest.fn().mockReturnThis(),
+    getRawMany: jest.fn().mockResolvedValue([{ avg: null }]),
+  };
+
   const mockProductRepo = {
     create: jest.fn(),
     save: jest.fn(),
     findOne: jest.fn(),
     find: jest.fn(),
+  };
+
+  const mockProductReviewRepo = {
+    create: jest.fn(),
+    save: jest.fn(),
+    findOne: jest.fn(),
+    createQueryBuilder: jest.fn().mockReturnValue(reviewQb),
   };
 
   const mockOrderRepo = {
@@ -42,6 +57,10 @@ describe('ProductsService - Pricing & Payment', () => {
       providers: [
         ProductsService,
         { provide: getRepositoryToken(Product), useValue: mockProductRepo },
+        {
+          provide: getRepositoryToken(ProductReview),
+          useValue: mockProductReviewRepo,
+        },
         { provide: getRepositoryToken(Order), useValue: mockOrderRepo },
         { provide: getRepositoryToken(Quote), useValue: mockQuoteRepo },
         {

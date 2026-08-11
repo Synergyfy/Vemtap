@@ -20,9 +20,24 @@ import { NAVIGATION_SECTIONS } from '@/constants/ownerNavigation';
 import type { NavSection, MenuItem, SubmenuItem } from '@/constants/ownerNavigation';
 
 const ALL_PERMISSIONS = [
+  // Top-level
   'dashboard', 'inventory', 'pos', 'visitors', 'messages', 'engagement',
   'customer-experience', 'marketing', 'discovery', 'analytics', 'staff',
   'settings', 'qrthrive',
+  // Sales (pos) sub-permissions
+  'pos:sales-dashboard', 'pos:pos-home', 'pos:orders', 'pos:settings', 'pos:help',
+  // Inventory sub-permissions
+  'inventory:overview', 'inventory:catalogue', 'inventory:inventory',
+  // Visitors sub-permissions
+  'visitors:overview', 'visitors:customer-list', 'visitors:loyalty', 'visitors:visitors',
+  // Discovery sub-permissions
+  'discovery:get-customers', 'discovery:business-partnership',
+  // Analytics sub-permissions
+  'analytics:overview', 'analytics:ai-reports', 'analytics:sales-reports',
+  'analytics:inventory-reports', 'analytics:customers', 'analytics:discovery',
+  'analytics:footfall', 'analytics:marketing', 'analytics:peak-times',
+  // Settings sub-permissions
+  'settings:profile', 'settings:subscription', 'settings:support', 'settings:compliance',
 ] as const;
 const PERMISSION_LABELS: Record<string, string> = {
   dashboard: 'Dashboard', inventory: 'Products & Stock', pos: 'Sales & POS',
@@ -176,18 +191,7 @@ export default function StaffDirectory() {
   const togglePermission = (perm: string) => {
     setForm(p => {
       const isAdding = !p.permissions.includes(perm);
-      let updated = isAdding ? [...p.permissions, perm] : p.permissions.filter(x => x !== perm);
-      if (perm.includes(':')) {
-        const parentKey = perm.split(':')[0];
-        if (isAdding && !updated.includes(parentKey)) {
-          updated.push(parentKey);
-        } else if (!isAdding) {
-          const hasOtherSubItems = updated.some(x => x.startsWith(parentKey + ':') && x !== perm);
-          if (!hasOtherSubItems) {
-            updated = updated.filter(x => x !== parentKey);
-          }
-        }
-      }
+      const updated = isAdding ? [...p.permissions, perm] : p.permissions.filter(x => x !== perm);
       return { ...p, permissions: updated };
     });
   };

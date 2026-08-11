@@ -539,7 +539,7 @@ function RewardCard({ id, isMine }: { id: string; isMine: boolean }) {
                     <div className="min-w-0">
                         <h4 className={`text-sm font-bold truncate ${isMine ? 'text-white' : 'text-slate-900'}`}>{reward.name}</h4>
                         <p className={`text-[10px] font-black ${isMine ? 'text-white/60' : 'text-primary'}`}>
-                            {reward.pointCost} Points Required
+                            {(reward.pointCost ?? reward.pointsRequired ?? 0)} Points Required
                         </p>
                     </div>
                 </div>

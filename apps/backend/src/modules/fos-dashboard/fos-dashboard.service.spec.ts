@@ -7,6 +7,7 @@ import {
   FosTransactionType,
   FosPlatform,
 } from '../fos-core/entities/financial-transaction.entity';
+import { CashFlow } from '../fos-core/entities/cash-flow.entity';
 import { MetricsSnapshot } from './entities/metrics-snapshot.entity';
 
 describe('FosDashboardService', () => {
@@ -18,8 +19,12 @@ describe('FosDashboardService', () => {
     find: jest.fn(),
   };
 
+  const mockCashFlowRepo = {
+    find: jest.fn().mockResolvedValue([]),
+  };
+
   const mockSnapshotRepo = {
-    find: jest.fn(),
+    find: jest.fn().mockResolvedValue([]),
     findOne: jest.fn(),
   };
 
@@ -30,6 +35,10 @@ describe('FosDashboardService', () => {
         {
           provide: getRepositoryToken(FinancialTransaction),
           useValue: mockTransactionRepo,
+        },
+        {
+          provide: getRepositoryToken(CashFlow),
+          useValue: mockCashFlowRepo,
         },
         {
           provide: getRepositoryToken(MetricsSnapshot),
@@ -83,10 +92,12 @@ describe('FosDashboardService', () => {
         },
       ]);
 
-      mockSnapshotRepo.findOne.mockResolvedValue({
-        churnRate: '5.2',
-        conversionRate: '12.8',
-      });
+      mockSnapshotRepo.find.mockResolvedValue([
+        {
+          churnRate: '5.2',
+          conversionRate: '12.8',
+        },
+      ]);
 
       const result = await service.getStats();
 
@@ -103,7 +114,7 @@ describe('FosDashboardService', () => {
 
     it('should return zero stats when no transactions exist', async () => {
       mockTransactionRepo.find.mockResolvedValue([]);
-      mockSnapshotRepo.findOne.mockResolvedValue(null);
+      mockSnapshotRepo.find.mockResolvedValue([]);
 
       const result = await service.getStats();
 

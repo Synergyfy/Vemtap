@@ -91,7 +91,7 @@ export default function PromotionDetailPage() {
                         {isError ? 'Unable to fetch this deal. Please try again.' : 'This deal may have expired or doesn&apos;t exist.'}
                     </p>
                     <Link
-                        href="/promotions"
+href="/deals"
                         className="px-8 h-12 bg-primary text-white font-bold uppercase tracking-wider text-xs rounded-xl shadow-lg shadow-primary/20 flex items-center gap-2"
                     >
                         <ArrowLeft size={16} /> Browse Deals
@@ -185,7 +185,7 @@ export default function PromotionDetailPage() {
                 {/* Back nav */}
                 <div className="max-w-4xl mx-auto px-4 md:px-8 mb-6">
                     <Link
-                        href="/promotions"
+                        href="/deals"
                         className="inline-flex items-center gap-2 text-gray-400 hover:text-primary text-sm font-bold transition-colors"
                     >
                         <ArrowLeft size={16} /> All Deals
@@ -681,7 +681,7 @@ export default function PromotionDetailPage() {
                                             </button>
 
                                             <Link
-                                                href="/promotions"
+                                                href="/deals"
                                                 onClick={resetModal}
                                                 className="w-full h-12 bg-primary text-white font-bold uppercase tracking-wider text-xs rounded-2xl shadow-lg shadow-primary/20 flex items-center justify-center gap-2"
                                             >

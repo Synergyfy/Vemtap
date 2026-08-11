@@ -15,34 +15,34 @@ import type { Promotion, PromotionBusiness } from '@/lib/promotions';
 import { formatDealPrice } from '@/lib/promotions';
 import { cn } from '@/lib/utils';
 import type { MockPromotion } from '@/lib/mock/promotions';
-import type { GeolocationCoordinates } from '@/lib/geolocation';
+import { reverseGeocode, type GeolocationCoordinates } from '@/lib/geolocation';
 
 function toPromotionBusiness(offer: DealOffer): PromotionBusiness {
     const branch = offer.branch;
-    if (!branch) {
+    if (branch) {
         return {
-            id: '',
-            name: 'Unknown Business',
-            slug: '',
-            logo: '',
+            id: branch.id,
+            name: branch.name,
+            slug: branch.username || branch.uniqueCode || '',
+            logo: branch.logoUrl || '',
             photos: [],
             categoryId: '',
             categoryName: '',
-            address: '',
+            address: branch.address || '',
             hours: [],
             rating: 0,
             totalReviews: 0,
         };
     }
     return {
-        id: branch.id,
-        name: branch.name,
-        slug: branch.username || branch.uniqueCode || '',
-        logo: branch.logoUrl || '',
+        id: offer.branchId || '',
+        name: offer.branchName || offer.business?.name || 'Unknown Business',
+        slug: '',
+        logo: offer.business?.logo || '',
         photos: [],
         categoryId: '',
         categoryName: '',
-        address: branch.address || '',
+        address: offer.business?.address || '',
         hours: [],
         rating: 0,
         totalReviews: 0,
@@ -119,7 +119,6 @@ export default function PromotionsPage() {
     const [location, setLocation] = useState<GeolocationCoordinates | null>(null);
     const [locationLabel, setLocationLabel] = useState('');
     const [showLocationModal, setShowLocationModal] = useState(false);
-
     const queryParams = useMemo(() => ({
         search: search || undefined,
         categoryId: selectedCategory || undefined,
@@ -144,6 +143,22 @@ export default function PromotionsPage() {
         }
     }, []);
 
+    useEffect(() => {
+        if (!location || locationLabel) return;
+        let cancelled = false;
+        reverseGeocode(location)
+            .then((label) => {
+                if (cancelled) return;
+                setLocationLabel(label);
+                localStorage.setItem('vemtap_user_location_label', label);
+            })
+            .catch((err) => {
+                if (cancelled) return;
+                console.warn('Reverse geocoding failed:', err);
+            });
+        return () => { cancelled = true; };
+    }, [location, locationLabel]);
+
     const handleLocationSet = (coords: GeolocationCoordinates, label?: string) => {
         setLocation(coords);
         setLocationLabel(label || '');
@@ -163,7 +178,7 @@ export default function PromotionsPage() {
         const now = new Date();
         return offersData.data
             .filter((offer): offer is DealOffer => {
-                if (!offer || !offer.id || !offer.branch) return false;
+                if (!offer || !offer.id || (!offer.branch && !offer.branchId)) return false;
                 if (!offer.startDate && !offer.endDate) return false;
                 if (offer.endDate && new Date(offer.endDate) < now) return false;
                 if (offer.startDate && new Date(offer.startDate) > now) return false;
@@ -274,14 +289,18 @@ export default function PromotionsPage() {
 
                     {location && (
                         <div className="flex items-center gap-2 mt-3">
-                            <div className="inline-flex items-center gap-2 bg-primary/5 border border-primary/10 rounded-full px-3 py-1.5">
-                                <MapPin size={12} className="text-primary" />
-                                <span className="text-[10px] font-bold text-primary">
+                            <div className="inline-flex items-center gap-2 bg-primary/5 border border-primary/10 rounded-full pl-3 pr-1 py-1.5 max-w-xs sm:max-w-md">
+                                <MapPin size={12} className="text-primary shrink-0" />
+                                <span
+                                    className="text-[10px] font-bold text-primary truncate"
+                                    title={locationLabel || `${location.lat.toFixed(4)}, ${location.lng.toFixed(4)}`}
+                                >
                                     {locationLabel || `${location.lat.toFixed(4)}, ${location.lng.toFixed(4)}`}
                                 </span>
                                 <button
                                     onClick={handleClearLocation}
-                                    className="p-0.5 hover:bg-primary/10 rounded-full transition-colors"
+                                    className="p-1 hover:bg-primary/10 rounded-full transition-colors shrink-0"
+                                    aria-label="Clear location"
                                 >
                                     <X size={10} className="text-primary" />
                                 </button>

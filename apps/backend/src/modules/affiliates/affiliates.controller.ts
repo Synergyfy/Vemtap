@@ -20,6 +20,7 @@ import {
 } from '@nestjs/swagger';
 import { AffiliatesService } from './affiliates.service';
 import { VemtapAffiliateAgentsService } from './vemtap-affiliate-agents.service';
+import { FosAgentCommissionService } from './fos-agent-commission.service';
 import { ListAgentsQueryDto } from './dto/list-agents-query.dto';
 import { CreateAgentDto } from './dto/create-agent.dto';
 import { UpdateAgentDto } from './dto/update-agent.dto';
@@ -31,6 +32,7 @@ import { AffiliatePerformanceDto } from './dto/affiliate-performance.dto';
 import { LeaderboardEntryDto } from './dto/leaderboard-entry.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
+import { BusinessVerifiedGuard } from '../../common/guards/business-verified.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { Public } from '../../common/decorators/public.decorator';
 import { UserRole } from '../users/entities/user.entity';
@@ -42,12 +44,13 @@ import { AffiliateWithdrawalRequest } from './entities/withdrawal-request.entity
 
 @ApiTags('Affiliates')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, BusinessVerifiedGuard)
 @Controller('affiliates')
 export class AffiliatesController {
   constructor(
     private readonly affiliatesService: AffiliatesService,
     private readonly agentsService: VemtapAffiliateAgentsService,
+    private readonly commissionService: FosAgentCommissionService,
   ) {}
 
   @Get('stats')
@@ -145,21 +148,21 @@ export class AffiliatesController {
   // --- Admin Specific Endpoints ---
 
   @Get('admin/stats')
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Admin: Get global affiliate stats' })
   async getAdminStats() {
     return this.affiliatesService.getGlobalAdminStats();
   }
 
   @Get('admin/withdrawals')
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Admin: List withdrawal requests' })
   async getWithdrawals(@Req() req) {
     return this.affiliatesService.getAllWithdrawals();
   }
 
   @Post('admin/withdrawals/:id/process')
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Admin: Process a withdrawal request' })
   async processWithdrawal(
     @Param('id', ParseUUIDPipe) id: string,
@@ -176,35 +179,35 @@ export class AffiliatesController {
   }
 
   @Get('admin/profiles')
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Admin: List all affiliate profiles' })
   async getAllProfiles() {
     return this.affiliatesService.getAllProfilesAdmin();
   }
 
   @Get('admin/referrals')
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Admin: List all referrals globally' })
   async getAllReferrals() {
     return this.affiliatesService.getAllReferralsAdmin();
   }
 
   @Get('admin/commissions')
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Admin: List all commissions globally' })
   async getAllCommissions() {
     return this.affiliatesService.getAllCommissionsAdmin();
   }
 
   @Get('admin/fraud')
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Admin: List flagged/fraudulent profiles' })
   async getFraudAlerts() {
     return this.affiliatesService.getFraudAlerts();
   }
 
   @Patch('admin/settings')
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Admin: Update global commission rules' })
   async updateSettings(
     @Body() data: { directRate: number; indirectRate?: number },
@@ -216,7 +219,7 @@ export class AffiliatesController {
   }
 
   @Post('admin/profiles/:id/verify-kyc')
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Admin: Verify/Reject an affiliate KYC' })
   async verifyAffiliateKyc(
     @Param('id', ParseUUIDPipe) id: string,
@@ -226,7 +229,7 @@ export class AffiliatesController {
   }
 
   @Post('admin/profiles/:id/flag')
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Admin: Flag/Unflag an affiliate' })
   async flagAffiliate(
     @Param('id', ParseUUIDPipe) id: string,
@@ -239,35 +242,64 @@ export class AffiliatesController {
   // --- Affiliate Agent Proxy Endpoints (Compensation Dashboard) ---
 
   @Get('agents')
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'List agents from affiliate backend' })
   async listAgents(@Query() query: ListAgentsQueryDto) {
-    return this.agentsService.listAgents(query);
+    const data: unknown = await this.agentsService.listAgents(query);
+    return this.commissionService.enrichAgentsPayload(data);
+  }
+
+  @Get('commission/summary')
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Get commission summary across all agents' })
+  async getCommissionSummary() {
+    return this.commissionService.getSummary();
   }
 
   @Get('agents/:id')
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Get agent detail from affiliate backend' })
   async getAgentDetail(@Param('id', ParseUUIDPipe) id: string) {
     return this.agentsService.getAgentDetail(id);
   }
 
   @Get('agents/:id/revenue')
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Get agent monthly revenue trend' })
   async getAgentRevenue(@Param('id', ParseUUIDPipe) id: string) {
     return this.agentsService.getAgentRevenue(id);
   }
 
+  @Get('agents/:id/commission')
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Get an agent commission status and totals' })
+  async getAgentCommission(@Param('id', ParseUUIDPipe) id: string) {
+    return this.commissionService.getCommission(id);
+  }
+
+  @Post('agents/:id/commission/approve')
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Approve an agent commission' })
+  async approveAgentCommission(@Param('id', ParseUUIDPipe) id: string) {
+    return this.commissionService.approve(id);
+  }
+
+  @Post('agents/:id/commission/mark-paid')
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Mark an agent commission as paid' })
+  async markAgentCommissionPaid(@Param('id', ParseUUIDPipe) id: string) {
+    return this.commissionService.markPaid(id);
+  }
+
   @Post('agents')
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Create a new agent in affiliate backend' })
   async createAgent(@Body() dto: CreateAgentDto) {
     return this.agentsService.createAgent(dto);
   }
 
   @Patch('agents/:id')
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Update an agent in affiliate backend' })
   async updateAgent(
     @Param('id', ParseUUIDPipe) id: string,
@@ -277,7 +309,7 @@ export class AffiliatesController {
   }
 
   @Delete('agents/:id')
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Deactivate an agent in affiliate backend' })
   async deleteAgent(@Param('id', ParseUUIDPipe) id: string) {
     return this.agentsService.deleteAgent(id);

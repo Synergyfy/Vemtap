@@ -9,9 +9,11 @@ describe('LoyaltyController', () => {
 
   const mockLoyaltyService = {
     getBusinessPoints: jest.fn(),
+    getCustomerPoints: jest.fn(),
     getPointLogs: jest.fn(),
     getBusinessPointLogs: jest.fn(),
     givePoints: jest.fn(),
+    earnManualPoints: jest.fn(),
     generatePointCode: jest.fn(),
     usePointCode: jest.fn(),
     createTemplate: jest.fn(),
@@ -22,6 +24,9 @@ describe('LoyaltyController', () => {
     deleteReward: jest.fn(),
     generateRedemptionCode: jest.fn(),
     redeemReward: jest.fn(),
+    redeemRewardById: jest.fn(),
+    verifyRedemption: jest.fn(),
+    applyTemplate: jest.fn(),
     getCustomerAnalytics: jest.fn(),
   };
 
@@ -51,7 +56,7 @@ describe('LoyaltyController', () => {
     it('should call getBusinessPoints', async () => {
       const businessId = 'biz-1';
       await controller.getBalance(mockReq as any, businessId);
-      expect(service.getBusinessPoints).toHaveBeenCalledWith(
+      expect(service.getCustomerPoints).toHaveBeenCalledWith(
         mockUser.id,
         businessId,
       );
@@ -60,14 +65,14 @@ describe('LoyaltyController', () => {
 
   describe('getMyLogs', () => {
     it('should call getPointLogs', async () => {
-      const businessId = 'biz-1';
-      await controller.getMyLogs(mockReq as any, businessId, {
+      await controller.getMyLogs(mockReq as any, {
+        businessId: 'biz-1',
         page: 1,
         limit: 10,
       });
       expect(service.getPointLogs).toHaveBeenCalledWith(
         mockUser.id,
-        businessId,
+        'biz-1',
         1,
         10,
       );
@@ -80,5 +85,31 @@ describe('LoyaltyController', () => {
       await controller.givePoints(mockReq as any, dto as any);
       expect(service.givePoints).toHaveBeenCalledWith(mockUser, dto);
     });
+  });
+
+  describe('earnManualPoints', () => {
+    it('delegates with the caller, branchId query and dto', async () => {
+      const req = { user: { id: 'u1', role: UserRole.OWNER } };
+      const dto = { userId: 'customer-1', points: 500 };
+      await controller.earnManualPoints(req as any, 'b1', dto);
+      expect(service.earnManualPoints).toHaveBeenCalledWith(
+        req.user,
+        'b1',
+        dto,
+      );
+    });
+  });
+
+  it('calls direct reward redemption for the authenticated customer', async () => {
+    const dto = { rewardId: 'reward-1' };
+    await controller.redeemRewardById(mockReq as any, dto);
+    expect(service.redeemRewardById).toHaveBeenCalledWith(mockUser, dto);
+  });
+
+  it('calls redemption verification for staff', async () => {
+    const staffReq = { user: { id: 'staff-1', role: UserRole.STAFF } };
+    const dto = { code: '123456789' };
+    await controller.verifyRedemption(staffReq as any, dto);
+    expect(service.verifyRedemption).toHaveBeenCalledWith(staffReq.user, dto);
   });
 });

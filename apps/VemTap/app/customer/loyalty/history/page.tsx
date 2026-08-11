@@ -12,7 +12,7 @@ export default function CustomerHistoryPage() {
     const getTransactionDetails = (tx: any) => {
         const type = tx.pointsAmount > 0 ? 'earned' : 'redeemed';
         const name = tx.reason || (type === 'earned' ? 'Points Earned' : 'Reward Redeemed');
-        const icon = tx.transactionType === 'REDEEMED' ? Gift : ShoppingBag;
+        const icon = (tx.transactionType === 'redeemed' || tx.transactionType === 'REDEEMED' || type === 'redeemed') ? Gift : ShoppingBag;
         
         return { type, name, icon };
     };

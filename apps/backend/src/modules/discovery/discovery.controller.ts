@@ -3,6 +3,7 @@ import {
   Get,
   Patch,
   Post,
+  Put,
   Delete,
   Body,
   Param,
@@ -510,6 +511,32 @@ export class DiscoveryController {
     @Body() dto: UpdateDiscoveryAdminSettingsDto,
   ) {
     return this.discoveryService.updateAdminDiscoverySettings(dto);
+  }
+
+  // --- Tier Config (A15) ---
+  @Get('admin/partnerships/rewards')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Admin: Get partnership reward tier config' })
+  async getPartnershipRewardTiers() {
+    return this.discoveryService.getPartnershipRewardTiers();
+  }
+
+  @Put('admin/partnerships/rewards')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({
+    summary: 'Admin: Update partnership reward tier config (PUT)',
+  })
+  async updatePartnershipRewardTiersPut(@Body() body: any) {
+    return this.discoveryService.updatePartnershipRewardTiers(body);
+  }
+
+  @Patch('admin/partnerships/rewards')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({
+    summary: 'Admin: Update partnership reward tier config (PATCH)',
+  })
+  async updatePartnershipRewardTiersPatch(@Body() body: any) {
+    return this.discoveryService.updatePartnershipRewardTiers(body);
   }
 
   private async validateAccess(user: any, branchId: string) {

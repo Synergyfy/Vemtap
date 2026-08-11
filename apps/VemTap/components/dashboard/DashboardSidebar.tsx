@@ -197,10 +197,8 @@ export default function DashboardSidebar({ children }: SidebarProps) {
         }
     });
 
-    const handleLogout = () => {
-        queryClient.clear();
-        if (typeof window !== 'undefined') localStorage.clear();
-        logout();
+    const handleLogout = async () => {
+        await logout();
         router.push('/login');
     };
 
@@ -267,7 +265,7 @@ export default function DashboardSidebar({ children }: SidebarProps) {
     };
 
     const businessLogo = myBusiness?.logoUrl || defaultLogo;
-    const businessName = myBusiness?.name || user?.businessName || 'Business Profile';
+    const businessName = myBusiness?.name || 'Business Profile';
     const publicProfileHref = getLinkWithBranch(myBusiness?.uniqueCode ? `/b/${myBusiness.uniqueCode}` : `/dashboard/settings/profile`);
 
     return (
@@ -279,7 +277,7 @@ export default function DashboardSidebar({ children }: SidebarProps) {
 
             {/* Sidebar */}
             <aside className={`
-                fixed inset-y-0 left-0 z-70 bg-white border-r border-gray-200 flex flex-col transition-all duration-300 lg:static 
+                fixed inset-y-0 left-0 z-[250] bg-white border-r border-gray-200 flex flex-col transition-all duration-300 lg:static
                 ${isMobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
                 ${isCollapsed ? 'w-20' : 'w-72'}
             `}>
@@ -393,11 +391,14 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                                                         </button>
                                                         {!isCollapsed && isMenuExpanded && (
                                                             <div className="ml-9 space-y-1 border-l border-gray-100 pl-4 py-1">
-                                                                 {item.submenu.filter(sub => {
+                                                                 {item.submenu.filter((sub, idx) => {
                                                                      if (isOwnerOrAdmin) return true;
-                                                                     if (userPermissions.includes(item.permission!)) return true;
                                                                      const subKey = `${item.permission}:${sub.label.toLowerCase().replace(/\s+/g, '-')}`;
-                                                                     return userPermissions.includes(subKey);
+                                                                     if (userPermissions.includes(subKey)) return true;
+                                                                     // Fallback: if user has parent permission but no sub-permissions,
+                                                                     // show only the first item (main page) as default.
+                                                                     if (userPermissions.includes(item.permission!) && idx === 0) return true;
+                                                                     return false;
                                                                  }).map((sub, idx) => (
                                                                      <Link 
                                                                           key={idx}

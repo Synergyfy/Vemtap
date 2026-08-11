@@ -38,9 +38,7 @@ describe('CatalogueOfferController', () => {
       .useValue({ canActivate: () => true })
       .compile();
 
-    controller = module.get<CatalogueOfferController>(
-      CatalogueOfferController,
-    );
+    controller = module.get<CatalogueOfferController>(CatalogueOfferController);
     service = module.get<CatalogueOfferService>(CatalogueOfferService);
   });
 

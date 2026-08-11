@@ -22,8 +22,8 @@ export default function AgentSidebar({ children }: { children: React.ReactNode }
         { label: 'Profile', href: '/agent/settings/profile', icon: Settings },
     ];
 
-    const handleLogout = () => {
-        logout();
+    const handleLogout = async () => {
+        await logout();
         router.push('/login');
     };
 
