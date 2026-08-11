@@ -232,10 +232,10 @@ export default function GetStartedPage() {
                     </Link>
                     
                     <div className="space-y-4">
-                        <Badge className="bg-primary/20 text-primary border border-primary/30 px-4 py-1.5 font-black uppercase tracking-[0.2em] text-[10px] rounded-full backdrop-blur-md">
+                        <Badge className="bg-primary/20 text-primary border border-primary/30 px-4 py-1.5 font-bold uppercase tracking-wider text-[10px] rounded-full backdrop-blur-md">
                             ⚡ Trusted by 2,000+ Businesses
                         </Badge>
-                        <h2 className="text-4xl lg:text-5xl font-display font-black tracking-tight leading-[1.1] text-white">
+                        <h2 className="text-[30px] sm:text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight leading-[1.15] text-white">
                             The Modern Standard For <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary via-blue-400 to-teal-300">Customer Growth.</span>
                         </h2>
                         <p className="text-slate-400 text-sm font-medium leading-relaxed">
@@ -254,7 +254,7 @@ export default function GetStartedPage() {
                                     <CheckCircle2 size={16} strokeWidth={3} />
                                 </div>
                                 <div className="space-y-0.5">
-                                    <p className="font-black text-xs uppercase tracking-widest text-white">{item.title}</p>
+                                    <p className="font-bold text-xs uppercase tracking-wider text-white">{item.title}</p>
                                     <p className="text-slate-400 text-xs font-medium leading-relaxed">{item.desc}</p>
                                 </div>
                             </div>
@@ -265,14 +265,14 @@ export default function GetStartedPage() {
                         <div className="flex items-center gap-3">
                             <div className="flex -space-x-3">
                                 {[1, 2, 3, 4].map(i => (
-                                    <div key={i} className="size-9 rounded-full bg-slate-800 border-2 border-slate-950 flex items-center justify-center text-[10px] font-black text-white/50">
+                                    <div key={i} className="size-9 rounded-full bg-slate-800 border-2 border-slate-950 flex items-center justify-center text-[10px] font-bold text-white/50">
                                         V{i}
                                     </div>
                                 ))}
                             </div>
                             <div>
                                 <p className="text-[11px] font-bold text-white">4.9 / 5 Rating</p>
-                                <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Owner Satisfaction</p>
+                                <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Owner Satisfaction</p>
                             </div>
                         </div>
                         <ShieldCheck size={24} className="text-primary/60" />
@@ -288,7 +288,7 @@ export default function GetStartedPage() {
                         <Link href="/">
                             <Logo className="h-9" />
                         </Link>
-                        <Badge variant="outline" className="bg-primary/5 border-primary/20 text-primary text-[9px] font-black uppercase tracking-widest px-3 py-1">
+                        <Badge variant="outline" className="bg-primary/5 border-primary/20 text-primary text-[9px] font-bold uppercase tracking-wider px-3 py-1">
                             Account Setup
                         </Badge>
                     </div>
@@ -296,7 +296,7 @@ export default function GetStartedPage() {
                     {/* Stepper Header Bar */}
                     {step < 4 && (
                         <div className="space-y-3">
-                            <div className="flex items-center justify-between text-xs font-black uppercase tracking-widest">
+                            <div className="flex items-center justify-between text-xs font-bold uppercase tracking-wider">
                                 <span className="text-primary flex items-center gap-1.5">
                                     <span className="size-2 rounded-full bg-primary animate-pulse" />
                                     Step {step} of 3
@@ -318,7 +318,7 @@ export default function GetStartedPage() {
                         {step === 1 && (
                             <motion.div key="step1" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-8">
                                 <div className="space-y-2">
-                                    <h1 className="text-2xl sm:text-3xl font-display font-black text-text-main tracking-tight leading-tight">
+                                    <h1 className="text-2xl sm:text-3xl font-display font-bold text-text-main tracking-tight leading-tight">
                                         {isGoogleUser ? 'Complete Registration' : 'Create Your VemTap Account'}
                                     </h1>
                                     <p className="text-sm font-medium text-text-secondary">
@@ -334,8 +334,8 @@ export default function GetStartedPage() {
                                                     <Mail size={28} />
                                                 </div>
                                                 <div>
-                                                    <p className="text-[10px] font-black uppercase tracking-widest text-blue-500">Google Verified Email</p>
-                                                    <p className="text-base font-black text-text-main mt-0.5">{formData.email}</p>
+                                                    <p className="text-[10px] font-bold uppercase tracking-wider text-blue-500">Google Verified Email</p>
+                                                    <p className="text-base font-bold text-text-main mt-0.5">{formData.email}</p>
                                                 </div>
                                             </div>
 
@@ -343,7 +343,7 @@ export default function GetStartedPage() {
 
                                             <Button 
                                                 onClick={() => setStep(3)} 
-                                                className="w-full h-14 bg-primary hover:bg-primary-hover text-white font-black uppercase tracking-[0.15em] text-xs rounded-2xl shadow-xl shadow-primary/20 transition-all flex items-center justify-center gap-3 cursor-pointer"
+                                                className="w-full h-14 bg-primary hover:bg-primary-hover text-white font-bold uppercase tracking-wider text-xs rounded-2xl shadow-xl shadow-primary/20 transition-all flex items-center justify-center gap-3 cursor-pointer"
                                             >
                                                 Continue To Setup <ArrowRight size={16} />
                                             </Button>
@@ -358,12 +358,12 @@ export default function GetStartedPage() {
 
                                             <div className="flex items-center gap-4">
                                                 <div className="flex-1 h-px bg-gray-100" />
-                                                <span className="text-[10px] font-black uppercase tracking-widest text-text-secondary/50">Or register with email</span>
+                                                <span className="text-[10px] font-bold uppercase tracking-wider text-text-secondary/50">Or register with email</span>
                                                 <div className="flex-1 h-px bg-gray-100" />
                                             </div>
 
                                             <div className="space-y-2">
-                                                <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Business Email Address</label>
+                                                <label className="text-[10px] font-bold uppercase tracking-wider text-text-secondary ml-1">Business Email Address</label>
                                                 <div className="relative">
                                                     <Mail className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
                                                     <input 
@@ -381,7 +381,7 @@ export default function GetStartedPage() {
                                             <Button 
                                                 onClick={handleStep2Submit} 
                                                 disabled={isLoading || !formData.email} 
-                                                className="w-full h-14 bg-primary hover:bg-primary-hover text-white font-black uppercase tracking-[0.15em] text-xs rounded-2xl shadow-xl shadow-primary/20 transition-all flex items-center justify-center gap-3 cursor-pointer disabled:opacity-50"
+                                                className="w-full h-14 bg-primary hover:bg-primary-hover text-white font-bold uppercase tracking-wider text-xs rounded-2xl shadow-xl shadow-primary/20 transition-all flex items-center justify-center gap-3 cursor-pointer disabled:opacity-50"
                                             >
                                                 {isLoading ? <div className="size-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <>Get Verification Code <ArrowRight size={16} /></>}
                                             </Button>
@@ -396,11 +396,11 @@ export default function GetStartedPage() {
                             <motion.div key="step2" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-6">
                                 <button onClick={handleBack} className="flex items-center gap-2 text-text-secondary hover:text-text-main transition-colors cursor-pointer">
                                     <ArrowLeft size={16} />
-                                    <span className="text-[10px] font-black uppercase tracking-widest">Back</span>
+                                    <span className="text-[10px] font-bold uppercase tracking-wider">Back</span>
                                 </button>
 
                                 <div className="space-y-2">
-                                    <h1 className="text-2xl sm:text-3xl font-display font-black text-text-main tracking-tight">Verify Your Email</h1>
+                                    <h1 className="text-2xl sm:text-3xl font-display font-bold text-text-main tracking-tight">Verify Your Email</h1>
                                     <p className="text-sm font-medium text-text-secondary leading-relaxed">
                                         We sent a 4-digit security code to <span className="text-primary font-bold">{formData.email}</span>.
                                     </p>
@@ -408,7 +408,7 @@ export default function GetStartedPage() {
 
                                 <div className="space-y-6 pt-2">
                                     <div className="space-y-2">
-                                        <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">4-Digit Security Code</label>
+                                        <label className="text-[10px] font-bold uppercase tracking-wider text-text-secondary ml-1">4-Digit Security Code</label>
                                         <div className="relative">
                                             <ShieldCheck className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
                                             <input 
@@ -417,7 +417,7 @@ export default function GetStartedPage() {
                                                 value={otpCode} 
                                                 onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ''))} 
                                                 placeholder="1 2 3 4" 
-                                                className="w-full pl-13 pr-5 h-16 bg-gray-50/80 border border-gray-200/80 rounded-2xl focus:ring-4 focus:ring-primary/10 focus:border-primary focus:bg-white outline-none font-black text-center tracking-[0.8em] text-xl transition-all" 
+                                                className="w-full pl-13 pr-5 h-16 bg-gray-50/80 border border-gray-200/80 rounded-2xl focus:ring-4 focus:ring-primary/10 focus:border-primary focus:bg-white outline-none font-bold text-center tracking-[0.8em] text-xl transition-all" 
                                                 autoFocus
                                             />
                                         </div>
@@ -428,7 +428,7 @@ export default function GetStartedPage() {
                                     <Button 
                                         onClick={handleVerifyOtp} 
                                         disabled={otpLoading || otpCode.length !== 4} 
-                                        className="w-full h-14 bg-primary hover:bg-primary-hover text-white font-black uppercase tracking-[0.15em] text-xs rounded-2xl shadow-xl shadow-primary/20 transition-all flex items-center justify-center gap-3 cursor-pointer disabled:opacity-50"
+                                        className="w-full h-14 bg-primary hover:bg-primary-hover text-white font-bold uppercase tracking-wider text-xs rounded-2xl shadow-xl shadow-primary/20 transition-all flex items-center justify-center gap-3 cursor-pointer disabled:opacity-50"
                                     >
                                         {otpLoading ? <div className="size-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : 'Verify & Continue'}
                                     </Button>
@@ -438,7 +438,7 @@ export default function GetStartedPage() {
                                             type="button"
                                             onClick={handleResendOtp}
                                             disabled={resendDisabled || resendLoading}
-                                            className="text-[11px] font-black uppercase tracking-widest text-text-secondary/70 hover:text-primary disabled:opacity-50 transition-colors cursor-pointer"
+                                            className="text-[11px] font-bold uppercase tracking-wider text-text-secondary/70 hover:text-primary disabled:opacity-50 transition-colors cursor-pointer"
                                         >
                                             {resendDisabled ? `Resend Code in ${resendTimer}s` : 'Resend Verification Code'}
                                         </button>
@@ -452,11 +452,11 @@ export default function GetStartedPage() {
                             <motion.div key="step3" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-6">
                                 <button onClick={() => { if (isGoogleUser) { setStep(1); } else { handleBack(); } }} className="flex items-center gap-2 text-text-secondary hover:text-text-main transition-colors cursor-pointer">
                                     <ArrowLeft size={16} />
-                                    <span className="text-[10px] font-black uppercase tracking-widest">Back</span>
+                                    <span className="text-[10px] font-bold uppercase tracking-wider">Back</span>
                                 </button>
 
                                 <div className="space-y-2">
-                                    <h1 className="text-2xl sm:text-3xl font-display font-black text-text-main tracking-tight">
+                                    <h1 className="text-2xl sm:text-3xl font-display font-bold text-text-main tracking-tight">
                                         {isGoogleUser ? 'Complete Your Profile' : 'Account Details & Security'}
                                     </h1>
                                     <p className="text-sm font-medium text-text-secondary">
@@ -467,7 +467,7 @@ export default function GetStartedPage() {
                                 <div className="space-y-4">
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                         <div className="space-y-1.5">
-                                            <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">First Name</label>
+                                            <label className="text-[10px] font-bold uppercase tracking-wider text-text-secondary ml-1">First Name</label>
                                             <div className="relative">
                                                 <User className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
                                                 <input 
@@ -480,7 +480,7 @@ export default function GetStartedPage() {
                                             </div>
                                         </div>
                                         <div className="space-y-1.5">
-                                            <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Last Name</label>
+                                            <label className="text-[10px] font-bold uppercase tracking-wider text-text-secondary ml-1">Last Name</label>
                                             <div className="relative">
                                                 <User className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
                                                 <input 
@@ -497,7 +497,7 @@ export default function GetStartedPage() {
                                     {!isGoogleUser && (
                                         <>
                                             <div className="space-y-1.5">
-                                                <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Phone Number</label>
+                                                <label className="text-[10px] font-bold uppercase tracking-wider text-text-secondary ml-1">Phone Number</label>
                                                 <div className="relative">
                                                     <Smartphone className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
                                                     <input 
@@ -511,7 +511,7 @@ export default function GetStartedPage() {
                                             </div>
 
                                             <div className="space-y-1.5">
-                                                <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">
+                                                <label className="text-[10px] font-bold uppercase tracking-wider text-text-secondary ml-1">
                                                     Referral Code <span className="text-text-secondary/50 font-normal lowercase">(optional)</span>
                                                 </label>
                                                 <div className="relative">
@@ -528,7 +528,7 @@ export default function GetStartedPage() {
 
                                             <div className="pt-2 border-t border-gray-100 space-y-3">
                                                 <div className="space-y-1.5">
-                                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Create Password</label>
+                                                    <label className="text-[10px] font-bold uppercase tracking-wider text-text-secondary ml-1">Create Password</label>
                                                     <div className="relative">
                                                         <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
                                                         <input 
@@ -549,7 +549,7 @@ export default function GetStartedPage() {
                                                 </div>
 
                                                 <div className="space-y-1.5">
-                                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Confirm Password</label>
+                                                    <label className="text-[10px] font-bold uppercase tracking-wider text-text-secondary ml-1">Confirm Password</label>
                                                     <div className="relative">
                                                         <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
                                                         <input 
@@ -564,7 +564,7 @@ export default function GetStartedPage() {
 
                                                 {/* Password strength checklist */}
                                                 <div className="p-4 bg-gray-50/80 rounded-2xl border border-gray-100 space-y-1.5 mt-2">
-                                                    <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary/70 mb-2">Password Rules</p>
+                                                    <p className="text-[10px] font-bold uppercase tracking-wider text-text-secondary/70 mb-2">Password Rules</p>
                                                     {[
                                                         { label: 'Minimum 8 characters', pass: pwdRules.minLength },
                                                         { label: 'At least 1 lowercase letter', pass: pwdRules.hasLowercase },
@@ -593,7 +593,7 @@ export default function GetStartedPage() {
                                     <Button 
                                         onClick={isGoogleUser ? handleGoogleComplete : handleFinalSubmit} 
                                         disabled={isLoading || !formData.firstName || !formData.lastName || (!isGoogleUser && (!formData.password || formData.password !== formData.confirmPassword || !isPasswordStrong))} 
-                                        className="w-full h-14 bg-primary hover:bg-primary-hover text-white font-black uppercase tracking-[0.15em] text-xs rounded-2xl shadow-xl shadow-primary/20 transition-all flex items-center justify-center gap-3 cursor-pointer disabled:opacity-50 mt-4"
+                                        className="w-full h-14 bg-primary hover:bg-primary-hover text-white font-bold uppercase tracking-wider text-xs rounded-2xl shadow-xl shadow-primary/20 transition-all flex items-center justify-center gap-3 cursor-pointer disabled:opacity-50 mt-4"
                                     >
                                         {isLoading ? <div className="size-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : (isGoogleUser ? 'Complete Registration' : 'Create My Account & Start Onboarding')}
                                     </Button>
@@ -606,7 +606,7 @@ export default function GetStartedPage() {
                     {step < 4 && (
                         <div className="pt-4 text-center">
                             <p className="text-xs font-medium text-text-secondary">
-                                Already have a business account? <Link href="/login" className="text-primary font-black uppercase tracking-widest text-[10px] ml-1.5 hover:underline">Sign In Here</Link>
+                                Already have a business account? <Link href="/login" className="text-primary font-bold uppercase tracking-wider text-[10px] ml-1.5 hover:underline">Sign In Here</Link>
                             </p>
                         </div>
                     )}

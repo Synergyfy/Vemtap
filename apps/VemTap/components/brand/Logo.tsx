@@ -19,7 +19,7 @@ export default function Logo({
                 alt="Vemtap"
                 width={iconSize}
                 height={iconSize}
-                className="object-contain"
+                className="max-h-full w-auto object-contain"
             />
         </div>
     );

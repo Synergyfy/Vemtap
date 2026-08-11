@@ -42,11 +42,11 @@ export default function DPA() {
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="max-w-3xl">
                         <div className="flex items-center gap-3 mb-6">
-                            <span className="px-3 py-1 bg-primary/10 text-primary text-[10px] font-black uppercase tracking-widest rounded-full">Enterprise Standard</span>
+                            <span className="px-3 py-1 bg-primary/10 text-primary text-[10px] font-bold uppercase tracking-wider rounded-full">Enterprise Standard</span>
                             <span className="h-px w-8 bg-gray-200"></span>
-                            <span className="text-text-secondary text-[10px] font-bold uppercase tracking-widest">DPA v3.0</span>
+                            <span className="text-text-secondary text-[10px] font-bold uppercase tracking-wider">DPA v3.0</span>
                         </div>
-                        <h1 className="text-5xl md:text-6xl font-display font-bold text-text-main mb-8 leading-tight">
+                        <h1 className="text-[30px] sm:text-4xl md:text-5xl lg:text-6xl font-bold text-text-main mb-8 leading-[1.15] tracking-tight">
                             Data Processing <span className="blue-text-gradient">Agreement</span>
                         </h1>
                         <p className="text-text-secondary font-medium italic">Effective Date: [Insert Date]</p>
@@ -59,7 +59,7 @@ export default function DPA() {
                     
                     <aside className="hidden lg:block w-64 flex-shrink-0">
                         <div className="sticky top-32">
-                            <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 mb-8">Table of Contents</h4>
+                            <h4 className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-8">Table of Contents</h4>
                             <nav className="space-y-1 border-l border-gray-100 max-h-[60vh] overflow-y-auto custom-scrollbar pr-4">
                                 {sections.map((section) => (
                                     <a 
@@ -101,7 +101,7 @@ export default function DPA() {
                                                 { k: 'Data Subject', v: 'The individual whose Personal Data is processed.' }
                                             ].map((def) => (
                                                 <div key={def.k} className="p-6 bg-white rounded-2xl border border-gray-100 flex flex-col gap-2">
-                                                    <span className="text-xs font-black uppercase tracking-widest text-primary">{def.k}</span>
+                                                    <span className="text-xs font-bold uppercase tracking-wider text-primary">{def.k}</span>
                                                     <span className="text-sm font-bold text-text-secondary italic leading-relaxed">{def.v}</span>
                                                 </div>
                                             ))}
@@ -340,7 +340,7 @@ export default function DPA() {
                                     </a>
                                 </div>
                                 <div className="mt-20">
-                                    <p className="text-xs font-black uppercase tracking-[0.4em] text-primary italic">Vemtap – Enterprise-Grade Data Processing Infrastructure</p>
+                                    <p className="text-xs font-bold uppercase tracking-wider text-primary italic">Vemtap – Enterprise-Grade Data Processing Infrastructure</p>
                                 </div>
                             </section>
 

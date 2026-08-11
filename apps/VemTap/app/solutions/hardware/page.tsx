@@ -38,17 +38,17 @@ export default function HardwareSolutionPage() {
                     }}></div>
 
                     <div className="container mx-auto px-8 md:px-16 lg:px-20 max-w-6xl text-center z-10 relative">
-                        <h1 className="font-display font-bold text-4xl md:text-5xl lg:text-6xl leading-[1.05] text-text-main max-w-4xl mx-auto mb-10 tracking-tight">
+                        <h1 className="font-bold text-[30px] sm:text-4xl md:text-5xl leading-[1.15] text-text-main max-w-4xl mx-auto mb-10 tracking-tight">
                             The bridge between physical <br />
                             <span className="text-gradient">touchpoints & digital loyalty.</span>
                         </h1>
 
                         <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16">
-                            <Link href="/marketplace" className="bg-primary hover:bg-primary-hover text-white font-bold px-10 py-4 rounded-full transition-all transform hover:scale-105 shadow-xl shadow-primary/25 text-sm uppercase tracking-widest cursor-pointer flex items-center gap-3">
+                            <Link href="/marketplace" className="bg-primary hover:bg-primary-hover text-white font-bold px-10 py-4 rounded-full transition-all transform hover:scale-105 shadow-xl shadow-primary/25 text-sm uppercase tracking-wider cursor-pointer flex items-center gap-3">
                                 Explore NFC Catalog
                                 <ArrowRight size={18} />
                             </Link>
-                            <Link href="/get-started" className="flex items-center gap-2 bg-white text-text-main font-bold px-10 py-4 rounded-full border border-gray-200 hover:bg-gray-50 transition-all cursor-pointer text-sm uppercase tracking-widest">
+                            <Link href="/get-started" className="flex items-center gap-2 bg-white text-text-main font-bold px-10 py-4 rounded-full border border-gray-200 hover:bg-gray-50 transition-all cursor-pointer text-sm uppercase tracking-wider">
                                 Request Custom Design
                             </Link>
                         </div>
@@ -69,11 +69,11 @@ export default function HardwareSolutionPage() {
                                     </p>
                                     <div className="grid grid-cols-2 gap-6">
                                         <div>
-                                            <p className="text-[10px] font-black uppercase tracking-widest text-primary mb-1">Response Time</p>
+                                            <p className="text-[10px] font-bold uppercase tracking-wider text-primary mb-1">Response Time</p>
                                             <p className="text-xl font-bold font-display">84ms</p>
                                         </div>
                                         <div>
-                                            <p className="text-[10px] font-black uppercase tracking-widest text-primary mb-1">Durability</p>
+                                            <p className="text-[10px] font-bold uppercase tracking-wider text-primary mb-1">Durability</p>
                                             <p className="text-xl font-bold font-display">IP67 Waterproof</p>
                                         </div>
                                     </div>
@@ -88,7 +88,7 @@ export default function HardwareSolutionPage() {
                                             <div className="h-6 w-32 bg-white/10 rounded-full animate-pulse"></div>
                                             <div className="h-4 w-24 bg-white/5 rounded-full"></div>
                                             <div className="pt-8 flex justify-between items-center">
-                                                <p className="text-white text-sm font-bold tracking-widest">TAP TO IDENTIFY</p>
+                                                <p className="text-white text-sm font-bold tracking-wider">TAP TO IDENTIFY</p>
                                                 <div className="size-8 rounded-full border border-white/20 flex items-center justify-center">
                                                     <Smartphone size={16} className="text-white/40" />
                                                 </div>
@@ -107,8 +107,8 @@ export default function HardwareSolutionPage() {
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-24 items-start">
                             <div className="space-y-12 sticky top-32">
                                 <div className="space-y-6">
-                                    <span className="text-primary font-black uppercase tracking-[0.2em] text-[10px]">Technical Specifications</span>
-                                    <h2 className="text-4xl md:text-6xl font-display font-bold tracking-tight">How our NFC bridge operates.</h2>
+                                    <span className="text-primary font-bold uppercase tracking-wider text-[10px]">Technical Specifications</span>
+                                    <h2 className="text-2xl md:text-4xl lg:text-5xl font-bold tracking-tight">How our NFC bridge operates.</h2>
                                     <p className="text-lg text-text-secondary font-medium leading-relaxed">
                                         We don't just sell smart stickers,metal plates,identity cards; we provide a high-performance communication layer. Our hardware is engineered to work in high-traffic environments, ensuring that every tap results in a successful merchant-customer handshake.
                                     </p>
@@ -161,7 +161,7 @@ export default function HardwareSolutionPage() {
                                             { label: 'Read Distance', value: 'Up to 4cm (Device Dependent)' }
                                         ].map((item, i) => (
                                             <div key={i} className="flex justify-between items-center py-4 border-b border-gray-200 last:border-0">
-                                                <span className="text-[10px] font-black uppercase tracking-widest text-text-secondary">{item.label}</span>
+                                                <span className="text-[10px] font-bold uppercase tracking-wider text-text-secondary">{item.label}</span>
                                                 <span className="text-sm font-bold text-text-main">{item.value}</span>
                                             </div>
                                         ))}
@@ -227,7 +227,7 @@ export default function HardwareSolutionPage() {
 
                                         <div className="flex flex-wrap gap-2 mt-4">
                                             {item.tags.map(tag => (
-                                                <span key={tag} className="px-3 py-1 bg-white/10 backdrop-blur-md text-[10px] font-black uppercase tracking-widest text-white/90 rounded-lg border border-white/20">
+                                                <span key={tag} className="px-3 py-1 bg-white/10 backdrop-blur-md text-[10px] font-bold uppercase tracking-wider text-white/90 rounded-lg border border-white/20">
                                                     {tag}
                                                 </span>
                                             ))}
@@ -244,7 +244,7 @@ export default function HardwareSolutionPage() {
                     <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full bg-primary/2 rounded-full blur-3xl pointer-events-none"></div>
                     <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-24 items-center">
                         <div className="space-y-10 relative z-10">
-                            <h2 className="text-4xl md:text-6xl font-display font-bold tracking-tight leading-tight">Reliability that <br /> merchants trust.</h2>
+                            <h2 className="text-2xl md:text-4xl lg:text-5xl font-bold tracking-tight leading-[1.15]">Reliability that <br /> merchants trust.</h2>
                             <p className="text-lg text-text-secondary font-medium leading-relaxed">
                                 Our hardware isn't just about the first tap. It's about ensuring the 10,000th visitor has the same seamless experience as the first one.
                             </p>
@@ -272,7 +272,7 @@ export default function HardwareSolutionPage() {
                             <div className="absolute inset-0 bg-primary/5 rounded-3xl blur-[80px] -z-10 group-hover:bg-primary/10 transition-colors"></div>
                             <div className="bg-white border border-gray-100 p-8 rounded-[3.5rem] shadow-2xl space-y-8">
                                 <div className="p-10 bg-gray-50 rounded-[2.5rem] border border-gray-100 space-y-6">
-                                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-text-secondary">System Pulse Check</p>
+                                    <p className="text-[10px] font-bold uppercase tracking-wider text-text-secondary">System Pulse Check</p>
                                     <div className="space-y-6">
                                         <div className="flex justify-between items-end">
                                             <div>

@@ -118,11 +118,11 @@ export default function PromotionDetailPage() {
                 <Navbar />
                 <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
                     <AlertCircle size={64} className="text-gray-200 mb-4" />
-                    <h1 className="text-2xl font-black text-gray-900 mb-2">Deal Not Found</h1>
+                    <h1 className="text-2xl font-bold text-gray-900 mb-2">Deal Not Found</h1>
                     <p className="text-gray-500 font-bold mb-8">This deal may have expired or doesn&apos;t exist.</p>
                     <Link
                         href="/deals"
-                        className="px-8 h-12 bg-primary text-white font-black uppercase tracking-widest text-xs rounded-xl shadow-lg shadow-primary/20 flex items-center gap-2"
+                        className="px-8 h-12 bg-primary text-white font-bold uppercase tracking-wider text-xs rounded-xl shadow-lg shadow-primary/20 flex items-center gap-2"
                     >
                         <ArrowLeft size={16} /> Browse Deals
                     </Link>
@@ -170,18 +170,18 @@ export default function PromotionDetailPage() {
 
                                 <div className="absolute top-4 left-4 flex gap-2">
                                     {offer.isExpired ? (
-                                        <span className="bg-gray-800/80 text-white px-3 py-1 rounded-lg text-sm font-black shadow-lg">
+                                        <span className="bg-gray-800/80 text-white px-3 py-1 rounded-lg text-sm font-bold shadow-lg">
                                             Expired
                                         </span>
                                     ) : (
                                         <>
                                     {discountPercent && (
-                                        <span className="bg-red-500 text-white px-3 py-1 rounded-lg text-sm font-black shadow-lg">
+                                        <span className="bg-red-500 text-white px-3 py-1 rounded-lg text-sm font-bold shadow-lg">
                                             {discountPercent}% OFF
                                         </span>
                                     )}
                                     {discountAmount && !discountPercent && (
-                                        <span className="bg-red-500 text-white px-3 py-1 rounded-lg text-sm font-black shadow-lg">
+                                        <span className="bg-red-500 text-white px-3 py-1 rounded-lg text-sm font-bold shadow-lg">
                                             SAVE {formatDealPrice(discountAmount)}
                                         </span>
                                     )}
@@ -267,7 +267,7 @@ export default function PromotionDetailPage() {
                                 className="bg-white rounded-2xl border border-gray-100 p-6 space-y-5"
                             >
                                 <div className="flex items-baseline gap-3">
-                                    <span className="text-3xl font-black text-primary font-display tracking-tight">
+                                    <span className="text-3xl font-bold text-primary font-display tracking-tight">
                                         {offer.calculatedPrice === 0 ? 'FREE' : formatDealPrice(offer.calculatedPrice)}
                                     </span>
                                     {originalPrice > offer.calculatedPrice && (
@@ -302,7 +302,7 @@ export default function PromotionDetailPage() {
                                     onClick={() => setShowJoinModal(true)}
                                     disabled={!!offer.isExpired}
                                     className={cn(
-                                        "w-full h-13 font-black uppercase tracking-widest text-sm rounded-xl transition-colors flex items-center justify-center gap-2",
+                                        "w-full h-13 font-bold uppercase tracking-wider text-sm rounded-xl transition-colors flex items-center justify-center gap-2",
                                         offer.isExpired
                                             ? "bg-gray-200 text-gray-400 cursor-not-allowed"
                                             : "bg-primary text-white shadow-lg shadow-primary/20 hover:bg-primary/90"
@@ -357,7 +357,7 @@ export default function PromotionDetailPage() {
                                 {/* Hours */}
                                 {hours.length > 0 && (
                                     <div className="space-y-1.5">
-                                        <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Business Hours</p>
+                                        <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Business Hours</p>
                                         <div className="grid grid-cols-1 gap-1">
                                             {hours.map(h => (
                                                 <div key={h.day} className="flex justify-between text-[11px] font-bold">
