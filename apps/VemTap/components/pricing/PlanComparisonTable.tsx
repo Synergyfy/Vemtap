@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Check, ChevronDown, Minus, Sparkles } from 'lucide-react';
+import { Check, ChevronDown, Minus, Sparkles, Table2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { PricingPlan } from '@/types/pricing';
 import { mapPlanToConfig, PERMISSION_SECTIONS } from '@/lib/planPermissions';
@@ -14,6 +14,7 @@ interface PlanComparisonTableProps {
 
 export default function PlanComparisonTable({ plans }: PlanComparisonTableProps) {
     const activePlans = plans.filter(p => p.isActive);
+    const [isTableExpanded, setIsTableExpanded] = useState(false);
     const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>(() => {
         const initial: Record<string, boolean> = {};
         PERMISSION_SECTIONS.forEach(s => { initial[s.id] = true; });
@@ -44,11 +45,35 @@ export default function PlanComparisonTable({ plans }: PlanComparisonTableProps)
                 <p className="text-lg text-gray-500 font-medium max-w-lg mx-auto">
                     See exactly what&apos;s included in every plan. No hidden fees.
                 </p>
+
+                <button
+                    onClick={() => setIsTableExpanded(!isTableExpanded)}
+                    className="mx-auto flex items-center gap-2.5 mt-8 h-11 px-6 bg-white border border-gray-200 rounded-full text-sm font-bold text-gray-700 hover:border-[#066CF4]/30 hover:text-[#066CF4] hover:shadow-lg hover:shadow-blue-500/5 transition-all duration-300 cursor-pointer group"
+                >
+                    <Table2 size={15} className="text-[#066CF4] group-hover:scale-110 transition-transform" />
+                    {isTableExpanded ? 'Hide Comparison' : 'Compare All Features'}
+                    <ChevronDown
+                        size={15}
+                        className={cn(
+                            "text-gray-400 transition-transform duration-300",
+                            isTableExpanded && "rotate-180"
+                        )}
+                    />
+                </button>
             </div>
 
             {/* Table */}
-            <div className="overflow-x-auto rounded-3xl border border-gray-200/60 bg-white shadow-xl shadow-gray-200/40">
-                <table className="w-full min-w-[800px]">
+            <AnimatePresence initial={false}>
+                {isTableExpanded && (
+                    <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        transition={{ duration: 0.35, ease: [0.4, 0, 0.2, 1] }}
+                        className="overflow-hidden"
+                    >
+                        <div className="overflow-x-auto rounded-3xl border border-gray-200/60 bg-white shadow-xl shadow-gray-200/40">
+                            <table className="w-full min-w-[800px]">
                     <thead>
                         <tr className="border-b border-gray-100">
                             <th className="text-left py-6 px-8 w-[280px]">
@@ -177,8 +202,11 @@ export default function PlanComparisonTable({ plans }: PlanComparisonTableProps)
                             );
                         })}
                     </tbody>
-                </table>
-            </div>
+                            </table>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </section>
     );
 }
