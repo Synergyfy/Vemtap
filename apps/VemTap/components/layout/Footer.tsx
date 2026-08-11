@@ -9,7 +9,7 @@ export default function Footer() {
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-16 mb-20">
                     <div className="col-span-1 md:col-span-2">
                         <Link href="/" className="mb-8 block w-fit">
-                            <Logo />
+                            <Logo className="flex items-center h-14" iconSize={72} />
                         </Link>
                         <p className="text-text-secondary max-w-sm mb-10 font-bold leading-relaxed">
                             The easiest way to collect customer data instantly from your shop or event to your phone.
@@ -38,7 +38,7 @@ export default function Footer() {
                             <Link href="https://facebook.com/vemtap" className="size-10 rounded-full bg-gray-50 flex items-center justify-center text-text-secondary hover:bg-primary hover:text-white transition-all">
                                 <span className="material-icons-round">facebook</span>
                             </Link>
-                            <Link href="https://instagram.com/vemtap" className="size-10 rounded-full bg-gray-50 flex items-center justify-center text-text-secondary hover:bg-primary hover:text-white transition-all">
+                            <Link href="https://instagram.com/vemtapng" className="size-10 rounded-full bg-gray-50 flex items-center justify-center text-text-secondary hover:bg-primary hover:text-white transition-all">
                                 <span className="material-icons-round">camera_alt</span>
                             </Link>
                             <Link href="https://linkedin.com/company/vemtap" className="size-10 rounded-full bg-gray-50 flex items-center justify-center text-text-secondary hover:bg-primary hover:text-white transition-all">

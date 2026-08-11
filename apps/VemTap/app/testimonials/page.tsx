@@ -102,7 +102,7 @@ export default function TestimonialsPage() {
                     {/* Carousel Section */}
                     <div className="mb-24">
                         <div className="flex items-center justify-between mb-8">
-                            <p className="text-xs font-black uppercase tracking-widest text-text-main">Featured Success Stories</p>
+                            <p className="text-xs font-bold uppercase tracking-wider text-text-main">Featured Success Stories</p>
                             <div className="flex gap-2">
                                 <button
                                     onClick={() => scroll('left')}
@@ -138,8 +138,8 @@ export default function TestimonialsPage() {
                                                 <span className="material-icons-round text-xl">format_quote</span>
                                             </div>
                                             <div className="text-right">
-                                                <p className="text-2xl font-display font-black text-text-main leading-none">{t.metric}</p>
-                                                <p className="text-[8px] font-black uppercase tracking-widest text-text-secondary mt-1">{t.metricLabel}</p>
+                                                <p className="text-2xl font-display font-bold text-text-main leading-none">{t.metric}</p>
+                                                <p className="text-[8px] font-bold uppercase tracking-wider text-text-secondary mt-1">{t.metricLabel}</p>
                                             </div>
                                         </div>
                                         <p className="text-sm text-text-main font-medium leading-relaxed mb-8">
@@ -149,7 +149,7 @@ export default function TestimonialsPage() {
                                             <img src={t.avatar} className="size-9 rounded-full grayscale" />
                                             <div>
                                                 <p className="font-bold text-xs text-text-main">{t.author}</p>
-                                                <p className="text-[9px] font-black uppercase tracking-widest text-text-secondary">{t.role}</p>
+                                                <p className="text-[9px] font-bold uppercase tracking-wider text-text-secondary">{t.role}</p>
                                             </div>
                                         </div>
                                     </div>
@@ -163,7 +163,7 @@ export default function TestimonialsPage() {
                         {allTestimonials.map((t, i) => (
                             <div key={t.id} className={`${presets.card} p-6 border-transparent bg-white/50 backdrop-blur-sm`}>
                                 <div className="flex items-center gap-3 mb-4">
-                                    <span className="text-[8px] font-black uppercase tracking-widest bg-gray-100 text-gray-500 px-2 py-0.5 rounded-md">{t.category}</span>
+                                    <span className="text-[8px] font-bold uppercase tracking-wider bg-gray-100 text-gray-500 px-2 py-0.5 rounded-md">{t.category}</span>
                                 </div>
                                 <p className="text-xs text-text-secondary font-medium leading-relaxed mb-6 line-clamp-3">
                                     "{t.quote}"
@@ -183,7 +183,7 @@ export default function TestimonialsPage() {
                     <div className="mt-32 p-12 md:p-20 rounded-2xl bg-text-main text-white text-center relative overflow-hidden shadow-2xl">
                         <div className="absolute top-0 right-0 size-64 bg-primary/10 rounded-full blur-3xl -mr-32 -mt-32"></div>
                         <div className="relative z-10">
-                            <h2 className="text-3xl md:text-5xl font-display font-black mb-10 leading-tight">Ready to start your story?</h2>
+                            <h2 className="text-2xl md:text-4xl lg:text-5xl font-bold mb-10 tracking-tight">Ready to start your story?</h2>
                             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
                                 <Link href="/get-started" className={presets.buttonPrimary}>
                                     Get Started Free

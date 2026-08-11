@@ -32,7 +32,7 @@ export default function SoftwareSolutionPage() {
                     }}></div>
 
                     <div className="container mx-auto px-4 text-center z-10 relative">
-                        <h1 className="font-display font-bold text-5xl md:text-8xl leading-[1.05] text-text-main max-w-5xl mx-auto mb-8 tracking-tight">
+                        <h1 className="font-bold text-[30px] sm:text-4xl md:text-5xl leading-[1.15] text-text-main max-w-5xl mx-auto mb-8 tracking-tight">
                             The Intelligence <br />
                             <span className="text-gradient">Control Center</span>
                         </h1>
@@ -42,11 +42,11 @@ export default function SoftwareSolutionPage() {
                         </p>
 
                         <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-20">
-                            <Link href="/get-started" className="bg-primary hover:bg-primary-hover text-white font-bold px-12 py-5 rounded-full transition-all transform hover:scale-105 shadow-xl shadow-primary/25 text-sm uppercase tracking-widest cursor-pointer flex items-center gap-3">
+                            <Link href="/get-started" className="bg-primary hover:bg-primary-hover text-white font-bold px-12 py-5 rounded-full transition-all transform hover:scale-105 shadow-xl shadow-primary/25 text-sm uppercase tracking-wider cursor-pointer flex items-center gap-3">
                                 Start Your Trial
                                 <ArrowRight size={18} />
                             </Link>
-                            <Link href="/features" className="flex items-center gap-2 bg-white text-text-main font-bold px-12 py-5 rounded-full border border-gray-200 hover:bg-gray-50 transition-all cursor-pointer text-sm uppercase tracking-widest">
+                            <Link href="/features" className="flex items-center gap-2 bg-white text-text-main font-bold px-12 py-5 rounded-full border border-gray-200 hover:bg-gray-50 transition-all cursor-pointer text-sm uppercase tracking-wider">
                                 Watch Software Demo
                             </Link>
                         </div>
@@ -68,11 +68,11 @@ export default function SoftwareSolutionPage() {
                                     <div className="flex flex-wrap gap-3">
                                         <div className="px-4 py-2 bg-gray-50 rounded-xl border border-gray-100 flex items-center gap-2">
                                             <div className="size-2 bg-green-500 rounded-full animate-pulse"></div>
-                                            <span className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Live Metrics</span>
+                                            <span className="text-[10px] font-bold uppercase tracking-wider text-text-secondary">Live Metrics</span>
                                         </div>
                                         <div className="px-4 py-2 bg-gray-50 rounded-xl border border-gray-100 flex items-center gap-2">
                                             <div className="size-2 bg-primary rounded-full"></div>
-                                            <span className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Cloud Sync</span>
+                                            <span className="text-[10px] font-bold uppercase tracking-wider text-text-secondary">Cloud Sync</span>
                                         </div>
                                     </div>
                                 </div>
@@ -146,8 +146,8 @@ export default function SoftwareSolutionPage() {
                             </div>
 
                             <div className="order-1 lg:order-2 space-y-8">
-                                <span className="text-primary font-black uppercase tracking-[0.2em] text-[10px]">Merchant Infrastructure</span>
-                                <h2 className="text-4xl md:text-6xl font-display font-bold tracking-tight leading-tight">Software that closes <br /> the physical-digital gap.</h2>
+                                <span className="text-primary font-bold uppercase tracking-wider text-[10px]">Merchant Infrastructure</span>
+                                <h2 className="text-2xl md:text-4xl lg:text-5xl font-bold tracking-tight leading-[1.15]">Software that closes <br /> the physical-digital gap.</h2>
                                 <p className="text-lg text-text-secondary font-medium leading-relaxed">
                                     Traditionally, physical businesses lose touch with their customers the moment they walk out the door. We change that. Our software ensures that every physical visit creates a persistent digital bridge.
                                 </p>
@@ -175,18 +175,18 @@ export default function SoftwareSolutionPage() {
                 <section className="py-32 px-4 bg-gray-50 border-y border-gray-100">
                     <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
                         <div className="space-y-10">
-                            <h2 className="text-4xl md:text-5xl font-display font-bold tracking-tight">Decisions driven by <br /> pure visitor data.</h2>
+                            <h2 className="text-2xl md:text-4xl lg:text-5xl font-bold tracking-tight">Decisions driven by <br /> pure visitor data.</h2>
                             <p className="text-lg text-text-secondary font-medium leading-relaxed">
                                 Stop guessing your peak hours or your most loyal segments. Our platform visualizes your physical traffic with the granularity of a digital storefront.
                             </p>
                             <div className="grid grid-cols-2 gap-8 pt-4">
                                 <div>
                                     <p className="text-3xl font-display font-bold text-primary">₦0</p>
-                                    <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Capture Cost</p>
+                                    <p className="text-[10px] font-bold uppercase tracking-wider text-text-secondary">Capture Cost</p>
                                 </div>
                                 <div>
                                     <p className="text-3xl font-display font-bold text-primary">100%</p>
-                                    <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Data Ownership</p>
+                                    <p className="text-[10px] font-bold uppercase tracking-wider text-text-secondary">Data Ownership</p>
                                 </div>
                             </div>
                         </div>
@@ -210,7 +210,7 @@ export default function SoftwareSolutionPage() {
                                         </div>
                                     ))}
                                 </div>
-                                <div className="flex justify-between text-[10px] font-black uppercase tracking-widest text-text-secondary">
+                                <div className="flex justify-between text-[10px] font-bold uppercase tracking-wider text-text-secondary">
                                     <span>Mon</span>
                                     <span>Tue</span>
                                     <span>Wed</span>
@@ -232,15 +232,15 @@ export default function SoftwareSolutionPage() {
                         <div className="size-24 bg-primary/10 text-primary rounded-4xl flex items-center justify-center mx-auto mb-8">
                             <Sparkles size={48} />
                         </div>
-                        <h2 className="text-4xl md:text-7xl font-display font-bold tracking-tight">Ready to activate your space?</h2>
+                        <h2 className="text-2xl md:text-4xl lg:text-5xl font-bold tracking-tight">Ready to activate your space?</h2>
                         <p className="text-xl text-text-secondary font-medium max-w-2xl mx-auto leading-relaxed">
                             Join over 500+ businesses who have transformed their offline environment into a digital growth engine. No credit card required to start.
                         </p>
                         <div className="flex flex-col sm:flex-row items-center justify-center gap-6">
-                            <Link href="/get-started" className="w-full sm:w-auto bg-primary hover:bg-primary-hover text-white font-bold px-16 py-6 rounded-2xl transition-all transform hover:scale-105 shadow-2xl shadow-primary/30 text-sm uppercase tracking-widest cursor-pointer">
+                            <Link href="/get-started" className="w-full sm:w-auto bg-primary hover:bg-primary-hover text-white font-bold px-16 py-6 rounded-2xl transition-all transform hover:scale-105 shadow-2xl shadow-primary/30 text-sm uppercase tracking-wider cursor-pointer">
                                 Create Founder Account
                             </Link>
-                            <Link href="/support" className="w-full sm:w-auto bg-white text-text-main font-bold px-16 py-6 rounded-2xl border border-gray-200 hover:border-text-main transition-all cursor-pointer text-sm uppercase tracking-widest">
+                            <Link href="/support" className="w-full sm:w-auto bg-white text-text-main font-bold px-16 py-6 rounded-2xl border border-gray-200 hover:border-text-main transition-all cursor-pointer text-sm uppercase tracking-wider">
                                 Contact Enterprise Sales
                             </Link>
                         </div>
