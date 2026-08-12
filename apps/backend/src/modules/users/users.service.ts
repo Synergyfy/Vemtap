@@ -16,6 +16,9 @@ import { MailService } from '../mail/mail.service';
 import { EventsGateway } from '../../common/gateways/events.gateway';
 import { paginateWithCursor } from '../../common/utils/cursor-pagination.util';
 
+import { Branch } from '../branches/entities/branch.entity';
+import { Business } from '../businesses/entities/business.entity';
+
 @Injectable()
 export class UsersService {
   constructor(
@@ -44,10 +47,23 @@ export class UsersService {
       }
     }
 
-    // Get businessId from branch
+    // Get business and branch details from branch
     const branch = await this.usersRepository.manager
-      .getRepository('branches')
-      .findOne({ where: { id: branchId } });
+      .getRepository(Branch)
+      .findOne({
+        where: { id: branchId },
+        relations: ['business'],
+      });
+
+    let businessName = branch?.business?.name;
+    let branchName = branch?.name;
+
+    if (!businessName && branch?.businessId) {
+      const business = await this.usersRepository.manager
+        .getRepository(Business)
+        .findOne({ where: { id: branch.businessId } });
+      businessName = business?.name;
+    }
 
     const trimmedFirstName = dto.firstName.trim();
     const defaultPassword = Math.floor(
@@ -80,6 +96,8 @@ export class UsersService {
         savedUser.email,
         savedUser.firstName,
         defaultPassword,
+        businessName,
+        branchName,
       );
     } catch (error) {
       console.error('Failed to send invitation email:', error);

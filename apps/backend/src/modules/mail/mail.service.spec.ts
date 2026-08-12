@@ -87,4 +87,42 @@ describe('MailService', () => {
       expect(html).toContain('Valued Customer');
     });
   });
+
+  describe('sendWelcomeEmail', () => {
+    it('should send welcome email with business and branch names when provided', async () => {
+      const sendSpy = jest
+        .spyOn((service as any).resend.emails, 'send')
+        .mockResolvedValue({ data: { id: 'email-1' }, error: null });
+
+      await service.sendWelcomeEmail(
+        'staff@example.com',
+        'Alex',
+        '123456',
+        'Azure Bistro',
+        'Lekki Branch',
+      );
+
+      expect(sendSpy).toHaveBeenCalledWith({
+        from: 'Azure Bistro via VemTap <hello@vemtap.com>',
+        to: 'staff@example.com',
+        subject: 'Welcome to Azure Bistro, Lekki Branch!',
+        html: expect.stringContaining('Welcome to Azure Bistro, Lekki Branch, Alex!'),
+      });
+    });
+
+    it('should fallback to VemTap when business and branch names are absent', async () => {
+      const sendSpy = jest
+        .spyOn((service as any).resend.emails, 'send')
+        .mockResolvedValue({ data: { id: 'email-2' }, error: null });
+
+      await service.sendWelcomeEmail('user@example.com', 'Sam', '654321');
+
+      expect(sendSpy).toHaveBeenCalledWith({
+        from: 'VemTap <hello@vemtap.com>',
+        to: 'user@example.com',
+        subject: 'Welcome to VemTap!',
+        html: expect.stringContaining('Welcome to VemTap, Sam!'),
+      });
+    });
+  });
 });
