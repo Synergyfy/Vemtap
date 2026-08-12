@@ -169,6 +169,32 @@ function PromotionsTab({ branchId, onCreatePromo, onEditPromo }: { branchId: str
                                     {promo.status === 'active' ? 'Active' : 'Inactive'}
                                 </span>
                             </div>
+                        </div>
+
+                        {/* Deal Image */}
+<div className="mb-4 p-3 bg-gray-50 rounded-2xl border border-gray-100">
+                                <img
+                                    src={promo.mainImage || '/placeholder-deal.png'}
+                                    alt={promo.name}
+                                    className="w-full h-40 object-cover rounded-md"
+                                    loading="lazy"
+                                />
+                                {promo.galleryImages && promo.galleryImages.length > 0 && (
+                                    <div className="mt-2 grid grid-cols-2 gap-2">
+                                        {promo.galleryImages.map((img, idx) => (
+                                            <img
+                                                key={idx}
+                                                src={img}
+                                                alt={`Deal gallery ${idx}`}
+                                                className="w-full h-24 object-cover rounded-md"
+                                                loading="lazy"
+                                            />
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                                )}
+                            </div>
 
                             <div className="grid grid-cols-3 gap-4 mb-4 p-4 bg-gray-50 rounded-2xl">
                                 <div>
@@ -203,6 +229,16 @@ function PromotionsTab({ branchId, onCreatePromo, onEditPromo }: { branchId: str
                                     disabled={updateOffer.isPending || expired}
                                 >
                                     {promo.status === 'active' ? 'Pause' : 'Resume'}
+                                </Button>
+                                <Button
+                                    asChild
+                                    href={`/deals/${promo.id}`}
+                                    className="w-full rounded-xl font-bold text-sm transition-colors"
+                                >
+                                    <span className="flex items-center gap-2">
+                                        <ArrowRight size={14} className="text-[#066CF4]" />
+                                        View Deal on Site
+                                    </span>
                                 </Button>
                                 <Button
                                     variant="outline"
