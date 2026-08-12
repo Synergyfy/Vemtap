@@ -58,15 +58,31 @@ export class MailService {
     }
   }
 
-  async sendWelcomeEmail(email: string, name: string, password?: string) {
+  async sendWelcomeEmail(
+    email: string,
+    name: string,
+    password?: string,
+    businessName?: string,
+    branchName?: string,
+  ) {
+    const placeName =
+      businessName && branchName
+        ? `${businessName}, ${branchName}`
+        : businessName || branchName || 'VemTap';
+
+    const subject = `Welcome to ${placeName}!`;
+    const sender = businessName
+      ? `${businessName} via VemTap <hello@vemtap.com>`
+      : this.fromEmail;
+
     try {
       await this.resend.emails.send({
-        from: this.fromEmail,
+        from: sender,
         to: email,
-        subject: 'Welcome to VemTap!',
+        subject,
         html: `
           <div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">
-            <h2 style="color: #4A90E2;">Welcome to VemTap, ${name}!</h2>
+            <h2 style="color: #4A90E2;">Welcome to ${placeName}, ${name}!</h2>
             <p>We are excited to have you on board. Your account has been successfully created.</p>
             ${password ? `<p>Your default login password is: <strong>${password}</strong></p><p>We recommend changing it after your first login.</p>` : ''}
             <p>You can now sign in to your dashboard to manage your visits and explore our features.</p>
@@ -78,7 +94,7 @@ export class MailService {
             <br>
             <p>Visit our website to learn more: <a href="https://vemtap.vercel.app">https://vemtap.vercel.app</a></p>
             <hr style="border: none; border-top: 1px solid #eee; margin-top: 30px;">
-            <p style="font-size: 0.8em; color: #888;">&copy; ${new Date().getFullYear()} VemTap. All rights reserved.</p>
+            <p style="font-size: 0.8em; color: #888;">&copy; ${new Date().getFullYear()} ${businessName || 'VemTap'}. All rights reserved.</p>
           </div>
         `,
       });
