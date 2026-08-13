@@ -96,11 +96,11 @@ export default function ReceiveStockScreen() {
   if (isSuccess) {
     return (
       <div className="h-[calc(100vh-80px)] flex flex-col items-center justify-center p-6 text-center">
-        <div className="size-24 bg-emerald-50 rounded-[32px] mx-auto flex items-center justify-center mb-6 shadow-[0_0_40px_rgba(16,185,129,0.2)]">
-          <CheckCircle2 size={48} className="text-emerald-500" strokeWidth={2.5} />
+        <div className="size-20 bg-emerald-50 rounded-2xl mx-auto flex items-center justify-center mb-6 shadow-[0_0_40px_rgba(16,185,129,0.2)]">
+          <CheckCircle2 size={40} className="text-emerald-500" strokeWidth={2.5} />
         </div>
-        <h1 className="text-3xl font-black text-gray-900 mb-2 tracking-tight">Stock Received</h1>
-        <p className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">Inventory quantities have been updated.</p>
+        <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2 tracking-tight">Stock Received</h1>
+        <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Inventory quantities have been updated.</p>
       </div>
     );
   }
@@ -112,11 +112,11 @@ export default function ReceiveStockScreen() {
         subtitle="Log incoming deliveries from suppliers"
       />
 
-      <div className="bg-white border border-gray-100 rounded-[32px] p-6 md:p-8 shadow-sm flex-none flex flex-col">
+      <div className="bg-white border border-gray-100 rounded-2xl p-5 md:p-6 shadow-sm flex-none flex flex-col">
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8 pb-8 border-b border-gray-100">
           <div>
-            <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 mb-2">Supplier (Optional)</label>
+            <label className="block text-[10px] font-semibold uppercase tracking-wider text-gray-500 mb-2">Supplier (Optional)</label>
             <input
               type="text" value={supplier} onChange={(e) => setSupplier(e.target.value)}
               className="w-full h-12 px-4 rounded-xl border border-gray-200 bg-gray-50/50 text-sm font-bold text-gray-900 focus:outline-none focus:border-[#066CF4]"
@@ -124,7 +124,7 @@ export default function ReceiveStockScreen() {
             />
           </div>
           <div>
-            <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 mb-2">PO Number / Reference (Optional)</label>
+            <label className="block text-[10px] font-semibold uppercase tracking-wider text-gray-500 mb-2">PO Number / Reference (Optional)</label>
             <input
               type="text" value={poNumber} onChange={(e) => setPoNumber(e.target.value)}
               className="w-full h-12 px-4 rounded-xl border border-gray-200 bg-gray-50/50 text-sm font-bold text-gray-900 focus:outline-none focus:border-[#066CF4]"
@@ -134,7 +134,7 @@ export default function ReceiveStockScreen() {
         </div>
 
         <div className="mb-6 relative">
-          <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 mb-2">Add Products to Receive</label>
+          <label className="block text-[10px] font-semibold uppercase tracking-wider text-gray-500 mb-2">Add Products to Receive</label>
           <div className="relative">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
             <input
@@ -152,7 +152,7 @@ export default function ReceiveStockScreen() {
                   className="w-full text-left p-4 hover:bg-gray-50 border-b border-gray-50 flex items-center justify-between"
                 >
                   <div>
-                    <p className="text-sm font-black text-gray-900">{p.name}</p>
+                    <p className="text-sm font-bold text-gray-900">{p.name}</p>
                     <p className="text-[10px] font-bold text-gray-400 mt-0.5">Current Stock: {p.stockQuantity || 0}</p>
                   </div>
                   <Plus size={18} className="text-[#066CF4]" />
@@ -168,18 +168,18 @@ export default function ReceiveStockScreen() {
           {selectedItems.length > 0 ? (
             <div className="space-y-3">
               {selectedItems.map((item, index) => (
-                <div key={item.productId} className="p-4 bg-gray-50 rounded-[24px] border border-gray-100 flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
+                <div key={item.productId} className="p-4 bg-gray-50 rounded-xl border border-gray-100 flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
                   <div className="flex-1 min-w-0">
-                    <h4 className="text-sm font-black text-gray-900 line-clamp-1">{item.name}</h4>
-                    <p className="text-[10px] font-bold text-gray-500 mt-0.5 uppercase tracking-widest">Current: {item.currentQty} → New: {item.currentQty + item.receiveQty}</p>
+                    <h4 className="text-sm font-bold text-gray-900 line-clamp-1">{item.name}</h4>
+                    <p className="text-[10px] font-semibold text-gray-500 mt-0.5 uppercase tracking-wider">Current: {item.currentQty} → New: {item.currentQty + item.receiveQty}</p>
                   </div>
 
                   <div className="flex items-center gap-4 w-full md:w-auto">
                     <div className="w-full md:w-28">
-                      <label className="block text-[8px] font-black uppercase tracking-[0.2em] text-emerald-500 mb-1">Qty to Receive</label>
+                      <label className="block text-[8px] font-semibold uppercase tracking-wider text-emerald-500 mb-1">Qty to Receive</label>
                       <input
                         type="number" value={item.receiveQty || ''} onChange={(e) => updateItem(item.productId, 'receiveQty', Number(e.target.value))}
-                        className="w-full h-10 px-3 rounded-xl border-2 border-emerald-200 bg-emerald-50 text-emerald-700 text-xs font-black focus:border-emerald-500 focus:outline-none"
+                        className="w-full h-10 px-3 rounded-xl border-2 border-emerald-200 bg-emerald-50 text-emerald-700 text-xs font-bold focus:border-emerald-500 focus:outline-none"
                         placeholder="0"
                       />
                     </div>
@@ -194,22 +194,22 @@ export default function ReceiveStockScreen() {
               ))}
             </div>
           ) : (
-            <div className="h-40 flex flex-col items-center justify-center text-gray-400 border-2 border-dashed border-gray-100 rounded-[24px]">
+            <div className="h-40 flex flex-col items-center justify-center text-gray-400 border-2 border-dashed border-gray-100 rounded-xl">
               <ArrowDownToLine size={32} className="mb-2 text-gray-300" />
-              <p className="text-[10px] font-black uppercase tracking-widest">Search and select products above</p>
+              <p className="text-[10px] font-semibold uppercase tracking-wider">Search and select products above</p>
             </div>
           )}
         </div>
 
         <div className="pt-6 border-t border-gray-100 flex items-center justify-between">
-          <p className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">
+          <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider">
             {selectedItems.length} items ready
           </p>
           <button
             onClick={handleReceive}
             disabled={selectedItems.length === 0 || !selectedItems.some(i => i.receiveQty > 0) || isSubmitting}
             className={cn(
-              "h-14 px-8 rounded-2xl flex items-center gap-2 font-black uppercase tracking-widest text-[11px] transition-all shadow-xl",
+              "h-11 px-6 rounded-xl flex items-center gap-2 font-semibold uppercase tracking-wider text-[11px] transition-all shadow-xl",
               selectedItems.length > 0 && selectedItems.some(i => i.receiveQty > 0) && !isSubmitting
                 ? "bg-emerald-500 text-white shadow-emerald-500/20 hover:bg-emerald-600 active:scale-95"
                 : "bg-gray-100 text-gray-400 cursor-not-allowed shadow-none"

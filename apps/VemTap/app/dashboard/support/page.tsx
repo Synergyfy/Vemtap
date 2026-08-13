@@ -91,15 +91,15 @@ export default function SupportDashboard() {
             {/* Header */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
-                    <div className="flex items-center gap-2"><h1 className="text-2xl font-display font-black text-slate-900 tracking-tight">Support Tickets</h1><PageGuideButton /><AICopilotButton /></div>
+                    <div className="flex items-center gap-2"><h1 className="text-xl md:text-2xl font-bold text-slate-900 tracking-tight">Support Tickets</h1><PageGuideButton /><AICopilotButton /></div>
                     <p className="text-slate-500 text-sm font-medium mt-1">Reach out to the admin team for help with your account, billing, or technical issues.</p>
                 </div>
                 <div className="flex items-center gap-3">
                     <button 
                         onClick={handleNewTicket}
-                        className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-black uppercase tracking-wider hover:bg-blue-700 transition-all shadow-md shadow-blue-600/20"
+                        className="flex items-center gap-2 h-10 px-5 bg-blue-600 text-white rounded-xl text-xs font-semibold uppercase tracking-wider hover:bg-blue-700 transition-all shadow-sm shadow-blue-600/20"
                     >
-                        <Plus size={18} />
+                        <Plus size={16} />
                         New Ticket
                     </button>
                 </div>
@@ -108,24 +108,24 @@ export default function SupportDashboard() {
             {/* Stats Grid */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 {stats.map((stat, i) => (
-                    <div key={i} className="bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm">
-                        <div className={`size-10 rounded-xl flex items-center justify-center mb-4 shadow-sm ${stat.bg}`}>
+                    <div key={i} className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
+                        <div className={`size-10 rounded-lg flex items-center justify-center mb-4 shadow-sm ${stat.bg}`}>
                             <stat.icon size={20} className={stat.color} />
                         </div>
-                        <p className="text-xs font-bold uppercase tracking-wider text-slate-400">{stat.label}</p>
-                        <p className="text-2xl font-black text-slate-900 mt-1">{stat.value}</p>
+                        <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">{stat.label}</p>
+                        <p className="text-2xl md:text-3xl font-bold text-slate-900 mt-1">{stat.value}</p>
                     </div>
                 ))}
             </div>
 
             {/* Ticket Table */}
-            <div className="bg-white rounded-[32px] border border-slate-100 shadow-sm p-6">
+            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 md:p-6">
                 <h3 className="font-bold text-lg text-slate-900 mb-6">Your Tickets</h3>
                 <div className="overflow-x-auto">
                     {tickets.length > 0 ? (
                         <table className="w-full text-left border-collapse">
                             <thead>
-                                <tr className="border-b border-slate-100 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                <tr className="border-b border-slate-100 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
                                     <th className="p-4">Ticket ID</th>
                                     <th className="p-4">Subject</th>
                                     <th className="p-4">Category</th>
@@ -140,7 +140,7 @@ export default function SupportDashboard() {
                                         <td className="p-4 text-sm font-bold text-slate-900">{ticket.subject || ticket.title || 'Support Request'}</td>
                                         <td className="p-4 text-xs text-slate-500 font-bold capitalize">{ticket.category || 'General'}</td>
                                         <td className="p-4">
-                                            <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                                            <span className={`px-3 py-1 rounded-full text-[10px] font-semibold uppercase tracking-wider ${
                                                 ticket.status === 'closed' || ticket.status === 'resolved' ? 'bg-emerald-50 text-emerald-600 border border-emerald-200' :
                                                 'bg-blue-50 text-blue-600 border border-blue-200'
                                             }`}>
@@ -156,7 +156,7 @@ export default function SupportDashboard() {
                         <div className="p-8 text-center text-slate-500">
                             <Ticket size={48} className="mx-auto mb-4 text-slate-300" />
                             <h3 className="font-bold text-lg">Your support tickets will appear here</h3>
-                            <p className="text-sm">Click "New Ticket" to create your first support request.</p>
+                            <p className="text-sm">Click &quot;New Ticket&quot; to create your first support request.</p>
                         </div>
                     )}
                 </div>
@@ -185,7 +185,7 @@ export default function SupportDashboard() {
                             </div>
                             <form onSubmit={handleSubmit} className="p-6 md:p-8 space-y-4">
                                 <div className="space-y-2">
-                                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Ticket Subject</label>
+                                    <label className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Ticket Subject</label>
                                     <input
                                         type="text"
                                         value={subject}
@@ -196,7 +196,7 @@ export default function SupportDashboard() {
                                     />
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Category</label>
+                                    <label className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Category</label>
                                     <select
                                         value={selectedCategory}
                                         onChange={(e) => setSelectedCategory(e.target.value)}
@@ -210,7 +210,7 @@ export default function SupportDashboard() {
                                     </select>
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Message</label>
+                                    <label className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Message</label>
                                     <textarea
                                         value={message}
                                         onChange={(e) => setMessage(e.target.value)}

@@ -67,59 +67,59 @@ export default function EngagementFormResponsesPage() {
                 description="View customer answers submitted to each business form."
             />
             <div className="flex flex-wrap items-center gap-3">
-                <span className="px-3 py-1.5 rounded-full bg-primary/10 text-primary uppercase tracking-widest text-xs font-bold">Business</span>
+                <span className="px-3 py-1.5 rounded-full bg-primary/10 text-primary uppercase tracking-wider text-xs font-bold">Business</span>
                 <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white border border-gray-200 shadow-sm">
                     <div className="size-6 rounded-full bg-primary/10 overflow-hidden border border-primary/20 flex items-center justify-center">
                         {businessLogo ? (
                             // eslint-disable-next-line @next/next/no-img-element
                             <img src={businessLogo} alt={businessName} className="w-full h-full object-cover" />
                         ) : (
-                            <span className="text-[10px] font-black text-primary">{businessName.charAt(0)}</span>
+                            <span className="text-[10px] font-bold text-primary">{businessName.charAt(0)}</span>
                         )}
                     </div>
-                    <span className="text-xs font-black text-text-main">{businessName}</span>
+                    <span className="text-xs font-bold text-text-main">{businessName}</span>
                 </div>
             </div>
 
             <div className="flex items-center gap-2 text-xs font-bold text-text-secondary">
-                <span className="px-3 py-1.5 rounded-full bg-primary/10 text-primary uppercase tracking-widest">Responses</span>
+                <span className="px-3 py-1.5 rounded-full bg-primary/10 text-primary uppercase tracking-wider">Responses</span>
                 <span>All Forms</span>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div className="bg-white rounded-2xl border border-gray-200 p-5">
                     <p className="text-sm text-text-secondary font-medium">Total Responses</p>
-                    <p className="text-3xl font-black text-text-main mt-1">{totalResponses}</p>
+                    <p className="text-3xl font-bold text-text-main mt-1">{totalResponses}</p>
                 </div>
                 <div className="bg-white rounded-2xl border border-gray-200 p-5">
                     <p className="text-sm text-text-secondary font-medium">Forms</p>
-                    <p className="text-3xl font-black text-text-main mt-1">{forms.length}</p>
+                    <p className="text-3xl font-bold text-text-main mt-1">{forms.length}</p>
                 </div>
                 <div className="bg-white rounded-2xl border border-gray-200 p-5">
                     <p className="text-sm text-text-secondary font-medium">Published</p>
-                    <p className="text-3xl font-black text-text-main mt-1">{publishedForms}</p>
+                    <p className="text-3xl font-bold text-text-main mt-1">{publishedForms}</p>
                 </div>
                 <div className="bg-white rounded-2xl border border-gray-200 p-5">
                     <p className="text-sm text-text-secondary font-medium">Active</p>
-                    <p className="text-3xl font-black text-text-main mt-1">{activeForms}</p>
+                    <p className="text-3xl font-bold text-text-main mt-1">{activeForms}</p>
                 </div>
             </div>
 
             <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
                 <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
-                    <p className="text-sm font-black uppercase tracking-widest text-text-secondary">Forms With Responses</p>
+                    <p className="text-sm font-bold uppercase tracking-wider text-text-secondary">Forms With Responses</p>
                 </div>
                 <div className="overflow-x-auto">
                     <table className="w-full text-left">
                         <thead>
-                            <tr className="text-[10px] uppercase tracking-widest text-text-secondary border-b border-gray-100">
-                                <th className="px-5 py-3 font-black">Form</th>
-                                <th className="px-5 py-3 font-black">Business</th>
-                                <th className="px-5 py-3 font-black">Branch</th>
-                                <th className="px-5 py-3 font-black">Published</th>
-                                <th className="px-5 py-3 font-black">Responses</th>
-                                <th className="px-5 py-3 font-black">Last Response</th>
-                                <th className="px-5 py-3 font-black text-right">Open</th>
+                            <tr className="text-[10px] uppercase tracking-wider text-text-secondary border-b border-gray-100">
+                                <th className="px-5 py-3 font-bold">Form</th>
+                                <th className="px-5 py-3 font-bold">Business</th>
+                                <th className="px-5 py-3 font-bold">Branch</th>
+                                <th className="px-5 py-3 font-bold">Published</th>
+                                <th className="px-5 py-3 font-bold">Responses</th>
+                                <th className="px-5 py-3 font-bold">Last Response</th>
+                                <th className="px-5 py-3 font-bold text-right">Open</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -150,7 +150,7 @@ export default function EngagementFormResponsesPage() {
                                                         // eslint-disable-next-line @next/next/no-img-element
                                                         <img src={formBusinessLogo} alt={formBusinessName} className="w-full h-full object-cover" />
                                                     ) : (
-                                                        <span className="text-[10px] font-black text-primary">{formBusinessName.charAt(0)}</span>
+                                                        <span className="text-[10px] font-bold text-primary">{formBusinessName.charAt(0)}</span>
                                                     )}
                                                 </div>
                                                 <span className="text-xs font-bold text-text-secondary">{formBusinessName}</span>
@@ -158,7 +158,7 @@ export default function EngagementFormResponsesPage() {
                                         </td>
                                         <td className="px-5 py-4 text-xs font-bold text-text-secondary">{form.branchId}</td>
                                         <td className="px-5 py-4">
-                                            <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${form.isPublished
+                                            <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${form.isPublished
                                                 ? 'bg-emerald-100 text-emerald-700'
                                                 : 'bg-amber-100 text-amber-700'
                                                 }`}>
@@ -175,7 +175,7 @@ export default function EngagementFormResponsesPage() {
                                             {current?.lastResponseAt ? new Date(current.lastResponseAt).toLocaleString() : 'No responses'}
                                         </td>
                                         <td className="px-5 py-4 text-right">
-                                            <Link href={`/dashboard/engagement/forms/responses/${form.id}`} className="inline-flex items-center gap-1 text-xs font-black text-primary hover:underline">
+                                            <Link href={`/dashboard/engagement/forms/responses/${form.id}`} className="inline-flex items-center gap-1 text-xs font-bold text-primary hover:underline">
                                                 <Eye size={12} />
                                                 View
                                             </Link>

@@ -132,7 +132,7 @@
         100% { opacity: 1; }
     }
 
-    @keyframes marquee {
+@keyframes marquee {
         0% { transform: translateX(0); }
         100% { transform: translateX(-100%); }
     }
@@ -142,6 +142,19 @@
     }
 
     .group:hover .animate-marquee {
+        animation-play-state: paused;
+    }
+
+    @keyframes marquee-scroll {
+        0% { transform: translateX(0); }
+        100% { transform: translateX(-50%); }
+    }
+
+    .animate-marquee-scroll {
+        animation: marquee-scroll 35s linear infinite;
+    }
+
+    .group:hover .animate-marquee-scroll {
         animation-play-state: paused;
     }
 
@@ -333,6 +346,25 @@ body {
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
     letter-spacing: 0;
+}
+
+/* Prevent horizontal overflow across every page so mobile browsers never force a zoomed-out/left-scrolled layout */
+html,
+body {
+    overflow-x: hidden;
+    overflow-x: clip;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+}
+
+/* iOS Safari auto-zooms into any form control with a font-size below 16px.
+   Force 16px on all inputs/selects/textareas at mobile widths app-wide so pages never zoom in on tap. */
+@media (max-width: 767px) {
+    input,
+    select,
+    textarea {
+        font-size: 16px !important;
+    }
 }
 
 /* Enforce Geist / Inter font family strictly in the dashboard while respecting typography weights */

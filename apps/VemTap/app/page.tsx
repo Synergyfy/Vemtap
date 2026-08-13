@@ -4,11 +4,9 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   ArrowRight, Play, CheckCircle2, QrCode, MessageSquare, 
-  BarChart3, Image as ImageIcon, Globe, ShieldCheck, 
-  Zap, Star, Users, Utensils, Calendar, X, Building2,
-  ChevronRight, Smartphone, Monitor, Layout, Rocket,
-  Sparkles, Coffee, ShoppingBag, Scissors, Dumbbell, 
-  Hotel, Store, HardDrive, LineChart, UserMinus, Database, RefreshCw, DollarSign, TrendingDown
+  BarChart3, Image as ImageIcon, Globe, 
+  Zap, Star, Users, X,
+  ChevronRight, Rocket, HardDrive, LineChart, UserMinus, Database, RefreshCw, DollarSign, TrendingDown, Sparkles
 } from 'lucide-react';
 import Link from 'next/link';
 import Navbar from '@/components/layout/Navbar';
@@ -22,14 +20,6 @@ const primaryBtn = 'bg-[#066CF4] text-white font-bold uppercase tracking-wider t
 
 export default function Homepage() {
   const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
-  const [trustedIndex, setTrustedIndex] = useState(0);
-
-  React.useEffect(() => {
-    const timer = setInterval(() => {
-      setTrustedIndex(prev => (prev + 1) % 4);
-    }, 7000);
-    return () => clearInterval(timer);
-  }, []);
 
   return (
     <div className="min-h-screen bg-white">
@@ -102,35 +92,6 @@ export default function Homepage() {
                 </div>
               </div>
             </motion.div>
-          </div>
-        </section>
-
-        {/* TRUST SECTION */}
-        <section className="py-10 border-y border-gray-100">
-          <div className="container mx-auto max-w-6xl px-6">
-            <div className="text-center mb-6">
-              <span className="text-sm font-bold text-gray-500 uppercase tracking-wider">Trusted By Growing Businesses</span>
-            </div>
-            {(() => {
-              const groups = [
-                [{ icon: Utensils, label: 'Restaurants' }, { icon: Scissors, label: 'Salons' }, { icon: ShoppingBag, label: 'Fashion' }, { icon: Dumbbell, label: 'Gyms' }, { icon: Coffee, label: 'Cafes' }, { icon: Hotel, label: 'Hotels' }, { icon: Store, label: 'Supermarkets' }],
-                [{ icon: Monitor, label: 'Electronics' }, { icon: Building2, label: 'Small Biz' }, { icon: Sparkles, label: 'Spas' }, { icon: Calendar, label: 'Clinics' }, { icon: Globe, label: 'Agencies' }, { icon: Utensils, label: 'Restaurants' }, { icon: Scissors, label: 'Salons' }],
-                [{ icon: ShoppingBag, label: 'Fashion' }, { icon: Dumbbell, label: 'Gyms' }, { icon: Coffee, label: 'Cafes' }, { icon: Hotel, label: 'Hotels' }, { icon: Store, label: 'Supermarkets' }, { icon: Monitor, label: 'Electronics' }, { icon: Building2, label: 'Small Biz' }],
-                [{ icon: Sparkles, label: 'Spas' }, { icon: Calendar, label: 'Clinics' }, { icon: Globe, label: 'Agencies' }, { icon: Utensils, label: 'Restaurants' }, { icon: Scissors, label: 'Salons' }, { icon: ShoppingBag, label: 'Fashion' }, { icon: Dumbbell, label: 'Gyms' }],
-              ];
-              return (
-                <div className="flex justify-center items-center gap-4 md:gap-5">
-                  {groups[trustedIndex].map((cat, i) => (
-                    <div key={`${trustedIndex}-${i}`} className="p-6 rounded-2xl bg-gray-50 border border-gray-100 flex flex-col items-center text-center min-w-[120px] animate-[fadeIn_0.5s_ease-in-out]" style={{animation: 'fadeIn 0.5s ease-in-out'}}>
-                      <div className="size-14 rounded-full bg-white shadow-sm flex items-center justify-center mb-3">
-                        <cat.icon size={22} className="text-[#066CF4]" />
-                      </div>
-                      <span className="text-sm font-semibold text-gray-900">{cat.label}</span>
-                    </div>
-                  ))}
-                </div>
-              );
-            })()}
           </div>
         </section>
 
@@ -348,7 +309,7 @@ export default function Homepage() {
                     {[1, 2, 3, 4, 5].map(s => <Star key={s} size={15} fill="currentColor" />)}
                   </div>
                   <p className="text-[15px] font-normal text-gray-600 mb-7 leading-relaxed italic flex-1">
-                    "Vemtap has completely changed how we engage with our weekend crowd. We captured 200 emails in the first week alone!"
+                    &quot;Vemtap has completely changed how we engage with our weekend crowd. We captured 200 emails in the first week alone!&quot;
                   </p>
                   <div className="flex items-center gap-4 pt-6 border-t border-gray-50">
                     <div className="size-11 rounded-full bg-gray-100" />

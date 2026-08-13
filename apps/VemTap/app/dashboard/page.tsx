@@ -7,9 +7,10 @@ import {
     Users, UserPlus, ShoppingBag, Gift,
     Plus, Send, MessageSquare, QrCode, Zap,
     TrendingUp, ArrowRight,
-    ChevronRight, BarChart3, Settings as SettingsIcon,
+    BarChart3, Settings as SettingsIcon,
     Activity, Sparkles, FileText, Package,
-    ChevronDown, ChevronUp
+    ChevronDown, ChevronUp,
+    Tag, Handshake, Globe2
 } from 'lucide-react';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useDashboardAnalytics } from '@/services/analytics/hooks';
@@ -116,13 +117,13 @@ export default function DashboardPage() {
 
     return (
         <div className="min-h-screen bg-gray-50 pb-24">
-            <main className="p-6 max-w-7xl mx-auto">
-                <div className="space-y-8">
+            <main className="p-4 sm:p-6 max-w-7xl mx-auto">
+                <div className="space-y-6">
                         {/* 1. TOP SECTION: Greeting & Branding */}
                         <section className="space-y-1">
                             <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-3">
-                                    <h1 className="text-3xl font-black text-gray-900 tracking-tight">
+                                    <h1 className="text-2xl md:text-3xl font-bold text-text-main tracking-tight">
                                         Good {new Date().getHours() < 12 ? 'Morning' : new Date().getHours() < 17 ? 'Afternoon' : 'Evening'}, {user?.firstName || 'Owner'}
                                     </h1>
                                     <PageGuideButton />
@@ -141,20 +142,20 @@ export default function DashboardPage() {
                         {/* 2. BUSINESS SNAPSHOT (Horizontal swipeable cards) */}
                         <section>
                             <div className="flex items-center justify-between mb-4 px-1">
-                                <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Snapshot</h2>
+                                <h2 className="text-[10px] font-bold uppercase tracking-[0.16em] text-gray-400">Snapshot</h2>
                             </div>
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
                                 {kpis.map((kpi, i) => (
                                     <div 
                                         key={i}
-                                        className="w-full bg-white rounded-3xl md:rounded-[2rem] p-4 md:p-6 border border-gray-100 shadow-sm flex flex-col justify-between h-28 md:h-36 group hover:border-primary/20 transition-all hover:shadow-md"
+                                        className="w-full bg-white rounded-2xl p-4 md:p-5 border border-gray-100 shadow-sm flex flex-col justify-between h-28 md:h-32 group hover:border-primary/20 transition-all hover:shadow-md"
                                     >
-                                        <div className={`size-8 md:size-10 rounded-xl md:rounded-2xl ${kpi.color} text-white flex items-center justify-center transition-transform group-hover:scale-110 shadow-lg shadow-current/10`}>
-                                            <kpi.icon size={16} className="md:w-5 md:h-5" />
+                                        <div className={`size-8 md:size-9 rounded-lg ${kpi.color} text-white flex items-center justify-center transition-transform group-hover:scale-110 shadow-lg shadow-current/10`}>
+                                            <kpi.icon size={16} className="md:w-[18px] md:h-[18px]" />
                                         </div>
                                         <div>
-                                            <p className="text-2xl md:text-3xl font-black text-gray-900 mb-0.5 leading-none tracking-tight">{kpi.value}</p>
-                                            <p className="text-[9px] md:text-[10px] font-black uppercase tracking-widest text-gray-400 leading-none truncate">{kpi.label}</p>
+                                            <p className="text-2xl md:text-[28px] font-bold text-text-main mb-0.5 leading-none tracking-tight">{kpi.value}</p>
+                                            <p className="text-[9px] md:text-[10px] font-bold uppercase tracking-wider text-gray-400 leading-none truncate">{kpi.label}</p>
                                         </div>
                                     </div>
                                 ))}
@@ -163,10 +164,10 @@ export default function DashboardPage() {
 
                         {/* 3. QUICK ACTIONS (Visually Prominent Grid) */}
                         <section>
-                            <div className="flex items-center justify-between mb-4 px-1">
-                                <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Quick Actions</h2>
+                            <div className="flex items-center justify-between mb-2.5">
+                                <h2 className="text-[10px] font-bold uppercase tracking-[0.16em] text-gray-400">Quick Actions</h2>
                             </div>
-                            <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4">
+                            <div className="grid grid-cols-2 md:grid-cols-3 gap-2 md:gap-3">
                                 {useMemo(() => {
                                     const role = (user?.role as string)?.toLowerCase() || 'owner';
                                     if (role === 'cashier') {
@@ -212,27 +213,27 @@ export default function DashboardPage() {
                                     <button 
                                         key={i}
                                         onClick={() => router.push(action.route)}
-                                        className={`bg-white border border-gray-100 p-4 md:p-6 rounded-3xl md:rounded-[2.5rem] flex flex-col items-center justify-center gap-3 md:gap-4 active:scale-95 transition-all shadow-sm group hover:border-primary/20 hover:shadow-md aspect-square md:aspect-auto`}
+                                        className={`bg-white border border-gray-100 rounded-xl px-3 py-3 flex items-center gap-3 active:scale-[0.98] transition-all shadow-sm group hover:border-primary/20 hover:shadow-md`}
                                     >
-                                        <div className={`size-12 md:size-16 rounded-2xl md:rounded-[1.5rem] ${action.color} border flex items-center justify-center transition-transform group-hover:scale-110 shadow-sm`}>
-                                            <action.icon size={20} className="md:w-7 md:h-7" />
+                                        <div className={`size-9 md:size-10 rounded-lg ${action.color} border shrink-0 flex items-center justify-center transition-transform group-hover:scale-110`}>
+                                            <action.icon size={18} className="md:w-[20px] md:h-[20px]" />
                                         </div>
-                                        <span className="text-[9px] md:text-[10px] font-black uppercase tracking-widest text-gray-700 text-center leading-tight">{action.label}</span>
+                                        <span className="text-[11px] md:text-xs font-semibold text-gray-700 leading-tight text-left">{action.label}</span>
                                     </button>
                                 ))}
                             </div>
                         </section>
 
                         {/* 4. BUSINESS HEALTH (Indicators) */}
-                        <section className="bg-white rounded-[3rem] p-8 border border-gray-100 shadow-sm">
-                            <div className="flex items-center justify-between mb-8 cursor-pointer group" onClick={() => setIsHealthExpanded(!isHealthExpanded)}>
-                                <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Business Health</h2>
+                        <section className="bg-white rounded-2xl p-5 sm:p-6 border border-gray-100 shadow-sm">
+                            <div className="flex items-center justify-between mb-6 cursor-pointer group" onClick={() => setIsHealthExpanded(!isHealthExpanded)}>
+                                <h2 className="text-[10px] font-bold uppercase tracking-[0.16em] text-gray-400">Business Health</h2>
                                 <div className="flex gap-3 items-center">
                                     <span className="text-[10px] font-bold text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity hidden md:block">
                                         {isHealthExpanded ? 'Collapse' : 'Expand'}
                                     </span>
-                                    <div className="size-10 rounded-2xl bg-gray-50 flex items-center justify-center text-primary group-hover:bg-primary/5 transition-colors">
-                                        {isHealthExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+                                    <div className="size-8 rounded-lg bg-gray-50 flex items-center justify-center text-primary group-hover:bg-primary/5 transition-colors">
+                                        {isHealthExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
                                     </div>
                                 </div>
                             </div>
@@ -249,10 +250,10 @@ export default function DashboardPage() {
                                 const renderItem = (item: any) => (
                                     <div key={item.label} className="space-y-3">
                                         <div className="flex items-center justify-between">
-                                            <span className="text-[10px] font-black uppercase tracking-widest text-gray-600">{item.label}</span>
+                                            <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-600">{item.label}</span>
                                             <div className="flex items-center gap-1">
                                                 <TrendingUp size={10} className="text-emerald-500" />
-                                                <span className="text-[10px] font-black text-emerald-500">{item.trend}</span>
+                                                <span className="text-[10px] font-bold text-emerald-500">{item.trend}</span>
                                             </div>
                                         </div>
                                         <div className="h-2.5 w-full bg-gray-50 rounded-full overflow-hidden border border-gray-100/50">
@@ -292,36 +293,39 @@ export default function DashboardPage() {
 
                         {/* 5. RECENT ACTIVITY (Feed) */}
                         <section>
-                            <div className="flex items-center justify-between mb-4 px-1 cursor-pointer group" onClick={() => setIsActivityExpanded(!isActivityExpanded)}>
-                                <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Recent Activity</h2>
-                                <div className="flex items-center gap-3">
-                                    <span className="text-[10px] font-bold text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity hidden md:block">
-                                        {isActivityExpanded ? 'Collapse' : 'Expand'}
-                                    </span>
-                                    <button 
-                                        onClick={(e) => { e.stopPropagation(); router.push('/dashboard/notifications'); }}
-                                        className="text-[10px] font-black uppercase tracking-widest text-primary hover:underline bg-white px-3 py-1.5 rounded-full border border-gray-100 shadow-sm"
-                                    >
-                                        View All
-                                    </button>
-                                    <div className="text-gray-400 group-hover:text-primary transition-colors flex items-center justify-center bg-white size-7 rounded-full border border-gray-100 shadow-sm">
-                                        {isActivityExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-                                    </div>
-                                </div>
+                            <div className="flex items-center justify-between mb-3">
+                                <h2 className="text-[10px] font-bold uppercase tracking-[0.16em] text-gray-400">Recent Activity</h2>
+                                <button 
+                                    onClick={() => router.push('/dashboard/notifications')}
+                                    className="text-[10px] font-semibold uppercase tracking-wider text-primary hover:text-primary/70 transition-colors cursor-pointer"
+                                >
+                                    View All
+                                </button>
                             </div>
                             {recentActivity.length > 0 ? (
-                                <>
-                                    <div className="space-y-3">
+                                <div className="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden">
+                                    <div className="divide-y divide-gray-50">
                                         {recentActivity.slice(0, 1).map((visitor: any, i: number) => (
-                                            <div key={`first-${i}`} className="bg-white border border-gray-100 p-5 rounded-[2rem] flex items-center gap-4 shadow-sm hover:shadow-md transition-shadow">
-                                                <div className="size-12 rounded-2xl bg-gray-50 flex items-center justify-center text-primary border border-gray-100">
-                                                    <Activity size={20} />
+                                            <div key={`first-${i}`} className="flex items-center gap-3.5 px-4 py-3.5 hover:bg-gray-50/60 transition-colors">
+                                                <div className={`size-10 rounded-xl flex items-center justify-center shrink-0 shadow-sm border ${
+                                                    visitor.status === 'new'
+                                                        ? 'bg-emerald-50 text-emerald-600 border-emerald-100'
+                                                        : 'bg-blue-50 text-blue-600 border-blue-100'
+                                                }`}>
+                                                    <Activity size={18} />
                                                 </div>
-                                                <div className="flex-1 min-w-0">
-                                                    <p className="text-xs font-black text-gray-900 truncate">{visitor.name || 'New Visitor'}</p>
-                                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">{visitor.status === 'new' ? 'New visitor captured' : 'Returning visitor'}</p>
+                                                <div className="flex-1 min-w-0 flex items-center gap-2.5">
+                                                    <p className="text-sm font-semibold text-gray-900 truncate">{visitor.name || 'New Visitor'}</p>
+                                                    <span className={`shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider ${
+                                                        visitor.status === 'new'
+                                                            ? 'bg-emerald-50 text-emerald-600'
+                                                            : 'bg-blue-50 text-blue-600'
+                                                    }`}>
+                                                        <span className={`size-1 rounded-full ${visitor.status === 'new' ? 'bg-emerald-500' : 'bg-blue-500'}`} />
+                                                        {visitor.status === 'new' ? 'New' : 'Returning'}
+                                                    </span>
                                                 </div>
-                                                <p className="text-[10px] font-black text-gray-300 uppercase tracking-tighter">{visitor.time || 'Just now'}</p>
+                                                <span className="shrink-0 text-[10px] font-semibold text-gray-400">{visitor.time || 'Just now'}</span>
                                             </div>
                                         ))}
                                     </div>
@@ -331,42 +335,69 @@ export default function DashboardPage() {
                                                 initial={{ height: 0, opacity: 0 }} 
                                                 animate={{ height: 'auto', opacity: 1 }} 
                                                 exit={{ height: 0, opacity: 0 }}
-                                                className="overflow-hidden mt-3"
+                                                className="overflow-hidden"
                                             >
-                                                <div className="space-y-3">
+                                                <div className="divide-y divide-gray-50 border-t border-gray-100">
                                                     {recentActivity.slice(1).map((visitor: any, i: number) => (
-                                                        <div key={`rest-${i}`} className="bg-white border border-gray-100 p-5 rounded-[2rem] flex items-center gap-4 shadow-sm hover:shadow-md transition-shadow">
-                                                            <div className="size-12 rounded-2xl bg-gray-50 flex items-center justify-center text-primary border border-gray-100">
-                                                                <Activity size={20} />
+                                                        <div key={`rest-${i}`} className="flex items-center gap-3.5 px-4 py-3.5 hover:bg-gray-50/60 transition-colors">
+                                                            <div className={`size-10 rounded-xl flex items-center justify-center shrink-0 shadow-sm border ${
+                                                                visitor.status === 'new'
+                                                                    ? 'bg-emerald-50 text-emerald-600 border-emerald-100'
+                                                                    : 'bg-blue-50 text-blue-600 border-blue-100'
+                                                            }`}>
+                                                                <Activity size={18} />
                                                             </div>
-                                                            <div className="flex-1 min-w-0">
-                                                                <p className="text-xs font-black text-gray-900 truncate">{visitor.name || 'New Visitor'}</p>
-                                                                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">{visitor.status === 'new' ? 'New visitor captured' : 'Returning visitor'}</p>
+                                                            <div className="flex-1 min-w-0 flex items-center gap-2.5">
+                                                                <p className="text-sm font-semibold text-gray-900 truncate">{visitor.name || 'New Visitor'}</p>
+                                                                <span className={`shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider ${
+                                                                    visitor.status === 'new'
+                                                                        ? 'bg-emerald-50 text-emerald-600'
+                                                                        : 'bg-blue-50 text-blue-600'
+                                                                }`}>
+                                                                    <span className={`size-1 rounded-full ${visitor.status === 'new' ? 'bg-emerald-500' : 'bg-blue-500'}`} />
+                                                                    {visitor.status === 'new' ? 'New' : 'Returning'}
+                                                                </span>
                                                             </div>
-                                                            <p className="text-[10px] font-black text-gray-300 uppercase tracking-tighter">{visitor.time || 'Just now'}</p>
+                                                            <span className="shrink-0 text-[10px] font-semibold text-gray-400">{visitor.time || 'Just now'}</span>
                                                         </div>
                                                     ))}
                                                 </div>
                                             </motion.div>
                                         )}
                                     </AnimatePresence>
-                                </>
+                                    {recentActivity.length > 1 && (
+                                        <button
+                                            onClick={() => setIsActivityExpanded(!isActivityExpanded)}
+                                            className="w-full flex items-center justify-center gap-1.5 py-2.5 text-[10px] font-bold uppercase tracking-wider text-gray-500 hover:text-primary hover:bg-gray-50/70 transition-colors border-t border-gray-100 cursor-pointer"
+                                        >
+                                            {isActivityExpanded ? (
+                                                <>
+                                                    Collapse <ChevronUp size={12} />
+                                                </>
+                                            ) : (
+                                                <>
+                                                    Show all ({recentActivity.length}) <ChevronDown size={12} />
+                                                </>
+                                            )}
+                                        </button>
+                                    )}
+                                </div>
                             ) : (
-                                <div className="bg-white rounded-[3rem] p-12 border border-gray-100 shadow-sm flex flex-col items-center text-center gap-6">
-                                    <div className="size-24 rounded-[2rem] bg-[#066CF4]/5 flex items-center justify-center text-gray-300 border border-[#066CF4]/10">
-                                        <Users size={48} strokeWidth={1} />
+                                <div className="bg-white rounded-2xl p-8 border border-gray-100 shadow-sm flex flex-col items-center text-center gap-5">
+                                    <div className="size-16 rounded-2xl bg-[#066CF4]/5 flex items-center justify-center text-gray-300 border border-[#066CF4]/10">
+                                        <Users size={32} strokeWidth={1.2} />
                                     </div>
                                     <div className="space-y-2">
-                                        <h4 className="text-xl font-black text-gray-900 tracking-tight">Your first customer is waiting</h4>
-                                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest leading-relaxed max-w-[240px] mx-auto">
-                                            Create your QR code and start capturing customers today. Let's bring them back.
+                                        <h4 className="text-lg font-bold text-text-main tracking-tight">Your first customer is waiting</h4>
+                                        <p className="text-sm text-gray-400 leading-relaxed max-w-[280px] mx-auto">
+                                            Create your QR code and start capturing customers today. Let&apos;s bring them back.
                                         </p>
                                     </div>
                                     <Button 
                                         onClick={() => router.push('/dashboard/customer-experience')}
-                                        className="h-14 px-10 rounded-2xl bg-[#066CF4] text-white text-[11px] font-black uppercase tracking-[0.2em] shadow-xl shadow-blue-500/20 active:scale-95 transition-all flex items-center gap-2"
+                                        className="h-11 px-6 rounded-xl bg-[#066CF4] text-white text-[10px] font-bold uppercase tracking-wider shadow-lg shadow-blue-500/20 active:scale-95 transition-all flex items-center gap-2"
                                     >
-                                        <Plus size={18} />
+                                        <Plus size={16} />
                                         My Business QR
                                     </Button>
                                 </div>
@@ -374,62 +405,82 @@ export default function DashboardPage() {
                         </section>
 
                         {/* 6. MANAGE YOUR BUSINESS (Main Modules) */}
-                        <section className="space-y-4">
-                            <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 px-1">Manage Your Business</h2>
-                            {[
-                                { 
-                                    title: 'Customers', 
-                                    desc: 'Visitors, Loyalty & Messaging', 
-                                    icon: Users, 
-                                    color: 'text-blue-600 bg-blue-50',
-                                    route: '/dashboard/visitors'
-                                },
-                                { 
-                                    title: 'Sales', 
-                                    desc: 'Inventory, Catalogue & POS', 
-                                    icon: ShoppingBag, 
-                                    color: 'text-purple-600 bg-purple-50',
-                                    route: '/dashboard/catalogue'
-                                },
-                                { 
-                                    title: 'Growth', 
-                                    desc: 'Marketing & Referral Campaigns', 
-                                    icon: Zap, 
-                                    color: 'text-emerald-600 bg-emerald-50',
-                                    route: '/dashboard/marketing-assets'
-                                },
-                                { 
-                                    title: 'Insights', 
-                                    desc: 'Analytics & Performance', 
-                                    icon: BarChart3, 
-                                    color: 'text-amber-600 bg-amber-50',
-                                    route: '/dashboard/analytics'
-                                },
-                                { 
-                                    title: 'Settings', 
-                                    desc: 'Business & Account Config', 
-                                    icon: SettingsIcon, 
-                                    color: 'text-gray-600 bg-gray-50',
-                                    route: '/dashboard/settings'
-                                }
-                            ].map((module, i) => (
-                                <button 
-                                    key={i}
-                                    onClick={() => router.push(module.route)}
-                                    className="w-full bg-white border border-gray-100 p-4 md:p-8 rounded-3xl md:rounded-[3rem] flex items-center gap-4 md:gap-6 shadow-sm active:scale-[0.98] transition-all text-left group hover:border-primary/20 hover:shadow-md"
-                                >
-                                    <div className={`size-12 md:size-16 rounded-2xl md:rounded-[1.5rem] ${module.color} shrink-0 flex items-center justify-center transition-transform group-hover:scale-105 shadow-sm`}>
-                                        <module.icon size={24} className="md:w-8 md:h-8" />
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                        <h3 className="text-sm md:text-base font-black text-gray-900 mb-0.5 md:mb-1">{module.title}</h3>
-                                        <p className="text-[9px] md:text-[11px] font-bold text-gray-400 leading-relaxed uppercase tracking-widest truncate md:whitespace-normal">{module.desc}</p>
-                                    </div>
-                                    <div className="size-8 md:size-10 rounded-full bg-gray-50 flex items-center justify-center text-gray-300 group-hover:text-primary group-hover:bg-primary/5 transition-all">
-                                        <ChevronRight size={16} className="md:w-5 md:h-5" />
-                                    </div>
-                                </button>
-                            ))}
+                        <section className="space-y-3">
+                            <h2 className="text-[10px] font-bold uppercase tracking-[0.16em] text-gray-400">Manage Your Business</h2>
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3">
+                                {[
+                                    { 
+                                        title: 'Customers', 
+                                        desc: 'Visitors, Loyalty & Messaging', 
+                                        icon: Users, 
+                                        color: 'text-blue-600 bg-blue-50',
+                                        route: '/dashboard/visitors'
+                                    },
+                                    { 
+                                        title: 'Deals', 
+                                        desc: 'Promotions, Offers & Discovery', 
+                                        icon: Tag, 
+                                        color: 'text-orange-600 bg-orange-50',
+                                        route: '/dashboard/discovery/deals'
+                                    },
+                                    { 
+                                        title: 'Sales', 
+                                        desc: 'Inventory, Catalogue & POS', 
+                                        icon: ShoppingBag, 
+                                        color: 'text-purple-600 bg-purple-50',
+                                        route: '/dashboard/catalogue'
+                                    },
+                                    { 
+                                        title: 'Partnership', 
+                                        desc: 'Network, Agreements & Earnings', 
+                                        icon: Handshake, 
+                                        color: 'text-emerald-600 bg-emerald-50',
+                                        route: '/dashboard/business-partnership'
+                                    },
+                                    { 
+                                        title: 'Insights', 
+                                        desc: 'Analytics & Performance', 
+                                        icon: BarChart3, 
+                                        color: 'text-amber-600 bg-amber-50',
+                                        route: '/dashboard/analytics'
+                                    },
+                                    { 
+                                        title: 'Channels', 
+                                        desc: 'SMS, WhatsApp & Email', 
+                                        icon: Globe2, 
+                                        color: 'text-sky-600 bg-sky-50',
+                                        route: '/dashboard/messaging'
+                                    },
+                                    { 
+                                        title: 'Loyalty', 
+                                        desc: 'Rewards, Points & Redemptions', 
+                                        icon: Gift, 
+                                        color: 'text-rose-600 bg-rose-50',
+                                        route: '/dashboard/loyalty'
+                                    },
+                                    { 
+                                        title: 'Settings', 
+                                        desc: 'Business & Account Config', 
+                                        icon: SettingsIcon, 
+                                        color: 'text-gray-600 bg-gray-50',
+                                        route: '/dashboard/settings'
+                                    }
+                                ].map((module, i) => (
+                                    <button 
+                                        key={i}
+                                        onClick={() => router.push(module.route)}
+                                        className="bg-white border border-gray-100 px-3 py-3.5 rounded-xl flex flex-col items-start gap-2 shadow-sm active:scale-[0.98] transition-all text-left group hover:border-primary/20 hover:shadow-md"
+                                    >
+                                        <div className={`size-9 md:size-10 rounded-lg ${module.color} flex items-center justify-center transition-transform group-hover:scale-110`}>
+                                            <module.icon size={18} className="md:w-5 md:h-5" />
+                                        </div>
+                                        <div className="min-w-0">
+                                            <h3 className="text-[11px] md:text-xs font-bold text-text-main leading-tight truncate">{module.title}</h3>
+                                            <p className="text-[9px] md:text-[10px] font-medium text-gray-400 leading-tight truncate md:whitespace-normal">{module.desc}</p>
+                                        </div>
+                                    </button>
+                                ))}
+                            </div>
                         </section>
                     </div>
             </main>

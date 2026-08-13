@@ -40,11 +40,11 @@ export default function AutomatedRepliesPage() {
                         <ArrowLeft size={20} />
                     </button>
                     <div>
-                        <div className="flex items-center gap-2"><h1 className="text-2xl font-display font-black text-slate-900 tracking-tight">Automated Support Settings</h1><PageGuideButton /><AICopilotButton /></div>
+                        <div className="flex items-center gap-2"><h1 className="text-2xl font-display font-bold text-slate-900 tracking-tight">Automated Support Settings</h1><PageGuideButton /><AICopilotButton /></div>
                         <p className="text-slate-500 text-sm font-medium mt-1">Configure automated responses and AI behaviors for your support channels.</p>
                     </div>
                 </div>
-                <button className="flex items-center gap-2 px-6 py-3 bg-amber-600 text-white rounded-xl text-sm font-black uppercase tracking-wider hover:bg-amber-700 transition-all shadow-lg shadow-amber-600/20 active:scale-95">
+                <button className="flex items-center gap-2 px-6 py-3 bg-amber-600 text-white rounded-xl text-sm font-bold uppercase tracking-wider hover:bg-amber-700 transition-all shadow-lg shadow-amber-600/20 active:scale-95">
                     <Save size={18} />
                     Save Changes
                 </button>
@@ -60,7 +60,7 @@ export default function AutomatedRepliesPage() {
                                 <MessageSquare size={20} />
                             </div>
                             <div>
-                                <h3 className="font-display font-black text-slate-900">Welcome Message</h3>
+                                <h3 className="font-display font-bold text-slate-900">Welcome Message</h3>
                                 <p className="text-[11px] text-slate-500 font-bold uppercase tracking-wider">Trigger: First contact of the day</p>
                             </div>
                         </div>
@@ -72,7 +72,7 @@ export default function AutomatedRepliesPage() {
                         </button>
                     </div>
                     <div className="p-6">
-                        <label className="block text-xs font-black uppercase tracking-widest text-slate-400 mb-3">Response Text</label>
+                        <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">Response Text</label>
                         <textarea 
                             value={welcomeMsg}
                             onChange={(e) => setWelcomeMsg(e.target.value)}
@@ -94,7 +94,7 @@ export default function AutomatedRepliesPage() {
                                 <Timer size={20} />
                             </div>
                             <div>
-                                <h3 className="font-display font-black text-slate-900">Off-Hours Response</h3>
+                                <h3 className="font-display font-bold text-slate-900">Off-Hours Response</h3>
                                 <p className="text-[11px] text-slate-500 font-bold uppercase tracking-wider">Trigger: Outside business hours</p>
                             </div>
                         </div>
@@ -107,14 +107,14 @@ export default function AutomatedRepliesPage() {
                     </div>
                     <div className="p-6">
                         <div className="mb-6">
-                            <label className="block text-xs font-black uppercase tracking-widest text-slate-400 mb-3">Active Schedule</label>
+                            <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">Active Schedule</label>
                             <div className="flex items-center gap-3 px-4 py-3 bg-slate-50 rounded-2xl border border-transparent">
                                 <Timer size={18} className="text-slate-400" />
                                 <span className="text-sm font-bold text-slate-700">Daily: 11:00 PM - 07:00 AM</span>
-                                <button className="ml-auto text-amber-600 text-xs font-black uppercase tracking-widest hover:text-amber-700">Edit Schedule</button>
+                                <button className="ml-auto text-amber-600 text-xs font-bold uppercase tracking-wider hover:text-amber-700">Edit Schedule</button>
                             </div>
                         </div>
-                        <label className="block text-xs font-black uppercase tracking-widest text-slate-400 mb-3">Response Text</label>
+                        <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">Response Text</label>
                         <textarea 
                             value={offHoursMsg}
                             onChange={(e) => setOffHoursMsg(e.target.value)}
@@ -132,7 +132,7 @@ export default function AutomatedRepliesPage() {
                                 <Zap size={20} />
                             </div>
                             <div>
-                                <h3 className="font-display font-black text-slate-900">AI-Driven FAQ Agent</h3>
+                                <h3 className="font-display font-bold text-slate-900">AI-Driven FAQ Agent</h3>
                                 <p className="text-[11px] text-slate-500 font-bold uppercase tracking-wider">Trigger: Natural language keywords</p>
                             </div>
                         </div>
@@ -146,8 +146,8 @@ export default function AutomatedRepliesPage() {
                     
                     <div className="p-6">
                         <div className="flex justify-between items-center mb-6">
-                            <label className="block text-xs font-black uppercase tracking-widest text-slate-400">Keyword Triggers & Responses</label>
-                            <button className="flex items-center gap-2 text-[11px] font-black uppercase tracking-widest text-amber-600 hover:text-amber-700 transition-all">
+                            <label className="block text-xs font-bold uppercase tracking-wider text-slate-400">Keyword Triggers & Responses</label>
+                            <button className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider text-amber-600 hover:text-amber-700 transition-all">
                                 <Plus size={14} />
                                 Add New Trigger
                             </button>
@@ -162,7 +162,7 @@ export default function AutomatedRepliesPage() {
                                     <div className="flex justify-between items-start mb-4">
                                         <div className="flex flex-wrap gap-2">
                                             {faq.keywords.map(k => (
-                                                <span key={k} className="px-2 py-1 bg-white border border-slate-200 rounded-lg text-[10px] font-black text-slate-600 uppercase tracking-widest">{k}</span>
+                                                <span key={k} className="px-2 py-1 bg-white border border-slate-200 rounded-lg text-[10px] font-bold text-slate-600 uppercase tracking-wider">{k}</span>
                                             ))}
                                         </div>
                                         <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-all">

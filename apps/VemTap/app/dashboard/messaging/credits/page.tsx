@@ -39,8 +39,8 @@ const CHANNEL_TABS_UNUSED = null; // Tabs removed - navigation via Messaging Cen
 const CreditCardComponent = ({ title, amount, icon: Icon, color, subtitle, unavailable }: any) => (
   <div className={`bg-white p-6 rounded-2xl border border-slate-100 shadow-sm transition-all ${unavailable ? 'opacity-60 grayscale cursor-not-allowed border-slate-200 bg-slate-50' : 'hover:shadow-md'}`}>
     <div className="flex justify-between items-start mb-4">
-      <div className={`p-3 rounded-xl ${color}`}>
-        <Icon size={24} className="text-white" />
+      <div className={`size-9 md:size-10 rounded-lg flex items-center justify-center ${color}`}>
+        <Icon size={20} className="text-white" />
       </div>
       {unavailable ? (
         <div className="flex items-center gap-1 text-slate-500 font-bold text-xs bg-slate-200 px-2 py-1 rounded-full">
@@ -56,12 +56,12 @@ const CreditCardComponent = ({ title, amount, icon: Icon, color, subtitle, unava
     </div>
     <h3 className="text-slate-500 font-bold text-sm mb-1">{title}</h3>
     <div className="flex items-baseline gap-2">
-      <span className="text-3xl font-display font-black text-slate-900">
+      <span className="text-2xl md:text-3xl font-bold text-slate-900">
         {unavailable ? '---' : amount.toLocaleString()}
       </span>
-      <span className="text-slate-400 font-bold text-xs uppercase tracking-widest">Credits</span>
+      <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">Credits</span>
     </div>
-    <p className="mt-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest">{subtitle}</p>
+    <p className="mt-3 text-[10px] font-semibold uppercase tracking-wider text-slate-400">{subtitle}</p>
   </div>
 );
 
@@ -284,7 +284,7 @@ export default function MessagingCreditsPage() {
       <div className="flex items-center gap-4 pt-4">
         <Link
           href="/dashboard/messaging"
-          className="flex items-center gap-2 px-4 py-2 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-900 transition-all text-sm font-bold active:scale-95"
+          className="flex items-center gap-2 px-4 py-2 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-900 transition-all text-xs font-semibold uppercase tracking-wider active:scale-95"
         >
           <ArrowLeft size={16} />
           Messaging Center
@@ -292,7 +292,7 @@ export default function MessagingCreditsPage() {
       </div>
 
       <div>
-        <h1 className="text-2xl font-black text-text-main tracking-tight">Credits</h1>
+        <h1 className="text-xl md:text-2xl font-bold text-gray-900 tracking-tight">Credits</h1>
         <p className="text-sm text-text-secondary font-medium">Manage your messaging credit balance.</p>
       </div>
 
@@ -335,7 +335,7 @@ export default function MessagingCreditsPage() {
         <div className="absolute bottom-0 left-0 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl -ml-32 -mb-32" />
         
         <div className="relative z-10 text-center max-w-2xl mx-auto mb-12">
-          <h2 className="text-3xl font-display font-bold text-white mb-4">Top-up Packages</h2>
+          <h2 className="text-xl md:text-2xl font-bold text-white mb-4">Top-up Packages</h2>
           <p className="text-slate-400 font-medium">Choose a pre-configured package to increase your messaging capacity instantly. Credits are added immediately after payment.</p>
         </div>
 
@@ -344,7 +344,7 @@ export default function MessagingCreditsPage() {
             <div key={plan.id} className="bg-white/5 backdrop-blur-md border border-white/10 p-8 rounded-2xl hover:bg-white/10 transition-all group">
               <h3 className="text-white font-bold text-xl mb-2">{plan.name}</h3>
               <div className="flex items-baseline gap-1 mb-6">
-                <span className="text-3xl font-display font-black text-white">₦{plan.price.toLocaleString()}</span>
+                <span className="text-2xl md:text-3xl font-bold text-white">₦{plan.price.toLocaleString()}</span>
               </div>
               
               <ul className="space-y-4 mb-8">
@@ -385,7 +385,7 @@ export default function MessagingCreditsPage() {
               <button 
                 onClick={() => handlePurchasePlan(plan.id)}
                 disabled={isProcessing}
-                className="w-full py-4 bg-primary text-white rounded-xl font-bold text-sm shadow-lg shadow-primary/20 group-hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-2"
+                className="w-full h-10 bg-primary text-white font-semibold text-xs uppercase tracking-wider rounded-xl group-hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-2"
               >
                 {isProcessing && selectedPlanId === plan.id ? (
                   <Loader2 className="animate-spin" size={18} />
@@ -400,7 +400,7 @@ export default function MessagingCreditsPage() {
       </div>
 
       {/* Custom Top-up Calculator */}
-      <div className="bg-white border border-slate-100 rounded-3xl p-8 md:p-12 shadow-sm relative overflow-hidden">
+      <div className="bg-white border border-slate-100 rounded-2xl p-8 md:p-12 shadow-sm relative overflow-hidden">
         <div className="absolute top-0 right-0 w-80 h-80 bg-blue-500/5 rounded-full blur-3xl -mr-32 -mt-32 pointer-events-none" />
         <div className="absolute bottom-0 left-0 w-80 h-80 bg-purple-500/5 rounded-full blur-3xl -ml-32 -mb-32 pointer-events-none" />
 
@@ -410,9 +410,9 @@ export default function MessagingCreditsPage() {
             <div>
               <div className="flex items-center gap-2 text-primary mb-2">
                 <Calculator size={18} />
-                <span className="text-xs font-black uppercase tracking-widest">Custom Top-up</span>
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">Custom Top-up</span>
               </div>
-              <h2 className="text-3xl font-display font-bold text-slate-900">Custom Credits Calculator</h2>
+              <h2 className="text-xl md:text-2xl font-bold text-slate-900 tracking-tight">Custom Credits Calculator</h2>
               <p className="text-slate-500 font-medium mt-1">Need a specific amount of credits? Drag the sliders or type in your exact counts below.</p>
             </div>
 
@@ -426,7 +426,7 @@ export default function MessagingCreditsPage() {
                     </div>
                     <div>
                       <h4 className="font-bold text-slate-800 text-sm">SMS Credits</h4>
-                      <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">₦{smsPrice.toFixed(2)} / credit</p>
+                      <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider">₦{smsPrice.toFixed(2)} / credit</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
@@ -467,7 +467,7 @@ export default function MessagingCreditsPage() {
                       <div className="flex items-center gap-2">
                         <h4 className="font-bold text-slate-800 text-sm">WhatsApp Credits</h4>
                       </div>
-                      <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">₦{whatsappPrice.toFixed(2)} / credit</p>
+                      <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider">₦{whatsappPrice.toFixed(2)} / credit</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
@@ -506,7 +506,7 @@ export default function MessagingCreditsPage() {
                     </div>
                     <div>
                       <h4 className="font-bold text-slate-800 text-sm">Email Credits</h4>
-                      <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">₦{emailPrice.toFixed(2)} / credit</p>
+                      <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider">₦{emailPrice.toFixed(2)} / credit</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
@@ -545,7 +545,7 @@ export default function MessagingCreditsPage() {
                     </div>
                     <div>
                       <h4 className="font-bold text-slate-800 text-sm">AI Credits</h4>
-                      <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">₦{aiPrice.toFixed(2)} / credit</p>
+                      <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider">₦{aiPrice.toFixed(2)} / credit</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
@@ -585,10 +585,10 @@ export default function MessagingCreditsPage() {
               <div className="space-y-6 relative z-10">
                 <div className="flex items-center gap-2 text-primary">
                   <Sparkles size={16} />
-                  <span className="text-[10px] font-black uppercase tracking-widest">Order Summary</span>
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">Order Summary</span>
                 </div>
 
-                <h3 className="text-2xl font-display font-bold">Top-up Summary</h3>
+                <h3 className="text-lg md:text-xl font-bold tracking-tight">Top-up Summary</h3>
 
                 {/* Subtotals list */}
                 <div className="space-y-4 pt-4 border-t border-slate-800">
@@ -612,9 +612,9 @@ export default function MessagingCreditsPage() {
 
                 {/* Total Cost Box */}
                 <div className="pt-6 border-t border-slate-800 space-y-2">
-                  <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Total Amount</span>
+                  <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Total Amount</span>
                   <div className="flex items-baseline gap-1">
-                    <span className="text-4xl font-display font-black text-white">₦{totalCost.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+                    <span className="text-2xl md:text-3xl font-bold text-white">₦{totalCost.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
                   </div>
                 </div>
               </div>
@@ -623,7 +623,7 @@ export default function MessagingCreditsPage() {
                 <button
                   onClick={handlePurchaseCustom}
                   disabled={isProcessing || totalCost <= 0}
-                  className="w-full py-4 bg-primary text-white rounded-xl font-bold text-sm shadow-lg shadow-primary/20 hover:bg-primary/95 disabled:bg-slate-800 disabled:text-slate-600 disabled:shadow-none hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+                  className="w-full h-10 bg-primary text-white font-semibold text-xs uppercase tracking-wider rounded-xl hover:bg-primary/95 disabled:bg-slate-800 disabled:text-slate-600 disabled:shadow-none hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2"
                 >
                   {isProcessing && paymentMode === 'custom' ? (
                     <Loader2 className="animate-spin" size={18} />
@@ -633,7 +633,7 @@ export default function MessagingCreditsPage() {
                   <span>Instant Custom Top-Up</span>
                 </button>
 
-                <div className="flex items-center justify-center gap-2 text-slate-500 text-[10px] font-bold uppercase tracking-widest text-center">
+                <div className="flex items-center justify-center gap-2 text-slate-400 text-[10px] font-semibold uppercase tracking-wider text-center">
                   <ShieldCheck size={12} className="text-primary" />
                   <span>Secured by Paystack</span>
                 </div>
@@ -644,7 +644,7 @@ export default function MessagingCreditsPage() {
       </div>
 
       {/* Information Cards */}
-      <div className="grid grid-cols-1 gap-8">        <div className="bg-slate-50 p-8 rounded-3xl border border-slate-200">
+      <div className="grid grid-cols-1 gap-8">        <div className="bg-slate-50 p-8 rounded-2xl border border-slate-200">
           <div className="w-12 h-12 bg-slate-900 rounded-2xl flex items-center justify-center text-white mb-6">
             <ShieldCheck size={24} />
           </div>

@@ -29,7 +29,7 @@ export default function AgentAssignmentPage() {
             {/* Header */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
-                    <div className="flex items-center gap-2"><h1 className="text-2xl font-display font-black text-slate-900 tracking-tight">Agent Management</h1><PageGuideButton /><AICopilotButton /></div>
+                    <div className="flex items-center gap-2"><h1 className="text-2xl font-display font-bold text-slate-900 tracking-tight">Agent Management</h1><PageGuideButton /><AICopilotButton /></div>
                     <p className="text-slate-500 text-sm font-medium mt-1">Assign roles and monitor performance of your support team.</p>
                 </div>
                 <div className="flex items-center gap-3">
@@ -37,7 +37,7 @@ export default function AgentAssignmentPage() {
                         <Filter size={18} />
                         Filter
                     </button>
-                    <button className="flex items-center gap-2 px-4 py-2.5 bg-amber-600 text-white rounded-xl text-sm font-black uppercase tracking-wider hover:bg-amber-700 transition-all shadow-md shadow-amber-600/20 active:scale-95">
+                    <button className="flex items-center gap-2 px-4 py-2.5 bg-amber-600 text-white rounded-xl text-sm font-bold uppercase tracking-wider hover:bg-amber-700 transition-all shadow-md shadow-amber-600/20 active:scale-95">
                         <UserPlus size={18} />
                         Add Agent
                     </button>
@@ -58,7 +58,7 @@ export default function AgentAssignmentPage() {
                         />
                     </div>
                     <div className="flex items-center gap-4">
-                        <span className="text-xs font-black uppercase tracking-widest text-slate-400">Sort by:</span>
+                        <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Sort by:</span>
                         <select className="bg-transparent border-none text-sm font-bold text-slate-700 focus:ring-0 cursor-pointer">
                             <option>Performance</option>
                             <option>Active Tickets</option>
@@ -71,12 +71,12 @@ export default function AgentAssignmentPage() {
                     <table className="w-full text-left">
                         <thead>
                             <tr className="bg-slate-50/50">
-                                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Agent</th>
-                                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Role</th>
-                                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Status</th>
-                                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Active Tickets</th>
-                                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Avg. Response</th>
-                                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400 text-right">Actions</th>
+                                <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-slate-400">Agent</th>
+                                <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-slate-400">Role</th>
+                                <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-slate-400">Status</th>
+                                <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-slate-400">Active Tickets</th>
+                                <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-slate-400">Avg. Response</th>
+                                <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-slate-400 text-right">Actions</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-50">
@@ -103,7 +103,7 @@ export default function AgentAssignmentPage() {
                                         </div>
                                     </td>
                                     <td className="px-6 py-4">
-                                        <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                                        <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
                                             agent.status === 'Active' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
                                         }`}>
                                             {agent.status}
@@ -133,8 +133,8 @@ export default function AgentAssignmentPage() {
                 </div>
 
                 <div className="p-4 bg-slate-50/30 border-t border-slate-50 flex justify-between items-center">
-                    <p className="text-xs text-slate-400 font-bold uppercase tracking-widest">Showing 4 agents</p>
-                    <button className="text-xs font-black uppercase tracking-widest text-amber-600 hover:text-amber-700 py-2 px-4 transition-all">
+                    <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">Showing 4 agents</p>
+                    <button className="text-xs font-bold uppercase tracking-wider text-amber-600 hover:text-amber-700 py-2 px-4 transition-all">
                         View Audit Log
                     </button>
                 </div>

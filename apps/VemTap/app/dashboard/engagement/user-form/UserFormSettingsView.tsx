@@ -131,16 +131,16 @@ export default function UserFormSettingsView({
 
     return (
         <div className="p-8 space-y-6">
-            <div className="bg-linear-to-br from-indigo-600 to-primary rounded-[2.5rem] p-8 text-white relative overflow-hidden shadow-2xl shadow-primary/20 group">
+            <div className="bg-linear-to-br from-indigo-600 to-primary rounded-2xl p-7 text-white relative overflow-hidden shadow-lg shadow-primary/20 group">
                 <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
                     <div className="space-y-2">
                         <div className="flex items-center gap-2 px-3 py-1 bg-white/20 backdrop-blur-md rounded-full w-fit">
                             <Zap size={12} className="fill-white" />
-                            <span className="text-[10px] font-black uppercase tracking-widest">New Experience</span>
+                            <span className="text-[10px] font-semibold uppercase tracking-wider">New Experience</span>
                         </div>
-                        <h2 className="text-2xl font-black tracking-tight leading-tight">Unified Customer Dashboard</h2>
+                        <h2 className="text-xl md:text-2xl font-bold tracking-tight leading-tight">Unified Customer Dashboard</h2>
                         <p className="text-sm font-medium text-white/80 max-w-xl">
-                            We've consolidated hardware management and engagement sequences into a single powerful workflow. Try the new Customer Experience dashboard for a better setup journey.
+                            We&apos;ve consolidated hardware management and engagement sequences into a single powerful workflow. Try the new Customer Experience dashboard for a better setup journey.
                         </p>
                     </div>
                     <button
@@ -148,7 +148,7 @@ export default function UserFormSettingsView({
                             const params = new URLSearchParams(window.location.search);
                             window.location.href = `/dashboard/customer-experience?${params.toString()}`;
                         }}
-                        className="h-14 px-8 bg-white text-primary font-black uppercase tracking-widest text-xs rounded-2xl shadow-xl shadow-black/10 hover:scale-105 active:scale-95 transition-all flex items-center gap-3 whitespace-nowrap group-hover:bg-primary-dark group-hover:text-white"
+                        className="h-11 px-6 bg-white text-primary font-semibold uppercase tracking-wider text-xs rounded-xl shadow-md shadow-black/10 hover:scale-105 active:scale-95 transition-all flex items-center gap-3 whitespace-nowrap group-hover:bg-primary-dark group-hover:text-white"
                     >
                         Switch to New View
                         <Save size={18} className="rotate-90" />
@@ -194,7 +194,7 @@ export default function UserFormSettingsView({
                         <div className="bg-white rounded-2xl border border-gray-100 p-6 space-y-5">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div className="space-y-1">
-                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Welcome Tag</label>
+                                    <label className="text-[10px] font-semibold uppercase tracking-wider text-text-secondary">Welcome Tag</label>
                                     <input
                                         type="text"
                                         value={settings.welcomeTag}
@@ -205,7 +205,7 @@ export default function UserFormSettingsView({
                             </div>
 
                             <div className="space-y-1">
-                                <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Welcome Title</label>
+                                <label className="text-[10px] font-semibold uppercase tracking-wider text-text-secondary">Welcome Title</label>
                                 <input
                                     type="text"
                                     value={settings.welcomeTitle}
@@ -215,7 +215,7 @@ export default function UserFormSettingsView({
                             </div>
 
                             <div className="space-y-1">
-                                <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Welcome Message</label>
+                                <label className="text-[10px] font-semibold uppercase tracking-wider text-text-secondary">Welcome Message</label>
                                 <textarea
                                     value={settings.welcomeMessage}
                                     onChange={(e) => setSettings((prev) => ({ ...prev, welcomeMessage: e.target.value }))}
@@ -225,7 +225,7 @@ export default function UserFormSettingsView({
 
                             <div className="space-y-4 pt-2 pb-2">
                                 <div className="flex items-center justify-between">
-                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Default Form Fields</label>
+                                    <label className="text-[10px] font-semibold uppercase tracking-wider text-text-secondary">Default Form Fields</label>
                                     <div className="group relative">
                                         <Info size={14} className="text-gray-400 cursor-help" />
                                         <div className="absolute bottom-full right-0 mb-2 w-48 p-2 bg-slate-900 text-white text-[10px] rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 font-medium">
@@ -239,7 +239,7 @@ export default function UserFormSettingsView({
                                             <span className="text-xs font-bold text-gray-500">{field}</span>
                                             <div className="flex items-center gap-1.5 grayscale">
                                                 <div className="size-1.5 rounded-full bg-gray-400"></div>
-                                                <span className="text-[9px] font-black uppercase tracking-widest text-gray-400">Locked</span>
+                                                <span className="text-[9px] font-semibold uppercase tracking-wider text-gray-400">Locked</span>
                                             </div>
                                         </div>
                                     ))}
@@ -248,10 +248,10 @@ export default function UserFormSettingsView({
 
                             <div className="space-y-1">
                                 <div className="flex items-center justify-between mb-1">
-                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Privacy Message</label>
+                                    <label className="text-[10px] font-semibold uppercase tracking-wider text-text-secondary">Privacy Message</label>
                                     <div className="flex items-center gap-1.5">
                                         <div className="size-1.5 rounded-full bg-amber-400"></div>
-                                        <span className="text-[9px] font-black uppercase tracking-widest text-amber-500">Read Only</span>
+                                        <span className="text-[9px] font-semibold uppercase tracking-wider text-amber-500">Read Only</span>
                                     </div>
                                 </div>
                                 <textarea
@@ -277,7 +277,7 @@ export default function UserFormSettingsView({
                             </div>
 
                             <div className="space-y-1">
-                                <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Success Title</label>
+                                <label className="text-[10px] font-semibold uppercase tracking-wider text-text-secondary">Success Title</label>
                                 <input
                                     type="text"
                                     value={settings.successTitle}
@@ -288,7 +288,7 @@ export default function UserFormSettingsView({
                             </div>
 
                             <div className="space-y-1">
-                                <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Success Description</label>
+                                <label className="text-[10px] font-semibold uppercase tracking-wider text-text-secondary">Success Description</label>
                                 <textarea
                                     value={settings.successMessage}
                                     onChange={(e) => setSettings((prev) => ({ ...prev, successMessage: e.target.value }))}
@@ -303,7 +303,7 @@ export default function UserFormSettingsView({
                         <button
                             onClick={handleSave}
                             disabled={isSaving}
-                            className="h-12 px-6 bg-primary text-white font-black uppercase tracking-widest text-xs rounded-xl shadow-lg shadow-primary/20 hover:scale-[1.01] active:scale-95 transition-all flex items-center gap-2 disabled:opacity-50"
+                            className="h-10 px-5 bg-primary text-white font-semibold uppercase tracking-wider text-xs rounded-xl shadow-sm shadow-primary/20 hover:scale-[1.01] active:scale-95 transition-all flex items-center gap-2 disabled:opacity-50"
                         >
                             {isSaving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
                             Save Configuration
@@ -313,7 +313,7 @@ export default function UserFormSettingsView({
 
                 <div className="sticky top-6">
                     <details open className="rounded-2xl border border-gray-100 bg-white">
-                        <summary className="cursor-pointer list-none px-4 py-3 text-xs font-black uppercase tracking-widest text-gray-500 flex items-center justify-between">
+                        <summary className="cursor-pointer list-none px-4 py-3 text-xs font-semibold uppercase tracking-wider text-gray-500 flex items-center justify-between">
                             Preview
                             <span className="text-[10px] font-semibold text-gray-400">Data Form</span>
                         </summary>
@@ -327,7 +327,7 @@ export default function UserFormSettingsView({
                                     <button
                                         key={tab.key}
                                         onClick={() => setPreviewTab(tab.key as typeof previewTab)}
-                                        className={`px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest transition-all ${
+                                        className={`px-3 py-1.5 rounded-full text-[10px] font-semibold uppercase tracking-wider transition-all ${
                                             previewTab === tab.key
                                                 ? 'bg-primary text-white'
                                                 : 'bg-white border border-gray-200 text-gray-500 hover:bg-gray-50'

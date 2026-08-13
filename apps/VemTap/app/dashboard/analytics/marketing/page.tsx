@@ -43,7 +43,7 @@ export default function MarketingAnalyticsPage() {
     return (
         <div className="pb-24 md:pb-10 max-w-7xl mx-auto p-4 md:p-8 space-y-8">
             <div className="flex items-center gap-2">
-                <h2 className="text-xl font-black text-gray-900 uppercase tracking-widest">Marketing Analytics</h2>
+                <h2 className="text-xl font-bold text-gray-900 uppercase tracking-wider">Marketing Analytics</h2>
                 <PageGuideButton />
                 <AICopilotButton />
             </div>

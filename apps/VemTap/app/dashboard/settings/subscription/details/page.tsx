@@ -95,56 +95,56 @@ export default function PlanDetailsPage() {
                 }
             />
 
-            <div className="mb-8 rounded-[2.5rem] border border-primary/10 bg-slate-50/70 p-6 md:p-10">
-                <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-primary/10 text-primary rounded-full text-[10px] font-black uppercase tracking-widest mb-4">
+            <div className="mb-8 rounded-2xl border border-primary/10 bg-slate-50/70 p-6 md:p-8">
+                <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-primary/10 text-primary rounded-full text-[10px] font-semibold uppercase tracking-wider mb-4">
                     <Crown size={12} />
                     Active Plan
                 </div>
-                <h2 className="text-3xl md:text-4xl font-black tracking-tight text-text-main mb-2">{activePlan?.name || 'Free Plan'}</h2>
+                <h2 className="text-2xl md:text-3xl font-bold tracking-tight text-text-main mb-2">{activePlan?.name || 'Free Plan'}</h2>
                 <p className="text-text-secondary font-medium">{activePlan?.description || 'No description available.'}</p>
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-6">
                     <div className="rounded-2xl bg-white border border-slate-200 px-5 py-4 shadow-sm">
-                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Status</p>
-                        <p className="mt-2 text-lg font-black text-text-main capitalize">{subscription?.status || 'N/A'}</p>
+                        <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Status</p>
+                        <p className="mt-2 text-lg font-bold text-text-main capitalize">{subscription?.status || 'N/A'}</p>
                     </div>
                     <div className="rounded-2xl bg-white border border-slate-200 px-5 py-4 shadow-sm">
-                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Period Start</p>
-                        <p className="mt-2 text-lg font-black text-text-main">{periodStart ? new Date(periodStart).toLocaleDateString() : 'N/A'}</p>
+                        <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Period Start</p>
+                        <p className="mt-2 text-lg font-bold text-text-main">{periodStart ? new Date(periodStart).toLocaleDateString() : 'N/A'}</p>
                     </div>
                     <div className="rounded-2xl bg-white border border-slate-200 px-5 py-4 shadow-sm">
-                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Period End</p>
-                        <p className="mt-2 text-lg font-black text-text-main">{displayPeriodEnd ? new Date(displayPeriodEnd).toLocaleDateString() : 'N/A'}</p>
+                        <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Period End</p>
+                        <p className="mt-2 text-lg font-bold text-text-main">{displayPeriodEnd ? new Date(displayPeriodEnd).toLocaleDateString() : 'N/A'}</p>
                     </div>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-4">
                     <div className="rounded-2xl bg-white border border-slate-200 px-5 py-4 shadow-sm">
-                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Billing</p>
-                        <p className="mt-2 text-lg font-black text-text-main capitalize">{billingPeriod}</p>
+                        <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Billing</p>
+                        <p className="mt-2 text-lg font-bold text-text-main capitalize">{billingPeriod}</p>
                     </div>
                     <div className="rounded-2xl bg-white border border-slate-200 px-5 py-4 shadow-sm">
-                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Monthly Price</p>
-                        <p className="mt-2 text-lg font-black text-text-main">{formatPrice(
+                        <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Monthly Price</p>
+                        <p className="mt-2 text-lg font-bold text-text-main">{formatPrice(
   activePlan?.monthlyPrice
     ? Number(activePlan.monthlyPrice)
     : undefined
 )}</p>
                     </div>
                     <div className="rounded-2xl bg-white border border-slate-200 px-5 py-4 shadow-sm">
-                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Quarterly Price</p>
-                        <p className="mt-2 text-lg font-black text-text-main">{formatPrice(activePlan?.quarterlyPrice ? Number(activePlan.quarterlyPrice): undefined )}</p>
+                        <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Quarterly Price</p>
+                        <p className="mt-2 text-lg font-bold text-text-main">{formatPrice(activePlan?.quarterlyPrice ? Number(activePlan.quarterlyPrice): undefined )}</p>
                     </div>
                     <div className="rounded-2xl bg-white border border-slate-200 px-5 py-4 shadow-sm">
-                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Yearly Price</p>
-                        <p className="mt-2 text-lg font-black text-text-main">{formatPrice(activePlan?.yearlyPrice ? Number(activePlan.yearlyPrice): undefined)}</p>
+                        <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Yearly Price</p>
+                        <p className="mt-2 text-lg font-bold text-text-main">{formatPrice(activePlan?.yearlyPrice ? Number(activePlan.yearlyPrice): undefined)}</p>
                     </div>
                 </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="bg-white rounded-3xl border border-slate-200 p-6">
-                    <h3 className="text-lg font-black text-slate-900 mb-4">Included Features</h3>
+                <div className="bg-white rounded-2xl border border-gray-100 p-6">
+                    <h3 className="text-lg font-bold text-slate-900 mb-4">Included Features</h3>
                     <ul className="space-y-3">
                         {features.baseFeatures.length > 0 ? features.baseFeatures.map((feature: string, index: number) => (
                             <li key={`feature-${index}`} className="flex items-start gap-3 text-sm font-semibold text-slate-700">
@@ -155,8 +155,8 @@ export default function PlanDetailsPage() {
                     </ul>
                 </div>
 
-                <div className="bg-white rounded-3xl border border-slate-200 p-6">
-                    <h3 className="text-lg font-black text-slate-900 mb-4">Usage Limits</h3>
+                <div className="bg-white rounded-2xl border border-gray-100 p-6">
+                    <h3 className="text-lg font-bold text-slate-900 mb-4">Usage Limits</h3>
                     <ul className="space-y-3">
                         {features.limits.length > 0 ? features.limits.map((item: string, index: number) => (
                             <li key={`limit-${index}`} className="flex items-start gap-3 text-sm font-semibold text-slate-700">
@@ -169,10 +169,10 @@ export default function PlanDetailsPage() {
             </div>
 
             <div className="mt-8 flex gap-3 flex-wrap">
-                <Link href="/dashboard/settings/subscription" className="h-11 px-6 bg-primary text-white rounded-xl font-black text-xs uppercase tracking-widest hover:bg-primary-hover transition-all flex items-center justify-center">
+                <Link href="/dashboard/settings/subscription" className="h-10 px-5 bg-primary text-white rounded-xl font-semibold text-xs uppercase tracking-wider hover:bg-primary-hover transition-all flex items-center justify-center">
                     Upgrade Plan
                 </Link>
-                <Link href="/dashboard/settings/subscription/manage" className="h-11 px-6 bg-white text-primary border border-primary/30 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-primary/5 transition-all flex items-center justify-center">
+                <Link href="/dashboard/settings/subscription/manage" className="h-10 px-5 bg-white text-primary border border-primary/30 rounded-xl font-semibold text-xs uppercase tracking-wider hover:bg-primary/5 transition-all flex items-center justify-center">
                     Manage Subscription
                 </Link>
             </div>
