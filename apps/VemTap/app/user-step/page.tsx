@@ -159,10 +159,6 @@ function UserStepPageContent() {
         }
 
         if (currentStep === 'IDENTIFYING') {
-            if ((window as any).google && (window as any).google.accounts.id) {
-                (window as any).google.accounts.id.prompt();
-            }
-
             const syncTimeout = setTimeout(() => {
                 if (storedIdentity || userData) {
                     setStep('WELCOME_BACK');
