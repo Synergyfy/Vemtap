@@ -226,24 +226,24 @@ export default function BusinessLinkPage() {
 
     return (
         <div className="p-8 max-w-7xl mx-auto space-y-8">
-            <div className="bg-linear-to-br from-indigo-600 to-primary rounded-[2.5rem] p-8 text-white relative overflow-hidden shadow-2xl shadow-primary/20 group">
+            <div className="bg-linear-to-br from-indigo-600 to-primary rounded-2xl p-7 text-white relative overflow-hidden shadow-lg shadow-primary/20 group">
                 <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
                     <div className="space-y-2">
                         <div className="flex items-center gap-2 px-3 py-1 bg-white/20 backdrop-blur-md rounded-full w-fit">
                             <Zap size={12} className="fill-white" />
-                            <span className="text-[10px] font-black uppercase tracking-widest">New Experience</span>
+                            <span className="text-[10px] font-semibold uppercase tracking-wider">New Experience</span>
                         </div>
-                        <h2 className="text-2xl font-black tracking-tight leading-tight">Unified Customer Dashboard</h2>
+                        <h2 className="text-xl md:text-2xl font-bold tracking-tight leading-tight">Unified Customer Dashboard</h2>
                         <p className="text-sm font-medium text-white/80 max-w-xl">
-                            We've consolidated hardware management and engagement sequences into a single powerful workflow. Try the new Customer Experience dashboard for a better setup journey.
+                            We&apos;ve consolidated hardware management and engagement sequences into a single powerful workflow. Try the new Customer Experience dashboard for a better setup journey.
                         </p>
                     </div>
                     <button
                         onClick={() => router.push('/dashboard/customer-experience')}
-                        className="h-14 px-8 bg-white text-primary font-black uppercase tracking-widest text-xs rounded-2xl shadow-xl shadow-black/10 hover:scale-105 active:scale-95 transition-all flex items-center gap-3 whitespace-nowrap group-hover:bg-primary-dark group-hover:text-white"
+                        className="h-11 px-6 bg-white text-primary font-semibold uppercase tracking-wider text-xs rounded-xl shadow-md shadow-black/10 hover:scale-105 active:scale-95 transition-all flex items-center gap-3 whitespace-nowrap group-hover:bg-primary-dark group-hover:text-white"
                     >
                         Switch to New View
-                        <ArrowRight size={18} />
+                        <ArrowRight size={16} />
                     </button>
                 </div>
                 {/* Decorative Elements */}
@@ -259,20 +259,20 @@ export default function BusinessLinkPage() {
             {/* Approved Quota Panel */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {readyOrders.length > 0 ? (
-                    <div className="col-span-3 bg-white rounded-[2.5rem] border border-gray-100 p-8 shadow-sm">
+                    <div className="col-span-3 bg-white rounded-2xl border border-gray-100 p-5 md:p-6 shadow-sm">
                         <div className="mb-6 flex justify-between items-end">
                             <div>
-                                <h3 className="font-display font-bold text-text-main mb-1">Approved Business Links</h3>
-                                <p className="text-[10px] text-text-secondary font-medium uppercase tracking-widest">
+                                <h3 className="text-base md:text-lg font-bold text-text-main mb-1">Approved Business Links</h3>
+                                <p className="text-[10px] text-text-secondary font-medium uppercase tracking-wider">
                                     {totalRemainingQuota} units ready to generate across {readyOrders.length} order{readyOrders.length > 1 ? 's' : ''}
                                 </p>
                             </div>
                             <button
                                 onClick={handleGenerate}
                                 disabled={generateMutation.isPending || totalRemainingQuota <= 0}
-                                className="h-14 px-8 bg-primary text-white font-black uppercase tracking-widest text-xs rounded-2xl shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center gap-3 whitespace-nowrap disabled:opacity-50"
+                                className="h-10 px-5 bg-primary text-white font-semibold uppercase tracking-wider text-xs rounded-xl shadow-sm shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center gap-3 whitespace-nowrap disabled:opacity-50"
                             >
-                                {generateMutation.isPending ? (<Loader2 className="animate-spin text-white" size={16} />) : <QrCode size={18} />}
+                                {generateMutation.isPending ? (<Loader2 className="animate-spin text-white" size={16} />) : <QrCode size={16} />}
                                 {generateMutation.isPending ? 'Generating...' : 'Generate All Assets'}
                             </button>
                         </div>
@@ -283,13 +283,13 @@ export default function BusinessLinkPage() {
                                 const remaining = Math.max(0, total - used);
                                 const pct = Math.round((used / total) * 100);
                                 return (
-                                    <div key={o.id} className="text-left p-4 rounded-2xl border-2 border-gray-100 bg-gray-50/50">
+                                    <div key={o.id} className="text-left p-4 rounded-xl border-2 border-gray-100 bg-gray-50/50">
                                         <div className="flex items-start justify-between mb-3">
                                             <div>
-                                                <p className="text-xs font-black text-text-main">{o.product?.name || o.quote?.productName || 'NFC Product'}</p>
+                                                <p className="text-xs font-bold text-text-main">{o.product?.name || o.quote?.productName || 'NFC Product'}</p>
                                                 <p className="text-[10px] text-text-secondary font-medium uppercase">Order {o.id.slice(0, 8)}</p>
                                             </div>
-                                            <div className="flex items-center gap-1 px-2 py-1 bg-green-100 text-green-700 rounded-full text-[9px] font-black uppercase">
+                                            <div className="flex items-center gap-1 px-2 py-1 bg-green-100 text-green-700 rounded-full text-[9px] font-semibold uppercase">
                                                 <CheckCircle2 size={10} />
                                                 Ready
                                             </div>
@@ -312,14 +312,14 @@ export default function BusinessLinkPage() {
                         </div>
                     </div>
                 ) : devices.length === 0 && !devicesLoading ? (
-                    <div className="col-span-3 bg-amber-50 border border-amber-200 rounded-[2.5rem] p-8 flex items-start gap-5">
-                        <div className="size-12 bg-amber-100 text-amber-600 rounded-2xl flex items-center justify-center shrink-0">
-                            <ShieldAlert size={24} />
+                    <div className="col-span-3 bg-amber-50 border border-amber-200 rounded-2xl p-5 md:p-6 flex items-start gap-5">
+                        <div className="size-10 rounded-lg bg-amber-100 text-amber-600 flex items-center justify-center shrink-0">
+                            <ShieldAlert size={22} />
                         </div>
                         <div>
-                            <h3 className="font-display font-bold text-amber-900 mb-1">No Ready Allocations</h3>
+                            <h3 className="text-base md:text-lg font-bold text-amber-900 mb-1">No Ready Allocations</h3>
                             <p className="text-sm text-amber-700 font-medium max-w-xl">
-                                You don't have any hardware orders ready for activation. Buy NFC hardware in the <strong>Marketplace</strong>. Once your order is ready, you can generate assets here.
+                                You don&apos;t have any hardware orders ready for activation. Buy NFC hardware in the <strong>Marketplace</strong>. Once your order is ready, you can generate assets here.
                             </p>
                         </div>
                     </div>
@@ -341,15 +341,15 @@ export default function BusinessLinkPage() {
                     { label: 'Active Now', value: stats?.activeNow || 0, icon: Zap, color: 'text-emerald-600', bg: 'bg-emerald-50' },
                     { label: 'Total Scans', value: stats?.totalScans || 0, icon: BarChart3, color: 'text-primary', bg: 'bg-primary/5' },
                 ].map((stat, i) => (
-                    <div key={i} className="bg-white p-6 rounded-[2rem] border border-gray-100 shadow-sm">
+                    <div key={i} className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm">
                         <div className="flex items-center justify-between mb-4">
-                            <div className={`p-3 ${stat.bg} ${stat.color} rounded-2xl`}>
+                            <div className={`p-3 ${stat.bg} ${stat.color} rounded-lg`}>
                                 <stat.icon size={20} />
                             </div>
                         </div>
                         <div>
-                            <p className="text-[10px] font-black text-text-secondary uppercase tracking-[0.2em] mb-1">{stat.label}</p>
-                            <h4 className="text-2xl font-black text-text-main">{stat.value}</h4>
+                            <p className="text-[10px] font-semibold text-text-secondary uppercase tracking-wider mb-1">{stat.label}</p>
+                            <h4 className="text-2xl md:text-3xl font-bold text-text-main">{stat.value}</h4>
                         </div>
                     </div>
                 ))}
@@ -358,16 +358,16 @@ export default function BusinessLinkPage() {
             {/* List Header & Controls */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div className="space-y-1">
-                    <h2 className="text-2xl font-black text-text-main tracking-tight flex items-center gap-3">
+                    <h2 className="text-xl md:text-2xl font-bold text-text-main tracking-tight flex items-center gap-3">
                         Business Link Hardware
-                        <span className="px-3 py-1 bg-primary/10 text-primary text-[10px] font-black rounded-lg">
+                        <span className="px-3 py-1 bg-primary/10 text-primary text-[10px] font-semibold rounded-lg">
                             {devices.length} TOTAL
                         </span>
                     </h2>
                     <p className="text-sm text-text-secondary font-medium">Manage and brand your physical assets.</p>
                 </div>
                 
-                <div className="flex items-center gap-4 bg-white px-5 py-2.5 rounded-2xl border border-gray-100 shadow-sm focus-within:ring-2 ring-primary/10 transition-all w-full md:max-w-xs">
+                <div className="flex items-center gap-4 bg-white px-5 py-2.5 rounded-xl border border-gray-100 shadow-sm focus-within:ring-2 ring-primary/10 transition-all w-full md:max-w-xs">
                     <Search size={18} className="text-gray-400" />
                     <input 
                         type="text" 
@@ -388,7 +388,7 @@ export default function BusinessLinkPage() {
                             <QrCode size={18} className="text-primary" />
                         </div>
                     </div>
-                    <p className="text-sm font-bold text-text-secondary animate-pulse uppercase tracking-widest">Loading assets...</p>
+                    <p className="text-sm font-bold text-text-secondary animate-pulse uppercase tracking-wider">Loading assets...</p>
                 </div>
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
@@ -410,27 +410,27 @@ export default function BusinessLinkPage() {
                                         initial={{ opacity: 0, y: 20 }}
                                         animate={{ opacity: 1, y: 0 }}
                                         exit={{ opacity: 0, scale: 0.95 }}
-                                        className="bg-white rounded-[40px] border border-gray-100 hover:shadow-2xl hover:shadow-primary/5 transition-all duration-500 group flex flex-col relative overflow-hidden"
+                                        className="bg-white rounded-2xl border border-gray-100 hover:shadow-xl hover:shadow-primary/5 transition-all duration-500 group flex flex-col relative overflow-hidden"
                                     >
                                         {/* Status Badge Top Right */}
                                         <div className="absolute top-6 right-8 flex items-center gap-1.5">
                                             {device.isMain && (
-                                                <span className="px-2 py-0.5 bg-amber-500 text-white text-[8px] font-black rounded-md uppercase tracking-wider shadow-sm mr-1">
+                                                <span className="px-2 py-0.5 bg-amber-500 text-white text-[8px] font-semibold rounded-md uppercase tracking-wider shadow-sm mr-1">
                                                     ★ MAIN
                                                 </span>
                                             )}
                                             <div className={`w-2 h-2 rounded-full ${device.status === 'active' ? 'bg-emerald-500' : 'bg-gray-300'}`} />
-                                            <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">{device.status}</span>
+                                            <span className="text-[9px] font-semibold uppercase tracking-wider text-slate-400">{device.status}</span>
                                         </div>
 
                                         <div className="p-8 pb-0">
                                             <div className="flex items-center gap-4 mb-8">
-                                                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center bg-${color}-100 text-${color}-600 shadow-sm border border-${color}-200/50`}>
+                                                <div className={`w-12 h-12 rounded-xl flex items-center justify-center bg-${color}-100 text-${color}-600 shadow-sm border border-${color}-200/50`}>
                                                     <Smartphone size={24} />
                                                 </div>
                                                 <div>
-                                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Hardware ID</p>
-                                                    <h3 className="text-lg font-black text-text-main tracking-tight font-mono">{device.code}</h3>
+                                                    <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider leading-none mb-1">Hardware ID</p>
+                                                    <h3 className="text-lg font-bold text-text-main tracking-tight font-mono">{device.code}</h3>
                                                 </div>
                                             </div>
 
@@ -469,8 +469,8 @@ export default function BusinessLinkPage() {
 
                                             {/* Info Fields */}
                                             <div className="space-y-4 mb-8">
-                                                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 relative group/link">
-                                                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-2">Active Path</label>
+                                                <div className="p-4 bg-slate-50 rounded-xl border border-slate-100 relative group/link">
+                                                    <label className="text-[9px] font-semibold text-slate-400 uppercase tracking-wider block mb-2">Active Path</label>
                                                     <div className="flex items-center justify-between">
                                                         <span className="text-xs font-bold text-text-main truncate max-w-[150px]">{displayedTargetUrl}</span>
                                                         <button 
@@ -483,9 +483,9 @@ export default function BusinessLinkPage() {
                                                 </div>
 
                                                 <div className="flex items-center justify-between gap-4">
-                                                    <div className="flex-1 py-3 px-4 bg-slate-50 rounded-2xl border border-slate-100">
-                                                        <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-0.5">Scans</label>
-                                                        <span className="text-lg font-black text-text-main">{device.totalScans}</span>
+                                                    <div className="flex-1 py-3 px-4 bg-slate-50 rounded-xl border border-slate-100">
+                                                        <label className="text-[9px] font-semibold text-slate-400 uppercase tracking-wider block mb-0.5">Scans</label>
+                                                        <span className="text-lg font-bold text-text-main">{device.totalScans}</span>
                                                     </div>
                                                 </div>
                                             </div>
@@ -495,7 +495,7 @@ export default function BusinessLinkPage() {
                                         <div className="mt-auto p-4 bg-slate-50/50 border-t border-gray-100 grid grid-cols-2 gap-3">
                                             <button 
                                                 onClick={() => openEditModal(device)}
-                                                className="h-12 flex items-center justify-center gap-2 bg-white border border-gray-200 rounded-2xl text-[10px] font-black text-slate-700 uppercase tracking-widest hover:border-primary hover:text-primary transition-all shadow-sm active:scale-95"
+                                                className="h-10 flex items-center justify-center gap-2 bg-white border border-gray-200 rounded-xl text-[10px] font-semibold text-slate-700 uppercase tracking-wider hover:border-primary hover:text-primary transition-all shadow-sm active:scale-95"
                                             >
                                                 <Edit3 size={14} /> Details
                                             </button>
@@ -503,7 +503,7 @@ export default function BusinessLinkPage() {
                                             <div className="relative flex-1 flex">
                                                 <button 
                                                     onClick={() => setOpenDropdownId(openDropdownId === device.id ? null : device.id)}
-                                                    className="flex-1 h-12 flex items-center justify-center gap-2 bg-primary text-white border border-primary rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-primary/90 transition-all shadow-lg shadow-primary/20 active:scale-95"
+                                                    className="flex-1 h-10 flex items-center justify-center gap-2 bg-primary text-white border border-primary rounded-xl text-[10px] font-semibold uppercase tracking-wider hover:bg-primary/90 transition-all shadow-sm shadow-primary/20 active:scale-95"
                                                 >
                                                     <Download size={14} /> Download <ChevronDown size={14} className={cn("transition-transform duration-300", openDropdownId === device.id && "rotate-180")} />
                                                 </button>
@@ -525,7 +525,7 @@ export default function BusinessLinkPage() {
                                                                             downloadQRCode(device.id, device.code, false, format);
                                                                             setOpenDropdownId(null);
                                                                         }}
-                                                                        className="w-full flex items-center justify-between px-4 py-3 hover:bg-gray-50 rounded-xl transition-colors text-[10px] font-black text-slate-700 uppercase tracking-widest group/item"
+                                                                        className="w-full flex items-center justify-between px-4 py-3 hover:bg-gray-50 rounded-xl transition-colors text-[10px] font-semibold text-slate-700 uppercase tracking-wider group/item"
                                                                     >
                                                                         {format}
                                                                         <ArrowRight size={12} className="opacity-0 group-hover/item:opacity-100 transition-opacity" />
@@ -558,16 +558,16 @@ export default function BusinessLinkPage() {
                             initial={{ opacity: 0, scale: 0.9, y: 20 }}
                             animate={{ opacity: 1, scale: 1, y: 0 }}
                             exit={{ opacity: 0, scale: 0.9, y: 20 }}
-                            className="relative w-full max-w-lg bg-white rounded-[2.5rem] shadow-2xl overflow-hidden"
+                            className="relative w-full max-w-lg bg-white rounded-2xl shadow-2xl overflow-hidden"
                         >
                             <div className="p-8 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between">
                                 <div className="flex items-center gap-4">
-                                    <div className="size-12 bg-primary flex items-center justify-center rounded-2xl shadow-lg shadow-primary/20">
-                                        <Smartphone className="text-white" size={24} />
+                                    <div className="size-10 rounded-lg bg-primary flex items-center justify-center shadow-md shadow-primary/20">
+                                        <Smartphone className="text-white" size={20} />
                                     </div>
                                     <div>
-                                        <h3 className="text-xl font-display font-black text-text-main uppercase tracking-tight leading-none mb-1">Asset Configuration</h3>
-                                        <p className="text-[10px] text-text-secondary font-medium uppercase tracking-[0.2em]">ID: {selectedLink.code}</p>
+                                        <h3 className="text-base md:text-lg font-bold text-text-main leading-none mb-1">Asset Configuration</h3>
+                                        <p className="text-[10px] text-text-secondary font-medium uppercase tracking-wider">ID: {selectedLink.code}</p>
                                     </div>
                                 </div>
                                 <button
@@ -580,7 +580,7 @@ export default function BusinessLinkPage() {
 
                             <div className="p-8 space-y-8 max-h-[70vh] overflow-y-auto custom-scrollbar">
                                 <div className="flex flex-col items-center gap-4">
-                                    <div className="p-4 bg-white border-2 border-primary/10 rounded-3xl shadow-inner group relative">
+                                    <div className="p-4 bg-white border-2 border-primary/10 rounded-2xl shadow-inner group relative">
                                         <QRCodeCanvas
                                             id={`qr-modal-${selectedLink.id}`}
                                             value={`${window.location.origin}/tap/${selectedLink.code}`}
@@ -597,7 +597,7 @@ export default function BusinessLinkPage() {
                                             style={{ width: 180, height: 180 }}
                                         />
                                         <div className="absolute inset-x-0 -bottom-3 flex justify-center">
-                                            <span className="bg-primary text-white text-[8px] font-black uppercase px-3 py-1 rounded-full shadow-lg">Cloud Static Link</span>
+                                            <span className="bg-primary text-white text-[8px] font-semibold uppercase px-3 py-1 rounded-full shadow-lg">Cloud Static Link</span>
                                         </div>
                                     </div>
                                     <p className="text-[10px] text-text-secondary font-medium text-center max-w-[250px]">
@@ -607,7 +607,7 @@ export default function BusinessLinkPage() {
 
                                 <div className="space-y-4">
                                     <div className="space-y-1.5">
-                                        <label className="text-[10px] font-black uppercase tracking-widest text-slate-700 ml-1">Destination URL</label>
+                                        <label className="text-[10px] font-semibold uppercase tracking-wider text-slate-700 ml-1">Destination URL</label>
                                         <input
                                             type="url"
                                             value={editData.targetUrl}
@@ -621,7 +621,7 @@ export default function BusinessLinkPage() {
                                     </div>
 
                                     <div className="space-y-1.5">
-                                        <label className="text-[10px] font-black uppercase tracking-widest text-slate-700 ml-1">Asset Name</label>
+                                        <label className="text-[10px] font-semibold uppercase tracking-wider text-slate-700 ml-1">Asset Name</label>
                                         <input
                                             type="text"
                                             value={editData.name}
@@ -633,7 +633,7 @@ export default function BusinessLinkPage() {
 
                                     <div className="grid grid-cols-2 gap-4">
                                         <div className="space-y-1.5">
-                                            <label className="text-[10px] font-black uppercase tracking-widest text-slate-700 ml-1">Physical Location</label>
+                                            <label className="text-[10px] font-semibold uppercase tracking-wider text-slate-700 ml-1">Physical Location</label>
                                             <input
                                                 type="text"
                                                 value={editData.location}
@@ -643,7 +643,7 @@ export default function BusinessLinkPage() {
                                             />
                                         </div>
                                         <div className="space-y-1.5">
-                                            <label className="text-[10px] font-black uppercase tracking-widest text-slate-700 ml-1">Device Status</label>
+                                            <label className="text-[10px] font-semibold uppercase tracking-wider text-slate-700 ml-1">Device Status</label>
                                             <select
                                                 value={editData.status}
                                                 onChange={(e) => setEditData({ ...editData, status: e.target.value })}
@@ -656,7 +656,7 @@ export default function BusinessLinkPage() {
                                     </div>
 
                                     <div className="space-y-1.5">
-                                        <label className="text-[10px] font-black uppercase tracking-widest text-slate-700 ml-1">Assign to Branch</label>
+                                        <label className="text-[10px] font-semibold uppercase tracking-wider text-slate-700 ml-1">Assign to Branch</label>
                                         <select
                                             value={editData.branchId}
                                             onChange={(e) => setEditData({ ...editData, branchId: e.target.value })}
@@ -674,7 +674,7 @@ export default function BusinessLinkPage() {
                                     {editData.branchId && (
                                         <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-200/60 mt-4 transition-all hover:bg-slate-100/50">
                                             <div>
-                                                <label className="text-[10px] font-black uppercase tracking-widest text-slate-700 block mb-0.5">Designate as Main Device</label>
+                                                <label className="text-[10px] font-semibold uppercase tracking-wider text-slate-700 block mb-0.5">Designate as Main Device</label>
                                                 <p className="text-[9px] text-text-secondary font-medium max-w-[280px]">
                                                     Makes this the main touchpoint for customer experience QR code scans. Any other main device on this branch will be unmarked.
                                                 </p>
@@ -694,7 +694,7 @@ export default function BusinessLinkPage() {
 
                                 <div className="grid grid-cols-1 gap-4">
                                     <div className="p-4 bg-slate-50 border border-slate-100 rounded-2xl">
-                                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1">Total Scans</span>
+                                        <span className="text-[9px] font-semibold text-slate-400 uppercase tracking-wider block mb-1">Total Scans</span>
                                         <span className="text-sm font-bold text-slate-800">{selectedLink.totalScans}</span>
                                     </div>
                                 </div>
@@ -702,15 +702,15 @@ export default function BusinessLinkPage() {
                                 <div className="flex gap-3 pt-2">
                                     <button
                                         onClick={() => setIsEditModalOpen(false)}
-                                        className="flex-1 h-14 bg-slate-50 text-slate-800 font-black uppercase tracking-widest text-xs rounded-2xl hover:bg-slate-100 transition-all border border-slate-200"
+                                        className="flex-1 h-10 bg-slate-50 text-slate-800 font-semibold uppercase tracking-wider text-xs rounded-xl hover:bg-slate-100 transition-all border border-slate-200"
                                     >
                                         Cancel
                                     </button>
                                     <button
                                         onClick={saveEdit}
-                                        className="flex-[2] h-14 bg-primary text-white font-black uppercase tracking-widest text-xs rounded-2xl shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-2 px-8"
+                                        className="flex-[2] h-10 bg-primary text-white font-semibold uppercase tracking-wider text-xs rounded-xl shadow-sm shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-2 px-8"
                                     >
-                                        <Save size={18} />
+                                        <Save size={16} />
                                         Save Configuration
                                     </button>
                                 </div>

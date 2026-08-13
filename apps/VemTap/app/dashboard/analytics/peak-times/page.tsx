@@ -63,7 +63,7 @@ export default function PeakTimesPage() {
                                         <div className="col-span-10 text-sm text-text-secondary italic">No hourly labels available yet.</div>
                                     ) : (
                                         hoursLabels.map((h, idx) => (
-                                            <div key={idx} className="text-[10px] font-black uppercase tracking-widest text-text-secondary text-center px-1">
+                                            <div key={idx} className="text-[10px] font-bold uppercase tracking-wider text-text-secondary text-center px-1">
                                                 {h}
                                             </div>
                                         ))
@@ -75,7 +75,7 @@ export default function PeakTimesPage() {
                                     ) : (
                                         weeklyData.map((d, idx) => (
                                             <div key={idx} className="grid grid-cols-11 items-center">
-                                                <div className="col-span-1 text-[10px] font-black uppercase tracking-widest text-text-main line-clamp-1">
+                                                <div className="col-span-1 text-[10px] font-bold uppercase tracking-wider text-text-main line-clamp-1">
                                                     {d.day}
                                                 </div>
                                                 {d.hours.map((v: number, j: number) => {
@@ -132,7 +132,7 @@ export default function PeakTimesPage() {
                                                         {total} visits
                                                     </div>
                                                 </div>
-                                                <span className="text-[10px] font-black tracking-widest text-text-secondary uppercase">
+                                                <span className="text-[10px] font-bold tracking-wider text-text-secondary uppercase">
                                                     {d.day.substring(0, 3)}
                                                 </span>
                                             </div>

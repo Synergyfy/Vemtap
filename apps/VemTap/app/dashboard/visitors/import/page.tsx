@@ -19,13 +19,13 @@ export default function CRMImportExportPage() {
 
     return (
         <div className="pb-32 md:pb-20 max-w-5xl mx-auto p-4 md:p-8">
-            <Link href="/dashboard/visitors" className="inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-[#066CF4] transition-colors mb-6">
+            <Link href="/dashboard/visitors" className="inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-gray-400 hover:text-[#066CF4] transition-colors mb-6">
                 <ArrowLeft size={14} />
                 Back to CRM
             </Link>
 
             <div className="mb-12">
-                <h1 className="text-3xl font-black text-gray-900 leading-tight">Import & Export</h1>
+                <h1 className="text-3xl font-bold text-gray-900 leading-tight">Import & Export</h1>
                 <p className="text-sm font-medium text-gray-500 mt-1">
                     Move your customer data safely in and out of Vemtap.
                 </p>
@@ -37,9 +37,9 @@ export default function CRMImportExportPage() {
                     <div className="size-16 rounded-[22px] bg-blue-50 text-[#066CF4] flex items-center justify-center mb-8 shadow-sm">
                         <Upload size={28} />
                     </div>
-                    <h2 className="text-2xl font-black text-gray-900 mb-2">Import Customers</h2>
+                    <h2 className="text-2xl font-bold text-gray-900 mb-2">Import Customers</h2>
                     <p className="text-sm font-medium text-gray-500 mb-10 leading-relaxed">
-                        Upload your existing customer records from CSV or Excel files. We'll help you map the fields automatically.
+                        Upload your existing customer records from CSV or Excel files. We&apos;ll help you map the fields automatically.
                     </p>
 
                     <div className="space-y-4 mb-10 flex-1">
@@ -58,10 +58,10 @@ export default function CRMImportExportPage() {
                     </div>
 
                     <div className="space-y-3">
-                        <Button className="w-full h-14 rounded-2xl bg-[#066CF4] text-xs font-black uppercase tracking-widest text-white shadow-xl shadow-blue-500/20 active:scale-95 transition-all">
+                        <Button className="w-full h-14 rounded-2xl bg-[#066CF4] text-xs font-bold uppercase tracking-wider text-white shadow-xl shadow-blue-500/20 active:scale-95 transition-all">
                             Choose File To Upload
                         </Button>
-                        <Button variant="ghost" className="w-full h-10 text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-[#066CF4]">
+                        <Button variant="ghost" className="w-full h-10 text-[10px] font-bold uppercase tracking-wider text-gray-400 hover:text-[#066CF4]">
                             Download Sample Template
                         </Button>
                     </div>
@@ -72,25 +72,25 @@ export default function CRMImportExportPage() {
                     <div className="size-16 rounded-[22px] bg-emerald-50 text-emerald-600 flex items-center justify-center mb-8 shadow-sm">
                         <Download size={28} />
                     </div>
-                    <h2 className="text-2xl font-black text-gray-900 mb-2">Export Customers</h2>
+                    <h2 className="text-2xl font-bold text-gray-900 mb-2">Export Customers</h2>
                     <p className="text-sm font-medium text-gray-500 mb-10 leading-relaxed">
                         Download your customer database for external marketing, reporting, or backup purposes.
                     </p>
 
                     <div className="space-y-6 mb-10 flex-1">
                         <div className="space-y-2">
-                            <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-2">Export Format</label>
+                            <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400 ml-2">Export Format</label>
                             <div className="grid grid-cols-3 gap-2">
                                 {['CSV', 'Excel', 'PDF'].map(f => (
                                     <button key={f} className={cn(
-                                        "h-10 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all",
+                                        "h-10 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all",
                                         f === 'CSV' ? "bg-gray-900 text-white" : "bg-gray-50 text-gray-400 border border-gray-100"
                                     )}>{f}</button>
                                 ))}
                             </div>
                         </div>
                         <div className="space-y-2">
-                            <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-2">Data Selection</label>
+                            <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400 ml-2">Data Selection</label>
                             <div className="space-y-2">
                                 <button className="w-full flex items-center justify-between p-4 rounded-2xl bg-blue-50/50 border border-blue-100 text-left">
                                     <span className="text-xs font-bold text-gray-900">All Customers</span>
@@ -106,7 +106,7 @@ export default function CRMImportExportPage() {
 
                     <Button 
                         onClick={() => setIsExporting(true)}
-                        className="w-full h-14 rounded-2xl bg-gray-900 text-xs font-black uppercase tracking-widest text-white shadow-xl shadow-black/10 active:scale-95 transition-all"
+                        className="w-full h-14 rounded-2xl bg-gray-900 text-xs font-bold uppercase tracking-wider text-white shadow-xl shadow-black/10 active:scale-95 transition-all"
                     >
                         {isExporting ? 'Generating File...' : 'Export Database Now'}
                     </Button>
@@ -114,12 +114,12 @@ export default function CRMImportExportPage() {
             </div>
 
             {/* DATA MANAGEMENT SETTINGS */}
-            <div className="mt-12 rounded-[40px] bg-gray-900 p-8 md:p-12 text-white relative overflow-hidden">
+            <div className="mt-12 rounded-2xl bg-gray-900 p-8 md:p-12 text-white relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-64 h-64 bg-[#066CF4]/10 rounded-full blur-3xl" />
                 
                 <div className="relative z-10 grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
                     <div>
-                        <h3 className="text-2xl font-black mb-4">Data Management</h3>
+                        <h3 className="text-2xl font-bold mb-4">Data Management</h3>
                         <p className="text-sm font-medium text-white/50 mb-8 leading-relaxed">
                             Configure how Vemtap handles your customer data and privacy requirements.
                         </p>

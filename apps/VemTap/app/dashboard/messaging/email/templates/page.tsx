@@ -77,7 +77,7 @@ export default function EmailTemplatesPage() {
                 />
                 <button
                     onClick={() => handleOpenModal()}
-                    className="h-12 px-6 bg-primary text-white font-bold rounded-xl flex items-center gap-2 shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all"
+                    className="h-10 px-5 bg-primary text-white font-semibold text-xs uppercase tracking-wider rounded-xl flex items-center gap-2 hover:scale-[1.02] active:scale-95 transition-all"
                 >
                     <Plus size={18} />
                     New Template
@@ -102,7 +102,7 @@ export default function EmailTemplatesPage() {
                     <div key={template.id} className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between group">
                         <div>
                             <div className="flex justify-between items-start mb-4">
-                                <div className="px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-purple-100 text-purple-700">
+                                <div className="px-2.5 py-1 rounded-full text-[10px] font-semibold uppercase tracking-wider bg-purple-100 text-purple-700">
                                     {template.channel}
                                 </div>
                                 <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -133,7 +133,7 @@ export default function EmailTemplatesPage() {
                     <div className="col-span-full py-16 text-center">
                         <Mail size={40} className="mx-auto mb-3 text-gray-300" />
                         <p className="text-sm font-bold text-text-secondary">No email templates yet</p>
-                        <p className="text-xs text-text-secondary mt-1">Click "New Template" to add one.</p>
+                        <p className="text-xs text-text-secondary mt-1">Click &quot;New Template&quot; to add one.</p>
                     </div>
                 )}
             </div>
@@ -151,10 +151,10 @@ export default function EmailTemplatesPage() {
                             initial={{ opacity: 0, scale: 0.95, y: 20 }}
                             animate={{ opacity: 1, scale: 1, y: 0 }}
                             exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                            className="relative w-full max-w-lg bg-white rounded-[2.5rem] shadow-2xl overflow-hidden"
+                            className="relative w-full max-w-lg bg-white rounded-2xl shadow-2xl overflow-hidden"
                         >
                             <div className="p-8 border-b border-gray-100 bg-purple-50/50 flex items-center justify-between">
-                                <h3 className="text-xl font-display font-black text-slate-900 uppercase">
+                                <h3 className="text-lg md:text-xl font-bold text-slate-900 tracking-tight">
                                     {templates.some((t) => t.id === editingTemplate?.id) ? 'Template Details' : 'New Email Template'}
                                 </h3>
                                 <button onClick={() => setIsModalOpen(false)} className="p-2 hover:bg-white rounded-xl transition-colors">
@@ -164,7 +164,7 @@ export default function EmailTemplatesPage() {
 
                             <div className="p-8 space-y-6">
                                 <div className="space-y-2">
-                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Template Name</label>
+                                    <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider ml-1">Template Name</label>
                                     <input
                                         type="text"
                                         value={editingTemplate?.name || ''}
@@ -175,7 +175,7 @@ export default function EmailTemplatesPage() {
                                 </div>
 
                                 <div className="space-y-2">
-                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Content</label>
+                                    <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider ml-1">Content</label>
                                     <textarea
                                         value={editingTemplate?.content || ''}
                                         onChange={(e) => setEditingTemplate((prev) => ({ ...prev, content: e.target.value }))}
@@ -186,7 +186,7 @@ export default function EmailTemplatesPage() {
 
                                 <button
                                     onClick={handleSave}
-                                    className="w-full h-14 bg-primary text-white font-black uppercase tracking-widest text-xs rounded-2xl shadow-xl shadow-primary/20 hover:bg-primary-hover transition-all flex items-center justify-center gap-3"
+                                    className="w-full h-10 bg-primary text-white font-semibold uppercase tracking-wider text-xs rounded-xl hover:bg-primary-hover transition-all flex items-center justify-center gap-3"
                                 >
                                     <Save size={18} />
                                     Save Template

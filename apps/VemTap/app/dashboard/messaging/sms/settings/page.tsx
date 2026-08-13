@@ -52,7 +52,7 @@ export default function SMSSettingsPage() {
                     <button
                         onClick={handleSave}
                         disabled={updateSettingsMutation.isPending || isLoading}
-                        className="flex items-center gap-2 px-6 py-2.5 bg-primary text-white font-bold rounded-xl hover:bg-primary-hover transition-all text-sm shadow-md shadow-primary/20 disabled:opacity-50"
+                        className="flex items-center gap-2 h-10 px-5 bg-primary text-white font-semibold text-xs uppercase tracking-wider rounded-xl hover:bg-primary-hover transition-all disabled:opacity-50"
                     >
                         {updateSettingsMutation.isPending ? (
                             <Loader2 size={18} className="animate-spin" />
@@ -65,14 +65,14 @@ export default function SMSSettingsPage() {
             />
 
             <div className="grid grid-cols-1 gap-6">
-                <div className="bg-white rounded-[2.5rem] border border-gray-100 p-8 shadow-sm">
+                <div className="bg-white rounded-2xl border border-gray-100 p-8 shadow-sm">
                     <div className="flex items-center gap-4 mb-8">
-                        <div className="size-12 bg-slate-50 text-slate-600 rounded-2xl flex items-center justify-center">
-                            <Terminal size={24} />
+                        <div className="size-9 md:size-10 bg-slate-50 text-slate-600 rounded-lg flex items-center justify-center">
+                            <Terminal size={20} />
                         </div>
                         <div>
-                            <h3 className="text-lg font-display font-black text-text-main uppercase tracking-tight">Sender ID Configuration</h3>
-                            <p className="text-xs text-text-secondary">Custom names that appear on the customer's phone.</p>
+                            <h3 className="text-lg md:text-xl font-bold text-text-main tracking-tight">Sender ID Configuration</h3>
+                            <p className="text-xs text-text-secondary">Custom names that appear on the customer&apos;s phone.</p>
                         </div>
                     </div>
 
@@ -85,7 +85,7 @@ export default function SMSSettingsPage() {
                         <div className="space-y-4">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div className="space-y-2">
-                                    <label className="text-[10px] font-black text-slate-700 uppercase tracking-widest">Primary Sender ID</label>
+                                    <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Primary Sender ID</label>
                                     <input
                                         type="text"
                                         value={smsSenderId}
@@ -97,7 +97,7 @@ export default function SMSSettingsPage() {
                                     <p className="text-[10px] text-text-secondary">Max 11 alphanumeric characters.</p>
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="text-[10px] font-black text-slate-700 uppercase tracking-widest">Global Routing</label>
+                                    <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Global Routing</label>
                                     <select
                                         value={smsRouting}
                                         onChange={(e) => setSmsRouting(e.target.value as SmsRoutingMode)}

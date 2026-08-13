@@ -77,7 +77,7 @@ export default function EmailSettingsPage() {
                     <button
                         onClick={handleSave}
                         disabled={updateSettingsMutation.isPending || isLoading}
-                        className="flex items-center gap-2 px-6 py-2.5 bg-primary text-white font-bold rounded-xl hover:bg-primary-hover transition-all text-sm shadow-md shadow-primary/20 disabled:opacity-50"
+                        className="flex items-center gap-2 h-10 px-5 bg-primary text-white font-semibold text-xs uppercase tracking-wider rounded-xl hover:bg-primary-hover transition-all disabled:opacity-50"
                     >
                         {updateSettingsMutation.isPending ? (
                             <Loader2 size={18} className="animate-spin" />
@@ -91,13 +91,13 @@ export default function EmailSettingsPage() {
 
             <div className="grid grid-cols-1 gap-6">
                 {/* Sender Profile */}
-                <div className="bg-white rounded-[2.5rem] border border-gray-100 p-8 shadow-sm">
+                <div className="bg-white rounded-2xl border border-gray-100 p-8 shadow-sm">
                     <div className="flex items-center gap-4 mb-8">
-                        <div className="size-12 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center">
-                            <Mail size={24} />
+                        <div className="size-9 md:size-10 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center">
+                            <Mail size={20} />
                         </div>
                         <div>
-                            <h3 className="text-lg font-display font-black text-text-main uppercase tracking-tight">Sender Profile</h3>
+                            <h3 className="text-lg md:text-xl font-bold text-text-main tracking-tight">Sender Profile</h3>
                             <p className="text-xs text-text-secondary">Configure default sender name and return-path email address.</p>
                         </div>
                     </div>
@@ -110,7 +110,7 @@ export default function EmailSettingsPage() {
                     ) : (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <label className="text-[10px] font-black text-slate-700 uppercase tracking-widest">Sender Display Name</label>
+                                <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Sender Display Name</label>
                                 <input
                                     type="text"
                                     value={fromName}
@@ -120,7 +120,7 @@ export default function EmailSettingsPage() {
                                 />
                             </div>
                             <div className="space-y-2">
-                                <label className="text-[10px] font-black text-slate-700 uppercase tracking-widest">From Email Address</label>
+                                <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">From Email Address</label>
                                 <input
                                     type="email"
                                     value={fromEmail}
@@ -134,18 +134,18 @@ export default function EmailSettingsPage() {
                 </div>
 
                 {/* Domain Authentication & DNS */}
-                <div className="bg-white rounded-[2.5rem] border border-gray-100 p-8 shadow-sm">
+                <div className="bg-white rounded-2xl border border-gray-100 p-8 shadow-sm">
                     <div className="flex items-center justify-between gap-4 mb-8">
                         <div className="flex items-center gap-4">
-                            <div className="size-12 bg-purple-50 text-purple-600 rounded-2xl flex items-center justify-center">
-                                <Server size={24} />
+                            <div className="size-9 md:size-10 bg-purple-50 text-purple-600 rounded-lg flex items-center justify-center">
+                                <Server size={20} />
                             </div>
                             <div>
-                                <h3 className="text-lg font-display font-black text-text-main uppercase tracking-tight">Domain Authentication</h3>
+                                <h3 className="text-lg md:text-xl font-bold text-text-main tracking-tight">Domain Authentication</h3>
                                 <p className="text-xs text-text-secondary">Verify your domain to prevent spam placement.</p>
                             </div>
                         </div>
-                        <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                        <span className={`px-3 py-1 rounded-full text-[10px] font-semibold uppercase tracking-wider ${
                             domainStatus === 'verified'
                                 ? 'bg-green-50 text-green-700 border border-green-200'
                                 : domainStatus === 'verifying'
@@ -158,7 +158,7 @@ export default function EmailSettingsPage() {
 
                     <div className="space-y-6">
                         <div className="space-y-2">
-                            <label className="text-[10px] font-black text-slate-700 uppercase tracking-widest">Custom Sending Domain</label>
+                            <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Custom Sending Domain</label>
                             <div className="flex flex-col sm:flex-row gap-3">
                                 <input
                                     type="text"
@@ -170,7 +170,7 @@ export default function EmailSettingsPage() {
                                 <button
                                     onClick={handleGenerateDns}
                                     disabled={generateDnsMutation.isPending}
-                                    className="h-12 px-6 bg-slate-900 text-white font-bold rounded-xl text-xs uppercase tracking-widest hover:bg-slate-800 transition-all flex items-center justify-center gap-2 shrink-0 disabled:opacity-50"
+                                    className="h-10 px-5 bg-slate-900 text-white font-semibold rounded-xl text-xs uppercase tracking-wider hover:bg-slate-800 transition-all flex items-center justify-center gap-2 shrink-0 disabled:opacity-50"
                                 >
                                     {generateDnsMutation.isPending ? (
                                         <Loader2 size={16} className="animate-spin" />
@@ -197,13 +197,13 @@ export default function EmailSettingsPage() {
                         {/* Generated DNS Records Table */}
                         {dnsRecords.length > 0 && (
                             <div className="space-y-3">
-                                <h4 className="text-xs font-black uppercase tracking-widest text-slate-700">Required DNS Records</h4>
+                                <h4 className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">Required DNS Records</h4>
                                 <div className="divide-y divide-gray-100 border border-gray-100 rounded-2xl overflow-hidden bg-gray-50/50">
                                     {dnsRecords.map((record: any, idx: number) => (
                                         <div key={idx} className="p-4 space-y-2">
                                             <div className="flex items-center justify-between">
                                                 <div className="flex items-center gap-2">
-                                                    <span className="px-2 py-0.5 bg-slate-200 text-slate-800 text-[10px] font-black rounded-md">
+                                                    <span className="px-2 py-0.5 bg-slate-200 text-slate-800 text-[10px] font-semibold rounded-md">
                                                         {record.type}
                                                     </span>
                                                     <span className="text-xs font-bold text-text-main font-mono">{record.host}</span>

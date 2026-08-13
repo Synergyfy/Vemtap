@@ -487,7 +487,7 @@ export default function EngagementFormsBuilderPage() {
             </div>
             <button
               onClick={() => setViewMode('path')}
-              className="inline-flex items-center justify-center gap-2 h-11 px-6 rounded-full bg-primary text-white text-sm font-black uppercase tracking-widest shadow-md shadow-primary/20 hover:shadow-lg hover:shadow-primary/30 transition-all hover:-translate-y-0.5 active:scale-95"
+              className="inline-flex items-center justify-center gap-2 h-11 px-6 rounded-full bg-primary text-white text-sm font-bold uppercase tracking-wider shadow-md shadow-primary/20 hover:shadow-lg hover:shadow-primary/30 transition-all hover:-translate-y-0.5 active:scale-95"
             >
               <Plus size={18} />
               Create New Form
@@ -629,7 +629,7 @@ export default function EngagementFormsBuilderPage() {
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest ${status.color}`}>
+                        <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider ${status.color}`}>
                           {status.label}
                         </span>
                         <svg 
@@ -663,7 +663,7 @@ export default function EngagementFormsBuilderPage() {
                         <div className="p-3 bg-white rounded-xl border border-gray-100 flex items-center justify-between gap-3">
                           <div className="min-w-0">
                             <div className="flex items-center gap-1.5">
-                              <span className="text-[9px] font-black text-gray-900 uppercase tracking-widest">Auto-Sequence</span>
+                              <span className="text-[9px] font-bold text-gray-900 uppercase tracking-wider">Auto-Sequence</span>
                               <button
                                 onClick={(e) => { e.stopPropagation(); setDefaultFormExplainer({ id: f.id, title: f.title, branchId: f.branchId }); }}
                                 className="size-3.5 rounded-full bg-gray-100 text-gray-400 flex items-center justify-center"
@@ -685,7 +685,7 @@ export default function EngagementFormsBuilderPage() {
                                 setDefaultFormExplainer({ id: f.id, title: f.title, branchId: f.branchId });
                               }
                             }}
-                            className={`h-7 px-3 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${f.showAfterLeadCapture ? 'bg-rose-50 text-rose-600 border border-rose-100' : 'bg-gray-100 text-gray-900 border border-gray-200 hover:border-primary hover:text-primary'}`}
+                            className={`h-7 px-3 rounded-lg text-[9px] font-bold uppercase tracking-wider transition-all ${f.showAfterLeadCapture ? 'bg-rose-50 text-rose-600 border border-rose-100' : 'bg-gray-100 text-gray-900 border border-gray-200 hover:border-primary hover:text-primary'}`}
                           >
                             {updateMutation.isPending ? <Spinner size="sm" /> : (f.showAfterLeadCapture ? 'Disable' : 'Enable')}
                           </button>
@@ -695,28 +695,28 @@ export default function EngagementFormsBuilderPage() {
                         <div className="grid grid-cols-4 gap-2">
                           <button
                             onClick={(e) => { e.stopPropagation(); openShareExplainer('link', f.id, f.title); }}
-                            className="flex flex-col items-center justify-center gap-1 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest text-gray-500 bg-white border border-gray-100"
+                            className="flex flex-col items-center justify-center gap-1 py-2 rounded-xl text-[9px] font-bold uppercase tracking-wider text-gray-500 bg-white border border-gray-100"
                           >
                             <Link2 size={14} />
                             <span>Link</span>
                           </button>
                           <button
                             onClick={(e) => { e.stopPropagation(); openShareExplainer('qr', f.id, f.title); }}
-                            className="flex flex-col items-center justify-center gap-1 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest text-gray-500 bg-white border border-gray-100"
+                            className="flex flex-col items-center justify-center gap-1 py-2 rounded-xl text-[9px] font-bold uppercase tracking-wider text-gray-500 bg-white border border-gray-100"
                           >
                             <QrCode size={14} />
                             <span>QR</span>
                           </button>
                           <button
                             onClick={(e) => { e.stopPropagation(); router.push(getMessagingUrl(f.id)); }}
-                            className="flex flex-col items-center justify-center gap-1 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest text-gray-500 bg-white border border-gray-100"
+                            className="flex flex-col items-center justify-center gap-1 py-2 rounded-xl text-[9px] font-bold uppercase tracking-wider text-gray-500 bg-white border border-gray-100"
                           >
                             <Send size={14} />
                             <span>Send</span>
                           </button>
                           <Link
                             href={getResponsesUrl(f)}
-                            className="flex flex-col items-center justify-center gap-1 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest text-white bg-primary shadow-sm"
+                            className="flex flex-col items-center justify-center gap-1 py-2 rounded-xl text-[9px] font-bold uppercase tracking-wider text-white bg-primary shadow-sm"
                           >
                             <BarChart3 size={14} />
                             <span>Stats</span>
@@ -726,14 +726,14 @@ export default function EngagementFormsBuilderPage() {
                         <div className="flex gap-2 pt-2">
                           <button 
                             onClick={(e) => { e.stopPropagation(); openEdit(f); }}
-                            className="flex-1 h-9 bg-gray-100 text-gray-900 rounded-xl text-[10px] font-black uppercase tracking-widest border border-gray-200 flex items-center justify-center gap-2"
+                            className="flex-1 h-9 bg-gray-100 text-gray-900 rounded-xl text-[10px] font-bold uppercase tracking-wider border border-gray-200 flex items-center justify-center gap-2"
                           >
                             <Pencil size={14} />
                             Edit
                           </button>
                           <button 
                             onClick={(e) => { e.stopPropagation(); setDeleteConfirm({ id: f.id, title: f.title, branchId: f.branchId }); }}
-                            className="flex-1 h-9 bg-red-50 text-red-600 rounded-xl text-[10px] font-black uppercase tracking-widest border border-red-100 flex items-center justify-center gap-2"
+                            className="flex-1 h-9 bg-red-50 text-red-600 rounded-xl text-[10px] font-bold uppercase tracking-wider border border-red-100 flex items-center justify-center gap-2"
                           >
                             <Trash2 size={14} />
                             Delete
@@ -799,7 +799,7 @@ export default function EngagementFormsBuilderPage() {
                         
                         <div className="flex items-center justify-between mt-5 pt-5 border-t border-gray-100">
                           <span
-                            className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${status.color}`}
+                            className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${status.color}`}
                           >
                             <div className={`size-1.5 rounded-full ${status.dot} animate-pulse`} />
                             {status.label}
@@ -816,7 +816,7 @@ export default function EngagementFormsBuilderPage() {
                         <div className="mt-4 p-4 bg-gray-50/50 rounded-2xl border border-gray-100 flex items-center justify-between gap-4">
                           <div className="min-w-0">
                             <div className="flex items-center gap-1.5">
-                              <span className="text-[10px] font-black text-gray-900 uppercase tracking-widest">Automation</span>
+                              <span className="text-[10px] font-bold text-gray-900 uppercase tracking-wider">Automation</span>
                               <button
                                 onClick={() => setDefaultFormExplainer({ id: f.id, title: f.title, branchId: f.branchId })}
                                 className="shrink-0 size-4 rounded-full bg-gray-200 text-gray-500 hover:bg-primary hover:text-white flex items-center justify-center transition-all"
@@ -825,7 +825,7 @@ export default function EngagementFormsBuilderPage() {
                               </button>
                             </div>
                             <p className="text-[10px] mt-1 font-medium text-gray-500">
-                              Status: <span className={`font-black uppercase tracking-tighter ${f.showAfterLeadCapture ? 'text-emerald-600' : 'text-gray-400'}`}>
+                              Status: <span className={`font-bold uppercase tracking-tighter ${f.showAfterLeadCapture ? 'text-emerald-600' : 'text-gray-400'}`}>
                                 {f.showAfterLeadCapture ? 'Enabled' : 'Disabled'}
                               </span>
                             </p>
@@ -839,7 +839,7 @@ export default function EngagementFormsBuilderPage() {
                                 setDefaultFormExplainer({ id: f.id, title: f.title, branchId: f.branchId });
                               }
                             }}
-                            className={`shrink-0 h-8 px-4 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 ${f.showAfterLeadCapture
+                            className={`shrink-0 h-8 px-4 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-2 ${f.showAfterLeadCapture
                               ? 'bg-rose-50 text-rose-600 hover:bg-rose-100 border border-rose-100 shadow-sm'
                               : 'bg-white text-gray-900 border border-gray-200 shadow-sm hover:border-primary hover:text-primary'
                               } disabled:opacity-70 active:scale-95`}
@@ -852,7 +852,7 @@ export default function EngagementFormsBuilderPage() {
                         <div className="mt-5 grid grid-cols-3 sm:grid-cols-5 gap-2">
                           <button
                             onClick={() => openShareExplainer('link', f.id, f.title)}
-                            className="flex flex-col items-center justify-center gap-1 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest text-gray-500 bg-gray-50 hover:bg-blue-50 hover:text-blue-600 transition-all border border-transparent hover:border-blue-100"
+                            className="flex flex-col items-center justify-center gap-1 py-2 rounded-xl text-[9px] font-bold uppercase tracking-wider text-gray-500 bg-gray-50 hover:bg-blue-50 hover:text-blue-600 transition-all border border-transparent hover:border-blue-100"
                             title="Copy share link"
                           >
                             <Link2 size={16} />
@@ -860,7 +860,7 @@ export default function EngagementFormsBuilderPage() {
                           </button>
                           <button
                             onClick={() => openShareExplainer('qr', f.id, f.title)}
-                            className="flex flex-col items-center justify-center gap-1 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest text-gray-500 bg-gray-50 hover:bg-purple-50 hover:text-purple-600 transition-all border border-transparent hover:border-purple-100"
+                            className="flex flex-col items-center justify-center gap-1 py-2 rounded-xl text-[9px] font-bold uppercase tracking-wider text-gray-500 bg-gray-50 hover:bg-purple-50 hover:text-purple-600 transition-all border border-transparent hover:border-purple-100"
                             title="Show QR code"
                           >
                             <QrCode size={16} />
@@ -868,7 +868,7 @@ export default function EngagementFormsBuilderPage() {
                           </button>
                           <button
                             onClick={() => { router.push(getMessagingUrl(f.id)); }}
-                            className="flex flex-col items-center justify-center gap-1 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest text-gray-500 bg-gray-50 hover:bg-emerald-50 hover:text-emerald-600 transition-all border border-transparent hover:border-emerald-100"
+                            className="flex flex-col items-center justify-center gap-1 py-2 rounded-xl text-[9px] font-bold uppercase tracking-wider text-gray-500 bg-gray-50 hover:bg-emerald-50 hover:text-emerald-600 transition-all border border-transparent hover:border-emerald-100"
                             title="Send via messaging"
                           >
                             <Send size={16} />
@@ -876,7 +876,7 @@ export default function EngagementFormsBuilderPage() {
                           </button>
                           <Link
                             href={getResponsesUrl(f)}
-                            className="flex flex-col items-center justify-center gap-1 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest text-white bg-primary hover:bg-primary/90 transition-all shadow-md shadow-primary/10 active:scale-95"
+                            className="flex flex-col items-center justify-center gap-1 py-2 rounded-xl text-[9px] font-bold uppercase tracking-wider text-white bg-primary hover:bg-primary/90 transition-all shadow-md shadow-primary/10 active:scale-95"
                             title="View responses"
                           >
                             <BarChart3 size={16} />
@@ -884,7 +884,7 @@ export default function EngagementFormsBuilderPage() {
                           </Link>
                           <Link
                             href={`/dashboard/engagement/forms/${f.id}`}
-                            className="flex flex-col items-center justify-center gap-1 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest text-primary bg-primary/5 hover:bg-primary/10 transition-all border border-primary/10"
+                            className="flex flex-col items-center justify-center gap-1 py-2 rounded-xl text-[9px] font-bold uppercase tracking-wider text-primary bg-primary/5 hover:bg-primary/10 transition-all border border-primary/10"
                             title="Preview form"
                           >
                             <Eye size={16} />
@@ -961,7 +961,7 @@ export default function EngagementFormsBuilderPage() {
                         </button>
                         <Link
                           href={getResponsesUrl(f)}
-                          className="h-8 px-3 rounded-lg text-[10px] font-black uppercase tracking-widest bg-primary text-white hover:bg-primary/90 inline-flex items-center gap-1.5"
+                          className="h-8 px-3 rounded-lg text-[10px] font-bold uppercase tracking-wider bg-primary text-white hover:bg-primary/90 inline-flex items-center gap-1.5"
                           title="View responses"
                         >
                           <BarChart3 size={14} />
@@ -989,18 +989,18 @@ export default function EngagementFormsBuilderPage() {
       {viewMode === 'path' && (
         <section className="max-w-4xl mx-auto w-full space-y-6">
           <div className="text-center space-y-2">
-            <h2 className="text-3xl font-black text-slate-900">Choose Form Creation Path</h2>
+            <h2 className="text-3xl font-bold text-slate-900">Choose Form Creation Path</h2>
             <p className="text-sm text-slate-500">Start from scratch or load an admin template.</p>
           </div>
           <div className="grid md:grid-cols-2 gap-6">
             <button onClick={() => { resetBuilder(); setViewMode('builder'); }} className="text-left rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
               <div className="size-12 rounded-2xl bg-slate-900 text-yellow-300 flex items-center justify-center mb-4"><Plus size={22} /></div>
-              <h3 className="text-xl font-black text-slate-900">Create from Scratch</h3>
+              <h3 className="text-xl font-bold text-slate-900">Create from Scratch</h3>
               <p className="text-sm text-slate-600 mt-2">Build your own custom form.</p>
             </button>
             <button onClick={() => setViewMode('templates')} className="text-left rounded-2xl border border-primary bg-primary p-6 text-white shadow-sm">
               <div className="size-12 rounded-2xl bg-white/15 text-white flex items-center justify-center mb-4"><LayoutTemplate size={22} /></div>
-              <h3 className="text-xl font-black">Use Admin Template</h3>
+              <h3 className="text-xl font-bold">Use Admin Template</h3>
               <p className="text-sm text-slate-300 mt-2">Pick from fetched templates.</p>
             </button>
           </div>
@@ -1014,7 +1014,7 @@ export default function EngagementFormsBuilderPage() {
         <section className="space-y-6">
           <div className="flex justify-between items-center">
             <div>
-              <h2 className="text-3xl font-black text-slate-900">Admin Templates</h2>
+              <h2 className="text-3xl font-bold text-slate-900">Admin Templates</h2>
               <p className="text-sm text-slate-500">Everything here is fetched live from templates API.</p>
             </div>
             <button onClick={() => setViewMode('path')} className="h-10 px-4 rounded-xl border border-slate-200 text-sm font-bold inline-flex items-center gap-2"><ArrowLeft size={14} /> Back</button>
@@ -1030,10 +1030,10 @@ export default function EngagementFormsBuilderPage() {
             {templates.map((template) => (
               <div key={template.id} className="rounded-2xl bg-white border border-slate-200 p-6 shadow-sm space-y-3">
                 <div className="size-11 rounded-xl bg-primary/10 text-primary flex items-center justify-center"><LayoutTemplate size={18} /></div>
-                <h3 className="text-lg font-black text-slate-900">{template.name}</h3>
+                <h3 className="text-lg font-bold text-slate-900">{template.name}</h3>
                 <p className="text-sm text-slate-500">{template.description || 'No description'}</p>
                 <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">{template.fields?.length || 0} fields</p>
-                <button onClick={() => handleUseTemplate(template.id)} className="w-full h-10 rounded-xl bg-primary text-white text-sm font-black">Use Template</button>
+                <button onClick={() => handleUseTemplate(template.id)} className="w-full h-10 rounded-xl bg-primary text-white text-sm font-bold">Use Template</button>
               </div>
             ))}
           </div>
@@ -1044,7 +1044,7 @@ export default function EngagementFormsBuilderPage() {
         <section className="space-y-6">
           <div className="flex flex-wrap justify-between items-center gap-4">
             <div>
-              <h2 className="text-3xl font-black text-slate-900">{editing ? 'Edit Form' : 'Create Form'}</h2>
+              <h2 className="text-3xl font-bold text-slate-900">{editing ? 'Edit Form' : 'Create Form'}</h2>
               <p className="text-sm text-slate-600">Step 1: details, Step 2: questions, Step 3: after submission message, Step 4: preview & publish.</p>
             </div>
             <button onClick={() => { resetBuilder(); setViewMode('forms'); }} className="h-10 px-4 rounded-xl border border-slate-200 text-sm font-bold inline-flex items-center gap-2"><ArrowLeft size={14} /> My Forms</button>
@@ -1060,7 +1060,7 @@ export default function EngagementFormsBuilderPage() {
                     if (step >= 3 && invalidFields) return;
                     setBuilderStep(step as BuilderStep);
                   }}
-                  className={`size-10 rounded-full flex items-center justify-center text-sm font-black transition-all ${
+                  className={`size-10 rounded-full flex items-center justify-center text-sm font-bold transition-all ${
                     builderStep === step
                       ? 'bg-primary text-white shadow-lg shadow-primary/25 ring-4 ring-primary/10 scale-110'
                       : builderStep > step
@@ -1085,13 +1085,13 @@ export default function EngagementFormsBuilderPage() {
                 {builderStep === 1 ? (
                   <div className="bg-white rounded-3xl border border-slate-200 p-6 md:p-8 space-y-6 shadow-sm">
                     <div className="border-b border-slate-50 pb-4">
-                      <h3 className="text-xl font-black text-slate-900">Step 1: Basic Details</h3>
+                      <h3 className="text-xl font-bold text-slate-900">Step 1: Basic Details</h3>
                       <p className="text-sm text-slate-500 mt-1">Set the foundation of your form.</p>
                     </div>
 
                     <div className="space-y-5">
                       <div className="space-y-1.5">
-                        <label className="text-[11px] font-black uppercase tracking-wider text-slate-400 ml-1">Form Title</label>
+                        <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400 ml-1">Form Title</label>
                         <input
                           value={title}
                           onChange={(e) => setTitle(e.target.value)}
@@ -1102,7 +1102,7 @@ export default function EngagementFormsBuilderPage() {
                       </div>
 
                       <div className="space-y-1.5">
-                        <label className="text-[11px] font-black uppercase tracking-wider text-slate-400 ml-1">Description (Optional)</label>
+                        <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400 ml-1">Description (Optional)</label>
                         <textarea
                           value={description}
                           onChange={(e) => setDescription(e.target.value)}
@@ -1112,7 +1112,7 @@ export default function EngagementFormsBuilderPage() {
                       </div>
 
                       <div className="space-y-1.5">
-                        <label className="text-[11px] font-black uppercase tracking-wider text-slate-400 ml-1">Assign to Branch</label>
+                        <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400 ml-1">Assign to Branch</label>
                         <select
                           value={branchId}
                           onChange={(e) => setBranchId(e.target.value)}
@@ -1164,7 +1164,7 @@ export default function EngagementFormsBuilderPage() {
                           if (!branchId) return toast.error('Branch is required');
                           setBuilderStep(2);
                         }}
-                        className="w-full h-12 rounded-2xl bg-primary text-white text-sm font-black shadow-lg shadow-primary/20 hover:shadow-xl hover:-translate-y-0.5 transition-all active:scale-[0.98]"
+                        className="w-full h-12 rounded-2xl bg-primary text-white text-sm font-bold shadow-lg shadow-primary/20 hover:shadow-xl hover:-translate-y-0.5 transition-all active:scale-[0.98]"
                       >
                         Continue to Questions
                       </button>
@@ -1174,7 +1174,7 @@ export default function EngagementFormsBuilderPage() {
                   <div className="bg-white rounded-3xl border border-slate-200 p-6 md:p-8 space-y-6 shadow-sm">
                     <div className="border-b border-slate-50 pb-4 flex items-center justify-between">
                       <div>
-                        <h3 className="text-xl font-black text-slate-900">Step 2: Questions</h3>
+                        <h3 className="text-xl font-bold text-slate-900">Step 2: Questions</h3>
                         <p className="text-sm text-slate-500 mt-1">Add fields to collect information.</p>
                       </div>
                       <button
@@ -1183,7 +1183,7 @@ export default function EngagementFormsBuilderPage() {
                           setFieldCount(n);
                           setFields((p) => [...p, makeField(n)]);
                         }}
-                        className="h-10 px-4 rounded-xl bg-primary text-white text-xs font-black shadow-md shadow-primary/10 hover:shadow-lg transition-all"
+                        className="h-10 px-4 rounded-xl bg-primary text-white text-xs font-bold shadow-md shadow-primary/10 hover:shadow-lg transition-all"
                       >
                         Add New Field
                       </button>
@@ -1252,7 +1252,7 @@ export default function EngagementFormsBuilderPage() {
                     <div className="flex flex-wrap items-center gap-4 pt-4">
                       <button
                         onClick={() => setBuilderStep(1)}
-                        className="flex-1 h-12 rounded-2xl border border-slate-200 text-sm font-black text-slate-600 hover:bg-slate-50 transition-colors"
+                        className="flex-1 h-12 rounded-2xl border border-slate-200 text-sm font-bold text-slate-600 hover:bg-slate-50 transition-colors"
                       >
                         Back to Details
                       </button>
@@ -1261,7 +1261,7 @@ export default function EngagementFormsBuilderPage() {
                           if (invalidFields) return toast.error('Each field needs a question');
                           setBuilderStep(3);
                         }}
-                        className="flex-[1.5] h-12 rounded-2xl bg-primary text-white text-sm font-black shadow-lg shadow-primary/20 hover:shadow-xl transition-all"
+                        className="flex-[1.5] h-12 rounded-2xl bg-primary text-white text-sm font-bold shadow-lg shadow-primary/20 hover:shadow-xl transition-all"
                       >
                         Continue to After Submission
                       </button>
@@ -1270,13 +1270,13 @@ export default function EngagementFormsBuilderPage() {
                 ) : (
                   <div className="bg-white rounded-3xl border border-slate-200 p-6 md:p-8 space-y-6 shadow-sm">
                     <div className="border-b border-slate-50 pb-4">
-                      <h3 className="text-xl font-black text-slate-900">Step 3: After Submission Message</h3>
+                      <h3 className="text-xl font-bold text-slate-900">Step 3: After Submission Message</h3>
                       <p className="text-sm text-slate-500 mt-1">Customize the success screen visitors see after they submit.</p>
                     </div>
 
                     <div className="space-y-4">
                       <div className="space-y-1.5">
-                        <label className="text-[11px] font-black uppercase tracking-wider text-slate-400 ml-1">Success Title</label>
+                        <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400 ml-1">Success Title</label>
                         <input
                           value={successTitle}
                           onChange={(e) => setSuccessTitle(e.target.value)}
@@ -1286,7 +1286,7 @@ export default function EngagementFormsBuilderPage() {
                       </div>
 
                       <div className="space-y-1.5">
-                        <label className="text-[11px] font-black uppercase tracking-wider text-slate-400 ml-1">Success Description</label>
+                        <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400 ml-1">Success Description</label>
                         <textarea
                           value={successMessage}
                           onChange={(e) => setSuccessMessage(e.target.value)}
@@ -1299,13 +1299,13 @@ export default function EngagementFormsBuilderPage() {
                     <div className="flex flex-wrap items-center gap-4 pt-2">
                       <button
                         onClick={() => setBuilderStep(2)}
-                        className="flex-1 h-12 rounded-2xl border border-slate-200 text-sm font-black text-slate-600 hover:bg-slate-50 transition-colors"
+                        className="flex-1 h-12 rounded-2xl border border-slate-200 text-sm font-bold text-slate-600 hover:bg-slate-50 transition-colors"
                       >
                         Back to Questions
                       </button>
                       <button
                         onClick={() => setBuilderStep(4)}
-                        className="flex-[1.5] h-12 rounded-2xl bg-primary text-white text-sm font-black shadow-lg shadow-primary/20 hover:shadow-xl transition-all"
+                        className="flex-[1.5] h-12 rounded-2xl bg-primary text-white text-sm font-bold shadow-lg shadow-primary/20 hover:shadow-xl transition-all"
                       >
                         Continue to Preview
                       </button>
@@ -1319,7 +1319,7 @@ export default function EngagementFormsBuilderPage() {
                 <div className="bg-white rounded-3xl border border-slate-200 p-5 space-y-4 shadow-sm">
                   <div className="flex items-center justify-center gap-2">
                     <div className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Live Phone Preview</p>
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Live Phone Preview</p>
                   </div>
                   <div className="flex justify-center scale-[0.95] origin-top" style={brandVars}>
                     <PhoneFrame title="Real-time Preview">
@@ -1355,7 +1355,7 @@ export default function EngagementFormsBuilderPage() {
                               </span>
                             </div>
 
-                            <h1 className="text-[15px] font-display font-black text-slate-900 tracking-tight leading-tight">
+                            <h1 className="text-[15px] font-display font-bold text-slate-900 tracking-tight leading-tight">
                               {previewForm.title || 'Untitled Form'}
                             </h1>
 
@@ -1372,7 +1372,7 @@ export default function EngagementFormsBuilderPage() {
                           {builderStep === 1 && !fields.some(f => f.question) ? (
                             <div className="space-y-2 py-4">
                               <LayoutTemplate className="size-8 text-slate-200 mx-auto" />
-                              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-normal">
+                              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider leading-normal">
                                 Fill in details to see<br />form layout
                               </p>
                             </div>
@@ -1381,7 +1381,7 @@ export default function EngagementFormsBuilderPage() {
                               <div className="size-9 rounded-full bg-emerald-50 text-emerald-500 flex items-center justify-center">
                                 <CheckCircle2 size={18} />
                               </div>
-                              <p className="text-sm font-black text-slate-900">
+                              <p className="text-sm font-bold text-slate-900">
                                 {successTitle.trim() || 'Thank you!'}
                               </p>
                               <p className="text-[11px] text-slate-500">
@@ -1416,8 +1416,8 @@ export default function EngagementFormsBuilderPage() {
           {builderStep === 4 && (
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
               <div className="bg-white rounded-3xl border border-slate-200 p-6 space-y-4 shadow-sm">
-                <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Preview & Publish</p>
-                <h3 className="text-2xl font-black text-slate-900">{previewForm.title}</h3>
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Preview & Publish</p>
+                <h3 className="text-2xl font-bold text-slate-900">{previewForm.title}</h3>
                 <p className="text-sm text-slate-600">{previewForm.description}</p>
                 <div className="text-sm text-slate-600 space-y-1">
                   <p><span className="font-bold text-slate-900">Business:</span> {businessName}</p>
@@ -1426,16 +1426,16 @@ export default function EngagementFormsBuilderPage() {
                   <p><span className="font-bold text-slate-900">Success Message:</span> {successTitle.trim() || 'Default'}</p>
                 </div>
                 <div className="flex flex-wrap gap-3 pt-2">
-                  <button onClick={() => setBuilderStep(3)} className="h-11 px-4 rounded-xl border border-slate-200 text-sm font-black">Back to After Submission</button>
-                  <button onClick={() => saveForm(false)} disabled={isSaving} className="h-11 px-4 rounded-xl border border-slate-300 text-sm font-black disabled:opacity-60">{editing ? 'Update as Draft' : 'Save Draft'}</button>
-                  <button onClick={() => saveForm(true)} disabled={isSaving} className="h-11 px-4 rounded-xl bg-primary text-white text-sm font-black disabled:opacity-60">{editing ? 'Update & Publish' : 'Publish Form'}</button>
+                  <button onClick={() => setBuilderStep(3)} className="h-11 px-4 rounded-xl border border-slate-200 text-sm font-bold">Back to After Submission</button>
+                  <button onClick={() => saveForm(false)} disabled={isSaving} className="h-11 px-4 rounded-xl border border-slate-300 text-sm font-bold disabled:opacity-60">{editing ? 'Update as Draft' : 'Save Draft'}</button>
+                  <button onClick={() => saveForm(true)} disabled={isSaving} className="h-11 px-4 rounded-xl bg-primary text-white text-sm font-bold disabled:opacity-60">{editing ? 'Update & Publish' : 'Publish Form'}</button>
                 </div>
               </div>
 
               <div className="bg-white rounded-3xl border border-slate-200 p-5 space-y-4 shadow-sm">
                 <div className="flex items-center justify-center gap-2">
                   <div className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Final Phone Preview</p>
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Final Phone Preview</p>
                 </div>
                 <div className="flex justify-center scale-[0.98] origin-top" style={brandVars}>
                   <PhoneFrame title="Final Preview">
@@ -1470,7 +1470,7 @@ export default function EngagementFormsBuilderPage() {
                             </span>
                           </div>
 
-                          <h1 className="text-[15px] font-display font-black text-slate-900 tracking-tight leading-tight">
+                          <h1 className="text-[15px] font-display font-bold text-slate-900 tracking-tight leading-tight">
                             {previewForm.title || 'Untitled Form'}
                           </h1>
 
@@ -1496,7 +1496,7 @@ export default function EngagementFormsBuilderPage() {
                         <div className="size-9 rounded-full bg-emerald-50 text-emerald-500 flex items-center justify-center mx-auto">
                           <CheckCircle2 size={18} />
                         </div>
-                        <p className="mt-2 text-sm font-black text-slate-900">
+                        <p className="mt-2 text-sm font-bold text-slate-900">
                           {successTitle.trim() || 'Thank you!'}
                         </p>
                         <p className="text-[11px] text-slate-500">
@@ -1609,7 +1609,7 @@ export default function EngagementFormsBuilderPage() {
               </div>
 
               <div>
-                <h3 className="text-xl font-black text-gray-900 leading-tight">Sequence Automation</h3>
+                <h3 className="text-xl font-bold text-gray-900 leading-tight">Sequence Automation</h3>
                 <p className="text-sm text-gray-500 mt-2">Display this form after initial customer submission.</p>
               </div>
 
@@ -1624,7 +1624,7 @@ export default function EngagementFormsBuilderPage() {
                 <div className="flex gap-4">
                   <div className="shrink-0 size-6 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center text-xs font-bold">2</div>
                   <div>
-                    <p className="text-sm font-bold text-gray-800">Then: "{defaultFormExplainer.title}"</p>
+                    <p className="text-sm font-bold text-gray-800">Then: &quot;{defaultFormExplainer.title}&quot;</p>
                     <p className="text-xs text-gray-500 mt-0.5">Once they hit submit, this specific form will appear automatically to collect deeper feedback.</p>
                   </div>
                 </div>
@@ -1658,7 +1658,7 @@ export default function EngagementFormsBuilderPage() {
                       toast.error(e?.message || 'Failed to enable automation');
                     }
                   }}
-                  className="flex-3 h-11 rounded-xl bg-primary text-white text-sm font-black hover:bg-primary/90 transition-shadow shadow-md shadow-primary/20"
+                  className="flex-3 h-11 rounded-xl bg-primary text-white text-sm font-bold hover:bg-primary/90 transition-shadow shadow-md shadow-primary/20"
                 >
                   Enable Automation
                 </button>
@@ -1689,7 +1689,7 @@ export default function EngagementFormsBuilderPage() {
               </div>
 
               <div>
-                <h3 className="text-xl font-black text-gray-900 leading-tight">Disable sequence?</h3>
+                <h3 className="text-xl font-bold text-gray-900 leading-tight">Disable sequence?</h3>
                 <p className="text-sm text-gray-500 mt-2">
                   <strong>&quot;{disableConfirm.title}&quot;</strong> will no longer be shown automatically after the initial contact form.
                 </p>
@@ -1743,7 +1743,7 @@ export default function EngagementFormsBuilderPage() {
                       toast.error(e?.message || 'Failed to disable automation');
                     }
                   }}
-                  className="flex-3 h-11 rounded-xl bg-gray-900 text-white text-sm font-black hover:bg-gray-800 transition-shadow shadow-md shadow-gray-200"
+                  className="flex-3 h-11 rounded-xl bg-gray-900 text-white text-sm font-bold hover:bg-gray-800 transition-shadow shadow-md shadow-gray-200"
                 >
                   Disable Automation
                 </button>

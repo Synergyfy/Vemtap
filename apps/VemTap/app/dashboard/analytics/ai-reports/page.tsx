@@ -128,7 +128,7 @@ export default function AIReportsPage() {
                         </div>
                         <div>
                             <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">AI Credits</p>
-                            <p className="text-xl font-black text-gray-900">
+                            <p className="text-xl font-bold text-gray-900">
                                 {isUnlimited ? 'Unlimited' : credits.available}
                             </p>
                             <p className="text-xs text-gray-400">
@@ -248,7 +248,7 @@ export default function AIReportsPage() {
 
                                 {selectedReport.analysis.insights.length > 0 && (
                                     <div className="space-y-3">
-                                        <h4 className="text-xs font-bold uppercase tracking-widest text-gray-500">Insights ({selectedReport.analysis.insights.length})</h4>
+                                        <h4 className="text-xs font-bold uppercase tracking-wider text-gray-500">Insights ({selectedReport.analysis.insights.length})</h4>
                                         <div className="space-y-2">
                                             {selectedReport.analysis.insights.map((insight) => (
                                                 <div key={insight.id} className="bg-white rounded-xl p-4 border border-gray-100 border-l-4 border-l-blue-500">
@@ -262,7 +262,7 @@ export default function AIReportsPage() {
 
                                 {selectedReport.analysis.recommendations.length > 0 && (
                                     <div className="space-y-3">
-                                        <h4 className="text-xs font-bold uppercase tracking-widest text-gray-500">Recommendations ({selectedReport.analysis.recommendations.length})</h4>
+                                        <h4 className="text-xs font-bold uppercase tracking-wider text-gray-500">Recommendations ({selectedReport.analysis.recommendations.length})</h4>
                                         <div className="space-y-2">
                                             {selectedReport.analysis.recommendations.map((rec) => (
                                                 <div key={rec.id} className="bg-white rounded-xl p-4 border border-gray-100">
@@ -284,7 +284,7 @@ export default function AIReportsPage() {
 
                                 {selectedReport.analysis.quickActions.length > 0 && (
                                     <div className="space-y-3">
-                                        <h4 className="text-xs font-bold uppercase tracking-widest text-gray-500">Quick Actions ({selectedReport.analysis.quickActions.length})</h4>
+                                        <h4 className="text-xs font-bold uppercase tracking-wider text-gray-500">Quick Actions ({selectedReport.analysis.quickActions.length})</h4>
                                         <div className="space-y-2">
                                             {selectedReport.analysis.quickActions.map((qa) => (
                                                 <div key={qa.id} className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 border border-gray-100">

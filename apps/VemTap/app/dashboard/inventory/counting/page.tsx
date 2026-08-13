@@ -144,7 +144,7 @@ export default function StockCountingScreen() {
     return (
       <div className="max-w-3xl mx-auto h-full flex flex-col pt-4 px-4 md:px-0 pb-24">
         {error && (
-          <div className="flex items-center gap-2 p-3 mb-4 rounded-2xl bg-red-50 border border-red-100 text-red-600 text-[10px] font-bold uppercase tracking-widest">
+          <div className="flex items-center gap-2 p-3 mb-4 rounded-2xl bg-red-50 border border-red-100 text-red-600 text-[10px] font-bold uppercase tracking-wider">
             <AlertCircle size={14} />
             {error}
           </div>
@@ -177,7 +177,7 @@ export default function StockCountingScreen() {
     return (
       <div className="max-w-3xl mx-auto pt-4 px-4 md:px-0 pb-24">
         {error && (
-          <div className="flex items-center gap-2 p-3 mb-4 rounded-2xl bg-red-50 border border-red-100 text-red-600 text-[10px] font-bold uppercase tracking-widest">
+          <div className="flex items-center gap-2 p-3 mb-4 rounded-2xl bg-red-50 border border-red-100 text-red-600 text-[10px] font-bold uppercase tracking-wider">
             <AlertCircle size={14} />
             {error}
           </div>
@@ -207,7 +207,7 @@ export default function StockCountingScreen() {
             className="h-10 md:h-12 px-4 md:px-6 rounded-2xl bg-[#066CF4] text-white flex items-center gap-2 shadow-lg shadow-blue-500/20 hover:bg-blue-600 transition-all active:scale-95"
           >
             <Plus size={18} />
-            <span className="text-[10px] md:text-[11px] font-black uppercase tracking-widest">
+            <span className="text-[10px] md:text-[11px] font-bold uppercase tracking-wider">
               New Count Session
             </span>
           </button>
@@ -215,7 +215,7 @@ export default function StockCountingScreen() {
       />
 
       {error && (
-        <div className="flex items-center gap-2 p-3 mb-4 rounded-2xl bg-red-50 border border-red-100 text-red-600 text-[10px] font-bold uppercase tracking-widest">
+        <div className="flex items-center gap-2 p-3 mb-4 rounded-2xl bg-red-50 border border-red-100 text-red-600 text-[10px] font-bold uppercase tracking-wider">
           <AlertCircle size={14} />
           {error}
         </div>
@@ -234,7 +234,7 @@ export default function StockCountingScreen() {
           <button
             key={tab.value}
             onClick={() => setFilterStatus(tab.value)}
-            className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${
+            className={`px-4 py-2 rounded-xl text-[9px] font-bold uppercase tracking-wider transition-all whitespace-nowrap ${
               filterStatus === tab.value
                 ? 'bg-[#066CF4] text-white shadow-md shadow-blue-500/20'
                 : 'bg-white text-gray-500 border border-gray-100 hover:border-[#066CF4]/20'

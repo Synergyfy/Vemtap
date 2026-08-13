@@ -47,26 +47,26 @@ export default function DeviceStatsPage() {
                 <div className="flex items-center gap-5">
                     <button
                         onClick={() => router.back()}
-                        className="w-12 h-12 rounded-2xl bg-white border border-gray-100 flex items-center justify-center text-text-secondary hover:text-primary transition-all shadow-sm hover:shadow-md"
+                        className="w-10 h-10 rounded-xl bg-white border border-gray-100 flex items-center justify-center text-text-secondary hover:text-primary transition-all shadow-sm hover:shadow-md"
                     >
-                        <ArrowLeft size={24} />
+                        <ArrowLeft size={20} />
                     </button>
                     <div>
                         <div className="flex items-center gap-2 mb-1">
                             <span className={`w-2 h-2 rounded-full ${device.status === 'active' ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'bg-gray-300'}`}></span>
-                            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-text-secondary leading-none">Live Performance</span>
+                            <span className="text-[10px] font-semibold uppercase tracking-wider text-text-secondary leading-none">Live Performance</span>
                         </div>
-                        <h1 className="text-3xl font-display font-bold text-text-main tracking-tight">{device.name}</h1>
+                        <h1 className="text-xl md:text-2xl font-bold text-text-main tracking-tight">{device.name}</h1>
                     </div>
                 </div>
 
                 <div className="flex items-center gap-3 p-2 bg-white rounded-2xl border border-gray-100 shadow-sm">
                     <div className="px-4 py-2 border-r border-gray-100">
-                        <p className="text-[10px] font-black uppercase text-gray-400 mb-1">Type</p>
+                        <p className="text-[10px] font-semibold uppercase text-gray-400 mb-1">Type</p>
                         <p className="text-sm font-bold text-text-main">{device.type}</p>
                     </div>
                     <div className="px-4 py-2">
-                        <p className="text-[10px] font-black uppercase text-gray-400 mb-1">Code</p>
+                        <p className="text-[10px] font-semibold uppercase text-gray-400 mb-1">Code</p>
                         <p className="text-sm font-bold text-primary font-mono">{device.code}</p>
                     </div>
                 </div>
@@ -125,8 +125,8 @@ export default function DeviceStatsPage() {
                         </div>
                     </ChartCard>
 
-                    <div className="bg-white rounded-[2.5rem] p-8 border border-gray-100 shadow-sm">
-                        <h3 className="text-lg font-bold text-text-main mb-6">Device Health Diagnostics</h3>
+                    <div className="bg-white rounded-2xl p-5 md:p-6 border border-gray-100 shadow-sm">
+                        <h3 className="text-base md:text-lg font-bold text-text-main mb-6">Device Health Diagnostics</h3>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
                             <div className="space-y-6">
                                 <div className="flex items-center justify-between">
@@ -179,8 +179,8 @@ export default function DeviceStatsPage() {
 
                 {/* Peak Hours & Recent Activity */}
                 <div className="space-y-8">
-                    <div className="bg-white rounded-[2.5rem] p-8 border border-gray-100 shadow-sm">
-                        <h3 className="text-lg font-bold text-text-main mb-6">Peak Usage Times</h3>
+                    <div className="bg-white rounded-2xl p-5 md:p-6 border border-gray-100 shadow-sm">
+                        <h3 className="text-base md:text-lg font-bold text-text-main mb-6">Peak Usage Times</h3>
                         <div className="space-y-4">
                             {[
                                 { time: '12:00 PM - 2:00 PM', label: 'Lunch Rush', val: 85 },
@@ -190,7 +190,7 @@ export default function DeviceStatsPage() {
                                 <div key={i} className="group">
                                     <div className="flex justify-between mb-2">
                                         <span className="text-xs font-bold text-text-main">{peak.label}</span>
-                                        <span className="text-[10px] font-black text-primary uppercase">{peak.time}</span>
+                                        <span className="text-[10px] font-semibold text-primary uppercase">{peak.time}</span>
                                     </div>
                                     <div className="w-full h-1.5 bg-gray-50 rounded-full overflow-hidden">
                                         <div className="h-full bg-primary group-hover:bg-primary-hover transition-all" style={{ width: `${peak.val}%` }}></div>
@@ -200,7 +200,7 @@ export default function DeviceStatsPage() {
                         </div>
                     </div>
 
-                    <div className="bg-text-main rounded-[2.5rem] p-8 text-white relative overflow-hidden">
+                    <div className="bg-text-main rounded-2xl p-7 text-white relative overflow-hidden">
                         <div className="absolute top-0 right-0 w-32 h-32 bg-primary/20 rounded-full translate-x-10 -translate-y-10 blur-3xl"></div>
                         <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
                             <span className="material-icons-round text-primary">auto_awesome</span>

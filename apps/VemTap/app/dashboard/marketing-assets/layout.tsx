@@ -89,7 +89,7 @@ export default function MarketingAssetsLayout({ children }: { children: React.Re
             
             <div className="flex items-center justify-between">
               <div>
-                <h1 className="text-xl md:text-2xl font-black text-gray-900 tracking-tight flex items-center gap-3">
+                <h1 className="text-xl md:text-2xl font-bold text-gray-900 tracking-tight flex items-center gap-3">
                   <div className="size-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary shrink-0">
                     <Palette size={24} />
                   </div>

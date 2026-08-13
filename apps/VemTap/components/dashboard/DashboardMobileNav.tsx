@@ -1,16 +1,15 @@
-import React from 'react';
-import { usePathname } from 'next/navigation';
-import { Home, Users, ShoppingBag, TrendingUp, MoreHorizontal, Wand2, Settings } from 'lucide-react';
+import React, { useState } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
+import { Home, Users, ShoppingBag, MessageCircle, MoreHorizontal } from 'lucide-react';
 import { useSudoStore } from '@/store/useSudoStore';
 import { useAuthStore } from '@/store/useAuthStore';
 import { canAccessMenuItem } from '@/lib/utils/nav-filter';
+import DashboardMobileMoreSheet from './DashboardMobileMoreSheet';
 
-interface DashboardMobileNavProps {
-    onOpenSidebar?: () => void;
-}
-
-export default function DashboardMobileNav({ onOpenSidebar }: DashboardMobileNavProps) {
+export default function DashboardMobileNav() {
     const pathname = usePathname();
+    const router = useRouter();
+    const [moreOpen, setMoreOpen] = useState(false);
     const { activeSession } = useSudoStore();
     const isAdminMode = activeSession !== null;
     const user = useAuthStore((state) => state.user);
@@ -35,10 +34,10 @@ export default function DashboardMobileNav({ onOpenSidebar }: DashboardMobileNav
             roles: ['owner', 'manager', 'inventory', 'cashier', 'staff'],
         },
         {
-            label: 'Experience',
-            icon: Wand2,
-            href: '/dashboard/customer-experience',
-            roles: ['owner', 'manager', 'marketing', 'staff'],
+            label: 'Chat',
+            icon: MessageCircle,
+            href: '/dashboard/messaging/chat',
+            roles: ['owner', 'manager', 'customer_service', 'staff'],
         },
         {
             label: 'More',
@@ -62,55 +61,61 @@ export default function DashboardMobileNav({ onOpenSidebar }: DashboardMobileNav
     });
 
     return (
-        <div
-            className="lg:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-lg border-t border-gray-100 z-[250] shadow-[0_-8px_30px_rgb(0,0,0,0.06)]"
-            style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
-        >
-            <div className="flex justify-around items-center h-20 px-2">
-                {filteredNavItems.map((item) => {
-                    const isActive = (() => {
-                        if (item.label === 'Home') return pathname === '/dashboard' || pathname === '/dashboard/';
-                        if (item.label === 'My Store') {
-                            return pathname.startsWith('/dashboard/commerce') || 
-                                   pathname.startsWith('/dashboard/catalogue') || 
-                                   pathname.startsWith('/dashboard/inventory') || 
-                                   pathname.startsWith('/dashboard/pos');
-                        }
-                        if (item.label === 'More') {
-                            return pathname.startsWith('/dashboard/more') || 
-                                   pathname.startsWith('/dashboard/analytics') || 
-                                   pathname.startsWith('/dashboard/explore-qrthrive') || 
-                                   pathname.startsWith('/dashboard/settings') || 
-                                   pathname.startsWith('/dashboard/staff');
-                        }
-                        return pathname.startsWith(item.href);
-                    })();
-                    const Icon = item.icon;
+        <>
+            <div
+                className="lg:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-lg border-t border-gray-100 z-[250] shadow-[0_-8px_30px_rgb(0,0,0,0.06)]"
+                style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+            >
+                <div className="flex justify-around items-center h-[68px] px-1">
+                    {filteredNavItems.map((item) => {
+                        const isMore = item.label === 'More';
+                        const isActive = (() => {
+                            if (item.label === 'Home') return pathname === '/dashboard' || pathname === '/dashboard/';
+                            if (item.label === 'My Store') {
+                                return pathname.startsWith('/dashboard/commerce') || 
+                                       pathname.startsWith('/dashboard/catalogue') || 
+                                       pathname.startsWith('/dashboard/inventory') || 
+                                       pathname.startsWith('/dashboard/pos');
+                            }
+                            if (item.label === 'More') {
+                                return moreOpen ||
+                                       pathname.startsWith('/dashboard/more') || 
+                                       pathname.startsWith('/dashboard/analytics') || 
+                                       pathname.startsWith('/dashboard/explore-qrthrive') || 
+                                       pathname.startsWith('/dashboard/settings') || 
+                                       pathname.startsWith('/dashboard/staff');
+                            }
+                            return pathname.startsWith(item.href);
+                        })();
+                        const Icon = item.icon;
 
-                    return (
-                        <button
-                            key={item.href}
-                            onClick={onOpenSidebar}
-                            className={`flex flex-col items-center justify-center w-full h-full transition-all duration-300 ${
-                                isActive ? 'text-primary' : 'text-gray-400 hover:text-gray-600'
-                            }`}
-                        >
-                            <div className={`relative p-2.5 rounded-2xl transition-all duration-300 ${
-                                isActive 
-                                    ? 'bg-primary text-white shadow-lg shadow-primary/20 scale-110' 
-                                    : 'bg-transparent'
-                            }`}>
-                                <Icon size={22} strokeWidth={isActive ? 2.5 : 2} />
-                            </div>
-                            <span className={`text-[11px] mt-1.5 font-semibold tracking-tight transition-all ${
-                                isActive ? 'text-primary opacity-100' : 'text-gray-400 opacity-80'
-                            }`}>
-                                {item.label}
-                            </span>
-                        </button>
-                    );
-                })}
+                        return (
+                            <button
+                                key={item.href}
+                                onClick={() => (isMore ? setMoreOpen(true) : router.push(item.href))}
+                                className={`flex flex-col items-center justify-center flex-1 h-full transition-all duration-300 active:scale-95 ${
+                                    isActive ? 'text-primary' : 'text-gray-400 hover:text-gray-600'
+                                }`}
+                            >
+                                <div className={`relative p-2 rounded-xl transition-all duration-300 ${
+                                    isActive 
+                                        ? 'bg-primary text-white shadow-lg shadow-primary/20' 
+                                        : 'bg-transparent'
+                                }`}>
+                                    <Icon size={22} strokeWidth={isActive ? 2.5 : 2} />
+                                </div>
+                                <span className={`text-[10px] mt-1 font-semibold tracking-tight transition-all ${
+                                    isActive ? 'text-primary opacity-100' : 'text-gray-400 opacity-80'
+                                }`}>
+                                    {item.label}
+                                </span>
+                            </button>
+                        );
+                    })}
+                </div>
             </div>
-        </div>
+
+            <DashboardMobileMoreSheet open={moreOpen} onClose={() => setMoreOpen(false)} />
+        </>
     );
 }

@@ -28,14 +28,14 @@ export default function WhatsAppTopUpPage() {
             />
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="md:col-span-2 bg-white rounded-[2.5rem] border border-gray-100 p-8 shadow-sm flex flex-col justify-between">
+                <div className="md:col-span-2 bg-white rounded-2xl border border-gray-100 p-8 shadow-sm flex flex-col justify-between">
                     <div>
                         <div className="flex items-center gap-3 mb-6">
-                            <div className="size-12 bg-primary/10 text-primary rounded-2xl flex items-center justify-center">
-                                <Wallet size={24} />
+                            <div className="size-9 md:size-10 bg-primary/10 text-primary rounded-lg flex items-center justify-center">
+                                <Wallet size={20} />
                             </div>
                             <div>
-                                <h3 className="text-xl font-display font-black text-text-main uppercase tracking-tight">Available Balance</h3>
+                                <h3 className="text-lg md:text-xl font-bold text-text-main tracking-tight">Available Balance</h3>
                                 <p className="text-xs text-text-secondary">Current points in your messaging wallet</p>
                             </div>
                         </div>
@@ -44,14 +44,14 @@ export default function WhatsAppTopUpPage() {
                                 <Loader2 className="animate-spin text-primary" size={32} />
                             </div>
                         ) : (
-                            <p className="text-5xl font-display font-black text-text-main mb-8">
+                            <p className="text-2xl md:text-3xl font-bold text-text-main mb-8">
                                 {whatsappCredits.toLocaleString()} <span className="text-xl text-primary uppercase">Points</span>
                             </p>
                         )}
                     </div>
                     <button
                         onClick={() => setIsModalOpen(true)}
-                        className="h-14 bg-primary text-white font-black uppercase tracking-widest text-xs rounded-2xl shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-3"
+                        className="h-10 bg-primary text-white font-semibold uppercase tracking-wider text-xs rounded-xl hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-3"
                     >
                         <Plus size={18} />
                         Add Credits Now

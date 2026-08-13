@@ -52,7 +52,7 @@ export default function CreateCampaignPage() {
                         >
                             <ArrowLeft className="size-5 text-gray-900" />
                         </Button>
-                        <h2 className="text-sm font-black text-gray-900 uppercase tracking-widest">
+                        <h2 className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">
                             {steps.find(s => s.id === Math.min(step, 5))?.title} Message
                         </h2>
                     </div>

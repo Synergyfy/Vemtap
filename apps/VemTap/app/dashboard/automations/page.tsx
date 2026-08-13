@@ -35,7 +35,7 @@ export default function AutomationsPage() {
     }
 
     return (
-        <div className="pb-24 md:pb-10 max-w-7xl mx-auto p-4 md:p-8 space-y-12">
+        <div className="pb-24 md:pb-10 max-w-7xl mx-auto p-4 md:p-6 space-y-8">
             {/* SCREEN 1: AUTOMATION DASHBOARD */}
             
             <AutomationOverviewHeader />
@@ -46,21 +46,21 @@ export default function AutomationsPage() {
             {/* POPULAR AUTOMATIONS (QUICK START) */}
             <PopularAutomationsSection />
 
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 md:gap-8">
                 {/* LEFT COLUMN: Active Automations */}
-                <div className="lg:col-span-8 space-y-8">
+                <div className="lg:col-span-8 space-y-6">
                     <ActiveAutomationsList rules={rules} />
                 </div>
 
                 {/* RIGHT COLUMN: Quick Actions & Help */}
-                <div className="lg:col-span-4 space-y-8">
+                <div className="lg:col-span-4 space-y-6">
                     {/* CREATE CUSTOM CTA */}
-                    <div className="rounded-[40px] bg-[#066CF4] p-10 text-white relative overflow-hidden shadow-2xl shadow-blue-500/20">
+                    <div className="rounded-2xl bg-[#066CF4] p-7 text-white relative overflow-hidden shadow-lg shadow-blue-500/20">
                         <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-2xl -mr-16 -mt-16" />
-                        <h3 className="text-2xl font-black mb-4 leading-tight">Build Custom <br /> Workflow</h3>
+                        <h3 className="text-xl md:text-2xl font-bold mb-4 leading-tight">Build Custom <br /> Workflow</h3>
                         <p className="text-sm font-medium text-white/70 mb-8">Create highly specific triggers and multi-step actions for your business.</p>
                         <Link href="/dashboard/automations/custom">
-                            <Button className="w-full h-14 rounded-2xl bg-white text-[#066CF4] font-black uppercase tracking-widest text-xs hover:bg-gray-50 active:scale-95 transition-all">
+                            <Button className="w-full h-11 rounded-xl bg-white text-[#066CF4] font-semibold uppercase tracking-wider text-xs hover:bg-gray-50 active:scale-95 transition-all">
                                 <Plus size={18} className="mr-2" />
                                 Start From Scratch
                             </Button>
@@ -68,13 +68,13 @@ export default function AutomationsPage() {
                     </div>
 
                     {/* AUTOMATION TIP */}
-                    <div className="rounded-[32px] bg-white p-8 shadow-sm border border-gray-100">
-                        <div className="size-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center mb-6">
-                            <HelpCircle size={24} />
+                    <div className="rounded-2xl bg-white p-5 md:p-6 shadow-sm border border-gray-100">
+                        <div className="size-10 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center mb-6">
+                            <HelpCircle size={20} />
                         </div>
-                        <h4 className="text-sm font-black text-gray-900 mb-2">Automation Tip</h4>
+                        <h4 className="text-sm font-bold text-gray-900 mb-2">Automation Tip</h4>
                         <p className="text-xs font-medium text-gray-500 leading-relaxed">
-                            "Welcome automations have a 3x higher conversion rate than manual follow-ups. Set yours up to greet every new scan!"
+                            &quot;Welcome automations have a 3x higher conversion rate than manual follow-ups. Set yours up to greet every new scan!&quot;
                         </p>
                     </div>
                 </div>

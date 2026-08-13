@@ -35,23 +35,23 @@ export default function InventoryStockList() {
           <div className="flex gap-2">
             <button
               onClick={() => router.push('/dashboard/inventory/adjustments')}
-              className="h-10 md:h-12 px-4 rounded-2xl bg-amber-50 text-amber-600 flex items-center gap-2 hover:bg-amber-100 transition-colors"
+              className="h-10 px-4 rounded-xl bg-amber-50 text-amber-600 flex items-center gap-2 hover:bg-amber-100 transition-colors"
             >
-              <Settings2 size={18} />
-              <span className="text-[10px] md:text-[11px] font-black uppercase tracking-widest hidden sm:inline">Adjust Stock</span>
+              <Settings2 size={16} />
+              <span className="text-[10px] md:text-[11px] font-semibold uppercase tracking-wider hidden sm:inline">Adjust Stock</span>
             </button>
             <button
               onClick={() => router.push('/dashboard/inventory/receiving')}
-              className="h-10 md:h-12 px-4 md:px-6 rounded-2xl bg-emerald-500 text-white flex items-center gap-2 shadow-lg shadow-emerald-500/20 hover:bg-emerald-600 active:scale-95 transition-all"
+              className="h-10 px-4 rounded-xl bg-emerald-500 text-white flex items-center gap-2 shadow-sm shadow-emerald-500/20 hover:bg-emerald-600 active:scale-95 transition-all"
             >
-              <ArrowDownToLine size={18} />
-              <span className="text-[10px] md:text-[11px] font-black uppercase tracking-widest hidden sm:inline">Receive Stock</span>
+              <ArrowDownToLine size={16} />
+              <span className="text-[10px] md:text-[11px] font-semibold uppercase tracking-wider hidden sm:inline">Receive Stock</span>
             </button>
           </div>
         }
       />
 
-      <div className="bg-white rounded-[32px] border border-gray-100 shadow-sm overflow-hidden flex-1 flex flex-col">
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden flex-1 flex flex-col">
         <div className="p-4 border-b border-gray-100 flex items-center gap-3">
           <div className="relative flex-1">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
@@ -73,11 +73,11 @@ export default function InventoryStockList() {
             <table className="w-full text-left border-collapse">
               <thead className="sticky top-0 bg-gray-50/90 backdrop-blur border-b border-gray-100 z-10">
                 <tr>
-                  <th className="p-4 text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Item</th>
-                  <th className="p-4 text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">SKU / Barcode</th>
-                  <th className="p-4 text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 text-right">Cost Price</th>
-                  <th className="p-4 text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 text-right">In Stock</th>
-                  <th className="p-4 text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 text-center">Status</th>
+                  <th className="p-4 text-[10px] font-semibold uppercase tracking-wider text-gray-400">Item</th>
+                  <th className="p-4 text-[10px] font-semibold uppercase tracking-wider text-gray-400">SKU / Barcode</th>
+                  <th className="p-4 text-[10px] font-semibold uppercase tracking-wider text-gray-400 text-right">Cost Price</th>
+                  <th className="p-4 text-[10px] font-semibold uppercase tracking-wider text-gray-400 text-right">In Stock</th>
+                  <th className="p-4 text-[10px] font-semibold uppercase tracking-wider text-gray-400 text-center">Status</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
@@ -93,7 +93,7 @@ export default function InventoryStockList() {
                           <div className="size-10 rounded-[12px] bg-gray-50 flex items-center justify-center border border-gray-100 overflow-hidden shrink-0">
                             {product.mainImage ? <img src={product.mainImage} className="w-full h-full object-cover" /> : <Package size={16} className="text-gray-300" />}
                           </div>
-                          <span className="text-sm font-black text-gray-900 line-clamp-1">{product.name}</span>
+                          <span className="text-sm font-bold text-gray-900 line-clamp-1">{product.name}</span>
                         </div>
                       </td>
                       <td className="p-4">
@@ -105,14 +105,14 @@ export default function InventoryStockList() {
                       </td>
                       <td className="p-4 text-right">
                         <div className="flex flex-col items-end">
-                          <span className={cn("text-lg font-black", isOut ? "text-red-500" : isLow ? "text-amber-500" : "text-emerald-500")}>
+                          <span className={cn("text-lg font-bold", isOut ? "text-red-500" : isLow ? "text-amber-500" : "text-emerald-500")}>
                             {product.stockQuantity}
                           </span>
                         </div>
                       </td>
                       <td className="p-4 text-center">
                         <span className={cn(
-                          "inline-block px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest",
+                          "inline-block px-3 py-1 rounded-lg text-[9px] font-semibold uppercase tracking-wider",
                           isOut ? "bg-red-100 text-red-600" : isLow ? "bg-amber-100 text-amber-600" : "bg-emerald-100 text-emerald-600"
                         )}>
                           {status.replace('_', ' ')}
@@ -126,7 +126,7 @@ export default function InventoryStockList() {
           ) : (
             <div className="h-full flex flex-col items-center justify-center text-center p-8 text-gray-500">
               <Package size={48} className="mb-4 text-gray-300" />
-              <p className="text-sm font-black text-gray-900">Ready to track your inventory? Add your first stock record.</p>
+              <p className="text-sm font-bold text-gray-900">Ready to track your inventory? Add your first stock record.</p>
             </div>
           )}
         </div>

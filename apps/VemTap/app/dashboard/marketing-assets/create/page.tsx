@@ -320,14 +320,14 @@ export default function CreateAssetWizardPage() {
               <ChevronLeft size={20} />
           </button>
           <div className="flex flex-col">
-              <h1 className="text-sm font-black text-gray-900 uppercase tracking-widest leading-none">Create Kit</h1>
+              <h1 className="text-sm font-bold text-gray-900 uppercase tracking-wider leading-none">Create Kit</h1>
               <p className="text-[10px] font-bold text-gray-400 mt-1 uppercase tracking-tight">
                 {step === 'gallery' ? 'STEP 1: CHOOSE TEMPLATE' : step === 'size_selection' ? 'STEP 2: SIZE SELECTION' : step === 'editor' ? 'STEP 3: CUSTOMIZE' : 'STEP 4: PREVIEW & DOWNLOAD'}
               </p>
           </div>
         </div>
         {step === 'editor' && (
-          <Button onClick={handleSaveAndPreview} className="h-10 px-6 rounded-xl bg-gray-900 text-white text-[10px] font-black uppercase tracking-widest shadow-xl active:scale-95 transition-all">
+          <Button onClick={handleSaveAndPreview} className="h-10 px-6 rounded-xl bg-gray-900 text-white text-[10px] font-bold uppercase tracking-wider shadow-xl active:scale-95 transition-all">
               Preview <ChevronRight size={14} className="ml-1" />
           </Button>
         )}
@@ -340,7 +340,7 @@ export default function CreateAssetWizardPage() {
           {step === 'gallery' && (
             <motion.div key="gallery" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-8">
                 <div className="flex flex-col space-y-2">
-                    <h2 className="text-2xl font-black text-gray-900">Choose a Template</h2>
+                    <h2 className="text-2xl font-bold text-gray-900">Choose a Template</h2>
                     <p className="text-sm font-medium text-gray-500">Select a design. Your QR code will be automatically added.</p>
                 </div>
 
@@ -354,7 +354,7 @@ export default function CreateAssetWizardPage() {
                   <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
                       {templates.map((tpl: any) => (
                           <button key={tpl.id} onClick={() => handleSelectTemplate(tpl)} className="group space-y-4 text-left">
-                              <div className="aspect-[4/5] bg-white rounded-[2rem] border border-gray-100 shadow-sm overflow-hidden relative group-hover:border-[#066CF4]/40 group-hover:shadow-xl transition-all">
+                              <div className="aspect-[4/5] bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden relative group-hover:border-[#066CF4]/40 group-hover:shadow-xl transition-all">
                                   {tpl.thumbnailUrl ? (
                                       <img src={tpl.thumbnailUrl} alt={tpl.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                                   ) : (
@@ -424,7 +424,7 @@ export default function CreateAssetWizardPage() {
                                   )}
                               </div>
                               <div className="px-2">
-                                  <h4 className="text-sm font-black text-gray-900 group-hover:text-[#066CF4] transition-colors">{tpl.name}</h4>
+                                  <h4 className="text-sm font-bold text-gray-900 group-hover:text-[#066CF4] transition-colors">{tpl.name}</h4>
                                   <p className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">{tpl.category || type.replace('_', ' ')}</p>
                               </div>
                           </button>
@@ -436,9 +436,9 @@ export default function CreateAssetWizardPage() {
 
           {/* STEP 2: SIZE SELECTION */}
           {step === 'size_selection' && (
-            <motion.div key="size_selection" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="max-w-2xl mx-auto space-y-6 sm:space-y-8 bg-white p-4 sm:p-8 rounded-[1.5rem] sm:rounded-[2rem] border border-gray-100 shadow-sm mt-4 sm:mt-8">
+            <motion.div key="size_selection" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="max-w-2xl mx-auto space-y-6 sm:space-y-8 bg-white p-4 sm:p-8 rounded-2xl sm:rounded-2xl border border-gray-100 shadow-sm mt-4 sm:mt-8">
                 <div className="text-center space-y-2 mb-4 sm:mb-8">
-                    <h2 className="text-xl sm:text-2xl font-black text-gray-900 font-sans tracking-tight">Choose Design Size</h2>
+                    <h2 className="text-xl sm:text-2xl font-bold text-gray-900 font-sans tracking-tight">Choose Design Size</h2>
                     <p className="text-xs sm:text-sm font-medium text-gray-500">Select an orientation and adjust the dimensions for your asset.</p>
                 </div>
                 
@@ -450,7 +450,7 @@ export default function CreateAssetWizardPage() {
                             className={cn("p-2.5 sm:p-4 rounded-xl sm:rounded-2xl border-2 flex flex-col items-center gap-2 sm:gap-3 transition-all", sizeType === t ? "border-[#066CF4] bg-[#066CF4]/5 text-[#066CF4]" : "border-gray-100 text-gray-400 hover:border-gray-200")}
                         >
                             <div className={cn("border-2 rounded-md transition-all", sizeType === t ? "border-[#066CF4]" : "border-gray-300", t === 'square' ? "w-6 h-6 sm:w-8 sm:h-8" : t === 'portrait' ? "w-4.5 h-6 sm:w-6 sm:h-8" : "w-6 h-4.5 sm:w-8 sm:h-6")} />
-                            <span className="text-[8px] sm:text-[10px] font-black uppercase tracking-widest">{t}</span>
+                            <span className="text-[8px] sm:text-[10px] font-bold uppercase tracking-wider">{t}</span>
                         </button>
                     ))}
                 </div>
@@ -470,12 +470,12 @@ export default function CreateAssetWizardPage() {
 
                 <div className="flex items-center gap-2 sm:gap-4">
                     <div className="flex-1 space-y-1">
-                        <label className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-gray-400">Width (px)</label>
+                        <label className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-gray-400">Width (px)</label>
                         <Input type="number" value={designW} onChange={(e) => handleWidthChange(Number(e.target.value))} className="h-12 sm:h-14 rounded-xl sm:rounded-2xl text-base sm:text-lg font-bold bg-gray-50 border-gray-100" />
                     </div>
-                    <div className="text-gray-300 font-black text-lg sm:text-xl pt-4 sm:pt-6">×</div>
+                    <div className="text-gray-300 font-bold text-lg sm:text-xl pt-4 sm:pt-6">×</div>
                     <div className="flex-1 space-y-1">
-                        <label className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-gray-400">Height (px)</label>
+                        <label className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-gray-400">Height (px)</label>
                         <Input type="number" value={designH} onChange={(e) => handleHeightChange(Number(e.target.value))} className="h-12 sm:h-14 rounded-xl sm:rounded-2xl text-base sm:text-lg font-bold bg-gray-50 border-gray-100" />
                     </div>
                 </div>
@@ -483,17 +483,17 @@ export default function CreateAssetWizardPage() {
                 {showSizeWarning && (
                     <div className="bg-amber-50 border border-amber-200 rounded-xl sm:rounded-2xl p-3 sm:p-4 flex items-start gap-2.5 sm:gap-3">
                         <div className="size-5 sm:size-6 rounded-full bg-amber-100 flex items-center justify-center shrink-0 mt-0.5">
-                            <span className="text-amber-600 text-[10px] sm:text-xs font-black">!</span>
+                            <span className="text-amber-600 text-[10px] sm:text-xs font-bold">!</span>
                         </div>
                         <div className="text-[10px] sm:text-[11px] font-medium text-amber-800 leading-relaxed">
-                            The dimensions entered ({designW}×{designH}) don't match the <strong>{sizeType}</strong> orientation. 
+                            The dimensions entered ({designW}×{designH}) don&apos;t match the <strong>{sizeType}</strong> orientation. 
                             Adjust values or change type to <strong>{actualType}</strong>.
                         </div>
                     </div>
                 )}
 
                 <div className="pt-2 sm:pt-4">
-                    <Button onClick={() => { setStep('editor'); window.scrollTo(0,0); }} disabled={showSizeWarning} className={cn("w-full h-12 sm:h-14 rounded-xl sm:rounded-2xl text-white font-black uppercase tracking-widest shadow-xl transition-all", showSizeWarning ? "bg-gray-300 cursor-not-allowed shadow-none" : "bg-[#066CF4] hover:bg-[#0556c5] shadow-blue-500/20")}>
+                    <Button onClick={() => { setStep('editor'); window.scrollTo(0,0); }} disabled={showSizeWarning} className={cn("w-full h-12 sm:h-14 rounded-xl sm:rounded-2xl text-white font-bold uppercase tracking-wider shadow-xl transition-all", showSizeWarning ? "bg-gray-300 cursor-not-allowed shadow-none" : "bg-[#066CF4] hover:bg-[#0556c5] shadow-blue-500/20")}>
                         Continue to Editor <ChevronRight className="ml-2" size={16} />
                     </Button>
                 </div>
@@ -528,7 +528,7 @@ export default function CreateAssetWizardPage() {
             <motion.div key="preview" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="max-w-4xl mx-auto space-y-12 pb-20">
                 <div className="flex flex-col lg:flex-row items-start gap-12">
                     <div className="flex-1 w-full flex justify-center">
-                        <div id="export-container" ref={downloadRef} className="shadow-2xl ring-[16px] ring-white rounded-[2rem] overflow-hidden" style={{ width: previewWidth, backgroundColor: bgColor }}>
+                        <div id="export-container" ref={downloadRef} className="shadow-2xl ring-[16px] ring-white rounded-2xl overflow-hidden" style={{ width: previewWidth, backgroundColor: bgColor }}>
                             <div className="w-full relative overflow-hidden" style={{ aspectRatio: `${designW} / ${designH}`, backgroundColor: bgColor, backgroundImage: bgImage ? `url(${bgImage})` : 'none', backgroundSize: 'cover', backgroundPosition: 'center' }}>
                                 {(() => {
                                     const scaleFactor = previewWidth / (designW || 1080);
@@ -559,9 +559,9 @@ export default function CreateAssetWizardPage() {
                         </div>
                     </div>
                     <div className="w-full lg:w-80 space-y-6">
-                        <div className="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm space-y-6">
+                        <div className="bg-white p-8 rounded-2xl border border-gray-100 shadow-sm space-y-6">
                             <div className="space-y-2 text-center">
-                              <h3 className="text-xl font-black text-gray-900">Looking Good!</h3>
+                              <h3 className="text-xl font-bold text-gray-900">Looking Good!</h3>
                               <p className="text-xs text-gray-500 font-medium">Your design is ready to be shared with the world.</p>
                             </div>
                             
@@ -570,20 +570,20 @@ export default function CreateAssetWizardPage() {
                                 onClick={handleSaveToLibrary}
                                 disabled={isSaving}
                                 variant="outline"
-                                className="w-full h-12 border-2 border-gray-100 text-gray-700 text-[10px] font-black uppercase tracking-widest rounded-2xl hover:bg-gray-50 gap-2"
+                                className="w-full h-12 border-2 border-gray-100 text-gray-700 text-[10px] font-bold uppercase tracking-wider rounded-2xl hover:bg-gray-50 gap-2"
                               >
                                   <Save size={14} /> {hasSaved || existingAsset ? 'Saved' : 'Save to Library'}
                               </Button>
                               <Button 
                                 onClick={() => setShowExportDialog(true)} 
                                 disabled={isExporting}
-                                className="w-full h-14 bg-[#066CF4] hover:bg-[#0556c5] text-white text-[10px] font-black uppercase tracking-widest rounded-2xl gap-3 shadow-xl shadow-blue-500/20"
+                                className="w-full h-14 bg-[#066CF4] hover:bg-[#0556c5] text-white text-[10px] font-bold uppercase tracking-wider rounded-2xl gap-3 shadow-xl shadow-blue-500/20"
                               >
                                   <Download size={16} /> Download
                               </Button>
                               <button
                                 onClick={handleSaveAndExit}
-                                className="w-full flex items-center justify-center gap-2 py-3 text-[10px] font-bold text-gray-400 hover:text-gray-900 transition-colors uppercase tracking-widest"
+                                className="w-full flex items-center justify-center gap-2 py-3 text-[10px] font-bold text-gray-400 hover:text-gray-900 transition-colors uppercase tracking-wider"
                               >
                                 <ArrowLeft size={12} /> Save & Exit
                               </button>
@@ -605,14 +605,14 @@ export default function CreateAssetWizardPage() {
         <div className="space-y-6">
           {/* Format Selector */}
           <div>
-            <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-3 block">Format</label>
+            <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-3 block">Format</label>
             <div className="flex gap-2">
               {([{ id: 'png', icon: Download, label: 'PNG' }, { id: 'jpg', icon: ImageIcon, label: 'JPG' }, { id: 'pdf', icon: Printer, label: 'PDF' }] as const).map(({ id, icon: Icon, label }) => (
                 <button
                   key={id}
                   onClick={() => setExportFormat(id)}
                   className={cn(
-                    "flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl text-xs font-black uppercase tracking-widest transition-all border-2",
+                    "flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl text-xs font-bold uppercase tracking-wider transition-all border-2",
                     exportFormat === id
                       ? "bg-[#066CF4] text-white border-[#066CF4] shadow-lg shadow-blue-500/20"
                       : "bg-white text-gray-500 border-gray-100 hover:border-gray-200"
@@ -626,7 +626,7 @@ export default function CreateAssetWizardPage() {
 
           {/* Size Presets */}
           <div>
-            <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-3 block">Size</label>
+            <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-3 block">Size</label>
             <div className="grid grid-cols-2 gap-2">
               {exportPresets.map(p => (
                 <button
@@ -639,7 +639,7 @@ export default function CreateAssetWizardPage() {
                       : "border-gray-100 bg-white hover:border-gray-200"
                   )}
                 >
-                  <div className="text-sm font-black text-gray-900">{p.label}</div>
+                  <div className="text-sm font-bold text-gray-900">{p.label}</div>
                   {p.w > 0 && (
                     <div className="text-[10px] font-bold text-gray-400 mt-0.5">{p.w}×{p.h} px</div>
                   )}
@@ -652,12 +652,12 @@ export default function CreateAssetWizardPage() {
           {selectedPreset === 'custom' && (
             <div className="flex items-end gap-3">
               <div className="flex-1 space-y-1">
-                <span className="text-[8px] font-black uppercase text-gray-400">Width</span>
+                <span className="text-[8px] font-bold uppercase text-gray-400">Width</span>
                 <Input type="number" value={customExportW} onChange={e => setCustomExportW(Math.max(100, Number(e.target.value)))} min={100} className="text-sm" />
               </div>
-              <span className="text-gray-300 font-black text-lg pb-2">×</span>
+              <span className="text-gray-300 font-bold text-lg pb-2">×</span>
               <div className="flex-1 space-y-1">
-                <span className="text-[8px] font-black uppercase text-gray-400">Height</span>
+                <span className="text-[8px] font-bold uppercase text-gray-400">Height</span>
                 <Input type="number" value={customExportH} onChange={e => setCustomExportH(Math.max(100, Number(e.target.value)))} min={100} className="text-sm" />
               </div>
               <span className="text-[10px] font-bold text-gray-400 pb-2">px</span>
@@ -669,7 +669,7 @@ export default function CreateAssetWizardPage() {
             <Button
               onClick={() => setShowExportDialog(false)}
               variant="outline"
-              className="flex-1 h-12 rounded-2xl text-[10px] font-black uppercase tracking-widest"
+              className="flex-1 h-12 rounded-2xl text-[10px] font-bold uppercase tracking-wider"
             >
               Cancel
             </Button>
@@ -680,7 +680,7 @@ export default function CreateAssetWizardPage() {
                 setShowExportDialog(false);
               }}
               disabled={isExporting}
-              className="flex-1 h-12 bg-[#066CF4] hover:bg-[#0556c5] text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-blue-500/20"
+              className="flex-1 h-12 bg-[#066CF4] hover:bg-[#0556c5] text-white rounded-2xl text-[10px] font-bold uppercase tracking-wider shadow-xl shadow-blue-500/20"
             >
               {isExporting ? 'Exporting...' : `Export ${exportFormat.toUpperCase()}`}
             </Button>
