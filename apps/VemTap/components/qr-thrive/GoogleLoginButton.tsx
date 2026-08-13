@@ -34,7 +34,7 @@ const GoogleLoginButton: React.FC<GoogleLoginButtonProps> = ({ onSuccess, onErro
           toast.error('Login Failed');
           if (onError) onError('Login Failed');
         }}
-        useOneTap
+        useOneTap={false}
         theme="outline"
         shape="pill"
         width="100%"
