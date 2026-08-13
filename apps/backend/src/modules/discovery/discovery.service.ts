@@ -1995,7 +1995,9 @@ export class DiscoveryService {
       where: {},
       order: { createdAt: 'DESC' },
     });
-    return settings?.partnershipRewardTiers || { tiers: [], defaultMultiplier: 1.0 };
+    return (
+      settings?.partnershipRewardTiers || { tiers: [], defaultMultiplier: 1.0 }
+    );
   }
 
   async updatePartnershipRewardTiers(payload: any) {

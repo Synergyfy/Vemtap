@@ -52,7 +52,7 @@ export default function EmailHistoryPage() {
         {
             header: 'Status',
             accessor: (item: Campaign) => (
-                <span className={`inline-flex px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${item.status === 'Completed' ? 'bg-green-100 text-green-700' :
+                <span className={`inline-flex px-2.5 py-1 rounded-full text-[10px] font-semibold uppercase tracking-wider ${item.status === 'Completed' ? 'bg-green-100 text-green-700' :
                     item.status === 'Scheduled' ? 'bg-blue-100 text-blue-700' :
                         'bg-slate-100 text-slate-700'
                     }`}>
@@ -74,7 +74,7 @@ export default function EmailHistoryPage() {
             <div className="flex items-center gap-4">
                 <Link
                     href="/dashboard/messaging/email"
-                    className="flex items-center gap-2 px-4 py-2 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-900 transition-all text-sm font-bold active:scale-95"
+                    className="flex items-center gap-2 px-4 py-2 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-900 transition-all text-xs font-semibold uppercase tracking-wider active:scale-95"
                 >
                     <ArrowLeft size={16} />
                     Email
@@ -82,7 +82,7 @@ export default function EmailHistoryPage() {
             </div>
 
             <div>
-                <h1 className="text-2xl font-black text-text-main tracking-tight">Email History</h1>
+                <h1 className="text-xl md:text-2xl font-bold text-gray-900 tracking-tight">Email History</h1>
                 <p className="text-sm text-text-secondary font-medium">View all your past email messages and broadcasts.</p>
             </div>
 

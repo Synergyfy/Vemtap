@@ -436,4 +436,3 @@ export class BulkImportItemsDto {
   @Type(() => BulkImportItemRowDto)
   items: BulkImportItemRowDto[];
 }
-

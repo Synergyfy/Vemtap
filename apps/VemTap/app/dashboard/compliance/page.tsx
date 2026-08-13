@@ -99,7 +99,7 @@ export default function CompliancePage() {
             <div className="flex bg-gray-100/50 p-1.5 rounded-2xl w-full sm:w-fit border border-gray-100">
                 <button
                     onClick={() => setActiveTab('legal')}
-                    className={`flex-1 sm:flex-none px-8 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
+                    className={`flex-1 sm:flex-none px-8 py-3 rounded-xl text-xs font-semibold uppercase tracking-wider transition-all ${
                         activeTab === 'legal'
                             ? 'bg-white text-primary shadow-sm'
                             : 'text-text-secondary hover:text-text-main'
@@ -109,7 +109,7 @@ export default function CompliancePage() {
                 </button>
                 <button
                     onClick={() => setActiveTab('privacy')}
-                    className={`flex-1 sm:flex-none px-8 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
+                    className={`flex-1 sm:flex-none px-8 py-3 rounded-xl text-xs font-semibold uppercase tracking-wider transition-all ${
                         activeTab === 'privacy'
                             ? 'bg-white text-primary shadow-sm'
                             : 'text-text-secondary hover:text-text-main'
@@ -133,14 +133,14 @@ export default function CompliancePage() {
                             return (
                                 <div
                                     key={item.id || item.slug}
-                                    className="bg-white rounded-[2.5rem] border border-gray-100 p-8 shadow-sm flex flex-col justify-between hover:shadow-md transition-all"
+                                    className="bg-white rounded-2xl border border-gray-100 p-5 md:p-6 shadow-sm flex flex-col justify-between hover:shadow-md transition-all"
                                 >
                                     <div>
                                         <div className="flex items-center justify-between gap-2 mb-6">
-                                            <div className="size-12 bg-primary/10 text-primary rounded-2xl flex items-center justify-center">
-                                                <FileText size={24} />
+                                            <div className="size-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
+                                                <FileText size={20} />
                                             </div>
-                                            <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                                            <span className={`px-3 py-1 rounded-full text-[10px] font-semibold uppercase tracking-wider ${
                                                 isAccepted
                                                     ? 'bg-green-50 text-green-700 border border-green-200'
                                                     : 'bg-amber-50 text-amber-700 border border-amber-200'
@@ -149,15 +149,15 @@ export default function CompliancePage() {
                                             </span>
                                         </div>
 
-                                        <h3 className="text-xl font-display font-black text-text-main mb-2">{item.title}</h3>
+                                        <h3 className="text-lg font-bold text-text-main mb-2">{item.title}</h3>
                                         <p className="text-xs text-text-secondary leading-relaxed mb-6 font-medium">
                                             {item.summary || 'Official binding legal policy document for VemTap platform operations.'}
                                         </p>
 
-                                        <div className="space-y-2 text-[11px] font-bold text-slate-500 mb-6 bg-gray-50 p-4 rounded-2xl border border-gray-100">
+                                        <div className="space-y-2 text-[11px] font-bold text-slate-500 mb-6 bg-gray-50 p-4 rounded-xl border border-gray-100">
                                             <div className="flex justify-between">
                                                 <span>Version:</span>
-                                                <span className="text-text-main font-black">{item.version || 'v1.0'}</span>
+                                                <span className="text-text-main font-bold">{item.version || 'v1.0'}</span>
                                             </div>
                                             <div className="flex justify-between">
                                                 <span>Effective Date:</span>
@@ -176,7 +176,7 @@ export default function CompliancePage() {
                                         <button
                                             onClick={() => handleAccept(item.slug)}
                                             disabled={acceptMutation.isPending}
-                                            className="w-full h-12 bg-primary text-white font-black uppercase tracking-widest text-xs rounded-xl hover:bg-primary-hover transition-all flex items-center justify-center gap-2 shadow-md shadow-primary/20"
+                                            className="w-full h-10 bg-primary text-white font-semibold uppercase tracking-wider text-xs rounded-xl hover:bg-primary-hover transition-all flex items-center justify-center gap-2 shadow-sm shadow-primary/20"
                                         >
                                             {acceptMutation.isPending ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle2 size={16} />}
                                             Accept & Sign Now
@@ -198,13 +198,13 @@ export default function CompliancePage() {
                     </div>
 
                     {/* Acceptance Audit History Table */}
-                    <div className="bg-white rounded-[2.5rem] border border-gray-100 p-8 shadow-sm space-y-6">
+                    <div className="bg-white rounded-2xl border border-gray-100 p-5 md:p-6 shadow-sm space-y-6">
                         <div className="flex items-center justify-between">
                             <div>
-                                <h3 className="text-lg font-display font-black text-text-main uppercase tracking-tight">Acceptance Audit Log</h3>
+                                <h3 className="text-base md:text-lg font-bold text-text-main">Acceptance Audit Log</h3>
                                 <p className="text-xs text-text-secondary">Immutable records of legal agreement signatures for your organization.</p>
                             </div>
-                            <span className="text-xs font-bold text-primary uppercase tracking-widest bg-primary/5 px-3 py-1 rounded-full">
+                            <span className="text-xs font-semibold text-primary uppercase tracking-wider bg-primary/5 px-3 py-1 rounded-full">
                                 {selectedSlug}
                             </span>
                         </div>
@@ -218,7 +218,7 @@ export default function CompliancePage() {
                             <div className="overflow-x-auto">
                                 <table className="w-full text-left border-collapse">
                                     <thead>
-                                        <tr className="border-b border-gray-100 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                        <tr className="border-b border-gray-100 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
                                             <th className="py-3 px-4">User ID</th>
                                             <th className="py-3 px-4">Agreement Version</th>
                                             <th className="py-3 px-4">Accepted Timestamp</th>
@@ -252,13 +252,13 @@ export default function CompliancePage() {
                 </div>
             ) : (
                 /* Privacy & Data Rights Tab */
-                <div className="bg-white rounded-[2.5rem] border border-gray-100 p-8 shadow-sm space-y-8">
+                <div className="bg-white rounded-2xl border border-gray-100 p-5 md:p-6 shadow-sm space-y-8">
                     <div className="flex items-center gap-4">
-                        <div className="size-12 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center">
-                            <Lock size={24} />
+                        <div className="size-10 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                            <Lock size={20} />
                         </div>
                         <div>
-                            <h3 className="text-xl font-display font-black text-text-main uppercase tracking-tight">Privacy & Data Governance</h3>
+                            <h3 className="text-lg font-bold text-text-main">Privacy & Data Governance</h3>
                             <p className="text-xs text-text-secondary">Exercise Data Subject Access Rights (DSAR) and privacy controls under NDPR/GDPR guidelines.</p>
                         </div>
                     </div>

@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Menu, X, ArrowRight, ChevronRight, Globe, Zap, ShieldCheck, HelpCircle } from 'lucide-react';
+import { Menu, X, ChevronRight, ShieldCheck, HelpCircle } from 'lucide-react';
 import Logo from '@/components/brand/Logo';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -24,7 +24,7 @@ export default function Navbar() {
     
     const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
     const user = useAuthStore((state) => state.user);
-    const { data: business } = useMyBusiness(isAuthenticated && user?.role?.toLowerCase() !== 'customer');
+    useMyBusiness(isAuthenticated && user?.role?.toLowerCase() !== 'customer');
 
     useEffect(() => {
         const handleScroll = () => setScrolled(window.scrollY > 20);
@@ -43,8 +43,8 @@ export default function Navbar() {
         )}>
             <nav className="container mx-auto px-6 flex items-center justify-between">
                 {/* Logo */}
-                <Link href="/" className="relative z-10 flex items-center">
-                    <Logo className="h-8" />
+                <Link href="/" className="relative z-10 lg:z-auto flex items-center">
+                    <Logo className="flex items-center h-12 lg:h-16" />
                 </Link>
 
                 {/* Desktop Navigation */}
@@ -97,63 +97,82 @@ export default function Navbar() {
         {/* Mobile Navigation Overlay — outside header so z-index escapes its stacking context */}
         <AnimatePresence>
             {isOpen && (
-                <motion.div 
-                    initial={{ opacity: 0, y: -20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -20 }}
+                <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.2 }}
                     className="fixed inset-0 z-[200] lg:hidden flex flex-col bg-white"
                 >
-                    <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b border-gray-100">
-                        <Logo className="h-7" />
-                        <button onClick={() => setIsOpen(false)} className="p-2 text-gray-900 hover:text-[#066CF4]">
-                            <X size={28} />
+                    <div className="flex items-center justify-between px-6 pt-6 pb-5">
+                        <Logo className="flex items-center h-9 lg:h-11" />
+                        <button
+                            onClick={() => setIsOpen(false)}
+                            className="size-10 rounded-full bg-gray-50 border border-gray-100 flex items-center justify-center text-gray-900 hover:text-[#066CF4] hover:border-primary/30 transition-all"
+                            aria-label="Close menu"
+                        >
+                            <X size={20} />
                         </button>
                     </div>
 
-                    <div className="flex-1 overflow-y-auto px-6 py-6">
-                        <div className="flex flex-col gap-5">
+                    <div className="flex-1 overflow-hidden px-6 pb-10">
+                        <nav className="flex flex-col gap-2">
                             {navLinks.map((link) => (
-                                <Link 
-                                    key={link.label} 
+                                <Link
+                                    key={link.label}
                                     href={link.href}
                                     onClick={() => setIsOpen(false)}
-                                    className="text-xl font-bold text-gray-900 flex items-center justify-between group py-2"
+                                    className="flex items-center justify-between rounded-2xl border border-gray-100 bg-white px-5 py-4 group hover:border-primary/25 hover:bg-primary/[0.02] active:scale-[0.99] transition-all"
                                 >
-                                    {link.label}
-                                    <ChevronRight className="text-gray-300 group-hover:text-[#066CF4] transition-colors" size={20} />
+                                    <span className="text-[15px] font-bold text-text-main group-hover:text-[#066CF4] transition-colors">
+                                        {link.label}
+                                    </span>
+                                    <span className="flex items-center justify-center size-8 rounded-full bg-gray-50 group-hover:bg-primary/10 group-hover:text-[#066CF4] transition-colors">
+                                        <ChevronRight size={16} className="text-gray-400 group-hover:text-[#066CF4]" />
+                                    </span>
                                 </Link>
                             ))}
-                        </div>
-                        
-                        <hr className="border-gray-100 my-6" />
+                        </nav>
+
+                        <hr className="border-gray-100 my-7" />
 
                         <div className="flex flex-col gap-3">
                             {isAuthenticated ? (
                                 <Link href={dashboardHref} onClick={() => setIsOpen(false)}>
-                                    <Button className="w-full h-14 rounded-2xl bg-[#066CF4] text-sm font-black uppercase tracking-[0.2em] text-white shadow-2xl shadow-blue-500/20">
+                                    <Button className="w-full h-14 rounded-xl bg-[#066CF4] text-sm font-black uppercase tracking-[0.18em] text-white shadow-lg shadow-blue-500/20 hover:bg-blue-600 active:scale-[0.99] transition-all">
                                         Go To Dashboard
                                     </Button>
                                 </Link>
                             ) : (
                                 <>
                                     <Link href="/get-started" onClick={() => setIsOpen(false)}>
-                                        <Button className="w-full h-14 rounded-2xl bg-[#066CF4] text-sm font-black uppercase tracking-[0.2em] text-white shadow-2xl shadow-blue-500/20">
+                                        <Button className="w-full h-14 rounded-xl bg-[#066CF4] text-sm font-black uppercase tracking-[0.18em] text-white shadow-lg shadow-blue-500/20 hover:bg-blue-600 active:scale-[0.99] transition-all">
                                             Get Started
                                         </Button>
                                     </Link>
-                                    <Link href="/login" onClick={() => setIsOpen(false)} className="text-center text-sm font-bold text-gray-500 hover:text-[#066CF4] py-2">
-                                        Login
+                                    <Link href="/login" onClick={() => setIsOpen(false)}>
+                                        <Button className="w-full h-14 rounded-xl border border-gray-200 bg-white text-[15px] font-bold text-text-main hover:border-[#066CF4]/40 hover:text-[#066CF4] active:scale-[0.99] transition-all">
+                                            Login
+                                        </Button>
                                     </Link>
                                 </>
                             )}
                         </div>
 
-                        <div className="mt-10 pt-6 border-t border-gray-100 flex items-center gap-6 justify-center">
-                            <Link href="/trust" className="text-[10px] font-black uppercase tracking-widest text-gray-400 flex items-center gap-1">
-                                <ShieldCheck size={12} /> Trust
+                        <div className="mt-8 grid grid-cols-2 gap-2.5">
+                            <Link
+                                href="/trust"
+                                onClick={() => setIsOpen(false)}
+                                className="flex items-center justify-center gap-2 rounded-xl bg-gray-50 border border-gray-100 px-4 py-3.5 text-[10px] font-black uppercase tracking-[0.14em] text-text-secondary hover:text-[#066CF4] hover:border-primary/25 transition-all"
+                            >
+                                <ShieldCheck size={14} /> Trust
                             </Link>
-                            <Link href="/support" className="text-[10px] font-black uppercase tracking-widest text-gray-400 flex items-center gap-1">
-                                <HelpCircle size={12} /> Support
+                            <Link
+                                href="/support"
+                                onClick={() => setIsOpen(false)}
+                                className="flex items-center justify-center gap-2 rounded-xl bg-gray-50 border border-gray-100 px-4 py-3.5 text-[10px] font-black uppercase tracking-[0.14em] text-text-secondary hover:text-[#066CF4] hover:border-primary/25 transition-all"
+                            >
+                                <HelpCircle size={14} /> Support
                             </Link>
                         </div>
                     </div>

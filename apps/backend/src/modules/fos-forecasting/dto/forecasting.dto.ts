@@ -29,10 +29,10 @@ export class ForecastProjectionRequestDto {
   @Min(0)
   grossRevenue: number;
 
-  @ApiProperty({ example: 0.6 })
+  @ApiProperty({ example: 50 })
   @IsNumber()
   @Min(0)
-  @Max(1)
+  @Max(100)
   variableCostMargin: number;
 
   @ApiProperty({ example: 2500000 })

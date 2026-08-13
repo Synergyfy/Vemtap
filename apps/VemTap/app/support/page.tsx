@@ -97,7 +97,7 @@ export default function SupportPage() {
                                     placeholder="Search help articles..."
                                     className="w-full bg-transparent p-3.5 font-bold text-xs outline-none placeholder:text-gray-300"
                                 />
-                                <button className="bg-primary text-white font-black text-[9px] uppercase tracking-widest px-6 py-3.5 rounded-xl hover:bg-primary-hover transition-all shrink-0">
+                                <button className="bg-primary text-white font-bold text-[9px] uppercase tracking-wider px-6 py-3.5 rounded-xl hover:bg-primary-hover transition-all shrink-0">
                                     Search
                                 </button>
                             </div>
@@ -117,11 +117,11 @@ export default function SupportPage() {
                                 <div className="size-12 bg-primary/5 rounded-xl flex items-center justify-center text-primary mb-6 transition-all group-hover:scale-110">
                                     <span className="material-icons-round text-2xl">{cat.icon}</span>
                                 </div>
-                                <h3 className="text-lg font-display font-black text-text-main mb-3 group-hover:text-primary transition-colors">{cat.title}</h3>
+                                <h3 className="text-lg font-display font-bold text-text-main mb-3 group-hover:text-primary transition-colors">{cat.title}</h3>
                                 <p className="text-xs text-text-secondary font-medium leading-relaxed mb-6">{cat.description}</p>
                                 <div className="flex flex-wrap gap-2">
                                     {cat.tags.map((tag, j) => (
-                                        <span key={j} className="text-[8px] font-black uppercase tracking-widest bg-gray-50 text-gray-400 px-2 py-1 rounded">
+                                        <span key={j} className="text-[8px] font-bold uppercase tracking-wider bg-gray-50 text-gray-400 px-2 py-1 rounded">
                                             {tag}
                                         </span>
                                     ))}
@@ -143,12 +143,12 @@ export default function SupportPage() {
                                         <span className="material-icons-round text-2xl">{method.icon}</span>
                                     </div>
                                     <h4 className="text-white font-display font-bold text-lg mb-1">{method.title}</h4>
-                                    <p className="text-primary text-[9px] font-black uppercase tracking-widest mb-4">{method.status}</p>
+                                    <p className="text-primary text-[9px] font-bold uppercase tracking-wider mb-4">{method.status}</p>
                                     <p className="text-white/40 font-bold text-sm mb-8">{method.value}</p>
 
                                     <Link
                                         href={method.link || "#"}
-                                        className="w-full py-4 bg-white text-text-main font-black text-[9px] uppercase tracking-widest rounded-xl hover:bg-primary hover:text-white transition-all shadow-xl"
+                                        className="w-full py-4 bg-white text-text-main font-bold text-[9px] uppercase tracking-wider rounded-xl hover:bg-primary hover:text-white transition-all shadow-xl"
                                     >
                                         {method.buttonLabel}
                                     </Link>

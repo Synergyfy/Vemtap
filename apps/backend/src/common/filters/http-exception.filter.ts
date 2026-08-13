@@ -28,6 +28,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
         : 'Internal server error';
 
     const errorResponse = {
+      success: false,
       statusCode: status,
       timestamp: new Date().toISOString(),
       path: request.url,

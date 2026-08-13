@@ -538,7 +538,7 @@ function PartnersTab({ branchId }: { branchId: string }) {
                             <div className="space-y-2 max-w-md mx-auto">
                                 <h3 className="font-bold text-xl text-amber-900">Set Up Your Location</h3>
                                 <p className="text-amber-700 text-sm font-medium">
-                                    We need your branch's location to find nearby partners. Are you currently at this location?
+                                    We need your branch&apos;s location to find nearby partners. Are you currently at this location?
                                 </p>
                             </div>
                             <div className="flex flex-col sm:flex-row gap-3 justify-center max-w-sm mx-auto">
@@ -559,7 +559,7 @@ function PartnersTab({ branchId }: { branchId: string }) {
                                 </Button>
                             </div>
                             <p className="text-[10px] font-medium text-amber-500">
-                                Your device's location will only be used once and is not stored.
+                                Your device&apos;s location will only be used once and is not stored.
                             </p>
                         </div>
                     )}
@@ -667,7 +667,7 @@ function PartnersTab({ branchId }: { branchId: string }) {
                                 </div>
                                 <button
                                     onClick={startGpsWatch}
-                                    className="text-[9px] font-black uppercase tracking-widest text-primary hover:underline shrink-0 ml-2"
+                                    className="text-[9px] font-bold uppercase tracking-wider text-primary hover:underline shrink-0 ml-2"
                                 >
                                     Refresh
                                 </button>
@@ -749,7 +749,7 @@ function PartnersTab({ branchId }: { branchId: string }) {
                                 <Handshake size={32} />
                             </div>
                             <h3 className="font-semibold text-gray-800 text-lg mb-2">No pending requests</h3>
-                            <p className="text-gray-500 text-sm">You've responded to all partnership requests.</p>
+                            <p className="text-gray-500 text-sm">You&apos;ve responded to all partnership requests.</p>
                         </div>
                     ) : (
                         invitationsData.data.map(partnership => {
@@ -823,7 +823,7 @@ function PartnersTab({ branchId }: { branchId: string }) {
                         </div>
                         <h2 className="text-xl font-semibold text-gray-800 mb-2">Recommend a Business</h2>
                         <p className="text-sm text-gray-500">
-                            Is there a business you'd love to partner with that isn't on VemTap yet? Recommend them below, and we'll reach out to invite them to the network.
+                            Is there a business you&apos;d love to partner with that isn&apos;t on VemTap yet? Recommend them below, and we&apos;ll reach out to invite them to the network.
                         </p>
                     </div>
 
@@ -856,7 +856,7 @@ function PartnersTab({ branchId }: { branchId: string }) {
                                 <input required name="businessName" type="text" placeholder="e.g. Joe's Barbershop" className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl text-sm font-medium focus:ring-2 focus:ring-primary outline-none" />
                             </div>
                             <div>
-                                <label className="block text-sm font-semibold text-gray-700 mb-2">Owner's Name <span className="text-red-500">*</span></label>
+                                <label className="block text-sm font-semibold text-gray-700 mb-2">Owner&apos;s Name <span className="text-red-500">*</span></label>
                                 <input required name="ownerName" type="text" placeholder="e.g. Joe Smith" className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl text-sm font-medium focus:ring-2 focus:ring-primary outline-none" />
                             </div>
                             <div>

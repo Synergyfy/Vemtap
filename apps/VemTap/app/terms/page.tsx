@@ -41,11 +41,11 @@ export default function TermsOfService() {
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="max-w-3xl">
                         <div className="flex items-center gap-3 mb-6">
-                            <span className="px-3 py-1 bg-primary/10 text-primary text-[10px] font-black uppercase tracking-widest rounded-full">Legal Agreement</span>
+                            <span className="px-3 py-1 bg-primary/10 text-primary text-[10px] font-bold uppercase tracking-wider rounded-full">Legal Agreement</span>
                             <span className="h-px w-8 bg-gray-200"></span>
-                            <span className="text-text-secondary text-[10px] font-bold uppercase tracking-widest">v2.1</span>
+                            <span className="text-text-secondary text-[10px] font-bold uppercase tracking-wider">v2.1</span>
                         </div>
-                        <h1 className="text-5xl md:text-6xl font-display font-bold text-text-main mb-8 leading-tight">
+                        <h1 className="text-[30px] sm:text-4xl md:text-5xl lg:text-6xl font-bold text-text-main mb-8 leading-[1.15] tracking-tight">
                             Terms of <span className="blue-text-gradient">Service</span>
                         </h1>
                         <p className="text-text-secondary font-medium italic">Last Updated: [Insert Date]</p>
@@ -58,7 +58,7 @@ export default function TermsOfService() {
                     
                     <aside className="hidden lg:block w-64 flex-shrink-0">
                         <div className="sticky top-32">
-                            <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 mb-8">Table of Contents</h4>
+                            <h4 className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-8">Table of Contents</h4>
                             <nav className="space-y-1 border-l border-gray-100 max-h-[60vh] overflow-y-auto custom-scrollbar pr-4">
                                 {sections.map((section) => (
                                     <a 
@@ -94,7 +94,7 @@ export default function TermsOfService() {
                                         { k: 'Customer', v: 'End-user interacting with a Business via the Platform' }
                                     ].map((def) => (
                                         <div key={def.k} className="p-6 bg-white rounded-2xl border border-gray-100">
-                                            <h5 className="text-[10px] font-black uppercase tracking-widest text-primary mb-2">{def.k}</h5>
+                                            <h5 className="text-[10px] font-bold uppercase tracking-wider text-primary mb-2">{def.k}</h5>
                                             <p className="text-sm font-bold text-text-secondary italic">{def.v}</p>
                                         </div>
                                     ))}

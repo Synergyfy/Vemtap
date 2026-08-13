@@ -155,12 +155,12 @@ function PromotionsTab({ branchId, onCreatePromo, onEditPromo }: { branchId: str
                         return (
                         <div key={promo.id} className="bg-white rounded-3xl border border-gray-100 shadow-sm p-6 relative overflow-hidden">
                             {expired && (
-                                <div className="absolute top-0 right-0 bg-red-500 text-white text-[9px] font-black uppercase tracking-wider px-3 py-1 rounded-bl-2xl">
+                                <div className="absolute top-0 right-0 bg-red-500 text-white text-[9px] font-bold uppercase tracking-wider px-3 py-1 rounded-bl-2xl">
                                     Expired
                                 </div>
                             )}
                             {promo.status === 'inactive' && !expired && (
-                                <div className="absolute top-0 right-0 bg-gray-400 text-white text-[9px] font-black uppercase tracking-wider px-3 py-1 rounded-bl-2xl">
+                                <div className="absolute top-0 right-0 bg-gray-400 text-white text-[9px] font-bold uppercase tracking-wider px-3 py-1 rounded-bl-2xl">
                                     Paused
                                 </div>
                             )}
@@ -817,7 +817,7 @@ function CreatePromotionFlow({ branchId, onCancel, editPromo }: { branchId: stri
                                                 <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100 space-y-2">
                                                     <div className="flex items-center justify-between">
                                                         <span className="text-xs font-semibold text-gray-500">Coverage Distance</span>
-                                                        <span className="text-sm font-black text-primary">
+                                                        <span className="text-sm font-bold text-primary">
                                                             {deliveryScope === 'same_area' && '~2 km from your branch'}
                                                             {deliveryScope === 'city_wide' && '~15 km from your branch'}
                                                             {deliveryScope === 'state_wide' && '~50 km from your branch'}
@@ -984,7 +984,7 @@ function CreatePromotionFlow({ branchId, onCancel, editPromo }: { branchId: stri
                                                     <Trash2 size={14} />
                                                 </button>
                                             </div>
-                                            {idx === 0 && <span className="absolute top-1 left-1 bg-primary text-white text-[8px] font-black px-1.5 py-0.5 rounded">Cover</span>}
+                                            {idx === 0 && <span className="absolute top-1 left-1 bg-primary text-white text-[8px] font-bold px-1.5 py-0.5 rounded">Cover</span>}
                                         </div>
                                     ))}
                                     {images.length < 4 && (
@@ -1098,7 +1098,7 @@ function CreatePromotionFlow({ branchId, onCancel, editPromo }: { branchId: stri
                                                     });
                                                 }}
                                                 disabled={generateTerms.isPending}
-                                                className="mb-3 w-full h-10 bg-gradient-to-r from-purple-500 to-blue-500 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:from-purple-600 hover:to-blue-600 transition-all disabled:opacity-50 flex items-center justify-center gap-2 shadow-lg shadow-purple-500/20"
+                                                className="mb-3 w-full h-10 bg-gradient-to-r from-purple-500 to-blue-500 text-white rounded-xl text-[10px] font-bold uppercase tracking-wider hover:from-purple-600 hover:to-blue-600 transition-all disabled:opacity-50 flex items-center justify-center gap-2 shadow-lg shadow-purple-500/20"
                                             >
                                                 {generateTerms.isPending ? (
                                                     <><Loader2 size={14} className="animate-spin" /> Generating Terms...</>
@@ -1189,7 +1189,7 @@ function CreatePromotionFlow({ branchId, onCancel, editPromo }: { branchId: stri
 
                                 {/* Discount badge */}
                                 {offerType === 'discount' && discountType === 'percentage' && discountValue && (
-                                    <div className="absolute top-3 left-3 bg-red-500 text-white px-3 py-1 rounded-full text-xs font-black tracking-wide shadow-lg">
+                                    <div className="absolute top-3 left-3 bg-red-500 text-white px-3 py-1 rounded-full text-xs font-bold tracking-wide shadow-lg">
                                         {discountValue}% OFF
                                     </div>
                                 )}
@@ -1200,22 +1200,22 @@ function CreatePromotionFlow({ branchId, onCancel, editPromo }: { branchId: stri
                                     </div>
                                 )}
                                 {offerType === 'discount' && discountType === 'fixed' && discountValue && (
-                                    <div className="absolute top-3 left-3 bg-red-500 text-white px-3 py-1 rounded-full text-xs font-black tracking-wide shadow-lg">
+                                    <div className="absolute top-3 left-3 bg-red-500 text-white px-3 py-1 rounded-full text-xs font-bold tracking-wide shadow-lg">
                                         SAVE ₦{Number(discountValue).toLocaleString()}
                                     </div>
                                 )}
                                 {offerType === 'special_deal' && specialDealType === 'bundle' && dealPrice && selectedItemsTotal > 0 && (
-                                    <div className="absolute top-3 left-3 bg-red-500 text-white px-3 py-1 rounded-full text-xs font-black tracking-wide shadow-lg">
+                                    <div className="absolute top-3 left-3 bg-red-500 text-white px-3 py-1 rounded-full text-xs font-bold tracking-wide shadow-lg">
                                         SAVE ₦{(selectedItemsTotal - Number(dealPrice)).toLocaleString()}
                                     </div>
                                 )}
                                 {offerType === 'special_deal' && specialDealType === 'custom' && originalPrice && dealPrice && (
-                                    <div className="absolute top-3 left-3 bg-red-500 text-white px-3 py-1 rounded-full text-xs font-black tracking-wide shadow-lg">
+                                    <div className="absolute top-3 left-3 bg-red-500 text-white px-3 py-1 rounded-full text-xs font-bold tracking-wide shadow-lg">
                                         SAVE ₦{(Number(originalPrice) - Number(dealPrice)).toLocaleString()}
                                     </div>
                                 )}
                                 {offerType === 'free_item' && freeItemName && (
-                                    <div className="absolute top-3 left-3 bg-red-500 text-white px-3 py-1 rounded-full text-xs font-black tracking-wide shadow-lg">
+                                    <div className="absolute top-3 left-3 bg-red-500 text-white px-3 py-1 rounded-full text-xs font-bold tracking-wide shadow-lg">
                                         FREE
                                     </div>
                                 )}
@@ -1223,7 +1223,7 @@ function CreatePromotionFlow({ branchId, onCancel, editPromo }: { branchId: stri
 
                             {/* Content */}
                             <div className="p-4 space-y-3">
-                                <p className="text-[10px] font-black uppercase tracking-widest text-primary">
+                                <p className="text-[10px] font-bold uppercase tracking-wider text-primary">
                                     {offerType.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
                                 </p>
 
@@ -1240,7 +1240,7 @@ function CreatePromotionFlow({ branchId, onCancel, editPromo }: { branchId: stri
                                     <div className="flex items-baseline gap-2 pt-1">
                                         {offerType === 'special_deal' && specialDealType === 'bundle' && dealPrice && (
                                             <>
-                                                <span className="text-lg font-black text-primary font-display tracking-tight">
+                                                <span className="text-lg font-bold text-primary font-display tracking-tight">
                                                     ₦{Number(dealPrice).toLocaleString()}
                                                 </span>
                                                 {selectedItemsTotal > 0 && (
@@ -1252,7 +1252,7 @@ function CreatePromotionFlow({ branchId, onCancel, editPromo }: { branchId: stri
                                         )}
                                         {offerType === 'special_deal' && specialDealType === 'custom' && dealPrice && (
                                             <>
-                                                <span className="text-lg font-black text-primary font-display tracking-tight">
+                                                <span className="text-lg font-bold text-primary font-display tracking-tight">
                                                     ₦{Number(dealPrice).toLocaleString()}
                                                 </span>
                                                 {originalPrice && (
@@ -1268,7 +1268,7 @@ function CreatePromotionFlow({ branchId, onCancel, editPromo }: { branchId: stri
                                             </>
                                         )}
                                         {offerType === 'free_item' && freeItemName && (
-                                            <span className="text-lg font-black text-primary font-display tracking-tight">
+                                            <span className="text-lg font-bold text-primary font-display tracking-tight">
                                                 Free
                                             </span>
                                         )}
@@ -1297,7 +1297,7 @@ function CreatePromotionFlow({ branchId, onCancel, editPromo }: { branchId: stri
 
                                 <div className="flex items-center justify-between pt-1">
                                     <span className="text-[10px] text-gray-400 font-bold">Preview</span>
-                                    <span className="flex items-center gap-1 text-xs font-black text-primary">
+                                    <span className="flex items-center gap-1 text-xs font-bold text-primary">
                                         View Offer <ArrowRight size={12} />
                                     </span>
                                 </div>
@@ -1327,12 +1327,12 @@ function CreatePromotionFlow({ branchId, onCancel, editPromo }: { branchId: stri
                                 )}
                                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
                                 {offerType === 'discount' && discountType === 'percentage' && discountValue && (
-                                    <div className="absolute top-3 left-3 bg-red-500 text-white px-3 py-1 rounded-full text-xs font-black tracking-wide shadow-lg">
+                                    <div className="absolute top-3 left-3 bg-red-500 text-white px-3 py-1 rounded-full text-xs font-bold tracking-wide shadow-lg">
                                         {discountValue}% OFF
                                     </div>
                                 )}
                                 {offerType === 'special_deal' && specialDealType === 'bundle' && dealPrice && selectedItemsTotal > 0 && (
-                                    <div className="absolute top-3 left-3 bg-red-500 text-white px-3 py-1 rounded-full text-xs font-black tracking-wide shadow-lg">
+                                    <div className="absolute top-3 left-3 bg-red-500 text-white px-3 py-1 rounded-full text-xs font-bold tracking-wide shadow-lg">
                                         SAVE ₦{(selectedItemsTotal - Number(dealPrice)).toLocaleString()}
                                     </div>
                                 )}
@@ -1342,13 +1342,13 @@ function CreatePromotionFlow({ branchId, onCancel, editPromo }: { branchId: stri
                                     </div>
                                 )}
                                 {offerType === 'special_deal' && specialDealType === 'custom' && originalPrice && dealPrice && (
-                                    <div className="absolute top-3 left-3 bg-red-500 text-white px-3 py-1 rounded-full text-xs font-black tracking-wide shadow-lg">
+                                    <div className="absolute top-3 left-3 bg-red-500 text-white px-3 py-1 rounded-full text-xs font-bold tracking-wide shadow-lg">
                                         SAVE ₦{(Number(originalPrice) - Number(dealPrice)).toLocaleString()}
                                     </div>
                                 )}
                             </div>
                             <div className="p-3 space-y-1.5">
-                                <p className="text-[10px] font-black uppercase tracking-widest text-primary">
+                                <p className="text-[10px] font-bold uppercase tracking-wider text-primary">
                                     {offerType.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
                                 </p>
                                 <h3 className="font-headline font-bold text-gray-900 text-sm leading-tight line-clamp-1">
@@ -1356,13 +1356,13 @@ function CreatePromotionFlow({ branchId, onCancel, editPromo }: { branchId: stri
                                 </h3>
                                 {offerType === 'special_deal' && specialDealType === 'bundle' && dealPrice && (
                                     <div className="flex items-baseline gap-2">
-                                        <span className="text-base font-black text-primary">₦{Number(dealPrice).toLocaleString()}</span>
+                                        <span className="text-base font-bold text-primary">₦{Number(dealPrice).toLocaleString()}</span>
                                         {selectedItemsTotal > 0 && <span className="text-xs text-gray-400 line-through font-bold">₦{selectedItemsTotal.toLocaleString()}</span>}
                                     </div>
                                 )}
                                 {offerType === 'special_deal' && specialDealType === 'custom' && dealPrice && (
                                     <div className="flex items-baseline gap-2">
-                                        <span className="text-base font-black text-primary">₦{Number(dealPrice).toLocaleString()}</span>
+                                        <span className="text-base font-bold text-primary">₦{Number(dealPrice).toLocaleString()}</span>
                                         {originalPrice && <span className="text-xs text-gray-400 line-through font-bold">₦{Number(originalPrice).toLocaleString()}</span>}
                                     </div>
                                 )}

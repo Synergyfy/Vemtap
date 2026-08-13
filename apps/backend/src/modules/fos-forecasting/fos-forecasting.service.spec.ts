@@ -3,6 +3,9 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { FosForecastingService } from './fos-forecasting.service';
 import { ForecastScenario } from './entities/forecast-scenario.entity';
+import { FinancialTransaction } from '../fos-core/entities/financial-transaction.entity';
+import { CashFlow } from '../fos-core/entities/cash-flow.entity';
+import { Expense } from '../fos-core/entities/expense.entity';
 
 describe('FosForecastingService', () => {
   let service: FosForecastingService;
@@ -14,6 +17,18 @@ describe('FosForecastingService', () => {
     find: jest.fn(),
   };
 
+  const mockTransactionRepo = {
+    find: jest.fn().mockResolvedValue([]),
+  };
+
+  const mockCashFlowRepo = {
+    find: jest.fn().mockResolvedValue([]),
+  };
+
+  const mockExpenseRepo = {
+    find: jest.fn().mockResolvedValue([]),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -21,6 +36,18 @@ describe('FosForecastingService', () => {
         {
           provide: getRepositoryToken(ForecastScenario),
           useValue: mockScenarioRepo,
+        },
+        {
+          provide: getRepositoryToken(FinancialTransaction),
+          useValue: mockTransactionRepo,
+        },
+        {
+          provide: getRepositoryToken(CashFlow),
+          useValue: mockCashFlowRepo,
+        },
+        {
+          provide: getRepositoryToken(Expense),
+          useValue: mockExpenseRepo,
         },
       ],
     }).compile();

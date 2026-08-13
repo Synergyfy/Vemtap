@@ -77,7 +77,9 @@ export class UpdateKbPageDto {
   @IsString()
   path?: string;
 
-  @ApiPropertyOptional({ example: 'A brief guide on setting up your POS device.' })
+  @ApiPropertyOptional({
+    example: 'A brief guide on setting up your POS device.',
+  })
   @IsOptional()
   @IsString()
   summary?: string;

@@ -106,14 +106,28 @@ export class UsersController {
   }
 
   @Get('linked-devices')
-  @Roles(UserRole.ADMIN, UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF, UserRole.AGENT, UserRole.CUSTOMER)
+  @Roles(
+    UserRole.ADMIN,
+    UserRole.OWNER,
+    UserRole.MANAGER,
+    UserRole.STAFF,
+    UserRole.AGENT,
+    UserRole.CUSTOMER,
+  )
   @ApiOperation({ summary: 'List linked login devices for the current user' })
   async getLinkedDevices(@Request() req) {
     return this.usersService.listSessions(req.user.id);
   }
 
   @Patch('linked-devices/:id')
-  @Roles(UserRole.ADMIN, UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF, UserRole.AGENT, UserRole.CUSTOMER)
+  @Roles(
+    UserRole.ADMIN,
+    UserRole.OWNER,
+    UserRole.MANAGER,
+    UserRole.STAFF,
+    UserRole.AGENT,
+    UserRole.CUSTOMER,
+  )
   @ApiOperation({ summary: 'Rename a linked login device' })
   async renameLinkedDevice(
     @Request() req,
@@ -124,9 +138,19 @@ export class UsersController {
   }
 
   @Delete('linked-devices/:id')
-  @Roles(UserRole.ADMIN, UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF, UserRole.AGENT, UserRole.CUSTOMER)
+  @Roles(
+    UserRole.ADMIN,
+    UserRole.OWNER,
+    UserRole.MANAGER,
+    UserRole.STAFF,
+    UserRole.AGENT,
+    UserRole.CUSTOMER,
+  )
   @ApiOperation({ summary: 'Revoke a linked login device' })
-  async revokeLinkedDevice(@Request() req, @Param('id', ParseUUIDPipe) id: string) {
+  async revokeLinkedDevice(
+    @Request() req,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
     return this.usersService.revokeSession(req.user.id, id);
   }
 

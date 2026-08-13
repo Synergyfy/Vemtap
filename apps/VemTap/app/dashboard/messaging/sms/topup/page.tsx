@@ -26,20 +26,20 @@ export default function SMSTopUpPage() {
             />
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="bg-white rounded-[2.5rem] border border-gray-100 p-8 shadow-sm">
-                    <p className="text-[10px] font-black text-text-secondary uppercase tracking-[0.2em] mb-2">Current Balance</p>
+                <div className="bg-white rounded-2xl border border-gray-100 p-8 shadow-sm">
+                    <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-2">Current Balance</p>
                     {isLoading ? (
                         <div className="flex items-center justify-center h-16">
                             <Loader2 className="animate-spin text-primary" size={32} />
                         </div>
                     ) : (
-                        <p className="text-4xl font-display font-black text-text-main mb-8">
+                        <p className="text-2xl md:text-3xl font-bold text-text-main mb-8">
                             {smsCredits.toLocaleString()} <span className="text-lg text-primary">Pts</span>
                         </p>
                     )}
                     <button
                         onClick={() => setIsModalOpen(true)}
-                        className="w-full h-14 bg-primary text-white font-black uppercase tracking-widest text-xs rounded-2xl shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-3"
+                        className="w-full h-10 bg-primary text-white font-semibold uppercase tracking-wider text-xs rounded-xl hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-3"
                     >
                         <Plus size={18} />
                         Purchase Points

@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { 
-    LineChart, Line, XAxis, YAxis, CartesianGrid, 
+    XAxis, YAxis, CartesianGrid, 
     Tooltip, ResponsiveContainer, AreaChart, Area 
 } from 'recharts';
 import { ChevronDown, Loader2 } from 'lucide-react';
@@ -23,11 +23,11 @@ export function CRMGrowthChart({ branchId }: CRMGrowthChartProps) {
     const data = chartResponse?.data || [];
 
     return (
-        <div className="rounded-[32px] bg-white p-8 shadow-sm border border-gray-100">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+        <div className="rounded-2xl bg-white p-5 md:p-6 shadow-sm border border-gray-100">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
                 <div>
-                    <h3 className="text-xl font-black text-gray-900">Customer Growth</h3>
-                    <p className="text-xs font-medium text-gray-400 mt-1 uppercase tracking-widest">Database expansion over time</p>
+                    <h3 className="text-base md:text-lg font-bold text-gray-900">Customer Growth</h3>
+                    <p className="text-xs text-gray-400 mt-0.5">Database expansion over time</p>
                 </div>
                 <div className="relative">
                     <button

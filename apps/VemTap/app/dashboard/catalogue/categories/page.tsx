@@ -92,9 +92,9 @@ export default function CategoriesPage() {
                 actions={
                     <button 
                         onClick={handleAdd} 
-                        className="flex items-center gap-2 px-5 py-2.5 bg-primary text-white font-bold rounded-xl hover:bg-primary-hover transition-all text-sm shadow-lg shadow-primary/20 cursor-pointer"
+                        className="flex items-center gap-2 h-10 px-5 bg-primary text-white font-semibold text-xs uppercase tracking-wider rounded-xl hover:bg-primary-hover transition-all shadow-sm shadow-primary/20 cursor-pointer"
                     >
-                        <Plus size={18} />
+                        <Plus size={16} />
                         Add Category
                     </button>
                 }

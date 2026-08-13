@@ -37,14 +37,14 @@ export default function ActivityFeedPage() {
                 {/* Header */}
                 <div className="flex items-center gap-4">
                     <Link href="/dashboard/visitors">
-                        <Button variant="ghost" size="icon" className="size-12 rounded-2xl bg-white border border-gray-100 hover:bg-gray-50 shadow-sm transition-all hover:-translate-x-1">
-                            <ArrowLeft size={20} className="text-gray-400" />
+                        <Button variant="ghost" size="icon" className="size-10 rounded-xl bg-white border border-gray-100 hover:bg-gray-50 shadow-sm transition-all hover:-translate-x-1">
+                            <ArrowLeft size={18} className="text-gray-400" />
                         </Button>
                     </Link>
                     <div className="flex-1">
-                        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 leading-none mb-2">Customers</p>
+                        <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 leading-none mb-2">Customers</p>
                         <div className="flex items-center gap-2">
-                            <h1 className="text-2xl font-black text-gray-900 leading-none">Activity Log</h1>
+                            <h1 className="text-xl md:text-2xl font-bold text-gray-900 leading-none">Activity Log</h1>
                             <PageGuideButton />
                             <AICopilotButton />
                         </div>
@@ -53,41 +53,41 @@ export default function ActivityFeedPage() {
 
                 {/* Summary bar */}
                 <div className="flex items-center justify-between bg-white rounded-2xl border border-gray-100 shadow-sm px-5 py-4">
-                    <p className="text-xs font-black text-gray-900 uppercase tracking-widest">
-                        {data?.total ?? activities.length} <span className="text-gray-400 font-bold normal-case tracking-normal">total events</span>
+                    <p className="text-xs font-bold text-gray-900 uppercase tracking-wider">
+                        {data?.total ?? activities.length} <span className="text-gray-400 font-semibold normal-case tracking-normal">total events</span>
                     </p>
                     <Button
                         variant="ghost"
                         onClick={() => refetch()}
-                        className="h-9 px-4 rounded-xl text-[10px] font-black uppercase tracking-widest text-gray-500 hover:bg-gray-50"
+                        className="h-9 px-4 rounded-xl text-[10px] font-semibold uppercase tracking-wider text-gray-500 hover:bg-gray-50"
                     >
                         Refresh
                     </Button>
                 </div>
 
                 {/* Feed */}
-                <div className="rounded-[2.5rem] bg-white p-6 md:p-8 shadow-sm border border-gray-100">
+                <div className="rounded-2xl bg-white p-5 md:p-6 shadow-sm border border-gray-100">
                     {isLoading ? (
                         <div className="flex items-center justify-center py-20">
                             <Loader2 className="animate-spin text-gray-300" size={32} />
                         </div>
                     ) : error ? (
                         <div className="flex flex-col items-center justify-center py-20 text-center">
-                            <div className="size-16 rounded-2xl bg-red-50 text-red-500 flex items-center justify-center mb-4">
-                                <Activity size={24} />
+                            <div className="size-14 rounded-xl bg-red-50 text-red-500 flex items-center justify-center mb-4">
+                                <Activity size={22} />
                             </div>
-                            <p className="text-sm font-black text-gray-900 mb-1">Couldn't load activity</p>
+                            <p className="text-sm font-bold text-gray-900 mb-1">Couldn&apos;t load activity</p>
                             <p className="text-xs text-gray-400 mb-6">Something went wrong fetching the feed.</p>
-                            <Button onClick={() => refetch()} className="h-11 px-6 rounded-xl bg-gray-900 text-white text-[10px] font-black uppercase tracking-widest">
+                            <Button onClick={() => refetch()} className="h-10 px-5 rounded-xl bg-gray-900 text-white text-[10px] font-semibold uppercase tracking-wider">
                                 Try Again
                             </Button>
                         </div>
                     ) : activities.length === 0 ? (
                         <div className="flex flex-col items-center justify-center py-20 text-center">
-                            <div className="size-16 rounded-2xl bg-gray-50 flex items-center justify-center mb-4">
-                                <Activity size={24} className="text-gray-300" />
+                            <div className="size-14 rounded-xl bg-gray-50 flex items-center justify-center mb-4">
+                                <Activity size={22} className="text-gray-300" />
                             </div>
-                            <p className="text-xs font-black text-gray-400 uppercase tracking-widest">No activity yet</p>
+                            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">No activity yet</p>
                             <p className="text-xs text-gray-400 mt-1">Customer events will appear here as they happen.</p>
                         </div>
                     ) : (
@@ -99,16 +99,16 @@ export default function ActivityFeedPage() {
                                     const Icon = meta.icon;
                                     return (
                                         <div key={act.id || i} className="flex gap-4 relative items-start py-3 group">
-                                            <div className={`size-10 rounded-xl flex items-center justify-center shrink-0 z-10 border border-gray-100 ${meta.color}`}>
+                                            <div className={`size-10 rounded-lg flex items-center justify-center shrink-0 z-10 border border-gray-100 ${meta.color}`}>
                                                 <Icon size={18} />
                                             </div>
                                             <div className="flex-1 min-w-0 pt-1">
                                                 <div className="flex justify-between items-baseline gap-3">
                                                     <div className="flex items-center gap-2 min-w-0">
-                                                        <h4 className="text-sm font-black text-gray-900 truncate">{act.userName}</h4>
-                                                        <span className="text-[9px] font-black uppercase tracking-widest text-gray-300 bg-gray-50 px-2 py-0.5 rounded-full shrink-0">{meta.label}</span>
+                                                        <h4 className="text-sm font-bold text-gray-900 truncate">{act.userName}</h4>
+                                                        <span className="text-[9px] font-semibold uppercase tracking-wider text-gray-300 bg-gray-50 px-2 py-0.5 rounded-full shrink-0">{meta.label}</span>
                                                     </div>
-                                                    <span className="text-[10px] font-bold text-gray-300 uppercase whitespace-nowrap shrink-0">{timeAgo(act.timestamp)}</span>
+                                                    <span className="text-[10px] font-medium text-gray-300 uppercase whitespace-nowrap shrink-0">{timeAgo(act.timestamp)}</span>
                                                 </div>
                                                 <p className="text-xs text-gray-500 leading-relaxed mt-1">{act.description}</p>
                                             </div>

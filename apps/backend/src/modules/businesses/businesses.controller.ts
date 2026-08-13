@@ -130,7 +130,7 @@ export class BusinessesController {
     return this.businessesService.importCustomers(businessId, importDto);
   }
   @Patch(':id')
-  @Roles(UserRole.OWNER)
+  @Roles(UserRole.OWNER, UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @ApiOperation({
     summary: 'Update business settings (Welcome messages, Rewards, etc.)',
   })
@@ -145,7 +145,7 @@ export class BusinessesController {
   // --- Admin Endpoints ---
 
   @Get('admin')
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Admin: Get all businesses with filters and stats' })
   @ApiResponse({
     status: 200,
@@ -180,7 +180,7 @@ export class BusinessesController {
   }
 
   @Get('admin/suspended')
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @ApiOperation({
     summary: 'Admin: Get all suspended businesses (newest to oldest)',
   })
@@ -207,7 +207,7 @@ export class BusinessesController {
   }
 
   @Get('admin/pending-verification')
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @ApiOperation({
     summary: 'Admin: Get businesses pending verification with stats',
   })
@@ -238,7 +238,7 @@ export class BusinessesController {
   }
 
   @Post('admin/backfill-geocodes')
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @ApiOperation({
     summary:
       'Admin: Trigger backfill geocoding for branches with null coordinates',
@@ -253,7 +253,7 @@ export class BusinessesController {
   }
 
   @Post('admin')
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Admin: Manually create a business' })
   @ApiBody({
     type: AdminCreateBusinessDto,
@@ -282,28 +282,28 @@ export class BusinessesController {
   }
 
   @Delete('admin/:id')
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Admin: Delete a business permanently' })
   async adminDelete(@Param('id', ParseUUIDPipe) id: string) {
     return this.businessesService.adminDelete(id);
   }
 
   @Patch('admin/:id/approve')
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Admin: Approve a pending business application' })
   async approveBusiness(@Param('id', ParseUUIDPipe) id: string) {
     return this.businessesService.approve(id);
   }
 
   @Patch('admin/:id/reject')
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Admin: Reject a pending business application' })
   async rejectBusiness(@Param('id', ParseUUIDPipe) id: string) {
     return this.businessesService.reject(id);
   }
 
   @Patch('admin/:id/suspend')
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Admin: Suspend a business' })
   async suspendBusiness(
     @Param('id', ParseUUIDPipe) id: string,
@@ -313,28 +313,28 @@ export class BusinessesController {
   }
 
   @Patch('admin/:id/reactivate')
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Admin: Reactivate a suspended business' })
   async reactivateBusiness(@Param('id', ParseUUIDPipe) id: string) {
     return this.businessesService.reactivate(id);
   }
 
   @Patch('admin/:id/verify')
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Admin: Verify a business' })
   async verifyBusiness(@Param('id', ParseUUIDPipe) id: string) {
     return this.businessesService.verify(id);
   }
 
   @Patch('admin/:id/unverify')
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Admin: Unverify a business' })
   async unverifyBusiness(@Param('id', ParseUUIDPipe) id: string) {
     return this.businessesService.unverify(id);
   }
 
   @Get('stats')
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @ApiOperation({
     summary: 'Get aggregate business statistics for summary cards',
   })
@@ -366,7 +366,7 @@ export class BusinessesController {
   }
 
   @Get('admin/:id/stats')
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Admin: Get stats about a business' })
   @ApiResponse({
     status: 200,
@@ -391,5 +391,26 @@ export class BusinessesController {
   })
   async getBusinessStats(@Param('id', ParseUUIDPipe) id: string) {
     return this.businessesService.getBusinessStatsForAdmin(id);
+  }
+
+  @Get(':id')
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Admin: Get a single business with FOS details' })
+  async getAdminDetail(@Param('id', ParseUUIDPipe) id: string) {
+    return this.businessesService.getAdminDetail(id);
+  }
+
+  @Post()
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Admin: Manually create a business (FOS alias)' })
+  async createBusinessAdmin(@Body() dto: AdminCreateBusinessDto) {
+    return this.businessesService.adminCreate(dto);
+  }
+
+  @Delete(':id')
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Admin: Delete a business permanently (FOS alias)' })
+  async deleteBusinessAdmin(@Param('id', ParseUUIDPipe) id: string) {
+    return this.businessesService.adminDelete(id);
   }
 }

@@ -80,7 +80,7 @@ export default function TemplatesPage() {
                 actions={
                     <button
                         onClick={() => handleOpenModal()}
-                        className="flex items-center gap-2 px-4 py-2.5 bg-primary text-white font-bold rounded-xl hover:bg-primary-hover transition-all text-sm shadow-lg shadow-primary/20"
+                        className="flex items-center gap-2 h-10 px-5 bg-primary text-white font-semibold text-xs uppercase tracking-wider rounded-xl hover:bg-primary-hover transition-all"
                     >
                         <Plus size={18} />
                         New Template
@@ -103,7 +103,7 @@ export default function TemplatesPage() {
                     <div key={template.id} className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between group">
                         <div>
                             <div className="flex justify-between items-start mb-4">
-                                <div className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${template.channel === 'WHATSAPP' ? 'bg-green-100 text-green-700' :
+                                <div className={`px-2.5 py-1 rounded-full text-[10px] font-semibold uppercase tracking-wider ${template.channel === 'WHATSAPP' ? 'bg-green-100 text-green-700' :
                                     template.channel === 'SMS' ? 'bg-blue-100 text-blue-700' :
                                         'bg-purple-100 text-purple-700'
                                     }`}>
@@ -148,10 +148,10 @@ export default function TemplatesPage() {
                             initial={{ opacity: 0, scale: 0.95, y: 20 }}
                             animate={{ opacity: 1, scale: 1, y: 0 }}
                             exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                            className="relative w-full max-w-lg bg-white rounded-[2.5rem] shadow-2xl overflow-hidden"
+                            className="relative w-full max-w-lg bg-white rounded-2xl shadow-2xl overflow-hidden"
                         >
                             <div className="p-8 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between">
-                                <h3 className="text-xl font-display font-black text-slate-900 uppercase">
+                                <h3 className="text-lg md:text-xl font-bold text-slate-900 tracking-tight">
                                     {templates.some((t) => t.id === editingTemplate?.id) ? 'Template Details' : 'New Template'}
                                 </h3>
                                 <button onClick={() => setIsModalOpen(false)} className="p-2 hover:bg-white rounded-xl transition-colors">
@@ -162,7 +162,7 @@ export default function TemplatesPage() {
                             <div className="p-8 space-y-6">
                                 <div className="space-y-4">
                                     <div className="space-y-2">
-                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Template Name</label>
+                                        <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider ml-1">Template Name</label>
                                         <input
                                             type="text"
                                             value={editingTemplate?.name || ''}
@@ -174,7 +174,7 @@ export default function TemplatesPage() {
 
                                     <div className="grid grid-cols-1 gap-4">
                                         <div className="space-y-2">
-                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Channel</label>
+                                            <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider ml-1">Channel</label>
                                             <select
                                                 value={editingTemplate?.channel || 'SMS'}
                                                 onChange={(e) => setEditingTemplate((prev) => ({ ...prev, channel: e.target.value as Channel }))}
@@ -189,7 +189,7 @@ export default function TemplatesPage() {
 
                                     <div className="space-y-2">
                                         <div className="flex items-center justify-between ml-1">
-                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Content</label>
+                                            <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Content</label>
                                             <div className="flex gap-1">
                                                 {['{FirstName}', '{LastName}', '{BusinessName}', '{Points}', '{Link}'].map(v => (
                                                     <button
@@ -217,7 +217,7 @@ export default function TemplatesPage() {
 
                                 <button
                                     onClick={handleSave}
-                                    className="w-full h-14 bg-primary text-white font-black uppercase tracking-widest text-xs rounded-2xl shadow-xl shadow-primary/20 hover:bg-primary-hover transition-all flex items-center justify-center gap-3"
+                                    className="w-full h-10 bg-primary text-white font-semibold uppercase tracking-wider text-xs rounded-xl hover:bg-primary-hover transition-all flex items-center justify-center gap-3"
                                 >
                                     <Save size={18} />
                                     Save Template

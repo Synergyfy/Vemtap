@@ -93,9 +93,9 @@ export default function TrustSecurity() {
                                     <path fillRule="evenodd" d="M2.166 4.999A11.954 11.954 0 0010 1.944 11.954 11.954 0 0017.834 5c.11.65.166 1.32.166 2.001 0 5.225-3.34 9.67-8 11.317C5.34 16.67 2 12.225 2 7c0-.682.057-1.35.166-2.001zm11.541 3.708a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"></path>
                                 </svg>
                             </div>
-                            <span className="text-sm font-black uppercase tracking-[0.3em] text-primary">Security Center</span>
+                            <span className="text-sm font-bold uppercase tracking-wider text-primary">Security Center</span>
                         </div>
-                        <h1 className="text-5xl md:text-7xl font-display font-bold text-text-main mb-8 leading-[1.1]">
+                        <h1 className="text-[30px] sm:text-4xl md:text-5xl lg:text-6xl font-bold text-text-main mb-8 leading-[1.15] tracking-tight">
                             Trust & <span className="blue-text-gradient italic underline decoration-primary/10">Security</span>
                         </h1>
                         <p className="text-xl md:text-2xl text-text-secondary font-medium leading-relaxed italic">
@@ -144,18 +144,18 @@ export default function TrustSecurity() {
                         <div className="w-20 h-20 bg-white/10 rounded-3xl flex items-center justify-center mx-auto mb-10 backdrop-blur-xl border border-white/10">
                             <span className="text-4xl">🤝</span>
                         </div>
-                        <h2 className="text-4xl md:text-5xl font-display font-bold mb-10">Built for Trust</h2>
+                        <h2 className="text-2xl md:text-4xl lg:text-5xl font-bold mb-10 tracking-tight">Built for Trust</h2>
                         <p className="text-gray-300 font-medium italic text-xl mb-16 max-w-3xl mx-auto leading-relaxed">
                             Whether you’re a small business or a large enterprise, Vemtap is designed to give you confidence in how your data is handled.
                         </p>
                         <div className="flex flex-col sm:flex-row items-center justify-center gap-8">
                             <div className="group flex items-center gap-4 px-8 py-4 bg-white/5 rounded-full border border-white/10 backdrop-blur-md hover:bg-white/10 transition-all cursor-default">
                                 <div className="w-2 h-2 rounded-full bg-green-400"></div>
-                                <span className="text-sm font-black tracking-[0.2em] uppercase">NDPA Compliant</span>
+                                <span className="text-sm font-bold tracking-wider uppercase">NDPA Compliant</span>
                             </div>
                             <div className="group flex items-center gap-4 px-8 py-4 bg-white/5 rounded-full border border-white/10 backdrop-blur-md hover:bg-white/10 transition-all cursor-default">
                                 <div className="w-2 h-2 rounded-full bg-blue-400"></div>
-                                <span className="text-sm font-black tracking-[0.2em] uppercase">Enterprise Grade</span>
+                                <span className="text-sm font-bold tracking-wider uppercase">Enterprise Grade</span>
                             </div>
                         </div>
                         <div className="mt-20 pt-10 border-t border-white/5 italic font-bold text-gray-400 text-sm">

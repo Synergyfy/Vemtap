@@ -18,7 +18,11 @@ export class CreateTicketDto {
   @IsString()
   message: string;
 
-  @ApiProperty({ enum: TicketPriority, example: TicketPriority.NORMAL, required: false })
+  @ApiProperty({
+    enum: TicketPriority,
+    example: TicketPriority.NORMAL,
+    required: false,
+  })
   @IsOptional()
   @IsEnum(TicketPriority)
   priority?: TicketPriority = TicketPriority.NORMAL;

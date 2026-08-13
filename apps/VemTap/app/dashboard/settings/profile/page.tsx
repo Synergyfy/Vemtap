@@ -3,7 +3,6 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import PageHeader from '@/components/dashboard/PageHeader';
 import { toast } from 'react-hot-toast';
 import DynamicQRCode from '@/components/shared/DynamicQRCode';
 import { useCustomerFlowStore } from '@/store/useCustomerFlowStore';
@@ -27,7 +26,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useRegisterOwner, useOtp, useLogin, useChangePassword } from '@/services/auth/hooks';
 import {
     Loader2, Instagram, Linkedin, Twitter, Facebook, Globe, Star, Plus, Trash2, X,
-    ChevronDown, Youtube, Music2, ShieldCheck, Lock, Eye, EyeOff, Gift, Info, AlertTriangle
+    ChevronDown, Youtube, Music2, ShieldCheck, Lock, Eye, EyeOff, Gift, Info, AlertTriangle,
+    Palette, Pencil, Upload, MapPin, Building2
 } from 'lucide-react';
 import { useFormPreferencesStore } from '@/store/useFormPreferencesStore';
 import DraggableButtonList from '@/components/dashboard/engagement/DraggableButtonList';
@@ -836,24 +836,35 @@ export default function BusinessProfilePage() {
 
 
     return (
-        <div className="p-8 max-w-4xl mx-auto">
-            <PageHeader
-                title="Business Profile"
-                description="Update your business information and online presence"
-                isSticky={false}
-                actions={
-                    <div className="flex items-center gap-3">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-0 py-6 sm:py-8">
+            {/* Header */}
+            <div className="mb-8">
+                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-5">
+                    <div className="space-y-2">
+                        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-primary/10 rounded-full">
+                            <span className="size-1.5 rounded-full bg-primary" />
+                            <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-primary">Business Settings</span>
+                        </div>
+                        <h1 className="text-2xl sm:text-[28px] font-semibold text-text-main tracking-tight leading-tight">
+                            Business Profile
+                        </h1>
+                        <p className="text-sm text-text-secondary font-normal leading-relaxed">
+                            Update your business information and online presence.
+                        </p>
+                    </div>
+                    <div className="flex items-center gap-3 sm:shrink-0 sm:self-start">
                         <InstallAppButton />
                         <button
                             onClick={handleSave}
                             disabled={updateBranchMutation.isPending || updateSocialsMutation.isPending || (activeTab === 'general' && !isEditingGeneral)}
-                            className="flex items-center gap-2 px-6 py-2.5 bg-primary text-white font-bold rounded-xl hover:bg-primary-hover transition-all text-sm shadow-md shadow-primary/20 disabled:opacity-50"
+                            className="inline-flex items-center gap-2 h-11 px-5 bg-primary text-white text-sm font-semibold rounded-xl hover:bg-primary-hover transition-all shadow-lg shadow-primary/15 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                            {updateBranchMutation.isPending || updateSocialsMutation.isPending ? <Loader2 size={16} className="animate-spin" /> : 'Save Changes'}
+                            {updateBranchMutation.isPending || updateSocialsMutation.isPending ? <Loader2 size={16} className="animate-spin" /> : null}
+                            Save Changes
                         </button>
                     </div>
-                }
-            />
+                </div>
+            </div>
 
             {isAllBranches && (
                 <div className="mb-8 p-4 bg-amber-50 border border-amber-100 rounded-2xl flex items-start gap-4 animate-in fade-in slide-in-from-top-2 duration-500">
@@ -861,7 +872,7 @@ export default function BusinessProfilePage() {
                         <span className="material-icons-round text-amber-600">info</span>
                     </div>
                     <div>
-                        <h4 className="text-sm font-bold text-amber-900">Aggregate Mode (All Locations)</h4>
+                        <h4 className="text-sm font-medium text-amber-900">Aggregate Mode (All Locations)</h4>
                         <p className="text-xs text-amber-800/80 leading-relaxed mt-1">
                             You are viewing global settings. You can edit <strong>General Info</strong>, <strong>Documents</strong>, and <strong>Business QR</strong> here. 
                             To edit branch-specific schedules, socials, or rewards, please <strong>select a specific branch</strong> from the header.
@@ -877,63 +888,58 @@ export default function BusinessProfilePage() {
                     <div className="space-y-8">
                         {/* Health Check Progress UI */}
                         {(isAllBranches || branches.length <= 1) && (
-                            <div className={`bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden relative transition-all ${expandedSection === 'health' ? 'ring-1 ring-primary/20 shadow-md' : ''}`}>
-                                {/* Mobile Header Toggle */}
+                            <div className={`bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden relative transition-all ${expandedSection === 'health' ? 'ring-1 ring-primary/20 shadow-md' : ''}`}>
                                 <div 
                                     onClick={() => setExpandedSection(expandedSection === 'health' ? null : 'health')}
-                                    className="md:hidden px-6 py-5 flex items-center justify-between cursor-pointer active:bg-gray-50"
+                                    className="md:hidden px-5 py-5 flex items-center justify-between cursor-pointer active:bg-gray-50"
                                 >
                                     <div className="flex items-center gap-3">
                                         <div className="size-9 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
                                             <span className="material-icons-round text-lg">health_and_safety</span>
                                         </div>
-                                        <h3 className="font-display font-bold text-text-main text-base tracking-tight">Health Check Progress</h3>
+                                        <h3 className="font-semibold text-text-main text-base tracking-tight">Setup Progress</h3>
                                     </div>
                                     <ChevronDown size={18} className={`text-gray-400 transition-transform ${expandedSection === 'health' ? 'rotate-180' : ''}`} />
                                 </div>
 
-                                <div className={`${expandedSection === 'health' ? 'block' : 'hidden'} md:block p-8`}>
+                                <div className={`${expandedSection === 'health' ? 'block' : 'hidden'} md:block p-5 sm:p-7`}>
                                     <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full -mr-16 -mt-16 blur-2xl"></div>
-                                    <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 relative z-10">
-                                        <div className="space-y-1">
-                                            <div className="flex items-center gap-2">
-                                                <h3 className="text-xl font-display font-bold text-text-main hidden md:block">Health Check Progress</h3>
+                                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-5 relative z-10">
+                                        <div className="space-y-1.5">
+                                            <div className="flex items-center gap-2.5">
+                                                <h3 className="text-lg sm:text-xl font-semibold text-text-main tracking-tight hidden md:block">Setup Progress</h3>
                                                 {progress === 100 && (
-                                                    <span className="material-icons-round text-green-500 text-xl">verified</span>
+                                                    <span className="material-icons-round text-green-500 text-lg">verified</span>
                                                 )}
                                             </div>
-                                            <p className="text-sm text-text-secondary font-normal">Verify your business to establish trust and unlock all features.</p>
+                                            <p className="text-sm text-text-secondary font-normal">Complete these steps to establish trust and unlock every feature.</p>
                                         </div>
-                                        <div className="text-right shrink-0">
-                                            <div className="text-2xl font-display font-black text-primary">{Math.round(progress)}% <span className="text-text-secondary text-sm font-normal">Health Score</span></div>
-                                            <div className="text-[10px] font-black uppercase tracking-widest text-text-secondary mt-1">{completedCount} of {totalCount} tasks completed</div>
+                                        <div className="flex items-center gap-4 sm:flex-col sm:items-end shrink-0">
+                                            <div className="text-3xl font-semibold tracking-tight text-text-main">
+                                                {Math.round(progress)}<span className="text-lg text-text-secondary font-normal">%</span>
+                                            </div>
+                                            <div className="text-[11px] font-medium text-text-secondary">{completedCount} of {totalCount} tasks completed</div>
                                         </div>
                                     </div>
                                     
-                                    <div className="mt-8 flex flex-col gap-6">
-                                        <div className="relative pt-1">
-                                            <div className="overflow-hidden h-3 text-xs flex rounded-full bg-gray-100">
-                                                <div 
-                                                    style={{ width: `${progress}%` }}
-                                                    className="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-primary transition-all duration-1000 ease-in-out relative"
-                                                >
-                                                    <div className="absolute inset-0 bg-white/20 animate-[pulse_2s_infinite]"></div>
-                                                </div>
-                                            </div>
+                                    <div className="mt-6 relative z-10">
+                                        <div className="overflow-hidden h-2.5 rounded-full bg-gray-100">
+                                            <div 
+                                                style={{ width: `${progress}%` }}
+                                                className="h-full rounded-full bg-primary transition-all duration-1000 ease-in-out"
+                                            />
                                         </div>
                                         
-                                        <div>
+                                        <div className="mt-6">
                                             <button
                                                 onClick={() => setTasksExpanded(!tasksExpanded)}
                                                 className="flex items-center justify-between w-full group"
                                             >
-                                                <span className="text-xs font-black uppercase tracking-widest text-text-secondary">
-                                                    Tasks
-                                                </span>
+                                                <span className="text-xs font-semibold uppercase tracking-[0.14em] text-text-secondary">Tasks</span>
                                                 <ChevronDown size={14} className={`text-gray-400 transition-transform ${tasksExpanded ? 'rotate-180' : ''}`} />
                                             </button>
                                             {tasksExpanded && (
-                                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-3">
+                                                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 mt-4">
                                                     {healthTasks.map((task, i) => (
                                                         <button 
                                                             key={i} 
@@ -944,21 +950,20 @@ export default function BusinessProfilePage() {
                                                                     setActiveTab(task.id);
                                                                 }
                                                             }}
-                                                            className={`flex flex-col gap-2 p-3 rounded-2xl border transition-all text-left group ${
+                                                            className={`flex items-center gap-2.5 p-3 rounded-xl border transition-all text-left group ${
                                                                 task.completed 
-                                                                ? 'bg-green-50 border-green-100 text-green-700' 
-                                                                : 'bg-gray-50/50 border-gray-100 text-text-secondary opacity-60 hover:opacity-100 hover:border-primary/20 hover:bg-primary/5'
+                                                                ? 'bg-green-50/70 border-green-100 text-green-700' 
+                                                                : 'bg-white border-gray-100 text-text-secondary hover:border-primary/25 hover:bg-primary/[0.03] hover:text-text-main'
                                                             }`}
                                                         >
-                                                            <div className="flex items-center justify-between">
-                                                                <span className={`material-icons-round text-lg transition-transform ${!task.completed ? 'group-hover:scale-110 group-hover:text-primary' : ''}`}>{task.icon}</span>
-                                                                {task.completed ? (
-                                                                    <span className="material-icons-round text-xs">check_circle</span>
-                                                                ) : (
-                                                                    <span className="material-icons-round text-[10px] opacity-0 group-hover:opacity-100 text-primary">arrow_forward</span>
-                                                                )}
+                                                            <div className={`size-7 rounded-lg flex items-center justify-center shrink-0 ${
+                                                                task.completed
+                                                                    ? 'bg-white text-green-600 shadow-sm'
+                                                                    : 'bg-gray-50 text-gray-400 group-hover:bg-primary/10 group-hover:text-primary'
+                                                            }`}>
+                                                                <span className="material-icons-round text-sm">{task.completed ? 'check' : task.icon}</span>
                                                             </div>
-                                                            <span className="text-[9px] font-black uppercase tracking-tighter truncate">{task.label}</span>
+                                                            <span className="text-xs font-medium leading-tight truncate">{task.label}</span>
                                                         </button>
                                                     ))}
                                                 </div>
@@ -973,39 +978,39 @@ export default function BusinessProfilePage() {
                             {/* Mobile Header Toggle */}
                             <div 
                                 onClick={() => setExpandedSection(expandedSection === 'branding' ? null : 'branding')}
-                                className="md:hidden px-6 py-5 flex items-center justify-between cursor-pointer active:bg-gray-50"
+                                className="md:hidden px-4 sm:px-6 py-4 flex items-center justify-between cursor-pointer active:bg-gray-50"
                             >
                                 <div className="flex items-center gap-3">
-                                    <div className="size-9 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
-                                        <span className="material-icons-round text-lg">palette</span>
+                                    <div className="size-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+                                        <Palette size={16} />
                                     </div>
-                                    <h3 className="font-display font-bold text-text-main text-base tracking-tight">Branding & Identity</h3>
+                                    <h3 className="font-semibold text-text-main text-sm">Branding & Identity</h3>
                                 </div>
                                 <ChevronDown size={18} className={`text-gray-400 transition-transform ${expandedSection === 'branding' ? 'rotate-180' : ''}`} />
                             </div>
 
                             <div className={`${expandedSection === 'branding' ? 'block' : 'hidden'} md:block`}>
-                                <div className="px-8 py-6 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between">
-                                    <h3 className="font-display font-bold text-text-main text-lg tracking-tight hidden md:block">Branding & Identity</h3>
+                                <div className="px-6 sm:px-8 py-5 border-b border-gray-100 flex items-center justify-between">
+                                    <h3 className="font-semibold text-text-main text-base hidden md:block">Branding & Identity</h3>
                                     <div className="flex items-center justify-between md:justify-end gap-3 w-full md:w-auto">
                                         <button
                                             onClick={() => setIsEditingGeneral(!isEditingGeneral)}
-                                            className={`flex-1 md:flex-none px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 ${
+                                            className={`flex-1 md:flex-none h-9 px-4 rounded-xl text-[11px] font-semibold tracking-wide transition-all flex items-center justify-center gap-2 ${
                                                 isEditingGeneral 
                                                 ? 'bg-amber-50 text-amber-600 border border-amber-100 hover:bg-amber-100' 
                                                 : 'bg-white text-primary border border-primary/20 hover:bg-primary/5'
                                             }`}
                                         >
-                                            <span className="material-icons-round text-sm">{isEditingGeneral ? 'close' : 'edit'}</span>
+                                            {isEditingGeneral ? <X size={14} /> : <Pencil size={14} />}
                                             {isEditingGeneral ? 'Cancel' : 'Edit Profile'}
                                         </button>
-                                        <span className="px-3 py-1 bg-green-50 text-green-600 text-[10px] font-black uppercase tracking-wider rounded-full border border-green-100">Verified</span>
+                                        <span className="px-3 py-1.5 bg-green-50 text-green-600 text-[11px] font-medium rounded-full border border-green-100">Verified</span>
                                     </div>
                                 </div>
-                                <div className="p-8 space-y-8">
+                                <div className="p-6 sm:p-8 space-y-8">
                                     <div className="flex flex-col md:flex-row items-center md:items-start gap-10">
                                         <div className="flex flex-col items-center space-y-4">
-                                            <div className={`size-32 rounded-3xl bg-gray-50 flex items-center justify-center border-2 border-dashed border-gray-200 overflow-hidden relative shadow-inner group ${!isEditingGeneral ? 'border-transparent bg-transparent shadow-none' : ''}`}>
+                                            <div className={`size-28 rounded-2xl bg-gray-50 flex items-center justify-center border-2 border-dashed border-gray-200 overflow-hidden relative group ${!isEditingGeneral ? 'border-transparent bg-transparent' : ''}`}>
                                                 {logo ? (
                                                     <>
                                                         <img src={logo} alt="Logo" className="w-full h-full object-contain p-4 transition-transform group-hover:scale-110" />
@@ -1014,14 +1019,14 @@ export default function BusinessProfilePage() {
                                                                 onClick={() => setLogo('')}
                                                                 className="absolute top-2 right-2 bg-white/90 backdrop-blur-sm p-1.5 rounded-lg shadow-sm text-red-500 hover:bg-red-50 transition-all opacity-0 group-hover:opacity-100"
                                                             >
-                                                                <span className="material-icons-round text-sm">delete</span>
+                                                                <Trash2 size={14} />
                                                             </button>
                                                         )}
                                                     </>
                                                 ) : (
                                                     <div className="flex flex-col items-center gap-2 text-gray-400">
-                                                        <span className="material-icons-round text-4xl">add_a_photo</span>
-                                                        <span className="text-[10px] font-black uppercase tracking-widest text-center px-2">No Logo</span>
+                                                        <Upload size={32} strokeWidth={1.5} />
+                                                        <span className="text-[10px] font-medium uppercase tracking-wider text-center px-2">No Logo</span>
                                                     </div>
                                                 )}
                                                 {isEditingGeneral && (
@@ -1042,10 +1047,10 @@ export default function BusinessProfilePage() {
                                                 )}
                                             </div>
                                             <div className="space-y-2">
-                                                <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1 flex items-center gap-1.5">
+                                                <label className="text-xs font-medium text-text-secondary flex items-center gap-1.5">
                                                     Branch Username / Vanity URL
                                                     <div className="group relative">
-                                                        <Info size={12} className="text-gray-400" />
+                                                        <Info size={13} className="text-gray-400" />
                                                         <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-2 bg-gray-900 text-white text-[10px] rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
                                                             Setting a username creates a clean link like vemtap.com/yourname
                                                         </div>
@@ -1053,7 +1058,7 @@ export default function BusinessProfilePage() {
                                                 </label>
                                                 <div className="relative">
                                                     <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none overflow-hidden">
-                                                        <span className="text-xs font-bold text-gray-400 whitespace-nowrap">{origin.replace('https://', '').replace('http://', '')}/</span>
+                                                        <span className="text-xs font-medium text-gray-400 whitespace-nowrap">{origin.replace('https://', '').replace('http://', '')}/</span>
                                                     </div>
                                                     <input
                                                         type="text"
@@ -1061,7 +1066,7 @@ export default function BusinessProfilePage() {
                                                         onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
                                                         readOnly={!isEditingGeneral}
                                                         placeholder="my-branch-name"
-                                                        className={`w-full h-12 rounded-xl pl-[140px] pr-4 text-sm font-bold transition-all outline-none ${
+                                                        className={`w-full h-12 rounded-xl pl-[140px] pr-4 text-sm font-medium transition-all outline-none ${
                                                             isEditingGeneral
                                                             ? 'bg-gray-50 border border-gray-200 focus:bg-white focus:ring-4 focus:ring-primary/10' 
                                                             : 'bg-transparent border-transparent cursor-default pl-0'
@@ -1069,7 +1074,7 @@ export default function BusinessProfilePage() {
                                                     />
                                                 </div>
                                                 {isEditingGeneral && (
-                                                    <p className="text-[10px] text-gray-400 mt-1">Only lowercase letters, numbers, and hyphens allowed.</p>
+                                                    <p className="text-[11px] text-gray-400 mt-1">Only lowercase letters, numbers, and hyphens allowed.</p>
                                                 )}
                                             </div>
 
@@ -1077,9 +1082,9 @@ export default function BusinessProfilePage() {
                                                 <div className="w-full max-w-[200px] space-y-3">
                                                     <button
                                                         onClick={() => document.getElementById('logo-upload')?.click()}
-                                                        className="w-full h-10 bg-primary text-white font-black uppercase tracking-widest text-[10px] rounded-xl hover:bg-primary-hover shadow-lg shadow-primary/20 transition-all flex items-center justify-center gap-2"
+                                                        className="w-full max-w-[200px] h-10 bg-primary text-white font-semibold text-xs rounded-xl hover:bg-primary-hover shadow-lg shadow-primary/20 transition-all flex items-center justify-center gap-2"
                                                     >
-                                                        <span className="material-icons-round text-sm">upload</span>
+                                                        <Upload size={14} />
                                                         Upload Logo
                                                     </button>
                                                 </div>
@@ -1089,7 +1094,7 @@ export default function BusinessProfilePage() {
                                         <div className="flex-1 space-y-6 w-full">
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                                 <div className="space-y-2">
-                                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">
+                                                    <label className="text-xs font-medium text-text-secondary">
                                                         {isAllBranches ? 'Business Name' : 'Branch Name'}
                                                     </label>
                                                     <input
@@ -1097,7 +1102,7 @@ export default function BusinessProfilePage() {
                                                         value={name}
                                                         onChange={(e) => setName(e.target.value)}
                                                         readOnly={!isEditingGeneral || isAllBranches}
-                                                        className={`w-full h-12 rounded-xl px-4 text-sm font-bold transition-all outline-none ${
+                                                        className={`w-full h-12 rounded-xl px-4 text-sm font-medium transition-all outline-none ${
                                                             isEditingGeneral && !isAllBranches
                                                             ? 'bg-gray-50 border border-gray-200 focus:bg-white focus:ring-4 focus:ring-primary/10' 
                                                             : 'bg-transparent border-transparent cursor-default px-0'
@@ -1114,42 +1119,46 @@ export default function BusinessProfilePage() {
                                                 <>
                                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                                         <div className="space-y-2">
-                                                            <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Category</label>
+                                                            <label className="text-xs font-medium text-text-secondary">Category</label>
                                                             {isCategoriesLoading ? (
                                                                 <div className="h-12 bg-gray-50 border border-gray-200 rounded-xl px-4 flex items-center">
                                                                     <Loader2 size={16} className="animate-spin text-primary" />
                                                                 </div>
                                                             ) : !isEditingGeneral ? (
-                                                                <div className="w-full h-12 flex items-center text-sm font-bold">
+                                                                <div className="w-full h-12 flex items-center text-sm font-medium">
                                                                     {categories.find((c: any) => c.id === categoryId)?.name || 'Not specified'}
                                                                 </div>
                                                             ) : (
+                                                                <div className="relative">
                                                                 <select
                                                                     value={categoryId}
                                                                     onChange={(e) => {
                                                                         setCategoryId(e.target.value);
                                                                         setSubcategoryId('');
                                                                     }}
-                                                                    className="w-full h-12 bg-gray-50 border border-gray-200 rounded-xl px-4 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none cursor-pointer"
+                                                                    className="w-full h-12 bg-gray-50 border border-gray-200 rounded-xl pl-4 pr-10 text-sm font-medium appearance-none focus:bg-white focus:border-primary/30 focus:ring-4 focus:ring-primary/10 transition-all outline-none cursor-pointer"
                                                                 >
                                                                     <option value="">Select Category</option>
                                                                     {categories.map((cat: any) => (
                                                                         <option key={cat.id} value={cat.id}>{cat.name}</option>
                                                                     ))}
                                                                 </select>
+                                                                <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                                                            </div>
                                                             )}
                                                         </div>
                                                         <div className="space-y-2">
-                                                            <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Sub-Category</label>
+                                                            <label className="text-xs font-medium text-text-secondary">Sub-Category</label>
                                                             {!isEditingGeneral ? (
-                                                                <div className="w-full h-12 flex items-center text-sm font-bold">
+                                                                <div className="w-full h-12 flex items-center text-sm font-medium">
                                                                     {subcategoryId === 'other' ? otherSubcategoryName : (subcategories.find((s: any) => s.id === subcategoryId)?.name || 'Not specified')}
                                                                 </div>
                                                             ) : (
-                                                                <select
+                                                                <div className="relative">
+                                                                 <select
                                                                     value={subcategoryId}
                                                                     onChange={(e) => setSubcategoryId(e.target.value)}
-                                                                    className="w-full h-12 bg-gray-50 border border-gray-200 rounded-xl px-4 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none cursor-pointer"
+                                                                    className="w-full h-12 bg-gray-50 border border-gray-200 rounded-xl pl-4 pr-10 text-sm font-medium appearance-none focus:bg-white focus:border-primary/30 focus:ring-4 focus:ring-primary/10 transition-all outline-none cursor-pointer disabled:opacity-50"
                                                                     disabled={!categoryId}
                                                                 >
                                                                     <option value="">Select Sub-Category</option>
@@ -1158,19 +1167,21 @@ export default function BusinessProfilePage() {
                                                                     ))}
                                                                     <option value="other">Other</option>
                                                                 </select>
+                                                                <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                                                                </div>
                                                             )}
                                                         </div>
                                                     </div>
 
                                                     {subcategoryId === 'other' && isEditingGeneral && (
                                                         <div className="space-y-2">
-                                                            <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Other Subcategory Name</label>
+                                                            <label className="text-xs font-medium text-text-secondary">Other Subcategory Name</label>
                                                             <input
                                                                 type="text"
                                                                 value={otherSubcategoryName}
                                                                 onChange={(e) => setOtherSubcategoryName(e.target.value)}
                                                                 placeholder="Specify your subcategory"
-                                                                className="w-full h-12 bg-gray-50 border border-gray-200 rounded-xl px-4 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none"
+                                                                className="w-full h-12 bg-gray-50 border border-gray-200 rounded-xl px-4 text-sm font-medium focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none"
                                                             />
                                                         </div>
                                                     )}
@@ -1181,45 +1192,51 @@ export default function BusinessProfilePage() {
                                             {!isAllBranches && (
                                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                                     <div className="space-y-2">
-                                                        <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">State</label>
+                                                        <label className="text-xs font-medium text-text-secondary">State</label>
                                                     {!isEditingGeneral ? (
-                                                        <div className="w-full h-12 flex items-center text-sm font-bold">
+                                                        <div className="w-full h-12 flex items-center text-sm font-medium">
                                                             {state || 'Not specified'}
                                                         </div>
                                                     ) : (
+                                                        <div className="relative">
                                                         <select
                                                             value={state}
                                                             onChange={(e) => {
                                                                 setState(e.target.value);
                                                                 setCity('');
                                                             }}
-                                                            className="w-full h-12 bg-gray-50 border border-gray-200 rounded-xl px-4 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none"
+                                                            className="w-full h-12 bg-gray-50 border border-gray-200 rounded-xl pl-4 pr-10 text-sm font-medium appearance-none focus:bg-white focus:border-primary/30 focus:ring-4 focus:ring-primary/10 transition-all outline-none cursor-pointer"
                                                         >
                                                             <option value="">Select State</option>
                                                             {Object.keys(statesData).sort().map(s => (
                                                                 <option key={s} value={s}>{s}</option>
                                                             ))}
                                                         </select>
+                                                        <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                                                        </div>
                                                     )}
                                                     </div>
                                                     <div className="space-y-2">
-                                                        <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">City</label>
+                                                        <label className="text-xs font-medium text-text-secondary">City</label>
                                                     {!isEditingGeneral ? (
-                                                        <div className="w-full h-12 flex items-center text-sm font-bold">
+                                                        <div className="w-full h-12 flex items-center text-sm font-medium">
                                                             {city || 'Not specified'}
                                                         </div>
                                                     ) : (
+                                                        <div className="relative">
                                                         <select
                                                             value={city}
                                                             onChange={(e) => setCity(e.target.value)}
                                                             disabled={!state}
-                                                            className="w-full h-12 bg-gray-50 border border-gray-200 rounded-xl px-4 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none disabled:opacity-50"
+                                                            className="w-full h-12 bg-gray-50 border border-gray-200 rounded-xl pl-4 pr-10 text-sm font-medium appearance-none focus:bg-white focus:border-primary/30 focus:ring-4 focus:ring-primary/10 transition-all outline-none disabled:opacity-50 disabled:cursor-not-allowed"
                                                         >
                                                             <option value="">Select City</option>
                                                             {state && statesData[state]?.sort().map(c => (
                                                                 <option key={c} value={c}>{c}</option>
                                                             ))}
                                                         </select>
+                                                        <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                                                        </div>
                                                     )}
                                                     </div>
                                                 </div>
@@ -1235,31 +1252,31 @@ export default function BusinessProfilePage() {
                             {/* Mobile Header Toggle */}
                             <div 
                                 onClick={() => setExpandedSection(expandedSection === 'contact' ? null : 'contact')}
-                                className="md:hidden px-6 py-5 flex items-center justify-between cursor-pointer active:bg-gray-50"
+                                className="md:hidden px-4 sm:px-6 py-4 flex items-center justify-between cursor-pointer active:bg-gray-50"
                             >
                                 <div className="flex items-center gap-3">
-                                    <div className="size-9 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
-                                        <span className="material-icons-round text-lg">contact_mail</span>
+                                    <div className="size-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+                                        <MapPin size={16} />
                                     </div>
-                                    <h3 className="font-display font-bold text-text-main text-base tracking-tight">Contact & Location</h3>
+                                    <h3 className="font-semibold text-text-main text-sm">Contact & Location</h3>
                                 </div>
                                 <ChevronDown size={18} className={`text-gray-400 transition-transform ${expandedSection === 'contact' ? 'rotate-180' : ''}`} />
                             </div>
 
                             <div className={`${expandedSection === 'contact' ? 'block' : 'hidden'} md:block`}>
-                                <div className="px-8 py-6 border-b border-gray-100 bg-gray-50/50">
-                                    <h3 className="font-display font-bold text-text-main text-lg tracking-tight hidden md:block">Contact & Location</h3>
+                                <div className="px-6 sm:px-8 py-5 border-b border-gray-100">
+                                    <h3 className="font-semibold text-text-main text-sm hidden md:block">Contact & Location</h3>
                                 </div>
                                 <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-8">
                                     <div className="space-y-2">
-                                        <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Support Email</label>
+                                        <label className="text-xs font-medium text-text-secondary">Support Email</label>
                                         <input 
                                             type="email" 
                                             value={supportEmail} 
                                             onChange={e => setSupportEmail(e.target.value)} 
                                             placeholder="hello@vemtap.com" 
                                             readOnly={!isEditingGeneral || isAllBranches}
-                                            className={`w-full h-12 rounded-xl px-4 text-sm font-bold transition-all outline-none ${
+                                            className={`w-full h-12 rounded-xl px-4 text-sm font-medium transition-all outline-none ${
                                                 isEditingGeneral && !isAllBranches
                                                 ? 'bg-gray-50 border border-gray-200 focus:bg-white focus:ring-4 focus:ring-primary/10' 
                                                 : 'bg-transparent border-transparent cursor-default px-0'
@@ -1270,14 +1287,14 @@ export default function BusinessProfilePage() {
                                         )}
                                     </div>
                                     <div className="space-y-2">
-                                        <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Support Phone</label>
+                                        <label className="text-xs font-medium text-text-secondary">Support Phone</label>
                                         <input 
                                             type="tel" 
                                             value={supportPhone} 
                                             onChange={e => setSupportPhone(e.target.value)} 
                                             placeholder="+234 801 234 5678" 
                                                 readOnly={!isEditingGeneral}
-                                                className={`w-full h-12 rounded-xl px-4 text-sm font-bold transition-all outline-none ${
+                                                className={`w-full h-12 rounded-xl px-4 text-sm font-medium transition-all outline-none ${
                                                     isEditingGeneral 
                                                     ? 'bg-gray-50 border border-gray-200 focus:bg-white focus:ring-4 focus:ring-primary/10' 
                                                     : 'bg-transparent border-transparent cursor-default px-0'
@@ -1285,14 +1302,14 @@ export default function BusinessProfilePage() {
                                             />
                                         </div>
                                         <div className="col-span-1 md:col-span-2 space-y-2">
-                                            <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Detailed Address</label>
+                                            <label className="text-xs font-medium text-text-secondary">Detailed Address</label>
                                             <textarea 
                                                 value={address} 
                                                 onChange={e => setAddress(e.target.value)} 
                                                 placeholder="Address..." 
                                                 rows={3} 
                                                 readOnly={!isEditingGeneral || isAllBranches}
-                                                className={`w-full rounded-xl p-5 text-sm font-bold transition-all outline-none resize-none ${
+                                                className={`w-full rounded-xl p-5 text-sm font-medium transition-all outline-none resize-none ${
                                                     isEditingGeneral && !isAllBranches
                                                     ? 'bg-gray-50 border border-gray-200 focus:bg-white focus:ring-4 focus:ring-primary/10' 
                                                     : 'bg-transparent border-transparent cursor-default px-0'
@@ -1311,32 +1328,32 @@ export default function BusinessProfilePage() {
                                 {/* Mobile Header Toggle */}
                                 <div 
                                     onClick={() => setExpandedSection(expandedSection === 'about' ? null : 'about')}
-                                    className="md:hidden px-6 py-5 flex items-center justify-between cursor-pointer active:bg-gray-50"
+                                    className="md:hidden px-4 sm:px-6 py-4 flex items-center justify-between cursor-pointer active:bg-gray-50"
                                 >
                                     <div className="flex items-center gap-3">
-                                        <div className="size-9 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
-                                            <span className="material-icons-round text-lg">info</span>
+                                        <div className="size-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+                                            <Building2 size={16} />
                                         </div>
-                                        <h3 className="font-display font-bold text-text-main text-base tracking-tight">About Your Business</h3>
+                                        <h3 className="font-semibold text-text-main text-sm">About Your Business</h3>
                                     </div>
                                     <ChevronDown size={18} className={`text-gray-400 transition-transform ${expandedSection === 'about' ? 'rotate-180' : ''}`} />
                                 </div>
 
                                 <div className={`${expandedSection === 'about' ? 'block' : 'hidden'} md:block`}>
-                                    <div className="px-8 py-6 border-b border-gray-100 bg-gray-50/50">
-                                        <h3 className="font-display font-bold text-text-main text-lg tracking-tight hidden md:block">About Your Business</h3>
+                                    <div className="px-6 sm:px-8 py-5 border-b border-gray-100">
+                                        <h3 className="font-semibold text-text-main text-sm hidden md:block">About Your Business</h3>
                                         <p className="text-xs text-text-secondary font-medium">Tell customers more about your business</p>
                                     </div>
                                     <div className="p-8 space-y-6">
                                         <div className="space-y-2">
-                                            <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">About</label>
+                                            <label className="text-xs font-medium text-text-secondary">About</label>
                                             <textarea
                                                 value={about}
                                                 onChange={(e) => setAbout(e.target.value)}
                                                 placeholder="About info..."
                                                 rows={4}
                                                 readOnly={!isEditingGeneral}
-                                                className={`w-full rounded-xl p-5 text-sm font-bold transition-all outline-none resize-none ${
+                                                className={`w-full rounded-xl p-5 text-sm font-medium transition-all outline-none resize-none ${
                                                     isEditingGeneral 
                                                     ? 'bg-gray-50 border border-gray-200 focus:bg-white focus:ring-4 focus:ring-primary/10' 
                                                     : 'bg-transparent border-transparent cursor-default px-0'
@@ -1354,37 +1371,37 @@ export default function BusinessProfilePage() {
                                 {/* Mobile Header Toggle */}
                                 <div 
                                     onClick={() => setExpandedSection(expandedSection === 'security' ? null : 'security')}
-                                    className="md:hidden px-6 py-5 flex items-center justify-between cursor-pointer active:bg-gray-50"
+                                    className="md:hidden px-4 sm:px-6 py-4 flex items-center justify-between cursor-pointer active:bg-gray-50"
                                 >
                                     <div className="flex items-center gap-3">
-                                        <div className="size-9 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
-                                            <ShieldCheck size={20} />
+                                        <div className="size-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+                                            <ShieldCheck size={16} />
                                         </div>
-                                        <h3 className="font-display font-bold text-text-main text-base tracking-tight">Account Security</h3>
+                                        <h3 className="font-semibold text-text-main text-sm">Account Security</h3>
                                     </div>
                                     <ChevronDown size={18} className={`text-gray-400 transition-transform ${expandedSection === 'security' ? 'rotate-180' : ''}`} />
                                 </div>
 
                                 <div className={`${expandedSection === 'security' ? 'block' : 'hidden'} md:block`}>
-                                    <div className="px-8 py-6 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between">
+                                    <div className="px-6 sm:px-8 py-5 border-b border-gray-100 flex items-center justify-between">
                                         <div className="flex items-center gap-3">
                                             <div className="size-10 rounded-xl bg-primary/10 items-center justify-center text-primary hidden md:flex">
                                                 <ShieldCheck size={20} />
                                             </div>
-                                            <h3 className="font-display font-bold text-text-main text-lg tracking-tight hidden md:block">Account Security</h3>
+                                            <h3 className="font-semibold text-text-main text-sm hidden md:block">Account Security</h3>
                                         </div>
                                     </div>
                                     <form onSubmit={handleUpdatePassword} className="p-8 space-y-6">
                                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                             <div className="space-y-2">
-                                                <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Current Password</label>
+                                                <label className="text-xs font-medium text-text-secondary">Current Password</label>
                                                 <div className="relative">
                                                     <input
                                                         type={showCurrentPassword ? "text" : "password"}
                                                         value={currentPassword}
                                                         onChange={(e) => setCurrentPassword(e.target.value)}
                                                         placeholder="••••••••"
-                                                        className="w-full h-12 bg-gray-50 border border-gray-100 rounded-xl px-4 pr-10 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none"
+                                                        className="w-full h-12 bg-gray-50 border border-gray-100 rounded-xl px-4 pr-10 text-sm font-medium focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none"
                                                         required
                                                     />
                                                     <button
@@ -1397,14 +1414,14 @@ export default function BusinessProfilePage() {
                                                 </div>
                                             </div>
                                             <div className="space-y-2">
-                                                <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">New Password</label>
+                                                <label className="text-xs font-medium text-text-secondary">New Password</label>
                                                 <div className="relative">
                                                     <input
                                                         type={showNewPassword ? "text" : "password"}
                                                         value={newPassword}
                                                         onChange={(e) => setNewPassword(e.target.value)}
                                                         placeholder="••••••••"
-                                                        className="w-full h-12 bg-gray-50 border border-gray-100 rounded-xl px-4 pr-10 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none"
+                                                        className="w-full h-12 bg-gray-50 border border-gray-100 rounded-xl px-4 pr-10 text-sm font-medium focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none"
                                                         required
                                                     />
                                                     <button
@@ -1417,14 +1434,14 @@ export default function BusinessProfilePage() {
                                                 </div>
                                             </div>
                                             <div className="space-y-2">
-                                                <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Confirm New Password</label>
+                                                <label className="text-xs font-medium text-text-secondary">Confirm New Password</label>
                                                 <div className="relative">
                                                     <input
                                                         type={showConfirmNewPassword ? "text" : "password"}
                                                         value={confirmNewPassword}
                                                         onChange={(e) => setConfirmNewPassword(e.target.value)}
                                                         placeholder="••••••••"
-                                                        className="w-full h-12 bg-gray-50 border border-gray-100 rounded-xl px-4 pr-10 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none"
+                                                        className="w-full h-12 bg-gray-50 border border-gray-100 rounded-xl px-4 pr-10 text-sm font-medium focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none"
                                                         required
                                                     />
                                                     <button
@@ -1441,7 +1458,7 @@ export default function BusinessProfilePage() {
                                             <button
                                                 type="submit"
                                                 disabled={isChangingPassword || !currentPassword || !newPassword || !confirmNewPassword}
-                                                className="h-11 px-8 bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-slate-800 transition-all shadow-lg shadow-slate-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                                                className="h-11 px-6 bg-slate-900 text-white text-xs font-semibold tracking-wide rounded-xl hover:bg-slate-800 transition-all shadow-lg shadow-slate-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                                             >
                                                 {isChangingPassword ? <Loader2 size={14} className="animate-spin" /> : <Lock size={14} />}
                                                 Update Password
@@ -1455,21 +1472,25 @@ export default function BusinessProfilePage() {
                 )}
                 {activeTab === 'schedule' && !isAllBranches && (
                     <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
-                        <div className="px-8 py-6 border-b border-gray-100 bg-gray-50/50">
-                            <h3 className="font-display font-bold text-text-main text-lg tracking-tight">Business Hours</h3>
+                        <div className="px-6 sm:px-8 py-5 border-b border-gray-100">
+                            <h3 className="font-semibold text-text-main text-sm">Business Hours</h3>
                         </div>
                         <div className="p-8 space-y-4">
                             {DAYS.map((day) => (
                                 <div key={day} className="flex flex-col md:flex-row items-center gap-4 p-4 bg-gray-50 rounded-xl">
-                                    <div className="w-28"><span className="text-xs font-black uppercase text-text-secondary capitalize">{day}</span></div>
+                                    <div className="w-28"><span className="text-xs font-bold uppercase text-text-secondary capitalize">{day}</span></div>
                                     <label className="flex items-center gap-2 cursor-pointer">
                                         <input type="checkbox" checked={!businessHours[day]?.closed} onChange={(e) => setBusinessHours(prev => ({ ...prev, [day]: { ...prev[day], closed: !e.target.checked } }))} className="w-4 h-4 rounded text-primary focus:ring-primary" />
                                         <span className="text-xs font-bold text-text-secondary">Open</span>
                                     </label>
                                     <div className="flex-1 flex items-center gap-3">
-                                        <input type="time" value={businessHours[day]?.open || '09:00'} onChange={(e) => setBusinessHours(prev => ({ ...prev, [day]: { ...prev[day], open: e.target.value } }))} disabled={businessHours[day]?.closed} className="w-32 h-10 bg-white border border-gray-200 rounded-lg px-3 text-sm font-bold focus:ring-2 focus:ring-primary/10 outline-none disabled:opacity-50" />
+                                        <div onClick={(e) => (e.currentTarget.querySelector<HTMLInputElement>('input[type="time"]')?.showPicker())}>
+                                            <input type="time" value={businessHours[day]?.open || '09:00'} onChange={(e) => setBusinessHours(prev => ({ ...prev, [day]: { ...prev[day], open: e.target.value } }))} disabled={businessHours[day]?.closed} className="w-32 h-10 bg-white border border-gray-200 rounded-lg px-3 text-sm font-medium focus:ring-2 focus:ring-primary/10 outline-none disabled:opacity-50 cursor-pointer" />
+                                        </div>
                                         <span className="text-text-secondary text-xs font-bold">to</span>
-                                        <input type="time" value={businessHours[day]?.close || '18:00'} onChange={(e) => setBusinessHours(prev => ({ ...prev, [day]: { ...prev[day], close: e.target.value } }))} disabled={businessHours[day]?.closed} className="w-32 h-10 bg-white border border-gray-200 rounded-lg px-3 text-sm font-bold focus:ring-2 focus:ring-primary/10 outline-none disabled:opacity-50" />
+                                        <div onClick={(e) => (e.currentTarget.querySelector<HTMLInputElement>('input[type="time"]')?.showPicker())}>
+                                            <input type="time" value={businessHours[day]?.close || '18:00'} onChange={(e) => setBusinessHours(prev => ({ ...prev, [day]: { ...prev[day], close: e.target.value } }))} disabled={businessHours[day]?.closed} className="w-32 h-10 bg-white border border-gray-200 rounded-lg px-3 text-sm font-medium focus:ring-2 focus:ring-primary/10 outline-none disabled:opacity-50 cursor-pointer" />
+                                        </div>
                                     </div>
                                 </div>
                             ))}
@@ -1479,17 +1500,17 @@ export default function BusinessProfilePage() {
 
                 {activeTab === 'messaging' && !isAllBranches && (
                     <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
-                        <div className="px-8 py-6 border-b border-gray-100 bg-gray-50/50">
-                            <h3 className="font-display font-bold text-text-main text-lg tracking-tight">Customer Messages</h3>
+                        <div className="px-6 sm:px-8 py-5 border-b border-gray-100">
+                            <h3 className="font-semibold text-text-main text-sm">Customer Messages</h3>
                         </div>
                         <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="space-y-2">
-                                <label className="text-[10px] font-black uppercase text-text-secondary ml-1">Welcome Message</label>
-                                <input type="text" value={welcomeMessage} onChange={(e) => setWelcomeMessage(e.target.value)} className="w-full h-12 bg-gray-50 border border-gray-200 rounded-xl px-4 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none" />
+                                <label className="text-xs font-medium text-text-secondary">Welcome Message</label>
+                                <input type="text" value={welcomeMessage} onChange={(e) => setWelcomeMessage(e.target.value)} className="w-full h-12 bg-gray-50 border border-gray-200 rounded-xl px-4 text-sm font-medium focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none" />
                             </div>
                             <div className="space-y-2">
-                                <label className="text-[10px] font-black uppercase text-text-secondary ml-1">Success Message</label>
-                                <input type="text" value={successMessage} onChange={(e) => setSuccessMessage(e.target.value)} className="w-full h-12 bg-gray-50 border border-gray-200 rounded-xl px-4 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none" />
+                                <label className="text-xs font-medium text-text-secondary">Success Message</label>
+                                <input type="text" value={successMessage} onChange={(e) => setSuccessMessage(e.target.value)} className="w-full h-12 bg-gray-50 border border-gray-200 rounded-xl px-4 text-sm font-medium focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none" />
                             </div>
                         </div>
                     </div>
@@ -1497,15 +1518,15 @@ export default function BusinessProfilePage() {
 
                 {activeTab === 'socials' && !isAllBranches && (
                     <div className="bg-white rounded-2xl border border-gray-200 shadow-sm">
-                        <div className="px-8 py-6 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between">
+                        <div className="px-6 sm:px-8 py-5 border-b border-gray-100 flex items-center justify-between">
                             <div>
-                                <h3 className="font-display font-bold text-text-main text-lg tracking-tight">Social Media & Reviews</h3>
+                                <h3 className="font-semibold text-text-main text-sm">Social Media & Reviews</h3>
                                 <p className="text-xs text-text-secondary mt-1">Manage links to your social pages and review platforms.</p>
                             </div>
                             { activeSocials.length > 0 && (
                                 <div className="flex items-center gap-3 bg-white px-4 py-2 rounded-xl border border-gray-100 shadow-sm">
                                     <div className="flex flex-col items-end">
-                                        <span className="text-[10px] font-black uppercase tracking-widest text-text-main">Enable in Journey</span>
+                                        <span className="text-xs font-medium text-text-main">Enable in Journey</span>
                                         <span className="text-[9px] text-text-secondary">Show after form submission</span>
                                     </div>
                                     <button
@@ -1527,7 +1548,7 @@ export default function BusinessProfilePage() {
                                                 <button
                                                     type="button"
                                                     onClick={() => setIsSocialDropdownOpen(!isSocialDropdownOpen)}
-                                                    className="w-full h-14 bg-gray-50 border border-gray-100 rounded-xl px-4 flex items-center justify-between text-sm font-bold text-text-main hover:bg-gray-100 transition-all"
+                                                    className="w-full h-12 bg-gray-50 border border-gray-200 rounded-xl px-4 flex items-center justify-between text-sm font-medium text-text-main hover:border-gray-300 focus:border-primary/30 focus:ring-4 focus:ring-primary/10 transition-all cursor-pointer"
                                                 >
                                                     <div className="flex items-center gap-3">
                                                         {selectedSocial ? (
@@ -1552,36 +1573,42 @@ export default function BusinessProfilePage() {
                                                 <AnimatePresence>
                                                     {isSocialDropdownOpen && (
                                                         <motion.div
-                                                            initial={{ opacity: 0, y: 10 }}
+                                                            initial={{ opacity: 0, y: 8 }}
                                                             animate={{ opacity: 1, y: 0 }}
-                                                            exit={{ opacity: 0, y: 10 }}
-                                                            className="absolute left-0 right-0 top-full mt-2 bg-white border border-gray-100 rounded-2xl shadow-xl z-[9999] overflow-hidden py-2"
+                                                            exit={{ opacity: 0, y: 8 }}
+                                                            transition={{ duration: 0.18 }}
+                                                            className="absolute left-0 right-0 top-full mt-2 bg-white border border-gray-100 rounded-xl shadow-lg shadow-gray-200/60 z-[9999] overflow-hidden"
                                                         >
-                                                            {SOCIAL_PLATFORMS.map((platform) => {
-                                                                const isAlreadyAdded = activeSocials.some(s => s.id === platform.id);
-                                                                return (
-                                                                    <button
-                                                                        key={platform.id}
-                                                                        type="button"
-                                                                        disabled={isAlreadyAdded && platform.id !== 'custom'}
-                                                                        onClick={() => {
-                                                                            setSelectedSocial(platform);
-                                                                            setIsSocialDropdownOpen(false);
-                                                                        }}
-                                                                        className="w-full px-4 py-3 flex items-center gap-3 hover:bg-gray-50 transition-colors disabled:opacity-40 disabled:grayscale"
-                                                                    >
-                                                                        <div className={`p-2 rounded-xl ${platform.bg} ${platform.color}`}>
-                                                                            <platform.icon size={18} />
-                                                                        </div>
-                                                                        <div className="flex-1 text-left text-sm font-bold text-text-main">
-                                                                            {platform.name}
-                                                                            {isAlreadyAdded && platform.id !== 'custom' && (
-                                                                                <span className="ml-2 text-[9px] uppercase tracking-widest text-green-500 font-black">Added</span>
-                                                                            )}
-                                                                        </div>
-                                                                    </button>
-                                                                );
-                                                            })}
+                                                            <p className="px-4 py-2.5 text-[10px] font-bold uppercase tracking-[0.14em] text-gray-400 border-b border-gray-100">
+                                                                Choose a Platform
+                                                            </p>
+                                                            <div className="max-h-72 overflow-y-auto py-1">
+                                                                {SOCIAL_PLATFORMS.map((platform) => {
+                                                                    const isAlreadyAdded = activeSocials.some(s => s.id === platform.id);
+                                                                    return (
+                                                                        <button
+                                                                            key={platform.id}
+                                                                            type="button"
+                                                                            disabled={isAlreadyAdded && platform.id !== 'custom'}
+                                                                            onClick={() => {
+                                                                                setSelectedSocial(platform);
+                                                                                setIsSocialDropdownOpen(false);
+                                                                            }}
+                                                                            className="w-full px-4 py-2.5 flex items-center gap-3 hover:bg-gray-50 transition-colors disabled:opacity-40 disabled:grayscale cursor-pointer disabled:cursor-not-allowed"
+                                                                        >
+                                                                            <div className={`p-2 rounded-lg ${platform.bg} ${platform.color}`}>
+                                                                                <platform.icon size={18} />
+                                                                            </div>
+                                                                            <div className="flex-1 text-left text-sm font-medium text-text-main">
+                                                                                {platform.name}
+                                                                                {isAlreadyAdded && platform.id !== 'custom' && (
+                                                                                    <span className="ml-2 text-[9px] uppercase tracking-wider text-green-500 font-bold">Added</span>
+                                                                                )}
+                                                                            </div>
+                                                                        </button>
+                                                                    );
+                                                                })}
+                                                            </div>
                                                         </motion.div>
                                                     )}
                                                 </AnimatePresence>
@@ -1601,11 +1628,11 @@ export default function BusinessProfilePage() {
                                                             value={socialHandle}
                                                             onChange={(e) => setSocialHandle(e.target.value)}
                                                             placeholder={selectedSocial.placeholder}
-                                                            className="w-full h-12 bg-white border border-gray-200 rounded-xl px-4 text-sm font-bold text-text-main focus:ring-4 focus:ring-primary/10 transition-all outline-none"
+                                                            className="w-full h-12 bg-white border border-gray-200 rounded-xl px-4 text-sm font-medium text-text-main focus:ring-4 focus:ring-primary/10 transition-all outline-none"
                                                             autoFocus
                                                         />
                                                         {selectedSocial.prefix && (
-                                                            <div className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-black text-gray-300 uppercase tracking-tighter">
+                                                            <div className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-medium text-gray-300 uppercase tracking-tighter">
                                                                 Handle Only
                                                             </div>
                                                         )}
@@ -1614,7 +1641,7 @@ export default function BusinessProfilePage() {
                                                         type="button"
                                                         onClick={handleAddSocial}
                                                         disabled={!socialHandle.trim()}
-                                                        className="h-12 px-6 bg-primary text-white rounded-xl text-xs font-black uppercase tracking-widest shadow-lg shadow-primary/20 hover:bg-primary-hover transition-all disabled:opacity-50"
+                                                        className="h-12 px-6 bg-primary text-white rounded-xl text-xs font-bold uppercase tracking-wider shadow-lg shadow-primary/20 hover:bg-primary-hover transition-all disabled:opacity-50"
                                                     >
                                                         Add
                                                     </button>
@@ -1638,7 +1665,7 @@ export default function BusinessProfilePage() {
                                     {/* Active Links List */}
                                     {activeSocials.length > 0 && (
                                         <div className="space-y-2 mt-6">
-                                            <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Active Links</label>
+                                            <label className="text-xs font-medium text-text-secondary">Active Links</label>
                                             <div className="grid grid-cols-1 gap-2">
                                                 {activeSocials.map((social) => (
                                                     <motion.div
@@ -1653,7 +1680,7 @@ export default function BusinessProfilePage() {
                                                                 <social.icon size={18} />
                                                             </div>
                                                             <div className="min-w-0">
-                                                                <p className="text-[10px] font-black text-text-main uppercase tracking-tighter leading-none">{social.name}</p>
+                                                                <p className="text-[11px] font-semibold text-text-main uppercase tracking-tighter leading-none">{social.name}</p>
                                                                 <p className="text-[11px] text-text-secondary font-medium truncate mt-1">
                                                                     {social.url}
                                                                 </p>
@@ -1709,7 +1736,7 @@ export default function BusinessProfilePage() {
                                 <Gift size={18} />
                             </div>
                             <div>
-                                <p className="text-sm font-bold text-gray-900">Manage Reward Sequence</p>
+                                <p className="text-sm font-medium text-gray-900">Manage Reward Sequence</p>
                                 <p className="text-xs text-gray-500 mt-1">
                                     Select which rewards should be visible on your public business profile and in what order. 
                                     Drag the items to change their priority.
@@ -1724,11 +1751,11 @@ export default function BusinessProfilePage() {
                         ) : rewards.length === 0 ? (
                             <div className="rounded-2xl border border-dashed border-gray-200 bg-gray-50 p-12 text-center">
                                 <Gift size={48} className="mx-auto text-gray-300 mb-4" />
-                                <p className="text-sm font-bold text-gray-900">No rewards created yet</p>
+                                <p className="text-sm font-medium text-gray-900">No rewards created yet</p>
                                 <p className="text-xs text-gray-500 mt-1 mb-6">Create rewards in the Loyalty section to manage them here.</p>
                                 <Link
                                     href="/dashboard/loyalty/rewards"
-                                    className="inline-flex h-10 items-center px-6 rounded-xl bg-primary text-white text-xs font-black uppercase tracking-widest hover:bg-primary-hover transition-all"
+                                    className="inline-flex h-10 items-center px-6 rounded-xl bg-primary text-white text-xs font-bold uppercase tracking-wider hover:bg-primary-hover transition-all"
                                 >
                                     Go to Rewards
                                 </Link>
@@ -1739,10 +1766,10 @@ export default function BusinessProfilePage() {
                                     <div className="bg-white rounded-2xl border border-gray-100 p-5 space-y-4">
                                         <div className="flex items-center justify-between">
                                             <div>
-                                                <h3 className="text-sm font-bold text-gray-900">Sequence Order</h3>
+                                                <h3 className="text-sm font-medium text-gray-900">Sequence Order</h3>
                                                 <p className="text-xs text-gray-500 font-medium">Order shown on your profile</p>
                                             </div>
-                                            <span className="text-[10px] bg-slate-100 text-slate-500 px-2 py-1 rounded-full font-black uppercase">
+                                            <span className="text-[10px] bg-slate-100 text-slate-500 px-2 py-1 rounded-full font-bold uppercase">
                                                 {sequenceRewards.length} Active
                                             </span>
                                         </div>
@@ -1768,12 +1795,12 @@ export default function BusinessProfilePage() {
                                     <div className="bg-white rounded-2xl border border-gray-100 p-5 space-y-4">
                                         <div className="flex items-center justify-between">
                                             <div>
-                                                <h3 className="text-sm font-bold text-gray-900">Available Rewards</h3>
+                                                <h3 className="text-sm font-medium text-gray-900">Available Rewards</h3>
                                                 <p className="text-xs text-gray-500 font-medium font-sans">Tap to add to your profile</p>
                                             </div>
                                             <Link
                                                 href="/dashboard/loyalty/rewards"
-                                                className="text-[10px] font-black uppercase tracking-widest text-primary hover:underline"
+                                                className="text-xs font-semibold text-primary hover:underline"
                                             >
                                                 Edit Library
                                             </Link>
@@ -1795,15 +1822,15 @@ export default function BusinessProfilePage() {
                                                             <span className="text-lg font-bold">+</span>
                                                         </div>
                                                         <div className="flex-1 min-w-0">
-                                                            <p className="text-sm font-bold text-gray-900 truncate group-hover:text-primary transition-colors">
+                                                            <p className="text-sm font-medium text-gray-900 truncate group-hover:text-primary transition-colors">
                                                                 {reward.name || 'Untitled Reward'}
                                                             </p>
                                                             <div className="flex items-center gap-2 mt-0.5">
-                                                                <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">
+                                                                <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">
                                                                     {reward.pointCost || 0} PTS
                                                                 </span>
-                                                                <span className="text-[10px] font-bold uppercase tracking-widest text-gray-300">•</span>
-                                                                <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">
+                                                                <span className="text-[10px] font-bold uppercase tracking-wider text-gray-300">•</span>
+                                                                <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">
                                                                     {reward.rewardType?.replace(/_/g, ' ') || 'REWARD'}
                                                                 </span>
                                                             </div>
@@ -1816,13 +1843,13 @@ export default function BusinessProfilePage() {
                                 </div>
 
                                 {/* Reward Preview Section */}
-                                <div className="bg-white rounded-3xl border border-gray-100 overflow-hidden shadow-sm sticky top-6">
-                                    <div className="px-6 py-4 bg-gray-50/50 border-b border-gray-100 flex items-center justify-between">
-                                        <p className="text-[10px] font-black uppercase tracking-widest text-gray-500">Public Profile Preview</p>
+                                <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm sticky top-6">
+                                    <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+                                        <p className="text-xs font-medium text-gray-500">Public Profile Preview</p>
                                     </div>
                                     <div className="p-8 space-y-8">
                                         <div className="space-y-2">
-                                            <h4 className="text-xl font-black text-slate-800 tracking-tight">Active Rewards</h4>
+                                            <h4 className="text-xl font-bold text-slate-800 tracking-tight">Active Rewards</h4>
                                             <p className="text-xs text-slate-500 font-medium">This is how your selected rewards appear to visitors.</p>
                                         </div>
 
@@ -1831,7 +1858,7 @@ export default function BusinessProfilePage() {
                                                 <div className="size-16 bg-white rounded-2xl shadow-sm flex items-center justify-center text-slate-200 mb-4">
                                                     <Gift size={32} />
                                                 </div>
-                                                <p className="text-sm font-bold text-slate-400">No Rewards Visible</p>
+                                                <p className="text-sm font-medium text-slate-400">No Rewards Visible</p>
                                                 <p className="text-[11px] text-slate-400 mt-1 italic">Add rewards to show them on your profile.</p>
                                             </div>
                                         ) : (
@@ -1839,25 +1866,25 @@ export default function BusinessProfilePage() {
                                                 {sequenceRewards.map((reward: Reward, idx: number) => (
                                                     <div 
                                                         key={reward.id} 
-                                                        className="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm relative group overflow-hidden transition-all hover:border-primary/20"
+                                                        className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm relative group overflow-hidden transition-all hover:border-primary/20"
                                                     >
                                                         <div className="flex justify-between items-start mb-4">
                                                             <div className="w-12 h-12 bg-white shadow-inner border border-slate-50 flex items-center justify-center rounded-xl text-2xl">
                                                                 {idx % 2 === 0 ? "☕" : "🏷️"}
                                                             </div>
-                                                            <div className="bg-blue-50 text-primary px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest">
+                                                            <div className="bg-blue-50 text-primary px-3 py-1 rounded-full text-[9px] font-bold uppercase tracking-wider">
                                                                 {reward.pointCost} POINTS
                                                             </div>
                                                         </div>
                                                         <div>
-                                                            <h3 className="font-black text-lg text-slate-900 mb-0.5">{reward.name}</h3>
-                                                            <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest leading-none">Tap to reclaim</p>
+                                                            <h3 className="font-bold text-lg text-slate-900 mb-0.5">{reward.name}</h3>
+                                                            <p className="text-slate-400 text-[10px] font-bold uppercase tracking-wider leading-none">Tap to reclaim</p>
                                                         </div>
                                                     </div>
                                                 ))}
                                                 {sequenceRewards.length > 0 && (
                                                     <div className="pt-2 text-center">
-                                                        <span className="text-[10px] font-black text-slate-300 uppercase tracking-[0.2em]">View All Rewards</span>
+                                                        <span className="text-[10px] font-medium text-slate-300 uppercase tracking-wider">View All Rewards</span>
                                                     </div>
                                                 )}
                                             </div>
@@ -1892,13 +1919,13 @@ export default function BusinessProfilePage() {
                         <div className="flex justify-end gap-2">
                             <button
                                 onClick={cancelRewardToggle}
-                                className="px-4 py-2 rounded-lg text-sm font-bold border border-slate-300 hover:bg-slate-100 transition"
+                                className="px-4 py-2 rounded-lg text-sm font-medium border border-slate-300 hover:bg-slate-100 transition"
                             >
                                 Cancel
                             </button>
                             <button
                                 onClick={confirmRewardToggle}
-                                className="px-4 py-2 rounded-lg text-sm font-bold bg-primary text-white hover:bg-primary-hover transition"
+                                className="px-4 py-2 rounded-lg text-sm font-medium bg-primary text-white hover:bg-primary-hover transition"
                             >
                                 {selectedRewardToEnable?.targetStatus ? 'Enable' : 'Disable'}
                             </button>
@@ -1908,13 +1935,13 @@ export default function BusinessProfilePage() {
 
                 {activeTab === 'whatsapp' && !isAllBranches && (
                     <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm animate-in fade-in slide-in-from-bottom-4 duration-500">
-                        <div className="px-8 py-6 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between">
+                        <div className="px-6 sm:px-8 py-5 border-b border-gray-100 flex items-center justify-between">
                             <div className="flex items-center gap-3">
                                 <div className="size-10 rounded-xl bg-green-50 text-green-600 flex items-center justify-center">
                                     <span className="material-icons-round">message</span>
                                 </div>
                                 <div>
-                                    <h3 className="font-display font-bold text-text-main text-lg tracking-tight">WhatsApp Contact</h3>
+                                    <h3 className="font-semibold text-text-main text-sm">WhatsApp Contact</h3>
                                     <p className="text-xs text-text-secondary mt-1 font-medium">Link your WhatsApp number to your business profile.</p>
                                 </div>
                             </div>
@@ -1922,7 +1949,7 @@ export default function BusinessProfilePage() {
                         <div className="p-8 space-y-6">
                             <div className="max-w-md space-y-4">
                                 <div className="space-y-2">
-                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">WhatsApp Number</label>
+                                    <label className="text-xs font-medium text-text-secondary">WhatsApp Number</label>
                                     <div className="relative group">
                                         <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-green-500 transition-colors">
                                             <span className="material-icons-round text-lg">phone</span>
@@ -1932,7 +1959,7 @@ export default function BusinessProfilePage() {
                                             value={whatsappNumber}
                                             onChange={(e) => setWhatsappNumber(e.target.value)}
                                             placeholder="+234 WhatsApp Number"
-                                            className="w-full h-14 bg-gray-50 border border-gray-100 rounded-2xl pl-12 pr-4 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-green-500/10 focus:border-green-500/30 transition-all outline-none"
+                                            className="w-full h-14 bg-gray-50 border border-gray-100 rounded-2xl pl-12 pr-4 text-sm font-medium focus:bg-white focus:ring-4 focus:ring-green-500/10 focus:border-green-500/30 transition-all outline-none"
                                         />
                                     </div>
                                     <p className="text-[10px] text-text-secondary mt-2 px-1 leading-relaxed">
@@ -1947,7 +1974,7 @@ export default function BusinessProfilePage() {
                                             <span className="material-icons-round">qr_code_2</span>
                                         </div>
                                         <div className="flex-1 min-w-0">
-                                            <p className="text-[10px] font-black uppercase tracking-widest text-green-700 leading-tight">Live Preview</p>
+                                            <p className="text-[11px] font-semibold text-green-700 leading-tight">Live Preview</p>
                                             <p className="text-xs text-green-800 font-bold mt-0.5 truncate italic opacity-80 underline underline-offset-4 decoration-green-300">
                                                 wa.me/{whatsappNumber.replace(/[^0-9]/g, '')}
                                             </p>
@@ -1955,7 +1982,7 @@ export default function BusinessProfilePage() {
                                         <button 
                                             type="button"
                                             onClick={() => window.open(`https://wa.me/${whatsappNumber.replace(/[^0-9]/g, '')}`, '_blank')}
-                                            className="px-4 py-2 bg-green-600 text-white text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-green-700 transition-all shadow-sm"
+                                            className="px-4 py-2 bg-green-600 text-white text-xs font-semibold rounded-xl hover:bg-green-700 transition-all shadow-sm"
                                         >
                                             Test
                                         </button>
@@ -1969,8 +1996,8 @@ export default function BusinessProfilePage() {
             
                 {activeTab === 'qr' && (
                     <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
-                        <div className="px-8 py-6 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between">
-                            <h3 className="font-display font-bold text-text-main text-lg tracking-tight">Dynamic Business QR</h3>
+                        <div className="px-6 sm:px-8 py-5 border-b border-gray-100 flex items-center justify-between">
+                            <h3 className="font-semibold text-text-main text-sm">Dynamic Business QR</h3>
                         </div>
                         <div className="p-8 flex flex-col md:flex-row items-center md:items-start gap-8">
                             {qrId ? (
@@ -1987,7 +2014,7 @@ export default function BusinessProfilePage() {
                                 </div>
                             )}
                             <div className="w-full max-w-sm">
-                                <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary mb-2">Public Profile Link</p>
+                                <p className="text-xs font-medium text-text-secondary mb-2">Public Profile Link</p>
                                 {derivedPublicProfileUrl ? (
                                     <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4 space-y-3">
                                         <div className="text-xs font-bold text-text-main break-all">{derivedPublicProfileUrl}</div>
@@ -1996,7 +2023,7 @@ export default function BusinessProfilePage() {
                                                 navigator.clipboard.writeText(derivedPublicProfileUrl);
                                                 toast.success('Public link copied');
                                             }}
-                                            className="w-full h-10 rounded-xl bg-white border border-gray-200 text-xs font-black text-text-secondary hover:text-primary hover:border-primary transition-colors"
+                                            className="w-full h-10 rounded-xl bg-white border border-gray-200 text-xs font-bold text-text-secondary hover:text-primary hover:border-primary transition-colors"
                                         >
                                             Copy Public Link
                                         </button>
@@ -2017,23 +2044,23 @@ export default function BusinessProfilePage() {
                 {activeTab === 'documents' && (isAllBranches || branches.length <= 1) && (
                     <div className="space-y-6">
                         {/* Business Identity Section (Redesigned & Collapsible) */}
-                        <div className="bg-white rounded-3xl border border-gray-200 overflow-hidden shadow-sm">
+                        <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
                             <button 
                                 onClick={() => setIsDocsCollapsed(!isDocsCollapsed)}
-                                className="w-full px-8 py-6 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between group"
+                                className="w-full px-6 sm:px-8 py-5 border-b border-gray-100 flex items-center justify-between group"
                             >
                                 <div className="flex items-center gap-4">
                                     <div className="size-12 rounded-2xl bg-indigo-50 flex items-center justify-center text-indigo-500 group-hover:scale-110 transition-transform">
                                         <span className="material-icons-round text-2xl">corporate_fare</span>
                                     </div>
                                     <div className="text-left">
-                                        <h3 className="font-display font-bold text-text-main text-lg tracking-tight">Business Identity (CAC)</h3>
+                                        <h3 className="font-semibold text-text-main text-sm">Business Identity (CAC)</h3>
                                         <p className="text-xs text-text-secondary font-normal">Official Corporate Affairs Commission details</p>
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-4">
                                     <div className="flex items-center gap-2">
-                                        <span className="text-sm font-bold text-text-main">Registered?</span>
+                                        <span className="text-sm font-medium text-text-main">Registered?</span>
                                         <button
                                             onClick={(e) => {
                                                 e.stopPropagation();
@@ -2055,7 +2082,7 @@ export default function BusinessProfilePage() {
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                                         <div className="space-y-4">
                                             <div className="space-y-2">
-                                                <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Registration Type</label>
+                                                <label className="text-xs font-medium text-text-secondary">Registration Type</label>
                                                 <select
                                                     value={cacType}
                                                     onChange={(e) => setCacType(e.target.value)}
@@ -2069,7 +2096,7 @@ export default function BusinessProfilePage() {
                                                 </select>
                                             </div>
                                             <div className="space-y-2">
-                                                <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">{cacType} Number</label>
+                                                <label className="text-xs font-medium text-text-secondary">{cacType} Number</label>
                                                 <input
                                                     type="text"
                                                     value={registrationNumber}
@@ -2081,7 +2108,7 @@ export default function BusinessProfilePage() {
                                         </div>
 
                                         <div className="space-y-4">
-                                            <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Upload CAC Document / Certificate</label>
+                                            <label className="text-xs font-medium text-text-secondary">Upload CAC Document / Certificate</label>
                                             <div className="relative group">
                                                 {!cacDocument ? (
                                                     <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-gray-200 rounded-2xl cursor-pointer bg-gray-50 hover:bg-white hover:border-primary/30 transition-all">
@@ -2109,7 +2136,7 @@ export default function BusinessProfilePage() {
                                                             </div>
                                                             <div className="flex-1 min-w-0">
                                                                 <p className="text-sm font-normal text-text-main truncate">CAC Certificate</p>
-                                                                <p className="text-[10px] text-green-600 font-normal uppercase tracking-widest">Attached</p>
+                                                                <p className="text-[10px] text-green-600 font-normal uppercase tracking-wider">Attached</p>
                                                             </div>
                                                         </div>
                                                         <button 
@@ -2136,25 +2163,25 @@ export default function BusinessProfilePage() {
                         </div>
 
                         {/* Means of Identity Section (Personal ID) */}
-                        <div className="bg-white rounded-3xl border border-gray-200 overflow-hidden shadow-sm">
-                            <div className="px-8 py-6 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between">
+                        <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
+                            <div className="px-6 sm:px-8 py-5 border-b border-gray-100 flex items-center justify-between">
                                 <div className="flex items-center gap-4">
                                     <div className="size-12 rounded-2xl bg-amber-50 flex items-center justify-center text-amber-500">
                                         <span className="material-icons-round text-2xl">badge</span>
                                     </div>
                                     <div className="text-left">
-                                        <h3 className="font-display font-bold text-text-main text-lg tracking-tight">Means of Identity</h3>
+                                        <h3 className="font-semibold text-text-main text-sm">Means of Identity</h3>
                                         <p className="text-xs text-text-secondary font-normal">Valid government-issued ID for verification</p>
                                     </div>
                                 </div>
-                                <span className="px-3 py-1 bg-amber-100/50 text-amber-600 text-[10px] font-normal uppercase tracking-widest rounded-lg border border-amber-200/50">KYC Requirement</span>
+                                <span className="px-3 py-1 bg-amber-100/50 text-amber-600 text-[10px] font-normal uppercase tracking-wider rounded-lg border border-amber-200/50">KYC Requirement</span>
                             </div>
 
                             <div className="p-8 space-y-8">
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                                     <div className="space-y-4">
                                         <div className="space-y-2">
-                                            <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Identity Type</label>
+                                            <label className="text-xs font-medium text-text-secondary">Identity Type</label>
                                             <select
                                                 className="w-full h-14 bg-gray-50 border border-gray-200 rounded-2xl px-5 text-sm font-normal focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none appearance-none cursor-pointer"
                                                 style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' fill=\'none\' viewBox=\'0 0 24 24\' stroke=\'%239ca3af\'%3E%3Cpath stroke-linecap=\'round\' stroke-linejoin=\'round\' stroke-width=\'2\' d=\'M19 9l-7 7-7-7\'/%3E%3C/svg%3E")', backgroundRepeat: 'no-repeat', backgroundPosition: 'right 1.25rem center', backgroundSize: '1.25rem' }}
@@ -2162,11 +2189,11 @@ export default function BusinessProfilePage() {
                                                 <option>National ID (NIN)</option>
                                                 <option>Drivers License</option>
                                                 <option>International Passport</option>
-                                                <option>Voter's Card</option>
+                                                <option>Voter&apos;s Card</option>
                                             </select>
                                         </div>
                                         <div className="space-y-2">
-                                            <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Identity Number</label>
+                                            <label className="text-xs font-medium text-text-secondary">Identity Number</label>
                                             <input
                                                 type="text"
                                                 value={identityNumber}
@@ -2178,7 +2205,7 @@ export default function BusinessProfilePage() {
                                     </div>
 
                                     <div className="space-y-4">
-                                        <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Upload Identity Card Photo</label>
+                                        <label className="text-xs font-medium text-text-secondary">Upload Identity Card Photo</label>
                                         <div className="relative group">
                                             {!idDocument ? (
                                                 <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-gray-200 rounded-2xl cursor-pointer bg-gray-50 hover:bg-white hover:border-primary/30 transition-all">
@@ -2205,7 +2232,7 @@ export default function BusinessProfilePage() {
                                                         </div>
                                                         <div className="flex-1 min-w-0">
                                                             <p className="text-sm font-normal text-text-main truncate">Owner ID Document</p>
-                                                            <p className="text-[10px] text-green-600 font-normal uppercase tracking-widest">Attached</p>
+                                                            <p className="text-[10px] text-green-600 font-normal uppercase tracking-wider">Attached</p>
                                                         </div>
                                                     </div>
                                                     <button 
@@ -2223,14 +2250,14 @@ export default function BusinessProfilePage() {
                         </div>
 
                         {/* Utility Bill Section */}
-                        <div className="bg-white rounded-3xl border border-gray-200 overflow-hidden shadow-sm">
-                            <div className="px-8 py-6 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between">
+                        <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
+                            <div className="px-6 sm:px-8 py-5 border-b border-gray-100 flex items-center justify-between">
                                 <div className="flex items-center gap-4">
                                     <div className="size-12 rounded-2xl bg-sky-50 flex items-center justify-center text-sky-500">
                                         <span className="material-icons-round text-2xl">receipt_long</span>
                                     </div>
                                     <div className="text-left">
-                                        <h3 className="font-display font-bold text-text-main text-lg tracking-tight">Proof of Address</h3>
+                                        <h3 className="font-semibold text-text-main text-sm">Proof of Address</h3>
                                         <p className="text-xs text-text-secondary font-normal">Recent utility bill (Electricity, Water, or Waste)</p>
                                     </div>
                                 </div>
@@ -2238,7 +2265,7 @@ export default function BusinessProfilePage() {
 
                             <div className="p-8">
                                 <div className="space-y-4">
-                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Upload Utility Bill (Last 3 Months)</label>
+                                    <label className="text-xs font-medium text-text-secondary">Upload Utility Bill (Last 3 Months)</label>
                                     <div className="relative group">
                                         {!utilityBill ? (
                                             <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-gray-200 rounded-2xl cursor-pointer bg-gray-50 hover:bg-white hover:border-primary/30 transition-all">
@@ -2265,7 +2292,7 @@ export default function BusinessProfilePage() {
                                                     </div>
                                                     <div className="flex-1 min-w-0">
                                                         <p className="text-sm font-normal text-text-main truncate">Utility Bill Document</p>
-                                                        <p className="text-[10px] text-green-600 font-normal uppercase tracking-widest">Attached</p>
+                                                        <p className="text-[10px] text-green-600 font-normal uppercase tracking-wider">Attached</p>
                                                     </div>
                                                 </div>
                                                 <button 
@@ -2285,7 +2312,7 @@ export default function BusinessProfilePage() {
 
                 {activeTab === 'general' && (
                     <div className="pt-4 flex items-center justify-between px-2">
-                        <button className="text-xs font-black uppercase tracking-widest text-red-500 hover:text-red-600 transition-colors">Deactivate Business Profile</button>
+                        <button className="text-xs font-bold uppercase tracking-wider text-red-500 hover:text-red-600 transition-colors">Deactivate Business Profile</button>
                     </div>
                 )}
 
@@ -2307,7 +2334,7 @@ export default function BusinessProfilePage() {
                                     setShowRewards(true);
                                     setShowRewardsModal(false);
                                 }}
-                                className={`flex-1 h-11 rounded-xl text-xs font-black uppercase tracking-widest transition-colors ${
+                                className={`flex-1 h-11 rounded-xl text-xs font-bold uppercase tracking-wider transition-colors ${
                                     showRewards ? 'bg-primary text-white shadow-md shadow-primary/20' : 'bg-white border border-primary text-primary hover:bg-primary/5'
                                 }`}
                             >
@@ -2318,7 +2345,7 @@ export default function BusinessProfilePage() {
                                     setShowRewards(false);
                                     setShowRewardsModal(false);
                                 }}
-                                className={`flex-1 h-11 rounded-xl text-xs font-black uppercase tracking-widest transition-colors ${
+                                className={`flex-1 h-11 rounded-xl text-xs font-bold uppercase tracking-wider transition-colors ${
                                     !showRewards ? 'bg-slate-900 text-white' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
                                 }`}
                             >

@@ -87,11 +87,11 @@ export default function StockAdjustmentsScreen() {
   if (isSuccess) {
     return (
       <div className="h-[calc(100vh-80px)] flex flex-col items-center justify-center p-6 text-center">
-        <div className="size-24 bg-amber-50 rounded-[32px] mx-auto flex items-center justify-center mb-6 shadow-[0_0_40px_rgba(245,158,11,0.2)]">
+        <div className="size-20 bg-amber-50 rounded-2xl mx-auto flex items-center justify-center mb-6 shadow-sm">
           <CheckCircle2 size={48} className="text-amber-500" strokeWidth={2.5} />
         </div>
-        <h1 className="text-3xl font-black text-gray-900 mb-2 tracking-tight">Stock Adjusted</h1>
-        <p className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">The inventory variances have been logged.</p>
+        <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2 tracking-tight">Stock Adjusted</h1>
+        <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider">The inventory variances have been logged.</p>
       </div>
     );
   }
@@ -103,34 +103,34 @@ export default function StockAdjustmentsScreen() {
         subtitle="Correct stock levels due to damage, loss, or expiration"
       />
 
-      <div className="bg-white border border-gray-100 rounded-[32px] p-6 md:p-8 shadow-sm flex-1 flex flex-col">
+      <div className="bg-white border border-gray-100 rounded-2xl p-6 shadow-sm flex-1 flex flex-col">
 
         <div className="mb-6 relative">
-          <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 mb-2">Find Product to Adjust</label>
+          <label className="block text-[10px] font-semibold uppercase tracking-wider text-gray-500 mb-2">Find Product to Adjust</label>
           <div className="relative">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
             <input
               type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full h-14 pl-12 pr-4 rounded-2xl border-2 border-amber-200 bg-amber-50 text-sm font-bold text-gray-900 focus:outline-none focus:border-amber-500"
+              className="w-full h-10 pl-12 pr-4 rounded-xl border border-amber-200 bg-amber-50 text-sm font-semibold text-gray-900 focus:outline-none focus:border-amber-500"
               placeholder="Search product by name or barcode..."
             />
           </div>
 
           {searchQuery && (
-            <div className="absolute z-10 w-full mt-2 bg-white rounded-2xl border border-gray-100 shadow-xl overflow-hidden">
+            <div className="absolute z-10 w-full mt-2 bg-white rounded-xl border border-gray-100 shadow-lg overflow-hidden">
               {filteredProducts.length > 0 ? filteredProducts.map((p: any) => (
                 <button
                   key={p.id} onClick={() => handleSelectProduct(p)}
                   className="w-full text-left p-4 hover:bg-gray-50 border-b border-gray-50 flex items-center justify-between"
                 >
                   <div>
-                    <p className="text-sm font-black text-gray-900">{p.name}</p>
-                    <p className="text-[10px] font-bold text-gray-400 mt-0.5">Current Stock: {p.stockQuantity || 0}</p>
+                    <p className="text-sm font-bold text-gray-900">{p.name}</p>
+                    <p className="text-[10px] font-semibold text-gray-400 mt-0.5">Current Stock: {p.stockQuantity || 0}</p>
                   </div>
                   <Plus size={18} className="text-amber-500" />
                 </button>
               )) : (
-                <div className="p-4 text-center text-gray-400 text-xs font-bold">Adjustments will appear here once you have products in stock</div>
+                <div className="p-4 text-center text-gray-400 text-xs font-semibold">Adjustments will appear here once you have products in stock</div>
               )}
             </div>
           )}
@@ -140,11 +140,11 @@ export default function StockAdjustmentsScreen() {
           {selectedItems.length > 0 ? (
             <div className="space-y-3">
               {selectedItems.map((item) => (
-                <div key={item.productId} className="p-4 bg-gray-50 rounded-[24px] border border-gray-100 flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
+                <div key={item.productId} className="p-4 md:p-5 bg-gray-50 rounded-xl border border-gray-100 flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
                   <div className="flex-1 min-w-0">
-                    <h4 className="text-sm font-black text-gray-900 line-clamp-1">{item.name}</h4>
-                    <p className="text-[10px] font-bold text-gray-500 mt-0.5 uppercase tracking-widest">
-                      Current: {item.currentQty} → New: <span className={cn("font-black", item.quantityChange < 0 ? "text-red-500" : item.quantityChange > 0 ? "text-emerald-500" : "text-gray-900")}>
+                    <h4 className="text-sm font-bold text-gray-900 line-clamp-1">{item.name}</h4>
+                    <p className="text-[10px] font-semibold text-gray-500 mt-0.5 uppercase tracking-wider">
+                      Current: {item.currentQty} → New: <span className={cn("font-bold", item.quantityChange < 0 ? "text-red-500" : item.quantityChange > 0 ? "text-emerald-500" : "text-gray-900")}>
                         {Math.max(0, item.currentQty + item.quantityChange)}
                       </span>
                     </p>
@@ -152,7 +152,7 @@ export default function StockAdjustmentsScreen() {
 
                   <div className="flex items-center gap-4 w-full md:w-auto flex-wrap md:flex-nowrap">
                     <div className="w-full md:w-32">
-                      <label className="block text-[8px] font-black uppercase tracking-[0.2em] text-gray-400 mb-1">Reason</label>
+                      <label className="block text-[8px] font-semibold uppercase tracking-wider text-gray-400 mb-1">Reason</label>
                       <select
                         value={item.reason} onChange={(e) => updateItem(item.productId, 'reason', e.target.value)}
                         className="w-full h-10 px-3 rounded-xl border border-gray-200 bg-white text-xs font-bold text-gray-900 focus:border-amber-500 focus:outline-none"
@@ -161,11 +161,11 @@ export default function StockAdjustmentsScreen() {
                       </select>
                     </div>
                     <div className="w-1/2 md:w-28">
-                      <label className="block text-[8px] font-black uppercase tracking-[0.2em] text-gray-400 mb-1">Adjustment (+/-)</label>
+                      <label className="block text-[8px] font-semibold uppercase tracking-wider text-gray-400 mb-1">Adjustment (+/-)</label>
                       <input
                         type="number" value={item.quantityChange || ''} onChange={(e) => updateItem(item.productId, 'quantityChange', Number(e.target.value))}
                         className={cn(
-                          "w-full h-10 px-3 rounded-xl border-2 text-xs font-black focus:outline-none",
+                          "w-full h-10 px-3 rounded-xl border-2 text-xs font-bold focus:outline-none",
                           item.quantityChange < 0 ? "border-red-200 bg-red-50 text-red-700 focus:border-red-500" :
                           item.quantityChange > 0 ? "border-emerald-200 bg-emerald-50 text-emerald-700 focus:border-emerald-500" :
                           "border-gray-200 bg-white text-gray-900 focus:border-amber-500"
@@ -184,22 +184,22 @@ export default function StockAdjustmentsScreen() {
               ))}
             </div>
           ) : (
-            <div className="h-40 flex flex-col items-center justify-center text-gray-400 border-2 border-dashed border-gray-100 rounded-[24px]">
+            <div className="h-40 flex flex-col items-center justify-center text-gray-400 border-2 border-dashed border-gray-100 rounded-xl">
               <Settings2 size={32} className="mb-2 text-gray-300" />
-              <p className="text-[10px] font-black uppercase tracking-widest">Search and select products to adjust</p>
+              <p className="text-[10px] font-semibold uppercase tracking-wider">Search and select products to adjust</p>
             </div>
           )}
         </div>
 
         <div className="pt-6 border-t border-gray-100 flex items-center justify-between">
-          <p className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">
+          <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider">
             {selectedItems.length} items to adjust
           </p>
           <button
             onClick={handleAdjust}
             disabled={selectedItems.length === 0 || !selectedItems.some(i => i.quantityChange !== 0) || isSubmitting}
             className={cn(
-              "h-14 px-8 rounded-2xl flex items-center gap-2 font-black uppercase tracking-widest text-[11px] transition-all shadow-xl",
+              "h-11 px-6 rounded-xl flex items-center gap-2 font-semibold uppercase tracking-wider text-[11px] transition-all shadow-sm",
               selectedItems.length > 0 && selectedItems.some(i => i.quantityChange !== 0) && !isSubmitting
                 ? "bg-amber-500 text-white shadow-amber-500/20 hover:bg-amber-600 active:scale-95"
                 : "bg-gray-100 text-gray-400 cursor-not-allowed shadow-none"

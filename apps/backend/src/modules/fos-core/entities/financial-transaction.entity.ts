@@ -1,5 +1,6 @@
 import { Entity, Column, Index } from 'typeorm';
 import { AbstractBaseEntity } from '../../../common/entities/base.entity';
+import { numericTransformer } from '../../../common/transformers/numeric.transformer';
 
 export enum FosTransactionType {
   SUBSCRIPTION = 'SUBSCRIPTION',
@@ -34,13 +35,27 @@ export class FinancialTransaction extends AbstractBaseEntity {
   @Index()
   agentId: string;
 
-  @Column('decimal', { precision: 15, scale: 2 })
+  @Column('decimal', {
+    precision: 15,
+    scale: 2,
+    transformer: numericTransformer,
+  })
   amount: number;
 
-  @Column('decimal', { precision: 15, scale: 2, default: 0 })
+  @Column('decimal', {
+    precision: 15,
+    scale: 2,
+    default: 0,
+    transformer: numericTransformer,
+  })
   cost: number;
 
-  @Column('decimal', { precision: 15, scale: 2, default: 0 })
+  @Column('decimal', {
+    precision: 15,
+    scale: 2,
+    default: 0,
+    transformer: numericTransformer,
+  })
   profit: number;
 
   @Column({ nullable: true })

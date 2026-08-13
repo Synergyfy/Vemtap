@@ -140,7 +140,7 @@ export default function UserFormSettingsPage() {
                     <div className="bg-white rounded-2xl border border-gray-100 p-6 space-y-5">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="space-y-1">
-                                <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Welcome Tag</label>
+                                <label className="text-[10px] font-bold uppercase tracking-wider text-text-secondary">Welcome Tag</label>
                                 <input
                                     type="text"
                                     value={settings.welcomeTag}
@@ -151,7 +151,7 @@ export default function UserFormSettingsPage() {
                         </div>
 
                         <div className="space-y-1">
-                            <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Welcome Title</label>
+                            <label className="text-[10px] font-bold uppercase tracking-wider text-text-secondary">Welcome Title</label>
                             <input
                                 type="text"
                                 value={settings.welcomeTitle}
@@ -161,7 +161,7 @@ export default function UserFormSettingsPage() {
                         </div>
 
                         <div className="space-y-1">
-                            <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Welcome Message</label>
+                            <label className="text-[10px] font-bold uppercase tracking-wider text-text-secondary">Welcome Message</label>
                             <textarea
                                 value={settings.welcomeMessage}
                                 onChange={(e) => setSettings((prev) => ({ ...prev, welcomeMessage: e.target.value }))}
@@ -171,7 +171,7 @@ export default function UserFormSettingsPage() {
 
                         <div className="space-y-4 pt-2 pb-2">
                             <div className="flex items-center justify-between">
-                                <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Default Form Fields</label>
+                                <label className="text-[10px] font-bold uppercase tracking-wider text-text-secondary">Default Form Fields</label>
                                 <div className="group relative">
                                     <Info size={14} className="text-gray-400 cursor-help" />
                                     <div className="absolute bottom-full right-0 mb-2 w-48 p-2 bg-slate-900 text-white text-[10px] rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 font-medium">
@@ -185,7 +185,7 @@ export default function UserFormSettingsPage() {
                                         <span className="text-xs font-bold text-gray-500">{field}</span>
                                         <div className="flex items-center gap-1.5 grayscale">
                                             <div className="size-1.5 rounded-full bg-gray-400"></div>
-                                            <span className="text-[9px] font-black uppercase tracking-widest text-gray-400">Locked</span>
+                                            <span className="text-[9px] font-bold uppercase tracking-wider text-gray-400">Locked</span>
                                         </div>
                                     </div>
                                 ))}
@@ -194,10 +194,10 @@ export default function UserFormSettingsPage() {
 
                         <div className="space-y-1">
                             <div className="flex items-center justify-between mb-1">
-                                <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Privacy Message</label>
+                                <label className="text-[10px] font-bold uppercase tracking-wider text-text-secondary">Privacy Message</label>
                                 <div className="flex items-center gap-1.5">
                                     <div className="size-1.5 rounded-full bg-amber-400"></div>
-                                    <span className="text-[9px] font-black uppercase tracking-widest text-amber-500">Read Only</span>
+                                    <span className="text-[9px] font-bold uppercase tracking-wider text-amber-500">Read Only</span>
                                 </div>
                             </div>
                             <textarea
@@ -222,7 +222,7 @@ export default function UserFormSettingsPage() {
                         </div>
 
                         <div className="space-y-1">
-                            <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Success Title</label>
+                            <label className="text-[10px] font-bold uppercase tracking-wider text-text-secondary">Success Title</label>
                             <input
                                 type="text"
                                 value={settings.successTitle}
@@ -233,7 +233,7 @@ export default function UserFormSettingsPage() {
                         </div>
 
                         <div className="space-y-1">
-                            <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Success Description</label>
+                            <label className="text-[10px] font-bold uppercase tracking-wider text-text-secondary">Success Description</label>
                             <textarea
                                 value={settings.successMessage}
                                 onChange={(e) => setSettings((prev) => ({ ...prev, successMessage: e.target.value }))}
@@ -248,7 +248,7 @@ export default function UserFormSettingsPage() {
                         <button
                             onClick={handleSave}
                             disabled={isSaving}
-                            className="h-12 px-6 bg-primary text-white font-black uppercase tracking-widest text-xs rounded-xl shadow-lg shadow-primary/20 hover:scale-[1.01] active:scale-95 transition-all flex items-center gap-2 disabled:opacity-50"
+                            className="h-12 px-6 bg-primary text-white font-bold uppercase tracking-wider text-xs rounded-xl shadow-lg shadow-primary/20 hover:scale-[1.01] active:scale-95 transition-all flex items-center gap-2 disabled:opacity-50"
                         >
                             {isSaving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
                             Save Configuration
@@ -258,7 +258,7 @@ export default function UserFormSettingsPage() {
 
                 <div className="sticky top-6">
                     <details open className="rounded-2xl border border-gray-100 bg-white">
-                        <summary className="cursor-pointer list-none px-4 py-3 text-xs font-black uppercase tracking-widest text-gray-500 flex items-center justify-between">
+                        <summary className="cursor-pointer list-none px-4 py-3 text-xs font-bold uppercase tracking-wider text-gray-500 flex items-center justify-between">
                             Preview
                             <span className="text-[10px] font-semibold text-gray-400">Data Form</span>
                         </summary>
@@ -273,7 +273,7 @@ export default function UserFormSettingsPage() {
                                     <button
                                         key={tab.key}
                                         onClick={() => setPreviewTab(tab.key as typeof previewTab)}
-                                        className={`px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest transition-all ${
+                                        className={`px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all ${
                                             previewTab === tab.key
                                                 ? 'bg-primary text-white'
                                                 : 'bg-white border border-gray-200 text-gray-500 hover:bg-gray-50'

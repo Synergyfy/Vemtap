@@ -4,6 +4,7 @@ import { FosForecastingService } from './fos-forecasting.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
+import { FosEnvelope } from '../../common/decorators/fos-envelope.decorator';
 import { UserRole } from '../users/entities/user.entity';
 import {
   ForecastProjectionRequestDto,
@@ -13,26 +14,34 @@ import {
 @ApiTags('FOS Forecasting')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard, RolesGuard)
+@FosEnvelope()
 @Controller('forecasting')
 export class FosForecastingController {
   constructor(private readonly forecastingService: FosForecastingService) {}
 
   @Post('project')
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Run a forecast projection' })
   async project(@Body() dto: ForecastProjectionRequestDto) {
     return this.forecastingService.project(dto);
   }
 
+  @Get('defaults')
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Get server-computed forecast default inputs' })
+  async getDefaults() {
+    return this.forecastingService.getDefaults();
+  }
+
   @Post('persist')
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Save a forecast scenario' })
   async persist(@Body() dto: SaveForecastRequestDto) {
     return this.forecastingService.persist(dto);
   }
 
   @Get('history')
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Get saved forecast history' })
   async getHistory() {
     return this.forecastingService.getHistory();

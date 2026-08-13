@@ -88,7 +88,7 @@ export default function HardwarePage() {
                             </div>
                             <h3 className="text-2xl font-display font-bold mb-3">NFC Hardware</h3>
                             <p className="text-white/80 text-sm leading-relaxed mb-8">
-                                Each generated link can be written to an NFC card or printed as a QR code. When customers tap or scan, they'll be directed to your business profile.
+                                Each generated link can be written to an NFC card or printed as a QR code. When customers tap or scan, they&apos;ll be directed to your business profile.
                             </p>
                             <Link
                                 href="/marketplace"
@@ -110,15 +110,15 @@ export default function HardwarePage() {
                         </h4>
                         <ul className="space-y-4">
                             <li className="flex gap-3">
-                                <span className="size-6 rounded-full bg-gray-100 flex items-center justify-center text-[10px] font-black text-text-secondary shrink-0">1</span>
+                                <span className="size-6 rounded-full bg-gray-100 flex items-center justify-center text-[10px] font-bold text-text-secondary shrink-0">1</span>
                                 <p className="text-xs text-text-secondary leading-normal">Generate a unique link for each physical location or table.</p>
                             </li>
                             <li className="flex gap-3">
-                                <span className="size-6 rounded-full bg-gray-100 flex items-center justify-center text-[10px] font-black text-text-secondary shrink-0">2</span>
+                                <span className="size-6 rounded-full bg-gray-100 flex items-center justify-center text-[10px] font-bold text-text-secondary shrink-0">2</span>
                                 <p className="text-xs text-text-secondary leading-normal">Write the link to an NFC tag using a mobile NFC writer app.</p>
                             </li>
                             <li className="flex gap-3">
-                                <span className="size-6 rounded-full bg-gray-100 flex items-center justify-center text-[10px] font-black text-text-secondary shrink-0">3</span>
+                                <span className="size-6 rounded-full bg-gray-100 flex items-center justify-center text-[10px] font-bold text-text-secondary shrink-0">3</span>
                                 <p className="text-xs text-text-secondary leading-normal">Download the QR code for signage and physical menus.</p>
                             </li>
                         </ul>
@@ -206,7 +206,7 @@ export default function HardwarePage() {
 
                         <div className="space-y-6">
                             <div className="space-y-2">
-                                <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Internal Name</label>
+                                <label className="text-[10px] font-bold uppercase tracking-wider text-text-secondary ml-1">Internal Name</label>
                                 <input
                                     type="text"
                                     value={newLinkName}

@@ -4,18 +4,20 @@ import React, { useState, useCallback, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
+import { GoogleLogin } from '@react-oauth/google';
 import { 
-    Mail, Lock, Eye, EyeOff, ArrowRight,
+    Mail, Lock, Eye, EyeOff,
     ShieldCheck, 
     Zap, AlertCircle
 } from 'lucide-react';
-import { GoogleLogin } from '@react-oauth/google';
+
 import Logo from '@/components/brand/Logo';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/store/useAuthStore';
 import { getFirstPermittedDashboardRoute, isRouteAllowed } from '@/lib/utils/nav-filter';
+import { hasSavedOnboardingProgress } from '@/lib/onboardingProgress';
 
 const isEmail = (v: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim());
 const isPhone = (v: string) => /^[\+\d][\d\s\-\(\)]{7,20}$/.test(v.trim());
@@ -87,6 +89,9 @@ function LoginPageContent() {
         if (normalizedRole === 'admin') {
             router.push('/admin');
         } else if (normalizedRole === 'owner' && (!businessId || isNewUser)) {
+            router.push('/onboarding');
+        } else if (normalizedRole === 'owner' && hasSavedOnboardingProgress(useAuthStore.getState().user?.id)) {
+            // Owner with an in-progress onboarding resume where they stopped.
             router.push('/onboarding');
         } else if (businessId && (normalizedRole === 'owner' || normalizedRole === 'manager' || normalizedRole === 'staff')) {
             router.push(landing ?? '/dashboard');
@@ -191,27 +196,27 @@ function LoginPageContent() {
                 
                 <div className="relative z-10 text-white max-w-sm">
                     <Link href="/">
-                        <Logo className="h-10 brightness-0 invert mb-16" />
+                        <Logo className="h-9 brightness-0 invert mb-12" />
                     </Link>
-                    <h2 className="text-5xl font-black tracking-tight leading-[1.1] mb-10">
+                    <h2 className="text-4xl lg:text-5xl font-bold tracking-tight leading-[1.12] mb-8">
                         Manage Your <br /> Business <br /> Growth.
                     </h2>
-                    <p className="text-lg font-medium text-white/70 mb-12">
+                    <p className="text-lg font-medium text-white/70 mb-10">
                         Sign in to access your customer database, send smart campaigns, and track real-time analytics.
                     </p>
                     
-                    <div className="space-y-6">
-                        <div className="flex items-center gap-4">
-                            <div className="size-10 rounded-2xl bg-white/10 flex items-center justify-center">
-                                <Zap size={20} className="text-white" />
+                    <div className="space-y-5">
+                        <div className="flex items-center gap-3.5">
+                            <div className="size-10 rounded-xl bg-white/10 flex items-center justify-center">
+                                <Zap size={18} className="text-white" />
                             </div>
-                            <p className="text-sm font-bold">Real-time scan tracking</p>
+                            <p className="text-sm font-semibold">Real-time scan tracking</p>
                         </div>
-                        <div className="flex items-center gap-4">
-                            <div className="size-10 rounded-2xl bg-white/10 flex items-center justify-center">
-                                <ShieldCheck size={20} className="text-white" />
+                        <div className="flex items-center gap-3.5">
+                            <div className="size-10 rounded-xl bg-white/10 flex items-center justify-center">
+                                <ShieldCheck size={18} className="text-white" />
                             </div>
-                            <p className="text-sm font-bold">Secure data encryption</p>
+                            <p className="text-sm font-semibold">Secure data encryption</p>
                         </div>
                     </div>
                 </div>
@@ -227,9 +232,12 @@ function LoginPageContent() {
                         </Link>
                     </div>
 
-                    <div className="mb-10 text-center lg:text-left">
-                        <h1 className="text-3xl font-black text-gray-900 tracking-tight leading-tight mb-2">Welcome Back</h1>
-                        <p className="text-sm font-medium text-gray-400">Sign in to manage your Vemtap dashboard.</p>
+                    <div className="mb-8 text-center lg:text-left">
+                        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-primary/10 rounded-full mb-4">
+                            <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-primary">Account Login</span>
+                        </div>
+                        <h1 className="text-[28px] font-bold text-text-main tracking-tight leading-tight mb-2">Welcome back</h1>
+                        <p className="text-sm text-text-secondary font-medium">Sign in to manage your Vemtap dashboard.</p>
                     </div>
 
                     {/* General Error Banner */}
@@ -237,10 +245,10 @@ function LoginPageContent() {
                         <motion.div
                             initial={{ opacity: 0, y: -8 }}
                             animate={{ opacity: 1, y: 0 }}
-                            className="mb-6 p-4 bg-red-50 border border-red-100 rounded-2xl flex items-start gap-3"
+                            className="mb-6 p-4 bg-red-50 border border-red-100 rounded-xl flex items-start gap-3"
                         >
                             <AlertCircle size={18} className="text-red-500 shrink-0 mt-0.5" />
-                            <p className="text-sm font-bold text-red-600">{generalError}</p>
+                            <p className="text-sm font-medium text-red-600">{generalError}</p>
                         </motion.div>
                     )}
 
@@ -264,14 +272,14 @@ function LoginPageContent() {
                                         }}
                                         placeholder="000000"
                                         autoFocus
-                                        className="w-full h-16 bg-gray-50 border-2 border-transparent rounded-2xl outline-none font-bold text-lg text-center tracking-[0.4em] focus:ring-2 focus:ring-[#066CF4]/10 transition-all"
+                                        className="w-full h-14 bg-gray-50 border border-gray-200 rounded-xl outline-none font-semibold text-lg text-center tracking-[0.4em] focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all"
                                     />
                                 </div>
                                 <Button
                                     type="button"
                                     disabled={isLoggingIn || twoFACode.length !== 6}
                                     onClick={handle2FASubmit}
-                                    className="w-full h-16 bg-[#066CF4] text-white font-black uppercase tracking-[0.2em] text-xs rounded-2xl shadow-xl shadow-blue-500/20 active:scale-95 transition-all flex items-center justify-center gap-3"
+                                    className="w-full h-12 bg-[#066CF4] text-white font-bold uppercase tracking-wider text-[11px] rounded-xl shadow-lg shadow-blue-500/20 active:scale-95 transition-all flex items-center justify-center gap-3"
                                 >
                                     {isLoggingIn ? (
                                         <div className="size-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -282,15 +290,15 @@ function LoginPageContent() {
                                 <button
                                     type="button"
                                     onClick={() => { setRequires2FA(false); setTwoFACode(''); setPendingLogin(null); }}
-                                    className="w-full text-sm font-bold text-gray-400 hover:text-[#066CF4] transition-colors"
+                                    className="w-full text-sm font-semibold text-gray-400 hover:text-[#066CF4] transition-colors cursor-pointer"
                                 >Back to login</button>
                             </>
                         ) : (
                             <>
                                 <div className="space-y-2">
-                                    <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-4">Email or Phone Number</label>
+                                    <label className="text-xs font-medium text-text-secondary">Email or Phone Number</label>
                             <div className="relative">
-                                <Mail className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-300" size={18} />
+                                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
                                 <input
                                     type="text"
                                     value={formData.email}
@@ -301,15 +309,15 @@ function LoginPageContent() {
                                     }}
                                     placeholder="name@business.com or +2348012345678"
                                     className={cn(
-                                        "w-full pl-14 pr-6 h-16 bg-gray-50 border-2 rounded-2xl outline-none font-bold text-sm transition-all",
+                                        "w-full pl-11 pr-4 h-12 bg-gray-50 border border-gray-200 rounded-xl outline-none text-sm font-normal text-text-main transition-all placeholder:text-gray-400",
                                         fieldErrors.email
-                                            ? "border-red-200 focus:ring-2 focus:ring-red-200"
-                                            : "border-transparent focus:ring-2 focus:ring-[#066CF4]/10"
+                                            ? "border-red-300 focus:border-red-300 focus:ring-4 focus:ring-red-100"
+                                            : "focus:bg-white focus:border-primary/30 focus:ring-4 focus:ring-primary/10"
                                     )}
                                 />
                             </div>
                             {fieldErrors.email && (
-                                <p className="ml-4 mt-1.5 text-xs font-bold text-red-500 flex items-center gap-1.5">
+                                <p className="mt-1.5 text-xs font-medium text-red-500 flex items-center gap-1.5">
                                     <AlertCircle size={12} />
                                     {fieldErrors.email}
                                 </p>
@@ -317,12 +325,12 @@ function LoginPageContent() {
                         </div>
 
                         <div className="space-y-2">
-                            <div className="flex justify-between items-center ml-4">
-                                <label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Password</label>
-                                <Link href="/forgot-password" title="reset password" className="text-[10px] font-black uppercase tracking-widest text-[#066CF4] hover:underline">Forgot?</Link>
+                            <div className="flex justify-between items-center">
+                                <label className="text-xs font-medium text-text-secondary">Password</label>
+                                <Link href="/forgot-password" title="reset password" className="text-xs font-semibold text-primary hover:underline">Forgot?</Link>
                             </div>
                             <div className="relative">
-                                <Lock className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-300" size={18} />
+                                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
                                 <input
                                     type={showPassword ? 'text' : 'password'}
                                     value={formData.password}
@@ -333,22 +341,22 @@ function LoginPageContent() {
                                     }}
                                     placeholder="••••••••"
                                     className={cn(
-                                        "w-full pl-14 pr-14 h-16 bg-gray-50 border-2 rounded-2xl outline-none font-bold text-sm transition-all",
+                                        "w-full pl-11 pr-11 h-12 bg-gray-50 border border-gray-200 rounded-xl outline-none text-sm font-normal text-text-main transition-all placeholder:text-gray-400",
                                         fieldErrors.password
-                                            ? "border-red-200 focus:ring-2 focus:ring-red-200"
-                                            : "border-transparent focus:ring-2 focus:ring-[#066CF4]/10"
+                                            ? "border-red-300 focus:border-red-300 focus:ring-4 focus:ring-red-100"
+                                            : "focus:bg-white focus:border-primary/30 focus:ring-4 focus:ring-primary/10"
                                     )}
                                 />
                                 <button
                                     type="button"
                                     onClick={() => setShowPassword(!showPassword)}
-                                    className="absolute right-6 top-1/2 -translate-y-1/2 text-gray-300 hover:text-[#066CF4]"
+                                    className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-primary cursor-pointer"
                                 >
-                                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                                 </button>
                             </div>
                             {fieldErrors.password && (
-                                <p className="ml-4 mt-1.5 text-xs font-bold text-red-500 flex items-center gap-1.5">
+                                <p className="mt-1.5 text-xs font-medium text-red-500 flex items-center gap-1.5">
                                     <AlertCircle size={12} />
                                     {fieldErrors.password}
                                 </p>
@@ -358,7 +366,7 @@ function LoginPageContent() {
                         <Button
                             type="submit"
                             disabled={isLoggingIn || !formData.email || !formData.password}
-                            className="w-full h-16 bg-[#066CF4] text-white font-black uppercase tracking-[0.2em] text-xs rounded-2xl shadow-xl shadow-blue-500/20 active:scale-95 transition-all flex items-center justify-center gap-3"
+                            className="w-full h-12 bg-[#066CF4] text-white font-bold uppercase tracking-wider text-[11px] rounded-xl shadow-lg shadow-blue-500/20 active:scale-95 transition-all flex items-center justify-center gap-3"
                         >
                             {isLoggingIn ? (
                                 <div className="size-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -370,43 +378,35 @@ function LoginPageContent() {
                         )}
                     </form>
 
-                    <div className="mt-10">
-                        <div className="relative flex items-center justify-center mb-8">
+                    <div className="mt-8">
+                        <div className="relative flex items-center justify-center mb-6">
                             <div className="absolute w-full h-px bg-gray-100" />
-                            <span className="relative px-4 bg-white text-[10px] font-black uppercase tracking-widest text-gray-300">Or continue with</span>
+                            <span className="relative px-4 bg-white text-[10px] font-bold uppercase tracking-wider text-gray-400">Or continue with</span>
                         </div>
-                        
-                        <div className="relative w-full h-16 rounded-2xl border-2 border-gray-100 font-bold text-sm flex items-center justify-center gap-3 hover:bg-gray-50 transition-all cursor-pointer overflow-hidden">
-                            <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" className="size-5" alt="Google" />
-                            {isLoggingIn ? (
+
+                        {isLoggingIn ? (
+                            <div className="w-full h-11 flex items-center justify-center bg-white rounded-xl shadow-[0_1px_3px_0_rgba(0,0,0,0.1),0_1px_2px_0_rgba(0,0,0,0.06)]">
                                 <div className="size-4 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin" />
-                            ) : (
-                                'Sign in with Google'
-                            )}
-                            
-                            {!isLoggingIn && (
-                                <div className="absolute inset-0 opacity-0 cursor-pointer overflow-hidden rounded-2xl">
-                                    <GoogleLogin
-                                        onSuccess={handleGoogleSuccess}
-                                        onError={() => {
-                                            setGeneralError('Google sign-in was cancelled or failed. Please try again.');
-                                        }}
-                                        useOneTap={false}
-                                        auto_select={false}
-                                        theme="outline"
-                                        size="large"
-                                        shape="rectangular"
-                                        width="400px"
-                                    />
-                                </div>
-                            )}
-                        </div>
+                            </div>
+                        ) : (
+                            <div className="w-full flex justify-center overflow-hidden rounded-2xl">
+                                <GoogleLogin
+                                    onSuccess={handleGoogleSuccess}
+                                    onError={() => setGeneralError('Google Sign-In failed or was cancelled. Please try again.')}
+                                    useOneTap={false}
+                                    theme="outline"
+                                    shape="rectangular"
+                                    width="100%"
+                                    text="signin_with"
+                                />
+                            </div>
+                        )}
                     </div>
 
                     {/* Sign Up Link */}
-                    <div className="mt-12 text-center">
-                        <p className="text-sm font-medium text-gray-400">
-                            Don't have an account? <Link href="/get-started" className="text-[#066CF4] font-black uppercase tracking-widest text-[10px] ml-2 hover:underline">Create Account</Link>
+                    <div className="mt-10 text-center">
+                        <p className="text-sm text-text-secondary font-medium">
+                            Don&apos;t have an account? <Link href="/get-started" className="text-primary font-bold uppercase tracking-wider text-[10px] ml-2 hover:underline">Create Account</Link>
                         </p>
                     </div>
                 </div>

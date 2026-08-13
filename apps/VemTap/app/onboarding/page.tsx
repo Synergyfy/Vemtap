@@ -59,7 +59,8 @@ import {
     ChevronRight,
     Trash2,
     Plus,
-    X
+    X,
+    Copy
 } from 'lucide-react';
 import Logo from '@/components/brand/Logo';
 import LogoIcon from '@/components/brand/LogoIcon';
@@ -77,7 +78,7 @@ import { useSubscribe } from '@/services/subscriptions/hooks';
 import type { SubscribeRequest } from '@/services/subscriptions/types';
 import { loadPaystackScript } from '@/lib/loadPaystackScript';
 import { useAuthStore } from '@/store/useAuthStore';
-import { useSystemSettingsStore } from '@/store/useSystemSettingsStore';
+import { loadOnboardingProgress, saveOnboardingProgress, clearOnboardingProgress } from '@/lib/onboardingProgress';
 import LocationStep from './components/LocationStep';
 import toast from 'react-hot-toast';
 import { api } from '@/lib/api';
@@ -137,6 +138,12 @@ const SOCIAL_PLATFORMS = [
     { id: 'custom', name: 'Custom Link', icon: Globe, color: 'text-slate-600', bg: 'bg-slate-50', placeholder: 'https://...' },
 ];
 
+// --- Design Tokens (contact-page layout) ---
+const INPUT_CLASS =
+    'w-full h-11 px-4 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white text-sm font-medium outline-none focus:ring-4 focus:ring-blue-50 focus:border-primary/40 transition-all';
+const LABEL_CLASS = 'text-[10px] font-bold uppercase tracking-[0.14em] text-text-secondary block mb-2';
+const CARD_CLASS = 'rounded-2xl border border-gray-100 bg-white p-5 md:p-6 shadow-sm';
+
 // --- Steps Data ---
 const STEPS = [
     { id: 1, label: 'Welcome', progress: 14 },
@@ -153,15 +160,49 @@ const STEPS = [
 
 export default function OnboardingPage() {
     const router = useRouter();
+    const user = useAuthStore((state) => state.user);
+    const userId = user?.id;
     const [currentStep, setCurrentStep] = useState<Step>(1);
     const [data, setData] = useState<Partial<OnboardingData>>({});
     const searchParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
     const refCode = searchParams?.get('ref') || null;
     const { data: referrer } = useReferrerInfo(refCode);
+    const subscribe = useSubscribe();
+    const [isSubscribingFree, setIsSubscribingFree] = useState(false);
 
-    const handleNext = (newData?: Partial<OnboardingData>) => {
+    // Restore saved onboarding progress on first mount so a returning user
+    // (after refresh or logout -> login) continues from where they stopped.
+    useEffect(() => {
+        if (!userId) return;
+        const saved = loadOnboardingProgress(userId);
+        if (saved?.currentStep) {
+            const validSteps: Step[] = [1, 2, '2A', 3, '3A', 4, 5, '5A', 6, 7];
+            const restoredStep = saved.currentStep as Step;
+            if (validSteps.includes(restoredStep)) {
+                // One-time restore after mount; intentionally reads sync state into React state.
+                // eslint-disable-next-line react-hooks/set-state-in-effect
+                setCurrentStep(restoredStep);
+            }
+            if (saved.data) {
+                setData(saved.data as Partial<OnboardingData>);
+            }
+        }
+        // Allow a deep link (e.g. from the dashboard activity checklist) to
+        // resume onboarding at a specific step: /onboarding?step=3A
+        const stepParam = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('step') : null;
+        if (stepParam) {
+            const validSteps: Step[] = [1, 2, '2A', 3, '3A', 4, 5, '5A', 6, 7];
+            const target = stepParam as Step;
+            if (validSteps.includes(target)) {
+                setCurrentStep(target);
+            }
+        }
+    }, [userId]);
+
+    const handleNext = async (newData?: Partial<OnboardingData>) => {
         if (newData) setData(prev => ({ ...prev, ...newData }));
-        
+        const mergedData = newData ? { ...data, ...newData } : data;
+
         const nextStepMap: Record<string, Step> = {
             '1': 2,
             '2': '2A',
@@ -173,15 +214,34 @@ export default function OnboardingPage() {
             '5A': 6,
             '6': 7
         };
-        
-        // Skip payment if plan is free
-        if (currentStep === '5A' && data.planId === 'free') {
+
+        // Free plan: activate the plan server-side before completing so the
+        // account has a persisted plan record for dashboard gating.
+        if (currentStep === '5A' && mergedData.planId === 'free') {
+            setIsSubscribingFree(true);
+            try {
+                await subscribe.mutateAsync({
+                    planId: 'free',
+                    billingPeriod: (mergedData.billingCycle as 'monthly' | 'quarterly' | 'yearly') || 'monthly',
+                    businessId: user?.businessId,
+                    isTrial: true,
+                });
+            } catch (err: any) {
+                toast.error(err?.message || 'Failed to activate free plan');
+                setIsSubscribingFree(false);
+                return;
+            }
+            setIsSubscribingFree(false);
             setCurrentStep(7);
+            saveOnboardingProgress(userId, 7, mergedData, refCode);
             return;
         }
 
         const nextStep = nextStepMap[currentStep.toString()];
-        if (nextStep) setCurrentStep(nextStep);
+        if (nextStep) {
+            setCurrentStep(nextStep);
+            saveOnboardingProgress(userId, nextStep, mergedData, refCode);
+        }
     };
 
     const handleBack = () => {
@@ -197,7 +257,16 @@ export default function OnboardingPage() {
             '7': 6
         };
         const backStep = backStepMap[currentStep.toString()];
-        if (backStep) setCurrentStep(backStep);
+        if (backStep) {
+            setCurrentStep(backStep);
+            saveOnboardingProgress(userId, backStep, data, refCode);
+        }
+    };
+
+    const handleSaveAndExit = () => {
+        saveOnboardingProgress(userId, currentStep, data, refCode);
+        toast.success('Progress saved. You can continue where you left off.');
+        router.push('/');
     };
 
     const progress = STEPS.find(s => s.id === currentStep)?.progress || 0;
@@ -221,9 +290,9 @@ export default function OnboardingPage() {
                             <Logo className="h-6" />
                         </div>
                         {currentStep !== 7 && (
-                            <button className="flex items-center gap-2 text-text-secondary hover:text-primary transition-colors">
+                            <button onClick={handleSaveAndExit} className="flex items-center gap-2 text-text-secondary hover:text-primary transition-colors">
                                 <Save size={16} />
-                                <span className="text-[10px] font-black uppercase tracking-widest">Save & Exit</span>
+                                <span className="text-[10px] font-bold uppercase tracking-wider">Save & Exit</span>
                             </button>
                         )}
                     </div>
@@ -232,10 +301,10 @@ export default function OnboardingPage() {
                     {currentStep !== 7 && currentStep !== '2A' && currentStep !== '3A' && currentStep !== '5A' && (
                         <div className="space-y-2">
                             <div className="flex items-center justify-between">
-                                <span className="text-[10px] font-black uppercase tracking-widest text-text-secondary opacity-50">
+                                <span className="text-[10px] font-bold uppercase tracking-wider text-text-secondary opacity-50">
                                     Step {currentStep.toString()} of 7
                                 </span>
-                                <span className="text-[10px] font-black uppercase tracking-widest text-primary">
+                                <span className="text-[10px] font-bold uppercase tracking-wider text-primary">
                                     {progress}% Complete
                                 </span>
                             </div>
@@ -267,9 +336,17 @@ export default function OnboardingPage() {
                         )}
                         {currentStep === 4 && <OperatingStep data={data} onNext={handleNext} refCode={refCode} />}
                         {currentStep === 5 && <SubscriptionStep data={data} onNext={handleNext} />}
-                        {currentStep === '5A' && <PlanConfirmation data={data} onNext={handleNext} onBack={handleBack} />}
+                        {currentStep === '5A' && <PlanConfirmation data={data} onNext={handleNext} onBack={handleBack} isSubscribingFree={isSubscribingFree} />}
                         {currentStep === 6 && <PaymentStep data={data} onNext={handleNext} />}
-                        {currentStep === 7 && <CompleteStep data={data} onNext={() => router.push('/dashboard')} />}
+                        {currentStep === 7 && (
+                            <CompleteStep
+                                data={data}
+                                onNext={() => {
+                                    clearOnboardingProgress(userId);
+                                    router.push('/dashboard');
+                                }}
+                            />
+                        )}
                     </AnimatePresence>
                 </div>
             </main>
@@ -278,110 +355,135 @@ export default function OnboardingPage() {
 }
 
 // --- Screen 1: Welcome ---
-function WelcomeStep({ onNext, referrer }: { onNext: () => void; referrer?: { referralCode: string; businessName: string } | null }) {
-    const onboardingVideoUrl = useSystemSettingsStore((s) => s.onboardingVideoUrl);
-    const checklist = [
-        { label: 'Business Category', id: 2 },
-        { label: 'Business Details', id: 3 },
-        { label: 'Operating Information', id: 4 },
-        { label: 'Subscription', id: 5 },
-        { label: 'Payment', id: 6 },
-        { label: 'Dashboard Access', id: 7 },
-    ];
+const ONBOARDING_YOUTUBE_ID = 'JUdg-g3_VSE';
 
+function WelcomeVideo() {
+    const [playing, setPlaying] = useState(false);
+    const [thumbBroken, setThumbBroken] = useState(false);
+
+    return (
+        <div>
+            <div className="relative w-full aspect-video rounded-3xl overflow-hidden bg-gray-100 ring-1 ring-black/5 shadow-lg shadow-gray-200/60">
+                {playing ? (
+                    <iframe
+                        src={`https://www.youtube-nocookie.com/embed/${ONBOARDING_YOUTUBE_ID}?autoplay=1&rel=0`}
+                        className="w-full h-full"
+                        title="Turn Every Customer Into a Repeat Customer | VemTap"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowFullScreen
+                    />
+                ) : (
+                    <button
+                        type="button"
+                        onClick={() => setPlaying(true)}
+                        className="absolute inset-0 w-full h-full cursor-pointer group"
+                        aria-label="Play video"
+                    >
+                        {!thumbBroken && (
+                            <img
+                                src={`https://i.ytimg.com/vi/${ONBOARDING_YOUTUBE_ID}/maxresdefault.jpg`}
+                                onError={(e) => {
+                                    (e.target as HTMLImageElement).style.display = 'none';
+                                    setThumbBroken(true);
+                                }}
+                                alt=""
+                                className="absolute inset-0 w-full h-full object-cover"
+                            />
+                        )}
+                        {thumbBroken && (
+                            <span className="absolute inset-0 bg-gradient-to-br from-primary/15 via-gray-100 to-blue-100" />
+                        )}
+                        <span className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
+                        <span className="absolute inset-0 flex items-center justify-center">
+                            <span className="size-16 rounded-full bg-white/95 shadow-xl flex items-center justify-center text-gray-900 scale-95 group-hover:scale-105 transition-transform duration-300">
+                                <Play size={20} fill="currentColor" className="ml-0.5" />
+                            </span>
+                        </span>
+                        <span className="absolute bottom-4 left-1/2 -translate-x-1/2 inline-flex items-center gap-1.5 whitespace-nowrap rounded-full bg-black/50 backdrop-blur-md px-3.5 py-1.5 text-[10px] font-semibold text-white">
+                            <Play size={10} fill="currentColor" />
+                            Watch How VEMTAP Works — 30 seconds
+                        </span>
+                    </button>
+                )}
+            </div>
+        </div>
+    );
+}
+
+function WelcomeStep({ onNext, referrer }: { onNext: () => void; referrer?: { referralCode: string; businessName: string } | null }) {
     return (
         <motion.div
             key="welcome"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, x: -20 }}
-            className="space-y-8"
+            className="space-y-6 md:space-y-8"
         >
+            {/* Header */}
             <div className="space-y-4">
-                <h1 className="text-4xl font-display font-black text-text-main tracking-tight">
-                    Let's help you bring your next customer back.
+                <div className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-primary/10 rounded-full">
+                    <Sparkles size={12} className="text-primary" />
+                    <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-primary">
+                        Welcome to VEMTAP
+                    </span>
+                </div>
+                <h1 className="text-[26px] md:text-[34px] font-bold text-text-main leading-[1.15] tracking-tight">
+                    Let&apos;s help you bring your <span className="text-primary">next customer back.</span>
                 </h1>
-                <p className="text-text-secondary text-lg font-medium leading-relaxed">
-                    That's a promise. We'll guide you through everything you need to start capturing and reconnecting with customers.
+                <p className="text-sm md:text-base text-text-secondary font-normal leading-relaxed">
+                    That&apos;s a promise. We&apos;ll guide you through everything you need to start capturing and reconnecting with customers.
                 </p>
             </div>
 
-            <div className="space-y-4 py-4">
-                {[
-                    'Complete your business profile',
-                    'Manage your business presence',
-                    'Choose a subscription plan',
-                    'Get access to your dashboard',
-                    'Start capturing customers'
-                ].map((item, i) => (
-                    <div key={i} className="flex items-center gap-3">
-                        <div className="size-5 rounded-full bg-green-50 text-green-600 flex items-center justify-center shrink-0">
-                            <CheckCircle2 size={14} />
-                        </div>
-                        <span className="font-bold text-sm text-text-main opacity-80">{item}</span>
-                    </div>
-                ))}
-            </div>
+            {/* Video */}
+            <WelcomeVideo />
 
-            {onboardingVideoUrl && (
-                <div className="rounded-[2rem] overflow-hidden border border-gray-100 bg-gray-50 shadow-sm">
-                    <div className="aspect-video bg-black">
-                        <iframe
-                            src={onboardingVideoUrl.replace('watch?v=', 'embed/')}
-                            className="w-full h-full"
-                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                            allowFullScreen
-                        />
-                    </div>
-                </div>
-            )}
-
-            {!onboardingVideoUrl && (
-                <div className="bg-gray-50 rounded-[2rem] border-2 border-dashed border-gray-200 p-12 flex flex-col items-center justify-center text-center">
-                    <Play size={48} className="text-gray-300 mb-4" />
-                    <p className="text-sm font-bold text-text-secondary">Onboarding Video</p>
-                    <p className="text-xs text-text-secondary opacity-60 mt-1">Video will appear here once set by admin</p>
-                </div>
-            )}
-
-            {referrer && (
-                <div className="bg-gradient-to-br from-primary/5 via-primary/[0.03] to-transparent rounded-[2rem] p-6 border border-primary/10">
-                    <div className="flex items-center gap-4">
-                        <div className="size-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-                            <Star size={20} className="text-primary" />
-                        </div>
-                        <div>
-                            <p className="text-xs font-black uppercase tracking-widest text-primary mb-1">You Were Referred!</p>
-                            <p className="text-sm font-bold text-text-main">
-                                You were referred by <span className="text-primary">{referrer.businessName}</span>
-                            </p>
-                            <p className="text-[11px] font-medium text-text-secondary mt-0.5">
-                                Referral code: <span className="font-bold text-text-main">{referrer.referralCode}</span>
-                            </p>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            <div className="bg-gray-50 rounded-[2rem] p-8 border border-gray-100">
-                <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-text-secondary mb-6">Setup Checklist</h3>
-                <div className="space-y-4">
-                    {checklist.map((item) => (
-                        <div key={item.id} className="flex items-center justify-between opacity-40">
-                            <span className="text-sm font-bold">{item.label}</span>
-                            <div className="size-4 rounded-full border-2 border-gray-300" />
+            {/* What you'll set up */}
+            <div className="rounded-2xl border border-gray-100 bg-white p-5 md:p-6 shadow-sm">
+                <div className="space-y-4 mt-1">
+                    {[
+                        'Complete your business profile',
+                        'Manage your business presence',
+                        'Choose a subscription plan',
+                        'Get access to your dashboard',
+                        'Start capturing customers'
+                    ].map((item, i) => (
+                        <div key={i} className="flex items-center gap-3">
+                            <div className="size-5 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                                <CheckCircle2 size={14} />
+                            </div>
+                            <span className="text-sm font-medium text-text-main">{item}</span>
                         </div>
                     ))}
                 </div>
             </div>
 
-            <div className="fixed bottom-0 left-0 right-0 p-6 bg-white/80 backdrop-blur-md border-t border-gray-50 md:relative md:p-0 md:bg-transparent md:border-0">
+            {referrer && (
+                <div className="relative overflow-hidden rounded-2xl border border-primary/15 bg-primary/[0.03] p-5 md:p-6">
+                    <div className="flex items-center gap-4">
+                        <div className="size-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                            <Star size={20} className="text-primary" />
+                        </div>
+                        <div className="min-w-0">
+                            <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-primary mb-1">You Were Referred!</p>
+                            <p className="text-sm font-semibold text-text-main">
+                                You were referred by <span className="text-primary">{referrer.businessName}</span>
+                            </p>
+                            <p className="text-xs font-normal text-text-secondary mt-0.5">
+                                Referral code: <span className="font-semibold text-text-main">{referrer.referralCode}</span>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/90 backdrop-blur-md border-t border-gray-100 md:relative md:p-0 md:bg-transparent md:border-0">
                 <div className="max-w-xl mx-auto">
-                    <Button 
+                    <Button
                         onClick={onNext}
-                        className="w-full bg-primary text-white font-black uppercase tracking-widest text-xs py-8 rounded-2xl hover:bg-primary-hover shadow-xl shadow-primary/20 transition-all active:scale-[0.98] flex items-center justify-center gap-3"
+                        className="w-full bg-primary text-white font-semibold uppercase tracking-[0.14em] text-xs py-5 rounded-xl hover:bg-primary-hover shadow-lg shadow-primary/20 transition-all active:scale-[0.98] flex items-center justify-center gap-3"
                     >
-                        Let's Get Started <ArrowRight size={18} />
+                        Let&apos;s Get Started <ArrowRight size={16} />
                     </Button>
                 </div>
             </div>
@@ -426,25 +528,25 @@ function CategoryStep({ data, onNext }: { data: Partial<OnboardingData>, onNext:
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -20 }}
-            className="space-y-8"
+            className="space-y-6"
         >
-            <div className="space-y-4">
-                <h1 className="text-3xl font-display font-black text-text-main tracking-tight">
+            <div className="space-y-3">
+                <h1 className="text-2xl md:text-3xl font-bold text-text-main tracking-tight">
                     What Type Of Business Do You Run?
                 </h1>
-                <p className="text-text-secondary font-medium">
+                <p className="text-sm md:text-base text-text-secondary font-normal leading-relaxed">
                     Select the category that best describes your business.
                 </p>
             </div>
 
             <div className="relative">
-                <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-                <input 
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+                <input
                     type="text"
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                     placeholder="Search Business Category"
-                    className="w-full pl-14 pr-6 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-primary/20 outline-none font-medium transition-all"
+                    className={`${INPUT_CLASS} pl-11`}
                 />
             </div>
 
@@ -453,38 +555,38 @@ function CategoryStep({ data, onNext }: { data: Partial<OnboardingData>, onNext:
                     <div className="size-8 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
                 </div>
             ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {categories.map((cat) => (
                     <button
                         key={cat.id}
                         onClick={() => setSelected(cat.id)}
-                        className={`group p-6 rounded-[2rem] border-2 text-left transition-all relative overflow-hidden ${
-                            selected === cat.id 
-                            ? 'border-primary bg-primary/5 shadow-lg shadow-primary/5' 
-                            : 'border-gray-100 bg-white hover:border-gray-200'
+                        className={`group p-4 md:p-5 rounded-2xl border text-left transition-all relative overflow-hidden ${
+                            selected === cat.id
+                            ? 'border-primary bg-primary/5 shadow-md shadow-primary/5'
+                            : 'border-gray-100 bg-white hover:border-gray-200 hover:shadow-sm'
                         }`}
                     >
-                        <div className="flex items-start gap-4">
-                            <div className={`size-12 rounded-2xl flex items-center justify-center shrink-0 text-xl transition-colors ${
+                        <div className="flex items-start gap-3">
+                            <div className={`size-10 rounded-xl flex items-center justify-center shrink-0 text-lg transition-colors ${
                                 selected === cat.id ? 'bg-primary text-white' : 'bg-gray-50 text-text-secondary group-hover:bg-gray-100'
                             }`}>
                                 {cat.icon}
                             </div>
                             <div className="min-w-0 flex-1">
-                                <span className={`text-sm font-bold block ${selected === cat.id ? 'text-primary' : 'text-text-main'}`}>
+                                <span className={`text-sm font-semibold block ${selected === cat.id ? 'text-primary' : 'text-text-main'}`}>
                                     {cat.label}
                                 </span>
-                                <span className="text-[10px] text-text-secondary/60 font-medium mt-0.5 block line-clamp-1">
+                                <span className="text-[10px] text-text-secondary/70 font-normal mt-0.5 block line-clamp-1">
                                     {cat.description.replace(/^(Businesses that|Business Involves)\s+/i, '')}
                                 </span>
                             </div>
                         </div>
                         {selected === cat.id && (
-                            <motion.div 
+                            <motion.div
                                 layoutId="check"
-                                className="absolute top-4 right-4 text-primary"
+                                className="absolute top-3 right-3 text-primary"
                             >
-                                <CheckCircle2 size={18} />
+                                <CheckCircle2 size={16} />
                             </motion.div>
                         )}
                     </button>
@@ -494,15 +596,15 @@ function CategoryStep({ data, onNext }: { data: Partial<OnboardingData>, onNext:
 
             {/* Pagination */}
             {!isLoading && meta && meta.totalPages > 1 && (
-                <div className="flex items-center justify-between bg-gray-50 px-6 py-4 rounded-2xl border border-gray-100">
-                    <p className="text-xs font-bold text-gray-400">
+                <div className="flex items-center justify-between bg-gray-50 px-4 py-3 rounded-xl border border-gray-100">
+                    <p className="text-[11px] font-semibold text-gray-400">
                         Page {meta.page} of {meta.totalPages} ({meta.total} total)
                     </p>
                     <div className="flex items-center gap-2">
                         <button
                             onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                             disabled={currentPage <= 1}
-                            className="flex items-center gap-1 px-4 py-2 text-xs font-bold rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                            className="flex items-center gap-1 px-3 py-2 text-[11px] font-bold rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
                         >
                             <ChevronLeft size={14} />
                             Prev
@@ -521,7 +623,7 @@ function CategoryStep({ data, onNext }: { data: Partial<OnboardingData>, onNext:
                                     <button
                                         key={p}
                                         onClick={() => setCurrentPage(p as number)}
-                                        className={`size-9 rounded-xl text-xs font-bold transition-all ${
+                                        className={`size-8 rounded-lg text-[11px] font-bold transition-all ${
                                             currentPage === p
                                                 ? "bg-primary text-white shadow-md shadow-primary/20"
                                                 : "text-gray-500 hover:bg-gray-50"
@@ -534,7 +636,7 @@ function CategoryStep({ data, onNext }: { data: Partial<OnboardingData>, onNext:
                         <button
                             onClick={() => setCurrentPage(p => Math.min(meta.totalPages, p + 1))}
                             disabled={currentPage >= meta.totalPages}
-                            className="flex items-center gap-1 px-4 py-2 text-xs font-bold rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                            className="flex items-center gap-1 px-3 py-2 text-[11px] font-bold rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
                         >
                             Next
                             <ChevronRight size={14} />
@@ -543,12 +645,12 @@ function CategoryStep({ data, onNext }: { data: Partial<OnboardingData>, onNext:
                 </div>
             )}
 
-            <div className="fixed bottom-0 left-0 right-0 p-6 bg-white/80 backdrop-blur-md border-t border-gray-50 md:relative md:p-0 md:bg-transparent md:border-0">
+            <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/90 backdrop-blur-md border-t border-gray-100 md:relative md:p-0 md:bg-transparent md:border-0">
                 <div className="max-w-xl mx-auto flex gap-4">
-                    <Button 
+                    <Button
                         disabled={!selected}
                         onClick={() => onNext({ category: selected })}
-                        className="flex-1 bg-primary text-white font-black uppercase tracking-widest text-xs py-8 rounded-2xl hover:bg-primary-hover shadow-xl shadow-primary/20 transition-all active:scale-[0.98]"
+                        className="flex-1 rounded-xl bg-primary px-6 py-3.5 text-[10px] font-bold uppercase tracking-wider text-white shadow-md shadow-primary/20 hover:bg-primary-hover transition-all active:scale-[0.98] disabled:opacity-50"
                     >
                         Continue
                     </Button>
@@ -577,13 +679,13 @@ function CategoryConfirmation({ onNext }: { onNext: () => void }) {
                 <CheckCircle2 size={48} />
             </div>
             <div className="space-y-2">
-                <h1 className="text-4xl font-display font-black text-text-main tracking-tight">Perfect!</h1>
-                <p className="text-text-secondary font-medium">We've customized Vemtap for your business type.</p>
+                <h1 className="text-3xl font-bold text-text-main tracking-tight">Perfect!</h1>
+                <p className="text-text-secondary font-medium">We&apos;ve customized Vemtap for your business type.</p>
             </div>
             <Button 
                 onClick={onNext}
                 variant="ghost" 
-                className="text-primary font-black uppercase tracking-widest text-[10px]"
+                className="text-primary font-bold uppercase tracking-wider text-[10px]"
             >
                 Continue <ArrowRight size={14} className="ml-2" />
             </Button>
@@ -689,33 +791,33 @@ function DetailsStep({ data, onNext, refCode }: { data: Partial<OnboardingData>,
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -20 }}
-            className="space-y-12 pb-20"
+            className="space-y-6 pb-20"
         >
-            <div className="space-y-4">
-                <h1 className="text-3xl font-display font-black text-text-main tracking-tight">
+            <div className="space-y-3">
+                <h1 className="text-2xl md:text-3xl font-bold text-text-main tracking-tight">
                     Tell Customers About Your Business
                 </h1>
-                <p className="text-text-secondary font-medium">
+                <p className="text-sm md:text-base text-text-secondary font-normal leading-relaxed">
                     Create a complete business profile.
                 </p>
             </div>
 
             {/* Business Logo Upload */}
-            <div className="space-y-4">
-                <label className="text-[10px] font-black uppercase tracking-[0.2em] text-text-secondary">Business Logo</label>
-                <div className="flex items-center gap-6">
-                    <div className="size-24 bg-gray-50 rounded-3xl border-2 border-dashed border-gray-200 flex items-center justify-center relative overflow-hidden group cursor-pointer">
+            <div className="space-y-3">
+                <label className={LABEL_CLASS}>Business Logo</label>
+                <div className={`${CARD_CLASS} flex items-center gap-5`}>
+                    <div className="size-20 bg-gray-50 rounded-xl border-2 border-dashed border-gray-200 flex items-center justify-center relative overflow-hidden group cursor-pointer shrink-0">
                         {localData.logo ? (
                             <img src={localData.logo} alt="Logo Preview" className="size-full object-cover" />
                         ) : (
                             <div className="flex flex-col items-center gap-1 text-gray-400">
-                                <Camera size={24} />
-                                <span className="text-[10px] font-bold">Upload</span>
+                                <Camera size={20} />
+                                <span className="text-[9px] font-bold">Upload</span>
                             </div>
                         )}
-                        <input 
-                            type="file" 
-                            className="absolute inset-0 opacity-0 cursor-pointer" 
+                        <input
+                            type="file"
+                            className="absolute inset-0 opacity-0 cursor-pointer"
                             accept="image/*"
                             onChange={(e) => {
                                 const file = e.target.files?.[0];
@@ -727,13 +829,13 @@ function DetailsStep({ data, onNext, refCode }: { data: Partial<OnboardingData>,
                             }}
                         />
                     </div>
-                    <div className="space-y-2">
-                        <p className="text-xs font-bold text-text-main leading-tight">Recommended: Square PNG/JPG</p>
-                        <p className="text-[10px] text-text-secondary font-medium">Max size: 2MB. We'll help you crop it.</p>
-                        <div className="flex gap-3 pt-2">
-                            <Button variant="ghost" className="h-8 px-3 text-[10px] font-black uppercase tracking-widest bg-gray-50">Choose File</Button>
+                    <div className="space-y-1.5 min-w-0">
+                        <p className="text-xs font-semibold text-text-main leading-tight">Recommended: Square PNG/JPG</p>
+                        <p className="text-[10px] text-text-secondary font-normal">Max size: 2MB. We&apos;ll help you crop it.</p>
+                        <div className="flex gap-3 pt-1.5">
+                            <Button variant="ghost" className="h-8 px-3 text-[10px] font-bold uppercase tracking-wider bg-gray-50">Choose File</Button>
                             {localData.logo && (
-                                <button onClick={() => setLocalData({...localData, logo: null})} className="text-[10px] font-black uppercase tracking-widest text-red-500 hover:underline">Remove</button>
+                                <button onClick={() => setLocalData({...localData, logo: null})} className="text-[10px] font-bold uppercase tracking-wider text-red-500 hover:underline cursor-pointer">Remove</button>
                             )}
                         </div>
                     </div>
@@ -741,115 +843,115 @@ function DetailsStep({ data, onNext, refCode }: { data: Partial<OnboardingData>,
             </div>
 
             {/* Business Name */}
-            <div className="space-y-4">
-                <label className="text-[10px] font-black uppercase tracking-[0.2em] text-text-secondary">Business Name</label>
-                <input 
+            <div className="space-y-3">
+                <label className={LABEL_CLASS}>Business Name</label>
+                <input
                     type="text"
                     value={localData.businessName}
                     onChange={(e) => setLocalData({ ...localData, businessName: e.target.value })}
                     placeholder="e.g. The Coffee House"
-                    className="w-full px-6 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-primary/20 outline-none font-bold text-lg"
+                    className={INPUT_CLASS}
                 />
             </div>
 
             {/* Address Section */}
-            <div className="space-y-6">
-                <label className="text-[10px] font-black uppercase tracking-[0.2em] text-text-secondary">Business Address</label>
-                <div className="space-y-4">
+            <div className="space-y-3">
+                <label className={LABEL_CLASS}>Business Address</label>
+                <div className="space-y-3">
                     <div className="relative">
-                        <MapPin className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-                        <input 
+                        <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+                        <input
                             type="text"
                             placeholder="Street Address"
                             value={localData.address.street}
                             onChange={(e) => setLocalData({ ...localData, address: { ...localData.address, street: e.target.value } })}
-                            className="w-full pl-14 pr-6 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-primary/20 outline-none font-bold text-sm"
+                            className={`${INPUT_CLASS} pl-11`}
                         />
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
-                        <input 
+                    <div className="grid grid-cols-1 gap-3">
+                        <input
                             type="text" placeholder="City"
                             value={localData.address.city}
                             onChange={(e) => setLocalData({ ...localData, address: { ...localData.address, city: e.target.value } })}
-                            className="w-full px-6 py-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none font-bold text-sm"
+                            className={INPUT_CLASS}
                         />
-                        <input 
+                        <input
                             type="text" placeholder="State"
                             value={localData.address.state}
                             onChange={(e) => setLocalData({ ...localData, address: { ...localData.address, state: e.target.value } })}
-                            className="w-full px-6 py-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none font-bold text-sm"
+                            className={INPUT_CLASS}
                         />
                     </div>
                 </div>
             </div>
 
             {/* Business Description */}
-            <div className="space-y-4">
+            <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                    <label className="text-[10px] font-black uppercase tracking-[0.2em] text-text-secondary">Business Description</label>
-                    <span className="text-[10px] font-black text-text-secondary opacity-40">{localData.description.length}/300</span>
+                    <label className={LABEL_CLASS}>Business Description</label>
+                    <span className="text-[10px] font-semibold text-text-secondary opacity-40">{localData.description.length}/300</span>
                 </div>
-                <textarea 
+                <textarea
                     maxLength={300}
                     value={localData.description}
                     onChange={(e) => setLocalData({ ...localData, description: e.target.value })}
                     placeholder="Tell your customers what makes your business special..."
                     rows={4}
-                    className="w-full px-6 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-primary/20 outline-none font-medium text-sm resize-none"
+                    className="w-full px-4 py-3.5 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white text-sm font-medium outline-none focus:ring-4 focus:ring-blue-50 focus:border-primary/40 transition-all resize-none"
                 />
             </div>
 
             {/* Website */}
-            <div className="space-y-4">
-                <label className="text-[10px] font-black uppercase tracking-[0.2em] text-text-secondary">Website (Optional)</label>
+            <div className="space-y-3">
+                <label className={LABEL_CLASS}>Website (Optional)</label>
                 <div className="relative">
-                    <Globe className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-                    <input 
+                    <Globe className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+                    <input
                         type="url"
                         value={localData.website}
                         onChange={(e) => setLocalData({ ...localData, website: e.target.value })}
                         placeholder="https://yourwebsite.com"
-                        className="w-full pl-14 pr-6 py-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none font-bold text-sm"
+                        className={`${INPUT_CLASS} pl-11`}
                     />
                 </div>
             </div>
 
             {/* Social Media Section */}
-            <div className="space-y-6">
-                <label className="text-[10px] font-black uppercase tracking-[0.2em] text-text-secondary">Social Media</label>
-                <div className="space-y-6">
+            <div className="space-y-3">
+                <label className={LABEL_CLASS}>Social Media</label>
+                <div className="space-y-4">
                     <div className="relative">
                         <div className="flex gap-3">
                             <div className="relative flex-1">
                                 <button
                                     type="button"
                                     onClick={() => setIsSocialDropdownOpen(!isSocialDropdownOpen)}
-                                    className="w-full h-14 bg-gray-50 border border-gray-100 rounded-xl px-4 flex items-center justify-between text-sm font-bold text-text-main hover:bg-gray-100 transition-all"
+                                    className="w-full h-11 bg-gray-50 border border-gray-200 rounded-xl px-4 flex items-center justify-between text-sm font-medium text-text-main hover:bg-gray-100 transition-all"
                                 >
                                     <div className="flex items-center gap-3">
                                         {selectedSocial ? (
                                             <>
                                                 <div className={`p-1.5 rounded-lg bg-white shadow-sm ${selectedSocial.color}`}>
-                                                    <selectedSocial.icon size={16} />
+                                                    <selectedSocial.icon size={15} />
                                                 </div>
-                                                <span>{selectedSocial.name}</span>
+                                                <span className="font-semibold">{selectedSocial.name}</span>
                                             </>
                                         ) : (
                                             <>
                                                 <div className="p-1.5 rounded-lg bg-white shadow-sm text-gray-400">
-                                                    <Plus size={16} />
+                                                    <Plus size={15} />
                                                 </div>
-                                                <span className="text-gray-400">Select Platform</span>
+                                                <span className="text-gray-400 font-normal">Select Platform</span>
                                             </>
                                         )}
                                     </div>
-                                    <ChevronDown size={16} className={`text-gray-400 transition-transform ${isSocialDropdownOpen ? 'rotate-180' : ''}`} />
+                                    <ChevronDown size={15} className={`text-gray-400 transition-transform ${isSocialDropdownOpen ? 'rotate-180' : ''}`} />
                                 </button>
                                 {isSocialDropdownOpen && (
                                     <motion.div
                                         initial={{ opacity: 0, y: 10 }}
                                         animate={{ opacity: 1, y: 0 }}
-                                        className="absolute left-0 right-0 top-full mt-2 bg-white border border-gray-100 rounded-2xl shadow-xl z-[9999] overflow-hidden py-2"
+                                        className="absolute left-0 right-0 top-full mt-2 bg-white border border-gray-100 rounded-xl shadow-xl z-[9999] overflow-hidden py-1.5"
                                     >
                                         {SOCIAL_PLATFORMS.map((platform) => {
                                             const isAlreadyAdded = activeSocials.some(s => s.id === platform.id);
@@ -862,15 +964,15 @@ function DetailsStep({ data, onNext, refCode }: { data: Partial<OnboardingData>,
                                                         setSelectedSocial(platform);
                                                         setIsSocialDropdownOpen(false);
                                                     }}
-                                                    className="w-full px-4 py-3 flex items-center gap-3 hover:bg-gray-50 transition-colors disabled:opacity-40 disabled:grayscale"
+                                                    className="w-full px-4 py-2.5 flex items-center gap-3 hover:bg-gray-50 transition-colors disabled:opacity-40 disabled:grayscale"
                                                 >
-                                                    <div className={`p-2 rounded-xl ${platform.bg} ${platform.color}`}>
-                                                        <platform.icon size={18} />
+                                                    <div className={`p-1.5 rounded-lg ${platform.bg} ${platform.color}`}>
+                                                        <platform.icon size={16} />
                                                     </div>
-                                                    <div className="flex-1 text-left text-sm font-bold text-text-main">
+                                                    <div className="flex-1 text-left text-sm font-semibold text-text-main">
                                                         {platform.name}
                                                         {isAlreadyAdded && platform.id !== 'custom' && (
-                                                            <span className="ml-2 text-[9px] uppercase tracking-widest text-green-500 font-black">Added</span>
+                                                            <span className="ml-2 text-[9px] uppercase tracking-wider text-green-500 font-bold">Added</span>
                                                         )}
                                                     </div>
                                                 </button>
@@ -884,7 +986,7 @@ function DetailsStep({ data, onNext, refCode }: { data: Partial<OnboardingData>,
                             <motion.div
                                 initial={{ opacity: 0, height: 0 }}
                                 animate={{ opacity: 1, height: 'auto' }}
-                                className="mt-4 space-y-3 overflow-hidden"
+                                className="mt-3 space-y-2.5 overflow-hidden"
                             >
                                 <div className="flex gap-2">
                                     <div className="flex-1 relative">
@@ -893,11 +995,11 @@ function DetailsStep({ data, onNext, refCode }: { data: Partial<OnboardingData>,
                                             value={socialHandle}
                                             onChange={(e) => setSocialHandle(e.target.value)}
                                             placeholder={selectedSocial.placeholder}
-                                            className="w-full h-12 bg-white border border-gray-200 rounded-xl px-4 text-sm font-bold text-text-main focus:ring-4 focus:ring-primary/10 transition-all outline-none"
+                                            className="w-full h-11 bg-white border border-gray-200 rounded-xl px-4 text-sm font-medium text-text-main focus:ring-4 focus:ring-primary/10 transition-all outline-none"
                                             autoFocus
                                         />
                                         {selectedSocial.prefix && (
-                                            <div className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-black text-gray-300 uppercase tracking-tighter">
+                                            <div className="absolute right-4 top-1/2 -translate-y-1/2 text-[9px] font-bold text-gray-300 uppercase tracking-tighter">
                                                 Handle Only
                                             </div>
                                         )}
@@ -906,21 +1008,21 @@ function DetailsStep({ data, onNext, refCode }: { data: Partial<OnboardingData>,
                                         type="button"
                                         onClick={handleAddSocial}
                                         disabled={!socialHandle.trim()}
-                                        className="h-12 px-6 bg-primary text-white rounded-xl text-xs font-black uppercase tracking-widest shadow-lg shadow-primary/20 hover:bg-primary-hover transition-all disabled:opacity-50"
+                                        className="h-11 px-5 bg-primary text-white rounded-xl text-[10px] font-bold uppercase tracking-wider shadow-md shadow-primary/20 hover:bg-primary-hover transition-all disabled:opacity-50"
                                     >
                                         Add
                                     </button>
                                     <button
                                         type="button"
                                         onClick={() => { setSelectedSocial(null); setSocialHandle(''); }}
-                                        className="h-12 w-12 flex items-center justify-center bg-gray-50 text-gray-400 rounded-xl hover:bg-gray-100 transition-colors"
+                                        className="h-11 w-11 flex items-center justify-center bg-gray-50 text-gray-400 rounded-xl hover:bg-gray-100 transition-colors"
                                     >
-                                        <X size={18} />
+                                        <X size={16} />
                                     </button>
                                 </div>
                                 {selectedSocial.prefix && (
                                     <p className="text-[10px] text-gray-400 ml-1">
-                                        Your profile link will be: <span className="text-primary font-bold">{selectedSocial.prefix}{socialHandle || 'handle'}</span>
+                                        Your profile link will be: <span className="text-primary font-semibold">{selectedSocial.prefix}{socialHandle || 'handle'}</span>
                                     </p>
                                 )}
                             </motion.div>
@@ -928,7 +1030,7 @@ function DetailsStep({ data, onNext, refCode }: { data: Partial<OnboardingData>,
                     </div>
                     {activeSocials.length > 0 && (
                         <div className="space-y-2 mt-2">
-                            <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Active Links</label>
+                            <label className="text-[10px] font-bold uppercase tracking-wider text-text-secondary ml-1">Active Links</label>
                             <div className="grid grid-cols-1 gap-2">
                                 {activeSocials.map((social) => (
                                     <motion.div
@@ -936,14 +1038,14 @@ function DetailsStep({ data, onNext, refCode }: { data: Partial<OnboardingData>,
                                         key={social.id}
                                         initial={{ opacity: 0, scale: 0.95 }}
                                         animate={{ opacity: 1, scale: 1 }}
-                                        className="flex items-center justify-between p-3 bg-white border border-gray-100 rounded-2xl shadow-sm"
+                                        className="flex items-center justify-between p-3 bg-white border border-gray-100 rounded-xl shadow-sm"
                                     >
                                         <div className="flex items-center gap-3 flex-1 min-w-0">
-                                            <div className={`p-2 rounded-xl ${social.bg} ${social.color} shrink-0`}>
-                                                <social.icon size={18} />
+                                            <div className={`p-2 rounded-lg ${social.bg} ${social.color} shrink-0`}>
+                                                <social.icon size={16} />
                                             </div>
                                             <div className="min-w-0">
-                                                <p className="text-[10px] font-black text-text-main uppercase tracking-tighter leading-none">{social.name}</p>
+                                                <p className="text-[10px] font-bold text-text-main uppercase tracking-tighter leading-none">{social.name}</p>
                                                 <p className="text-[11px] text-text-secondary font-medium truncate mt-1">
                                                     {social.url}
                                                 </p>
@@ -954,7 +1056,7 @@ function DetailsStep({ data, onNext, refCode }: { data: Partial<OnboardingData>,
                                             onClick={() => removeSocial(social.id)}
                                             className="p-2 text-gray-300 hover:text-rose-500 transition-colors"
                                         >
-                                            <Trash2 size={16} />
+                                            <Trash2 size={15} />
                                         </button>
                                     </motion.div>
                                 ))}
@@ -965,22 +1067,22 @@ function DetailsStep({ data, onNext, refCode }: { data: Partial<OnboardingData>,
             </div>
 
             {/* Live Profile Preview Card */}
-            <div className="space-y-6">
-                <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-text-secondary text-center">Live Profile Preview</h3>
-                <div className="max-w-[320px] mx-auto w-full bg-white rounded-[2.5rem] shadow-2xl border border-gray-100 overflow-hidden">
-                    <div className="h-24 bg-primary/10 flex items-center justify-center">
-                        <div className="size-16 bg-white rounded-2xl shadow-sm flex items-center justify-center overflow-hidden">
-                            {localData.logo ? <img src={localData.logo} className="size-full object-cover" /> : <LogoIcon className="text-primary size-8" />}
+            <div className="space-y-3">
+                <h3 className="text-[10px] font-bold uppercase tracking-[0.14em] text-text-secondary text-center">Live Profile Preview</h3>
+                <div className="max-w-[300px] mx-auto w-full bg-white rounded-2xl shadow-md border border-gray-100 overflow-hidden">
+                    <div className="h-20 bg-primary/10 flex items-center justify-center">
+                        <div className="size-14 bg-white rounded-xl shadow-sm flex items-center justify-center overflow-hidden">
+                            {localData.logo ? <img src={localData.logo} alt="Logo" className="size-full object-cover" /> : <LogoIcon className="text-primary size-7" />}
                         </div>
                     </div>
-                    <div className="p-6 text-center space-y-4">
+                    <div className="p-5 text-center space-y-3">
                         <div className="space-y-1">
-                            <h4 className="font-black text-lg text-text-main line-clamp-1">{localData.businessName || 'Business Name'}</h4>
-                            <p className="text-[10px] font-black uppercase tracking-widest text-primary bg-primary/5 inline-block px-3 py-1 rounded-full">
+                            <h4 className="font-bold text-base text-text-main line-clamp-1">{localData.businessName || 'Business Name'}</h4>
+                            <p className="text-[9px] font-bold uppercase tracking-wider text-primary bg-primary/5 inline-block px-3 py-1 rounded-full">
                                 {data.category || 'Category'}
                             </p>
                         </div>
-                        <p className="text-xs text-text-secondary font-medium line-clamp-2">
+                        <p className="text-xs text-text-secondary font-normal line-clamp-2">
                             {localData.description || 'Your business description will appear here for customers to see.'}
                         </p>
                         <div className="flex justify-center gap-3">
@@ -991,20 +1093,20 @@ function DetailsStep({ data, onNext, refCode }: { data: Partial<OnboardingData>,
                                     </div>
                                 ))
                             ) : (
-                                <div className="text-[10px] text-text-secondary opacity-30 font-bold uppercase tracking-widest py-2">Socials appear here</div>
+                                <div className="text-[10px] text-text-secondary opacity-30 font-bold uppercase tracking-wider py-2">Socials appear here</div>
                             )}
                         </div>
-                        <Button className="w-full bg-primary text-white text-[10px] font-black uppercase tracking-widest rounded-xl py-6">Connect With Us</Button>
+                        <Button className="w-full bg-primary text-white text-[10px] font-bold uppercase tracking-wider rounded-xl py-3.5">Connect With Us</Button>
                     </div>
                 </div>
             </div>
 
-            <div className="fixed bottom-0 left-0 right-0 p-6 bg-white/80 backdrop-blur-md border-t border-gray-50 md:relative md:p-0 md:bg-transparent md:border-0">
+            <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/90 backdrop-blur-md border-t border-gray-100 md:relative md:p-0 md:bg-transparent md:border-0">
                 <div className="max-w-xl mx-auto flex gap-4">
-                    <Button 
+                    <Button
                         disabled={!localData.businessName || !localData.address.street || isSaving}
                         onClick={handleContinue}
-                        className="flex-1 bg-primary text-white font-black uppercase tracking-widest text-xs py-8 rounded-2xl hover:bg-primary-hover shadow-xl shadow-primary/20 transition-all active:scale-[0.98]"
+                        className="flex-1 rounded-xl bg-primary px-6 py-3.5 text-[10px] font-bold uppercase tracking-wider text-white shadow-md shadow-primary/20 hover:bg-primary-hover transition-all active:scale-[0.98] disabled:opacity-50"
                     >
                         {isSaving ? 'Saving...' : 'Continue'}
                     </Button>
@@ -1097,32 +1199,32 @@ function OperatingStep({ data, onNext, refCode }: { data: Partial<OnboardingData
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -20 }}
-            className="space-y-12 pb-20"
+            className="space-y-6 pb-20"
         >
-            <div className="space-y-4">
-                <h1 className="text-3xl font-display font-black text-text-main tracking-tight">
+            <div className="space-y-3">
+                <h1 className="text-2xl md:text-3xl font-bold text-text-main tracking-tight">
                     Business Operating Information
                 </h1>
-                <p className="text-text-secondary font-medium">
+                <p className="text-sm md:text-base text-text-secondary font-normal leading-relaxed">
                     How and when can customers reach you?
                 </p>
             </div>
 
             {/* Contact Information Section */}
-            <div className="space-y-6">
-                <label className="text-[10px] font-black uppercase tracking-[0.2em] text-text-secondary">Contact Information</label>
-                <div className="space-y-4">
+            <div className="space-y-3">
+                <label className={LABEL_CLASS}>Contact Information</label>
+                <div className="space-y-3">
                     {/* Business Email */}
                     <div className="space-y-2">
                         <div className="relative">
-                            <Mail className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-                            <input 
+                            <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+                            <input
                                 type="email"
                                 placeholder="Business Email"
                                 value={localData.contact.email}
                                 onChange={(e) => setLocalData({ ...localData, contact: { ...localData.contact, email: e.target.value } })}
                                 disabled={useSignupEmail}
-                                className="w-full pl-14 pr-6 py-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none font-bold text-sm disabled:opacity-60 disabled:cursor-not-allowed"
+                                className={`${INPUT_CLASS} pl-11 disabled:opacity-60 disabled:cursor-not-allowed`}
                             />
                         </div>
                         <div className="flex items-center gap-2 ml-1">
@@ -1139,14 +1241,14 @@ function OperatingStep({ data, onNext, refCode }: { data: Partial<OnboardingData
                     {/* WhatsApp Business Number */}
                     <div className="space-y-2">
                         <div className="relative">
-                            <MessageCircle className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-                            <input 
+                            <MessageCircle className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+                            <input
                                 type="tel"
                                 placeholder="WhatsApp Business Number"
                                 value={localData.contact.whatsapp}
                                 onChange={(e) => setLocalData({ ...localData, contact: { ...localData.contact, whatsapp: e.target.value } })}
                                 disabled={useSignupPhone}
-                                className="w-full pl-14 pr-6 py-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none font-bold text-sm disabled:opacity-60 disabled:cursor-not-allowed"
+                                className={`${INPUT_CLASS} pl-11 disabled:opacity-60 disabled:cursor-not-allowed`}
                             />
                         </div>
                         <div className="flex items-center gap-2 ml-1">
@@ -1164,60 +1266,84 @@ function OperatingStep({ data, onNext, refCode }: { data: Partial<OnboardingData
             </div>
 
             {/* Opening Hours Section */}
-            <div className="space-y-8">
+            <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                    <label className="text-[10px] font-black uppercase tracking-[0.2em] text-text-secondary">Opening Hours</label>
-                    <button onClick={applyToAll} className="text-[10px] font-black uppercase tracking-widest text-primary hover:underline">Apply Monday To All</button>
+                    <label className={LABEL_CLASS}>Opening Hours</label>
+                    <button
+                        type="button"
+                        onClick={applyToAll}
+                        className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-primary hover:underline cursor-pointer transition-colors"
+                    >
+                        <Copy size={12} />
+                        Copy Monday
+                    </button>
                 </div>
 
-                <div className="space-y-4">
+                <div className="space-y-3">
                     {days.map((day) => {
                         const h = (localData.hours as any)[day];
+                        const isClosed = !!h.isClosed;
+                        const is24h = !!h.is24h;
                         return (
-                            <div key={day} className="bg-gray-50 rounded-[2rem] p-6 border border-gray-100 space-y-4">
-                                <div className="flex items-center justify-between">
-                                    <span className="font-bold text-sm">{day}</span>
-                                    <div className="flex items-center gap-4">
-                                        <div className="flex items-center gap-2">
-                                            <span className="text-[10px] font-black uppercase tracking-widest text-text-secondary opacity-50">24h</span>
-                                            <Switch 
-                                                checked={h.is24h}
-                                                onCheckedChange={(val) => updateDay(day, { is24h: val, isClosed: false })}
+                            <div key={day} className="rounded-2xl border border-gray-100 bg-white p-5 md:p-6 shadow-sm space-y-4">
+                                <div className="flex items-center justify-between gap-2">
+                                    <h4 className="text-[10px] font-bold uppercase tracking-[0.14em] text-text-secondary">{day}</h4>
+                                    <div className="flex items-center gap-1.5">
+                                        <button
+                                            type="button"
+                                            onClick={() => updateDay(day, { is24h: !is24h, isClosed: false })}
+                                            className={`px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider border transition-all ${
+                                                is24h
+                                                    ? 'bg-primary text-white border-primary shadow-sm'
+                                                    : 'bg-white text-text-secondary/70 border-gray-200 hover:border-primary/40'
+                                            }`}
+                                        >
+                                            24 Hours
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => updateDay(day, { isClosed: !isClosed, is24h: false })}
+                                            className={`px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider border transition-all ${
+                                                isClosed
+                                                    ? 'bg-red-500 text-white border-red-500 shadow-sm'
+                                                    : 'bg-white text-text-secondary/70 border-gray-200 hover:border-red-300'
+                                            }`}
+                                        >
+                                            Closed
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {isClosed ? (
+                                    <div className="flex items-center gap-2 text-xs font-bold text-red-500">
+                                        <Clock size={14} /> Closed on {day}
+                                    </div>
+                                ) : is24h ? (
+                                    <div className="flex items-center gap-2 text-xs font-bold text-primary">
+                                        <Clock size={14} /> Open 24 Hours
+                                    </div>
+                                ) : (
+                                    <div className="flex items-start gap-3">
+                                        <div className="flex-1 min-w-0" onClick={(e) => (e.currentTarget.querySelector<HTMLInputElement>('input[type="time"]')?.showPicker())}>
+                                            <label className={LABEL_CLASS}>Open</label>
+                                            <input
+                                                type="time"
+                                                value={h.open}
+                                                onChange={(e) => updateDay(day, { open: e.target.value })}
+                                                className={`${INPUT_CLASS} cursor-pointer`}
                                             />
                                         </div>
-                                        <div className="flex items-center gap-2">
-                                            <span className="text-[10px] font-black uppercase tracking-widest text-text-secondary opacity-50">Closed</span>
-                                            <Switch 
-                                                checked={h.isClosed}
-                                                onCheckedChange={(val) => updateDay(day, { isClosed: val, is24h: false })}
+                                        <span className="mt-9 text-sm font-bold text-gray-300 shrink-0">—</span>
+                                        <div className="flex-1 min-w-0" onClick={(e) => (e.currentTarget.querySelector<HTMLInputElement>('input[type="time"]')?.showPicker())}>
+                                            <label className={LABEL_CLASS}>Close</label>
+                                            <input
+                                                type="time"
+                                                value={h.close}
+                                                onChange={(e) => updateDay(day, { close: e.target.value })}
+                                                className={`${INPUT_CLASS} cursor-pointer`}
                                             />
                                         </div>
                                     </div>
-                                </div>
-                                
-                                {!h.isClosed && !h.is24h && (
-                                    <motion.div 
-                                        initial={{ opacity: 0, height: 0 }}
-                                        animate={{ opacity: 1, height: 'auto' }}
-                                        className="flex items-center gap-4 pt-2"
-                                    >
-                                        <div className="flex-1 space-y-2">
-                                            <label className="text-[9px] font-black uppercase tracking-widest text-text-secondary ml-1 opacity-50">Open</label>
-                                            <input 
-                                                type="time" value={h.open}
-                                                onChange={(e) => updateDay(day, { open: e.target.value })}
-                                                className="w-full px-4 py-3 bg-white border border-gray-100 rounded-xl outline-none font-bold text-xs"
-                                            />
-                                        </div>
-                                        <div className="flex-1 space-y-2">
-                                            <label className="text-[9px] font-black uppercase tracking-widest text-text-secondary ml-1 opacity-50">Close</label>
-                                            <input 
-                                                type="time" value={h.close}
-                                                onChange={(e) => updateDay(day, { close: e.target.value })}
-                                                className="w-full px-4 py-3 bg-white border border-gray-100 rounded-xl outline-none font-bold text-xs"
-                                            />
-                                        </div>
-                                    </motion.div>
                                 )}
                             </div>
                         );
@@ -1226,14 +1352,14 @@ function OperatingStep({ data, onNext, refCode }: { data: Partial<OnboardingData
             </div>
 
             {/* Timezone Selector */}
-            <div className="space-y-4">
-                <label className="text-[10px] font-black uppercase tracking-[0.2em] text-text-secondary">Timezone</label>
+            <div className="space-y-3">
+                <label className={LABEL_CLASS}>Timezone</label>
                 <div className="relative">
-                    <Clock className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-                    <select 
+                    <Clock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+                    <select
                         value={localData.timezone}
                         onChange={(e) => setLocalData({ ...localData, timezone: e.target.value })}
-                        className="w-full pl-14 pr-6 py-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none font-bold text-sm appearance-none"
+                        className={`${INPUT_CLASS} pl-11 appearance-none`}
                     >
                         <option value={localData.timezone}>{localData.timezone} (Auto-detected)</option>
                         {/* More timezones could be added here */}
@@ -1242,9 +1368,9 @@ function OperatingStep({ data, onNext, refCode }: { data: Partial<OnboardingData
             </div>
 
             {/* Visibility Toggle */}
-            <div className="bg-primary/5 rounded-[2rem] p-8 border border-primary/10 flex items-center justify-between">
+            <div className="rounded-2xl border border-primary/10 bg-primary/5 p-5 md:p-6 flex items-center justify-between">
                 <div className="space-y-1">
-                    <h3 className="font-black text-sm text-text-main flex items-center gap-2">
+                    <h3 className="font-bold text-sm text-text-main flex items-center gap-2">
                         {localData.isVisible ? <Eye size={16} className="text-primary" /> : <EyeOff size={16} className="text-text-secondary" />}
                         Business Visibility
                     </h3>
@@ -1252,18 +1378,18 @@ function OperatingStep({ data, onNext, refCode }: { data: Partial<OnboardingData
                         {localData.isVisible ? 'Your profile is visible to customers' : 'Your profile is hidden while you set up'}
                     </p>
                 </div>
-                <Switch 
+                <Switch
                     checked={localData.isVisible}
                     onCheckedChange={(val) => setLocalData({ ...localData, isVisible: val })}
                 />
             </div>
 
-            <div className="fixed bottom-0 left-0 right-0 p-6 bg-white/80 backdrop-blur-md border-t border-gray-50 md:relative md:p-0 md:bg-transparent md:border-0">
+            <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/90 backdrop-blur-md border-t border-gray-100 md:relative md:p-0 md:bg-transparent md:border-0">
                 <div className="max-w-xl mx-auto">
-                    <Button 
+                    <Button
                         disabled={!localData.contact.email || isSaving}
                         onClick={handleContinue}
-                        className="w-full bg-primary text-white font-black uppercase tracking-widest text-xs py-8 rounded-2xl hover:bg-primary-hover shadow-xl shadow-primary/20 transition-all active:scale-[0.98]"
+                        className="w-full rounded-xl bg-primary px-6 py-3.5 text-[10px] font-bold uppercase tracking-wider text-white shadow-md shadow-primary/20 hover:bg-primary-hover transition-all active:scale-[0.98] disabled:opacity-50"
                     >
                         {isSaving ? 'Saving...' : 'Continue'}
                     </Button>
@@ -1334,6 +1460,7 @@ const normalizePlanFeatures = (plan: PricingPlan) => {
 function SubscriptionStep({ data, onNext }: { data: Partial<OnboardingData>, onNext: (d: any) => void }) {
     const [billingCycle, setBillingCycle] = useState<'monthly' | 'quarterly' | 'yearly'>('monthly');
     const [selectedPlan, setSelectedPlan] = useState(data.planId || '');
+    const [expandedPlanId, setExpandedPlanId] = useState<string | null>(null);
     const { data: plans = [], isLoading: plansLoading } = usePricingPlans();
     const activePlans = plans
         .filter((p: PricingPlan) => p.isActive)
@@ -1378,6 +1505,27 @@ function SubscriptionStep({ data, onNext }: { data: Partial<OnboardingData>, onN
         return null;
     };
 
+    // Cross-sell totals shown under the price depending on the active cycle.
+    // Monthly: show quarter + yearly totals with % off. Quarterly: show yearly.
+    // Yearly: show nothing.
+    const getCrossSell = (plan: PricingPlan) => {
+        if (plan.isFree) return [];
+        const monthly = plan.monthlyPrice;
+        if (billingCycle === 'monthly') {
+            const q = plan.quarterlyPrice || monthly * 3;
+            const y = plan.yearlyPrice || monthly * 12;
+            return [
+                { label: 'Quarter', total: q, period: '/qtr', save: q < monthly * 3 ? '10% off' : null },
+                { label: 'Yearly', total: y, period: '/yr', save: y < monthly * 12 ? '20% off' : null },
+            ];
+        }
+        if (billingCycle === 'quarterly') {
+            const y = plan.yearlyPrice || monthly * 12;
+            return y < monthly * 12 ? [{ label: 'Yearly', total: y, period: '/yr', save: '20% off' }] : [];
+        }
+        return [];
+    };
+
     const isCustomPricePlan = (plan: PricingPlan) => !plan.isFree && plan.monthlyPrice === 0;
 
     const handleEnterpriseInquiry = () => {
@@ -1399,42 +1547,46 @@ function SubscriptionStep({ data, onNext }: { data: Partial<OnboardingData>, onN
         onNext({ planId, billingCycle, isTrial });
     };
 
+    const toggleFeatures = (planId: string) => {
+        setExpandedPlanId(prev => (prev === planId ? null : planId));
+    };
+
     return (
         <motion.div
             key="subscription"
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -20 }}
-            className="space-y-8 pb-32 md:pb-20"
+            className="space-y-6 pb-32 md:pb-20"
         >
             <div className="text-center space-y-3">
-                <span className="inline-block px-4 py-1.5 bg-primary/10 text-primary text-[10px] font-black uppercase tracking-[0.2em] rounded-full">
-                    Transparent Pricing
+                <span className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-primary/10 rounded-full">
+                    <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-primary">Transparent Pricing</span>
                 </span>
-                <h1 className="text-3xl sm:text-4xl font-display font-black text-text-main tracking-tight">
+                <h1 className="text-2xl md:text-3xl font-bold text-text-main tracking-tight">
                     Choose Your Subscription Plan
                 </h1>
-                <p className="text-text-secondary font-medium max-w-md mx-auto text-sm sm:text-base">
+                <p className="text-sm md:text-base text-text-secondary font-normal max-w-md mx-auto leading-relaxed">
                     Select a plan to launch your business. Start with a free trial or subscribe directly.
                 </p>
             </div>
 
-            {/* Billing Toggle */}
+            {/* Billing Cycle Tabs */}
             <div className="flex justify-center">
-                <div className="bg-gray-100/80 p-1.5 rounded-2xl flex items-center gap-1 shadow-inner">
+                <div className="bg-gray-100/80 p-1 rounded-xl flex items-center gap-1 shadow-inner">
                     {(['monthly', 'quarterly', 'yearly'] as const).map((cycle) => (
                         <button
                             key={cycle}
                             onClick={() => setBillingCycle(cycle)}
-                            className={`relative px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${
+                            className={`relative px-4 md:px-5 py-2.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all whitespace-nowrap ${
                                 billingCycle === cycle
-                                    ? 'bg-white shadow-md text-primary scale-[1.02]'
+                                    ? 'bg-white shadow-md text-primary'
                                     : 'text-text-secondary/70 hover:text-text-main'
                             }`}
                         >
                             {cycle === 'monthly' ? 'Monthly' : cycle === 'quarterly' ? 'Quarterly' : 'Yearly'}
                             {getDiscount(cycle) && (
-                                <span className="block text-[7px] text-emerald-600 font-black tracking-wider -mt-0.5">
+                                <span className="block text-[7px] text-emerald-600 font-bold tracking-wide -mt-0.5">
                                     {getDiscount(cycle)}
                                 </span>
                             )}
@@ -1452,41 +1604,43 @@ function SubscriptionStep({ data, onNext }: { data: Partial<OnboardingData>, onN
                     <p className="text-text-secondary font-medium">No plans available at the moment.</p>
                 </div>
             ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 max-w-4xl mx-auto">
                     {activePlans.map((plan: PricingPlan) => {
                         const isSelected = selectedPlan === plan.id;
                         const isPopular = plan.isPopular;
                         const price = getPrice(plan);
                         const periodLabel = getPeriodLabel(plan);
                         const savings = getSavings(plan, billingCycle);
+                        const crossSell = getCrossSell(plan);
                         const trialDays = plan.isFree ? 0 : (plan.trialDurationDays || plan.freeDurationDays || 0);
                         const features = normalizePlanFeatures(plan);
+                        const isExpanded = expandedPlanId === plan.id;
 
                         return (
                             <div
                                 key={plan.id}
-                                className={`relative rounded-[32px] border-2 transition-all duration-300 flex flex-col overflow-hidden ${
+                                className={`relative rounded-2xl border bg-white transition-all duration-300 flex flex-col ${
                                     isSelected
-                                        ? 'border-primary shadow-2xl shadow-primary/20 ring-4 ring-primary/10'
+                                        ? 'border-primary shadow-lg shadow-primary/10 ring-2 ring-primary/10'
                                         : isPopular
-                                            ? 'border-primary/30 shadow-xl hover:shadow-2xl'
-                                            : 'border-gray-100 shadow-md hover:shadow-xl hover:border-gray-200'
-                                } ${isPopular ? 'md:scale-[1.02] z-10' : ''}`}
+                                            ? 'border-primary/30 shadow-md hover:shadow-lg'
+                                            : 'border-gray-100 shadow-sm hover:shadow-md hover:border-gray-200'
+                                }`}
                             >
                                 {/* Popular Badge */}
                                 {isPopular && (
                                     <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10">
-                                        <div className="px-5 py-1.5 bg-gradient-to-r from-primary to-blue-600 text-white text-[9px] font-black uppercase tracking-[0.2em] rounded-full shadow-lg shadow-primary/30">
+                                        <div className="px-4 py-1 bg-primary text-white text-[9px] font-bold uppercase tracking-[0.14em] rounded-full shadow-md shadow-primary/30 whitespace-nowrap">
                                             Most Popular Choice
                                         </div>
                                     </div>
                                 )}
 
                                 {/* Card Header */}
-                                <div className={`p-6 sm:p-7 ${isSelected && isPopular ? 'bg-primary text-white' : isPopular ? 'bg-gradient-to-b from-primary/[0.04] to-transparent' : 'bg-white'}`}>
+                                <div className={`rounded-t-2xl p-5 md:p-6 ${isSelected && isPopular ? 'bg-primary text-white' : 'bg-white'}`}>
                                     <div className="flex items-start justify-between mb-3">
                                         <div>
-                                            <h3 className={`text-xl font-black ${isSelected && isPopular ? 'text-white' : 'text-text-main'}`}>
+                                            <h3 className={`text-lg font-bold ${isSelected && isPopular ? 'text-white' : 'text-text-main'}`}>
                                                 {plan.name}
                                             </h3>
                                             {plan.description && (
@@ -1496,17 +1650,17 @@ function SubscriptionStep({ data, onNext }: { data: Partial<OnboardingData>, onN
                                             )}
                                         </div>
                                         {plan.isFree ? (
-                                            <div className="px-3 py-1 rounded-full bg-emerald-50 text-emerald-600 text-[9px] font-black uppercase tracking-widest shrink-0">
+                                            <div className="px-3 py-1 rounded-full bg-emerald-50 text-emerald-600 text-[9px] font-bold uppercase tracking-wider shrink-0">
                                                 Free Forever
                                             </div>
                                         ) : isCustomPricePlan(plan) ? (
-                                            <div className="px-3 py-1 rounded-full bg-purple-50 text-purple-600 text-[9px] font-black uppercase tracking-widest shrink-0 border border-purple-200">
+                                            <div className="px-3 py-1 rounded-full bg-purple-50 text-purple-600 text-[9px] font-bold uppercase tracking-wider shrink-0 border border-purple-200">
                                                 Custom Pricing
                                             </div>
                                         ) : trialDays > 0 && (
-                                            <div className="flex items-center gap-1 px-3 py-1 rounded-full bg-amber-500/10 text-amber-600 text-[9px] font-black uppercase tracking-widest shrink-0 border border-amber-500/20">
+                                            <div className="flex items-center gap-1 px-3 py-1 rounded-full bg-amber-500/10 text-amber-600 text-[9px] font-bold uppercase tracking-wider shrink-0 border border-amber-500/20">
                                                 <Zap size={11} className="fill-amber-500 text-amber-500" />
-                                                {trialDays}-Day Free Trial
+                                                {trialDays}-Day Trial
                                             </div>
                                         )}
                                     </div>
@@ -1514,14 +1668,14 @@ function SubscriptionStep({ data, onNext }: { data: Partial<OnboardingData>, onN
                                     {/* Price */}
                                     <div className={`flex items-baseline gap-1 ${isSelected && isPopular ? 'text-white' : 'text-text-main'}`}>
                                         {plan.isFree ? (
-                                            <span className="text-3xl sm:text-4xl font-black">Free</span>
+                                            <span className="text-3xl font-bold">Free</span>
                                         ) : isCustomPricePlan(plan) ? (
-                                            <span className="text-3xl sm:text-4xl font-black tracking-tight">Custom</span>
+                                            <span className="text-3xl font-bold tracking-tight">Custom</span>
                                         ) : (
                                             <>
-                                                <span className="text-3xl sm:text-4xl font-black tracking-tight">₦{price.toLocaleString()}</span>
+                                                <span className="text-3xl font-bold tracking-tight">₦{price.toLocaleString()}</span>
                                                 {periodLabel && (
-                                                    <span className={`text-xs font-bold ${isSelected && isPopular ? 'text-white/70' : 'text-text-secondary/70'}`}>
+                                                    <span className={`text-xs font-semibold ${isSelected && isPopular ? 'text-white/70' : 'text-text-secondary/70'}`}>
                                                         {periodLabel}
                                                     </span>
                                                 )}
@@ -1529,63 +1683,94 @@ function SubscriptionStep({ data, onNext }: { data: Partial<OnboardingData>, onN
                                         )}
                                     </div>
 
-                                    {/* Savings */}
+                                    {/* Savings for active cycle */}
                                     {savings && (
                                         <p className={`text-[11px] font-bold mt-1 ${isSelected && isPopular ? 'text-white/80' : 'text-emerald-600'}`}>
                                             {savings}
                                         </p>
                                     )}
-                                </div>
 
-                                {/* Features & Limits Section */}
-                                <div className={`px-6 sm:px-7 py-5 flex-1 bg-gray-50/50 space-y-6 ${isSelected && isPopular ? 'bg-primary/5' : ''}`}>
-                                    {/* Included Features */}
-                                    {features.base.length > 0 && (
-                                        <div>
-                                            <p className="text-[10px] font-black uppercase tracking-[0.15em] text-text-secondary/70 mb-3">
-                                                Key Included Features
-                                            </p>
-                                            <div className="space-y-2.5">
-                                                {features.base.map((feature: string, i: number) => (
-                                                    <div key={`base-${i}`} className="flex items-start gap-3">
-                                                        <div className="size-5 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0 mt-0.5 border border-emerald-100">
-                                                            <CheckCircle2 size={12} strokeWidth={3} />
-                                                        </div>
-                                                        <span className="text-xs font-semibold text-text-main leading-snug">
-                                                            {feature}
-                                                        </span>
-                                                    </div>
-                                                ))}
-                                            </div>
+                                    {/* Cross-sell totals */}
+                                    {crossSell.length > 0 && (
+                                        <div className="flex flex-wrap gap-2 mt-3">
+                                            {crossSell.map((cs, i) => (
+                                                <div key={i} className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-semibold ${isSelected && isPopular ? 'bg-white/15 text-white' : 'bg-primary/5 text-primary'}`}>
+                                                    ₦{cs.total.toLocaleString()}{cs.period}
+                                                    {cs.save && (
+                                                        <span className={`font-bold ${isSelected && isPopular ? 'text-emerald-300' : 'text-emerald-600'}`}>{cs.save}</span>
+                                                    )}
+                                                </div>
+                                            ))}
                                         </div>
                                     )}
+                                </div>
 
-                                    {/* Derived Capabilities & Limits */}
-                                    {features.limits.length > 0 && (
-                                        <div className="pt-3 border-t border-gray-200/60">
-                                            <p className="text-[10px] font-black uppercase tracking-[0.15em] text-text-secondary/70 mb-3">
-                                                Plan Limits & Capacities
-                                            </p>
-                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                                {features.limits.map((item: string, i: number) => (
-                                                    <div key={`limit-${i}`} className="flex items-center gap-2 bg-white px-3 py-2 rounded-xl border border-gray-100 shadow-2xs">
-                                                        <div className="size-2 rounded-full bg-primary shrink-0" />
-                                                        <span className="text-[11px] font-bold text-text-main line-clamp-1">
-                                                            {item}
-                                                        </span>
+                                {/* Features toggle */}
+                                <div className={`px-5 md:px-6 pb-4 ${isSelected && isPopular ? 'bg-primary/5' : 'bg-gray-50/40'}`}>
+                                    <button
+                                        onClick={() => toggleFeatures(plan.id)}
+                                        className="w-full flex items-center justify-center gap-2 py-2.5 text-[10px] font-bold uppercase tracking-wider text-text-secondary hover:text-primary transition-colors cursor-pointer"
+                                    >
+                                        {isExpanded ? 'Hide Features' : 'View Features & Limits'}
+                                        <ChevronDown size={14} className={`transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                                    </button>
+
+                                    {isExpanded && (
+                                        <motion.div
+                                            initial={{ height: 0, opacity: 0 }}
+                                            animate={{ height: 'auto', opacity: 1 }}
+                                            exit={{ height: 0, opacity: 0 }}
+                                            className="overflow-hidden space-y-4"
+                                        >
+                                            {/* Included Features */}
+                                            {features.base.length > 0 && (
+                                                <div>
+                                                    <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-text-secondary/70 mb-2.5">
+                                                        Key Included Features
+                                                    </p>
+                                                    <div className="space-y-2">
+                                                        {features.base.map((feature: string, i: number) => (
+                                                            <div key={`base-${i}`} className="flex items-start gap-2.5">
+                                                                <div className="size-4 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0 mt-0.5 border border-emerald-100">
+                                                                    <CheckCircle2 size={11} strokeWidth={3} />
+                                                                </div>
+                                                                <span className="text-xs font-semibold text-text-main leading-snug">
+                                                                    {feature}
+                                                                </span>
+                                                            </div>
+                                                        ))}
                                                     </div>
-                                                ))}
-                                            </div>
-                                        </div>
+                                                </div>
+                                            )}
+
+                                            {/* Derived Capabilities & Limits */}
+                                            {features.limits.length > 0 && (
+                                                <div className="pt-3 border-t border-gray-200/60">
+                                                    <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-text-secondary/70 mb-2.5">
+                                                        Plan Limits & Capacities
+                                                    </p>
+                                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                                        {features.limits.map((item: string, i: number) => (
+                                                            <div key={`limit-${i}`} className="flex items-center gap-2 bg-white px-3 py-2 rounded-lg border border-gray-100">
+                                                                <div className="size-1.5 rounded-full bg-primary shrink-0" />
+                                                                <span className="text-[11px] font-bold text-text-main line-clamp-1">
+                                                                    {item}
+                                                                </span>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </motion.div>
                                     )}
                                 </div>
 
                                 {/* Action Buttons */}
-                                <div className="p-6 sm:p-7 bg-white border-t border-gray-100 space-y-2.5 mt-auto">
+                                <div className="p-5 md:px-6 bg-white border-t border-gray-100 space-y-2.5 mt-auto">
                                     {isCustomPricePlan(plan) ? (
                                         <button
                                             onClick={handleEnterpriseInquiry}
-                                            className="w-full py-4 rounded-2xl text-[10px] font-black uppercase tracking-[0.15em] transition-all active:scale-[0.98] flex items-center justify-center gap-2 cursor-pointer bg-gradient-to-r from-purple-600 to-indigo-600 text-white hover:from-purple-700 hover:to-indigo-700 shadow-lg shadow-purple-500/20"
+                                            className="w-full py-3.5 rounded-xl text-[10px] font-bold uppercase tracking-[0.14em] transition-all active:scale-[0.98] flex items-center justify-center gap-2 cursor-pointer bg-gradient-to-r from-purple-600 to-indigo-600 text-white hover:from-purple-700 hover:to-indigo-700 shadow-md shadow-purple-500/20"
                                         >
                                             <Mail size={14} />
                                             Chat With Sales
@@ -1594,14 +1779,14 @@ function SubscriptionStep({ data, onNext }: { data: Partial<OnboardingData>, onN
                                         <>
                                             <button
                                                 onClick={() => handleSelectPlan(plan.id, true)}
-                                                className="w-full py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-[0.15em] transition-all bg-gradient-to-r from-amber-500 to-orange-500 text-white hover:from-amber-600 hover:to-orange-600 shadow-lg shadow-amber-500/20 active:scale-[0.98] flex items-center justify-center gap-2 cursor-pointer"
+                                                className="w-full py-3 rounded-xl text-[10px] font-bold uppercase tracking-[0.14em] transition-all bg-gradient-to-r from-amber-500 to-orange-500 text-white hover:from-amber-600 hover:to-orange-600 shadow-md shadow-amber-500/20 active:scale-[0.98] flex items-center justify-center gap-2 cursor-pointer"
                                             >
                                                 <Zap size={13} className="fill-white" />
                                                 Start {trialDays}-Day Free Trial
                                             </button>
                                             <button
                                                 onClick={() => handleSelectPlan(plan.id, false)}
-                                                className="w-full py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-[0.15em] transition-all bg-gray-900 text-white hover:bg-black shadow-md active:scale-[0.98] flex items-center justify-center gap-2 cursor-pointer"
+                                                className="w-full py-3 rounded-xl text-[10px] font-bold uppercase tracking-[0.14em] transition-all bg-gray-900 text-white hover:bg-black shadow-sm active:scale-[0.98] flex items-center justify-center gap-2 cursor-pointer"
                                             >
                                                 Subscribe Now (₦{price.toLocaleString()})
                                                 <ArrowRight size={13} />
@@ -1610,10 +1795,10 @@ function SubscriptionStep({ data, onNext }: { data: Partial<OnboardingData>, onN
                                     ) : (
                                         <button
                                             onClick={() => handleSelectPlan(plan.id, false)}
-                                            className={`w-full py-4 rounded-2xl text-[10px] font-black uppercase tracking-[0.15em] transition-all active:scale-[0.98] flex items-center justify-center gap-2 cursor-pointer ${
+                                            className={`w-full py-3.5 rounded-xl text-[10px] font-bold uppercase tracking-[0.14em] transition-all active:scale-[0.98] flex items-center justify-center gap-2 cursor-pointer ${
                                                 isSelected
-                                                    ? 'bg-primary text-white shadow-xl shadow-primary/20'
-                                                    : 'bg-primary text-white hover:bg-primary-hover shadow-lg'
+                                                    ? 'bg-primary text-white shadow-md shadow-primary/20'
+                                                    : 'bg-primary text-white hover:bg-primary-hover shadow-sm'
                                             }`}
                                         >
                                             {plan.isFree ? 'Choose Free Plan' : `Subscribe Now (₦${price.toLocaleString()})`}
@@ -1631,11 +1816,37 @@ function SubscriptionStep({ data, onNext }: { data: Partial<OnboardingData>, onN
 }
 
 // --- Screen 5A: Plan Confirmation ---
-function PlanConfirmation({ data, onNext, onBack }: { data: Partial<OnboardingData>, onNext: (d: any) => void, onBack: () => void }) {
+function PlanConfirmation({ data, onNext, onBack, isSubscribingFree }: { data: Partial<OnboardingData>, onNext: (d: any) => void, onBack: () => void, isSubscribingFree?: boolean }) {
     const plan = useSubscriptionStore((s) => s.getPlan(data.planId));
     const isTrial = data.isTrial || false;
     const trialDays = plan?.isFree ? 0 : (plan?.trialDurationDays || plan?.freeDurationDays || 14);
     const features = plan ? normalizePlanFeatures(plan) : { base: [], limits: [] };
+    const [cycle, setCycle] = useState<'monthly' | 'quarterly' | 'yearly'>(data.billingCycle || 'monthly');
+
+    const getCyclePrice = (c: 'monthly' | 'quarterly' | 'yearly') => {
+        if (!plan || plan.isFree) return 0;
+        if (c === 'yearly') return plan.yearlyPrice || plan.monthlyPrice * 12;
+        if (c === 'quarterly') return plan.quarterlyPrice || plan.monthlyPrice * 3;
+        return plan.monthlyPrice;
+    };
+
+    const getCyclePeriod = (c: 'monthly' | 'quarterly' | 'yearly') => {
+        if (!plan || plan.isFree) return '';
+        if (c === 'yearly') return '/yr';
+        if (c === 'quarterly') return '/qtr';
+        return '/mo';
+    };
+
+    const cycleSavings = [
+        { cycle: 'monthly' as const, label: 'Monthly' },
+        { cycle: 'quarterly' as const, label: 'Quarterly', save: 'Save 10%' },
+        { cycle: 'yearly' as const, label: 'Yearly', save: 'Save 20%' },
+    ];
+
+    const selectCycle = (c: 'monthly' | 'quarterly' | 'yearly') => {
+        setCycle(c);
+        onNext({ billingCycle: c });
+    };
 
     return (
         <motion.div
@@ -1643,50 +1854,88 @@ function PlanConfirmation({ data, onNext, onBack }: { data: Partial<OnboardingDa
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 1.05 }}
-            className="space-y-8 text-center py-8"
+            className="space-y-6"
         >
-            <div className="space-y-3">
-                <span className="inline-block px-4 py-1.5 bg-primary/10 text-primary text-[10px] font-black uppercase tracking-[0.2em] rounded-full">
-                    Confirm Selection
+            <div className="text-center space-y-3">
+                <span className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-primary/10 rounded-full">
+                    <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-primary">Confirm Selection</span>
                 </span>
-                <h1 className="text-3xl font-display font-black text-text-main tracking-tight">
+                <h1 className="text-2xl md:text-3xl font-bold text-text-main tracking-tight">
                     {isTrial ? `Start ${trialDays}-Day Free Trial` : `Subscribe to ${plan?.name || 'Selected'} Plan`}
                 </h1>
-                <p className="text-text-secondary font-medium max-w-sm mx-auto text-sm">
+                <p className="text-sm text-text-secondary font-medium max-w-sm mx-auto leading-relaxed">
                     {isTrial
                         ? `You are starting a ${trialDays}-day free trial. You won't be charged the subscription fee until your trial expires.`
-                        : 'Review your selected plan before proceeding to payment.'}
+                        : 'Review your selected plan and pick how you want to pay.'}
                 </p>
             </div>
 
-            <div className="max-w-md mx-auto bg-white rounded-[2.5rem] p-8 border border-gray-100 shadow-2xl relative overflow-hidden text-left space-y-6">
-                <div className="flex items-center justify-between pb-6 border-b border-gray-100">
-                    <div className="flex items-center gap-4">
-                        <div className="size-14 bg-primary/10 text-primary rounded-2xl flex items-center justify-center shrink-0">
-                            {isTrial ? <Zap size={24} className="fill-primary" /> : <Crown size={24} />}
+            {/* Billing cycle + savings buttons */}
+            {!plan?.isFree && (
+                <div className="grid grid-cols-3 gap-2 max-w-md mx-auto">
+                    {cycleSavings.map((opt) => (
+                        <button
+                            key={opt.cycle}
+                            onClick={() => selectCycle(opt.cycle)}
+                            className={`rounded-xl border px-2 py-3 text-center transition-all cursor-pointer ${
+                                cycle === opt.cycle
+                                    ? 'border-primary bg-primary/5 ring-2 ring-primary/10'
+                                    : 'border-gray-200 bg-white hover:border-gray-300'
+                            }`}
+                        >
+                            <p className={`text-[10px] font-bold uppercase tracking-wider ${cycle === opt.cycle ? 'text-primary' : 'text-text-main'}`}>{opt.label}</p>
+                            <p className="text-sm font-bold text-text-main mt-1">₦{getCyclePrice(opt.cycle).toLocaleString()}{getCyclePeriod(opt.cycle)}</p>
+                            {opt.save ? (
+                                <p className="text-[9px] font-bold text-emerald-600">{opt.save}</p>
+                            ) : (
+                                <p className="text-[9px] font-semibold text-text-secondary opacity-40">Standard</p>
+                            )}
+                        </button>
+                    ))}
+                </div>
+            )}
+
+            <div className="max-w-md mx-auto bg-white rounded-2xl border border-gray-100 p-6 shadow-sm relative overflow-hidden text-left space-y-5">
+                <div className="flex items-center justify-between pb-4 border-b border-gray-100">
+                    <div className="flex items-center gap-3.5">
+                        <div className="size-11 bg-primary/10 text-primary rounded-xl flex items-center justify-center shrink-0">
+                            {isTrial ? <Zap size={22} className="fill-primary" /> : <Crown size={22} />}
                         </div>
                         <div>
-                            <h3 className="font-black text-xl text-text-main">{plan?.name || data.planId}</h3>
+                            <h3 className="font-bold text-lg text-text-main">{plan?.name || data.planId}</h3>
                             <p className="text-xs text-text-secondary font-medium">
-                                Billed {data.billingCycle || 'monthly'}
+                                {plan?.isFree ? 'Free Forever' : `Billed ${cycle === 'yearly' ? 'yearly' : cycle === 'quarterly' ? 'quarterly' : 'monthly'}`}
                             </p>
                         </div>
                     </div>
                     {isTrial ? (
-                        <span className="px-3 py-1 bg-amber-500/10 text-amber-600 border border-amber-500/20 text-[9px] font-black uppercase tracking-widest rounded-full">
+                        <span className="px-3 py-1 bg-amber-500/10 text-amber-600 border border-amber-500/20 text-[9px] font-bold uppercase tracking-wider rounded-full">
                             {trialDays}-Day Trial
                         </span>
                     ) : (
-                        <span className="px-3 py-1 bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 text-[9px] font-black uppercase tracking-widest rounded-full">
+                        <span className="px-3 py-1 bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 text-[9px] font-bold uppercase tracking-wider rounded-full">
                             {plan?.isFree ? 'Free' : 'Direct Sub'}
                         </span>
                     )}
                 </div>
 
+                {/* Price */}
+                {!plan?.isFree && (
+                    <div className="flex items-baseline gap-1">
+                        <span className="text-3xl font-bold text-text-main tracking-tight">₦{getCyclePrice(cycle).toLocaleString()}</span>
+                        <span className="text-xs font-semibold text-text-secondary/70">{getCyclePeriod(cycle)}</span>
+                        {cycle !== 'monthly' && cycleSavings.find(o => o.cycle === cycle)?.save && (
+                            <span className="ml-2 text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
+                                {cycleSavings.find(o => o.cycle === cycle)?.save}
+                            </span>
+                        )}
+                    </div>
+                )}
+
                 {/* Trial Explanation / Notice */}
                 {isTrial && (
-                    <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200/60 space-y-2">
-                        <p className="text-xs font-black text-amber-900 flex items-center gap-2">
+                    <div className="p-4 rounded-xl bg-amber-50 border border-amber-200/60 space-y-2">
+                        <p className="text-xs font-bold text-amber-900 flex items-center gap-2">
                             <Shield size={14} className="text-amber-600" /> Bank Details & Card Verification Notice
                         </p>
                         <p className="text-[11px] font-medium text-amber-800 leading-relaxed">
@@ -1696,11 +1945,11 @@ function PlanConfirmation({ data, onNext, onBack }: { data: Partial<OnboardingDa
                 )}
 
                 {/* Key Plan Features list */}
-                <div className="space-y-3 pt-2">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Plan Inclusions</p>
+                <div className="space-y-3 pt-1">
+                    <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-text-secondary">Plan Inclusions</p>
                     <div className="grid grid-cols-1 gap-2 max-h-48 overflow-y-auto pr-1">
                         {[...features.base, ...features.limits].map((f, i) => (
-                            <div key={i} className="flex items-center gap-2 text-xs font-bold text-text-main">
+                            <div key={i} className="flex items-center gap-2 text-xs font-semibold text-text-main">
                                 <CheckCircle2 size={15} className="text-emerald-500 shrink-0" />
                                 <span>{f}</span>
                             </div>
@@ -1709,16 +1958,23 @@ function PlanConfirmation({ data, onNext, onBack }: { data: Partial<OnboardingDa
                 </div>
             </div>
 
-            <div className="space-y-3 pt-4 max-w-md mx-auto">
-                <Button 
-                    onClick={() => onNext({})}
-                    className="w-full bg-primary text-white font-black uppercase tracking-widest text-xs py-7 rounded-2xl hover:bg-primary-hover shadow-xl shadow-primary/20 transition-all flex items-center justify-center gap-3 cursor-pointer"
+            <div className="space-y-3 pt-2 max-w-md mx-auto">
+                <Button
+                    onClick={() => onNext({ billingCycle: cycle })}
+                    disabled={isSubscribingFree}
+                    className="w-full rounded-xl bg-primary px-6 py-3.5 text-[10px] font-bold uppercase tracking-wider text-white shadow-md shadow-primary/20 hover:bg-primary-hover transition-all flex items-center justify-center gap-3 cursor-pointer disabled:opacity-60"
                 >
-                    {plan?.isFree ? 'Complete Free Setup' : isTrial ? 'Proceed to Bank Verification (₦100)' : 'Proceed to Payment'} <ArrowRight size={18} />
+                    {isSubscribingFree ? (
+                        <>
+                            <span className="size-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                            Activating Plan...
+                        </>
+                    ) : plan?.isFree ? 'Complete Free Setup' : isTrial ? 'Proceed to Bank Verification (₦100)' : 'Proceed to Payment'}
+                    {!isSubscribingFree && <ArrowRight size={16} />}
                 </Button>
-                <button 
+                <button
                     onClick={onBack}
-                    className="text-[10px] font-black uppercase tracking-widest text-text-secondary hover:text-primary transition-colors cursor-pointer"
+                    className="text-[10px] font-bold uppercase tracking-wider text-text-secondary hover:text-primary transition-colors cursor-pointer"
                 >
                     Change Plan Or Billing Cycle
                 </button>
@@ -1817,7 +2073,7 @@ function PaymentStep({ data, onNext }: { data: Partial<OnboardingData>, onNext: 
             <motion.div key="processing" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col items-center justify-center py-20 text-center space-y-6">
                 <div className="size-24 border-8 border-primary/20 border-t-primary rounded-full animate-spin" />
                 <div className="space-y-2">
-                    <h1 className="text-3xl font-display font-black text-text-main tracking-tight">
+                    <h1 className="text-2xl md:text-3xl font-bold text-text-main tracking-tight">
                         {isTrialMode ? 'Verifying Bank Card...' : 'Processing Payment...'}
                     </h1>
                     <p className="text-text-secondary font-medium">Please complete the Paystack transaction. Do not close this page.</p>
@@ -1833,7 +2089,7 @@ function PaymentStep({ data, onNext }: { data: Partial<OnboardingData>, onNext: 
                     <CheckCircle2 size={48} />
                 </div>
                 <div className="space-y-2">
-                    <h1 className="text-3xl font-display font-black text-text-main tracking-tight">
+                    <h1 className="text-2xl md:text-3xl font-bold text-text-main tracking-tight">
                         {isTrialMode ? 'Bank Verified & Trial Activated! 🎉' : 'Payment Successful! 🎉'}
                     </h1>
                     <p className="text-text-secondary font-medium max-w-sm">
@@ -1852,16 +2108,16 @@ function PaymentStep({ data, onNext }: { data: Partial<OnboardingData>, onNext: 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
-            className="space-y-8 pb-20"
+            className="space-y-6 pb-20"
         >
             <div className="space-y-3 text-center">
-                <span className="inline-block px-4 py-1.5 bg-primary/10 text-primary text-[10px] font-black uppercase tracking-[0.2em] rounded-full">
-                    Secure Payment Gateway
+                <span className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-primary/10 rounded-full">
+                    <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-primary">Secure Payment Gateway</span>
                 </span>
-                <h1 className="text-3xl font-display font-black text-text-main tracking-tight">
+                <h1 className="text-2xl md:text-3xl font-bold text-text-main tracking-tight">
                     {isTrialMode ? 'Bank Details & Verification Deposit' : 'Complete Your Subscription'}
                 </h1>
-                <p className="text-text-secondary font-medium text-sm max-w-md mx-auto">
+                <p className="text-sm text-text-secondary font-normal max-w-md mx-auto leading-relaxed">
                     {isTrialMode
                         ? 'Authorize your bank card for auto-deduction after your free trial ends.'
                         : 'Secure checkout powered by Paystack.'}
@@ -1869,23 +2125,23 @@ function PaymentStep({ data, onNext }: { data: Partial<OnboardingData>, onNext: 
             </div>
 
             {/* Order Summary Card */}
-            <div className="bg-white rounded-[2.5rem] p-8 border border-gray-100 shadow-xl space-y-6 max-w-md mx-auto">
+            <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm space-y-5 max-w-md mx-auto">
                 <div className="flex items-center justify-between pb-4 border-b border-gray-100">
-                    <span className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Order Summary</span>
-                    <Badge variant="outline" className="border-primary/20 text-primary capitalize font-black">{plan?.name || data.planId}</Badge>
+                    <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-text-secondary">Order Summary</span>
+                    <Badge variant="outline" className="border-primary/20 text-primary capitalize font-bold">{plan?.name || data.planId}</Badge>
                 </div>
-                
+
                 {isTrialMode ? (
-                    <div className="space-y-4">
-                        <div className="flex justify-between text-sm font-bold text-text-main">
+                    <div className="space-y-3">
+                        <div className="flex justify-between text-sm font-semibold text-text-main">
                             <span>Plan Trial ({plan?.name})</span>
-                            <span className="text-emerald-600 font-black">Free Trial</span>
+                            <span className="text-emerald-600 font-bold">Free Trial</span>
                         </div>
-                        <div className="flex justify-between text-sm font-bold text-text-main">
+                        <div className="flex justify-between text-sm font-semibold text-text-main">
                             <span>Bank Card Verification Deposit</span>
                             <span>₦100</span>
                         </div>
-                        <div className="p-4 rounded-2xl bg-gray-50 border border-gray-100 text-xs space-y-1.5">
+                        <div className="p-4 rounded-xl bg-gray-50 border border-gray-100 text-xs space-y-1.5">
                             <p className="font-bold text-text-main flex items-center gap-1.5">
                                 <Shield size={14} className="text-primary" /> Auto-Renewal Schedule
                             </p>
@@ -1893,22 +2149,22 @@ function PaymentStep({ data, onNext }: { data: Partial<OnboardingData>, onNext: 
                                 After your trial expires, ₦{planPrice.toLocaleString()} will be automatically charged {billingCycle === 'yearly' ? 'annually' : billingCycle === 'quarterly' ? 'quarterly' : 'monthly'}.
                             </p>
                         </div>
-                        <div className="pt-4 border-t border-gray-200 flex justify-between text-xl font-black text-primary">
+                        <div className="pt-3 border-t border-gray-200 flex justify-between text-lg font-bold text-primary">
                             <span>Deposit Amount</span>
                             <span>₦100</span>
                         </div>
                     </div>
                 ) : (
-                    <div className="space-y-3">
-                        <div className="flex justify-between text-sm font-bold text-text-main">
+                    <div className="space-y-2.5">
+                        <div className="flex justify-between text-sm font-semibold text-text-main">
                             <span>{billingCycle === 'yearly' ? 'Yearly' : billingCycle === 'quarterly' ? 'Quarterly' : 'Monthly'} Subscription</span>
                             <span>₦{subtotal.toLocaleString()}</span>
                         </div>
-                        <div className="flex justify-between text-sm font-bold text-text-secondary opacity-60">
+                        <div className="flex justify-between text-sm font-semibold text-text-secondary opacity-60">
                             <span>Tax (7.5%)</span>
                             <span>₦{tax.toLocaleString()}</span>
                         </div>
-                        <div className="pt-4 border-t border-gray-200 flex justify-between text-xl font-black text-primary">
+                        <div className="pt-3 border-t border-gray-200 flex justify-between text-lg font-bold text-primary">
                             <span>Total Due</span>
                             <span>{plan?.isFree ? 'Free' : `₦${total.toLocaleString()}`}</span>
                         </div>
@@ -1917,12 +2173,12 @@ function PaymentStep({ data, onNext }: { data: Partial<OnboardingData>, onNext: 
             </div>
 
             <div className="max-w-md mx-auto">
-                <Button 
+                <Button
                     onClick={handlePay}
                     disabled={isProcessing}
-                    className="w-full bg-primary text-white font-black uppercase tracking-widest text-xs py-7 rounded-2xl hover:bg-primary-hover shadow-xl shadow-primary/20 transition-all active:scale-[0.98] flex items-center justify-center gap-3 cursor-pointer"
+                    className="w-full rounded-xl bg-primary px-6 py-3.5 text-[10px] font-bold uppercase tracking-wider text-white shadow-md shadow-primary/20 hover:bg-primary-hover transition-all active:scale-[0.98] flex items-center justify-center gap-3 cursor-pointer disabled:opacity-60"
                 >
-                    {plan?.isFree ? 'Activate Free Plan' : isTrialMode ? 'Pay ₦100 & Start Free Trial' : 'Pay Now & Activate Subscription'} <ArrowRight size={18} />
+                    {plan?.isFree ? 'Activate Free Plan' : isTrialMode ? 'Pay ₦100 & Start Free Trial' : 'Pay Now & Activate Subscription'} <ArrowRight size={16} />
                 </Button>
             </div>
         </motion.div>
