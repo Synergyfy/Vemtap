@@ -39,7 +39,7 @@ export default function CustomerCaptureSetupPage() {
                         >
                             <ArrowLeft className="size-5 text-gray-900" />
                         </Button>
-                        <h2 className="text-sm font-black text-gray-900 uppercase tracking-widest">
+                        <h2 className="text-sm font-bold text-gray-900 uppercase tracking-wider">
                             {steps.find(s => s.id === currentStep)?.title}
                         </h2>
                     </div>

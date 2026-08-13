@@ -37,11 +37,11 @@ export default function ActiveAutomationsPage() {
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: i * 0.1 }}
-                            className="bg-white rounded-[2.5rem] border border-gray-100 p-8 shadow-sm hover:shadow-xl hover:shadow-gray-200/50 transition-all flex flex-col group"
+                            className="bg-white rounded-2xl border border-gray-100 p-5 md:p-6 shadow-sm hover:shadow-lg hover:shadow-gray-200/50 transition-all flex flex-col group"
                         >
                             <div className="flex justify-between items-start mb-6">
                                 <div className="flex items-center gap-3">
-                                    <div className="size-12 rounded-2xl bg-primary/5 flex items-center justify-center text-primary font-black uppercase">
+                                    <div className="size-10 rounded-xl bg-primary/5 flex items-center justify-center text-primary font-bold uppercase">
                                         {session.visitorName?.[0] || 'V'}
                                     </div>
                                     <div>
@@ -49,15 +49,15 @@ export default function ActiveAutomationsPage() {
                                         <p className="text-[10px] text-text-secondary">{session.visitorPhone}</p>
                                     </div>
                                 </div>
-                                <div className={`px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-wider ${session.status === 'RUNNING' ? 'bg-blue-50 text-blue-600' : 'bg-amber-50 text-amber-600'
+                                <div className={`px-3 py-1 rounded-full text-[8px] font-semibold uppercase tracking-wider ${session.status === 'RUNNING' ? 'bg-blue-50 text-blue-600' : 'bg-amber-50 text-amber-600'
                                     }`}>
                                     {session.status}
                                 </div>
                             </div>
 
                             <div className="space-y-4 flex-1">
-                                <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100">
-                                    <p className="text-[10px] font-black text-text-secondary uppercase tracking-widest mb-1">Current Step</p>
+                                <div className="p-4 bg-gray-50 rounded-xl border border-gray-100">
+                                    <p className="text-[10px] font-semibold text-text-secondary uppercase tracking-wider mb-1">Current Step</p>
                                     <p className="text-sm font-bold text-text-main flex items-center gap-2">
                                         <Clock size={14} className="text-primary" />
                                         {session.currentStep || 'Initializing...'}
@@ -75,7 +75,7 @@ export default function ActiveAutomationsPage() {
 
                             <button
                                 onClick={() => setSelectedSession(session)}
-                                className="w-full h-12 mt-6 bg-white border border-gray-100 text-text-main font-bold text-xs rounded-xl hover:bg-gray-50 hover:text-primary transition-all flex items-center justify-center gap-2 group-hover:border-primary/20"
+                                className="w-full h-10 mt-6 bg-white border border-gray-100 text-text-main font-bold text-xs rounded-xl hover:bg-gray-50 hover:text-primary transition-all flex items-center justify-center gap-2 group-hover:border-primary/20"
                             >
                                 View Full Session
                                 <ArrowRight size={14} />
@@ -83,15 +83,15 @@ export default function ActiveAutomationsPage() {
                         </motion.div>
                     ))
                 ) : (
-                    <div className="lg:col-span-3 text-center py-20 bg-white rounded-[3rem] border-2 border-dashed border-gray-100">
-                        <Smartphone size={48} className="mx-auto text-gray-200 mb-4" />
+                    <div className="lg:col-span-3 text-center py-20 bg-white rounded-2xl border-2 border-dashed border-gray-100">
+                        <Smartphone size={40} className="mx-auto text-gray-200 mb-4" />
                         <h4 className="text-lg font-bold text-text-main">No active sessions</h4>
                         <p className="text-sm text-text-secondary max-w-sm mx-auto mt-2">When customers engage with your automations, they will appear here in real-time.</p>
                     </div>
                 )}
             </div>
 
-            <div className="p-6 bg-blue-50 rounded-[2rem] border border-blue-100 flex gap-4">
+            <div className="p-6 bg-blue-50 rounded-2xl border border-blue-100 flex gap-4">
                 <AlertCircle className="text-blue-500 shrink-0" size={24} />
                 <div>
                     <h5 className="font-bold text-blue-900 text-sm">Pro Tip: Real-time Monitoring</h5>

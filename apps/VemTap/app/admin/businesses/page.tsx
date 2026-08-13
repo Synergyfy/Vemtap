@@ -1324,7 +1324,7 @@ export default function AdminBusinessesPage() {
                                 </p>
                             </div>
 
-                            <div className="space-y-2">
+                            <div className="space-y-2" onClick={(e) => (e.currentTarget.querySelector<HTMLInputElement>('input[type="date"]')?.showPicker())}>
                                 <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1 block">Custom Expiration Date (Optional)</label>
                                 <input 
                                     type="date"

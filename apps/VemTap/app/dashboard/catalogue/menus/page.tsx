@@ -25,58 +25,58 @@ export default function ConfigureMenuPage() {
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
                     <Link href="/dashboard/catalogue">
-                        <Button variant="ghost" size="icon" className="size-12 rounded-2xl bg-white border border-gray-100 hover:bg-gray-50 shadow-sm transition-all hover:-translate-x-1">
-                            <ArrowLeft size={20} className="text-gray-400" />
+                        <Button variant="ghost" size="icon" className="size-10 rounded-xl bg-white border border-gray-100 hover:bg-gray-50 shadow-sm transition-all hover:-translate-x-1">
+                            <ArrowLeft size={18} className="text-gray-400" />
                         </Button>
                     </Link>
                     <div>
-                        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 leading-none mb-2">Catalogue Manager</p>
-                        <div className="flex items-center gap-2"><h1 className="text-2xl font-black text-gray-900 leading-none">Digital Menu Builder</h1><PageGuideButton /><AICopilotButton /></div>
+                        <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 leading-none mb-2">Catalogue Manager</p>
+                        <div className="flex items-center gap-2"><h1 className="text-xl md:text-2xl font-bold text-gray-900 leading-none tracking-tight">Digital Menu Builder</h1><PageGuideButton /><AICopilotButton /></div>
                     </div>
                 </div>
                 <div className="flex items-center gap-3">
-                    <Button variant="outline" className="h-12 px-6 rounded-2xl border-gray-200 text-gray-600 font-bold text-xs uppercase tracking-widest hover:bg-gray-50 flex items-center gap-2">
+                    <Button variant="outline" className="h-10 px-5 rounded-xl border-gray-200 text-gray-600 font-semibold text-xs uppercase tracking-wider hover:bg-gray-50 flex items-center gap-2">
                         <QrCode size={16} />
                         Get QR Code
                     </Button>
-                    <Button className="h-12 px-8 rounded-2xl bg-emerald-500 hover:bg-emerald-600 text-white font-black text-xs uppercase tracking-widest shadow-xl shadow-emerald-500/20 transition-all">
+                    <Button className="h-10 px-6 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-semibold text-xs uppercase tracking-wider shadow-lg shadow-emerald-500/20 transition-all">
                         Publish Changes
                     </Button>
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 md:gap-6">
                 {/* LEFT COLUMN: Menu Builder */}
-                <div className="lg:col-span-8 space-y-6">
+                <div className="lg:col-span-8 space-y-4 md:space-y-6">
                     {/* Theme & Style */}
-                    <div className="rounded-[32px] bg-white p-8 shadow-sm border border-gray-100 flex items-center justify-between">
+                    <div className="rounded-2xl bg-white p-5 md:p-6 shadow-sm border border-gray-100 flex items-center justify-between">
                         <div className="flex items-center gap-4">
-                            <div className="size-12 rounded-2xl bg-purple-50 text-purple-600 flex items-center justify-center">
-                                <Palette size={24} />
+                            <div className="size-9 md:size-10 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center">
+                                <Palette size={20} />
                             </div>
                             <div>
-                                <h3 className="text-lg font-black text-gray-900">Menu Theme</h3>
-                                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Currently using: Dark Elegance</p>
+                                <h3 className="text-base font-bold text-gray-900">Menu Theme</h3>
+                                <p className="text-[10px] font-medium text-gray-400 uppercase tracking-wider mt-0.5">Currently using: Dark Elegance</p>
                             </div>
                         </div>
-                        <Button variant="outline" className="rounded-xl border-gray-200 font-bold text-xs uppercase tracking-widest">
+                        <Button variant="outline" className="rounded-xl border-gray-200 font-semibold text-xs uppercase tracking-wider text-gray-600">
                             Change Theme
                         </Button>
                     </div>
 
                     {/* Category Builder */}
-                    <div className="rounded-[32px] bg-white shadow-sm border border-gray-100 overflow-hidden">
-                        <div className="p-8 border-b border-gray-100 flex items-center justify-between">
+                    <div className="rounded-2xl bg-white shadow-sm border border-gray-100 overflow-hidden">
+                        <div className="p-5 md:p-6 border-b border-gray-100 flex items-center justify-between">
                             <div className="flex items-center gap-4">
-                                <div className="size-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center">
-                                    <Layers size={24} />
+                                <div className="size-9 md:size-10 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center">
+                                    <Layers size={20} />
                                 </div>
                                 <div>
-                                    <h3 className="text-lg font-black text-gray-900">Menu Layout</h3>
-                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Organize your categories</p>
+                                    <h3 className="text-base font-bold text-gray-900">Menu Layout</h3>
+                                    <p className="text-[10px] font-medium text-gray-400 uppercase tracking-wider mt-0.5">Organize your categories</p>
                                 </div>
                             </div>
-                            <Button className="rounded-xl bg-gray-900 text-white font-black text-[10px] uppercase tracking-widest h-10 px-6">
+                            <Button className="rounded-xl bg-gray-900 text-white font-semibold text-[10px] uppercase tracking-wider h-10 px-6">
                                 Add Category
                             </Button>
                         </div>
@@ -88,13 +88,13 @@ export default function ConfigureMenuPage() {
                                     initial={{ opacity: 0, y: 10 }}
                                     animate={{ opacity: 1, y: 0 }}
                                     transition={{ delay: i * 0.1 }}
-                                    className="group flex items-center justify-between p-4 rounded-2xl bg-white border border-gray-200 shadow-sm hover:border-[#066CF4] transition-all cursor-move"
+                                    className="group flex items-center justify-between p-4 rounded-xl bg-white border border-gray-200 shadow-sm hover:border-[#066CF4] transition-all cursor-move"
                                 >
                                     <div className="flex items-center gap-4">
                                         <GripVertical size={20} className="text-gray-300 group-hover:text-gray-500" />
                                         <div>
-                                            <h4 className="text-sm font-black text-gray-900">{cat.name}</h4>
-                                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">{cat.items} Items Linked</p>
+                                            <h4 className="text-sm font-bold text-gray-900">{cat.name}</h4>
+                                            <p className="text-[10px] font-medium text-gray-400 uppercase tracking-wider mt-0.5">{cat.items} Items Linked</p>
                                         </div>
                                     </div>
                                     <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -119,34 +119,34 @@ export default function ConfigureMenuPage() {
                 <div className="lg:col-span-4 flex justify-center">
                     <div className="sticky top-8">
                         <div className="flex items-center justify-between mb-4 px-2">
-                            <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Live Preview</h3>
-                            <span className="flex items-center gap-1.5 text-[10px] font-bold text-[#066CF4] bg-blue-50 px-2.5 py-1 rounded-full uppercase tracking-widest">
+                            <h3 className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">Live Preview</h3>
+                            <span className="flex items-center gap-1.5 text-[10px] font-semibold text-[#066CF4] bg-blue-50 px-2.5 py-1 rounded-full uppercase tracking-wider">
                                 <Smartphone size={12} />
                                 Mobile View
                             </span>
                         </div>
 
                         {/* Device Frame */}
-                        <div className="w-[300px] h-[600px] rounded-[40px] bg-gray-900 p-2 shadow-2xl relative overflow-hidden border-4 border-gray-800">
+                        <div className="w-[300px] h-[600px] rounded-2xl bg-gray-900 p-2 shadow-2xl relative overflow-hidden border-4 border-gray-800">
                             {/* Notch */}
                             <div className="absolute top-0 inset-x-0 h-6 flex justify-center z-20">
                                 <div className="w-32 h-6 bg-gray-900 rounded-b-2xl" />
                             </div>
                             
                             {/* Screen Content */}
-                            <div className="bg-[#111111] size-full rounded-[32px] overflow-hidden flex flex-col relative pt-8">
+                            <div className="bg-[#111111] size-full rounded-2xl overflow-hidden flex flex-col relative pt-8">
                                 <div className="p-6 text-center space-y-2 border-b border-white/10 shrink-0">
                                     <div className="size-16 rounded-full bg-white/5 mx-auto mb-4 flex items-center justify-center">
                                         <LayoutTemplate size={24} className="text-white" />
                                     </div>
-                                    <h2 className="text-xl font-black text-white">VemTap Cafe</h2>
-                                    <p className="text-[10px] font-bold uppercase tracking-widest text-white/50">Digital Menu</p>
+                                    <h2 className="text-xl font-bold text-white">VemTap Cafe</h2>
+                                    <p className="text-[10px] font-bold uppercase tracking-wider text-white/50">Digital Menu</p>
                                 </div>
                                 
                                 <div className="p-4 space-y-4 overflow-y-auto no-scrollbar pb-20">
                                     {categories.map((cat) => (
                                         <div key={cat.id} className="rounded-2xl bg-white/5 p-4 border border-white/5">
-                                            <h4 className="text-sm font-black text-white mb-4">{cat.name}</h4>
+                                            <h4 className="text-sm font-bold text-white mb-4">{cat.name}</h4>
                                             <div className="space-y-3">
                                                 {[1,2].map(item => (
                                                     <div key={item} className="flex gap-3">
@@ -165,7 +165,7 @@ export default function ConfigureMenuPage() {
                                 {/* Floating View Cart */}
                                 <div className="absolute bottom-4 inset-x-4">
                                     <div className="h-12 rounded-2xl bg-emerald-500 flex items-center justify-center shadow-lg">
-                                        <span className="text-[10px] font-black uppercase tracking-widest text-white">View Cart (2 items)</span>
+                                        <span className="text-[10px] font-bold uppercase tracking-wider text-white">View Cart (2 items)</span>
                                     </div>
                                 </div>
                             </div>

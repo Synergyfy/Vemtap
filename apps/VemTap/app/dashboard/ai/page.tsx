@@ -123,7 +123,7 @@ export default function AICreditsPage() {
               </div>
               <div>
                 <p className="text-sm font-semibold text-gray-500 mb-1">Available Credits</p>
-                <p className="text-4xl font-black text-gray-900">
+                <p className="text-4xl font-bold text-gray-900">
                   {isUnlimited ? 'Unlimited' : credits.available}
                 </p>
                 <p className="text-sm text-gray-400 mt-1">
@@ -152,7 +152,7 @@ export default function AICreditsPage() {
                 <Zap size={16} className="text-blue-600" />
                 <span className="text-sm font-bold text-gray-900">Quick Analysis</span>
               </div>
-              <p className="text-2xl font-black text-gray-900">{AI_CREDIT_COST.quickAnalysis}</p>
+              <p className="text-2xl font-bold text-gray-900">{AI_CREDIT_COST.quickAnalysis}</p>
               <p className="text-xs text-gray-500">credit per analysis</p>
             </div>
             <div className="bg-gray-50 rounded-xl p-4 space-y-2">
@@ -160,7 +160,7 @@ export default function AICreditsPage() {
                 <TrendingUp size={16} className="text-purple-600" />
                 <span className="text-sm font-bold text-gray-900">Deep Analysis</span>
               </div>
-              <p className="text-2xl font-black text-gray-900">{AI_CREDIT_COST.deepAnalysis}</p>
+              <p className="text-2xl font-bold text-gray-900">{AI_CREDIT_COST.deepAnalysis}</p>
               <p className="text-xs text-gray-500">credits per analysis</p>
             </div>
             <div className="bg-gray-50 rounded-xl p-4 space-y-2">
@@ -168,7 +168,7 @@ export default function AICreditsPage() {
                 <Sparkles size={16} className="text-emerald-600" />
                 <span className="text-sm font-bold text-gray-900">Content Generation</span>
               </div>
-              <p className="text-2xl font-black text-gray-900">{AI_CREDIT_COST.generateContent}</p>
+              <p className="text-2xl font-bold text-gray-900">{AI_CREDIT_COST.generateContent}</p>
               <p className="text-xs text-gray-500">credits per generation</p>
             </div>
           </div>
@@ -234,7 +234,7 @@ export default function AICreditsPage() {
                     </span>
                   )}
                   <div className="text-center pt-1">
-                    <p className="text-3xl font-black text-gray-900">{pkg.credits}</p>
+                    <p className="text-3xl font-bold text-gray-900">{pkg.credits}</p>
                     <p className="text-sm font-semibold text-gray-500 mt-1">credits</p>
                     <div className="h-px bg-gray-100 my-4" />
                     <p className="text-2xl font-bold text-gray-900">{naira(pkg.price)}</p>
@@ -280,25 +280,25 @@ export default function AICreditsPage() {
                 Enter amount (NGN)
               </label>
               <div className="relative">
-                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-lg font-black text-gray-400">₦</span>
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-lg font-bold text-gray-400">₦</span>
                 <input
                   type="text"
                   inputMode="numeric"
                   value={customAmount}
                   onChange={(e) => handleCustomAmountChange(e.target.value)}
                   placeholder="0"
-                  className="w-full h-14 pl-10 pr-4 rounded-xl border-2 border-gray-200 bg-white text-2xl font-black text-gray-900 focus:border-purple-400 focus:ring-4 focus:ring-purple-100 outline-none transition-all placeholder:text-gray-300"
+                  className="w-full h-14 pl-10 pr-4 rounded-xl border-2 border-gray-200 bg-white text-2xl font-bold text-gray-900 focus:border-purple-400 focus:ring-4 focus:ring-purple-100 outline-none transition-all placeholder:text-gray-300"
                 />
               </div>
               {customCredits > 0 && (
                 <p className="text-sm text-gray-500 mt-2">
-                  You get <span className="font-black text-purple-600">{customCredits.toLocaleString()} AI credits</span> (₦{creditPrice.toLocaleString()} / credit)
+                  You get <span className="font-bold text-purple-600">{customCredits.toLocaleString()} AI credits</span> (₦{creditPrice.toLocaleString()} / credit)
                 </p>
               )}
             </div>
             <button
               disabled={customCredits === 0 || purchasing !== null}
-              className="h-14 px-8 rounded-xl bg-purple-600 text-white font-black text-sm hover:bg-purple-700 transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2 shadow-lg shadow-purple-600/20 shrink-0"
+              className="h-14 px-8 rounded-xl bg-purple-600 text-white font-bold text-sm hover:bg-purple-700 transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2 shadow-lg shadow-purple-600/20 shrink-0"
               onClick={() => {
                 const numAmount = parseInt(customAmount.replace(/[^0-9]/g, ''), 10) || 0;
                 handlePurchase(customCredits, numAmount, 'custom');

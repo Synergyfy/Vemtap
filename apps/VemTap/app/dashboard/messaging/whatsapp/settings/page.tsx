@@ -55,7 +55,7 @@ export default function WhatsAppSettingsPage() {
                     <button
                         onClick={handleSave}
                         disabled={updateSettingsMutation.isPending || isLoading}
-                        className="flex items-center gap-2 px-6 py-2.5 bg-primary text-white font-bold rounded-xl hover:bg-primary-hover transition-all text-sm shadow-md shadow-primary/20 disabled:opacity-50"
+                        className="flex items-center gap-2 h-10 px-5 bg-primary text-white font-semibold text-xs uppercase tracking-wider rounded-xl hover:bg-primary-hover transition-all disabled:opacity-50"
                     >
                         {updateSettingsMutation.isPending ? (
                             <Loader2 size={18} className="animate-spin" />
@@ -68,13 +68,13 @@ export default function WhatsAppSettingsPage() {
             />
 
             <div className="grid grid-cols-1 gap-6">
-                <div className="bg-white rounded-[2.5rem] border border-gray-100 p-8 shadow-sm">
+                <div className="bg-white rounded-2xl border border-gray-100 p-8 shadow-sm">
                     <div className="flex items-center gap-4 mb-8">
-                        <div className="size-12 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center">
-                            <Key size={24} />
+                        <div className="size-9 md:size-10 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center">
+                            <Key size={20} />
                         </div>
                         <div>
-                            <h3 className="text-lg font-display font-black text-text-main uppercase tracking-tight">API Credentials</h3>
+                            <h3 className="text-lg md:text-xl font-bold text-text-main tracking-tight">API Credentials</h3>
                             <p className="text-xs text-text-secondary">Your Meta System User Token and Phone ID.</p>
                         </div>
                     </div>
@@ -88,7 +88,7 @@ export default function WhatsAppSettingsPage() {
                         <div className="space-y-4">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div className="space-y-2">
-                                    <label className="text-[10px] font-black text-slate-700 uppercase tracking-widest">Phone Number ID</label>
+                                    <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Phone Number ID</label>
                                     <input
                                         type="text"
                                         value={phoneNumberId}
@@ -98,7 +98,7 @@ export default function WhatsAppSettingsPage() {
                                     />
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="text-[10px] font-black text-slate-700 uppercase tracking-widest">WABA Account ID</label>
+                                    <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">WABA Account ID</label>
                                     <input
                                         type="text"
                                         value={wabaAccountId}
@@ -109,7 +109,7 @@ export default function WhatsAppSettingsPage() {
                                 </div>
                             </div>
                             <div className="space-y-2">
-                                <label className="text-[10px] font-black text-slate-700 uppercase tracking-widest">System User Access Token</label>
+                                <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">System User Access Token</label>
                                 <input
                                     type="password"
                                     value={systemUserToken}
@@ -122,13 +122,13 @@ export default function WhatsAppSettingsPage() {
                     )}
                 </div>
 
-                <div className="bg-white rounded-[2.5rem] border border-gray-100 p-8 shadow-sm">
+                <div className="bg-white rounded-2xl border border-gray-100 p-8 shadow-sm">
                     <div className="flex items-center gap-4 mb-8">
-                        <div className="size-12 bg-purple-50 text-purple-600 rounded-2xl flex items-center justify-center">
-                            <Shield size={24} />
+                        <div className="size-9 md:size-10 bg-purple-50 text-purple-600 rounded-lg flex items-center justify-center">
+                            <Shield size={20} />
                         </div>
                         <div>
-                            <h3 className="text-lg font-display font-black text-text-main uppercase tracking-tight">Compliance & Privacy</h3>
+                            <h3 className="text-lg md:text-xl font-bold text-text-main tracking-tight">Compliance & Privacy</h3>
                             <p className="text-xs text-text-secondary">Opt-in requirements and privacy settings.</p>
                         </div>
                     </div>
@@ -154,8 +154,8 @@ export default function WhatsAppSettingsPage() {
                                 className="size-5 accent-primary"
                             />
                             <div>
-                                <p className="text-sm font-bold text-text-main">Enable 'STOP' auto-reply</p>
-                                <p className="text-[10px] text-text-secondary">Automatically unsubscribe users who reply with 'STOP'.</p>
+                                <p className="text-sm font-bold text-text-main">Enable &apos;STOP&apos; auto-reply</p>
+                                <p className="text-[10px] text-text-secondary">Automatically unsubscribe users who reply with &apos;STOP&apos;.</p>
                             </div>
                         </label>
                     </div>

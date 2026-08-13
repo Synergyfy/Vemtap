@@ -10,8 +10,7 @@ import {
 } from '@/components/dashboard/crm/CRMOverview';
 import { CRMGrowthChart } from '@/components/dashboard/crm/CRMChart';
 import { useVisitors, useVisitorStats } from '@/services/visitors/hooks';
-import { Users, UserPlus, Repeat, Activity, Star, TrendingUp } from 'lucide-react';
-import Spinner from '@/components/ui/Spinner';
+import { Users, UserPlus, Repeat, Activity } from 'lucide-react';
 
 export default function VisitorsOverviewPage() {
     const { data: paginatedData, isLoading: isLoadingVisitors } = useVisitors(undefined, { limit: 5 });
@@ -32,31 +31,31 @@ export default function VisitorsOverviewPage() {
             <div className="flex items-center justify-center h-screen bg-gray-50">
                 <div className="flex flex-col items-center gap-4">
                     <div className="size-12 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
-                    <p className="text-xs font-black uppercase tracking-widest text-gray-400">Loading Customers...</p>
+                    <p className="text-xs font-bold uppercase tracking-wider text-gray-400">Loading Customers...</p>
                 </div>
             </div>
         );
     }
 
     return (
-        <div className="min-h-screen bg-gray-50 pb-24 p-6 md:p-8 space-y-12">
+        <div className="min-h-screen bg-gray-50 pb-24 p-4 md:p-6 max-w-7xl mx-auto space-y-8">
             <CRMOverviewHeader />
 
             <section>
-                <div className="flex items-center justify-between mb-6 px-1">
-                    <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Performance Snapshot</h2>
+                <div className="flex items-center justify-between mb-3">
+                    <h2 className="text-[10px] font-bold uppercase tracking-[0.16em] text-gray-400">Performance Snapshot</h2>
                 </div>
                 <CRMStatsCards stats={stats} />
             </section>
 
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 md:gap-8">
                 {/* LEFT COLUMN: Growth & Quick Actions */}
-                <div className="lg:col-span-8 space-y-12">
+                <div className="lg:col-span-8 space-y-8">
                     <section>
-                         <div className="flex items-center justify-between mb-6 px-1">
-                            <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Growth Trends</h2>
+                        <div className="flex items-center justify-between mb-3">
+                            <h2 className="text-[10px] font-bold uppercase tracking-[0.16em] text-gray-400">Growth Trends</h2>
                         </div>
-                        <div className="bg-white rounded-[2.5rem] p-8 border border-gray-100 shadow-sm">
+                        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm">
                             <CRMGrowthChart />
                         </div>
                     </section>
@@ -65,17 +64,17 @@ export default function VisitorsOverviewPage() {
                 </div>
 
                 {/* RIGHT COLUMN: Recent & Activity */}
-                <div className="lg:col-span-4 space-y-12">
+                <div className="lg:col-span-4 space-y-8">
                     <section>
-                         <div className="flex items-center justify-between mb-6 px-1">
-                            <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Latest Members</h2>
+                        <div className="flex items-center justify-between mb-3">
+                            <h2 className="text-[10px] font-bold uppercase tracking-[0.16em] text-gray-400">Latest Members</h2>
                         </div>
                         <CRMRecentCustomers customers={visitors} />
                     </section>
 
                     <section>
-                         <div className="flex items-center justify-between mb-6 px-1">
-                            <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Activity Log</h2>
+                        <div className="flex items-center justify-between mb-3">
+                            <h2 className="text-[10px] font-bold uppercase tracking-[0.16em] text-gray-400">Activity Log</h2>
                         </div>
                         <CRMActivityFeed />
                     </section>

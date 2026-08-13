@@ -86,7 +86,7 @@ export default function MoreLandingPage() {
     return (
         <div className="w-full px-4 md:px-8 py-8 space-y-8 pb-24">
             <div className="space-y-2">
-                <div className="flex items-center gap-2"><h1 className="text-2xl md:text-3xl font-black text-gray-900 tracking-tight">More</h1><PageGuideButton /><AICopilotButton /></div>
+                <div className="flex items-center gap-2"><h1 className="text-2xl md:text-3xl font-bold text-gray-900 tracking-tight">More</h1><PageGuideButton /><AICopilotButton /></div>
                 <p className="text-sm font-medium text-gray-500 leading-relaxed max-w-2xl">
                     Access analytics, QRThrive, and business settings.
                 </p>
@@ -103,14 +103,14 @@ export default function MoreLandingPage() {
                             <card.icon size={28} />
                         </div>
                         
-                        <h3 className="text-lg font-black text-gray-900 mb-2 leading-tight">
+                        <h3 className="text-lg font-bold text-gray-900 mb-2 leading-tight">
                             {card.title}
                         </h3>
                         <p className="text-xs font-bold text-gray-400 uppercase tracking-tight leading-relaxed mb-6 flex-1">
                             {card.description}
                         </p>
                         
-                        <div className="flex items-center text-[10px] font-black uppercase tracking-[0.2em] text-gray-300 group-hover:text-gray-900 transition-colors mt-auto">
+                        <div className="flex items-center text-[10px] font-bold uppercase tracking-wider text-gray-300 group-hover:text-gray-900 transition-colors mt-auto">
                             Open Module <ChevronRight size={14} className="ml-1 group-hover:translate-x-1 transition-transform" />
                         </div>
                     </Link>

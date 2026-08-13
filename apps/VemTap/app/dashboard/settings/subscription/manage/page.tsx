@@ -108,18 +108,18 @@ export default function ManagePlanPage() {
                     </div>
                     <div>
                         <p className="text-sm font-bold text-amber-900">Read-only Access</p>
-                        <p className="text-[10px] font-medium text-amber-700 uppercase tracking-widest">Only the business owner can manage the subscription.</p>
+                        <p className="text-[10px] font-medium text-amber-700 uppercase tracking-wider">Only the business owner can manage the subscription.</p>
                     </div>
                 </div>
             )}
 
-            <div className="mb-8 rounded-[2.5rem] border border-primary/10 bg-slate-50/70 p-6 md:p-10">
+            <div className="mb-8 rounded-2xl border border-primary/10 bg-slate-50/70 p-6 md:p-8">
                 <div className="flex items-center justify-between gap-4 mb-6 flex-wrap">
-                    <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-primary/10 text-primary rounded-full text-[10px] font-black uppercase tracking-widest">
+                    <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-primary/10 text-primary rounded-full text-[10px] font-semibold uppercase tracking-wider">
                         <Crown size={12} />
                         {isOnTrial ? 'Trial Plan' : 'Current Plan'}
                     </div>
-                    <span className={`px-3 py-1 rounded-md text-[10px] font-black uppercase tracking-widest border ${isCancelled
+                    <span className={`px-3 py-1 rounded-md text-[10px] font-semibold uppercase tracking-wider border ${isCancelled
                         ? 'bg-red-50 text-red-700 border-red-200'
                         : isOnTrial
                             ? 'bg-amber-50 text-amber-700 border-amber-200'
@@ -129,7 +129,7 @@ export default function ManagePlanPage() {
                     </span>
                 </div>
 
-                <h2 className="text-3xl md:text-4xl font-black tracking-tight text-text-main mb-2">
+                <h2 className="text-2xl md:text-3xl font-bold tracking-tight text-text-main mb-2">
                     {activePlan?.name || subscription?.plan?.name || 'Free Plan'}
                 </h2>
                 <p className="text-text-secondary font-bold mb-6">
@@ -138,27 +138,27 @@ export default function ManagePlanPage() {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                     <div className="rounded-2xl bg-white border border-slate-200 px-5 py-4 shadow-sm">
-                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Plan Price</p>
-                        <p className="mt-2 text-lg font-black text-text-main">
+                        <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Plan Price</p>
+                        <p className="mt-2 text-lg font-bold text-text-main">
                             {activePlan ? formatPrice(activePlan.monthlyPrice) : formatPrice(0)}
                             <span className="text-xs font-bold text-slate-500"> /mo</span>
                         </p>
                     </div>
                     <div className="rounded-2xl bg-white border border-slate-200 px-5 py-4 shadow-sm">
-                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Billing Cycle</p>
-                        <p className="mt-2 text-lg font-black text-text-main capitalize">
+                        <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Billing Cycle</p>
+                        <p className="mt-2 text-lg font-bold text-text-main capitalize">
                             {subscription?.billingPeriod || 'monthly'}
                         </p>
                     </div>
                     <div className="rounded-2xl bg-white border border-slate-200 px-5 py-4 shadow-sm">
-                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Period Start</p>
-                        <p className="mt-2 text-lg font-black text-text-main">
+                        <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Period Start</p>
+                        <p className="mt-2 text-lg font-bold text-text-main">
                             {periodStart ? new Date(periodStart).toLocaleDateString() : 'N/A'}
                         </p>
                     </div>
                     <div className="rounded-2xl bg-white border border-slate-200 px-5 py-4 shadow-sm">
-                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Period End</p>
-                        <p className="mt-2 text-lg font-black text-text-main">
+                        <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Period End</p>
+                        <p className="mt-2 text-lg font-bold text-text-main">
                             {displayPeriodEnd ? new Date(displayPeriodEnd).toLocaleDateString() : 'N/A'}
                         </p>
                     </div>
@@ -166,8 +166,8 @@ export default function ManagePlanPage() {
             </div>
 
             {capabilities && (
-                <div className="bg-white rounded-3xl border border-slate-200 p-6 mb-8">
-                    <h3 className="text-lg font-black text-slate-900 mb-6">Current Usage</h3>
+                <div className="bg-white rounded-2xl border border-gray-100 p-6 mb-8">
+                    <h3 className="text-lg font-bold text-slate-900 mb-6">Current Usage</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         {[
                             { label: 'Tags', used: capabilities.capabilities?.tags?.used ?? 0, limit: capabilities.capabilities?.tags?.limit ?? 0 },
@@ -178,7 +178,7 @@ export default function ManagePlanPage() {
                             <div key={item.label}>
                                 <div className="flex items-center justify-between mb-2">
                                     <span className="text-sm font-bold text-slate-600">{item.label}</span>
-                                    <span className="text-sm font-black text-slate-900">
+                                    <span className="text-sm font-bold text-slate-900">
                                         {item.used.toLocaleString()} / {(item.limit === 'unlimited' as any || item.limit === -1) ? 'Unlimited' : (item.limit as number).toLocaleString()}
                                     </span>
                                 </div>
@@ -204,7 +204,7 @@ export default function ManagePlanPage() {
                             <div key={credit.label}>
                                 <div className="flex items-center justify-between mb-2">
                                     <span className="text-sm font-bold text-slate-600">{credit.label}</span>
-                                    <span className="text-sm font-black text-slate-900">{credit.value.toLocaleString()}</span>
+                                    <span className="text-sm font-bold text-slate-900">{credit.value.toLocaleString()}</span>
                                 </div>
                                 <div className="h-2 bg-primary/10 rounded-full overflow-hidden">
                                     <div className="h-full bg-primary rounded-full transition-all" style={{ width: '100%' }} />
@@ -216,15 +216,15 @@ export default function ManagePlanPage() {
             )}
 
             {(business || user?.businessName) && (
-                <div className="bg-white rounded-3xl border border-slate-200 p-6 mb-8">
-                    <h3 className="text-lg font-black text-slate-900 mb-6">Business Information</h3>
+                <div className="bg-white rounded-2xl border border-gray-100 p-6 mb-8">
+                    <h3 className="text-lg font-bold text-slate-900 mb-6">Business Information</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="flex items-center gap-4">
                             <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center">
                                 <Building size={20} className="text-primary" />
                             </div>
                             <div>
-                                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Business</p>
+                                <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Business</p>
                                 <p className="text-sm font-bold text-slate-900">{business?.name || user?.businessName || 'N/A'}</p>
                             </div>
                         </div>
@@ -233,7 +233,7 @@ export default function ManagePlanPage() {
                                 <Mail size={20} className="text-primary" />
                             </div>
                             <div>
-                                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Email</p>
+                                <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Email</p>
                                 <p className="text-sm font-bold text-slate-900">{user?.email || 'N/A'}</p>
                             </div>
                         </div>
@@ -241,22 +241,22 @@ export default function ManagePlanPage() {
                 </div>
             )}
 
-            <div className="bg-primary/5 rounded-3xl border border-primary/20 p-6 mb-8">
+            <div className="bg-primary/5 rounded-2xl border border-primary/20 p-6 mb-8">
                 <div className="flex items-center justify-between gap-4 flex-wrap">
                     <div>
-                        <h3 className="text-lg font-black text-slate-900 mb-1">Want to change your plan?</h3>
+                        <h3 className="text-lg font-bold text-slate-900 mb-1">Want to change your plan?</h3>
                         <p className="text-sm font-medium text-slate-600">Upgrade or downgrade your subscription at any time.</p>
                     </div>
                     <div className="flex gap-3">
                         <Link
                             href="/dashboard/settings/subscription/details"
-                            className="px-6 h-12 bg-white text-primary border border-primary/30 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-primary/5 transition-all flex items-center gap-2 whitespace-nowrap"
+                            className="px-6 h-11 bg-white text-primary border border-primary/30 rounded-xl font-semibold text-xs uppercase tracking-wider hover:bg-primary/5 transition-all flex items-center gap-2 whitespace-nowrap"
                         >
                             See More Details
                         </Link>
                         <Link
                             href="/dashboard/settings/subscription"
-                            className="px-6 h-12 bg-primary text-white rounded-xl font-black text-xs uppercase tracking-widest hover:bg-primary-hover transition-all flex items-center gap-2 whitespace-nowrap"
+                            className="px-6 h-11 bg-primary text-white rounded-xl font-semibold text-xs uppercase tracking-wider hover:bg-primary-hover transition-all flex items-center gap-2 whitespace-nowrap"
                         >
                             Upgrade Plan
                         </Link>
@@ -265,20 +265,20 @@ export default function ManagePlanPage() {
             </div>
 
             {isOwner && subscription && !subscription.planId.toLowerCase().includes('free') && !isCancelled && (
-                <div className="bg-red-50 rounded-3xl border border-red-100 p-6">
+                <div className="bg-red-50 rounded-2xl border border-red-100 p-6">
                     <div className="flex items-center justify-between gap-4 flex-wrap">
                         <div className="flex items-center gap-4">
                             <div className="w-12 h-12 bg-red-100 rounded-xl flex items-center justify-center">
                                 <AlertTriangle size={20} className="text-red-600" />
                             </div>
                             <div>
-                                <h3 className="text-lg font-black text-red-900 mb-1">Cancel Subscription</h3>
+                                <h3 className="text-lg font-bold text-red-900 mb-1">Cancel Subscription</h3>
                                 <p className="text-sm font-medium text-red-700">Your plan remains active until the end of the billing period.</p>
                             </div>
                         </div>
                         <button
                             onClick={() => setShowCancelConfirm(true)}
-                            className="px-6 h-12 border-2 border-red-200 text-red-600 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-red-100 transition-all"
+                            className="px-6 h-11 border border-red-200 text-red-600 rounded-xl font-semibold text-xs uppercase tracking-wider hover:bg-red-100 transition-all"
                         >
                             Cancel Plan
                         </button>
@@ -288,26 +288,26 @@ export default function ManagePlanPage() {
 
             {showCancelConfirm && (
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-3xl p-8 max-w-md w-full">
+                    <div className="bg-white rounded-2xl p-8 max-w-md w-full">
                         <div className="text-center">
                             <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
                                 <AlertTriangle size={32} className="text-red-600" />
                             </div>
-                            <h3 className="text-xl font-black text-slate-900 mb-2">Cancel Subscription?</h3>
+                            <h3 className="text-xl font-bold text-slate-900 mb-2">Cancel Subscription?</h3>
                             <p className="text-sm font-medium text-slate-600 mb-6">
                                 Your subscription will be cancelled and premium access ends on {displayPeriodEnd ? new Date(displayPeriodEnd).toLocaleDateString() : 'N/A'}.
                             </p>
                             <div className="flex gap-3">
                                 <button
                                     onClick={() => setShowCancelConfirm(false)}
-                                    className="flex-1 h-12 bg-gray-100 text-slate-900 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-gray-200 transition-all"
+                                    className="flex-1 h-11 bg-gray-100 text-slate-900 rounded-xl font-semibold text-xs uppercase tracking-wider hover:bg-gray-200 transition-all"
                                 >
                                     Keep Plan
                                 </button>
                                 <button
                                     onClick={() => cancelMutation.mutate()}
                                     disabled={cancelMutation.isPending}
-                                    className="flex-1 h-12 bg-red-600 text-white rounded-xl font-black text-xs uppercase tracking-widest hover:bg-red-700 transition-all disabled:opacity-50"
+                                    className="flex-1 h-11 bg-red-600 text-white rounded-xl font-semibold text-xs uppercase tracking-wider hover:bg-red-700 transition-all disabled:opacity-50"
                                 >
                                     {cancelMutation.isPending ? 'Cancelling...' : 'Yes, Cancel'}
                                 </button>

@@ -224,7 +224,7 @@ export default function DashboardPricingPage() {
                     <div className="flex items-center gap-3 flex-wrap justify-end">
                         <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 border border-primary/20">
                             <Crown size={12} className="text-primary" />
-                            <span className="text-[10px] font-black uppercase tracking-widest text-primary">{activePlanName}</span>
+                            <span className="text-[10px] font-semibold uppercase tracking-wider text-primary">{activePlanName}</span>
                             {activePlan?.badge && (
                                 <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${
                                     activePlan.badge === 'free' ? 'bg-green-100 text-green-700' :
@@ -258,15 +258,15 @@ export default function DashboardPricingPage() {
                     </div>
                     <div>
                         <p className="text-sm font-bold text-amber-900">Read-only Access</p>
-                        <p className="text-[10px] font-medium text-amber-700 uppercase tracking-widest">Only the business owner can upgrade or change plans.</p>
+                        <p className="text-[10px] font-medium text-amber-700 uppercase tracking-wider">Only the business owner can upgrade or change plans.</p>
                     </div>
                 </div>
             )}
 
             {/* Current Plan Overview */}
-            <div className="mb-12 rounded-[2.5rem] border border-primary/10 bg-slate-50/70 p-6 md:p-10">
+            <div className="mb-12 rounded-2xl border border-primary/10 bg-slate-50/70 p-6 md:p-8">
                 <div className="text-center max-w-3xl mx-auto mb-8">
-                    <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-primary/10 text-primary rounded-full text-[10px] font-black uppercase tracking-widest mb-4">
+                    <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-primary/10 text-primary rounded-full text-[10px] font-semibold uppercase tracking-wider mb-4">
                         <Crown size={12} />
                         {showFreeTrialHeader ? 'Limited Time Offer' : 'Current Plan'}
                         {activePlan?.badge && (
@@ -280,7 +280,7 @@ export default function DashboardPricingPage() {
                             </span>
                         )}
                     </div>
-                    <h2 className="text-3xl md:text-5xl font-display font-black text-text-main tracking-tight mb-4">
+                    <h2 className="text-2xl md:text-4xl font-display font-bold text-text-main tracking-tight mb-4">
                         {showFreeTrialHeader ? 'Keep Full Access Before Trial Ends' : `You are on ${activePlanName}`}
                     </h2>
                     <p className="text-text-secondary font-medium">
@@ -294,23 +294,23 @@ export default function DashboardPricingPage() {
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div className="rounded-2xl bg-white border border-slate-200 px-5 py-4 shadow-sm">
-                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Status</p>
-                        <p className="mt-2 text-lg font-black text-text-main">{showTrialCountdown ? 'Trial Active' : 'Active Subscription'}</p>
+                        <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Status</p>
+                        <p className="mt-2 text-lg font-bold text-text-main">{showTrialCountdown ? 'Trial Active' : 'Active Subscription'}</p>
                     </div>
                     <div className="rounded-2xl bg-white border border-slate-200 px-5 py-4 shadow-sm">
-                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Current Price</p>
-                        <p className="mt-2 text-lg font-black text-text-main">
+                        <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Current Price</p>
+                        <p className="mt-2 text-lg font-bold text-text-main">
                             {activePlan ? formatPrice(activePlan.monthlyPrice) : formatPrice(0)}
                             {activePlan?.id !== 'free' && <span className="text-xs font-bold text-slate-500"> / {activeBillingPeriod === 'yearly' ? 'yr' : activeBillingPeriod === 'quarterly' ? 'qtr' : 'mo'}</span>}
                         </p>
                     </div>
                     <div className="rounded-2xl bg-white border border-slate-200 px-5 py-4 shadow-sm">
-                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Period</p>
+                        <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Period</p>
                         {activePlan?.isFree ? (
-                            <p className="mt-2 text-lg font-black text-green-600">Free Plan</p>
+                            <p className="mt-2 text-lg font-bold text-green-600">Free Plan</p>
                         ) : (
                             <>
-                                <p className="mt-2 text-lg font-black text-text-main">
+                                <p className="mt-2 text-lg font-bold text-text-main">
                                     {periodStart ? `Start ${new Date(periodStart).toLocaleDateString()}` : 'Start N/A'}
                                 </p>
                                 <p className="mt-1 text-xs font-bold text-slate-500">
@@ -322,10 +322,10 @@ export default function DashboardPricingPage() {
                 </div>
 
                 <div className="mt-6 flex flex-wrap gap-3">
-                    <Link href="/dashboard/settings/subscription/manage" className="h-11 px-6 bg-primary text-white rounded-xl font-black text-xs uppercase tracking-widest hover:bg-primary-hover transition-all flex items-center justify-center gap-2 shadow-lg shadow-primary/25">
+                    <Link href="/dashboard/settings/subscription/manage" className="h-10 px-5 bg-primary text-white rounded-xl font-semibold text-xs uppercase tracking-wider hover:bg-primary-hover transition-all flex items-center justify-center gap-2 shadow-lg shadow-primary/25">
                         Update Pricing
                     </Link>
-                    <Link href="/dashboard/settings/subscription/details" className="h-11 px-6 bg-white text-primary border border-primary/30 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-primary/5 transition-all flex items-center justify-center gap-2">
+                    <Link href="/dashboard/settings/subscription/details" className="h-10 px-5 bg-white text-primary border border-primary/30 rounded-xl font-semibold text-xs uppercase tracking-wider hover:bg-primary/5 transition-all flex items-center justify-center gap-2">
                         See More Details
                     </Link>
                     {isOnTrial && activePlan && !activePlan.isFree && isOwner && (
@@ -334,21 +334,21 @@ export default function DashboardPricingPage() {
                                 setIsTrialSelection(false);
                                 setCheckoutPlan({ ...activePlan, billingPeriod: activeBillingPeriod });
                             }}
-                            className="h-11 px-6 bg-primary-dark text-white rounded-xl font-black text-xs uppercase tracking-widest hover:bg-primary-hover transition-all"
+                            className="h-10 px-5 bg-primary-dark text-white rounded-xl font-semibold text-xs uppercase tracking-wider hover:bg-primary-hover transition-all"
                         >
                             Upgrade Before Trial Ends
                         </button>
                     )}
                     <a
                         href="#addons-section"
-                        className="h-11 px-6 bg-white text-emerald-600 border border-emerald-300 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-emerald-50 transition-all flex items-center justify-center gap-2"
+                        className="h-10 px-5 bg-white text-emerald-600 border border-emerald-300 rounded-xl font-semibold text-xs uppercase tracking-wider hover:bg-emerald-50 transition-all flex items-center justify-center gap-2"
                     >
                         <Zap size={14} />
                         Power-Ups
                     </a>
                     <a
                         href="#credits-section"
-                        className="h-11 px-6 bg-white text-amber-600 border border-amber-300 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-amber-50 transition-all flex items-center justify-center gap-2"
+                        className="h-10 px-5 bg-white text-amber-600 border border-amber-300 rounded-xl font-semibold text-xs uppercase tracking-wider hover:bg-amber-50 transition-all flex items-center justify-center gap-2"
                     >
                         <Coins size={14} />
                         Credit Packs
@@ -358,13 +358,13 @@ export default function DashboardPricingPage() {
 
             {/* Change Plan Section */}
             <div className="flex items-center justify-between mb-8">
-                <h3 className="text-xl font-black text-slate-900 tracking-tight">Available Plans</h3>
+                <h3 className="text-xl md:text-2xl font-bold text-slate-900 tracking-tight">Available Plans</h3>
                 <div className="bg-slate-100 p-1 rounded-xl flex items-center gap-1">
                     {(['monthly', 'quarterly', 'yearly'] as const).map((cycle) => (
                         <button
                             key={cycle}
                             onClick={() => setBillingPeriod(cycle)}
-                            className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${billingPeriod === cycle ? 'bg-white text-primary shadow-sm' : 'text-slate-500 hover:text-slate-900'
+                            className={`px-4 py-1.5 rounded-lg text-[10px] font-semibold uppercase tracking-wider transition-all ${billingPeriod === cycle ? 'bg-white text-primary shadow-sm' : 'text-slate-500 hover:text-slate-900'
                                 }`}
                         >
                             {cycle}
@@ -393,7 +393,7 @@ export default function DashboardPricingPage() {
                         <div
                             key={plan.id}
                             className={`
-                                relative flex flex-col p-6 rounded-[2.5rem] transition-all duration-300
+                                relative flex flex-col p-6 rounded-2xl transition-all duration-300
                                 ${highlight
                                     ? 'bg-white border-2 border-primary shadow-2xl shadow-primary/15 z-10 scale-[1.02]'
                                     : isCurrent
@@ -403,7 +403,7 @@ export default function DashboardPricingPage() {
                             `}
                         >
                             {highlight && (
-                                <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-primary text-white text-[10px] font-black px-4 py-1.5 rounded-full uppercase tracking-widest shadow-lg">
+                                <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-primary text-white text-[10px] font-bold px-4 py-1.5 rounded-full uppercase tracking-wider shadow-lg">
                                     Most Popular
                                 </div>
                             )}
@@ -424,12 +424,12 @@ export default function DashboardPricingPage() {
                                         )}
                                     </h3>
                                     {isCurrent && (
-                                        <span className={`${highlight ? 'bg-white text-primary' : 'bg-primary text-white'} text-[8px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest`}>
+                                        <span className={`${highlight ? 'bg-white text-primary' : 'bg-primary text-white'} text-[8px] font-semibold px-2 py-0.5 rounded-full uppercase tracking-wider`}>
                                             Active
                                         </span>
                                     )}
                                 </div>
-                                <p className={`text-[10px] font-bold uppercase tracking-widest ${highlight ? 'text-slate-500' : 'text-slate-400'}`}>
+                                <p className={`text-[10px] font-semibold uppercase tracking-wider ${highlight ? 'text-slate-500' : 'text-slate-400'}`}>
                                     {plan.description}
                                 </p>
                             </div>
@@ -459,7 +459,7 @@ export default function DashboardPricingPage() {
                             <div className="space-y-5 mb-8 flex-1 mt-4">
                                 {features.included.length > 0 && (
                                     <div>
-                                        <p className={`text-[10px] font-black uppercase tracking-widest mb-3 ${highlight ? 'text-slate-500' : 'text-text-secondary'}`}>
+                                        <p className={`text-[10px] font-semibold uppercase tracking-wider mb-3 ${highlight ? 'text-slate-500' : 'text-text-secondary'}`}>
                                             Included Features
                                         </p>
                                         <ul className="space-y-3">
@@ -476,7 +476,7 @@ export default function DashboardPricingPage() {
                                 )}
                                 {features.limits.length > 0 && (
                                     <div>
-                                        <p className={`text-[10px] font-black uppercase tracking-widest mb-3 ${highlight ? 'text-slate-500' : 'text-text-secondary'}`}>
+                                        <p className={`text-[10px] font-semibold uppercase tracking-wider mb-3 ${highlight ? 'text-slate-500' : 'text-text-secondary'}`}>
                                             Usage Limits
                                         </p>
                                         <ul className="space-y-3">
@@ -497,7 +497,7 @@ export default function DashboardPricingPage() {
                                 {trialDays > 0 && !plan.isFree && !isCurrent && isOwner && (
                                     <button
                                         onClick={() => handlePlanSelect(plan, true)}
-                                        className={`w-full h-11 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all shadow-lg active:scale-[0.98]
+                                        className={`w-full h-10 rounded-xl font-semibold text-[10px] uppercase tracking-wider transition-all shadow-lg active:scale-[0.98]
                                             ${highlight
                                                 ? 'bg-primary text-white hover:bg-primary-hover shadow-primary/20'
                                                 : 'bg-primary text-white hover:bg-primary-hover shadow-primary/20'
@@ -509,7 +509,7 @@ export default function DashboardPricingPage() {
                                 <button
                                     onClick={() => handlePlanSelect(plan)}
                                     disabled={((isCurrent && !isPersonal && !(isOnTrial && !plan.isFree)) || !isOwner)}
-                                    className={`w-full h-12 rounded-xl font-black text-xs uppercase tracking-widest transition-all active:scale-[0.98]
+                                    className={`w-full h-10 rounded-xl font-semibold text-xs uppercase tracking-wider transition-all active:scale-[0.98]
                                         ${isCurrent
                                             ? isOnTrial && !plan.isFree && isOwner
                                                 ? highlight ? 'bg-primary text-white hover:bg-primary-hover' : 'bg-primary text-white hover:bg-primary-hover shadow-primary/20'
@@ -555,14 +555,14 @@ export default function DashboardPricingPage() {
                 const price = getPriceByCycle(enterprisePlan, billingPeriod);
 
                 return (
-                    <div className="mt-12 relative flex flex-col md:flex-row items-center gap-8 p-6 md:p-8 rounded-[2rem] bg-gradient-to-br from-primary to-primary-dark text-white shadow-2xl shadow-primary/20 border border-white/10 overflow-hidden">
+                    <div className="mt-12 relative flex flex-col md:flex-row items-center gap-8 p-6 md:p-8 rounded-2xl bg-gradient-to-br from-primary to-primary-dark text-white shadow-2xl shadow-primary/20 border border-white/10 overflow-hidden">
                         <div className="absolute top-0 right-0 w-64 h-64 bg-primary-light/30 blur-[100px] rounded-full -mr-32 -mt-32" />
 
                         <div className="relative z-10 flex-1 text-center md:text-left">
-                            <div className="inline-block px-2.5 py-1 bg-white/10 text-white text-[8px] font-black rounded-full uppercase tracking-widest mb-3 border border-white/10">
+                            <div className="inline-block px-2.5 py-1 bg-white/10 text-white text-[8px] font-semibold rounded-full uppercase tracking-wider mb-3 border border-white/10">
                                 Enterprise
                             </div>
-                            <h3 className="text-xl md:text-2xl font-black mb-1 tracking-tight text-white">
+                            <h3 className="text-xl md:text-2xl font-bold mb-1 tracking-tight text-white">
                                 {enterprisePlan.name}
                             </h3>
                             <p className="text-xs mb-6 font-bold text-white/50 max-w-xl">
@@ -570,7 +570,7 @@ export default function DashboardPricingPage() {
                             </p>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-2">
                                 {[...features.included, ...features.limits].slice(0, 4).map((item: string, i: number) => (
-                                    <li key={i} className="flex items-center text-[10px] font-black uppercase tracking-widest gap-2.5 list-none justify-center md:justify-start">
+                                    <li key={i} className="flex items-center text-[10px] font-semibold uppercase tracking-wider gap-2.5 list-none justify-center md:justify-start">
                                         <CheckCircle2 size={12} className="text-primary shrink-0" />
                                         <span className="text-white/70">{item}</span>
                                     </li>
@@ -580,14 +580,14 @@ export default function DashboardPricingPage() {
 
                         <div className="relative z-10 flex flex-col items-center md:items-end gap-5 shrink-0">
                             <div className="text-center md:text-right">
-                                <span className="text-3xl md:text-4xl font-black block leading-none">{formatPrice(price)}</span>
-                                <span className="text-[10px] font-black uppercase tracking-widest opacity-40 mt-1 block">
+                                <span className="text-3xl md:text-4xl font-bold block leading-none">{formatPrice(price)}</span>
+                                <span className="text-[10px] font-semibold uppercase tracking-wider opacity-40 mt-1 block">
                                     /{billingPeriod === 'yearly' ? 'yr' : billingPeriod === 'quarterly' ? 'qtr' : 'mo'}
                                 </span>
                             </div>
                             <button
                                 onClick={() => handlePlanSelect(enterprisePlan)}
-                                className="px-8 h-12 bg-white text-slate-900 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-slate-50 transition-all shadow-lg active:scale-[0.98] whitespace-nowrap"
+                                className="px-6 h-10 bg-white text-slate-900 rounded-xl font-semibold text-xs uppercase tracking-wider hover:bg-slate-50 transition-all shadow-lg active:scale-[0.98] whitespace-nowrap"
                             >
                                 Contact Sales
                             </button>
@@ -601,7 +601,7 @@ export default function DashboardPricingPage() {
                 <div className="mt-20">
                     <div className="flex items-center justify-between mb-8">
                         <div>
-                            <h3 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-3">
+                            <h3 className="text-xl md:text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-3">
                                 <ShieldCheck className="text-emerald-500" />
                                 My Active Power-Ups
                             </h3>
@@ -632,7 +632,7 @@ export default function DashboardPricingPage() {
                                 return (
                                     <div 
                                         key={ba.id}
-                                        className="group relative flex flex-col p-6 rounded-[2rem] bg-emerald-50/30 border border-emerald-100 shadow-sm overflow-hidden"
+                                        className="group relative flex flex-col p-6 rounded-2xl bg-emerald-50/30 border border-emerald-100 shadow-sm overflow-hidden"
                                     >
                                         <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
                                             <TrendingUp size={64} className="text-emerald-500" />
@@ -640,11 +640,11 @@ export default function DashboardPricingPage() {
 
                                         <div className="mb-6">
                                             <div className="flex items-center justify-between gap-2 mb-4">
-                                                <div className="size-12 rounded-2xl bg-emerald-100 text-emerald-600 flex items-center justify-center">
+                                                <div className="size-10 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center">
                                                     {addon.type === 'RESOURCE' ? <Box size={24} /> : <Zap size={24} />}
                                                 </div>
                                                 <div className="flex flex-col items-end">
-                                                    <span className="px-2 py-1 bg-emerald-500 text-white text-[8px] font-black rounded-full uppercase tracking-widest shadow-sm">
+                                                    <span className="px-2 py-1 bg-emerald-500 text-white text-[8px] font-semibold rounded-full uppercase tracking-wider shadow-sm">
                                                         x{ba.quantity || 1} Active
                                                     </span>
                                                     <span className="text-[9px] font-bold text-emerald-600 mt-1">
@@ -652,11 +652,11 @@ export default function DashboardPricingPage() {
                                                     </span>
                                                 </div>
                                             </div>
-                                            <h4 className="text-lg font-black text-slate-900 tracking-tight">{addon.name}</h4>
+                                            <h4 className="text-lg font-bold text-slate-900 tracking-tight">{addon.name}</h4>
                                             {addon.type === 'RESOURCE' && addon.additionalLimit && (
                                                 <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-100/50 text-emerald-700 rounded-lg mt-2">
                                                     <TrendingUp size={12} strokeWidth={3} />
-                                                    <span className="text-[10px] font-black uppercase tracking-widest">
+                                                    <span className="text-[10px] font-semibold uppercase tracking-wider">
                                                         +{totalLimit} {capability}s Total Boost
                                                     </span>
                                                 </div>
@@ -665,16 +665,16 @@ export default function DashboardPricingPage() {
 
                                         <div className="mt-auto pt-4 border-t border-emerald-100/50 flex items-center justify-between">
                                             <div className="flex flex-col">
-                                                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">
+                                                <span className="text-[9px] font-semibold text-slate-400 uppercase tracking-wider">
                                                     {ba.addon.isRecurring ? 'Next Billing' : 'Expires On'}
                                                 </span>
-                                                <span className="text-xs font-black text-slate-700">
+                                                <span className="text-xs font-bold text-slate-700">
                                                     {new Date(ba.expiresAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
                                                 </span>
                                             </div>
                                             <div className="text-right">
-                                                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest block">Investment</span>
-                                                <span className="text-xs font-black text-emerald-600">
+                                                <span className="text-[9px] font-semibold text-slate-400 uppercase tracking-wider block">Investment</span>
+                                                <span className="text-xs font-bold text-emerald-600">
                                                     ₦{(addon.price * (ba.quantity || 1)).toLocaleString()}
                                                     <span className="text-[9px] opacity-60 ml-0.5">/{addon.isRecurring ? 'mo' : 'once'}</span>
                                                 </span>
@@ -692,7 +692,7 @@ export default function DashboardPricingPage() {
             <div id="addons-section" className="mt-20">
                 <div className="flex items-center justify-between mb-8">
                     <div>
-                        <h3 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-3">
+                        <h3 className="text-xl md:text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-3">
                             <Sparkles className="text-primary" />
                             Business Power-Ups
                         </h3>
@@ -700,7 +700,7 @@ export default function DashboardPricingPage() {
                     </div>
                     <Link
                         href="/dashboard/settings/subscription/manage"
-                        className="h-11 px-6 bg-slate-900 text-white rounded-xl font-black text-xs uppercase tracking-widest hover:bg-slate-800 transition-all flex items-center gap-2 shadow-lg"
+                        className="h-10 px-5 bg-slate-900 text-white rounded-xl font-semibold text-xs uppercase tracking-wider hover:bg-slate-800 transition-all flex items-center gap-2 shadow-lg"
                     >
                         <Zap size={14} />
                         Manage Add-ons
@@ -727,7 +727,7 @@ export default function DashboardPricingPage() {
                                 const addon = ba.addon;
                                 const totalLimit = (addon.additionalLimit || 0) * (ba.quantity || 1);
                                 return (
-                                    <div key={ba.id} className="group relative flex flex-col p-6 rounded-[2rem] bg-emerald-50/30 border border-emerald-100 shadow-sm overflow-hidden">
+                                    <div key={ba.id} className="group relative flex flex-col p-6 rounded-2xl bg-emerald-50/30 border border-emerald-100 shadow-sm overflow-hidden">
                                         <div className="absolute top-0 right-0 p-4 opacity-10">
                                             {addon.type === 'RESOURCE' ? <Box size={64} className="text-emerald-500" /> : <Zap size={64} className="text-emerald-500" />}
                                         </div>
@@ -736,9 +736,9 @@ export default function DashboardPricingPage() {
                                                 <div className="size-10 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center">
                                                     {addon.type === 'RESOURCE' ? <Box size={20} /> : <Zap size={20} />}
                                                 </div>
-                                                <span className="px-2 py-0.5 bg-emerald-500 text-white text-[8px] font-black rounded-full uppercase tracking-widest">x{ba.quantity || 1}</span>
+                                                <span className="px-2 py-0.5 bg-emerald-500 text-white text-[8px] font-semibold rounded-full uppercase tracking-wider">x{ba.quantity || 1}</span>
                                             </div>
-                                            <h4 className="text-sm font-black text-slate-900">{addon.name}</h4>
+                                            <h4 className="text-sm font-bold text-slate-900">{addon.name}</h4>
                                             {addon.additionalLimit && (
                                                 <span className="text-[10px] font-bold text-emerald-600">+{totalLimit} {addon.targetCapability?.replace(/Limit|s$/i, '') || 'Units'}</span>
                                             )}
@@ -748,7 +748,7 @@ export default function DashboardPricingPage() {
                             });
                         })()}
                         {myActiveAddons.length > 3 && (
-                            <div className="flex items-center justify-center p-6 rounded-[2rem] border border-dashed border-slate-200 bg-white">
+                            <div className="flex items-center justify-center p-6 rounded-2xl border border-dashed border-slate-200 bg-white">
                                 <p className="text-xs font-bold text-slate-400">+{myActiveAddons.length - 3} more active</p>
                             </div>
                         )}
@@ -768,9 +768,9 @@ export default function DashboardPricingPage() {
 
             {/* Credit Packs Section */}
             <div id="credits-section" className="mt-20">
-                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-200 rounded-[2rem] p-8">
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-200 rounded-2xl p-8">
                     <div>
-                        <h3 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-3 mb-2">
+                        <h3 className="text-xl md:text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-3 mb-2">
                             <Coins className="text-amber-500" />
                             Credit Packs
                         </h3>
@@ -781,14 +781,14 @@ export default function DashboardPricingPage() {
                     <div className="flex gap-3 shrink-0">
                         <a
                             href="/dashboard/ai"
-                            className="h-12 px-8 bg-amber-500 text-white rounded-xl font-black text-xs uppercase tracking-widest hover:bg-amber-600 transition-all flex items-center gap-2 shadow-lg shadow-amber-500/20"
+                            className="h-10 px-6 bg-amber-500 text-white rounded-xl font-semibold text-xs uppercase tracking-wider hover:bg-amber-600 transition-all flex items-center gap-2 shadow-lg shadow-amber-500/20"
                         >
                             <Sparkles size={16} />
                             AI Credit
                         </a>
                         <a
                             href="/dashboard/messaging/credits"
-                            className="h-12 px-6 bg-white text-slate-700 border border-slate-200 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-slate-50 transition-all flex items-center gap-2"
+                            className="h-10 px-6 bg-white text-slate-700 border border-slate-200 rounded-xl font-semibold text-xs uppercase tracking-wider hover:bg-slate-50 transition-all flex items-center gap-2"
                         >
                             <Mail size={16} />
                             SMS/Email Credit
