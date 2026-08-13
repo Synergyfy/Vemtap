@@ -70,11 +70,18 @@ export class BusinessesController {
   ) {
     const businessId = req.user.businessId;
     if (!businessId) {
-      // Auto-create business during onboarding if one doesn't exist yet
+      // Auto-create business during onboarding if one doesn't exist yet.
+      // Never let the request body clobber the fallback name — LocationStep /
+      // OperatingStep PATCH with no `name`, which would otherwise insert NULL.
+      const { name, ...rest } = updateBusinessDto;
+      const existing = await this.businessesService.findByOwner(req.user.id);
+      if (existing) {
+        return this.businessesService.update(existing.id, rest);
+      }
       const business = await this.businessesService.create({
         ownerId: req.user.id,
-        name: updateBusinessDto.name || 'My Business',
-        ...updateBusinessDto,
+        name: name?.trim() || 'My Business',
+        ...rest,
       });
       return business;
     }
@@ -92,9 +99,16 @@ export class BusinessesController {
     schema: { example: { queued: true } },
   })
   async enqueueGeocode(@Request() req: RequestWithUser) {
-    const businessId = req.user.businessId;
+    let businessId: string | undefined = req.user.businessId;
     if (!businessId) {
-      throw new BadRequestException('User is not associated with a business');
+      const business = await this.businessesService.findByOwner(req.user.id);
+      businessId = business?.id;
+    }
+    if (!businessId) {
+      // Best-effort background job: if the user doesn't have a business yet
+      // (e.g. they skipped location setup mid-onboarding), there's nothing to
+      // geocode — return quietly instead of erroring.
+      return { queued: false };
     }
     await this.businessesService.enqueueGeocode(businessId);
     return { queued: true };
