@@ -17,7 +17,6 @@ import { cn } from '@/lib/utils';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/store/useAuthStore';
 import { getFirstPermittedDashboardRoute, isRouteAllowed } from '@/lib/utils/nav-filter';
-import { hasSavedOnboardingProgress } from '@/lib/onboardingProgress';
 
 const isEmail = (v: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim());
 const isPhone = (v: string) => /^[\+\d][\d\s\-\(\)]{7,20}$/.test(v.trim());
@@ -89,9 +88,6 @@ function LoginPageContent() {
         if (normalizedRole === 'admin') {
             router.push('/admin');
         } else if (normalizedRole === 'owner' && (!businessId || isNewUser)) {
-            router.push('/onboarding');
-        } else if (normalizedRole === 'owner' && hasSavedOnboardingProgress(useAuthStore.getState().user?.id)) {
-            // Owner with an in-progress onboarding resume where they stopped.
             router.push('/onboarding');
         } else if (businessId && (normalizedRole === 'owner' || normalizedRole === 'manager' || normalizedRole === 'staff')) {
             router.push(landing ?? '/dashboard');

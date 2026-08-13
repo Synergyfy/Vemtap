@@ -275,7 +275,7 @@ export default function OnboardingPage() {
         <div className="min-h-screen bg-white flex flex-col font-sans text-text-main">
             {/* Top Navigation */}
             <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-100 px-6 py-3 sm:py-4">
-                <div className="max-w-xl mx-auto space-y-4 sm:space-y-6">
+                <div className="max-w-xl mx-auto lg:max-w-2xl xl:max-w-3xl space-y-4 sm:space-y-6">
                     {/* Top Row: Logo and Save & Exit */}
                     <div className="flex items-center justify-between pb-2 sm:pb-3">
                         <div className="flex items-center gap-4">
@@ -322,7 +322,7 @@ export default function OnboardingPage() {
             </header>
 
             <main className="flex-1 overflow-y-auto pb-24">
-                <div className="max-w-xl mx-auto px-6 pt-12">
+                <div className="max-w-xl mx-auto lg:max-w-2xl xl:max-w-3xl px-6 pt-12">
                     <AnimatePresence mode="wait">
                         {currentStep === 1 && <WelcomeStep onNext={() => handleNext()} referrer={referrer} />}
                         {currentStep === 2 && <CategoryStep data={data} onNext={handleNext} />}
@@ -478,7 +478,7 @@ function WelcomeStep({ onNext, referrer }: { onNext: () => void; referrer?: { re
             )}
 
             <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/90 backdrop-blur-md border-t border-gray-100 md:relative md:p-0 md:bg-transparent md:border-0">
-                <div className="max-w-xl mx-auto">
+                <div className="max-w-xl mx-auto lg:max-w-2xl xl:max-w-3xl">
                     <Button
                         onClick={onNext}
                         className="w-full bg-primary text-white font-semibold uppercase tracking-[0.14em] text-xs py-5 rounded-xl hover:bg-primary-hover shadow-lg shadow-primary/20 transition-all active:scale-[0.98] flex items-center justify-center gap-3"
@@ -646,7 +646,7 @@ function CategoryStep({ data, onNext }: { data: Partial<OnboardingData>, onNext:
             )}
 
             <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/90 backdrop-blur-md border-t border-gray-100 md:relative md:p-0 md:bg-transparent md:border-0">
-                <div className="max-w-xl mx-auto flex gap-4">
+                <div className="max-w-xl mx-auto lg:max-w-2xl xl:max-w-3xl flex gap-4">
                     <Button
                         disabled={!selected}
                         onClick={() => onNext({ category: selected })}
@@ -1102,7 +1102,7 @@ function DetailsStep({ data, onNext, refCode }: { data: Partial<OnboardingData>,
             </div>
 
             <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/90 backdrop-blur-md border-t border-gray-100 md:relative md:p-0 md:bg-transparent md:border-0">
-                <div className="max-w-xl mx-auto flex gap-4">
+                <div className="max-w-xl mx-auto lg:max-w-2xl xl:max-w-3xl flex gap-4">
                     <Button
                         disabled={!localData.businessName || !localData.address.street || isSaving}
                         onClick={handleContinue}
@@ -1385,7 +1385,7 @@ function OperatingStep({ data, onNext, refCode }: { data: Partial<OnboardingData
             </div>
 
             <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/90 backdrop-blur-md border-t border-gray-100 md:relative md:p-0 md:bg-transparent md:border-0">
-                <div className="max-w-xl mx-auto">
+                <div className="max-w-xl mx-auto lg:max-w-2xl xl:max-w-3xl">
                     <Button
                         disabled={!localData.contact.email || isSaving}
                         onClick={handleContinue}
