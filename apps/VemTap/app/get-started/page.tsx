@@ -45,6 +45,9 @@ function StepShell({ title, subtitle, children }: { title: string; subtitle: Rea
     );
 }
 
+const getErrorMessage = (err: unknown, fallback: string): string =>
+    err instanceof Error && err.message ? err.message : fallback;
+
 export default function GetStartedPage() {
     const router = useRouter();
     const [step, setStep] = useState(1);
@@ -64,18 +67,21 @@ export default function GetStartedPage() {
 
     const refCode = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('ref') : null;
 
-    useEffect(() => {
-        if (refCode) {
-            setFormData(p => ({ ...p, referralCode: refCode }));
-        }
-    }, []);
+    // Apply the ?ref= code once. Adjusted during render (guarded by the previous
+    // value) instead of an effect so the referral autofill doesn't trigger a
+    // setState-in-effect lint error.
+    const [appliedRefCode, setAppliedRefCode] = useState<string | null>(null);
+    if (refCode && refCode !== appliedRefCode) {
+        setAppliedRefCode(refCode);
+        setFormData(p => ({ ...p, referralCode: refCode }));
+    }
 
     // OTP verification states
     const [otpCode, setOtpCode] = useState('');
     const [otpLoading, setOtpLoading] = useState(false);
     const [resendTimer, setResendTimer] = useState(0);
-    const [resendDisabled, setResendDisabled] = useState(false);
     const [resendLoading, setResendLoading] = useState(false);
+    const resendDisabled = resendTimer > 0;
 
     const [error, setError] = useState('');
     const { registerOwner, requestOwnerOtp } = useRegisterOwner();
@@ -83,14 +89,10 @@ export default function GetStartedPage() {
     const login = useAuthStore(state => state.login);
 
     useEffect(() => {
-        let interval: NodeJS.Timeout;
-        if (resendTimer > 0) {
-            interval = setInterval(() => {
-                setResendTimer((prev) => prev - 1);
-            }, 1000);
-        } else {
-            setResendDisabled(false);
-        }
+        if (resendTimer <= 0) return;
+        const interval = setInterval(() => {
+            setResendTimer((prev) => prev - 1);
+        }, 1000);
         return () => clearInterval(interval);
     }, [resendTimer]);
 
@@ -117,9 +119,8 @@ export default function GetStartedPage() {
             await requestOwnerOtp({ email: formData.email, role: 'Owner' });
             setStep(2);
             setResendTimer(30);
-            setResendDisabled(true);
-        } catch (err: any) {
-            setError(err.message || 'Failed to request verification code');
+        } catch (err: unknown) {
+            setError(getErrorMessage(err, 'Failed to request verification code'));
         } finally {
             setIsLoading(false);
         }
@@ -134,8 +135,8 @@ export default function GetStartedPage() {
                 code: otpCode
             });
             setStep(3);
-        } catch (err: any) {
-            setError(err.message || 'Invalid or expired verification code');
+        } catch (err: unknown) {
+            setError(getErrorMessage(err, 'Invalid or expired verification code'));
         } finally {
             setOtpLoading(false);
         }
@@ -147,9 +148,8 @@ export default function GetStartedPage() {
         try {
             await requestOwnerOtp({ email: formData.email, role: 'Owner' });
             setResendTimer(30);
-            setResendDisabled(true);
-        } catch (err: any) {
-            setError(err.message || 'Failed to resend verification code');
+        } catch (err: unknown) {
+            setError(getErrorMessage(err, 'Failed to resend verification code'));
         } finally {
             setResendLoading(false);
         }
@@ -186,11 +186,11 @@ export default function GetStartedPage() {
             };
             const response = await registerOwner(ownerPayload);
 
-            login(response.user, response.access_token);
+            await login(response.user, response.access_token);
 
             router.push('/onboarding');
-        } catch (err: any) {
-            setError(err.message || 'Something went wrong');
+        } catch (err: unknown) {
+            setError(getErrorMessage(err, 'Something went wrong'));
         } finally {
             setIsLoading(false);
         }
@@ -211,12 +211,12 @@ export default function GetStartedPage() {
             const response = await registerOwner(ownerPayload);
 
             // Log user in
-            login(response.user, response.access_token);
+            await login(response.user, response.access_token);
 
             // Redirect immediately to onboarding
             router.push('/onboarding');
-        } catch (err: any) {
-            setError(err.message || 'Registration failed. Please try again.');
+        } catch (err: unknown) {
+            setError(getErrorMessage(err, 'Registration failed. Please try again.'));
         } finally {
             setIsLoading(false);
         }

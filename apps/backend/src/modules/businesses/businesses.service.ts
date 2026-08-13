@@ -110,6 +110,7 @@ export class BusinessesService {
 
     const business = this.businessesRepository.create({
       ...businessBaseData,
+      name: businessBaseData.name?.trim() || 'My Business',
       officialEmail,
       phone,
       logoUrl,

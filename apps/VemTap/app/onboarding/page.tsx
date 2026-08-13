@@ -10,25 +10,7 @@ import {
     ArrowRight,
     Save,
     Search,
-    Utensils,
-    Scissors,
-    ShoppingBag,
-    Dumbbell,
-    Hotel,
-    Tv,
-    ShoppingCart,
-    Pill,
     Sparkles,
-    Waves,
-    Croissant,
-    Coffee,
-    Truck,
-    Wrench,
-    Home,
-    GraduationCap,
-    Briefcase,
-    Stethoscope,
-    MoreHorizontal,
     Camera,
     MapPin,
     Globe,
@@ -37,10 +19,8 @@ import {
     Linkedin,
     Twitter,
     MessageCircle,
-    Phone,
     Mail,
     Clock,
-    Calendar,
     Eye,
     EyeOff,
     Zap,
@@ -48,13 +28,6 @@ import {
     Star,
     Crown,
     Play,
-    Building2,
-    Music,
-    Coins,
-    Sprout,
-    Factory,
-    Heart,
-    Landmark,
     ChevronDown,
     ChevronRight,
     Trash2,
@@ -74,15 +47,20 @@ import { useUpdateBusiness } from '@/services/businesses/hooks';
 import { useSubscriptionStore } from '@/store/subscriptionStore';
 import type { PricingPlan } from '@/types/pricing';
 import { usePricingPlans } from '@/services/pricing/hooks';
-import { useSubscribe } from '@/services/subscriptions/hooks';
-import type { SubscribeRequest } from '@/services/subscriptions/types';
+import { useSubscribe, useActiveSubscription } from '@/services/subscriptions/hooks';
 import { loadPaystackScript } from '@/lib/loadPaystackScript';
+import { uploadToCloudinary } from '@/lib/cloudinary';
 import { useAuthStore } from '@/store/useAuthStore';
 import { loadOnboardingProgress, saveOnboardingProgress, clearOnboardingProgress } from '@/lib/onboardingProgress';
 import LocationStep from './components/LocationStep';
 import toast from 'react-hot-toast';
 import { api } from '@/lib/api';
 import { useReferrerInfo } from '@/services/affiliates/hooks';
+
+// --- Utils ---
+function getErrorMessage(err: unknown, fallback: string): string {
+    return err instanceof Error && err.message ? err.message : fallback;
+}
 
 // --- Types ---
 type Step = 1 | 2 | '2A' | 3 | '3A' | 4 | 5 | '5A' | 6 | 7;
@@ -123,6 +101,13 @@ interface OnboardingData {
     isTrial?: boolean;
     latitude?: number;
     longitude?: number;
+}
+
+interface DayHours {
+    open: string;
+    close: string;
+    isClosed: boolean;
+    is24h: boolean;
 }
 
 // Social Media Platforms Configuration
@@ -226,8 +211,8 @@ export default function OnboardingPage() {
                     businessId: user?.businessId,
                     isTrial: true,
                 });
-            } catch (err: any) {
-                toast.error(err?.message || 'Failed to activate free plan');
+            } catch (err) {
+                toast.error(getErrorMessage(err, 'Failed to activate free plan'));
                 setIsSubscribingFree(false);
                 return;
             }
@@ -492,7 +477,7 @@ function WelcomeStep({ onNext, referrer }: { onNext: () => void; referrer?: { re
 }
 
 // --- Screen 2: Select Category ---
-function CategoryStep({ data, onNext }: { data: Partial<OnboardingData>, onNext: (d: any) => void }) {
+function CategoryStep({ data, onNext }: { data: Partial<OnboardingData>, onNext: (d: Partial<OnboardingData>) => void }) {
     const [search, setSearch] = useState('');
     const [selected, setSelected] = useState(data.category || '');
     const [currentPage, setCurrentPage] = useState(1);
@@ -506,21 +491,22 @@ function CategoryStep({ data, onNext }: { data: Partial<OnboardingData>, onNext:
     const rawCategories: Category[] = categoriesData?.items || [];
     const meta = categoriesData?.meta;
 
-    useEffect(() => {
-        setCurrentPage(1);
-    }, [search]);
-
     const categories = rawCategories.map((cat: Category) => {
         const icon = getCategoryIcon(cat.name);
         return { id: cat.id, label: cat.name, description: cat.description, icon };
     });
 
-    // If search matches exactly one category, auto-select it
-    useEffect(() => {
-        if (search && categories.length === 1) {
-            setSelected(categories[0].id);
+    // If search matches exactly one category, auto-select it. Adjusted during
+    // render (guarded by the previous value) instead of an effect so React
+    // doesn't flag a setState-in-effect.
+    const singleResultId = search && categories.length === 1 ? categories[0].id : null;
+    const [prevSingleResultId, setPrevSingleResultId] = useState<string | null>(null);
+    if (singleResultId !== prevSingleResultId) {
+        setPrevSingleResultId(singleResultId);
+        if (singleResultId) {
+            setSelected(singleResultId);
         }
-    }, [search, categories]);
+    }
 
     return (
         <motion.div
@@ -544,7 +530,10 @@ function CategoryStep({ data, onNext }: { data: Partial<OnboardingData>, onNext:
                 <input
                     type="text"
                     value={search}
-                    onChange={(e) => setSearch(e.target.value)}
+                    onChange={(e) => {
+                        setSearch(e.target.value);
+                        setCurrentPage(1);
+                    }}
                     placeholder="Search Business Category"
                     className={`${INPUT_CLASS} pl-11`}
                 />
@@ -694,7 +683,7 @@ function CategoryConfirmation({ onNext }: { onNext: () => void }) {
 }
 
 // --- Screen 3: Business Details ---
-function DetailsStep({ data, onNext, refCode }: { data: Partial<OnboardingData>, onNext: (d: any) => void, refCode?: string | null }) {
+function DetailsStep({ data, onNext, refCode }: { data: Partial<OnboardingData>, onNext: (d: Partial<OnboardingData>) => void, refCode?: string | null }) {
     const [localData, setLocalData] = useState({
         businessName: data.businessName || '',
         logo: data.logo || null,
@@ -736,16 +725,13 @@ function DetailsStep({ data, onNext, refCode }: { data: Partial<OnboardingData>,
         setActiveSocials(prev => prev.filter(s => s.id !== id));
     };
 
-    useEffect(() => {
-        const socialsMap: Record<string, string> = {};
-        activeSocials.forEach(s => { socialsMap[s.id] = s.url; });
-        setLocalData(prev => ({ ...prev, socials: socialsMap }));
-    }, [activeSocials]);
-
     const handleContinue = async () => {
         if (!localData.businessName || !localData.address.street) return;
         setIsSaving(true);
         try {
+            const socialsMap: Record<string, string> = {};
+            activeSocials.forEach(s => { socialsMap[s.id] = s.url; });
+
             await updateBusiness.mutateAsync({
                 updates: {
                     name: localData.businessName,
@@ -756,12 +742,12 @@ function DetailsStep({ data, onNext, refCode }: { data: Partial<OnboardingData>,
                     address: `${localData.address.street}, ${localData.address.city}`,
                     city: localData.address.city,
                     state: localData.address.state,
-                    facebookUrl: localData.socials.facebook || undefined,
-                    instagramUrl: localData.socials.instagram || undefined,
-                    tiktokUrl: localData.socials.tiktok || undefined,
-                    xUrl: localData.socials.x || undefined,
-                    linkedinUrl: localData.socials.linkedin || undefined,
-                    whatsappNumber: localData.socials.whatsapp || undefined,
+                    facebookUrl: socialsMap.facebook || undefined,
+                    instagramUrl: socialsMap.instagram || undefined,
+                    tiktokUrl: socialsMap.tiktok || undefined,
+                    xUrl: socialsMap.x || undefined,
+                    linkedinUrl: socialsMap.linkedin || undefined,
+                    whatsappNumber: socialsMap.whatsapp || undefined,
                     ...(refCode ? { referralCode: refCode } : {}),
                 }
             });
@@ -777,9 +763,9 @@ function DetailsStep({ data, onNext, refCode }: { data: Partial<OnboardingData>,
                 console.error('Failed to sync user profile after business creation:', err);
             }
 
-            onNext(localData);
-        } catch (err: any) {
-            toast.error(err?.message || 'Failed to save business details');
+            onNext({ ...localData, socials: socialsMap });
+        } catch (err) {
+            toast.error(getErrorMessage(err, 'Failed to save business details'));
         } finally {
             setIsSaving(false);
         }
@@ -819,12 +805,11 @@ function DetailsStep({ data, onNext, refCode }: { data: Partial<OnboardingData>,
                             type="file"
                             className="absolute inset-0 opacity-0 cursor-pointer"
                             accept="image/*"
-                            onChange={(e) => {
+                            onChange={async (e) => {
                                 const file = e.target.files?.[0];
                                 if (file) {
-                                    const reader = new FileReader();
-                                    reader.onloadend = () => setLocalData({ ...localData, logo: reader.result as string });
-                                    reader.readAsDataURL(file);
+                                    const url = await uploadToCloudinary(file);
+                                    setLocalData({ ...localData, logo: url });
                                 }
                             }}
                         />
@@ -1117,40 +1102,63 @@ function DetailsStep({ data, onNext, refCode }: { data: Partial<OnboardingData>,
 }
 
 // --- Screen 4: Business Operating Details ---
-function OperatingStep({ data, onNext, refCode }: { data: Partial<OnboardingData>, onNext: (d: any) => void, refCode?: string | null }) {
+function OperatingStep({ data, onNext, refCode }: { data: Partial<OnboardingData>, onNext: (d: Partial<OnboardingData>) => void, refCode?: string | null }) {
     const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
     const currentUser = useAuthStore((state) => state.user);
     
-    const [localData, setLocalData] = useState({
-        contact: data.contact || { phone: '', secondaryPhone: '', email: '', supportEmail: '', whatsapp: '' },
-        hours: data.hours || days.reduce((acc, day) => ({ 
-            ...acc, 
-            [day]: { open: '09:00', close: '18:00', isClosed: false, is24h: false } 
-        }), {}),
-        timezone: data.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone,
-        isVisible: data.isVisible ?? true
+    const [localData, setLocalData] = useState(() => {
+        const savedContact = data.contact || { phone: '', secondaryPhone: '', email: '', supportEmail: '', whatsapp: '' };
+        return {
+            // Seed the contact fields with the signup email/phone so the
+            // "same as signup" toggles (which default ON) are reflected from
+            // the start — the disabled inputs otherwise keep the email empty.
+            contact: {
+                ...savedContact,
+                email: currentUser?.email || savedContact.email || '',
+                whatsapp: currentUser?.phone || savedContact.whatsapp || '',
+            },
+            hours: data.hours || days.reduce((acc, day) => ({ 
+                ...acc, 
+                [day]: { open: '09:00', close: '18:00', isClosed: false, is24h: false } 
+            }), {} as Record<string, DayHours>),
+            timezone: data.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone,
+            isVisible: data.isVisible ?? true
+        };
     });
     const [isSaving, setIsSaving] = useState(false);
     const updateBusiness = useUpdateBusiness();
     const [useSignupEmail, setUseSignupEmail] = useState(true);
     const [useSignupPhone, setUseSignupPhone] = useState(true);
 
-    // Sync contact fields when toggles change
-    useEffect(() => {
-        if (useSignupEmail && currentUser?.email) {
-            setLocalData(prev => ({ ...prev, contact: { ...prev.contact, email: currentUser.email } }));
-        } else if (!useSignupEmail && localData.contact.email === currentUser?.email) {
-            setLocalData(prev => ({ ...prev, contact: { ...prev.contact, email: '' } }));
-        }
-    }, [useSignupEmail]);
+    // Sync contact fields when the "same as signup" toggles change. Handled in
+    // the click handlers instead of effects to avoid setState-in-effect.
+    const toggleUseSignupEmail = () => {
+        const next = !useSignupEmail;
+        setUseSignupEmail(next);
+        setLocalData(prev => {
+            const contact = { ...prev.contact };
+            if (next && currentUser?.email) {
+                contact.email = currentUser.email;
+            } else if (!next && prev.contact.email === currentUser?.email) {
+                contact.email = '';
+            }
+            return { ...prev, contact };
+        });
+    };
 
-    useEffect(() => {
-        if (useSignupPhone && currentUser?.phone) {
-            setLocalData(prev => ({ ...prev, contact: { ...prev.contact, whatsapp: currentUser.phone } }));
-        } else if (!useSignupPhone && localData.contact.whatsapp === currentUser?.phone) {
-            setLocalData(prev => ({ ...prev, contact: { ...prev.contact, whatsapp: '' } }));
-        }
-    }, [useSignupPhone]);
+    const toggleUseSignupPhone = () => {
+        const next = !useSignupPhone;
+        setUseSignupPhone(next);
+        setLocalData(prev => {
+            const contact = { ...prev.contact };
+            if (next && currentUser?.phone) {
+                contact.whatsapp = currentUser.phone;
+            } else if (!next && prev.contact.whatsapp === currentUser?.phone) {
+                contact.whatsapp = '';
+            }
+            return { ...prev, contact };
+        });
+    };
 
     const handleContinue = async () => {
         if (!localData.contact.email) return;
@@ -1162,7 +1170,7 @@ function OperatingStep({ data, onNext, refCode }: { data: Partial<OnboardingData
                     whatsappNumber: localData.contact.whatsapp || undefined,
                     businessHours: Object.entries(localData.hours).reduce((acc, [day, h]) => ({
                         ...acc,
-                        [day.toLowerCase()]: { from: (h as any).open, to: (h as any).close, isClosed: (h as any).isClosed }
+                        [day.toLowerCase()]: { from: h.open, to: h.close, isClosed: h.isClosed }
                     }), {} as Record<string, { from: string; to: string; isClosed: boolean }>),
                     timezone: localData.timezone,
                     isVisible: localData.isVisible,
@@ -1170,25 +1178,25 @@ function OperatingStep({ data, onNext, refCode }: { data: Partial<OnboardingData
                 }
             });
             onNext(localData);
-        } catch (err: any) {
-            toast.error(err?.message || 'Failed to save operating details');
+        } catch (err) {
+            toast.error(getErrorMessage(err, 'Failed to save operating details'));
         } finally {
             setIsSaving(false);
         }
     };
 
-    const updateDay = (day: string, updates: any) => {
+    const updateDay = (day: string, updates: Partial<DayHours>) => {
         setLocalData({
             ...localData,
             hours: {
                 ...localData.hours,
-                [day]: { ...(localData.hours as any)[day], ...updates }
+                [day]: { ...localData.hours[day], ...updates }
             }
         });
     };
 
     const applyToAll = () => {
-        const mon = (localData.hours as any)['Monday'];
+        const mon = localData.hours['Monday'];
         const newHours = days.reduce((acc, day) => ({ ...acc, [day]: { ...mon } }), {});
         setLocalData({ ...localData, hours: newHours });
     };
@@ -1230,7 +1238,7 @@ function OperatingStep({ data, onNext, refCode }: { data: Partial<OnboardingData
                         <div className="flex items-center gap-2 ml-1">
                             <button
                                 type="button"
-                                onClick={() => setUseSignupEmail(!useSignupEmail)}
+                                onClick={toggleUseSignupEmail}
                                 className={`w-9 h-5 rounded-full transition-colors relative ${useSignupEmail ? 'bg-primary' : 'bg-gray-200'}`}
                             >
                                 <div className={`size-3.5 bg-white rounded-full absolute top-0.5 shadow-sm transition-transform ${useSignupEmail ? 'translate-x-4 left-[2px]' : 'translate-x-0.5 left-0'}`} />
@@ -1254,7 +1262,7 @@ function OperatingStep({ data, onNext, refCode }: { data: Partial<OnboardingData
                         <div className="flex items-center gap-2 ml-1">
                             <button
                                 type="button"
-                                onClick={() => setUseSignupPhone(!useSignupPhone)}
+                                onClick={toggleUseSignupPhone}
                                 className={`w-9 h-5 rounded-full transition-colors relative ${useSignupPhone ? 'bg-primary' : 'bg-gray-200'}`}
                             >
                                 <div className={`size-3.5 bg-white rounded-full absolute top-0.5 shadow-sm transition-transform ${useSignupPhone ? 'translate-x-4 left-[2px]' : 'translate-x-0.5 left-0'}`} />
@@ -1281,7 +1289,7 @@ function OperatingStep({ data, onNext, refCode }: { data: Partial<OnboardingData
 
                 <div className="space-y-3">
                     {days.map((day) => {
-                        const h = (localData.hours as any)[day];
+                        const h = localData.hours[day];
                         const isClosed = !!h.isClosed;
                         const is24h = !!h.is24h;
                         return (
@@ -1457,7 +1465,7 @@ const normalizePlanFeatures = (plan: PricingPlan) => {
 };
 
 // --- Screen 5: Subscription Selection ---
-function SubscriptionStep({ data, onNext }: { data: Partial<OnboardingData>, onNext: (d: any) => void }) {
+function SubscriptionStep({ data, onNext }: { data: Partial<OnboardingData>, onNext: (d: Partial<OnboardingData>) => void }) {
     const [billingCycle, setBillingCycle] = useState<'monthly' | 'quarterly' | 'yearly'>('monthly');
     const [selectedPlan, setSelectedPlan] = useState(data.planId || '');
     const [expandedPlanId, setExpandedPlanId] = useState<string | null>(null);
@@ -1816,7 +1824,7 @@ function SubscriptionStep({ data, onNext }: { data: Partial<OnboardingData>, onN
 }
 
 // --- Screen 5A: Plan Confirmation ---
-function PlanConfirmation({ data, onNext, onBack, isSubscribingFree }: { data: Partial<OnboardingData>, onNext: (d: any) => void, onBack: () => void, isSubscribingFree?: boolean }) {
+function PlanConfirmation({ data, onNext, onBack, isSubscribingFree }: { data: Partial<OnboardingData>, onNext: (d: Partial<OnboardingData>) => void, onBack: () => void, isSubscribingFree?: boolean }) {
     const plan = useSubscriptionStore((s) => s.getPlan(data.planId));
     const isTrial = data.isTrial || false;
     const trialDays = plan?.isFree ? 0 : (plan?.trialDurationDays || plan?.freeDurationDays || 14);
@@ -1984,12 +1992,13 @@ function PlanConfirmation({ data, onNext, onBack, isSubscribingFree }: { data: P
 }
 
 // --- Screen 6: Payment Screen ---
-function PaymentStep({ data, onNext }: { data: Partial<OnboardingData>, onNext: (d: any) => void }) {
+function PaymentStep({ data, onNext }: { data: Partial<OnboardingData>, onNext: (d: Partial<OnboardingData>) => void }) {
     const [isProcessing, setIsProcessing] = useState(false);
     const [isSuccess, setIsSuccess] = useState(false);
     const { user } = useAuthStore();
     const plan = useSubscriptionStore((s) => s.getPlan(data.planId));
     const subscribe = useSubscribe();
+    const { data: activeSubscription, isLoading: subscriptionLoading } = useActiveSubscription();
 
     const isTrialMode = data.isTrial || false;
     const billingCycle = data.billingCycle || 'monthly';
@@ -2016,8 +2025,8 @@ function PaymentStep({ data, onNext }: { data: Partial<OnboardingData>, onNext: 
                 setIsProcessing(false);
                 setIsSuccess(true);
                 setTimeout(() => onNext({}), 2000);
-            } catch (err: any) {
-                toast.error(err?.message || 'Failed to activate plan');
+            } catch (err) {
+                toast.error(getErrorMessage(err, 'Failed to activate plan'));
                 setIsProcessing(false);
             }
             return;
@@ -2029,12 +2038,29 @@ function PaymentStep({ data, onNext }: { data: Partial<OnboardingData>, onNext: 
             return;
         }
 
+        // If the user already has a fully paid subscription to this exact plan
+        // (e.g. they were bounced back into onboarding after paying), don't
+        // charge them again — just advance to the completion step. A trial is
+        // NOT a paid subscription, so it must still go through payment.
+        const alreadyPaid =
+            !subscriptionLoading &&
+            !!user?.businessId &&
+            !!activeSubscription &&
+            activeSubscription.businessId === user.businessId &&
+            activeSubscription.status === 'active' &&
+            activeSubscription.planId === plan!.id &&
+            !isTrialMode;
+        if (alreadyPaid) {
+            onNext({});
+            return;
+        }
+
         setIsProcessing(true);
         try {
             await loadPaystackScript();
             const email = user?.email || '';
             const paystackRef = `SUB-${user?.businessId || 'anon'}-${Date.now()}`;
-            // @ts-ignore
+            // @ts-expect-error PaystackPop is attached to window by loadPaystackScript()
             const handler = window.PaystackPop.setup({
                 key: publicKey,
                 email,
@@ -2044,7 +2070,7 @@ function PaymentStep({ data, onNext }: { data: Partial<OnboardingData>, onNext: 
                 onClose: function () {
                     setIsProcessing(false);
                 },
-                callback: function (response: any) {
+                callback: function (response: { reference: string }) {
                     subscribe.mutateAsync({
                         planId: plan!.id,
                         billingPeriod: billingCycle,
@@ -2055,15 +2081,15 @@ function PaymentStep({ data, onNext }: { data: Partial<OnboardingData>, onNext: 
                         setIsProcessing(false);
                         setIsSuccess(true);
                         setTimeout(() => onNext({}), 2000);
-                    }).catch((err: any) => {
-                        toast.error(err?.message || 'Payment verified but subscription sync failed');
+                    }).catch((err) => {
+                        toast.error(getErrorMessage(err, 'Payment verified but subscription sync failed'));
                         setIsProcessing(false);
                     });
                 },
             });
             handler.openIframe();
-        } catch (err: any) {
-            toast.error(err?.message || 'Failed to initialize payment');
+        } catch (err) {
+            toast.error(getErrorMessage(err, 'Failed to initialize payment'));
             setIsProcessing(false);
         }
     };
