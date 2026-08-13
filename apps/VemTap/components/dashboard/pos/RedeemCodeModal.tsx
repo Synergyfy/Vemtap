@@ -94,7 +94,7 @@ onRedeemed({ claimCode: trimmed, offerName: res.claim.offerName });
     const dismissError = () => setErrorInfo(null);
 
     return (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[300] flex items-center justify-center p-4">
             <div className="absolute inset-0 bg-black/40 backdrop-blur-sm"  />
 
             <motion.div
