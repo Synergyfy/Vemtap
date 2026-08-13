@@ -5,6 +5,7 @@ import {
     Tag, Plus, X, CheckCircle2, ArrowRight, Search, ChevronRight, Loader2, Trash2, Clock, Sparkles, Image as ImageIcon, AlertCircle, RefreshCw, Users,
 } from 'lucide-react';
 import dynamic from 'next/dynamic';
+import Link from 'next/link';
 import PageHeader from '@/components/dashboard/PageHeader';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -163,16 +164,12 @@ function PromotionsTab({ branchId, onCreatePromo, onEditPromo }: { branchId: str
                                     Paused
                                 </div>
                             )}
-                            <div className="flex items-center justify-between mb-4">
+                            <div className="mb-4">
                                 <h4 className="font-semibold text-lg text-gray-800">{promo.name}</h4>
-                                <span className={cn("px-3 py-1 rounded-full text-xs font-bold", promo.status === 'active' ? "bg-emerald-50 text-emerald-600" : "bg-gray-100 text-gray-600")}>
-                                    {promo.status === 'active' ? 'Active' : 'Inactive'}
-                                </span>
                             </div>
-                        </div>
 
-                        {/* Deal Image */}
-<div className="mb-4 p-3 bg-gray-50 rounded-2xl border border-gray-100">
+                            {/* Deal Image */}
+                            <div className="mb-4 p-3 bg-gray-50 rounded-2xl border border-gray-100">
                                 <img
                                     src={promo.mainImage || '/placeholder-deal.png'}
                                     alt={promo.name}
@@ -191,8 +188,6 @@ function PromotionsTab({ branchId, onCreatePromo, onEditPromo }: { branchId: str
                                             />
                                         ))}
                                     </div>
-                                )}
-                            </div>
                                 )}
                             </div>
 
@@ -220,11 +215,11 @@ function PromotionsTab({ branchId, onCreatePromo, onEditPromo }: { branchId: str
                                 </div>
                             )}
 
-                            <div className="flex gap-2">
-                                <Button variant="outline" className="flex-1 rounded-xl font-bold" onClick={() => onEditPromo(promo)}>Edit</Button>
+                            <div className="flex flex-wrap sm:flex-nowrap gap-2">
+                                <Button variant="outline" className="flex-1 min-w-0 rounded-xl font-bold" onClick={() => onEditPromo(promo)}>Edit</Button>
                                 <Button
                                     variant="outline"
-                                    className="flex-1 rounded-xl font-bold"
+                                    className="flex-1 min-w-0 rounded-xl font-bold"
                                     onClick={() => handleToggleStatus(promo)}
                                     disabled={updateOffer.isPending || expired}
                                 >
@@ -232,17 +227,16 @@ function PromotionsTab({ branchId, onCreatePromo, onEditPromo }: { branchId: str
                                 </Button>
                                 <Button
                                     asChild
-                                    href={`/deals/${promo.id}`}
-                                    className="w-full rounded-xl font-bold text-sm transition-colors"
+                                    className="order-4 sm:order-3 w-full sm:w-auto sm:flex-1 rounded-xl font-bold text-sm transition-colors"
                                 >
-                                    <span className="flex items-center gap-2">
+                                    <Link href={`/promotions/${promo.id}`} className="flex items-center justify-center gap-2">
                                         <ArrowRight size={14} className="text-[#066CF4]" />
                                         View Deal on Site
-                                    </span>
+                                    </Link>
                                 </Button>
                                 <Button
                                     variant="outline"
-                                    className="text-red-500 hover:text-red-600 hover:bg-red-50 rounded-xl px-4"
+                                    className="order-3 sm:order-4 min-w-0 rounded-xl px-4 text-red-500 hover:text-red-600 hover:bg-red-50"
                                     onClick={() => handleDelete(promo)}
                                     disabled={deleteOffer.isPending}
                                 >
