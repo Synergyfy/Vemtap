@@ -14,6 +14,7 @@ import { useAuthStore } from '@/store/useAuthStore';
 import { getQrIcon, getQrDescription } from '@/lib/utils/qr-icons';
 import { TapJourneyContainer } from '@/components/visitor/TapJourneyContainer';
 import { useTrackReferralVisit } from '@/services/affiliates/hooks';
+import { normalizeDayHours } from '@/lib/businessHours';
 
 interface BusinessPublicPageClientProps {
     slug: string;
@@ -123,9 +124,11 @@ export default function BusinessPublicPageClient({ slug, initialData }: Business
     const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'] as const;
 
     const formatHours = (day: string) => {
-        const hours = business.businessHours?.[day as keyof typeof business.businessHours];
-        if (!hours || hours.closed) return 'Closed';
-        return `${hours.open} - ${hours.close}`;
+        const hours = business.openingHours?.[day as keyof typeof business.openingHours];
+        const norm = normalizeDayHours(hours);
+        if (!norm || norm.isClosed) return 'Closed';
+        if (!norm.from || !norm.to) return 'Closed';
+        return `${norm.from} - ${norm.to}`;
     };
 
     return (
@@ -200,7 +203,7 @@ export default function BusinessPublicPageClient({ slug, initialData }: Business
                                 </section>
                             )}
 
-                            {business.businessHours && (
+                            {business.openingHours && (
                                 <section className="mb-12 p-6 rounded-2xl bg-slate-50">
                                     <h2 className="text-[10px] uppercase tracking-[0.3em] font-black text-primary mb-6 flex items-center gap-2">
                                         <Clock size={16} /> Business Hours
@@ -209,7 +212,7 @@ export default function BusinessPublicPageClient({ slug, initialData }: Business
                                         {DAYS.map((day) => (
                                             <div key={day} className="flex justify-between items-center text-sm">
                                                 <span className="font-bold text-slate-500 capitalize">{day}</span>
-                                                <span className={`font-black ${business.businessHours?.[day]?.closed ? 'text-red-400' : 'text-slate-900'}`}>
+                                                <span className={`font-black ${business.openingHours?.[day]?.closed ? 'text-red-400' : 'text-slate-900'}`}>
                                                     {formatHours(day)}
                                                 </span>
                                             </div>

@@ -44,6 +44,7 @@ import {
 import { QRType } from '@/services/qr-thrive/types';
 import { useQrThriveCodes } from '@/services/qr-thrive/hooks';
 import { useAuthStore } from '@/store/useAuthStore';
+import { normalizeDayHours } from '@/lib/businessHours';
 type QRConfiguration = any;
 type QRData = any;
 const FormBuilder: React.FC<{
@@ -834,10 +835,8 @@ const OpeningHoursManager = ({
         {ALL_DAYS.filter((d) => activeDays.includes(d)).map((day) => {
           const hours = currentHours[day];
           const hourObj =
-            typeof hours === "object"
-              ? hours
-              : { from: "09:00", to: "17:00", isClosed: false };
-          const isClosed = typeof hours === "object" ? hours.isClosed : false;
+            normalizeDayHours(hours) ?? { from: "09:00", to: "17:00", isClosed: false };
+          const isClosed = hourObj.isClosed;
           return (
             <div key={day} className="flex items-center gap-3">
               <button

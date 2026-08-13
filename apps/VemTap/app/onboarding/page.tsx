@@ -1162,8 +1162,8 @@ function OperatingStep({ data, onNext, refCode }: { data: Partial<OnboardingData
                     whatsappNumber: localData.contact.whatsapp || undefined,
                     businessHours: Object.entries(localData.hours).reduce((acc, [day, h]) => ({
                         ...acc,
-                        [day.toLowerCase()]: { open: (h as any).open, close: (h as any).close, closed: (h as any).isClosed }
-                    }), {} as Record<string, { open: string; close: string; closed: boolean }>),
+                        [day.toLowerCase()]: { from: (h as any).open, to: (h as any).close, isClosed: (h as any).isClosed }
+                    }), {} as Record<string, { from: string; to: string; isClosed: boolean }>),
                     timezone: localData.timezone,
                     isVisible: localData.isVisible,
                     ...(refCode ? { referralCode: refCode } : {}),
