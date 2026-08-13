@@ -26,27 +26,27 @@ async function resetClientStores() {
   try {
     const { usePosStore } = await import('@/store/usePosStore');
     resets.push(() => usePosStore.getState().clearCart());
-  } catch (e) {}
+  } catch {}
   try {
     const { usePosSettingsStore } = await import('@/store/usePosSettingsStore');
     resets.push(() => usePosSettingsStore.getState().resetStore());
-  } catch (e) {}
+  } catch {}
   try {
     const { useCatalogueStore } = await import('@/store/useCatalogueStore');
     resets.push(() => useCatalogueStore.getState().resetStore());
-  } catch (e) {}
+  } catch {}
   try {
     const { useBusinessStore } = await import('@/store/useBusinessStore');
     resets.push(() => useBusinessStore.getState().setBranches([]));
-  } catch (e) {}
+  } catch {}
   try {
     const { useInventoryStore } = await import('@/store/useInventoryStore');
     resets.push(() => useInventoryStore.getState().resetStore());
-  } catch (e) {}
+  } catch {}
   try {
     const { useActivationStore } = await import('@/store/useActivationStore');
     resets.push(() => useActivationStore.getState().resetActivation());
-  } catch (e) {}
+  } catch {}
   try {
     const { useSubscriptionStore } = await import('@/store/useSubscriptionStore');
     resets.push(() =>
@@ -58,7 +58,7 @@ async function resetClientStores() {
         error: null,
       }),
     );
-  } catch (e) {}
+  } catch {}
   try {
     const { usePosLoyaltyStore } = await import('@/store/usePosLoyaltyStore');
     resets.push(() =>
@@ -69,12 +69,12 @@ async function resetClientStores() {
         lastRedeemedPoints: 0,
       }),
     );
-  } catch (e) {}
+  } catch {}
 
   resets.forEach((reset) => {
     try {
       reset();
-    } catch (e) {}
+    } catch {}
   });
 }
 
@@ -89,7 +89,7 @@ export async function resetSessionData() {
     // Cancel in-flight requests first: otherwise a request still carrying the
     // previous account's token can resolve after clear() and re-populate the
     // static query keys (['my-business'], ['branches']) with the old account's data.
-    queryClient.cancelQueries();
+    await queryClient.cancelQueries();
     queryClient.clear();
   } catch (e) {
     console.error('Failed to clear query cache:', e);
@@ -110,7 +110,7 @@ export async function resetSessionData() {
     BUSINESS_STORAGE_KEYS.forEach((key) => {
       try {
         localStorage.removeItem(key);
-      } catch (e) {}
+      } catch {}
     });
   }
 }

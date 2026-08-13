@@ -4,7 +4,7 @@ import React, { useState, useCallback, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { GoogleLogin } from '@react-oauth/google';
+import { GoogleLogin, type CredentialResponse } from '@react-oauth/google';
 import { 
     Mail, Lock, Eye, EyeOff,
     ShieldCheck, 
@@ -21,6 +21,9 @@ import { getFirstPermittedDashboardRoute, isRouteAllowed } from '@/lib/utils/nav
 const isEmail = (v: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim());
 const isPhone = (v: string) => /^[\+\d][\d\s\-\(\)]{7,20}$/.test(v.trim());
 const isValidIdentifier = (v: string) => isEmail(v) || isPhone(v);
+
+const getErrorMessage = (err: unknown, fallback: string): string =>
+    err instanceof Error && err.message ? err.message : fallback;
 
 export default function LoginPage() {
     return (
@@ -98,7 +101,7 @@ function LoginPageContent() {
         }
     }, [router, redirectTo]);
 
-    const handleGoogleSuccess = useCallback(async (credentialResponse: any) => {
+    const handleGoogleSuccess = useCallback(async (credentialResponse: CredentialResponse) => {
         if (!credentialResponse?.credential) {
             setGeneralError('Google authentication failed — no credential received');
             return;
@@ -115,8 +118,8 @@ function LoginPageContent() {
             }
             await storeLogin(response.user, response.access_token);
             routeAfterLogin(response.user.role, response.user.businessId, response.isNewUser, response.user.permissions || []);
-        } catch (err: any) {
-            const message = err?.message || 'Google sign-in failed. Please try again.';
+        } catch (err: unknown) {
+            const message = getErrorMessage(err, 'Google sign-in failed. Please try again.');
             setGeneralError(message);
         } finally {
             setIsLoggingIn(false);
@@ -152,8 +155,8 @@ function LoginPageContent() {
 
             await storeLogin(response.user, response.access_token);
             routeAfterLogin(response.user.role, response.user.businessId, response.isNewUser, response.user.permissions || []);
-        } catch (err: any) {
-            const message = err?.message || 'Invalid email, phone number or password';
+        } catch (err: unknown) {
+            const message = getErrorMessage(err, 'Invalid email, phone number or password');
             setGeneralError(message);
         } finally {
             setIsLoggingIn(false);
@@ -176,8 +179,8 @@ function LoginPageContent() {
             }
             await storeLogin(response.user, response.access_token);
             routeAfterLogin(response.user.role, response.user.businessId, response.isNewUser, response.user.permissions || []);
-        } catch (err: any) {
-            setGeneralError(err?.message || 'Invalid 2FA code');
+        } catch (err: unknown) {
+            setGeneralError(getErrorMessage(err, 'Invalid 2FA code'));
         } finally {
             setIsLoggingIn(false);
         }

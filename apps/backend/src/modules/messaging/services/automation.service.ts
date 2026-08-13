@@ -22,7 +22,14 @@ import {
 } from '../../subscriptions/entities/subscription.entity';
 import { Visit } from '../../visitors/entities/visit.entity';
 import { Segment } from '../../contacts/entities/segment.entity';
+import { Business } from '../../businesses/entities/business.entity';
+import { normalizeDayHours } from '../../../common/utils/business-hours.util';
 import { paginateWithCursor } from '../../../common/utils/cursor-pagination.util';
+
+interface OffHoursBranchContext {
+  businessId: string;
+  businessHours?: Record<string, any> | null;
+}
 
 @Injectable()
 export class AutomationService {
@@ -39,6 +46,8 @@ export class AutomationService {
     private readonly visitRepo: Repository<Visit>,
     @InjectRepository(Segment)
     private readonly segmentRepo: Repository<Segment>,
+    @InjectRepository(Business)
+    private readonly businessRepo: Repository<Business>,
     private readonly messagingEngine: MessagingEngineService,
     private readonly branchesService: BranchesService,
     @InjectQueue('messaging-automation')
@@ -364,7 +373,7 @@ export class AutomationService {
       // 2. Check for Off-Hours
       if (type === TriggerType.OFF_HOURS) {
         const branch = await this.branchesService.findById(dto.branchId);
-        if (!this.isCurrentlyOffHours(branch, rule)) {
+        if (!(await this.isCurrentlyOffHours(branch, rule))) {
           this.logger.log(
             `Branch ${dto.branchId} is currently OPEN according to the rule's schedule; skipping off-hours automation.`,
           );
@@ -392,7 +401,10 @@ export class AutomationService {
     }
   }
 
-  private isCurrentlyOffHours(branch: any, rule: AutomationRule): boolean {
+  private async isCurrentlyOffHours(
+    branch: OffHoursBranchContext,
+    rule: AutomationRule,
+  ): Promise<boolean> {
     const config = rule.actionConfig || {};
     const schedule = config.schedule || 'Outside Business Hours';
 
@@ -412,23 +424,36 @@ export class AutomationService {
     const currentTime = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
 
     if (schedule === 'Custom Schedule' && config.customSchedule?.days) {
-      const todayConfig = config.customSchedule.days[currentDay];
-      if (!todayConfig) return true; // If day not in custom schedule, assume off-hours
-      return (
-        currentTime < todayConfig.startTime || currentTime > todayConfig.endTime
+      const todayConfig = normalizeDayHours(
+        config.customSchedule.days[currentDay],
       );
+      if (!todayConfig) return true; // If day not in custom schedule, assume off-hours
+      if (todayConfig.isClosed) return true;
+      if (todayConfig.from && todayConfig.to) {
+        return currentTime < todayConfig.from || currentTime > todayConfig.to;
+      }
+      return false;
     }
 
     // Default: Outside Business Hours
-    if (!branch.businessHours) return false;
+    // Hours may live on the branch (profile settings, legacy {open,close,closed})
+    // or on the business (onboarding, canonical {from,to,isClosed}). Prefer the
+    // branch but fall back to the business so both flows are honored.
+    let hours: Record<string, any> | null | undefined = branch.businessHours;
+    if (!hours || Object.keys(hours).length === 0) {
+      const business = await this.businessRepo.findOne({
+        where: { id: branch.businessId },
+        select: ['openingHours'],
+      });
+      hours = business?.openingHours;
+    }
+    if (!hours || Object.keys(hours).length === 0) return false;
 
-    const todayConfig = branch.businessHours[currentDay];
-    if (!todayConfig || !todayConfig.isOpen) return true;
+    const todayConfig = normalizeDayHours(hours[currentDay]);
+    if (!todayConfig || todayConfig.isClosed) return true;
 
-    if (todayConfig.startTime && todayConfig.endTime) {
-      return (
-        currentTime < todayConfig.startTime || currentTime > todayConfig.endTime
-      );
+    if (todayConfig.from && todayConfig.to) {
+      return currentTime < todayConfig.from || currentTime > todayConfig.to;
     }
 
     return false;

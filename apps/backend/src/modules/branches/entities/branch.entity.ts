@@ -8,6 +8,7 @@ import {
   Index,
 } from 'typeorm';
 import { AbstractBaseEntity } from '../../../common/entities/base.entity';
+import { numericTransformer } from '../../../common/transformers/numeric.transformer';
 import { Business } from '../../businesses/entities/business.entity';
 import { User } from '../../users/entities/user.entity';
 import { Visit } from '../../visitors/entities/visit.entity';
@@ -47,10 +48,20 @@ export class Branch extends AbstractBaseEntity {
   @Column({ nullable: true })
   city: string;
 
-  @Column('decimal', { precision: 10, scale: 7, nullable: true })
+  @Column('decimal', {
+    precision: 10,
+    scale: 7,
+    nullable: true,
+    transformer: numericTransformer,
+  })
   latitude: number;
 
-  @Column('decimal', { precision: 10, scale: 7, nullable: true })
+  @Column('decimal', {
+    precision: 10,
+    scale: 7,
+    nullable: true,
+    transformer: numericTransformer,
+  })
   longitude: number;
 
   @Index('idx_branches_location', { spatial: true })
