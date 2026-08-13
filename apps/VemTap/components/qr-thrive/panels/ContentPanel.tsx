@@ -49,6 +49,7 @@ interface ContentPanelProps {
 
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import { normalizeDayHours } from '@/lib/businessHours';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -1456,8 +1457,9 @@ const ContentPanel: React.FC<ContentPanelProps> = ({ config, updateData, hideTyp
                     <div className="space-y-3">
                       {['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'].map(day => {
                         const hours = data.business?.openingHours?.[day as keyof typeof data.business.openingHours];
-                        const hourObj = typeof hours === 'object' ? hours : { from: '09:00', to: '17:00', isClosed: false };
-                        const isClosed = typeof hours === 'object' ? hours.isClosed : false;
+                        const hourObj =
+                          normalizeDayHours(hours) ?? { from: '09:00', to: '17:00', isClosed: false };
+                        const isClosed = hourObj.isClosed;
                         return (
                           <div key={day} className="flex items-center gap-3">
                             <span className="text-xs font-bold text-gray-700 capitalize w-20">{day}</span>

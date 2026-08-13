@@ -37,6 +37,7 @@ import { useAuthStore } from '@/store/useAuthStore';
 import { usePublicBusiness, usePublicBranch } from '@/services/public/hooks';
 import { useCatalogueItemsPublic } from '@/services/catalogue/hooks';
 import { BusinessHours } from '@/services/public/types';
+import { normalizeDayHours } from '@/lib/businessHours';
 import { ChatConnectModal } from '@/components/visitor/ChatConnectModal';
 
 const displayText = (value?: string | null) => (value && value.trim().length > 0 ? value : 'Not provided');
@@ -47,8 +48,10 @@ const formatLocation = (address?: string | null, city?: string | null, state?: s
 };
 
 const formatHours = (hours?: BusinessHours) => {
-    if (!hours || hours.closed) return 'Closed';
-    return `${hours.open} - ${hours.close}`;
+    const norm = normalizeDayHours(hours);
+    if (!norm || norm.isClosed) return 'Closed';
+    if (!norm.from || !norm.to) return 'Closed';
+    return `${norm.from} - ${norm.to}`;
 };
 
 const DAY_NAMES = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'] as const;
@@ -258,7 +261,7 @@ export default function PublicBusinessProfilePage() {
     const profileWebsite = resolvedBranch?.website || business?.website;
     const profileAbout = resolvedBranch?.about || business?.about || business?.goal || (business as any)?.description;
     const profileWelcome = resolvedBranch?.welcomeMessage || business?.welcomeMessage || business?.welcomeTitle;
-    const profileHours = resolvedBranch?.businessHours || business?.businessHours;
+    const profileHours = resolvedBranch?.businessHours || business?.openingHours;
 
     const profileSocials = {
         facebookUrl: resolvedBranch?.facebookUrl || business?.facebookUrl,
@@ -283,11 +286,11 @@ export default function PublicBusinessProfilePage() {
 
     const isOpenNow = useMemo(() => {
         if (!profileHours) return null;
-        const todayHours = (profileHours as any)?.[todayName];
-        if (!todayHours || todayHours.closed) return false;
+        const todayHours = normalizeDayHours((profileHours as any)?.[todayName]);
+        if (!todayHours || todayHours.isClosed) return false;
         const now = new Date();
-        const [openH, openM] = (todayHours.open || '').split(':').map(Number);
-        const [closeH, closeM] = (todayHours.close || '').split(':').map(Number);
+        const [openH, openM] = todayHours.from.split(':').map(Number);
+        const [closeH, closeM] = todayHours.to.split(':').map(Number);
         const currentMinutes = now.getHours() * 60 + now.getMinutes();
         const openMinutes = (openH || 0) * 60 + (openM || 0);
         const closeMinutes = (closeH || 0) * 60 + (closeM || 0);
@@ -755,7 +758,7 @@ export default function PublicBusinessProfilePage() {
                                 {DAY_ORDER.map((day) => {
                                     const dayHours = (profileHours as any)?.[day] as BusinessHours | undefined;
                                     const isToday = day === todayName;
-                                    const isClosed = !dayHours || dayHours.closed;
+                                    const isClosed = !dayHours || (typeof dayHours.isClosed === 'boolean' ? dayHours.isClosed : !!dayHours.closed);
                                     return (
                                         <div
                                             key={day}
