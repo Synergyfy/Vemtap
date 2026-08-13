@@ -1,14 +1,14 @@
 'use client';
 
 import { ReactNode, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useMyBusiness } from '@/services/businesses/hooks';
 import { useActiveSubscription } from '@/services/subscriptions/hooks';
-import { isOnboardingComplete, nextOnboardingStep } from '@/lib/onboardingGate';
 
 export default function OnboardingRouteGuard({ children }: { children: ReactNode }) {
     const router = useRouter();
+    const pathname = usePathname();
     const user = useAuthStore((state) => state.user);
     const { data: myBusiness, isLoading: businessLoading } = useMyBusiness();
     const { data: subscription, isLoading: subscriptionLoading } = useActiveSubscription();
@@ -16,18 +16,38 @@ export default function OnboardingRouteGuard({ children }: { children: ReactNode
     const role = (user?.role as string)?.toLowerCase() || '';
     const isOwner = role === 'owner';
 
-    const hasPlan = !!user?.planId || !!subscription?.plan?.id || !!subscription?.planId;
+    const hasBusiness = !!user?.businessId && !!myBusiness?.id;
+
+    const hasActivePlan =
+        !!user?.planId ||
+        !!subscription?.plan?.id ||
+        !!subscription?.planId ||
+        !!subscription?.id;
+
+    const planLocked =
+        subscription?.status === 'expired' || subscription?.status === 'cancelled';
+
+    const isSubscriptionPage = pathname?.startsWith('/dashboard/settings/subscription');
 
     useEffect(() => {
         if (!user || !isOwner) return;
         if (businessLoading || subscriptionLoading) return;
 
-        if (!isOnboardingComplete(myBusiness ?? null, hasPlan)) {
-            const step = nextOnboardingStep(myBusiness ?? null, hasPlan);
-            const query = step != null ? `?step=${step}` : '';
-            router.replace(`/onboarding${query}`);
+        // Genuinely new user with no business yet → onboarding.
+        if (!hasBusiness) {
+            router.replace('/onboarding');
+            return;
         }
-    }, [user, isOwner, myBusiness, subscription, businessLoading, subscriptionLoading, hasPlan, router]);
+
+        // Established account with dashboard access. Missing onboarding fields
+        // (logo, GPS location, etc.) are a dashboard checklist — never a redirect.
+        // Only a missing/expired subscription locks the page, and it points to the
+        // subscription page inside the dashboard, NOT onboarding.
+        if ((!hasActivePlan || planLocked) && !isSubscriptionPage) {
+            router.replace('/dashboard/settings/subscription');
+            return;
+        }
+    }, [user, isOwner, hasBusiness, hasActivePlan, planLocked, subscription, businessLoading, subscriptionLoading, isSubscriptionPage, router]);
 
     if (!user || !isOwner) return <>{children}</>;
 
@@ -42,7 +62,7 @@ export default function OnboardingRouteGuard({ children }: { children: ReactNode
         );
     }
 
-    if (!isOnboardingComplete(myBusiness ?? null, hasPlan)) return null;
+    if (!hasBusiness) return null;
 
     return <>{children}</>;
 }

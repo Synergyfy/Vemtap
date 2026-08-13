@@ -28,11 +28,12 @@ export interface OnboardingCheck {
 export function getOnboardingCheck(business: Business | null | undefined, hasPlan: boolean): OnboardingCheck {
     const category = business?.category || business?.categoryId || business?.subcategory || business?.subcategoryId;
     const address = business?.address?.trim() || (business?.city && business?.state) || business?.city;
+    const hasGpsCoords = typeof business?.latitude === 'number' && typeof business?.longitude === 'number';
     return {
         hasCategory: !!category,
         hasLogo: !!business?.logoUrl,
         hasAddress: !!address,
-        hasLocation: typeof business?.latitude === 'number' && typeof business?.longitude === 'number',
+        hasLocation: hasGpsCoords || !!address,
         hasPlan,
     };
 }
