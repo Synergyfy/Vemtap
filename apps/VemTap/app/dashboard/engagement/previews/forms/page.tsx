@@ -127,7 +127,7 @@ export default function SelectedFormPreviewPage() {
             />
 
             <div className="flex items-center gap-2 text-xs font-bold text-text-secondary">
-                <span className="px-3 py-1.5 rounded-full bg-primary/10 text-primary uppercase tracking-widest">Preview</span>
+                <span className="px-3 py-1.5 rounded-full bg-primary/10 text-primary uppercase tracking-wider">Preview</span>
                 <span>Selected Form</span>
             </div>
 
@@ -144,7 +144,7 @@ export default function SelectedFormPreviewPage() {
                 >
                     Socials
                 </Link>
-                <span className="px-3 py-1.5 rounded-full bg-primary text-white text-xs font-black uppercase tracking-widest">Selected Form</span>
+                <span className="px-3 py-1.5 rounded-full bg-primary text-white text-xs font-bold uppercase tracking-wider">Selected Form</span>
             </div>
 
             {isLoading && (
@@ -165,7 +165,7 @@ export default function SelectedFormPreviewPage() {
                     <div className="space-y-6">
                         <div className="bg-white rounded-2xl border border-gray-100 p-6 space-y-4">
                             <div>
-                                <p className="text-xs font-black uppercase tracking-widest text-gray-400">Form Selector</p>
+                                <p className="text-xs font-bold uppercase tracking-wider text-gray-400">Form Selector</p>
                                 <h3 className="text-lg font-bold text-text-main mt-2">Choose a form</h3>
                             </div>
                             <select
@@ -182,7 +182,7 @@ export default function SelectedFormPreviewPage() {
 
                             {selectedForm && (
                                 <div className="rounded-xl bg-gray-50 p-4 space-y-3">
-                                    <p className="text-xs text-gray-500 uppercase tracking-widest font-black">Form Info</p>
+                                    <p className="text-xs text-gray-500 uppercase tracking-wider font-bold">Form Info</p>
                                     <p className="text-sm font-semibold text-gray-900">{selectedForm.title}</p>
                                     {selectedForm.description && (
                                         <p className="text-xs text-gray-500">{selectedForm.description}</p>
@@ -190,7 +190,7 @@ export default function SelectedFormPreviewPage() {
                                     <div className="flex flex-wrap gap-2 pt-2">
                                         <Link
                                             href={`/dashboard/engagement/forms?edit=${encodeURIComponent(selectedForm.id)}`}
-                                            className="h-9 px-4 rounded-xl bg-primary text-white text-xs font-black uppercase tracking-widest inline-flex items-center"
+                                            className="h-9 px-4 rounded-xl bg-primary text-white text-xs font-bold uppercase tracking-wider inline-flex items-center"
                                         >
                                             Edit Form
                                         </Link>
@@ -199,12 +199,12 @@ export default function SelectedFormPreviewPage() {
                                                 href={publicLink}
                                                 target="_blank"
                                                 rel="noopener noreferrer"
-                                                className="h-9 px-4 rounded-xl border border-gray-200 text-xs font-black uppercase tracking-widest inline-flex items-center text-gray-600"
+                                                className="h-9 px-4 rounded-xl border border-gray-200 text-xs font-bold uppercase tracking-wider inline-flex items-center text-gray-600"
                                             >
                                                 Open Public Link
                                             </a>
                                         ) : (
-                                            <span className="h-9 px-4 rounded-xl border border-gray-200 text-xs font-black uppercase tracking-widest inline-flex items-center text-gray-300">
+                                            <span className="h-9 px-4 rounded-xl border border-gray-200 text-xs font-bold uppercase tracking-wider inline-flex items-center text-gray-300">
                                                 Link Unavailable
                                             </span>
                                         )}
@@ -216,7 +216,7 @@ export default function SelectedFormPreviewPage() {
 
                     <div className="sticky top-6">
                         <details open className="rounded-2xl border border-gray-100 bg-white">
-                            <summary className="cursor-pointer list-none px-4 py-3 text-xs font-black uppercase tracking-widest text-gray-500 flex items-center justify-between">
+                            <summary className="cursor-pointer list-none px-4 py-3 text-xs font-bold uppercase tracking-wider text-gray-500 flex items-center justify-between">
                                 Preview
                                 <span className="text-[10px] font-semibold text-gray-400">Selected Form</span>
                             </summary>
@@ -232,7 +232,7 @@ export default function SelectedFormPreviewPage() {
                                         <button
                                             key={tab.key}
                                             onClick={() => setActivePreviewTab(tab.key as typeof activePreviewTab)}
-                                            className={`px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest transition-all ${
+                                            className={`px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all ${
                                                 activePreviewTab === tab.key
                                                     ? 'bg-primary text-white'
                                                     : 'bg-white border border-gray-200 text-gray-500 hover:bg-gray-50'

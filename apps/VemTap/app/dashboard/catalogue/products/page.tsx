@@ -82,15 +82,15 @@ export default function ProductsPage() {
     const getStatusBadge = (status: string) => {
         switch (status) {
             case 'active': 
-                return <span className="px-2 py-1 bg-emerald-100 text-emerald-700 rounded-lg text-[9px] font-black uppercase tracking-wider w-fit">ACTIVE</span>;
+                return <span className="px-2 py-1 bg-emerald-100 text-emerald-700 rounded-lg text-[9px] font-semibold uppercase tracking-wider w-fit">ACTIVE</span>;
             case 'inactive': 
-                return <span className="px-2 py-1 bg-slate-100 text-slate-700 rounded-lg text-[9px] font-black uppercase tracking-wider w-fit">INACTIVE</span>;
+                return <span className="px-2 py-1 bg-slate-100 text-slate-700 rounded-lg text-[9px] font-semibold uppercase tracking-wider w-fit">INACTIVE</span>;
             case 'out_of_stock': 
-                return <span className="px-2 py-1 bg-amber-100 text-amber-700 rounded-lg text-[9px] font-black uppercase tracking-wider w-fit">OUT OF STOCK</span>;
+                return <span className="px-2 py-1 bg-amber-100 text-amber-700 rounded-lg text-[9px] font-semibold uppercase tracking-wider w-fit">OUT OF STOCK</span>;
             case 'suspended': 
-                return <span className="px-2 py-1 bg-red-100 text-red-700 rounded-lg text-[9px] font-black uppercase tracking-wider w-fit">SUSPENDED</span>;
+                return <span className="px-2 py-1 bg-red-100 text-red-700 rounded-lg text-[9px] font-semibold uppercase tracking-wider w-fit">SUSPENDED</span>;
             default: 
-                return <span className="px-2 py-1 bg-slate-100 text-slate-700 rounded-lg text-[9px] font-black uppercase tracking-wider w-fit">{status?.toUpperCase()}</span>;
+                return <span className="px-2 py-1 bg-slate-100 text-slate-700 rounded-lg text-[9px] font-semibold uppercase tracking-wider w-fit">{status?.toUpperCase()}</span>;
         }
     };
 
@@ -150,7 +150,7 @@ export default function ProductsPage() {
                     : Number(item.price);
                 return (
                     <div className="flex flex-col">
-                        <span className="font-black text-primary text-sm">₦{finalPrice.toLocaleString()}</span>
+                        <span className="font-bold text-primary text-sm">₦{finalPrice.toLocaleString()}</span>
                         {hasDiscount && (
                             <span className="text-[9px] text-text-secondary line-through font-bold">₦{Number(item.price).toLocaleString()}</span>
                         )}
@@ -163,7 +163,7 @@ export default function ProductsPage() {
             accessor: (item: CatalogueItem) => (
                 <span className={cn(
                     "text-xs font-bold",
-                    item.itemType === 'service' ? "text-text-secondary italic" : ((item.stockQuantity || 0) <= (item.minStock || 5) ? "text-red-500 font-black" : "text-text-main")
+                    item.itemType === 'service' ? "text-text-secondary italic" : ((item.stockQuantity || 0) <= (item.minStock || 5) ? "text-red-500 font-bold" : "text-text-main")
                 )}>
                     {item.itemType === 'service' ? 'Service' : `${item.stockQuantity ?? 0} units`}
                 </span>
@@ -190,7 +190,7 @@ export default function ProductsPage() {
                 const qty = item.itemType === 'service' ? 0 : (item.stockQuantity ?? 0);
                 return (
                     <div className="flex flex-col">
-                        <span className="font-black text-text-main text-sm">₦{(finalPrice * qty).toLocaleString()}</span>
+                        <span className="font-bold text-text-main text-sm">₦{(finalPrice * qty).toLocaleString()}</span>
                         {hasDiscount && qty > 0 && (
                             <span className="text-[9px] text-text-secondary line-through font-bold">₦{(Number(item.price) * qty).toLocaleString()}</span>
                         )}
@@ -255,9 +255,9 @@ export default function ProductsPage() {
                     actions={
                         <button 
                             onClick={handleAdd} 
-                            className="flex items-center gap-2 px-5 py-2.5 bg-primary text-white font-bold rounded-xl hover:bg-primary-hover transition-all text-sm shadow-lg shadow-primary/20 cursor-pointer"
+                            className="flex items-center gap-2 h-10 px-5 bg-primary text-white font-semibold text-xs uppercase tracking-wider rounded-xl hover:bg-primary-hover transition-all shadow-sm shadow-primary/20 cursor-pointer"
                         >
-                            <Plus size={18} />
+                            <Plus size={16} />
                             Add Product
                         </button>
                     }

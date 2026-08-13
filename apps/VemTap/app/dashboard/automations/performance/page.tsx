@@ -41,28 +41,28 @@ export default function AutomationPerformancePage() {
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: i * 0.1 }}
-                        className="p-8 bg-white rounded-[2.5rem] border border-gray-100 shadow-sm hover:shadow-lg transition-all"
+                        className="p-5 md:p-6 bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all"
                     >
                         <div className="flex justify-between items-start mb-6">
-                            <div className={`p-4 rounded-3xl ${stat.bg} ${stat.color} shadow-lg shadow-current/5`}>
-                                <stat.icon size={24} />
+                            <div className={`p-3 rounded-lg ${stat.bg} ${stat.color}`}>
+                                <stat.icon size={20} />
                             </div>
-                            <div className="flex items-center gap-1 text-emerald-500 font-black text-xs">
+                            <div className="flex items-center gap-1 text-emerald-500 font-bold text-xs">
                                 <ArrowUpRight size={14} />
                                 {stat.growth}
                             </div>
                         </div>
-                        <p className="text-[10px] font-black text-text-secondary uppercase tracking-widest mb-1">{stat.label}</p>
-                        <p className="text-3xl font-display font-black text-text-main">{stat.value}</p>
+                        <p className="text-[10px] font-semibold text-text-secondary uppercase tracking-wider mb-1">{stat.label}</p>
+                        <p className="text-2xl md:text-3xl font-bold text-text-main">{stat.value}</p>
                     </motion.div>
                 ))}
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 {/* Engagement Chart */}
-                <div className="bg-white rounded-[3rem] border border-gray-100 p-10 shadow-sm h-[400px] flex flex-col">
+                <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm h-[400px] flex flex-col">
                     <div className="flex justify-between items-center mb-10">
-                        <h3 className="text-xl font-display font-black text-text-main">Engagement Trend</h3>
+                        <h3 className="text-base md:text-lg font-bold text-text-main">Engagement Trend</h3>
                         <div className="flex gap-4">
                             <div className="flex items-center gap-2 text-xs font-bold text-text-secondary">
                                 <div className="size-2 rounded-full bg-primary" />
@@ -90,7 +90,7 @@ export default function AutomationPerformancePage() {
                                                 className="w-full bg-emerald-500/20 group-hover:bg-emerald-500 transition-all rounded-t-lg"
                                             />
                                         </div>
-                                        <span className="text-[8px] font-black text-text-secondary opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <span className="text-[8px] font-semibold text-text-secondary opacity-0 group-hover:opacity-100 transition-opacity">
                                             {new Date(day.date).toLocaleDateString([], { month: 'short', day: 'numeric' })}
                                         </span>
                                     </div>
@@ -105,14 +105,14 @@ export default function AutomationPerformancePage() {
                 </div>
 
                 {/* Best Performing Automations */}
-                <div className="bg-white rounded-[3rem] border border-gray-100 p-10 shadow-sm flex flex-col">
-                    <h3 className="text-xl font-display font-black text-text-main mb-8">Top Automations</h3>
+                <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm flex flex-col">
+                    <h3 className="text-base md:text-lg font-bold text-text-main mb-8">Top Automations</h3>
                     <div className="space-y-6 flex-1">
                         {(performance?.topAutomations || []).length > 0 ? (
                             performance?.topAutomations.map((item, i) => (
-                                <div key={i} className="p-6 bg-gray-50/50 rounded-3xl border border-gray-50 flex items-center justify-between group hover:bg-white hover:border-gray-200 transition-all">
+                                <div key={i} className="p-6 bg-gray-50/50 rounded-2xl border border-gray-50 flex items-center justify-between group hover:bg-white hover:border-gray-200 transition-all">
                                     <div className="flex items-center gap-4">
-                                        <div className="size-12 rounded-2xl bg-white border border-gray-100 flex items-center justify-center font-black text-text-main shadow-sm group-hover:scale-110 transition-transform">
+                                        <div className="size-10 rounded-xl bg-white border border-gray-100 flex items-center justify-center font-bold text-text-main shadow-sm group-hover:scale-110 transition-transform">
                                             {i + 1}
                                         </div>
                                         <div>
@@ -121,8 +121,8 @@ export default function AutomationPerformancePage() {
                                         </div>
                                     </div>
                                     <div className="text-right">
-                                        <p className="text-lg font-display font-black text-text-main">{item.replyRate}%</p>
-                                        <p className="text-[10px] font-black text-text-secondary uppercase tracking-widest">Reply Rate</p>
+                                        <p className="text-lg font-bold text-text-main">{item.replyRate}%</p>
+                                        <p className="text-[10px] font-semibold text-text-secondary uppercase tracking-wider">Reply Rate</p>
                                     </div>
                                 </div>
                             ))

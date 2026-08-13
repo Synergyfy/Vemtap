@@ -90,26 +90,26 @@ export default function LocationStep({ address, onNext }: Props) {
       initial={{ opacity: 0, x: 20 }}
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: -20 }}
-      className="space-y-12 pb-20"
+      className="space-y-6 pb-20"
     >
-      <div className="space-y-4">
-        <h1 className="text-3xl font-display font-black text-text-main tracking-tight">
+      <div className="space-y-3">
+        <h1 className="text-2xl md:text-3xl font-bold text-text-main tracking-tight">
           Business Location
         </h1>
-        <p className="text-text-secondary font-medium">
+        <p className="text-sm md:text-base text-text-secondary font-normal leading-relaxed">
           Help customers find your business easily.
         </p>
       </div>
 
       {/* Address Display */}
-      <div className="bg-primary/5 rounded-[2rem] p-8 border border-primary/10 space-y-4">
+      <div className="rounded-2xl border border-primary/10 bg-primary/5 p-5 md:p-6 space-y-3">
         <div className="flex items-center gap-3">
-          <div className="size-12 bg-primary/10 rounded-2xl flex items-center justify-center text-primary">
-            <MapPin size={24} />
+          <div className="size-10 bg-primary/10 rounded-xl flex items-center justify-center text-primary shrink-0">
+            <MapPin size={20} />
           </div>
-          <div>
-            <h3 className="font-black text-sm text-text-main">Your Business Address</h3>
-            <p className="text-xs text-text-secondary font-medium mt-0.5">{fullAddress || 'No address entered'}</p>
+          <div className="min-w-0">
+            <h3 className="text-sm font-bold text-text-main">Your Business Address</h3>
+            <p className="text-xs text-text-secondary font-medium mt-0.5 truncate">{fullAddress || 'No address entered'}</p>
           </div>
         </div>
       </div>
@@ -119,18 +119,18 @@ export default function LocationStep({ address, onNext }: Props) {
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="space-y-6"
+          className="space-y-4"
         >
-          <div className="bg-gray-50 rounded-[2rem] p-8 border border-gray-100 text-center space-y-6">
-            <div className="size-20 bg-primary/5 rounded-full flex items-center justify-center mx-auto">
-              <Crosshair size={36} className="text-primary" />
+          <div className="rounded-2xl border border-gray-100 bg-white p-6 md:p-8 text-center shadow-sm space-y-5">
+            <div className="size-16 bg-primary/5 rounded-full flex items-center justify-center mx-auto">
+              <Crosshair size={30} className="text-primary" />
             </div>
             <div className="space-y-2">
-              <h2 className="font-black text-lg text-text-main">
+              <h2 className="text-lg font-bold text-text-main">
                 Are You Currently At Your Business Location?
               </h2>
-              <p className="text-text-secondary font-medium text-sm">
-                We can use your device's location for better accuracy, or find it from your address.
+              <p className="text-text-secondary font-medium text-sm leading-relaxed">
+                We can use your device&apos;s location for better accuracy, or find it from your address.
               </p>
             </div>
           </div>
@@ -138,17 +138,17 @@ export default function LocationStep({ address, onNext }: Props) {
           <div className="flex flex-col gap-3">
             <Button
               onClick={handleYes}
-              className="w-full bg-primary text-white font-black uppercase tracking-widest text-xs py-8 rounded-2xl hover:bg-primary-hover shadow-xl shadow-primary/20 transition-all active:scale-[0.98] flex items-center justify-center gap-3"
+              className="w-full rounded-xl bg-primary px-6 py-3.5 text-[10px] font-bold uppercase tracking-wider text-white shadow-md shadow-primary/20 hover:bg-primary-hover transition-all active:scale-[0.98] flex items-center justify-center gap-3"
             >
-              <Navigation size={18} />
-              Yes, I'm Here
+              <Navigation size={16} />
+              Yes, I&apos;m Here
             </Button>
             <Button
               onClick={handleNo}
               variant="outline"
-              className="w-full border-2 border-gray-200 text-text-main font-black uppercase tracking-widest text-xs py-8 rounded-2xl hover:bg-gray-50 transition-all active:scale-[0.98] flex items-center justify-center gap-3"
+              className="w-full rounded-xl border-2 border-gray-200 text-text-main font-bold text-[10px] uppercase tracking-wider py-3.5 hover:bg-gray-50 transition-all active:scale-[0.98] flex items-center justify-center gap-3"
             >
-              <MapPin size={18} />
+              <MapPin size={16} />
               No, Use My Address
             </Button>
           </div>
@@ -156,7 +156,7 @@ export default function LocationStep({ address, onNext }: Props) {
           <div className="text-center">
             <button
               onClick={handleSkip}
-              className="text-[10px] font-black uppercase tracking-widest text-text-secondary opacity-40 hover:opacity-100 transition-opacity flex items-center justify-center gap-2 mx-auto"
+              className="text-[10px] font-bold uppercase tracking-wider text-text-secondary opacity-40 hover:opacity-100 transition-opacity flex items-center justify-center gap-2 mx-auto cursor-pointer"
             >
               <SkipForward size={14} />
               Skip — Set Up Later
@@ -169,13 +169,13 @@ export default function LocationStep({ address, onNext }: Props) {
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="bg-gray-50 rounded-[2rem] p-12 border border-gray-100 text-center space-y-6"
+          className="rounded-2xl border border-gray-100 bg-white p-10 md:p-12 text-center shadow-sm space-y-5"
         >
-          <div className="size-20 bg-primary/5 rounded-full flex items-center justify-center mx-auto">
-            <Loader2 size={36} className="text-primary animate-spin" />
+          <div className="size-16 bg-primary/5 rounded-full flex items-center justify-center mx-auto">
+            <Loader2 size={30} className="text-primary animate-spin" />
           </div>
           <div className="space-y-2">
-            <h2 className="font-black text-lg text-text-main">Getting Your Location</h2>
+            <h2 className="text-lg font-bold text-text-main">Getting Your Location</h2>
             <p className="text-text-secondary font-medium text-sm">{message}</p>
             <p className="text-[10px] font-medium text-text-secondary opacity-50">
               Please allow location access when prompted by your browser
@@ -188,13 +188,13 @@ export default function LocationStep({ address, onNext }: Props) {
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="bg-gray-50 rounded-[2rem] p-12 border border-gray-100 text-center space-y-6"
+          className="rounded-2xl border border-gray-100 bg-white p-10 md:p-12 text-center shadow-sm space-y-5"
         >
-          <div className="size-20 bg-primary/5 rounded-full flex items-center justify-center mx-auto">
-            <Loader2 size={36} className="text-primary animate-spin" />
+          <div className="size-16 bg-primary/5 rounded-full flex items-center justify-center mx-auto">
+            <Loader2 size={30} className="text-primary animate-spin" />
           </div>
           <div className="space-y-2">
-            <h2 className="font-black text-lg text-text-main">Finding Your Location</h2>
+            <h2 className="text-lg font-bold text-text-main">Finding Your Location</h2>
             <p className="text-text-secondary font-medium text-sm">{message}</p>
             <p className="text-[10px] font-medium text-text-secondary opacity-50">
               Using {locationServiceText()} to geocode your address
@@ -207,14 +207,14 @@ export default function LocationStep({ address, onNext }: Props) {
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="bg-green-50 rounded-[2rem] p-12 border border-green-100 text-center space-y-6"
+          className="rounded-2xl border border-emerald-100 bg-emerald-50 p-10 md:p-12 text-center shadow-sm space-y-5"
         >
-          <div className="size-20 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto animate-bounce">
-            <CheckCircle2 size={48} />
+          <div className="size-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto animate-bounce">
+            <CheckCircle2 size={36} />
           </div>
           <div className="space-y-2">
-            <h2 className="font-black text-2xl text-green-700">Location Saved!</h2>
-            <p className="text-green-600 font-medium text-sm">
+            <h2 className="text-xl font-bold text-emerald-700">Location Saved!</h2>
+            <p className="text-emerald-600 font-medium text-sm">
               {coordinates && `${coordinates.lat.toFixed(6)}, ${coordinates.lng.toFixed(6)}`}
             </p>
           </div>
@@ -225,14 +225,14 @@ export default function LocationStep({ address, onNext }: Props) {
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="space-y-6"
+          className="space-y-4"
         >
-          <div className="bg-red-50 rounded-[2rem] p-8 border border-red-100 text-center space-y-4">
-            <div className="size-16 bg-red-100 text-red-500 rounded-full flex items-center justify-center mx-auto">
-              <AlertCircle size={32} />
+          <div className="rounded-2xl border border-red-100 bg-red-50 p-6 text-center space-y-3">
+            <div className="size-14 bg-red-100 text-red-500 rounded-full flex items-center justify-center mx-auto">
+              <AlertCircle size={26} />
             </div>
             <div className="space-y-1">
-              <h2 className="font-black text-lg text-red-700">Location Not Found</h2>
+              <h2 className="text-lg font-bold text-red-700">Location Not Found</h2>
               <p className="text-red-600 font-medium text-sm">{message}</p>
             </div>
           </div>
@@ -240,14 +240,14 @@ export default function LocationStep({ address, onNext }: Props) {
           <div className="flex flex-col gap-3">
             <Button
               onClick={handleNo}
-              className="w-full bg-primary text-white font-black uppercase tracking-widest text-xs py-8 rounded-2xl hover:bg-primary-hover transition-all"
+              className="w-full rounded-xl bg-primary px-6 py-3.5 text-[10px] font-bold uppercase tracking-wider text-white shadow-md shadow-primary/20 hover:bg-primary-hover transition-all"
             >
               Try Address Lookup
             </Button>
             <Button
               onClick={handleSkip}
               variant="outline"
-              className="w-full border-2 border-gray-200 text-text-main font-black uppercase tracking-widest text-xs py-8 rounded-2xl"
+              className="w-full rounded-xl border-2 border-gray-200 text-text-main font-bold text-[10px] uppercase tracking-wider py-3.5"
             >
               Skip For Now
             </Button>

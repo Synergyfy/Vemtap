@@ -212,7 +212,7 @@ function BranchesContent() {
                     {branches.map((branch) => (
                         <div key={branch.id} className="bg-white rounded-3xl border border-gray-200 p-6 hover:shadow-xl transition-all group relative overflow-hidden">
                             {branch.isMainBranch && (
-                                <div className="absolute top-0 right-0 px-4 py-1.5 bg-primary/10 text-primary text-[10px] font-black uppercase tracking-widest rounded-bl-2xl">
+                                <div className="absolute top-0 right-0 px-4 py-1.5 bg-primary/10 text-primary text-[10px] font-bold uppercase tracking-wider rounded-bl-2xl">
                                     Main Location
                                 </div>
                             )}
@@ -230,7 +230,7 @@ function BranchesContent() {
                                     </h3>
                                     <div className="flex items-center gap-2 mt-2">
                                         <span className={`size-2 rounded-full ${branch.isActive ? 'bg-emerald-500' : 'bg-gray-300'}`} />
-                                        <span className="text-[10px] font-black uppercase tracking-widest text-text-secondary">{branch.isActive ? 'active' : 'inactive'}</span>
+                                        <span className="text-[10px] font-bold uppercase tracking-wider text-text-secondary">{branch.isActive ? 'active' : 'inactive'}</span>
                                     </div>
                                 </div>
 
@@ -300,14 +300,14 @@ function BranchesContent() {
                 {isCreateModalOpen && (
                     <div className="fixed inset-0 z-100 flex items-center justify-center p-4">
                         <div className="absolute inset-0 bg-text-main/40 backdrop-blur-sm"  />
-                        <div className="relative bg-white rounded-[2.5rem] w-full max-w-xl p-10 shadow-2xl animate-in zoom-in-95 duration-200">
+                        <div className="relative bg-white rounded-2xl w-full max-w-xl p-10 shadow-2xl animate-in zoom-in-95 duration-200">
                             <h3 className="text-3xl font-display font-bold text-text-main mb-2">Add New Branch</h3>
                             <p className="text-text-secondary text-base mb-10 font-medium">Create a new location for {storeName}.</p>
 
                             <div className="space-y-6">
                                 <div className="grid grid-cols-1 gap-6">
                                     <div className="space-y-2">
-                                        <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Branch Name <span className="text-red-500">*</span></label>
+                                        <label className="text-[10px] font-bold uppercase tracking-wider text-text-secondary ml-1">Branch Name <span className="text-red-500">*</span></label>
                                         <input
                                             type="text"
                                             value={newBranch.name}
@@ -317,7 +317,7 @@ function BranchesContent() {
                                         />
                                     </div>
                                     <div className="space-y-2">
-                                        <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Full Address <span className="text-red-500">*</span></label>
+                                        <label className="text-[10px] font-bold uppercase tracking-wider text-text-secondary ml-1">Full Address <span className="text-red-500">*</span></label>
                                         <div className="relative">
                                             <input
                                                 type="text"
@@ -338,7 +338,7 @@ function BranchesContent() {
                                     </div>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <div className="space-y-2">
-                                            <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Phone Number</label>
+                                            <label className="text-[10px] font-bold uppercase tracking-wider text-text-secondary ml-1">Phone Number</label>
                                             <input
                                                 type="tel"
                                                 value={newBranch.phone}
@@ -348,7 +348,7 @@ function BranchesContent() {
                                             />
                                         </div>
                                         <div className="space-y-2">
-                                            <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Official Email</label>
+                                            <label className="text-[10px] font-bold uppercase tracking-wider text-text-secondary ml-1">Official Email</label>
                                             <input
                                                 type="email"
                                                 value={newBranch.officialEmail}
@@ -385,14 +385,14 @@ function BranchesContent() {
             {isEditModalOpen && branchToEdit && (
                 <div className="fixed inset-0 z-100 flex items-center justify-center p-4">
                     <div className="absolute inset-0 bg-text-main/40 backdrop-blur-sm"  />
-                    <div className="relative bg-white rounded-[2.5rem] w-full max-w-xl p-10 shadow-2xl animate-in zoom-in-95 duration-200">
+                    <div className="relative bg-white rounded-2xl w-full max-w-xl p-10 shadow-2xl animate-in zoom-in-95 duration-200">
                         <h3 className="text-3xl font-display font-bold text-text-main mb-2">Edit Branch</h3>
                         <p className="text-text-secondary text-base mb-10 font-medium">Update details for {resolveBranchName(branchToEdit)}.</p>
 
                         <div className="space-y-6">
                             <div className="grid grid-cols-1 gap-6">
                                 <div className="space-y-2">
-                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Branch Name <span className="text-red-500">*</span></label>
+                                    <label className="text-[10px] font-bold uppercase tracking-wider text-text-secondary ml-1">Branch Name <span className="text-red-500">*</span></label>
                                     <input
                                         type="text"
                                         value={branchToEdit.name}
@@ -402,7 +402,7 @@ function BranchesContent() {
                                     />
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Full Address <span className="text-red-500">*</span></label>
+                                    <label className="text-[10px] font-bold uppercase tracking-wider text-text-secondary ml-1">Full Address <span className="text-red-500">*</span></label>
                                     <div className="relative">
                                         <input
                                             type="text"
@@ -423,7 +423,7 @@ function BranchesContent() {
                                 </div>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div className="space-y-2">
-                                        <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Phone Number</label>
+                                        <label className="text-[10px] font-bold uppercase tracking-wider text-text-secondary ml-1">Phone Number</label>
                                         <input
                                             type="tel"
                                             value={branchToEdit.phone || ''}
@@ -433,7 +433,7 @@ function BranchesContent() {
                                         />
                                     </div>
                                     <div className="space-y-2">
-                                        <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Official Email</label>
+                                        <label className="text-[10px] font-bold uppercase tracking-wider text-text-secondary ml-1">Official Email</label>
                                         <input
                                             type="email"
                                             value={branchToEdit.officialEmail || ''}
@@ -470,7 +470,7 @@ function BranchesContent() {
             {isDeleteModalOpen && branchToDelete && (
                 <div className="fixed inset-0 z-100 flex items-center justify-center p-4">
                     <div className="absolute inset-0 bg-text-main/40 backdrop-blur-sm"  />
-                    <div className="relative bg-white rounded-[2.5rem] w-full max-w-md p-10 shadow-2xl animate-in zoom-in-95 duration-200 text-center">
+                    <div className="relative bg-white rounded-2xl w-full max-w-md p-10 shadow-2xl animate-in zoom-in-95 duration-200 text-center">
                         <div className="size-20 rounded-3xl bg-red-50 text-red-500 flex items-center justify-center mx-auto mb-6">
                             <Trash2 size={40} />
                         </div>
@@ -501,7 +501,7 @@ function BranchesContent() {
             {isOtpModalOpen && (
                 <div className="fixed inset-0 z-100 flex items-center justify-center p-4">
                     <div className="absolute inset-0 bg-text-main/40 backdrop-blur-sm"  />
-                    <div className="relative bg-white rounded-[2.5rem] w-full max-w-md p-10 shadow-2xl animate-in zoom-in-95 duration-200">
+                    <div className="relative bg-white rounded-2xl w-full max-w-md p-10 shadow-2xl animate-in zoom-in-95 duration-200">
                         <div className="flex items-center justify-between mb-8">
                             <div>
                                 <h3 className="text-2xl font-display font-bold text-text-main">Verify Deletion</h3>
@@ -514,7 +514,7 @@ function BranchesContent() {
 
                         <div className="space-y-6">
                             <div className="space-y-2">
-                                <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1 text-center block">Enter 6-Digit Verification Code</label>
+                                <label className="text-[10px] font-bold uppercase tracking-wider text-text-secondary ml-1 text-center block">Enter 6-Digit Verification Code</label>
                                 <input
                                     type="text"
                                     placeholder="000000"
@@ -524,7 +524,7 @@ function BranchesContent() {
                                     className="w-full h-16 bg-gray-50 border-2 border-gray-200 rounded-2xl px-5 text-2xl font-bold text-center tracking-[0.5em] focus:bg-white focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all outline-none"
                                 />
                                 <p className="text-[10px] text-text-secondary text-center mt-4">
-                                    Didn't receive the code? <button type="button" className="text-primary font-bold hover:underline">Resend Code</button>
+                                    Didn&apos;t receive the code? <button type="button" className="text-primary font-bold hover:underline">Resend Code</button>
                                 </p>
                             </div>
 

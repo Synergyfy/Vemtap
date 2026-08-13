@@ -10,7 +10,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { dashboardApi } from '@/lib/api/dashboard';
 import {
     Home, Users, Gift, BarChart, Users2, Settings,
-    ChevronDown, Lock, LogOut, Bell, HelpCircle, Menu, MessageSquare, ShieldCheck,
+    ChevronDown, Lock, LogOut, Bell, HelpCircle, MessageSquare, ShieldCheck,
     MessageCircle, LucideIcon, Zap, ShoppingBag, QrCode, AlertCircle, FileText,
     ClipboardCheck, Search, Star, Pin, PinOff, ChevronLeft, ChevronRight, LayoutDashboard,
     X, MoreHorizontal, User, Download, Sun, Moon, Crown, ArrowRight, CheckCircle2,
@@ -159,7 +159,6 @@ export default function DashboardSidebar({ children }: SidebarProps) {
 
     const [expandedSections, setExpandedSections] = useState<string[]>(['section-dashboard', 'section-customers']);
 
-    const [isMobileOpen, setIsMobileOpen] = useState(false);
     const wasCollapsedRef = useRef(false);
     const isAICopilotOpen = useAIStore((state) => state.isCopilotOpen);
     const setCopilotOpen = useAIStore((state) => state.setCopilotOpen);
@@ -270,15 +269,9 @@ export default function DashboardSidebar({ children }: SidebarProps) {
 
     return (
         <div className="flex h-screen bg-gray-50 overflow-hidden relative">
-            {/* Mobile Overlay */}
-            {isMobileOpen && (
-                <div className="fixed inset-0 bg-black/50 z-60 lg:hidden backdrop-blur-sm transition-opacity" onClick={() => setIsMobileOpen(false)} />
-            )}
-
             {/* Sidebar */}
             <aside className={`
-                fixed inset-y-0 left-0 z-[250] bg-white border-r border-gray-200 flex flex-col transition-all duration-300 lg:static
-                ${isMobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+                hidden lg:flex flex-col bg-white border-r border-gray-200 transition-all duration-300 shrink-0
                 ${isCollapsed ? 'w-20' : 'w-72'}
             `}>
                 {/* Header / Collapse Toggle */}
@@ -404,7 +397,6 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                                                                           key={idx}
                                                                           href={withBranch(sub.href)}
                                                                           onClick={() => {
-                                                                              setIsMobileOpen(false);
                                                                               if (wasCollapsedRef.current) {
                                                                                   wasCollapsedRef.current = false;
                                                                                   toggleCollapse();
@@ -429,7 +421,6 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                                                                 return;
                                                             }
                                                             router.push(withBranch(item.href!));
-                                                            setIsMobileOpen(false);
                                                             if (wasCollapsedRef.current) {
                                                                 wasCollapsedRef.current = false;
                                                                 toggleCollapse();
@@ -509,10 +500,6 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                 {/* Top Bar */}
                 <header className="h-16 bg-white border-b border-gray-100 flex items-center justify-between px-6 lg:px-8 shrink-0 sticky top-0 z-[300]">
                     <div className="flex items-center gap-4 flex-1">
-                        <button onClick={() => setIsMobileOpen(true)} className="p-2 text-gray-500 hover:bg-gray-50 rounded-xl lg:hidden border border-gray-100">
-                            <Menu size={20} />
-                        </button>
-                        
                         <div className="flex items-center gap-3">
                             <div className="size-8 rounded-lg bg-gray-50 border border-gray-100 overflow-hidden flex items-center justify-center shrink-0 hidden sm:flex">
                                 {currentBranchLogo ? <img src={currentBranchLogo} alt="Logo" className="size-full object-cover p-1" /> : <Zap className="text-primary size-4" />}
@@ -742,7 +729,7 @@ export default function DashboardSidebar({ children }: SidebarProps) {
             <UpgradeModal isOpen={upgradeModal.isOpen} onClose={() => setUpgradeModal({ ...upgradeModal, isOpen: false })} featureName={upgradeModal.featureName} />
             <SubscriptionExpiredModal isOpen={isSubscriptionExpired && !pathname.includes('/settings/subscription')} />
             <InstallAppModal isOpen={showInstallModal} onClose={() => setShowInstallModal(false)} onInstall={handleInstallApp} />
-            {!(isChatRoute && activeConversationId) && !isCreateAssetPage && <DashboardMobileNav onOpenSidebar={() => setIsMobileOpen(true)} />}
+            {!(isChatRoute && activeConversationId) && !isCreateAssetPage && <DashboardMobileNav />}
         </div>
     );
 }

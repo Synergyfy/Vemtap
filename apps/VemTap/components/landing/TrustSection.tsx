@@ -2,7 +2,6 @@
 
 import React from 'react';
 import { Utensils, Scissors, ShoppingBag, Dumbbell, Hotel, Store, Laptop, Building2 } from 'lucide-react';
-import { motion } from 'framer-motion';
 
 const categories = [
     { name: 'Restaurant', icon: Utensils },
@@ -24,25 +23,27 @@ export default function TrustSection() {
                         Trusted By Growing Businesses
                     </h2>
                 </div>
-                
-                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-6 md:gap-8">
-                    {categories.map((category, index) => (
-                        <motion.div
-                            key={index}
-                            initial={{ opacity: 0, y: 20 }}
-                            whileInView={{ opacity: 1, y: 0 }}
-                            viewport={{ once: true }}
-                            transition={{ delay: index * 0.1 }}
-                            className="flex flex-col items-center gap-4 group"
-                        >
-                            <div className="size-16 rounded-2xl bg-white shadow-sm border border-gray-100 flex items-center justify-center text-text-secondary group-hover:text-primary group-hover:border-primary/20 transition-all duration-300">
-                                <category.icon size={24} />
+
+                <div className="relative group overflow-hidden">
+                    <div className="flex w-max animate-marquee-scroll">
+                        {[0, 1].map((copy) => (
+                            <div key={copy} className="flex items-center justify-center gap-6 md:gap-8 pr-6 md:pr-8">
+                                {categories.map((category, index) => (
+                                    <div
+                                        key={index}
+                                        className="flex flex-col items-center gap-4 group/item min-w-[5.5rem] sm:min-w-[7rem]"
+                                    >
+                                        <div className="size-16 rounded-2xl bg-white shadow-sm border border-gray-100 flex items-center justify-center text-text-secondary group-hover/item:text-primary group-hover/item:border-primary/20 transition-all duration-300">
+                                            <category.icon size={24} />
+                                        </div>
+                                        <span className="text-[10px] font-black uppercase tracking-widest text-text-secondary text-center group-hover/item:text-text-main transition-colors whitespace-nowrap">
+                                            {category.name}
+                                        </span>
+                                    </div>
+                                ))}
                             </div>
-                            <span className="text-[10px] font-black uppercase tracking-widest text-text-secondary text-center group-hover:text-text-main transition-colors">
-                                {category.name}
-                            </span>
-                        </motion.div>
-                    ))}
+                        ))}
+                    </div>
                 </div>
             </div>
         </section>

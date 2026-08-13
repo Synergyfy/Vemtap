@@ -3,39 +3,38 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { 
-    Search, Filter, ChevronDown, Check,
+    Search, Filter, Check,
     Download, LayoutGrid, Trash2, Send,
-    MoreVertical, ArrowRight, User
+    MoreVertical, ArrowRight
 } from 'lucide-react';
-import { useCRMStore, SortOption } from '@/store/useCRMStore';
+import { useCRMStore } from '@/store/useCRMStore';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
 
 export function CRMListHeader({ total }: { total: number }) {
-    const { activeSort, setSort } = useCRMStore();
 
     return (
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
             <div>
-                <h1 className="text-3xl font-black text-gray-900 leading-tight">All Customers</h1>
-                <p className="text-sm font-medium text-gray-500 mt-1">
+                <h1 className="text-xl md:text-2xl font-bold text-gray-900 leading-tight tracking-tight">All Customers</h1>
+                <p className="text-sm text-gray-500 mt-1">
                     {total.toLocaleString()} total records found
                 </p>
             </div>
             
-            <div className="flex items-center gap-3">
-                <div className="relative flex-1 md:w-64">
-                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+            <div className="flex items-center gap-2.5">
+                <div className="relative flex-1 md:w-60">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
                     <input 
                         type="text" 
                         placeholder="Search name, phone..."
-                        className="w-full h-12 pl-12 pr-4 rounded-2xl bg-white border border-gray-100 shadow-sm focus:ring-2 focus:ring-[#066CF4]/10 outline-none font-bold text-sm transition-all"
+                        className="w-full h-10 pl-9 pr-4 rounded-xl bg-white border border-gray-100 shadow-sm focus:ring-2 focus:ring-[#066CF4]/10 outline-none font-medium text-sm transition-all"
                     />
                 </div>
-                <Button variant="outline" className="h-12 rounded-2xl border-gray-100 bg-white shadow-sm font-black text-[10px] uppercase tracking-widest">
-                    <Filter size={16} className="mr-2" />
+                <Button variant="outline" className="h-10 rounded-xl border-gray-100 bg-white shadow-sm font-semibold text-xs text-gray-600">
+                    <Filter size={15} className="mr-2 text-gray-400" />
                     Filter
                 </Button>
             </div>
@@ -49,10 +48,10 @@ export function CRMCustomerCard({ customer }: { customer: any }) {
 
     return (
         <div className={cn(
-            "group relative p-6 rounded-[32px] bg-white border transition-all duration-300 active:scale-[0.98]",
-            isSelected ? "border-[#066CF4] shadow-xl shadow-blue-500/5 bg-blue-50/10" : "border-gray-100 shadow-sm hover:border-[#066CF4]/20 hover:shadow-xl hover:shadow-black/5"
+            "group relative p-5 rounded-2xl bg-white border transition-all duration-300 active:scale-[0.98]",
+            isSelected ? "border-[#066CF4] shadow-md shadow-blue-500/5 bg-blue-50/10" : "border-gray-100 shadow-sm hover:border-[#066CF4]/20 hover:shadow-md"
         )}>
-            <div className="flex items-start gap-5">
+            <div className="flex items-start gap-4">
                 {/* Selection & Avatar */}
                 <div className="relative">
                     <button 
@@ -64,7 +63,7 @@ export function CRMCustomerCard({ customer }: { customer: any }) {
                     >
                         <Check size={14} strokeWidth={4} />
                     </button>
-                    <div className="size-16 rounded-[22px] bg-[#066CF4]/5 text-[#066CF4] flex items-center justify-center font-black text-xl italic shadow-sm overflow-hidden shrink-0">
+                    <div className="size-12 rounded-xl bg-[#066CF4]/5 text-[#066CF4] flex items-center justify-center font-bold text-lg italic shadow-sm overflow-hidden shrink-0">
                         {customer.logo ? <img src={customer.logo} className="size-full object-cover" /> : (customer.name?.[0] || 'C')}
                     </div>
                 </div>
@@ -72,9 +71,9 @@ export function CRMCustomerCard({ customer }: { customer: any }) {
                 {/* Info */}
                 <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-2 mb-1">
-                        <h3 className="text-lg font-black text-gray-900 truncate">{customer.name || 'Anonymous'}</h3>
+                        <h3 className="text-base font-bold text-gray-900 truncate">{customer.name || 'Anonymous'}</h3>
                         <Badge className={cn(
-                            "border-none px-2.5 py-0.5 font-black text-[9px] uppercase tracking-wider",
+                            "border-none px-2 py-0.5 font-bold text-[9px] uppercase tracking-wider",
                             customer.status === 'VIP' ? "bg-amber-100 text-amber-600" :
                             customer.status === 'New' ? "bg-blue-50 text-[#066CF4]" : "bg-emerald-50 text-emerald-600"
                         )}>
@@ -82,19 +81,19 @@ export function CRMCustomerCard({ customer }: { customer: any }) {
                         </Badge>
                     </div>
                     <div className="flex flex-col gap-0.5">
-                        <p className="text-xs font-bold text-gray-500">{customer.phone || 'No phone'}</p>
-                        <p className="text-[10px] font-medium text-gray-400 truncate">{customer.email || 'No email'}</p>
+                        <p className="text-sm font-medium text-gray-500">{customer.phone || 'No phone'}</p>
+                        <p className="text-xs text-gray-400 truncate">{customer.email || 'No email'}</p>
                     </div>
                 </div>
             </div>
 
-            <div className="mt-6 pt-6 border-t border-gray-50 flex items-center justify-between">
+            <div className="mt-5 pt-4 border-t border-gray-50 flex items-center justify-between">
                 <div className="flex flex-col">
-                    <span className="text-[9px] font-black text-gray-300 uppercase tracking-widest">Last Activity</span>
-                    <span className="text-[11px] font-bold text-gray-700">{customer.lastActivity || '2 days ago'}</span>
+                    <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider">Last Activity</span>
+                    <span className="text-xs font-semibold text-gray-700 mt-0.5">{customer.lastActivity || '2 days ago'}</span>
                 </div>
                 <Link href={`/dashboard/visitors/${customer.id}`}>
-                    <Button variant="ghost" size="sm" className="rounded-xl text-[10px] font-black uppercase tracking-widest text-[#066CF4] hover:bg-blue-50">
+                    <Button variant="ghost" size="sm" className="rounded-lg text-xs font-semibold text-[#066CF4] hover:bg-blue-50">
                         Profile
                         <ArrowRight size={14} className="ml-1" />
                     </Button>

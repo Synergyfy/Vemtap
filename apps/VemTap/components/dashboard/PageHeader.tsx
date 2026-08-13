@@ -30,7 +30,7 @@ export default function PageHeader({ title, description, actions, showBack = fal
                     )}
                     <div>
                         <div className="flex items-center gap-2">
-                            <h1 className="text-2xl md:text-3xl font-black text-gray-900 tracking-tight leading-none">{title}</h1>
+                            <h1 className="text-xl md:text-2xl font-bold text-gray-900 tracking-tight leading-none">{title}</h1>
                             <PageGuideButton />
                             <AICopilotButton />
                         </div>

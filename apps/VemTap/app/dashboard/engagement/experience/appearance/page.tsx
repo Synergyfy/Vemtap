@@ -95,7 +95,7 @@ export default function UserExperienceAppearancePage() {
                             <button
                                 onClick={handleSave}
                                 disabled={isSaving || isLoading}
-                                className="h-10 px-4 bg-primary text-white font-black uppercase tracking-widest text-[10px] rounded-xl shadow-lg shadow-primary/20 hover:scale-[1.01] active:scale-95 transition-all flex items-center gap-2 disabled:opacity-50"
+                                className="h-10 px-4 bg-primary text-white font-bold uppercase tracking-wider text-[10px] rounded-xl shadow-lg shadow-primary/20 hover:scale-[1.01] active:scale-95 transition-all flex items-center gap-2 disabled:opacity-50"
                             >
                                 {isSaving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
                                 Save Changes
@@ -108,13 +108,13 @@ export default function UserExperienceAppearancePage() {
                                     <div className="space-y-1">
                                         <p className="text-sm font-bold text-gray-900">Brand Primary Color</p>
                                         <p className="text-xs text-gray-500 font-medium leading-normal max-w-sm">
-                                            This color is the heart of your brand identity. It's used for primary buttons, 
+                                            This color is the heart of your brand identity. It&apos;s used for primary buttons, 
                                             active states, and key decorative elements.
                                         </p>
                                     </div>
                                     <div className="flex items-center gap-4">
                                         <div className="text-right">
-                                            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">HEX CODE</p>
+                                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">HEX CODE</p>
                                             <span className="text-xs font-mono font-bold text-gray-600 bg-white border border-gray-200 px-2 py-1 rounded-md">{brandColor.toUpperCase()}</span>
                                         </div>
                                         <input
@@ -127,7 +127,7 @@ export default function UserExperienceAppearancePage() {
                                 </div>
 
                                 <div className="pt-2">
-                                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">Quick Presets</p>
+                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-3">Quick Presets</p>
                                     <div className="grid grid-cols-5 md:grid-cols-10 gap-3">
                                         {['#2563eb', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899', '#f97316', '#64748b', '#000000'].map((color) => (
                                             <button
@@ -150,7 +150,7 @@ export default function UserExperienceAppearancePage() {
                                 <div>
                                     <p className="text-sm font-bold text-amber-900">Consistency Matters</p>
                                     <p className="text-xs text-amber-700 font-medium leading-relaxed mt-1">
-                                        Your primary color will be automatically applied to the "Join Loyalty" form, 
+                                        Your primary color will be automatically applied to the &quot;Join Loyalty&quot; form, 
                                         check-in screens, and email headers sent to your customers.
                                     </p>
                                 </div>
@@ -171,7 +171,7 @@ export default function UserExperienceAppearancePage() {
                                         </div>
                                     ) : (
                                         <div className="size-8 rounded-full bg-primary flex items-center justify-center text-white shadow-sm shrink-0">
-                                            <span className="text-[10px] font-black uppercase">{previewBusinessName.charAt(0)}</span>
+                                            <span className="text-[10px] font-bold uppercase">{previewBusinessName.charAt(0)}</span>
                                         </div>
                                     )}
                                     <div className="min-w-0">
@@ -200,15 +200,15 @@ export default function UserExperienceAppearancePage() {
                                                 >
                                                     {item.title}
                                                 </span>
-                                                <span className="text-[7px] font-bold uppercase tracking-widest text-slate-400 block truncate">{item.subtitle}</span>
+                                                <span className="text-[7px] font-bold uppercase tracking-wider text-slate-400 block truncate">{item.subtitle}</span>
                                             </div>
                                         </div>
                                     ))}
                                 </div>
 
                                 <div className="flex justify-center gap-3 py-2 opacity-30">
-                                    <span className="text-[7px] font-black uppercase tracking-widest text-slate-400">Verified</span>
-                                    <span className="text-[7px] font-black uppercase tracking-widest text-slate-400">Instant Service</span>
+                                    <span className="text-[7px] font-bold uppercase tracking-wider text-slate-400">Verified</span>
+                                    <span className="text-[7px] font-bold uppercase tracking-wider text-slate-400">Instant Service</span>
                                 </div>
                                 <p className="text-center text-[7px] font-medium text-slate-400">
                                     Powered by <span className="font-bold" style={{ color: brandColor }}>{previewBusinessName}</span>
@@ -219,7 +219,7 @@ export default function UserExperienceAppearancePage() {
                     
                     <div className="bg-blue-50/50 p-4 rounded-xl border border-blue-100/50 mt-8 max-w-[280px]">
                         <p className="text-[10px] text-blue-600 font-medium leading-relaxed italic text-center">
-                            This preview uses the <span className="font-bold underline">real component layout</span> that your customers see. Use it to ensure your brand color doesn't clash with content.
+                            This preview uses the <span className="font-bold underline">real component layout</span> that your customers see. Use it to ensure your brand color doesn&apos;t clash with content.
                         </p>
                     </div>
                 </div>

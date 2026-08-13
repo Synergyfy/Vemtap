@@ -141,17 +141,17 @@ export default function DeviceSettingsPage() {
                     <div className="p-8 space-y-6">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="space-y-1.5">
-                                <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Landing Page Title</label>
+                                <label className="text-[10px] font-bold uppercase tracking-wider text-text-secondary ml-1">Landing Page Title</label>
                                 <input type="text" value={welcome} onChange={(e) => setWelcome(e.target.value)} className="w-full h-11 bg-gray-50 border border-gray-100 rounded-xl px-4 text-sm font-medium focus:bg-white focus:ring-2 focus:ring-primary/20 transition-all outline-none" />
                             </div>
                             <div className="space-y-1.5">
-                                <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Success Page Title</label>
+                                <label className="text-[10px] font-bold uppercase tracking-wider text-text-secondary ml-1">Success Page Title</label>
                                 <input type="text" value={success} onChange={(e) => setSuccess(e.target.value)} className="w-full h-11 bg-gray-50 border border-gray-100 rounded-xl px-4 text-sm font-medium focus:bg-white focus:ring-2 focus:ring-primary/20 transition-all outline-none" />
                             </div>
                         </div>
 
                         <div className="space-y-1.5">
-                            <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Privacy Message (Optional)</label>
+                            <label className="text-[10px] font-bold uppercase tracking-wider text-text-secondary ml-1">Privacy Message (Optional)</label>
                             <textarea value={privacy} onChange={(e) => setPrivacy(e.target.value)} className="w-full h-24 p-4 bg-gray-50 border border-gray-100 rounded-xl text-sm font-medium focus:bg-white focus:ring-2 focus:ring-primary/20 transition-all outline-none resize-none" />
                         </div>
 
@@ -170,7 +170,7 @@ export default function DeviceSettingsPage() {
                         </div>
 
                         <div className="pt-4">
-                            <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1 mb-2 block">Physical Device Link</label>
+                            <label className="text-[10px] font-bold uppercase tracking-wider text-text-secondary ml-1 mb-2 block">Physical Device Link</label>
                             <div className="flex items-center gap-2 p-4 bg-gray-900 rounded-xl overflow-hidden">
                                 <code className="text-xs text-green-400 font-mono flex-1 truncate">
                                     {origin}/tap/{user?.businessName?.replace(/\s+/g, '-').toUpperCase() || 'MY-STORE'}/PLATE-01

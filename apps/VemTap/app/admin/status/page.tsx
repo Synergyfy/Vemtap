@@ -414,13 +414,13 @@ export default function AdminStatusPage() {
                         <input name="componentSlug" defaultValue={editingIncident?.componentSlug || ''} className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 outline-none font-medium" placeholder="nfc-response-api" />
                     </div>
                     <div className="grid grid-cols-2 gap-4">
-                        <div>
+                        <div onClick={(e) => (e.currentTarget.querySelector<HTMLInputElement>('input[type="datetime-local"]')?.showPicker())}>
                             <label className="block text-xs font-bold text-gray-500 uppercase mb-1.5">Occurred At</label>
-                            <input name="occurredAt" type="datetime-local" defaultValue={toDatetimeLocal(editingIncident?.occurredAt) || toDatetimeLocal(new Date().toISOString())} className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 outline-none font-medium" />
+                            <input name="occurredAt" type="datetime-local" defaultValue={toDatetimeLocal(editingIncident?.occurredAt) || toDatetimeLocal(new Date().toISOString())} className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 outline-none font-medium cursor-pointer" />
                         </div>
-                        <div>
+                        <div onClick={(e) => (e.currentTarget.querySelector<HTMLInputElement>('input[type="datetime-local"]')?.showPicker())}>
                             <label className="block text-xs font-bold text-gray-500 uppercase mb-1.5">Resolved At</label>
-                            <input name="resolvedAt" type="datetime-local" defaultValue={toDatetimeLocal(editingIncident?.resolvedAt) || ''} className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 outline-none font-medium" />
+                            <input name="resolvedAt" type="datetime-local" defaultValue={toDatetimeLocal(editingIncident?.resolvedAt) || ''} className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 outline-none font-medium cursor-pointer" />
                         </div>
                     </div>
                     <div className="pt-2 flex justify-end">

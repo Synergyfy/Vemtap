@@ -31,7 +31,7 @@ export default function SocialsPreviewPage() {
             />
 
             <div className="flex items-center gap-2 text-xs font-bold text-text-secondary">
-                <span className="px-3 py-1.5 rounded-full bg-primary/10 text-primary uppercase tracking-widest">Preview</span>
+                <span className="px-3 py-1.5 rounded-full bg-primary/10 text-primary uppercase tracking-wider">Preview</span>
                 <span>Socials</span>
             </div>
 
@@ -42,7 +42,7 @@ export default function SocialsPreviewPage() {
                 >
                     Default Form
                 </Link>
-                <span className="px-3 py-1.5 rounded-full bg-primary text-white text-xs font-black uppercase tracking-widest">Socials</span>
+                <span className="px-3 py-1.5 rounded-full bg-primary text-white text-xs font-bold uppercase tracking-wider">Socials</span>
                 <Link
                     href="/dashboard/engagement/previews/forms"
                     className="px-3 py-1.5 rounded-full bg-white border border-gray-200 text-xs font-bold text-gray-600 hover:bg-gray-50"
@@ -54,14 +54,14 @@ export default function SocialsPreviewPage() {
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
                 <div className="space-y-4">
                     <div className="bg-white rounded-2xl border border-gray-100 p-6 space-y-3">
-                        <p className="text-xs font-black uppercase tracking-widest text-gray-400">Quick Actions</p>
+                        <p className="text-xs font-bold uppercase tracking-wider text-gray-400">Quick Actions</p>
                         <h3 className="text-lg font-bold text-text-main">Edit Social Settings</h3>
                         <p className="text-xs text-text-secondary">
                             Update social links, review prompts, and post-submit engagement behavior.
                         </p>
                         <Link
                             href="/dashboard/engagement/socials"
-                            className="inline-flex items-center justify-center h-10 px-4 rounded-xl bg-primary text-white text-xs font-black uppercase tracking-widest"
+                            className="inline-flex items-center justify-center h-10 px-4 rounded-xl bg-primary text-white text-xs font-bold uppercase tracking-wider"
                         >
                             Edit Socials
                         </Link>
@@ -70,7 +70,7 @@ export default function SocialsPreviewPage() {
 
                 <div className="sticky top-6">
                     <details open className="rounded-2xl border border-gray-100 bg-white">
-                        <summary className="cursor-pointer list-none px-4 py-3 text-xs font-black uppercase tracking-widest text-gray-500 flex items-center justify-between">
+                        <summary className="cursor-pointer list-none px-4 py-3 text-xs font-bold uppercase tracking-wider text-gray-500 flex items-center justify-between">
                             Preview
                             <span className="text-[10px] font-semibold text-gray-400">Social Actions</span>
                         </summary>

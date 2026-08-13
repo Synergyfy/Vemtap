@@ -949,19 +949,23 @@ export default function ChatSettingsPanel() {
                                                         {localAuto.customSchedule?.days?.[day] ? (
                                                             <div className="flex items-center gap-3 animate-in fade-in duration-200">
                                                                 <div className="flex items-center gap-2">
-                                                                    <input 
-                                                                        type="time" 
-                                                                        value={localAuto.customSchedule.days[day].startTime}
-                                                                        onChange={e => updateDaySchedule(day, 'startTime', e.target.value)}
-                                                                        className="px-3 py-1.5 text-xs font-bold bg-slate-100 border-none rounded-lg focus:ring-2 focus:ring-primary/20"
-                                                                    />
+                                                                    <div onClick={(e) => (e.currentTarget.querySelector<HTMLInputElement>('input[type="time"]')?.showPicker())}>
+                                                                        <input 
+                                                                            type="time" 
+                                                                            value={localAuto.customSchedule.days[day].startTime}
+                                                                            onChange={e => updateDaySchedule(day, 'startTime', e.target.value)}
+                                                                            className="px-3 py-1.5 text-xs font-bold bg-slate-100 border-none rounded-lg focus:ring-2 focus:ring-primary/20 cursor-pointer"
+                                                                        />
+                                                                    </div>
                                                                     <span className="text-slate-400 text-xs font-bold">to</span>
-                                                                    <input 
-                                                                        type="time" 
-                                                                        value={localAuto.customSchedule.days[day].endTime}
-                                                                        onChange={e => updateDaySchedule(day, 'endTime', e.target.value)}
-                                                                        className="px-3 py-1.5 text-xs font-bold bg-slate-100 border-none rounded-lg focus:ring-2 focus:ring-primary/20"
-                                                                    />
+                                                                    <div onClick={(e) => (e.currentTarget.querySelector<HTMLInputElement>('input[type="time"]')?.showPicker())}>
+                                                                        <input 
+                                                                            type="time" 
+                                                                            value={localAuto.customSchedule.days[day].endTime}
+                                                                            onChange={e => updateDaySchedule(day, 'endTime', e.target.value)}
+                                                                            className="px-3 py-1.5 text-xs font-bold bg-slate-100 border-none rounded-lg focus:ring-2 focus:ring-primary/20 cursor-pointer"
+                                                                        />
+                                                                    </div>
                                                                 </div>
                                                                 
                                                                 <button 

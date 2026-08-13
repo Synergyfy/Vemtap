@@ -46,13 +46,13 @@ export default function AllCustomersPage() {
     const getStatusBadge = (status: string) => {
         switch (status?.toLowerCase()) {
             case 'vip':
-                return <span className="px-2 py-1 bg-amber-100 text-amber-700 rounded-lg text-[9px] font-black uppercase tracking-wider w-fit">VIP</span>;
+                return <span className="px-2 py-1 bg-amber-100 text-amber-700 rounded-lg text-[9px] font-bold uppercase tracking-wider w-fit">VIP</span>;
             case 'new':
-                return <span className="px-2 py-1 bg-blue-50 text-blue-600 rounded-lg text-[9px] font-black uppercase tracking-wider w-fit">NEW</span>;
+                return <span className="px-2 py-1 bg-blue-50 text-blue-600 rounded-lg text-[9px] font-bold uppercase tracking-wider w-fit">NEW</span>;
             case 'returning':
-                return <span className="px-2 py-1 bg-emerald-100 text-emerald-700 rounded-lg text-[9px] font-black uppercase tracking-wider w-fit">RETURNING</span>;
+                return <span className="px-2 py-1 bg-emerald-100 text-emerald-700 rounded-lg text-[9px] font-bold uppercase tracking-wider w-fit">RETURNING</span>;
             default:
-                return <span className="px-2 py-1 bg-slate-100 text-slate-700 rounded-lg text-[9px] font-black uppercase tracking-wider w-fit">{status?.toUpperCase() || 'ACTIVE'}</span>;
+                return <span className="px-2 py-1 bg-slate-100 text-slate-700 rounded-lg text-[9px] font-bold uppercase tracking-wider w-fit">{status?.toUpperCase() || 'ACTIVE'}</span>;
         }
     };
 
@@ -63,7 +63,7 @@ export default function AllCustomersPage() {
                 const displayName = v.name || [v.firstName, v.lastName].filter(Boolean).join(' ') || 'Anonymous';
                 return (
                     <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-[#066CF4]/5 text-[#066CF4] flex items-center justify-center font-black text-sm italic shrink-0 overflow-hidden">
+                        <div className="w-10 h-10 rounded-xl bg-[#066CF4]/5 text-[#066CF4] flex items-center justify-center font-bold text-sm italic shrink-0 overflow-hidden">
                             {displayName[0]?.toUpperCase() || 'C'}
                         </div>
                         <div className="min-w-0">
@@ -87,7 +87,7 @@ export default function AllCustomersPage() {
                 const source = v.source || 'pos';
                 const config = sourceConfig[source] || sourceConfig.pos;
                 return (
-                    <span className={`px-2 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider ${config.color}`}>
+                    <span className={`px-2 py-1 rounded-lg text-[9px] font-bold uppercase tracking-wider ${config.color}`}>
                         {config.label}
                     </span>
                 );
@@ -102,13 +102,13 @@ export default function AllCustomersPage() {
         {
             header: 'Visits',
             accessor: (v: Visitor) => (
-                <span className="text-xs font-black text-text-main">{v.visits || 0}</span>
+                <span className="text-xs font-bold text-text-main">{v.visits || 0}</span>
             )
         },
         {
             header: 'Total Spent',
             accessor: (v: Visitor) => (
-                <span className="text-xs font-black text-text-main">₦{Number(v.totalSpent || 0).toLocaleString()}</span>
+                <span className="text-xs font-bold text-text-main">₦{Number(v.totalSpent || 0).toLocaleString()}</span>
             )
         },
         {
@@ -129,7 +129,7 @@ export default function AllCustomersPage() {
         <div className="p-4 md:p-8 space-y-6">
             <Link
                 href="/dashboard/visitors"
-                className="inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-[#066CF4] transition-colors"
+                className="inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-gray-400 hover:text-[#066CF4] transition-colors"
             >
                 <ArrowLeft size={14} />
                 Back to Overview
@@ -153,7 +153,7 @@ export default function AllCustomersPage() {
                     />
                 </div>
                 {segmentId && (
-                    <span className="text-[10px] font-black uppercase tracking-widest text-primary bg-primary/5 px-3 py-2 rounded-xl">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-primary bg-primary/5 px-3 py-2 rounded-xl">
                         Filtered by segment
                     </span>
                 )}

@@ -277,13 +277,13 @@ export default function ConfigureBulkImportPage() {
             {/* Header */}
             <div className="flex items-center gap-4 mb-12">
                 <Link href="/dashboard/catalogue">
-                    <Button variant="ghost" size="icon" className="size-12 rounded-2xl bg-white border border-gray-100 hover:bg-gray-50 shadow-sm transition-all hover:-translate-x-1">
+                    <Button variant="ghost" size="icon" className="size-10 rounded-xl bg-white border border-gray-100 hover:bg-gray-50 shadow-sm transition-all hover:-translate-x-1">
                         <ArrowLeft size={20} className="text-gray-400" />
                     </Button>
                 </Link>
                 <div>
-                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 leading-none mb-2">Catalogue Manager</p>
-                    <div className="flex items-center gap-2"><h1 className="text-2xl font-black text-gray-900 leading-none">Bulk Import Wizard</h1><PageGuideButton /><AICopilotButton /></div>
+                    <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 leading-none mb-2">Catalogue Manager</p>
+                    <div className="flex items-center gap-2"><h1 className="text-xl md:text-2xl font-bold text-gray-900 tracking-tight leading-none">Bulk Import Wizard</h1><PageGuideButton /><AICopilotButton /></div>
                 </div>
             </div>
 
@@ -301,12 +301,12 @@ export default function ConfigureBulkImportPage() {
                     { num: 3, label: 'Review & Import' }
                 ].map((s) => (
                     <div key={s.num} className="relative z-10 flex flex-col items-center gap-3">
-                        <div className={`size-10 rounded-full flex items-center justify-center font-black text-sm transition-all duration-300 ${
-                            step >= s.num ? 'bg-[#066CF4] text-white shadow-lg shadow-blue-500/30' : 'bg-white text-gray-300 border-2 border-gray-100'
+                        <div className={`size-9 rounded-full flex items-center justify-center font-bold text-sm transition-all duration-300 ${
+                            step >= s.num ? 'bg-[#066CF4] text-white shadow-md shadow-blue-500/30' : 'bg-white text-gray-300 border-2 border-gray-100'
                         }`}>
-                            {step > s.num ? <CheckCircle2 size={18} /> : s.num}
+                            {step > s.num ? <CheckCircle2 size={16} /> : s.num}
                         </div>
-                        <span className={`text-[10px] font-black uppercase tracking-widest ${step >= s.num ? 'text-gray-900' : 'text-gray-400'}`}>
+                        <span className={`text-[10px] font-semibold uppercase tracking-wider ${step >= s.num ? 'text-gray-900' : 'text-gray-400'}`}>
                             {s.label}
                         </span>
                     </div>
@@ -319,17 +319,17 @@ export default function ConfigureBulkImportPage() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
-                className="bg-white rounded-[40px] shadow-sm border border-gray-100 overflow-hidden"
+                className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden"
             >
                 {step === 1 && (
-                    <div className="p-12 text-center">
-                        <div className="size-20 rounded-[2rem] bg-indigo-50 text-indigo-500 flex items-center justify-center mx-auto mb-8 shadow-inner">
-                            <FileSpreadsheet size={40} />
+                    <div className="p-8 md:p-12 text-center">
+                        <div className="size-14 md:size-16 rounded-xl bg-indigo-50 text-indigo-500 flex items-center justify-center mx-auto mb-6">
+                            <FileSpreadsheet size={28} />
                         </div>
-                        <h2 className="text-2xl font-black text-gray-900 mb-4">Upload your catalogue data</h2>
-                        <p className="text-sm font-medium text-gray-500 max-w-md mx-auto mb-10 leading-relaxed">
+                        <h2 className="text-xl md:text-2xl font-bold text-gray-900 tracking-tight mb-3">Upload your catalogue data</h2>
+                        <p className="text-sm font-medium text-gray-500 max-w-md mx-auto mb-8 leading-relaxed">
                             Upload a CSV file containing your products or services. Need help formatting? 
-                            <button onClick={handleDownloadTemplate} className="text-[#066CF4] hover:underline ml-1 font-bold">Download our template.</button>
+                            <button onClick={handleDownloadTemplate} className="text-[#066CF4] hover:underline ml-1 font-semibold">Download our template.</button>
                         </p>
 
                         <div 
@@ -343,15 +343,15 @@ export default function ConfigureBulkImportPage() {
                                 if (file) handleFile(file);
                             }}
                             onDragOver={(e) => e.preventDefault()}
-                            className={`border-2 border-dashed rounded-[32px] p-16 transition-all duration-300 max-w-2xl mx-auto cursor-pointer ${
+                            className={`border-2 border-dashed rounded-2xl p-8 transition-all duration-300 max-w-2xl mx-auto cursor-pointer ${
                                 isHoveringDropzone ? 'border-[#066CF4] bg-blue-50/50 scale-[0.98]' : 'border-gray-200 bg-gray-50 hover:bg-gray-100'
                             }`}
                         >
                             <input type="file" ref={fileInputRef} onChange={handleFileUpload} accept=".csv, text/csv" className="hidden" />
-                            <UploadCloud size={48} className={`mx-auto mb-4 ${isHoveringDropzone ? 'text-[#066CF4] animate-bounce' : 'text-gray-400'}`} />
-                            <h3 className="text-lg font-black text-gray-900 mb-2">Drag and drop your file here</h3>
-                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-6">or click to browse (CSV only)</p>
-                            <Button type="button" onClick={() => fileInputRef.current?.click()} className="rounded-xl bg-gray-900 text-white font-black text-xs uppercase tracking-widest px-8 shadow-lg">
+                            <UploadCloud size={40} className={`mx-auto mb-4 ${isHoveringDropzone ? 'text-[#066CF4] animate-bounce' : 'text-gray-400'}`} />
+                            <h3 className="text-lg font-bold text-gray-900 mb-1">Drag and drop your file here</h3>
+                            <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-6">or click to browse (CSV only)</p>
+                            <Button type="button" onClick={() => fileInputRef.current?.click()} className="h-10 px-6 rounded-xl bg-gray-900 text-white font-semibold text-xs uppercase tracking-wider">
                                 Select File
                             </Button>
                         </div>
@@ -366,29 +366,29 @@ export default function ConfigureBulkImportPage() {
                 )}
 
                 {step === 2 && parsed && (
-                    <div className="p-12">
+                    <div className="p-8 md:p-12">
                         <div className="flex items-start justify-between mb-8">
                             <div>
-                                <h2 className="text-2xl font-black text-gray-900 mb-2">Map your columns</h2>
+                                <h2 className="text-xl md:text-2xl font-bold text-gray-900 tracking-tight mb-2">Map your columns</h2>
                                 <p className="text-sm font-medium text-gray-500">Match your file columns to the standard fields in VemTap.</p>
                             </div>
-                            <div className="flex items-center gap-2 bg-blue-50 border border-blue-100 rounded-2xl px-4 py-2.5">
+                            <div className="flex items-center gap-2 bg-blue-50 border border-blue-100 rounded-xl px-4 py-2.5">
                                 <FileText size={16} className="text-blue-500" />
-                                <span className="text-xs font-bold text-blue-700">{fileName}</span>
+                                <span className="text-xs font-semibold text-blue-700">{fileName}</span>
                             </div>
                         </div>
 
                         <div className="space-y-4 max-w-3xl mx-auto">
                             {IMPORT_FIELDS.map((field) => (
-                                <div key={field.key} className="flex items-center gap-6 p-4 rounded-2xl bg-gray-50 border border-gray-100">
-                                    <div className="w-1/3 text-sm font-black text-gray-900">
+                                <div key={field.key} className="flex items-center gap-6 p-4 rounded-xl bg-gray-50 border border-gray-100">
+                                    <div className="w-1/3 text-sm font-bold text-gray-900">
                                         {field.label} {field.required && <span className="text-red-500">*</span>}
                                     </div>
                                     <ArrowRight size={16} className="text-gray-300 shrink-0" />
                                     <select
                                         value={mapping[field.key] ?? -1}
                                         onChange={(e) => setMappingField(field.key, e.target.value)}
-                                        className={`flex-1 h-12 px-4 rounded-xl border-none ring-1 focus:ring-2 focus:ring-[#066CF4] text-sm font-medium bg-white appearance-none cursor-pointer ${
+                                        className={`flex-1 h-10 px-4 rounded-xl border-none ring-1 focus:ring-2 focus:ring-[#066CF4] text-sm font-medium bg-white appearance-none cursor-pointer ${
                                             (mapping[field.key] ?? -1) >= 0 ? 'text-gray-900 ring-gray-200' : 'text-red-400 ring-red-200'
                                         }`}
                                     >
@@ -410,34 +410,34 @@ export default function ConfigureBulkImportPage() {
                 )}
 
                 {step === 3 && parsed && (
-                    <div className="p-12">
+                    <div className="p-8 md:p-12">
                         {!importResult && !bulkImport.isPending && (
                             <>
                                 <div className="flex items-center gap-4 mb-8">
-                                    <div className="size-14 rounded-2xl bg-emerald-50 text-emerald-500 flex items-center justify-center">
-                                        <Database size={28} />
+                                    <div className="size-12 rounded-xl bg-emerald-50 text-emerald-500 flex items-center justify-center">
+                                        <Database size={24} />
                                     </div>
                                     <div>
-                                        <h2 className="text-2xl font-black text-gray-900">Ready to Import</h2>
+                                        <h2 className="text-xl md:text-2xl font-bold text-gray-900 tracking-tight">Ready to Import</h2>
                                         <p className="text-sm font-medium text-gray-500">{fileName}</p>
                                     </div>
                                 </div>
 
-                                <div className="flex items-center justify-center gap-12 bg-gray-50 rounded-[24px] p-8 max-w-lg mx-auto mb-8 border border-gray-100">
+                                <div className="flex items-center justify-center gap-12 bg-gray-50 rounded-xl p-8 max-w-lg mx-auto mb-8 border border-gray-100">
                                     <div>
-                                        <div className="text-3xl font-black text-gray-900">{parsed.valid}</div>
-                                        <div className="text-[10px] font-black uppercase tracking-widest text-gray-400 mt-1">Valid Rows</div>
+                                        <div className="text-2xl md:text-3xl font-bold text-gray-900">{parsed.valid}</div>
+                                        <div className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mt-1">Valid Rows</div>
                                     </div>
                                     <div className="w-px h-12 bg-gray-200" />
                                     <div>
-                                        <div className={`text-3xl font-black ${parsed.invalid > 0 ? 'text-red-500' : 'text-emerald-500'}`}>{parsed.invalid}</div>
-                                        <div className="text-[10px] font-black uppercase tracking-widest text-gray-400 mt-1">Errors</div>
+                                        <div className={`text-2xl md:text-3xl font-bold ${parsed.invalid > 0 ? 'text-red-500' : 'text-emerald-500'}`}>{parsed.invalid}</div>
+                                        <div className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mt-1">Errors</div>
                                     </div>
                                 </div>
 
                                 {parsed.invalid > 0 && (
-                                    <div className="max-w-lg mx-auto mb-8 bg-red-50 border border-red-100 rounded-2xl p-4">
-                                        <p className="text-xs font-black uppercase tracking-widest text-red-500 mb-2">Rows with errors (will be skipped)</p>
+                                    <div className="max-w-lg mx-auto mb-8 bg-red-50 border border-red-100 rounded-xl p-4">
+                                        <p className="text-xs font-semibold uppercase tracking-wider text-red-500 mb-2">Rows with errors (will be skipped)</p>
                                         <div className="max-h-40 overflow-y-auto space-y-1">
                                             {parsed.errors.map((err, i) => (
                                                 <p key={i} className="text-xs font-medium text-red-600">Row {err.row}: {err.message}</p>
@@ -446,10 +446,10 @@ export default function ConfigureBulkImportPage() {
                                     </div>
                                 )}
 
-                                <div className="max-w-3xl mx-auto overflow-x-auto rounded-2xl border border-gray-100">
+                                <div className="max-w-3xl mx-auto overflow-x-auto rounded-xl border border-gray-100">
                                     <table className="w-full text-left text-sm">
                                         <thead>
-                                            <tr className="bg-gray-50 text-[10px] font-black uppercase tracking-widest text-gray-400">
+                                            <tr className="bg-gray-50 text-[10px] font-semibold uppercase tracking-wider text-gray-400">
                                                 <th className="px-4 py-3">Row</th>
                                                 <th className="px-4 py-3">Name</th>
                                                 <th className="px-4 py-3">Price</th>
@@ -481,40 +481,40 @@ export default function ConfigureBulkImportPage() {
                         {bulkImport.isPending && (
                             <div className="py-16 text-center">
                                 <Loader2 size={40} className="animate-spin text-[#066CF4] mx-auto mb-6" />
-                                <h2 className="text-2xl font-black text-gray-900 mb-2">Importing your catalogue...</h2>
+                                <h2 className="text-xl md:text-2xl font-bold text-gray-900 tracking-tight mb-2">Importing your catalogue...</h2>
                                 <p className="text-sm font-medium text-gray-500">This usually takes a few seconds.</p>
                             </div>
                         )}
 
                         {importResult && (
                             <>
-                                <div className={`size-20 rounded-full flex items-center justify-center mx-auto mb-8 shadow-inner ${
+                                <div className={`size-14 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner ${
                                     importResult.failed === 0 ? 'bg-emerald-50 text-emerald-500' : 'bg-amber-50 text-amber-500'
                                 }`}>
-                                    {importResult.failed === 0 ? <CheckCircle2 size={40} /> : <AlertCircle size={40} />}
+                                    {importResult.failed === 0 ? <CheckCircle2 size={28} /> : <AlertCircle size={28} />}
                                 </div>
-                                <h2 className="text-2xl font-black text-gray-900 text-center mb-2">
+                                <h2 className="text-xl md:text-2xl font-bold text-gray-900 tracking-tight text-center mb-2">
                                     {importResult.failed === 0 ? 'Import Complete!' : `Imported with ${importResult.failed} error${importResult.failed === 1 ? '' : 's'}`}
                                 </h2>
                                 <p className="text-sm font-medium text-gray-500 text-center max-w-md mx-auto mb-8">
                                     {importResult.created} item{importResult.created === 1 ? '' : 's'} added to your catalogue.
                                 </p>
 
-                                <div className="flex items-center justify-center gap-12 bg-gray-50 rounded-[24px] p-8 max-w-lg mx-auto border border-gray-100 mb-8">
+                                <div className="flex items-center justify-center gap-12 bg-gray-50 rounded-xl p-8 max-w-lg mx-auto border border-gray-100 mb-8">
                                     <div>
-                                        <div className="text-3xl font-black text-emerald-500">{importResult.created}</div>
-                                        <div className="text-[10px] font-black uppercase tracking-widest text-gray-400 mt-1">Created</div>
+                                        <div className="text-2xl md:text-3xl font-bold text-emerald-500">{importResult.created}</div>
+                                        <div className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mt-1">Created</div>
                                     </div>
                                     <div className="w-px h-12 bg-gray-200" />
                                     <div>
-                                        <div className="text-3xl font-black text-red-500">{importResult.failed}</div>
-                                        <div className="text-[10px] font-black uppercase tracking-widest text-gray-400 mt-1">Failed</div>
+                                        <div className="text-2xl md:text-3xl font-bold text-red-500">{importResult.failed}</div>
+                                        <div className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mt-1">Failed</div>
                                     </div>
                                 </div>
 
                                 {importResult.results.filter((r) => !r.success).length > 0 && (
-                                    <div className="max-w-lg mx-auto bg-red-50 border border-red-100 rounded-2xl p-4 mb-8">
-                                        <p className="text-xs font-black uppercase tracking-widest text-red-500 mb-2">Failed rows</p>
+                                    <div className="max-w-lg mx-auto bg-red-50 border border-red-100 rounded-xl p-4 mb-8">
+                                        <p className="text-xs font-semibold uppercase tracking-wider text-red-500 mb-2">Failed rows</p>
                                         <div className="max-h-40 overflow-y-auto space-y-1">
                                             {importResult.results.filter((r) => !r.success).slice(0, 20).map((r, i) => (
                                                 <p key={i} className="text-xs font-medium text-red-600">Row {r.row}: {r.error || 'Unknown error'}</p>
@@ -524,11 +524,11 @@ export default function ConfigureBulkImportPage() {
                                 )}
 
                                 <div className="flex items-center justify-center gap-4">
-                                    <Button onClick={resetAll} variant="outline" className="h-12 px-8 rounded-2xl font-black text-xs uppercase tracking-widest text-gray-600">
+                                    <Button onClick={resetAll} variant="outline" className="h-10 px-5 rounded-xl font-semibold text-xs uppercase tracking-wider text-gray-600">
                                         Import Another File
                                     </Button>
                                     <Link href="/dashboard/catalogue">
-                                        <Button className="h-12 px-8 rounded-2xl font-black text-xs uppercase tracking-widest bg-[#066CF4] hover:bg-[#4293FF] text-white shadow-lg shadow-blue-500/20">
+                                        <Button className="h-10 px-5 rounded-xl font-semibold text-xs uppercase tracking-wider bg-[#066CF4] hover:bg-[#4293FF] text-white shadow-sm shadow-blue-500/20">
                                             View Catalogue
                                         </Button>
                                     </Link>
@@ -548,7 +548,7 @@ export default function ConfigureBulkImportPage() {
                             setStep(step - 1);
                         }}
                         disabled={step === 1 || (step === 3 && (!!importResult || bulkImport.isPending))}
-                        className="font-bold text-xs uppercase tracking-widest text-gray-500 disabled:opacity-50"
+                        className="font-semibold text-xs uppercase tracking-wider text-gray-500 disabled:opacity-50"
                     >
                         <X size={14} className="mr-1" /> Back
                     </Button>
@@ -566,7 +566,7 @@ export default function ConfigureBulkImportPage() {
                                 }
                             }}
                             disabled={!canContinue}
-                            className="h-12 px-8 rounded-2xl font-black text-xs uppercase tracking-widest text-white bg-[#066CF4] hover:bg-[#4293FF] shadow-lg shadow-blue-500/20 disabled:opacity-40 disabled:cursor-not-allowed"
+                            className="h-10 px-5 rounded-xl font-semibold text-xs uppercase tracking-wider text-white bg-[#066CF4] hover:bg-[#4293FF] shadow-sm shadow-blue-500/20 disabled:opacity-40 disabled:cursor-not-allowed"
                         >
                             Continue
                         </Button>
@@ -575,7 +575,7 @@ export default function ConfigureBulkImportPage() {
                         <Button 
                             onClick={startImport}
                             disabled={(parsed?.valid ?? 0) === 0}
-                            className="h-12 px-8 rounded-2xl font-black text-xs uppercase tracking-widest text-white bg-emerald-500 hover:bg-emerald-600 shadow-lg shadow-emerald-500/20 disabled:opacity-40 disabled:cursor-not-allowed"
+                            className="h-10 px-5 rounded-xl font-semibold text-xs uppercase tracking-wider text-white bg-emerald-500 hover:bg-emerald-600 shadow-sm shadow-emerald-500/20 disabled:opacity-40 disabled:cursor-not-allowed"
                         >
                             Start Import ({parsed?.valid ?? 0})
                         </Button>
