@@ -73,6 +73,8 @@ export default function AdminBusinessPartnershipPage() {
                 affiliateIndirectCommission: settings.affiliateIndirectCommission,
                 affiliateCommissionDurationMonths: settings.affiliateCommissionDurationMonths,
                 affiliateMinimumWithdrawal: settings.affiliateMinimumWithdrawal,
+                affiliateFirstPaymentCommission: settings.affiliateFirstPaymentCommission,
+                affiliateRecurringCommission: settings.affiliateRecurringCommission,
             });
         }
     }, [settings]);
@@ -286,27 +288,21 @@ export default function AdminBusinessPartnershipPage() {
 
                         <div className="space-y-6">
                             <div>
-                                <label className="block text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">Direct Commission Rate (%)</label>
+                                <label className="block text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">First Payment Commission (%)</label>
                                 <div className="relative">
-                                    <input type="number" value={localSettings.affiliateDirectCommission ?? ''} onChange={e => setLocalSettings(s => ({ ...s, affiliateDirectCommission: Number(e.target.value) }))} className="w-full h-12 px-4 rounded-2xl border border-gray-200 text-lg font-black focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/10" min="0" max="100" />
+                                    <input type="number" value={localSettings.affiliateFirstPaymentCommission ?? ''} onChange={e => setLocalSettings(s => ({ ...s, affiliateFirstPaymentCommission: Number(e.target.value) }))} className="w-full h-12 px-4 rounded-2xl border border-gray-200 text-lg font-black focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/10" min="0" max="100" />
                                     <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 font-black">%</span>
                                 </div>
-                                <p className="text-[10px] font-bold text-gray-400 mt-1.5">Percentage of each sale the affiliate earns directly</p>
+                                <p className="text-[10px] font-bold text-gray-400 mt-1.5">Commission the affiliate earns on a referred business's first paid subscription</p>
                             </div>
 
                             <div>
-                                <label className="block text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">Indirect Commission Rate (%)</label>
+                                <label className="block text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">Recurring Commission (%)</label>
                                 <div className="relative">
-                                    <input type="number" value={localSettings.affiliateIndirectCommission ?? ''} onChange={e => setLocalSettings(s => ({ ...s, affiliateIndirectCommission: Number(e.target.value) }))} className="w-full h-12 px-4 rounded-2xl border border-gray-200 text-lg font-black focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/10" min="0" max="100" />
+                                    <input type="number" value={localSettings.affiliateRecurringCommission ?? ''} onChange={e => setLocalSettings(s => ({ ...s, affiliateRecurringCommission: Number(e.target.value) }))} className="w-full h-12 px-4 rounded-2xl border border-gray-200 text-lg font-black focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/10" min="0" max="100" />
                                     <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 font-black">%</span>
                                 </div>
-                                <p className="text-[10px] font-bold text-gray-400 mt-1.5">Commission from sub-affiliate referrals</p>
-                            </div>
-
-                            <div>
-                                <label className="block text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">Commission Duration (months)</label>
-                                <input type="number" value={localSettings.affiliateCommissionDurationMonths ?? ''} onChange={e => setLocalSettings(s => ({ ...s, affiliateCommissionDurationMonths: Number(e.target.value) }))} className="w-full h-12 px-4 rounded-2xl border border-gray-200 text-lg font-black focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/10" min="1" max="60" />
-                                <p className="text-[10px] font-bold text-gray-400 mt-1.5">How many months the affiliate earns commissions after a referral</p>
+                                <p className="text-[10px] font-bold text-gray-400 mt-1.5">Commission on every subsequent payment while the referred business stays subscribed</p>
                             </div>
 
                             <div>

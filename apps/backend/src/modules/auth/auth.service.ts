@@ -630,6 +630,8 @@ export class AuthService {
       existingUser.status = UserStatus.ACTIVE;
       existingUser.phone =
         registrationData.phone || metadata.phone || existingUser.phone;
+      existingUser.referralCode =
+        registrationData.referralCode || existingUser.referralCode;
       user = await this.usersService.create(existingUser);
     } else {
       if (existingUser) {
@@ -645,6 +647,7 @@ export class AuthService {
         status: UserStatus.ACTIVE,
         phone: registrationData.phone || metadata.phone,
         branchId: registrationData.branchId, // Use branchId instead of businessId
+        referralCode: registrationData.referralCode || metadata.referralCode,
         isPasswordChanged: false,
       });
     }
@@ -773,6 +776,7 @@ export class AuthService {
       if (lastName) existingUser.lastName = lastName;
       if (phone) existingUser.phone = phone;
       if (hashedPassword) existingUser.password = hashedPassword;
+      if (dto.referralCode) existingUser.referralCode = dto.referralCode;
 
       existingUser.role = UserRole.OWNER;
       // If manual signup finishes, make them active
@@ -796,6 +800,7 @@ export class AuthService {
             ? UserStatus.ACTIVE
             : UserStatus.PENDING,
         phone,
+        referralCode: dto.referralCode,
         authProvider: isGoogleUser ? AuthProvider.GOOGLE : AuthProvider.LOCAL,
       });
     }
