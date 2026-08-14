@@ -1,7 +1,7 @@
 import {
     Home, Store, Users, Nfc, CreditCard, BarChart, MessageSquare, Activity,
     Settings, ShieldCheck, Gift, Package, FileText, Tag, Workflow, Eye, Zap, ClipboardList, Headset, Megaphone, Palette,
-    Handshake, BookOpen, MapPin,
+    Handshake, BookOpen, MapPin, RotateCcw,
     type LucideIcon
 } from 'lucide-react';
 
@@ -124,6 +124,14 @@ export const ADMIN_MENU_ITEMS: MenuItem[] = [
         href: '/admin/clusters',
         permission: 'admin:all',
         keywords: ['locations', 'zones', 'regions', 'clusters', 'qr', 'deals', 'groups', 'areas', 'markets']
+    },
+    {
+        id: 'deal-rotator',
+        label: 'Deal Rotator',
+        icon: RotateCcw,
+        href: '/admin/deal-rotator',
+        permission: 'admin:all',
+        keywords: ['rotation', 'rotator', 'eligibility', 'scheduling', 'featured', 'frequency', 'deals', 'exposure', 'timing']
     },
     {
         id: 'business-partnership',

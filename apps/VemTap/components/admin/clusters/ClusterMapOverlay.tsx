@@ -1,9 +1,10 @@
 'use client';
 
 import React from 'react';
-import { Edit2, QrCode, Tag, Trash2, Globe, Map as MapIcon, Store, Building2, Layers, MapPin, FolderTree, X, Sparkles, Pin, Scissors, Users } from 'lucide-react';
+import { Edit2, QrCode, Tag, Trash2, Globe, Map as MapIcon, Store, Building2, Layers, MapPin, FolderTree, X, Sparkles, Pin, Scissors, Users, Repeat } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { Cluster, ClusterType } from '@/lib/api/clusters';
+import { useClusterRotation } from '@/services/rotator/hooks';
 
 interface ClusterMapOverlayProps {
     cluster: Cluster;
@@ -12,6 +13,7 @@ interface ClusterMapOverlayProps {
     onQr: () => void;
     onDeals: () => void;
     onBranches: () => void;
+    onRotation: () => void;
     onDelete: () => void;
     onClose: () => void;
 }
@@ -31,6 +33,7 @@ export default function ClusterMapOverlay({
     onQr,
     onDeals,
     onBranches,
+    onRotation,
     onDelete,
     onClose,
 }: ClusterMapOverlayProps) {
@@ -39,6 +42,15 @@ export default function ClusterMapOverlay({
     const parent = allClusters.find(c => c.id === cluster.parentId);
     const region = [cluster.country, cluster.state, cluster.city, cluster.area].filter(Boolean).join(' · ');
     const totalDeals = cluster.autoMatchedOffersCount + cluster.pinnedOffersCount;
+
+    const { data: rotationConfig } = useClusterRotation(cluster.id);
+    const rotationOverridden = rotationConfig
+        ? rotationConfig.eligibility.mode === 'manual'
+            || rotationConfig.rotation.mode === 'manual'
+            || rotationConfig.featuredSlots.mode === 'manual'
+            || rotationConfig.frequency.mode === 'manual'
+            || rotationConfig.schedules.length > 0
+        : false;
 
     return (
         <div className="absolute top-4 left-4 right-4 z-10 pointer-events-auto">
@@ -95,38 +107,57 @@ export default function ClusterMapOverlay({
                         <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-gray-50 text-gray-500 text-[10px] font-black uppercase tracking-widest">
                             <Scissors size={10} /> {cluster.totalScans} scans
                         </span>
+                        <button
+                            onClick={onRotation}
+                            className={cn(
+                                "inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest transition-colors",
+                                rotationOverridden
+                                    ? "bg-amber-50 text-amber-600 hover:bg-amber-100"
+                                    : "bg-emerald-50 text-emerald-600 hover:bg-emerald-100"
+                            )}
+                            title="Open deal rotation configuration"
+                        >
+                            <Repeat size={10} />
+                            Rotation · {rotationOverridden ? 'Overridden' : 'Automatic'}
+                        </button>
                     </div>
 
-                    <div className="flex items-center gap-2 mt-3 pt-3 border-t border-gray-100">
+                    <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 mt-3 pt-3 border-t border-gray-100">
                         <button
                             onClick={onDeals}
-                            className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest text-text-secondary hover:text-primary hover:bg-primary/5 border border-gray-100 transition-all"
+                            className="flex flex-col items-center justify-center gap-1 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest text-text-secondary hover:text-primary hover:bg-primary/5 border border-gray-100 transition-all"
                         >
                             <Tag size={13} /> Deals
                         </button>
                         <button
+                            onClick={onRotation}
+                            className="flex flex-col items-center justify-center gap-1 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest text-primary hover:bg-primary/5 border border-primary/20 transition-all"
+                        >
+                            <Repeat size={13} /> Rotation
+                        </button>
+                        <button
                             onClick={onBranches}
-                            className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest text-text-secondary hover:text-blue-600 hover:bg-blue-50 border border-gray-100 transition-all"
+                            className="flex flex-col items-center justify-center gap-1 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest text-text-secondary hover:text-blue-600 hover:bg-blue-50 border border-gray-100 transition-all"
                         >
                             <Users size={13} /> Branches
                         </button>
                         <button
                             onClick={onQr}
-                            className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest text-text-secondary hover:text-purple-600 hover:bg-purple-50 border border-gray-100 transition-all"
+                            className="flex flex-col items-center justify-center gap-1 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest text-text-secondary hover:text-purple-600 hover:bg-purple-50 border border-gray-100 transition-all"
                         >
                             <QrCode size={13} /> QR Codes
                         </button>
                         <button
                             onClick={onEdit}
-                            className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest text-text-secondary hover:text-primary hover:bg-primary/5 border border-gray-100 transition-all"
+                            className="flex flex-col items-center justify-center gap-1 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest text-text-secondary hover:text-primary hover:bg-primary/5 border border-gray-100 transition-all"
                         >
                             <Edit2 size={13} /> Edit
                         </button>
                         <button
                             onClick={onDelete}
-                            className="flex items-center justify-center p-2 rounded-xl text-gray-400 hover:text-red-500 hover:bg-red-50 border border-gray-100 transition-all"
+                            className="flex flex-col items-center justify-center gap-1 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-red-500 hover:bg-red-50 border border-gray-100 transition-all"
                         >
-                            <Trash2 size={14} />
+                            <Trash2 size={13} /> Delete
                         </button>
                     </div>
                 </div>

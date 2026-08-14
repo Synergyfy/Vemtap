@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { Plus, Loader2, MapPin, Zap } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { adminClustersApi } from '@/lib/api/clusters';
@@ -14,6 +15,7 @@ import ClusterOffersModal from '@/components/admin/clusters/ClusterOffersModal';
 import ClusterBranchesModal from '@/components/admin/clusters/ClusterBranchesModal';
 
 export default function AdminClusterManagementPage() {
+    const router = useRouter();
     const [clusters, setClusters] = useState<Cluster[]>([]);
     const [loading, setLoading] = useState(true);
     const [selectedClusterId, setSelectedClusterId] = useState<string | null>(null);
@@ -151,6 +153,7 @@ export default function AdminClusterManagementPage() {
                             onQr={() => setQrCluster(selectedCluster)}
                             onDeals={() => setOffersCluster(selectedCluster)}
                             onBranches={() => setBranchesCluster(selectedCluster)}
+                            onRotation={() => router.push(`/admin/deal-rotator?cluster=${selectedCluster.id}`)}
                             onDelete={() => handleDelete(selectedCluster)}
                             onClose={() => setSelectedClusterId(null)}
                         />
