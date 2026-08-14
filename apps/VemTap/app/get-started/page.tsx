@@ -188,7 +188,7 @@ export default function GetStartedPage() {
 
             await login(response.user, response.access_token);
 
-            router.push('/onboarding');
+            router.push(formData.referralCode ? `/onboarding?ref=${encodeURIComponent(formData.referralCode)}` : '/onboarding');
         } catch (err: unknown) {
             setError(getErrorMessage(err, 'Something went wrong'));
         } finally {
@@ -214,7 +214,7 @@ export default function GetStartedPage() {
             await login(response.user, response.access_token);
 
             // Redirect immediately to onboarding
-            router.push('/onboarding');
+            router.push(formData.referralCode ? `/onboarding?ref=${encodeURIComponent(formData.referralCode)}` : '/onboarding');
         } catch (err: unknown) {
             setError(getErrorMessage(err, 'Registration failed. Please try again.'));
         } finally {

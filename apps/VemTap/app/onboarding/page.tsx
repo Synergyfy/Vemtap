@@ -1338,7 +1338,7 @@ function OperatingStep({ data, onNext, refCode }: { data: Partial<OnboardingData
                                                 type="time"
                                                 value={h.open}
                                                 onChange={(e) => updateDay(day, { open: e.target.value })}
-                                                className={`${INPUT_CLASS} cursor-pointer`}
+                                                className={`${INPUT_CLASS} cursor-pointer min-w-0`}
                                             />
                                         </div>
                                         <span className="mt-9 text-sm font-bold text-gray-300 shrink-0">—</span>
@@ -1348,7 +1348,7 @@ function OperatingStep({ data, onNext, refCode }: { data: Partial<OnboardingData
                                                 type="time"
                                                 value={h.close}
                                                 onChange={(e) => updateDay(day, { close: e.target.value })}
-                                                className={`${INPUT_CLASS} cursor-pointer`}
+                                                className={`${INPUT_CLASS} cursor-pointer min-w-0`}
                                             />
                                         </div>
                                     </div>

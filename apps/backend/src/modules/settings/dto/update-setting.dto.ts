@@ -95,4 +95,34 @@ export class UpdateSettingDto {
   @IsOptional()
   @IsString()
   whatsappApiBaseUrl?: string;
+
+  @ApiProperty({ example: 20, required: false })
+  @IsNumber()
+  @IsOptional()
+  affiliateDirectCommission?: number;
+
+  @ApiProperty({ example: 5, required: false })
+  @IsNumber()
+  @IsOptional()
+  affiliateIndirectCommission?: number;
+
+  @ApiProperty({ example: 3, required: false })
+  @IsNumber()
+  @IsOptional()
+  affiliateCommissionDurationMonths?: number;
+
+  @ApiProperty({ example: 5000, required: false })
+  @IsNumber()
+  @IsOptional()
+  affiliateMinimumWithdrawal?: number;
+
+  @ApiProperty({ example: 30, required: false })
+  @IsNumber()
+  @IsOptional()
+  affiliateFirstPaymentCommission?: number;
+
+  @ApiProperty({ example: 10, required: false })
+  @IsNumber()
+  @IsOptional()
+  affiliateRecurringCommission?: number;
 }

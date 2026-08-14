@@ -33,6 +33,8 @@ export class SettingsService implements OnModuleInit {
         affiliateIndirectCommission: 5,
         affiliateCommissionDurationMonths: 3,
         affiliateMinimumWithdrawal: 5000,
+        affiliateFirstPaymentCommission: 30,
+        affiliateRecurringCommission: 10,
       });
       await this.settingRepository.save(defaultSettings);
     }

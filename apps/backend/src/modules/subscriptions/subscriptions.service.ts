@@ -37,7 +37,7 @@ import { CatalogueOffer } from '../catalogue/entities/catalogue-offer.entity';
 import { AutomationRule } from '../messaging/entities/automation-rule.entity';
 import { Reward } from '../loyalty/entities/reward.entity';
 import { AffiliatesService } from '../affiliates/affiliates.service';
-import { ExternalAffiliateService } from '../affiliates/external-affiliate.service';
+import { AffiliateSyncService } from '../affiliates/affiliate-sync.service';
 import { QrThriveService } from '../qr-thrive/qr-thrive.service';
 import { AddonsService } from './services/addons.service';
 import { AddOn } from './entities/addon.entity';
@@ -71,7 +71,7 @@ export class SubscriptionsService {
     private readonly paymentsService: PaymentsService,
     private readonly creditService: CreditService,
     private readonly affiliatesService: AffiliatesService,
-    private readonly externalAffiliateService: ExternalAffiliateService,
+    private readonly affiliateSyncService: AffiliateSyncService,
     @Inject(forwardRef(() => QrThriveService))
     private readonly qrThriveService: QrThriveService,
     private readonly addonsService: AddonsService,
@@ -262,7 +262,12 @@ export class SubscriptionsService {
             userId: business.ownerId,
           });
 
-          await this.reportCommission(business, plan, paymentReference);
+          await this.reportCommission(
+            business,
+            plan,
+            paymentReference,
+            totalAmount,
+          );
         }
 
         if (billingPeriod === BillingPeriod.MONTHLY)
@@ -434,7 +439,12 @@ export class SubscriptionsService {
 
         // Trigger affiliate commission
         if (sub.business) {
-          await this.reportCommission(sub.business, sub.plan, charge.reference);
+          await this.reportCommission(
+            sub.business,
+            sub.plan,
+            charge.reference,
+            amount,
+          );
         }
 
         if (sub.businessId) {
@@ -525,7 +535,12 @@ export class SubscriptionsService {
 
         // Trigger affiliate commission
         if (sub.business) {
-          await this.reportCommission(sub.business, sub.plan, charge.reference);
+          await this.reportCommission(
+            sub.business,
+            sub.plan,
+            charge.reference,
+            amount,
+          );
         }
 
         await this.activateSubscription(sub);
@@ -1067,41 +1082,81 @@ export class SubscriptionsService {
     business: Business,
     plan: Plan,
     paymentReference: string,
+    amount: number,
   ) {
-    // 1. Internal System
-    await this.affiliatesService.processSubscriptionCommission(
-      business.id,
-      plan.monthlyPrice,
-      paymentReference,
-    );
-
-    // 2. External Affiliate System
-    if (business.referralCode) {
-      await this.externalAffiliateService.recordReferral({
-        referralCode: business.referralCode,
-        businessName: business.name,
-        ownerName: business.owner
-          ? `${business.owner.firstName} ${business.owner.lastName}`
-          : 'Business Owner',
-        email:
-          business.officialEmail ||
-          business.owner?.email ||
-          'billing@vemtap.com',
-        phone: business.phone || business.owner?.phone || '',
-        planType: this.mapPlanToExternal(plan.name),
-        address: business.address || '',
-      });
+    // Determine the configured commission rate for this payment (first paid
+    // subscription = first-payment rate, otherwise recurring rate).
+    let isFirstPayment = false;
+    let rate = 0;
+    try {
+      const info = await this.affiliatesService.getCommissionRateForBusiness(
+        business.id,
+        paymentReference,
+      );
+      isFirstPayment = info.isFirstPayment;
+      rate = info.rate;
+    } catch (error: any) {
+      this.logger.error(
+        `Failed to resolve commission rate for business ${business.id}: ${error.message}`,
+      );
     }
-  }
 
-  private mapPlanToExternal(planName: string): string {
-    const name = planName.toUpperCase();
-    if (name.includes('BASIC')) return 'BASIC';
-    if (name.includes('STARTER') || name.includes('STANDARD')) return 'STARTER';
-    if (name.includes('PRO') || name.includes('PROFESSIONAL'))
-      return 'PROFESSIONAL';
-    if (name.includes('ENTERPRISE') || name.includes('PREMIUM'))
-      return 'ENTERPRISE';
-    return 'BASIC'; // Fallback
+    // 1. Internal agent commission (never blocks subscription creation)
+    try {
+      await this.affiliatesService.processSubscriptionCommission(
+        business.id,
+        amount,
+        paymentReference,
+      );
+    } catch (error: any) {
+      this.logger.error(
+        `Failed to generate agent commission for business ${business.id}: ${error.message}`,
+      );
+    }
+
+    // 2. Internal B2B commission (business-owner referrer)
+    try {
+      await this.affiliatesService.processBusinessReferralCommission(
+        business.id,
+        amount,
+        paymentReference,
+      );
+    } catch (error: any) {
+      this.logger.error(
+        `Failed to generate B2B commission for business ${business.id}: ${error.message}`,
+      );
+    }
+
+    // 3. External affiliate system sync (queued, retried with idempotency).
+    //    `externalReference` is the unique payment reference so recurring
+    //    payments are treated as distinct commission events.
+    if (business.referralCode) {
+      try {
+        await this.affiliateSyncService.enqueueRecordReferral({
+          referralCode: business.referralCode,
+          businessId: business.id,
+          businessName: business.name,
+          ownerName: business.owner
+            ? `${business.owner.firstName} ${business.owner.lastName}`
+            : 'Business Owner',
+          email:
+            business.officialEmail ||
+            business.owner?.email ||
+            'billing@vemtap.com',
+          phone: business.phone || business.owner?.phone || '',
+          planName: plan.name,
+          planId: plan.id,
+          address: business.address || '',
+          amountPaid: amount,
+          isFirstPayment,
+          rate,
+          externalReference: paymentReference,
+        });
+      } catch (error: any) {
+        this.logger.error(
+          `Failed to enqueue external affiliate sync for business ${business.id}: ${error.message}`,
+        );
+      }
+    }
   }
 }

@@ -19,13 +19,19 @@ import {
   AffiliateWithdrawalRequest,
   WithdrawalStatus,
 } from './entities/withdrawal-request.entity';
+import { BusinessReferralCommission } from './entities/business-referral-commission.entity';
 import { User, UserRole } from '../users/entities/user.entity';
 import { SettingsService } from '../settings/settings.service';
-import { ExternalAffiliateService } from './external-affiliate.service';
+import { AffiliateSyncService } from './affiliate-sync.service';
 import {
   Business,
   BusinessStatus,
 } from '../businesses/entities/business.entity';
+import {
+  Payment,
+  PaymentStatus,
+  PaymentPurpose,
+} from '../payments/entities/payment.entity';
 
 @Injectable()
 export class AffiliatesService {
@@ -42,7 +48,7 @@ export class AffiliatesService {
     private readonly userRepository: Repository<User>,
     private readonly settingsService: SettingsService,
     private readonly dataSource: DataSource,
-    private readonly externalAffiliateService: ExternalAffiliateService,
+    private readonly affiliateSyncService: AffiliateSyncService,
   ) {}
 
   /**
@@ -145,19 +151,124 @@ export class AffiliatesService {
   }
 
   /**
-   * Processes a subscription payment to generate commissions
+   * Resolves an agent referral from a business's stored `referralCode`.
+   *
+   * Used as a fallback when the referral link wasn't created at registration
+   * (e.g. the business was created later during onboarding). Creates the
+   * `affiliate_referrals` link on first use so downstream reporting works.
+   */
+  private async resolveAgentReferralForBusiness(
+    businessId: string,
+  ): Promise<AffiliateReferral | null> {
+    const business = await this.dataSource
+      .getRepository(Business)
+      .findOne({ where: { id: businessId } });
+    if (!business?.referralCode) return null;
+
+    const profile = await this.profileRepository.findOne({
+      where: { referralCode: business.referralCode.toUpperCase() },
+    });
+    if (!profile) return null;
+
+    let referral = await this.referralRepository.findOne({
+      where: { referredBusinessId: businessId },
+    });
+    if (!referral) {
+      referral = await this.recordReferral(
+        profile.id,
+        businessId,
+        business.ownerId,
+      );
+    }
+    return referral;
+  }
+
+  /**
+   * Returns the commission rate for a business payment — first successful
+   * paid subscription earns the first-payment rate, subsequent payments the
+   * recurring rate. Used to pass the configured rate to the affiliate backend.
+   */
+  async getCommissionRateForBusiness(
+    businessId: string,
+    excludeReference?: string,
+  ): Promise<{ isFirstPayment: boolean; rate: number }> {
+    const settings = await this.settingsService.getGlobalSettings();
+    const isFirstPayment = await this.isFirstPaidSubscription(
+      businessId,
+      excludeReference,
+    );
+    const rate = isFirstPayment
+      ? Number(settings.affiliateFirstPaymentCommission ?? 30)
+      : Number(settings.affiliateRecurringCommission ?? 10);
+    return { isFirstPayment, rate };
+  }
+
+  private async isFirstPaidSubscription(
+    businessId: string,
+    excludeReference?: string,
+  ): Promise<boolean> {
+    const paymentRepo = this.dataSource.getRepository(Payment);
+    const qb = paymentRepo
+      .createQueryBuilder('p')
+      .where('p.businessId = :businessId', { businessId })
+      .andWhere('p.status = :status', { status: PaymentStatus.SUCCESS })
+      .andWhere('p.purpose IN (:...purposes)', {
+        purposes: [
+          PaymentPurpose.SUBSCRIPTION,
+          PaymentPurpose.PLAN_WITH_ADDONS,
+        ],
+      });
+    if (excludeReference) {
+      qb.andWhere('p.reference <> :ref', { ref: excludeReference });
+    }
+    return (await qb.getCount()) === 0;
+  }
+
+  /**
+   * Processes a subscription payment to generate commissions.
+   *
+   * - First successful paid subscription earns `affiliateFirstPaymentCommission`
+   *   (default 30%).
+   * - Subsequent payments earn `affiliateRecurringCommission` (default 10%).
    */
   async processSubscriptionCommission(
     businessId: string,
     amount: number,
     paymentId?: string,
   ) {
-    const referral = await this.referralRepository.findOne({
+    let referral = await this.referralRepository.findOne({
       where: { referredBusinessId: businessId },
       relations: ['affiliate'],
     });
 
-    if (!referral) return;
+    // The referral link is normally created at registration, but when the
+    // business is created later (e.g. register → onboarding) the link can be
+    // missing. Fall back to resolving the agent from the business's stored
+    // referralCode so the first payment still earns commission.
+    if (!referral) {
+      referral = await this.resolveAgentReferralForBusiness(businessId);
+      if (!referral) return;
+    }
+
+    // Idempotency: never double-credit the same payment reference
+    if (paymentId) {
+      const existing = await this.commissionRepository.findOne({
+        where: { referralId: referral.id, paymentId },
+      });
+      if (existing) return;
+    }
+
+    const settings = await this.settingsService.getGlobalSettings();
+
+    // First successful paid subscription vs recurring payment
+    const priorCommissions = await this.commissionRepository.count({
+      where: { referralId: referral.id },
+    });
+    const isFirstPayment = priorCommissions === 0;
+    const rate = isFirstPayment
+      ? Number(settings.affiliateFirstPaymentCommission ?? 30)
+      : Number(settings.affiliateRecurringCommission ?? 10);
+    const commissionAmount = Number(((amount * rate) / 100).toFixed(2));
 
     // Convert referral if still pending
     if (referral.status === ReferralStatus.PENDING) {
@@ -166,23 +277,89 @@ export class AffiliatesService {
       await this.referralRepository.save(referral);
     }
 
-    const settings = await this.settingsService.getGlobalSettings();
-    const commissionRate = settings.affiliateDirectCommission || 20;
-    const commissionAmount = (amount * commissionRate) / 100;
-
     const commission = this.commissionRepository.create({
       affiliateId: referral.affiliateId,
       referralId: referral.id,
       amount: commissionAmount,
-      description: `Direct commission for business subscription payment`,
+      description: isFirstPayment
+        ? `First-payment commission (${rate}%) for business subscription payment`
+        : `Recurring commission (${rate}%) for business subscription payment`,
       status: CommissionStatus.PENDING,
       paymentId,
+      referredBusinessId: businessId,
     });
 
     await this.commissionRepository.save(commission);
 
     // Update affiliate balance (In a real app, this might happen after payment verification)
     await this.updateAffiliateBalance(referral.affiliateId, commissionAmount);
+  }
+
+  /**
+   * Processes a business-to-business (B2B) referral commission.
+   *
+   * Credits the referring business's `balance` and writes a ledger row in
+   * `business_referral_commissions`. Mirrors the same first-payment vs
+   * recurring rate rules used for agent referrals.
+   */
+  async processBusinessReferralCommission(
+    referredBusinessId: string,
+    amount: number,
+    paymentReference?: string,
+  ) {
+    const businessRepository = this.dataSource.getRepository(Business);
+    const ledgerRepository = this.dataSource.getRepository(
+      BusinessReferralCommission,
+    );
+
+    const referred = await businessRepository.findOne({
+      where: { id: referredBusinessId },
+    });
+    if (!referred || !referred.referralCode) return;
+
+    const referring = await businessRepository.findOne({
+      where: { uniqueCode: referred.referralCode },
+    });
+    if (!referring) return;
+
+    // Idempotency: never double-credit the same payment reference
+    if (paymentReference) {
+      const existing = await ledgerRepository.findOne({
+        where: { referredBusinessId, paymentReference },
+      });
+      if (existing) return;
+    }
+
+    const settings = await this.settingsService.getGlobalSettings();
+    const priorCount = await ledgerRepository.count({
+      where: { referredBusinessId },
+    });
+    const isFirstPayment = priorCount === 0;
+    const rate = isFirstPayment
+      ? Number(settings.affiliateFirstPaymentCommission ?? 30)
+      : Number(settings.affiliateRecurringCommission ?? 10);
+    const commissionAmount = Number(((amount * rate) / 100).toFixed(2));
+
+    await this.dataSource.transaction(async (manager) => {
+      await manager
+        .getRepository(Business)
+        .createQueryBuilder()
+        .update(Business)
+        .set({ balance: () => `"balance" + ${commissionAmount}` })
+        .where('id = :id', { id: referring.id })
+        .execute();
+
+      await manager.getRepository(BusinessReferralCommission).save(
+        manager.getRepository(BusinessReferralCommission).create({
+          referringBusinessId: referring.id,
+          referredBusinessId,
+          amount: commissionAmount,
+          rate,
+          isFirstPayment,
+          paymentReference,
+        }),
+      );
+    });
   }
 
   /**
@@ -667,7 +844,8 @@ export class AffiliatesService {
       );
     }
 
-    // If PAID, fire external sync BEFORE the transaction (network call shouldn't hold a DB lock)
+    // If PAID, enqueue external sync BEFORE the transaction (network call
+    // shouldn't hold a DB lock — it's queued and retried with idempotency).
     if (status === WithdrawalStatus.PAID) {
       const profile = await this.profileRepository.findOne({
         where: { id: existing.affiliateId },
@@ -675,17 +853,17 @@ export class AffiliatesService {
       });
       if (profile?.bankAccountDetails) {
         try {
-          await this.externalAffiliateService.processWithdrawal({
+          await this.affiliateSyncService.enqueueProcessWithdrawal({
             email: profile.user.email,
             amount: Number(existing.amount),
             bankName: profile.bankAccountDetails.bankName,
             accountNumber: profile.bankAccountDetails.accountNumber,
             accountName: profile.bankAccountDetails.accountName,
-            reference: existing.id,
+            externalReference: existing.id,
           });
         } catch (error: any) {
           console.error(
-            'Failed to sync withdrawal with external affiliate system:',
+            'Failed to enqueue withdrawal sync with external affiliate system:',
             error.message,
           );
           // Log but don't block — DB update proceeds regardless
@@ -761,10 +939,11 @@ export class AffiliatesService {
       .getRawOne();
 
     // Calculate total revenue from referred business subscriptions
-    // This is estimated as (Commissions Paid / Direct Commission Rate)
+    // This is estimated as (Commissions Paid / First-Payment Commission Rate)
     const settings = await this.settingsService.getGlobalSettings();
-    const rate = settings.affiliateDirectCommission || 20;
-    const estimatedRevenue = (Number(totalEarnings?.sum || 0) * 100) / rate;
+    const rate = Number(settings.affiliateFirstPaymentCommission ?? 30);
+    const estimatedRevenue =
+      rate > 0 ? (Number(totalEarnings?.sum || 0) * 100) / rate : 0;
 
     return {
       totalCommissionsPaid: Number(totalEarnings?.sum || 0),
