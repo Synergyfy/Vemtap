@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState, useCallback } from 'react';
-import { X, QrCode, Loader2, Copy, Check, Plus, Trash2, Power, Scissors, MapPin, Sliders, Sparkles, Wand2, Route } from 'lucide-react';
+import { X, QrCode, Loader2, Copy, Check, Plus, Trash2, Power, Scissors, MapPin, Sliders, Sparkles, Wand2, Route, Repeat } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import { QRCodeCanvas } from 'qrcode.react';
@@ -10,6 +10,9 @@ import { adminClustersApi } from '@/lib/api/clusters';
 import type { Cluster, ClusterQrCode, ClusterQrConfig, ClusterQrDynamic } from '@/lib/api/clusters';
 import ClusterQrConfigureModal from './ClusterQrConfigureModal';
 import ClusterQrDynamicModal from './ClusterQrDynamicModal';
+import ClusterQrRotationModal from './rotator/ClusterQrRotationModal';
+import { rotatorApi } from '@/services/rotator/api';
+import type { QrRotationConfig } from '@/services/rotator/types';
 
 interface ClusterQrModalProps {
     open: boolean;
@@ -22,12 +25,14 @@ export default function ClusterQrModal({ open, cluster, onClose, onChanged }: Cl
     const [codes, setCodes] = useState<ClusterQrCode[]>([]);
     const [configs, setConfigs] = useState<Record<string, ClusterQrConfig>>({});
     const [dynamics, setDynamics] = useState<Record<string, ClusterQrDynamic>>({});
+    const [qrRotations, setQrRotations] = useState<Record<string, QrRotationConfig>>({});
     const [selectedCode, setSelectedCode] = useState<ClusterQrCode | null>(null);
     const [loading, setLoading] = useState(false);
     const [creating, setCreating] = useState(false);
     const [copied, setCopied] = useState<string | null>(null);
     const [configFor, setConfigFor] = useState<ClusterQrCode | null>(null);
     const [dynamicFor, setDynamicFor] = useState<ClusterQrCode | null>(null);
+    const [rotationFor, setRotationFor] = useState<ClusterQrCode | null>(null);
 
     const origin = typeof window !== 'undefined' ? window.location.origin : '';
 
@@ -35,6 +40,7 @@ export default function ClusterQrModal({ open, cluster, onClose, onChanged }: Cl
         code.scanUrl || `${origin}/tap/clusters/${code.code}`;
 
     const loadPerQr = useCallback(async (data: ClusterQrCode[]) => {
+        if (!cluster) return;
         const cfgEntries = await Promise.all(data.map(async c => {
             try {
                 return [c.id, await adminClustersApi.getQrConfig(c.id)] as const;
@@ -49,13 +55,23 @@ export default function ClusterQrModal({ open, cluster, onClose, onChanged }: Cl
                 return [c.id, undefined] as const;
             }
         }));
+        const rotEntries = await Promise.all(data.map(async c => {
+            try {
+                return [c.id, await rotatorApi.getQrRotation(cluster.id, c.id)] as const;
+            } catch {
+                return [c.id, undefined] as const;
+            }
+        }));
         const nextCfg: Record<string, ClusterQrConfig> = {};
         const nextDyn: Record<string, ClusterQrDynamic> = {};
+        const nextRot: Record<string, QrRotationConfig> = {};
         cfgEntries.forEach(([id, v]) => { if (v) nextCfg[id] = v; });
         dynEntries.forEach(([id, v]) => { if (v) nextDyn[id] = v; });
+        rotEntries.forEach(([id, v]) => { if (v) nextRot[id] = v; });
         setConfigs(nextCfg);
         setDynamics(nextDyn);
-    }, []);
+        setQrRotations(nextRot);
+    }, [cluster]);
 
     const fetchCodes = useCallback(async () => {
         if (!cluster) return;
@@ -284,12 +300,37 @@ export default function ClusterQrModal({ open, cluster, onClose, onChanged }: Cl
                                                                             Dynamic
                                                                         </span>
                                                                     )}
+                                                                    <span
+                                                                        className={cn(
+                                                                            "inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest",
+                                                                            qrRotations[code.id]?.inheritCluster !== false
+                                                                                ? "text-purple-600 bg-purple-50"
+                                                                                : "text-amber-600 bg-amber-50"
+                                                                        )}
+                                                                        title={qrRotations[code.id]?.inheritCluster !== false ? 'Uses this cluster\u2019s rotation settings' : 'Custom rotation override for this QR'}
+                                                                    >
+                                                                        <Repeat size={9} />
+                                                                        {qrRotations[code.id]?.inheritCluster !== false ? 'Cluster rotation' : 'Custom'}
+                                                                    </span>
                                                                 </p>
                                                                 <p className="text-[10px] font-medium text-text-secondary">
                                                                     {code.totalScans} scan{code.totalScans === 1 ? '' : 's'}
                                                                     {code.isActive ? '' : ' • paused'}
                                                                 </p>
                                                             </div>
+                                                            <button
+                                                                onClick={(e) => { e.stopPropagation(); setRotationFor(code); }}
+                                                                title="Rotation — how this QR picks its deals"
+                                                                className={cn(
+                                                                    "p-2 rounded-lg transition-colors",
+                                                                    qrRotations[code.id]?.inheritCluster === false
+                                                                        ? "text-purple-500 hover:bg-purple-50"
+                                                                        : "text-gray-400 hover:text-purple-500 hover:bg-purple-50"
+                                                                )}
+                                                            >
+                                                                <Repeat size={15} />
+                                                                <span className="sr-only">QR rotation</span>
+                                                            </button>
                                                             <button
                                                                 onClick={(e) => { e.stopPropagation(); setDynamicFor(code); }}
                                                                 title="Dynamic destination — change where this QR points"
@@ -363,6 +404,15 @@ export default function ClusterQrModal({ open, cluster, onClose, onChanged }: Cl
                 cluster={cluster}
                 code={dynamicFor}
                 onClose={() => setDynamicFor(null)}
+                onSaved={handleConfigSaved}
+            />
+
+            <ClusterQrRotationModal
+                key={rotationFor?.id}
+                open={rotationFor !== null}
+                cluster={cluster}
+                code={rotationFor}
+                onClose={() => setRotationFor(null)}
                 onSaved={handleConfigSaved}
             />
         </>
