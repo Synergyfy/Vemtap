@@ -8,10 +8,13 @@
 //   GET    /admin/clusters/:id/rotation                -> RotationConfig
 //   PATCH  /admin/clusters/:id/rotation                (partial config)
 //   POST   /admin/clusters/:id/rotation/reset          -> reset to automatic
-//   GET    /admin/clusters/:id/rotation/deals          -> RotatorDeal[]
+//   GET    /admin/clusters/:id/rotation/deals      -> RotatorDeal[]
 //   GET    /admin/clusters/:id/rotation/deals/:dealId/eligibility -> DealEligibility
 //   GET    /admin/clusters/:id/rotation/analytics      -> RotationAnalytics
 //   GET    /admin/clusters/:id/rotation/preview        -> RotationPreview
+//   GET    /admin/rotator/defaults                     -> GlobalRotationDefaults
+//   PATCH  /admin/rotator/defaults                     (partial defaults)
+//   POST   /admin/rotator/defaults/reset               -> reset defaults to built-in
 //   GET    /clusters/qr/:qrId/rotation                 -> QrRotationConfig
 //   PATCH  /clusters/qr/:qrId/rotation
 // -----------------------------------------------------------------------------
@@ -77,6 +80,25 @@ export interface RotationConfig {
     schedules: DealSchedule[];
     featuredSlots: { mode: AutoMode; count: number };
     frequency: { mode: AutoMode; maxViewsPerCustomerPerDay: number };
+    /**
+     * Length of a rotation window in seconds (default 60). Internally controlled
+     * by the platform team — never exposed to businesses. Everyone scanning
+     * within the same window receives the exact same cached deal arrangement.
+     */
+    rotationWindowSeconds: number;
+    updatedAt: string;
+}
+
+/** The site-wide defaults every cluster inherits until it is overridden.
+ *  Sections not listed here (weights, schedules) are per-cluster only. */
+export interface GlobalRotationDefaults {
+    eligibilityMode: AutoMode;
+    rotationMode: AutoMode;
+    rotationStrategy: RotationStrategy;
+    featuredSlotsMode: AutoMode;
+    featuredSlotsCount: number;
+    frequencyMode: AutoMode;
+    frequencyMaxViewsPerCustomerPerDay: number;
     updatedAt: string;
 }
 
@@ -152,3 +174,87 @@ export const DEAL_STATUS_LABELS: Record<DealStatus, string> = {
     expired: 'Expired',
     inactive: 'Inactive',
 };
+
+/** Vemtap's built-in "Automatic first" defaults — the sane fallback for every
+ *  cluster and the initial value of the global defaults store. */
+export const DEFAULT_GLOBAL_ROTATION: GlobalRotationDefaults = {
+    eligibilityMode: 'automatic',
+    rotationMode: 'automatic',
+    rotationStrategy: 'balanced',
+    featuredSlotsMode: 'automatic',
+    featuredSlotsCount: 5,
+    frequencyMode: 'automatic',
+    frequencyMaxViewsPerCustomerPerDay: 3,
+    updatedAt: new Date(0).toISOString(),
+};
+
+/** Returns true when a cluster section differs from the given global default —
+ *  i.e. the cluster is "overridden" for that control. */
+export function isSectionOverridden(config: RotationConfig, section: RotationOverrideKey, defaults?: GlobalRotationDefaults | null): boolean {
+    if (!defaults) return false;
+    switch (section) {
+        case 'eligibility':
+            return config.eligibility.mode !== defaults.eligibilityMode
+                || (config.eligibility.mode === 'manual' && config.eligibility.included.length === 0 && config.eligibility.excluded.length === 0);
+        case 'rotation':
+            return config.rotation.mode !== defaults.rotationMode
+                || (config.rotation.mode === 'manual' && config.rotation.strategy !== defaults.rotationStrategy);
+        case 'featuredSlots':
+            return config.featuredSlots.mode !== defaults.featuredSlotsMode
+                || (config.featuredSlots.mode === 'manual' && config.featuredSlots.count !== defaults.featuredSlotsCount);
+        case 'frequency':
+            return config.frequency.mode !== defaults.frequencyMode
+                || (config.frequency.mode === 'manual' && config.frequency.maxViewsPerCustomerPerDay !== defaults.frequencyMaxViewsPerCustomerPerDay);
+        case 'scheduling':
+            return config.schedules.length > 0;
+        default:
+            return false;
+    }
+}
+
+/** Default rotation window length in seconds — platform-controlled, not exposed
+ *  to businesses. Every cluster's config carries this unless the platform team
+ *  overrides it. */
+export const DEFAULT_ROTATION_WINDOW_SECONDS = 60;
+
+/** The bounds + label of the rotation window that contains the given instant.
+ *  Everyone scanning inside `start`..`end` sees the same cached arrangement. */
+export interface RotationWindow {
+    /** Index (0-based) of the window in the day — used as a stable cache key. */
+    index: number;
+    start: Date;
+    end: Date;
+    /** e.g. "10:31:00–10:31:59" */
+    label: string;
+    /** Seconds left before the next window begins. */
+    remainingSeconds: number;
+    /** True when the instant is exactly the first moment of its own window. */
+    isFresh: boolean;
+}
+
+const pad2 = (n: number) => String(n).padStart(2, '0');
+
+const fmtTime = (d: Date) =>
+    `${pad2(d.getHours())}:${pad2(d.getMinutes())}:${pad2(d.getSeconds())}`;
+
+/**
+ * Returns the rotation window enclosing `instant` for a config's window length.
+ * Window boundaries are aligned to whole multiples of `windowSeconds` from the
+ * epoch (00:00:00 local), matching the backend's `rotation:{cluster}:{windowId}`
+ * cache-key model.
+ */
+export function windowForInstant(instant: Date, windowSeconds: number): RotationWindow {
+    const ms = instant.getTime();
+    const step = Math.max(1, windowSeconds) * 1000;
+    const startMs = Math.floor(ms / step) * step;
+    const start = new Date(startMs);
+    const end = new Date(startMs + step - 1);
+    return {
+        index: Math.floor(startMs / step),
+        start,
+        end,
+        label: `${fmtTime(start)}–${fmtTime(end)}`,
+        remainingSeconds: Math.max(0, Math.ceil((end.getTime() + 1 - ms) / 1000)),
+        isFresh: ms <= startMs + 1000,
+    };
+}
