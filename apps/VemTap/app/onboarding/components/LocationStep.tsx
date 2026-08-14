@@ -47,8 +47,8 @@ export default function LocationStep({ address, onNext }: Props) {
       setState('success');
       setMessage('Location found!');
       setTimeout(() => onNext({ latitude: pos.lat, longitude: pos.lng }), 1200);
-    } catch (err: any) {
-      setMessage(err.message || 'Could not get your location');
+    } catch (err: unknown) {
+      setMessage(err instanceof Error ? err.message : 'Could not get your location');
       setState('error');
     }
   };
@@ -63,12 +63,12 @@ export default function LocationStep({ address, onNext }: Props) {
       setState('success');
       setMessage('Location found from your address!');
       setTimeout(() => onNext({ latitude: pos.lat, longitude: pos.lng }), 1200);
-    } catch (err: any) {
+    } catch (err: unknown) {
       try {
         await api.post('/businesses/my-business/enqueue-geocode', {});
         onNext({});
       } catch {
-        setMessage(err.message || 'Could not find your address. We will look it up in the background.');
+        setMessage(err instanceof Error ? err.message : 'Could not find your address. We will look it up in the background.');
         setState('error');
       }
     }

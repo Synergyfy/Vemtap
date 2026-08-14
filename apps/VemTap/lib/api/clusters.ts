@@ -620,6 +620,9 @@ export const adminClustersApi = {
         try {
             const res = await api.get('/admin/clusters', { params: { limit: 100 } });
             const items: BBackendCluster[] = Array.isArray(res) ? res : res?.data || [];
+            // Empty result (dev backend up, fresh DB) = no demo to show → let the
+            // seeded mock clusters below do the talking until real data exists.
+            if (!items.length) throw new Error('empty');
             // Cache real meta so the QR modal can resolve the single uniqueCode.
             const db = loadDb();
             db.realClusters = {};
@@ -634,7 +637,7 @@ export const adminClustersApi = {
             saveDb(db);
             return items.map(toRichCluster);
         } catch {
-            // Backend unreachable / no token → seeded demo data (former behaviour).
+            // Backend unreachable / no token / empty → seeded demo data (former behaviour).
             const db = loadDb();
             await delay();
             return db.clusters.map(cluster => {
