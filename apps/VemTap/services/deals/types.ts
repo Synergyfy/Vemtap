@@ -55,6 +55,12 @@ export interface DealOffer {
     maxClaimsPerCustomer?: number;
     claimCodePrefix?: string;
     quantity?: number;
+    items?: {
+        id: string;
+        name: string;
+        mainImage?: string;
+        galleryImages?: string[];
+    }[];
 }
 
 export interface PaginatedOffersResponse {

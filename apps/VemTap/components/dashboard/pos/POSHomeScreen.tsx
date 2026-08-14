@@ -191,7 +191,7 @@ export default function POSHomeScreen({ onOpenCart, businessCode, isPublic = fal
             </button>
           </div>
           {headerActions && (
-            <div className="hidden md:flex items-center gap-2 overflow-x-auto scrollbar-hide">
+            <div className="hidden md:flex items-center gap-2 overflow-x-auto scrollbar-hide pt-2">
               {headerActions}
               <button
                 onClick={() => router.push('/dashboard/pos/sales')}

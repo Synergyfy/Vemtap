@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { TicketCheck, X, Loader2, CheckCircle2, User, Phone, Mail, AlertTriangle } from 'lucide-react';
 import { useRedeemClaim } from '@/services/catalogue/hooks';
@@ -93,15 +94,15 @@ onRedeemed({ claimCode: trimmed, offerName: res.claim.offerName });
 
     const dismissError = () => setErrorInfo(null);
 
-    return (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+    return createPortal(
+        <div className="fixed inset-0 z-[300] flex items-center justify-center p-4">
             <div className="absolute inset-0 bg-black/40 backdrop-blur-sm"  />
 
             <motion.div
                 initial={{ opacity: 0, scale: 0.95, y: 20 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                className="bg-white rounded-[32px] shadow-2xl w-full max-w-sm relative overflow-hidden flex flex-col"
+                className="bg-white rounded-[32px] shadow-2xl w-full max-w-sm relative overflow-hidden flex flex-col z-10"
             >
                 <div className="flex items-center justify-between p-6 border-b border-gray-100">
                     <div>
@@ -245,6 +246,7 @@ disabled={redeemClaim.isPending || !codeInput.trim()}
                         )}
                     </AnimatePresence>
             </motion.div>
-        </div>
+        </div>,
+        document.body
     );
 }
