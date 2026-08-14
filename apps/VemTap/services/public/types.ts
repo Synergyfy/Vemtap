@@ -1,6 +1,13 @@
 
 export type BusinessCategory = { id?: string; name?: string };
-export type BusinessHours = { open: string; close: string; closed: boolean };
+export type BusinessHours = {
+    open?: string;
+    close?: string;
+    closed?: boolean;
+    from?: string;
+    to?: string;
+    isClosed?: boolean;
+};
 export type BusinessBranchSummary = {
     id?: string;
     uniqueCode?: string;

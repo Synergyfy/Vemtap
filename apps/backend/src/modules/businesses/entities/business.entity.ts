@@ -8,6 +8,7 @@ import {
   BeforeInsert,
 } from 'typeorm';
 import { AbstractBaseEntity } from '../../../common/entities/base.entity';
+import { numericTransformer } from '../../../common/transformers/numeric.transformer';
 import { User } from '../../users/entities/user.entity';
 import { Branch } from '../../branches/entities/branch.entity';
 import { Category } from './category.entity';
@@ -118,10 +119,20 @@ export class Business extends AbstractBaseEntity {
   @Column({ nullable: true })
   city: string;
 
-  @Column('decimal', { precision: 10, scale: 7, nullable: true })
+  @Column('decimal', {
+    precision: 10,
+    scale: 7,
+    nullable: true,
+    transformer: numericTransformer,
+  })
   latitude: number;
 
-  @Column('decimal', { precision: 10, scale: 7, nullable: true })
+  @Column('decimal', {
+    precision: 10,
+    scale: 7,
+    nullable: true,
+    transformer: numericTransformer,
+  })
   longitude: number;
 
   @Column({ nullable: true })

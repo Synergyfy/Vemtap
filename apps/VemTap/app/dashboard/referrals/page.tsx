@@ -34,18 +34,18 @@ export default function ReferralsPage() {
 
             {/* QUICK ACTIONS */}
             <div className="space-y-6">
-                <h2 className="text-xl font-black text-gray-900 uppercase tracking-widest flex items-center gap-3">
+                <h2 className="text-xl font-bold text-gray-900 uppercase tracking-wider flex items-center gap-3">
                     Quick Actions
                     <span className="h-0.5 flex-1 bg-gray-100" />
                 </h2>
                 <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
                     {quickActions.map((act, i) => (
                         <NextLink key={i} href={act.href} className="group h-full">
-                            <div className="flex flex-col items-center text-center gap-4 p-6 rounded-[32px] bg-white border border-gray-100 shadow-sm transition-all hover:border-[#066CF4]/20 hover:shadow-xl hover:shadow-black/5 active:scale-95 h-full">
+                            <div className="flex flex-col items-center text-center gap-4 p-6 rounded-2xl bg-white border border-gray-100 shadow-sm transition-all hover:border-[#066CF4]/20 hover:shadow-xl hover:shadow-black/5 active:scale-95 h-full">
                                 <div className={cn("size-14 rounded-2xl flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform", act.color)}>
                                     <act.icon size={24} />
                                 </div>
-                                <span className="text-[10px] font-black uppercase tracking-widest text-gray-900 leading-tight">{act.label}</span>
+                                <span className="text-[10px] font-bold uppercase tracking-wider text-gray-900 leading-tight">{act.label}</span>
                             </div>
                         </NextLink>
                     ))}
@@ -53,9 +53,9 @@ export default function ReferralsPage() {
             </div>
 
             {/* RECENT ACTIVITY */}
-            <div className="rounded-[40px] bg-white p-8 shadow-sm border border-gray-100">
-                <h3 className="text-xl font-black text-gray-900 mb-8">Recent Activity</h3>
-                <div className="text-center py-12 text-gray-400 font-black uppercase tracking-widest text-xs">
+            <div className="rounded-2xl bg-white p-8 shadow-sm border border-gray-100">
+                <h3 className="text-xl font-bold text-gray-900 mb-8">Recent Activity</h3>
+                <div className="text-center py-12 text-gray-400 font-bold uppercase tracking-wider text-xs">
                     No recent referral activity. Share your link to get started!
                 </div>
             </div>

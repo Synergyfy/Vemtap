@@ -115,6 +115,10 @@ export class User extends AbstractBaseEntity {
   @Column({ unique: true, nullable: true })
   uniqueCode: string;
 
+  @ApiProperty({ example: 'AFF001', nullable: true })
+  @Column({ nullable: true })
+  referralCode: string;
+
   @ApiProperty({ example: '2023-10-25T10:00:00.000Z', nullable: true })
   @Column({ type: 'timestamp', nullable: true })
   lastActive: Date;

@@ -87,7 +87,7 @@ export default function ActiveFormsPage() {
         <span className="inline-flex items-center gap-2">
             Additional Forms
             {showSocialStep && (
-                <span className="inline-flex items-center gap-1 text-emerald-500 text-[10px] font-black uppercase">
+                <span className="inline-flex items-center gap-1 text-emerald-500 text-[10px] font-bold uppercase">
                     <span className="size-1.5 rounded-full bg-emerald-500" />
                     Socials On
                 </span>
@@ -165,7 +165,7 @@ export default function ActiveFormsPage() {
                                     onChange={(val) => updateEngagementSettings({ showPostSubmitForms: val })}
                                 />
                             </div>
-                            <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">
+                            <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">
                                 Note: This controls the user step sequence.
                             </p>
                         </div>
@@ -288,7 +288,7 @@ export default function ActiveFormsPage() {
                     <div className="sticky top-6">
                         <div className="rounded-2xl border border-gray-100 bg-white overflow-hidden shadow-sm">
                             <div className="px-5 py-4 bg-gray-50/50 border-b border-gray-100 flex items-center justify-between">
-                                <p className="text-[10px] font-black uppercase tracking-widest text-gray-500">Live Phone Preview</p>
+                                <p className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Live Phone Preview</p>
                                 <div className="flex items-center gap-1.5">
                                     <div className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
                                     <span className="text-[9px] font-bold text-emerald-600">LIVE SYNC</span>
@@ -311,16 +311,16 @@ export default function ActiveFormsPage() {
                                                                 }}
                                                             />
                                                         ) : (
-                                                            <span className="text-xs font-black text-slate-500">
+                                                            <span className="text-xs font-bold text-slate-500">
                                                                 {previewBusinessName.charAt(0)}
                                                             </span>
                                                         )}
                                                     </div>
-                                                    <p className="text-[11px] font-black text-slate-900 tracking-tight leading-tight truncate uppercase">
+                                                    <p className="text-[11px] font-bold text-slate-900 tracking-tight leading-tight truncate uppercase">
                                                         {previewBusinessName}
                                                     </p>
                                                 </div>
-                                                <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Additional Forms</p>
+                                                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Additional Forms</p>
                                                 <p className="text-sm font-semibold text-slate-900">Tap a button to open a form.</p>
                                             </div>
 

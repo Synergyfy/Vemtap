@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Tag, X, Percent, Hash } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
@@ -33,15 +34,15 @@ export function DiscountModal({ isOpen, onClose, onApplyDiscount, currentDiscoun
     onClose();
   };
 
-  return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+  return createPortal(
+    <div className="fixed inset-0 z-[300] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm"  />
       
       <motion.div 
         initial={{ opacity: 0, scale: 0.95, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 20 }}
-        className="bg-white rounded-[32px] shadow-2xl w-full max-w-sm relative overflow-hidden flex flex-col"
+        className="bg-white rounded-[32px] shadow-2xl w-full max-w-sm relative overflow-hidden flex flex-col z-10"
       >
         <div className="flex items-center justify-between p-6 border-b border-gray-100">
           <div>
@@ -121,6 +122,7 @@ export function DiscountModal({ isOpen, onClose, onApplyDiscount, currentDiscoun
           </div>
         </form>
       </motion.div>
-    </div>
+    </div>,
+    document.body
   );
 }

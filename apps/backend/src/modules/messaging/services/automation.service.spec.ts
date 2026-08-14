@@ -15,6 +15,7 @@ import {
 } from '../../subscriptions/entities/subscription.entity';
 import { Visit } from '../../visitors/entities/visit.entity';
 import { Segment } from '../../contacts/entities/segment.entity';
+import { Business } from '../../businesses/entities/business.entity';
 import { ForbiddenException } from '@nestjs/common';
 
 describe('AutomationService', () => {
@@ -69,6 +70,12 @@ describe('AutomationService', () => {
           useValue: {
             findOne: jest.fn(),
             find: jest.fn(),
+          },
+        },
+        {
+          provide: getRepositoryToken(Business),
+          useValue: {
+            findOne: jest.fn(),
           },
         },
         {

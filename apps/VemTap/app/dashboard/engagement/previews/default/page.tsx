@@ -106,12 +106,12 @@ export default function DefaultFormPreviewPage() {
             />
 
             <div className="flex items-center gap-2 text-xs font-bold text-text-secondary">
-                <span className="px-3 py-1.5 rounded-full bg-primary/10 text-primary uppercase tracking-widest">Preview</span>
+                <span className="px-3 py-1.5 rounded-full bg-primary/10 text-primary uppercase tracking-wider">Preview</span>
                 <span>Default Form</span>
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
-                <span className="px-3 py-1.5 rounded-full bg-primary text-white text-xs font-black uppercase tracking-widest">Default Form</span>
+                <span className="px-3 py-1.5 rounded-full bg-primary text-white text-xs font-bold uppercase tracking-wider">Default Form</span>
                 <Link
                     href="/dashboard/engagement/previews/socials"
                     className="px-3 py-1.5 rounded-full bg-white border border-gray-200 text-xs font-bold text-gray-600 hover:bg-gray-50"
@@ -131,7 +131,7 @@ export default function DefaultFormPreviewPage() {
                     <div className="bg-white rounded-2xl border border-gray-100 p-6 space-y-4">
                         <div className="flex items-center justify-between">
                             <div>
-                                <p className="text-xs font-black uppercase tracking-widest text-gray-400">Quick Edit</p>
+                                <p className="text-xs font-bold uppercase tracking-wider text-gray-400">Quick Edit</p>
                                 <h3 className="text-lg font-bold text-text-main mt-2">Submit Button</h3>
                                 <p className="text-xs text-text-secondary mt-1">
                                     Change the call-to-action label for the default visitor form.
@@ -154,7 +154,7 @@ export default function DefaultFormPreviewPage() {
                             <button
                                 onClick={handleSave}
                                 disabled={isSaving}
-                                className="h-11 px-5 rounded-xl bg-primary text-white text-xs font-black uppercase tracking-widest flex items-center gap-2 disabled:opacity-60"
+                                className="h-11 px-5 rounded-xl bg-primary text-white text-xs font-bold uppercase tracking-wider flex items-center gap-2 disabled:opacity-60"
                             >
                                 {isSaving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
                                 Save
@@ -165,7 +165,7 @@ export default function DefaultFormPreviewPage() {
 
                 <div className="sticky top-6">
                     <details open className="rounded-2xl border border-gray-100 bg-white">
-                        <summary className="cursor-pointer list-none px-4 py-3 text-xs font-black uppercase tracking-widest text-gray-500 flex items-center justify-between">
+                        <summary className="cursor-pointer list-none px-4 py-3 text-xs font-bold uppercase tracking-wider text-gray-500 flex items-center justify-between">
                             Preview
                             <span className="text-[10px] font-semibold text-gray-400">Default Form</span>
                         </summary>

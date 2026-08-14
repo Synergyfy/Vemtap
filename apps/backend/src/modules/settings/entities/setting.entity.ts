@@ -124,6 +124,20 @@ export class Setting extends AbstractBaseEntity {
   @Column('decimal', { precision: 10, scale: 2, default: 5000 })
   affiliateMinimumWithdrawal: number;
 
+  @ApiProperty({
+    example: 30,
+    description: 'Percentage earned on a referred business first paid subscription',
+  })
+  @Column('decimal', { precision: 10, scale: 2, default: 30 })
+  affiliateFirstPaymentCommission: number;
+
+  @ApiProperty({
+    example: 10,
+    description: 'Percentage earned on subsequent recurring payments from a referred business',
+  })
+  @Column('decimal', { precision: 10, scale: 2, default: 10 })
+  affiliateRecurringCommission: number;
+
   @ApiProperty({ example: true, description: 'Enable discovery network' })
   @Column({ default: true })
   discoveryEnableNetwork: boolean;

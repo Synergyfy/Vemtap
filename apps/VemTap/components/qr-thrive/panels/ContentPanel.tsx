@@ -49,6 +49,7 @@ interface ContentPanelProps {
 
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import { normalizeDayHours } from '@/lib/businessHours';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -1456,8 +1457,9 @@ const ContentPanel: React.FC<ContentPanelProps> = ({ config, updateData, hideTyp
                     <div className="space-y-3">
                       {['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'].map(day => {
                         const hours = data.business?.openingHours?.[day as keyof typeof data.business.openingHours];
-                        const hourObj = typeof hours === 'object' ? hours : { from: '09:00', to: '17:00', isClosed: false };
-                        const isClosed = typeof hours === 'object' ? hours.isClosed : false;
+                        const hourObj =
+                          normalizeDayHours(hours) ?? { from: '09:00', to: '17:00', isClosed: false };
+                        const isClosed = hourObj.isClosed;
                         return (
                           <div key={day} className="flex items-center gap-3">
                             <span className="text-xs font-bold text-gray-700 capitalize w-20">{day}</span>
@@ -1473,17 +1475,21 @@ const ContentPanel: React.FC<ContentPanelProps> = ({ config, updateData, hideTyp
                             </button>
                             {!isClosed && (
                               <>
-                                <input type="time" className="px-2 py-1.5 border border-gray-100 rounded-lg text-xs font-bold" value={hourObj.from || '09:00'} onChange={(e) => {
-                                  const newHours = { ...(data.business?.openingHours || {}) };
-                                  (newHours as any)[day] = { ...hourObj, from: e.target.value };
-                                  updateData({ business: { ...(data.business || {}), openingHours: newHours } });
-                                }} />
+                                <div onClick={(e) => (e.currentTarget.querySelector<HTMLInputElement>('input[type="time"]')?.showPicker())}>
+                                  <input type="time" className="px-2 py-1.5 border border-gray-100 rounded-lg text-xs font-bold cursor-pointer" value={hourObj.from || '09:00'} onChange={(e) => {
+                                    const newHours = { ...(data.business?.openingHours || {}) };
+                                    (newHours as any)[day] = { ...hourObj, from: e.target.value };
+                                    updateData({ business: { ...(data.business || {}), openingHours: newHours } });
+                                  }} />
+                                </div>
                                 <span className="text-gray-400 text-xs">to</span>
-                                <input type="time" className="px-2 py-1.5 border border-gray-100 rounded-lg text-xs font-bold" value={hourObj.to || '17:00'} onChange={(e) => {
-                                  const newHours = { ...(data.business?.openingHours || {}) };
-                                  (newHours as any)[day] = { ...hourObj, to: e.target.value };
-                                  updateData({ business: { ...(data.business || {}), openingHours: newHours } });
-                                }} />
+                                <div onClick={(e) => (e.currentTarget.querySelector<HTMLInputElement>('input[type="time"]')?.showPicker())}>
+                                  <input type="time" className="px-2 py-1.5 border border-gray-100 rounded-lg text-xs font-bold cursor-pointer" value={hourObj.to || '17:00'} onChange={(e) => {
+                                    const newHours = { ...(data.business?.openingHours || {}) };
+                                    (newHours as any)[day] = { ...hourObj, to: e.target.value };
+                                    updateData({ business: { ...(data.business || {}), openingHours: newHours } });
+                                  }} />
+                                </div>
                               </>
                             )}
                           </div>
@@ -1772,9 +1778,9 @@ const ContentPanel: React.FC<ContentPanelProps> = ({ config, updateData, hideTyp
                         </div>
                       </div>
                       <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
+                        <div className="space-y-2" onClick={(e) => (e.currentTarget.querySelector<HTMLInputElement>('input[type="date"]')?.showPicker())}>
                           <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest leading-none">Valid Until</p>
-                          <input type="date" className="w-full px-4 py-3 border-2 border-gray-50 rounded-xl outline-none font-bold text-gray-900 bg-gray-50/30 text-sm" value={data.coupon?.validUntil || ''} onChange={(e) => updateData({ coupon: { ...(data.coupon || {}), validUntil: e.target.value } })} />
+                          <input type="date" className="w-full px-4 py-3 border-2 border-gray-50 rounded-xl outline-none font-bold text-gray-900 bg-gray-50/30 text-sm cursor-pointer" value={data.coupon?.validUntil || ''} onChange={(e) => updateData({ coupon: { ...(data.coupon || {}), validUntil: e.target.value } })} />
                         </div>
                         <div className="space-y-2">
                           <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest leading-none">Company Name</p>

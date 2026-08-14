@@ -23,20 +23,20 @@ export default function FeedbackRequestsPage() {
 
   return (
     <div className="pb-32 md:pb-20 max-w-4xl mx-auto p-4 md:p-8 space-y-8">
-      <Link href="/dashboard/feedback" className="inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-[#066CF4] transition-colors">
+      <Link href="/dashboard/feedback" className="inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-gray-400 hover:text-[#066CF4] transition-colors">
         <ArrowLeft size={14} />
         Back to Feedback Dashboard
       </Link>
 
       <div>
-        <h1 className="text-3xl font-black text-gray-900 leading-tight">Send Review Request</h1>
+        <h1 className="text-3xl font-bold text-gray-900 leading-tight">Send Review Request</h1>
         <p className="text-sm font-medium text-gray-500 mt-1">Request reviews directly from recent customers via WhatsApp or SMS.</p>
       </div>
 
-      <div className="bg-white rounded-[32px] p-8 border border-gray-100 shadow-sm">
+      <div className="bg-white rounded-2xl p-8 border border-gray-100 shadow-sm">
         <form onSubmit={handleSend} className="space-y-6">
           <div>
-            <label className="block text-xs font-black uppercase tracking-widest text-gray-700 mb-2">Delivery Channel</label>
+            <label className="block text-xs font-bold uppercase tracking-wider text-gray-700 mb-2">Delivery Channel</label>
             <div className="grid grid-cols-2 gap-4">
               <button
                 type="button"
@@ -62,7 +62,7 @@ export default function FeedbackRequestsPage() {
           </div>
 
           <div>
-            <label className="block text-xs font-black uppercase tracking-widest text-gray-700 mb-2">Customer Phone Number</label>
+            <label className="block text-xs font-bold uppercase tracking-wider text-gray-700 mb-2">Customer Phone Number</label>
             <input
               type="tel"
               value={recipient}
@@ -73,7 +73,7 @@ export default function FeedbackRequestsPage() {
           </div>
 
           <div>
-            <label className="block text-xs font-black uppercase tracking-widest text-gray-700 mb-2">Request Message</label>
+            <label className="block text-xs font-bold uppercase tracking-wider text-gray-700 mb-2">Request Message</label>
             <textarea
               rows={4}
               value={message}
@@ -82,7 +82,7 @@ export default function FeedbackRequestsPage() {
             />
           </div>
 
-          <Button type="submit" className="w-full h-12 rounded-xl bg-[#066CF4] text-white font-black text-xs uppercase tracking-widest hover:bg-blue-700 flex items-center justify-center gap-2">
+          <Button type="submit" className="w-full h-12 rounded-xl bg-[#066CF4] text-white font-bold text-xs uppercase tracking-wider hover:bg-blue-700 flex items-center justify-center gap-2">
             <Send size={16} />
             Dispatch Request
           </Button>

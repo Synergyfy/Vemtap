@@ -54,7 +54,7 @@ export default function WhatsAppOverviewPage() {
                     <div className="flex items-center gap-4">
                         <Link
                             href="/dashboard/messaging"
-                            className="flex items-center gap-2 px-3 py-1.5 md:px-4 md:py-2 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-900 transition-all text-xs md:text-sm font-bold active:scale-95 w-fit"
+                            className="flex items-center gap-2 px-3 py-1.5 md:px-4 md:py-2 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-900 transition-all text-xs font-semibold uppercase tracking-wider active:scale-95 w-fit"
                         >
                             <ArrowLeft size={16} />
                             Messaging Center
@@ -63,12 +63,12 @@ export default function WhatsAppOverviewPage() {
 
                     <div className="flex items-center justify-between">
                         <div>
-                            <h1 className="text-xl md:text-2xl font-black text-text-main tracking-tight">WhatsApp</h1>
+                            <h1 className="text-xl md:text-2xl font-bold text-gray-900 tracking-tight">WhatsApp</h1>
                             <p className="text-xs md:text-sm text-text-secondary font-medium">Reach your customers via WhatsApp.</p>
                         </div>
                         <Link
                             href="/dashboard/messaging/whatsapp/history"
-                            className="hidden sm:flex items-center gap-2 px-4 py-2 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-900 transition-all text-sm font-bold active:scale-95"
+                            className="hidden sm:flex items-center gap-2 px-4 py-2 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-900 transition-all text-sm font-semibold active:scale-95"
                         >
                             View History
                         </Link>
@@ -120,7 +120,7 @@ export default function WhatsAppOverviewPage() {
                                     <AlertTriangle size={20} className="md:w-6 md:h-6" />
                                 </div>
                                 <div className="space-y-1 md:space-y-1.5 flex-1">
-                                    <h4 className="text-sm md:text-base font-black text-amber-900 leading-tight">Conversation Recording Notice</h4>
+                                    <h4 className="text-sm md:text-base font-semibold text-amber-900 leading-tight">Conversation Recording Notice</h4>
                                     <p className="text-xs md:text-sm text-amber-800/80 font-medium leading-relaxed">
                                         Messages sent via WhatsApp Click-to-Chat open directly in the WhatsApp application. 
                                         VemTap <span className="font-extrabold underline decoration-amber-300">does not record</span> these external discussions. 
@@ -142,10 +142,10 @@ export default function WhatsAppOverviewPage() {
                             </div>
 
                             {/* Search and List */}
-                            <div className="bg-white rounded-[2.5rem] border border-gray-100 shadow-sm overflow-hidden flex flex-col min-h-[500px]">
+                            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden flex flex-col min-h-[500px]">
                                 <div className="p-5 md:p-8 border-b border-gray-50 flex flex-col md:flex-row md:items-center justify-between gap-4">
                                     <div>
-                                        <h3 className="text-xl font-display font-black text-text-main">Customer List</h3>
+                                        <h3 className="text-lg md:text-xl font-bold text-text-main tracking-tight">Customer List</h3>
                                         <p className="text-sm text-text-secondary font-medium">Quickly start a WhatsApp conversation with any customer.</p>
                                     </div>
                                     <div className="relative w-full md:w-80">
@@ -171,7 +171,7 @@ export default function WhatsAppOverviewPage() {
                                             <div className="w-16 h-16 bg-gray-50 rounded-2xl flex items-center justify-center mb-4">
                                                 <User size={32} />
                                             </div>
-                                            <p className="font-bold">Your first customer is waiting. Let's capture them today.</p>
+                                            <p className="font-bold">Your first customer is waiting. Let&apos;s capture them today.</p>
                                             <p className="text-sm">Try searching for a different name or phone number.</p>
                                         </div>
                                     ) : (
@@ -191,14 +191,14 @@ export default function WhatsAppOverviewPage() {
                                                         {visitor.phone ? (
                                                             <button
                                                                 onClick={() => setWhatsappModalVisitors([visitor])}
-                                                                className="flex items-center gap-1.5 md:gap-2 px-3 py-2 md:px-5 md:py-2.5 bg-[#25d366] text-white font-bold rounded-xl hover:bg-[#1ebe57] transition-all text-[11px] md:text-xs shadow-lg shadow-emerald-500/20 active:scale-95 whitespace-nowrap"
+                                                                className="flex items-center gap-1.5 md:gap-2 px-3 py-2 md:px-5 md:py-2.5 bg-[#25d366] text-white font-semibold rounded-xl hover:bg-[#1ebe57] transition-all text-[11px] md:text-xs shadow-lg shadow-emerald-500/20 active:scale-95 whitespace-nowrap"
                                                             >
                                                                 <WhatsAppIcon size={16} className="w-4 h-4" />
                                                                 <span className="hidden sm:inline">Click to Chat</span>
                                                                 <span className="sm:hidden">Chat</span>
                                                             </button>
                                                         ) : (
-                                                            <span className="text-[9px] md:text-[10px] font-black uppercase tracking-wider text-gray-300 px-2 py-1 md:px-3 bg-gray-50 rounded-lg whitespace-nowrap">No Number</span>
+                                                                <span className="text-[9px] md:text-[10px] font-semibold uppercase tracking-wider text-gray-300 px-2 py-1 md:px-3 bg-gray-50 rounded-lg whitespace-nowrap">No Number</span>
                                                         )}
                                                     </div>
                                                 </div>
@@ -224,24 +224,24 @@ export default function WhatsAppOverviewPage() {
                                         key={i}
                                         className="p-6 bg-white rounded-2xl border border-gray-100 shadow-sm"
                                     >
-                                        <div className={`p-3 rounded-xl w-fit mb-4 ${stat.bg} ${stat.color}`}>
-                                            <stat.icon size={24} />
+                                        <div className={`size-9 md:size-10 rounded-lg flex items-center justify-center mb-4 ${stat.bg} ${stat.color}`}>
+                                            <stat.icon size={20} />
                                         </div>
-                                        <p className="text-sm font-bold text-text-secondary uppercase tracking-wider">{stat.label}</p>
-                                        <p className="text-3xl font-display font-black text-text-main mt-1">{stat.value}</p>
+                                        <p className="text-sm font-semibold text-text-secondary uppercase tracking-wider">{stat.label}</p>
+                                        <p className="text-2xl md:text-3xl font-bold text-text-main mt-1">{stat.value}</p>
                                     </div>
                                 ))}
                             </div>
 
-                            <div className="bg-white rounded-[2.5rem] border border-gray-100 p-8 shadow-sm">
+                            <div className="bg-white rounded-2xl border border-gray-100 p-8 shadow-sm">
                                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
                                     <div>
-                                        <h3 className="text-xl font-display font-black text-text-main">WhatsApp Broadcast & Promotions</h3>
+                                        <h3 className="text-lg md:text-xl font-bold text-text-main tracking-tight">WhatsApp Broadcast & Promotions</h3>
                                         <p className="text-sm text-text-secondary">Send target promotional campaigns to your captured customer base.</p>
                                     </div>
                                     <Link
                                         href="/dashboard/messaging/whatsapp/send"
-                                        className="px-6 py-3 bg-primary text-white font-bold rounded-2xl hover:bg-primary-hover transition-all text-sm flex items-center justify-center gap-2 shadow-md shadow-primary/20"
+                                        className="h-10 px-5 bg-primary text-white font-semibold text-xs uppercase tracking-wider rounded-xl hover:bg-primary-hover transition-all flex items-center justify-center gap-2"
                                     >
                                         <Send size={18} />
                                         New Broadcast
@@ -249,7 +249,7 @@ export default function WhatsAppOverviewPage() {
                                 </div>
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                    <div className="p-6 bg-gray-50 rounded-3xl border border-gray-100 space-y-4">
+                                    <div className="p-6 bg-gray-50/50 rounded-xl border border-gray-100 space-y-4">
                                         <div className="flex items-center gap-3">
                                             <div className="p-3 bg-emerald-100 text-emerald-700 rounded-2xl">
                                                 <Zap size={20} />
@@ -270,7 +270,7 @@ export default function WhatsAppOverviewPage() {
                                         </Link>
                                     </div>
 
-                                    <div className="p-6 bg-gray-50 rounded-3xl border border-gray-100 space-y-4">
+                                    <div className="p-6 bg-gray-50/50 rounded-xl border border-gray-100 space-y-4">
                                         <div className="flex items-center gap-3">
                                             <div className="p-3 bg-blue-100 text-blue-700 rounded-2xl">
                                                 <History size={20} />

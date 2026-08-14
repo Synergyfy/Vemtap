@@ -48,15 +48,15 @@ export default function CustomerValuePage() {
     ];
 
     return (
-        <div className="pb-24 md:pb-10 max-w-7xl mx-auto p-4 md:p-8 space-y-12">
-            <div className="flex items-center gap-2"><h2 className="text-xl font-black text-gray-900 uppercase tracking-widest">Customer Value Analytics</h2><PageGuideButton /><AICopilotButton /></div>
+        <div className="pb-24 md:pb-10 max-w-7xl mx-auto p-4 md:p-8 space-y-6">
+            <div className="flex items-center gap-2"><h2 className="text-xl md:text-2xl font-bold text-gray-900 tracking-tight">Customer Value Analytics</h2><PageGuideButton /><AICopilotButton /></div>
             <AnalyticsStatsCards stats={stats} />
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <div className="rounded-[40px] bg-white border border-gray-100 p-10 shadow-sm min-h-[300px] flex items-center justify-center">
-                   <p className="text-gray-300 font-black uppercase tracking-[0.2em] text-xs">CLV Growth Chart</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
+                <div className="rounded-2xl bg-white border border-gray-100 p-5 md:p-6 shadow-sm min-h-[300px] flex items-center justify-center">
+                   <p className="text-gray-300 font-semibold uppercase tracking-wider text-xs">CLV Growth Chart</p>
                 </div>
-                <div className="rounded-[40px] bg-white border border-gray-100 p-10 flex items-center justify-center min-h-[300px]">
-                   <p className="text-gray-300 font-black uppercase tracking-[0.2em] text-xs">Top Customers Leaderboard</p>
+                <div className="rounded-2xl bg-white border border-gray-100 p-5 md:p-6 flex items-center justify-center min-h-[300px]">
+                   <p className="text-gray-300 font-semibold uppercase tracking-wider text-xs">Top Customers Leaderboard</p>
                 </div>
             </div>
         </div>

@@ -21,7 +21,7 @@ import { CreditService } from '../messaging/services/credit.service';
 import { AutomationRule } from '../messaging/entities/automation-rule.entity';
 import { AddonsService } from './services/addons.service';
 import { AffiliatesService } from '../affiliates/affiliates.service';
-import { ExternalAffiliateService } from '../affiliates/external-affiliate.service';
+import { AffiliateSyncService } from '../affiliates/affiliate-sync.service';
 import { QrThriveService } from '../qr-thrive/qr-thrive.service';
 import { BranchesService } from '../branches/branches.service';
 import { Reward } from '../loyalty/entities/reward.entity';
@@ -126,8 +126,14 @@ describe('SubscriptionsService', () => {
     purchasePlanWithAddons: jest.fn().mockResolvedValue([]),
   };
 
-  const mockAffiliatesService = { processSubscriptionCommission: jest.fn() };
-  const mockExternalAffiliateService = { recordReferral: jest.fn() };
+  const mockAffiliatesService = {
+    processSubscriptionCommission: jest.fn(),
+    processBusinessReferralCommission: jest.fn(),
+    getCommissionRateForBusiness: jest
+      .fn()
+      .mockResolvedValue({ isFirstPayment: true, rate: 30 }),
+  };
+  const mockAffiliateSyncService = { enqueueRecordReferral: jest.fn() };
   const mockQrThriveService = { syncSubscription: jest.fn() };
   const mockBranchesService = {
     findBusinessByOwner: jest.fn(),
@@ -172,8 +178,8 @@ describe('SubscriptionsService', () => {
         { provide: AddonsService, useValue: mockAddonsService },
         { provide: AffiliatesService, useValue: mockAffiliatesService },
         {
-          provide: ExternalAffiliateService,
-          useValue: mockExternalAffiliateService,
+          provide: AffiliateSyncService,
+          useValue: mockAffiliateSyncService,
         },
         { provide: QrThriveService, useValue: mockQrThriveService },
         { provide: BranchesService, useValue: mockBranchesService },

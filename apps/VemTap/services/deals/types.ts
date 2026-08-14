@@ -7,6 +7,7 @@ export interface DealBusiness {
     categoryId: string;
     categoryName: string;
     address: string;
+    city?: string;
     hours?: DealHours[];
     rating?: number;
     totalReviews?: number;
@@ -43,6 +44,7 @@ export interface DealOffer {
     status: string;
     views?: number;
     business?: DealBusiness;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     branch?: any;
     branchId?: string;
     branchName?: string;
@@ -55,6 +57,12 @@ export interface DealOffer {
     maxClaimsPerCustomer?: number;
     claimCodePrefix?: string;
     quantity?: number;
+    items?: {
+        id: string;
+        name: string;
+        mainImage?: string;
+        galleryImages?: string[];
+    }[];
 }
 
 export interface PaginatedOffersResponse {

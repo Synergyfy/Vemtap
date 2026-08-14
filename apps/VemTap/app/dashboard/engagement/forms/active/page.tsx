@@ -156,7 +156,7 @@ export default function ActiveFormsPage() {
         <span className="inline-flex items-center gap-2">
             Additional Forms
             {showSocialStep && (
-                <span className="inline-flex items-center gap-1 text-emerald-500 text-[10px] font-black uppercase">
+                <span className="inline-flex items-center gap-1 text-emerald-500 text-[10px] font-bold uppercase">
                     <span className="size-1.5 rounded-full bg-emerald-500" />
                     Socials On
                 </span>
@@ -265,7 +265,7 @@ export default function ActiveFormsPage() {
                                     onChange={(val) => updateEngagementSettings({ showPostSubmitForms: val })}
                                 />
                             </div>
-                            <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">
+                            <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">
                                 Note: This controls the user step sequence for forms and rewards.
                             </p>
                         </div>
@@ -323,7 +323,7 @@ export default function ActiveFormsPage() {
                                                 </div>
                                                 <div className="flex-1 min-w-0">
                                                     <span className="text-sm font-bold text-gray-900 truncate block">{action.title}</span>
-                                                    <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400 block truncate">{action.subtitle}</span>
+                                                    <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 block truncate">{action.subtitle}</span>
                                                 </div>
                                             </button>
                                         ))}
@@ -339,7 +339,7 @@ export default function ActiveFormsPage() {
                                                 </div>
                                                 <div className="flex-1 min-w-0">
                                                     <span className="text-sm font-bold text-gray-900 truncate block group-hover:text-primary transition-colors">{form.title || 'Untitled Form'}</span>
-                                                    <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400 block truncate">Form Step</span>
+                                                    <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 block truncate">Form Step</span>
                                                 </div>
                                             </button>
                                         ))}
@@ -355,7 +355,7 @@ export default function ActiveFormsPage() {
                                                 </div>
                                                 <div className="flex-1 min-w-0">
                                                     <span className="text-sm font-bold text-gray-900 truncate block group-hover:text-emerald-700">{reward.name || 'Untitled Reward'}</span>
-                                                    <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-500 block truncate">Reward Strategy</span>
+                                                    <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-500 block truncate">Reward Strategy</span>
                                                 </div>
                                             </button>
                                         ))}
@@ -371,7 +371,7 @@ export default function ActiveFormsPage() {
                                                 </div>
                                                 <div className="flex-1 min-w-0">
                                                     <span className="text-sm font-bold text-gray-900 truncate block group-hover:text-blue-700">{qr.name || 'QR Code'}</span>
-                                                    <span className="text-[10px] font-bold uppercase tracking-widest text-blue-500 block truncate">{qr.type.toUpperCase()}</span>
+                                                    <span className="text-[10px] font-bold uppercase tracking-wider text-blue-500 block truncate">{qr.type.toUpperCase()}</span>
                                                 </div>
                                             </button>
                                         ))}
@@ -383,7 +383,7 @@ export default function ActiveFormsPage() {
                     <div className="sticky top-6">
                         <div className="rounded-2xl border border-gray-100 bg-white overflow-hidden shadow-sm">
                             <div className="px-5 py-4 bg-gray-50/50 border-b border-gray-100 flex items-center justify-between">
-                                <p className="text-[10px] font-black uppercase tracking-widest text-gray-500">Live Phone Preview</p>
+                                <p className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Live Phone Preview</p>
                                 <div className="flex items-center gap-1.5">
                                     <div className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
                                     <span className="text-[9px] font-bold text-emerald-600">LIVE SYNC</span>
@@ -400,7 +400,7 @@ export default function ActiveFormsPage() {
                                                     </div>
                                                 ) : (
                                                     <div className="size-8 rounded-full bg-primary flex items-center justify-center text-white shadow-sm shrink-0">
-                                                        <span className="text-[10px] font-black uppercase">{previewBusinessName.charAt(0)}</span>
+                                                        <span className="text-[10px] font-bold uppercase">{previewBusinessName.charAt(0)}</span>
                                                     </div>
                                                 )}
                                                 <div className="min-w-0">
@@ -436,7 +436,7 @@ export default function ActiveFormsPage() {
                                                                     >
                                                                         {item?.title}
                                                                     </span>
-                                                                    <span className="text-[7px] font-bold uppercase tracking-widest text-slate-400 block truncate">{item?.subtitle}</span>
+                                                                    <span className="text-[7px] font-bold uppercase tracking-wider text-slate-400 block truncate">{item?.subtitle}</span>
                                                                 </div>
                                                             </div>
                                                         );
@@ -445,8 +445,8 @@ export default function ActiveFormsPage() {
                                             )}
 
                                             <div className="flex justify-center gap-3 py-2 opacity-30">
-                                                <span className="text-[7px] font-black uppercase tracking-widest text-slate-400">Verified</span>
-                                                <span className="text-[7px] font-black uppercase tracking-widest text-slate-400">Instant Service</span>
+                                                <span className="text-[7px] font-bold uppercase tracking-wider text-slate-400">Verified</span>
+                                                <span className="text-[7px] font-bold uppercase tracking-wider text-slate-400">Instant Service</span>
                                             </div>
                                             <p className="text-center text-[7px] font-medium text-slate-400">
                                                 Powered by <span className="font-bold" style={{ color: brandColor }}>{previewBusinessName}</span>
@@ -482,7 +482,7 @@ export default function ActiveFormsPage() {
                             </div>
 
                             <div>
-                                <h3 className="text-lg font-black text-gray-900 leading-tight">Remove from sequence?</h3>
+                                <h3 className="text-lg font-bold text-gray-900 leading-tight">Remove from sequence?</h3>
                                 <p className="text-sm text-gray-500 mt-2">
                                     <strong>&quot;{sequenceWarning.formTitle}&quot;</strong> is currently active in the post-submission sequence. Removing it means visitors will no longer see this form after the Default Form.
                                 </p>
@@ -507,7 +507,7 @@ export default function ActiveFormsPage() {
                                         toggleItem(sequenceWarning.formId, 'form');
                                         setSequenceWarning(null);
                                     }}
-                                    className="flex-1 h-11 rounded-xl bg-amber-600 text-white text-sm font-black hover:bg-amber-700 transition-shadow shadow-md"
+                                    className="flex-1 h-11 rounded-xl bg-amber-600 text-white text-sm font-bold hover:bg-amber-700 transition-shadow shadow-md"
                                 >
                                     Remove
                                 </button>

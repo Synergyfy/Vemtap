@@ -520,20 +520,20 @@ export default function OfferModal({ isOpen, onClose, offer, activeBranchId }: O
                                     </h3>
                                     <div className="space-y-4 p-4 bg-cyan-50/30 rounded-2xl border border-cyan-100/50">
                                         <div className="grid grid-cols-2 gap-3">
-                                            <div>
+                                            <div onClick={(e) => (e.currentTarget.querySelector<HTMLInputElement>('input[type="date"]')?.showPicker())}>
                                                 <label className="block text-[10px] font-bold text-text-secondary mb-1.5 ml-1 uppercase tracking-widest">Start Date</label>
                                                 <input
                                                     type="date"
-                                                    className="w-full h-12 bg-white border border-gray-200 rounded-xl px-4 text-sm font-bold focus:ring-2 focus:ring-primary/20 outline-none"
+                                                    className="w-full h-12 bg-white border border-gray-200 rounded-xl px-4 text-sm font-bold focus:ring-2 focus:ring-primary/20 outline-none cursor-pointer"
                                                     value={formData.startDate}
                                                     onChange={e => setFormData({ ...formData, startDate: e.target.value })}
                                                 />
                                             </div>
-                                            <div>
+                                            <div onClick={(e) => (e.currentTarget.querySelector<HTMLInputElement>('input[type="date"]')?.showPicker())}>
                                                 <label className="block text-[10px] font-bold text-text-secondary mb-1.5 ml-1 uppercase tracking-widest">End Date</label>
                                                 <input
                                                     type="date"
-                                                    className="w-full h-12 bg-white border border-gray-200 rounded-xl px-4 text-sm font-bold focus:ring-2 focus:ring-primary/20 outline-none"
+                                                    className="w-full h-12 bg-white border border-gray-200 rounded-xl px-4 text-sm font-bold focus:ring-2 focus:ring-primary/20 outline-none cursor-pointer"
                                                     value={formData.endDate}
                                                     onChange={e => setFormData({ ...formData, endDate: e.target.value })}
                                                 />

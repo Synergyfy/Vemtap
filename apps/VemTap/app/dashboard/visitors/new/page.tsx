@@ -153,7 +153,7 @@ export default function NewVisitorsPage() {
         {
             header: 'Status',
             accessor: () => (
-                <span className="inline-flex px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-green-100 text-green-700">
+                <span className="inline-flex px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-green-100 text-green-700">
                     NEW
                 </span>
             )
@@ -166,7 +166,7 @@ export default function NewVisitorsPage() {
                         e.stopPropagation();
                         handleWelcomeVisitor(item);
                     }}
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-primary text-white text-[10px] font-black uppercase tracking-wider rounded-lg hover:bg-primary-hover transition-colors"
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-primary text-white text-[10px] font-bold uppercase tracking-wider rounded-lg hover:bg-primary-hover transition-colors"
                 >
                     <Hand size={14} />
                     Welcome

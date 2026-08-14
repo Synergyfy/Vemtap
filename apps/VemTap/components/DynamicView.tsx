@@ -27,6 +27,7 @@ import PhotoProfilePreview from './PhotoProfilePreview';
 import SocialsProfilePreview from './SocialsProfilePreview';
 import MenuPreview from './MenuPreview';
 import AudioProfilePreview from './AudioProfilePreview';
+import { normalizeDayHours } from '@/lib/businessHours';
 import WebsiteProfilePreview from './WebsiteProfilePreview';
 import WifiProfilePreview from './WifiProfilePreview';
 import AppStorePreview from './AppStorePreview';
@@ -1018,8 +1019,10 @@ const DynamicView: React.FC<DynamicViewProps> = ({ data: initialData, isWizardPr
                                 
                                 const formatHours = (h: any) => {
                                   if (typeof h === 'string') return h;
-                                  if (h.isClosed) return 'Closed';
-                                  if (h.from && h.to) return `${h.from} - ${h.to}`;
+                                  const norm = normalizeDayHours(h);
+                                  if (!norm) return null;
+                                  if (norm.isClosed) return 'Closed';
+                                  if (norm.from && norm.to) return `${norm.from} - ${norm.to}`;
                                   return null;
                                 };
 

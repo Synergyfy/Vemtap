@@ -65,7 +65,7 @@ export default function CommerceLandingPage() {
     return (
         <div className="w-full px-4 md:px-8 py-8 space-y-8 pb-24">
             <div className="space-y-2">
-                <div className="flex items-center gap-2"><h1 className="text-2xl md:text-3xl font-black text-gray-900 tracking-tight">Commerce</h1><PageGuideButton /><AICopilotButton /></div>
+                <div className="flex items-center gap-2"><h1 className="text-2xl md:text-3xl font-bold text-gray-900 tracking-tight">Commerce</h1><PageGuideButton /><AICopilotButton /></div>
                 <p className="text-sm font-medium text-gray-500 leading-relaxed max-w-2xl">
                     Manage your core business operations. Select a module below to get started.
                 </p>
@@ -82,14 +82,14 @@ export default function CommerceLandingPage() {
                             <card.icon size={28} />
                         </div>
                         
-                        <h3 className="text-lg font-black text-gray-900 mb-2 leading-tight">
+                        <h3 className="text-lg font-bold text-gray-900 mb-2 leading-tight">
                             {card.title}
                         </h3>
                         <p className="text-xs font-bold text-gray-400 uppercase tracking-tight leading-relaxed mb-6 flex-1">
                             {card.description}
                         </p>
                         
-                        <div className="flex items-center text-[10px] font-black uppercase tracking-[0.2em] text-gray-300 group-hover:text-gray-900 transition-colors mt-auto">
+                        <div className="flex items-center text-[10px] font-bold uppercase tracking-wider text-gray-300 group-hover:text-gray-900 transition-colors mt-auto">
                             Open Module <ChevronRight size={14} className="ml-1 group-hover:translate-x-1 transition-transform" />
                         </div>
                     </Link>
@@ -98,9 +98,9 @@ export default function CommerceLandingPage() {
                 {visibleCards.length === 0 && (
                     <div className="col-span-full py-12 text-center bg-gray-50 rounded-3xl border border-dashed border-gray-200">
                         <ShoppingBag size={48} className="mx-auto text-gray-300 mb-4" />
-                        <h3 className="text-sm font-black text-gray-900">No Access</h3>
+                        <h3 className="text-sm font-bold text-gray-900">No Access</h3>
                         <p className="text-xs font-bold text-gray-400 uppercase tracking-tight mt-1">
-                            You don't have permission to view any commerce modules.
+                            You don&apos;t have permission to view any commerce modules.
                         </p>
                     </div>
                 )}

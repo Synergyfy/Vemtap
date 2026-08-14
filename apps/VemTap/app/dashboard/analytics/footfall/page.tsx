@@ -96,8 +96,8 @@ export default function FootfallReportsPage() {
                     ) : (
                         stats.map((stat, index) => (
                             <div key={index} className="bg-white p-6 rounded-lg border border-gray-100 shadow-sm">
-                                <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary mb-1">{stat.label}</p>
-                                <p className="text-2xl font-black text-text-main">{stat.value}</p>
+                                <p className="text-[10px] font-bold uppercase tracking-wider text-text-secondary mb-1">{stat.label}</p>
+                                <p className="text-2xl font-bold text-text-main">{stat.value}</p>
                             </div>
                         ))
                     )}
@@ -162,7 +162,7 @@ export default function FootfallReportsPage() {
                                         <span className="material-icons-round text-primary text-2xl">timer</span>
                                     </div>
                                     <div>
-                                        <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Average Stay</p>
+                                        <p className="text-[10px] font-bold uppercase tracking-wider text-text-secondary">Average Stay</p>
                                         <p className="text-2xl font-display font-bold text-text-main">{visitDuration.averageStay}</p>
                                     </div>
                                 </div>
@@ -180,7 +180,7 @@ export default function FootfallReportsPage() {
                                 ) : (
                                     durationDistribution.map((s, i) => (
                                         <div key={i} className="p-4 bg-white border border-gray-100 rounded-xl text-center shadow-sm">
-                                            <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary mb-1">{s.label}</p>
+                                            <p className="text-[10px] font-bold uppercase tracking-wider text-text-secondary mb-1">{s.label}</p>
                                             <p className="font-bold text-text-main text-sm">{s.p}</p>
                                             <p className="text-[10px] text-text-secondary">{s.time}</p>
                                         </div>

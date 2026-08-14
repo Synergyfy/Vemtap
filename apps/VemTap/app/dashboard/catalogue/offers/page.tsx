@@ -57,11 +57,11 @@ export default function OffersPage() {
     const getStatusBadge = (status: string) => {
         switch (status) {
             case 'active': 
-                return <span className="px-2 py-1 bg-emerald-100 text-emerald-700 rounded-lg text-[10px] font-black uppercase tracking-wider flex items-center gap-1 w-fit">ACTIVE</span>;
+                return <span className="px-2 py-1 bg-emerald-100 text-emerald-700 rounded-lg text-[10px] font-semibold uppercase tracking-wider flex items-center gap-1 w-fit">ACTIVE</span>;
             case 'inactive': 
-                return <span className="px-2 py-1 bg-gray-100 text-gray-700 rounded-lg text-[10px] font-black uppercase tracking-wider flex items-center gap-1 w-fit">INACTIVE</span>;
+                return <span className="px-2 py-1 bg-gray-100 text-gray-700 rounded-lg text-[10px] font-semibold uppercase tracking-wider flex items-center gap-1 w-fit">INACTIVE</span>;
             default: 
-                return <span className="px-2 py-1 bg-gray-100 text-gray-700 rounded-lg text-[10px] font-black uppercase tracking-wider w-fit">{status.toUpperCase()}</span>;
+                return <span className="px-2 py-1 bg-gray-100 text-gray-700 rounded-lg text-[10px] font-semibold uppercase tracking-wider w-fit">{status.toUpperCase()}</span>;
         }
     };
 
@@ -93,8 +93,8 @@ export default function OffersPage() {
             header: 'Price',
             accessor: (offer: CatalogueOffer) => (
                 <div className="flex flex-col">
-                    <span className="font-black text-primary text-sm">₦{Number(offer.calculatedPrice).toLocaleString()}</span>
-                    <span className="text-[10px] text-text-secondary font-bold uppercase">{offer.pricingType.replace('_', ' ')}</span>
+                    <span className="font-bold text-primary text-sm">₦{Number(offer.calculatedPrice).toLocaleString()}</span>
+                    <span className="text-[10px] text-text-secondary font-semibold uppercase">{offer.pricingType.replace('_', ' ')}</span>
                 </div>
             )
         },
@@ -114,7 +114,7 @@ export default function OffersPage() {
                         </div>
                     ))}
                     {(offer.items?.length || 0) > 3 && (
-                        <div className="inline-flex items-center justify-center size-7 rounded-full ring-2 ring-white bg-gray-50 text-[10px] font-black text-text-secondary border border-gray-200">
+                        <div className="inline-flex items-center justify-center size-7 rounded-full ring-2 ring-white bg-gray-50 text-[10px] font-bold text-text-secondary border border-gray-200">
                             +{(offer.items?.length || 0) - 3}
                         </div>
                     )}
@@ -124,7 +124,7 @@ export default function OffersPage() {
         {
             header: 'Stock',
             accessor: (offer: CatalogueOffer) => (
-                <span className={`text-xs font-black ${(offer.quantity ?? 0) <= 5 && offer.quantity !== null ? 'text-red-500' : 'text-text-main'}`}>
+                <span className={`text-xs font-bold ${(offer.quantity ?? 0) <= 5 && offer.quantity !== null ? 'text-red-500' : 'text-text-main'}`}>
                     {offer.quantity === null ? 'Unlimited' : `${offer.quantity} Left`}
                 </span>
             )
@@ -154,10 +154,10 @@ export default function OffersPage() {
                         )}
                     </div>
                     <div className="flex flex-col min-w-0">
-                        <span className="text-[11px] font-black text-emerald-700 truncate max-w-[120px] uppercase tracking-tight leading-none mb-1">
+                        <span className="text-[11px] font-bold text-emerald-700 truncate max-w-[120px] uppercase tracking-tight leading-none mb-1">
                             {offer.reward.name}
                         </span>
-                        <div className="flex items-center gap-1 text-[9px] font-bold text-emerald-500 uppercase">
+                        <div className="flex items-center gap-1 text-[9px] font-semibold text-emerald-500 uppercase">
                             <Users size={8} />
                             <span>{offer.reward.pointCost || 0} pts</span>
                         </div>
@@ -211,9 +211,9 @@ export default function OffersPage() {
                 actions={
                     <button 
                         onClick={handleAdd} 
-                        className="flex items-center gap-2 px-5 py-2.5 bg-primary text-white font-bold rounded-xl hover:bg-primary-hover transition-all text-sm shadow-lg shadow-primary/20 cursor-pointer"
+                        className="flex items-center gap-2 h-10 px-5 bg-primary text-white font-semibold text-xs uppercase tracking-wider rounded-xl hover:bg-primary-hover transition-all shadow-sm shadow-primary/20 cursor-pointer"
                     >
-                        <Plus size={18} />
+                        <Plus size={16} />
                         New Offer
                     </button>
                 }

@@ -7,6 +7,7 @@ import { AffiliateCommission } from './entities/commission.entity';
 import { AffiliateWithdrawalRequest } from './entities/withdrawal-request.entity';
 import { AffiliateTrainingModule } from './entities/training-module.entity';
 import { FosAgentCommission } from './entities/agent-commission.entity';
+import { BusinessReferralCommission } from './entities/business-referral-commission.entity';
 import { AffiliatesService } from './affiliates.service';
 import { ExternalAffiliateModule } from './external-affiliate.module';
 import { AffiliatesController } from './affiliates.controller';
@@ -27,6 +28,7 @@ import { FosCoreModule } from '../fos-core/fos-core.module';
       AffiliateWithdrawalRequest,
       AffiliateTrainingModule,
       FosAgentCommission,
+      BusinessReferralCommission,
       User,
     ]),
     HttpModule,

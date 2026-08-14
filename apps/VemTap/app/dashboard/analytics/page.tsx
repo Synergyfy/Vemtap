@@ -77,31 +77,31 @@ export default function AnalyticsDashboard() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: i * 0.1 }}
-            className="bg-white border border-gray-100 rounded-[32px] p-6 shadow-sm hover:shadow-md transition-shadow group"
+            className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm transition-shadow group"
           >
             <div className="flex justify-between items-start mb-4">
-              <div className={cn("size-12 rounded-[16px] flex items-center justify-center border border-white/50", metric.color)}>
-                <metric.icon size={20} />
+              <div className={cn("size-10 rounded-lg flex items-center justify-center", metric.color)}>
+                <metric.icon size={18} />
               </div>
               {metric.trend != null && (
-                <div className={cn("flex items-center gap-1 text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-lg", metric.isUp ? "bg-emerald-50 text-emerald-600" : "bg-red-50 text-red-600")}>
+                <div className={cn("flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-lg", metric.isUp ? "bg-emerald-50 text-emerald-600" : "bg-red-50 text-red-600")}>
                   {metric.isUp ? <ArrowUpRight size={12} /> : <ArrowDownRight size={12} />}
                   {metric.trend}
                 </div>
               )}
             </div>
-            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 mb-1">{metric.label}</p>
-            <h3 className="text-2xl font-black text-gray-900 group-hover:text-[#066CF4] transition-colors">{metric.value}</h3>
+            <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-gray-400 mb-1">{metric.label}</p>
+            <h3 className="text-2xl font-bold text-gray-900 tracking-tight group-hover:text-[#066CF4] transition-colors">{metric.value}</h3>
           </motion.div>
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2 bg-white border border-gray-100 rounded-[32px] p-6 shadow-sm flex flex-col min-h-[400px]">
-          <div className="flex items-center justify-between mb-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
+        <div className="lg:col-span-2 bg-white border border-gray-100 rounded-2xl p-5 shadow-sm flex flex-col min-h-[400px]">
+          <div className="flex items-center justify-between mb-6">
             <div>
-              <h3 className="text-lg font-black text-gray-900">Revenue Overview</h3>
-              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">
+              <h3 className="text-base md:text-lg font-bold text-gray-900">Revenue Overview</h3>
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mt-1">
                 {period === '7days' ? 'Last 7 Days' : period === 'thisMonth' ? 'Last 30 Days' : 'This Year'}
               </p>
             </div>
@@ -109,7 +109,7 @@ export default function AnalyticsDashboard() {
               <select
                 value={period}
                 onChange={(e) => setPeriod(e.target.value as Period)}
-                className="bg-gray-50 border border-gray-200 text-xs font-black uppercase tracking-widest text-gray-600 rounded-xl px-4 py-2 pr-8 outline-none appearance-none cursor-pointer"
+                className="bg-gray-50 border border-gray-200 text-xs font-bold uppercase tracking-wider text-gray-600 rounded-xl px-4 py-2 pr-8 outline-none appearance-none cursor-pointer"
               >
                 <option value="7days">Last 7 Days</option>
                 <option value="thisMonth">This Month</option>
@@ -119,12 +119,12 @@ export default function AnalyticsDashboard() {
             </div>
           </div>
 
-          <div className="flex-1 flex items-end justify-center border-2 border-gray-100 rounded-[24px] bg-gray-50/50 p-6 min-h-[280px]">
+          <div className="flex-1 flex items-end justify-center border border-gray-100 rounded-xl bg-gray-50/50 p-6 min-h-[280px]">
             {dailyRevenue.length > 0 ? (
               <div className="w-full h-full flex items-end justify-between gap-2 self-end">
                 {dailyRevenue.map((d, i) => (
                   <div key={d.date} className="flex-1 flex flex-col items-center gap-1 h-full justify-end">
-                    <span className="text-[9px] font-black text-gray-400">₦{(d.revenue / 1000).toFixed(d.revenue >= 1000 ? 1 : 0)}k</span>
+                    <span className="text-[9px] font-bold text-gray-400">₦{(d.revenue / 1000).toFixed(d.revenue >= 1000 ? 1 : 0)}k</span>
                     <motion.div
                       initial={{ height: 0 }}
                       animate={{ height: `${d.height}%` }}
@@ -141,49 +141,49 @@ export default function AnalyticsDashboard() {
             ) : (
               <div className="text-center w-full">
                 <TrendingUp size={32} className="mx-auto mb-3 text-gray-300" />
-                <p className="text-xs font-black text-gray-400 uppercase tracking-widest">Revenue data will appear once customers start engaging</p>
+                <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Revenue data will appear once customers start engaging</p>
               </div>
             )}
           </div>
         </div>
 
-        <div className="space-y-6">
-          <div className="bg-white border border-gray-100 rounded-[32px] p-6 shadow-sm">
-            <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 mb-4">Detailed Reports</h3>
+        <div className="space-y-4">
+          <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
+            <h3 className="text-[10px] font-bold uppercase tracking-[0.16em] text-gray-400 mb-4">Detailed Reports</h3>
 
-            <div className="space-y-3">
-              <button onClick={() => router.push('/dashboard/analytics/sales')} className="w-full flex items-center justify-between p-4 rounded-2xl bg-gray-50 hover:bg-blue-50 hover:text-blue-600 border border-transparent hover:border-blue-100 transition-all group">
-                <div className="flex items-center gap-4">
-                  <div className="size-10 rounded-[14px] bg-white border border-gray-200 flex items-center justify-center group-hover:border-blue-200 text-gray-500 group-hover:text-blue-500">
-                    <Banknote size={18} />
+            <div className="space-y-2.5">
+              <button onClick={() => router.push('/dashboard/analytics/sales')} className="w-full flex items-center justify-between p-3 rounded-xl bg-gray-50 hover:bg-blue-50 hover:text-blue-600 border border-transparent hover:border-blue-100 transition-all group">
+                <div className="flex items-center gap-3">
+                  <div className="size-9 rounded-lg bg-white border border-gray-200 flex items-center justify-center group-hover:border-blue-200 text-gray-500 group-hover:text-blue-500">
+                    <Banknote size={16} />
                   </div>
                   <div className="text-left">
-                    <p className="text-xs font-black text-gray-900 group-hover:text-blue-600">Sales Report</p>
-                    <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">By category & time</p>
+                    <p className="text-xs font-bold text-gray-900 group-hover:text-blue-600">Sales Report</p>
+                    <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wider">By category & time</p>
                   </div>
                 </div>
               </button>
 
-              <button onClick={() => router.push('/dashboard/analytics/inventory')} className="w-full flex items-center justify-between p-4 rounded-2xl bg-gray-50 hover:bg-emerald-50 hover:text-emerald-600 border border-transparent hover:border-emerald-100 transition-all group">
-                <div className="flex items-center gap-4">
-                  <div className="size-10 rounded-[14px] bg-white border border-gray-200 flex items-center justify-center group-hover:border-emerald-200 text-gray-500 group-hover:text-emerald-500">
-                    <Package size={18} />
+              <button onClick={() => router.push('/dashboard/analytics/inventory')} className="w-full flex items-center justify-between p-3 rounded-xl bg-gray-50 hover:bg-emerald-50 hover:text-emerald-600 border border-transparent hover:border-emerald-100 transition-all group">
+                <div className="flex items-center gap-3">
+                  <div className="size-9 rounded-lg bg-white border border-gray-200 flex items-center justify-center group-hover:border-emerald-200 text-gray-500 group-hover:text-emerald-500">
+                    <Package size={16} />
                   </div>
                   <div className="text-left">
-                    <p className="text-xs font-black text-gray-900 group-hover:text-emerald-600">Inventory Valuation</p>
-                    <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">COGS & Shrinkage</p>
+                    <p className="text-xs font-bold text-gray-900 group-hover:text-emerald-600">Inventory Valuation</p>
+                    <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wider">COGS & Shrinkage</p>
                   </div>
                 </div>
               </button>
 
-              <button disabled className="w-full flex items-center justify-between p-4 rounded-2xl bg-gray-50 border border-transparent opacity-60 cursor-not-allowed">
-                <div className="flex items-center gap-4">
-                  <div className="size-10 rounded-[14px] bg-white border border-gray-200 flex items-center justify-center text-gray-400">
-                    <Users size={18} />
+              <button disabled className="w-full flex items-center justify-between p-3 rounded-xl bg-gray-50 border border-transparent opacity-60 cursor-not-allowed">
+                <div className="flex items-center gap-3">
+                  <div className="size-9 rounded-lg bg-white border border-gray-200 flex items-center justify-center text-gray-400">
+                    <Users size={16} />
                   </div>
                   <div className="text-left">
-                    <p className="text-xs font-black text-gray-900">Staff Performance</p>
-                    <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Coming soon</p>
+                    <p className="text-xs font-bold text-gray-900">Staff Performance</p>
+                    <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wider">Coming soon</p>
                   </div>
                 </div>
               </button>

@@ -110,6 +110,7 @@ export class BusinessesService {
 
     const business = this.businessesRepository.create({
       ...businessBaseData,
+      name: businessBaseData.name?.trim() || 'My Business',
       officialEmail,
       phone,
       logoUrl,
@@ -146,6 +147,20 @@ export class BusinessesService {
 
     // Link owner to the business and its main branch
     if (businessData.ownerId) {
+      // Propagate the referral code the owner used at signup (if the business
+      // wasn't created with one) so the affiliate backend can be notified on
+      // their first payment.
+      if (!savedBusiness.referralCode) {
+        const owner = await this.usersRepository.findOne({
+          where: { id: businessData.ownerId },
+          select: ['referralCode'],
+        });
+        if (owner?.referralCode) {
+          savedBusiness.referralCode = owner.referralCode;
+          await this.businessesRepository.save(savedBusiness);
+        }
+      }
+
       await this.usersRepository.update(businessData.ownerId, {
         businessId: savedBusiness.id,
         branchId: savedBranch.id,

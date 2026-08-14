@@ -44,6 +44,7 @@ import {
 import { QRType } from '@/services/qr-thrive/types';
 import { useQrThriveCodes } from '@/services/qr-thrive/hooks';
 import { useAuthStore } from '@/store/useAuthStore';
+import { normalizeDayHours } from '@/lib/businessHours';
 type QRConfiguration = any;
 type QRData = any;
 const FormBuilder: React.FC<{
@@ -834,10 +835,8 @@ const OpeningHoursManager = ({
         {ALL_DAYS.filter((d) => activeDays.includes(d)).map((day) => {
           const hours = currentHours[day];
           const hourObj =
-            typeof hours === "object"
-              ? hours
-              : { from: "09:00", to: "17:00", isClosed: false };
-          const isClosed = typeof hours === "object" ? hours.isClosed : false;
+            normalizeDayHours(hours) ?? { from: "09:00", to: "17:00", isClosed: false };
+          const isClosed = hourObj.isClosed;
           return (
             <div key={day} className="flex items-center gap-3">
               <button
@@ -880,37 +879,41 @@ const OpeningHoursManager = ({
               </button>
               {!isClosed && (
                 <>
-                  <input
-                    type="time"
-                    className="px-2 py-1.5 border border-gray-100 rounded-lg text-xs font-bold"
-                    value={hourObj.from || "09:00"}
-                    onChange={(e) => {
-                      const newHours = { ...currentHours };
-                      newHours[day] = { ...hourObj, from: e.target.value };
-                      updateData({
-                        business: {
-                          ...(data.business || {}),
-                          openingHours: newHours,
-                        },
-                      });
-                    }}
-                  />
+                  <div onClick={(e) => (e.currentTarget.querySelector<HTMLInputElement>('input[type="time"]')?.showPicker())}>
+                    <input
+                      type="time"
+                      className="px-2 py-1.5 border border-gray-100 rounded-lg text-xs font-bold cursor-pointer"
+                      value={hourObj.from || "09:00"}
+                      onChange={(e) => {
+                        const newHours = { ...currentHours };
+                        newHours[day] = { ...hourObj, from: e.target.value };
+                        updateData({
+                          business: {
+                            ...(data.business || {}),
+                            openingHours: newHours,
+                          },
+                        });
+                      }}
+                    />
+                  </div>
                   <span className="text-gray-400 text-xs">to</span>
-                  <input
-                    type="time"
-                    className="px-2 py-1.5 border border-gray-100 rounded-lg text-xs font-bold"
-                    value={hourObj.to || "17:00"}
-                    onChange={(e) => {
-                      const newHours = { ...currentHours };
-                      newHours[day] = { ...hourObj, to: e.target.value };
-                      updateData({
-                        business: {
-                          ...(data.business || {}),
-                          openingHours: newHours,
-                        },
-                      });
-                    }}
-                  />
+                  <div onClick={(e) => (e.currentTarget.querySelector<HTMLInputElement>('input[type="time"]')?.showPicker())}>
+                    <input
+                      type="time"
+                      className="px-2 py-1.5 border border-gray-100 rounded-lg text-xs font-bold cursor-pointer"
+                      value={hourObj.to || "17:00"}
+                      onChange={(e) => {
+                        const newHours = { ...currentHours };
+                        newHours[day] = { ...hourObj, to: e.target.value };
+                        updateData({
+                          business: {
+                            ...(data.business || {}),
+                            openingHours: newHours,
+                          },
+                        });
+                      }}
+                    />
+                  </div>
                 </>
               )}
             </div>
@@ -4509,13 +4512,13 @@ export const ContentForm: React.FC<any> = ({
                       </div>
                     </div>
                     <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
+                      <div className="space-y-2" onClick={(e) => (e.currentTarget.querySelector<HTMLInputElement>('input[type="date"]')?.showPicker())}>
                         <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest leading-none">
                           Valid Until
                         </p>
                         <input
                           type="date"
-                          className="w-full px-4 py-3 border-2 border-gray-50 rounded-xl outline-none font-bold text-gray-900 bg-gray-50/30 text-sm"
+                          className="w-full px-4 py-3 border-2 border-gray-50 rounded-xl outline-none font-bold text-gray-900 bg-gray-50/30 text-sm cursor-pointer"
                           value={data.coupon?.validUntil || ""}
                           onChange={(e) =>
                             updateData({

@@ -123,7 +123,7 @@ export const ADMIN_MENU_ITEMS: MenuItem[] = [
         icon: MapPin,
         href: '/admin/clusters',
         permission: 'admin:all',
-        keywords: ['locations', 'zones', 'regions', 'clusters', 'qr', 'deals', 'groups', 'areas', 'markets']
+        keywords: ['locations', 'zones', 'regions', 'clusters', 'qr', 'deals', 'groups', 'areas', 'markets', 'rotation', 'rotator', 'eligibility', 'scheduling', 'featured', 'frequency', 'exposure', 'timing']
     },
     {
         id: 'business-partnership',

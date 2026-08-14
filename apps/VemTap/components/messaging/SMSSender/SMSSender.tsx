@@ -895,7 +895,7 @@ export default function SMSSender() {
                         </div>
 
                         <div className="p-6 md:p-8 space-y-6">
-                            <div>
+                            <div onClick={(e) => (e.currentTarget.querySelector<HTMLInputElement>('input[type="datetime-local"]')?.showPicker())}>
                                 <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 px-1">Select Date & Time</label>
                                 <input 
                                     type="datetime-local" 
