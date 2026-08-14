@@ -109,9 +109,11 @@ export default function PromotionCard({ promotion, index }: PromotionCardProps) 
                             <div className="flex items-center justify-between">
                                 <span className="text-[10px] font-bold text-gray-400 flex items-center gap-0.5">
                                     <span className="text-orange-400">🔥</span>
-                                    {promotion.claimedCount >= 1000
-                                        ? `${(promotion.claimedCount / 1000).toFixed(0)}K+`
-                                        : `${promotion.claimedCount}+`}{' '}
+                                    {promotion.claimedCount > 1
+                                        ? `${promotion.claimedCount >= 1000
+                                            ? `${(promotion.claimedCount / 1000).toFixed(0)}K`
+                                            : promotion.claimedCount}+`
+                                        : promotion.claimedCount}{' '}
                                     claimed
                                 </span>
                                 {promotion.maxClaims > 0 && (
