@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { ShoppingCart, Star, BadgeCheck, Clock } from 'lucide-react';
+import { ShoppingCart, BadgeCheck, Clock } from 'lucide-react';
 import { MockPromotion, formatPromoPrice, getPromoDaysLeft } from '@/lib/mock/promotions';
 
 interface PromotionCardProps {
@@ -19,16 +19,6 @@ function DaysLeftLabel({ daysLeft }: { daysLeft: number }) {
         return <span className="text-primary font-black">1 day left</span>;
     }
     return <span className="text-primary font-black">{daysLeft} days left</span>;
-}
-
-function StarRating() {
-    return (
-        <div className="flex items-center gap-0.5">
-            {[1, 2, 3, 4, 5].map((s) => (
-                <Star key={s} size={10} className="fill-amber-400 text-amber-400" />
-            ))}
-        </div>
-    );
 }
 
 export default function PromotionCard({ promotion, index }: PromotionCardProps) {
@@ -106,19 +96,29 @@ export default function PromotionCard({ promotion, index }: PromotionCardProps) 
                             </div>
                         )}
 
-                        {/* Ratings + sold */}
-                        <div className="flex items-center gap-2 flex-wrap">
-                            <StarRating />
-                            {promotion.claimedCount > 0 && (
-                                <span className="text-[10px] font-bold text-gray-400 flex items-center gap-0.5">
-                                    <span className="text-orange-400">🔥</span>
-                                    {promotion.claimedCount >= 1000
-                                        ? `${(promotion.claimedCount / 1000).toFixed(0)}K+`
-                                        : `${promotion.claimedCount}+`}{' '}
-                                    claimed
-                                </span>
-                            )}
-                        </div>
+                        {/* Claim progress bar */}
+                        {promotion.maxClaims > 0 && (
+                            <div className="space-y-1">
+                                <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                                    <div
+                                        className="h-full bg-gradient-to-r from-amber-400 to-amber-500 rounded-full transition-all duration-500"
+                                        style={{ width: `${Math.min((promotion.claimedCount / promotion.maxClaims) * 100, 100)}%` }}
+                                    />
+                                </div>
+                                <div className="flex items-center justify-between">
+                                    <span className="text-[10px] font-bold text-gray-400 flex items-center gap-0.5">
+                                        <span className="text-orange-400">🔥</span>
+                                        {promotion.claimedCount >= 1000
+                                            ? `${(promotion.claimedCount / 1000).toFixed(0)}K+`
+                                            : `${promotion.claimedCount}+`}{' '}
+                                        claimed
+                                    </span>
+                                    <span className="text-[10px] font-bold text-amber-500">
+                                        {Math.round((promotion.claimedCount / promotion.maxClaims) * 100)}%
+                                    </span>
+                                </div>
+                            </div>
+                        )}
 
                         {/* Star seller badge */}
                         {isStarSeller && (
