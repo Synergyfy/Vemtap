@@ -350,7 +350,7 @@ export default function ClusterDiscoveryPage() {
             {/* Results */}
             <section className="max-w-7xl mx-auto px-4 md:px-8 py-8 pb-20">
                 {dealsQ.isLoading ? (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+                    <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-5">
                         {Array.from({ length: 8 }).map((_, i) => (
                             <div key={i} className="rounded-2xl bg-white border border-gray-100 overflow-hidden animate-pulse">
                                 <div className="aspect-[4/3] bg-gray-100" />
@@ -370,7 +370,7 @@ export default function ClusterDiscoveryPage() {
                                     <Sparkles size={14} className="text-primary" />
                                     <span className="text-xs font-black text-gray-500 uppercase tracking-widest">Trending in this market</span>
                                 </div>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+                                <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-5">
                                     {trendingPromotions.map((p, i) => (
                                         <PromotionCard key={p.id} promotion={toMockPromotion(p)} index={i} />
                                     ))}
@@ -386,7 +386,7 @@ export default function ClusterDiscoveryPage() {
                             <span className="text-[10px] font-bold text-gray-400">Fair rotation refreshes every 15 min</span>
                         </div>
 
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+                        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-5">
                             {promotions.map((p, i) => (
                                 <PromotionCard key={p.id} promotion={toMockPromotion(p)} index={i} />
                             ))}
