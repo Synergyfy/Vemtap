@@ -4,22 +4,25 @@ import React, { useCallback, useMemo, useState } from 'react';
 import {
     X, Loader2, RotateCcw, ListChecks, Trophy, Layers, CalendarClock, ShieldCheck,
     Eye, ArrowLeft, Rocket, Info, ChevronRight, QrCode, Zap, PauseCircle, PlayCircle,
+    Settings2, Timer,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import toast from 'react-hot-toast';
 import { formatDistanceToNow } from 'date-fns';
 import { formatNumber } from '@/lib/utils/number';
 import type { Cluster } from '@/lib/api/clusters';
-import type { AutoMode, RotationConfig, RotatorDeal } from '@/services/rotator/types';
-import { STRATEGY_LABELS } from '@/services/rotator/types';
+import type { AutoMode, RotationConfig, RotatorDeal, GlobalRotationDefaults } from '@/services/rotator/types';
+import { STRATEGY_LABELS, isSectionOverridden } from '@/services/rotator/types';
 import {
     useClusterRotation,
     useRotatorDeals,
     useRotatorAnalytics,
     useRotatorActions,
+    useGlobalRotationDefaults,
 } from '@/services/rotator/hooks';
 import { rotatorApi } from '@/services/rotator/api';
 import { AutomationBadge, SectionModeChip, SummaryStat } from './RotatorBadges';
+import RotationWindowBadge from './RotationWindowBadge';
 import EligibilityPanel from './EligibilityPanel';
 import StrategyPanel from './StrategyPanel';
 import SchedulingPanel from './SchedulingPanel';
@@ -28,6 +31,7 @@ import AnalyticsPanel from './AnalyticsPanel';
 import DealWhyModal from './DealWhyModal';
 import DealDetailModal from './DealDetailModal';
 import RotationPreviewModal from './RotationPreviewModal';
+import GlobalDefaultsPanel from './GlobalDefaultsPanel';
 
 type View =
     | 'overview'
@@ -52,17 +56,21 @@ interface SectionItem {
     icon: React.ComponentType<{ size?: number | string; className?: string }>;
     mode: AutoMode;
     summary: string;
+    /** true when this cluster deviates from the site-wide default for this control. */
+    overridden: boolean;
 }
 
 export default function ClusterRotatorPanel({ cluster, variant = 'page', onClose }: ClusterRotatorPanelProps) {
     const clusterId = cluster?.id ?? null;
-    const { data: config, isLoading: configLoading } = useClusterRotation(clusterId);
+    const { data: config, isLoading: configLoading, isError: configError, refetch: refetchConfig } = useClusterRotation(clusterId);
     const { data: deals, isLoading: dealsLoading } = useRotatorDeals(clusterId);
     const { data: analytics, isLoading: analyticsLoading } = useRotatorAnalytics(cluster);
+    const { data: globalDefaults } = useGlobalRotationDefaults();
     const { run, saving } = useRotatorActions(clusterId);
 
     const [view, setView] = useState<View>('overview');
     const [previewOpen, setPreviewOpen] = useState(false);
+    const [defaultsOpen, setDefaultsOpen] = useState(false);
     const [whyDeal, setWhyDeal] = useState<RotatorDeal | null>(null);
     const [detailDeal, setDetailDeal] = useState<RotatorDeal | null>(null);
 
@@ -81,6 +89,7 @@ export default function ClusterRotatorPanel({ cluster, variant = 'page', onClose
                 summary: config.eligibility.mode === 'automatic'
                     ? `${formatNumber(activeDealCount)} deals participate automatically`
                     : `${formatNumber(config.eligibility.included.length)} included of ${formatNumber(activeDealCount)}`,
+                overridden: isSectionOverridden(config, 'eligibility', globalDefaults),
             },
             {
                 key: 'rotation',
@@ -92,6 +101,7 @@ export default function ClusterRotatorPanel({ cluster, variant = 'page', onClose
                     : weighted
                         ? `Weighted — ${formatNumber(Object.keys(config.weights).length)} deals`
                         : STRATEGY_LABELS[config.rotation.strategy],
+                overridden: isSectionOverridden(config, 'rotation', globalDefaults),
             },
             {
                 key: 'featured',
@@ -101,6 +111,7 @@ export default function ClusterRotatorPanel({ cluster, variant = 'page', onClose
                 summary: config.featuredSlots.mode === 'automatic'
                     ? 'Determined automatically'
                     : `${config.featuredSlots.count} featured positions`,
+                overridden: isSectionOverridden(config, 'featuredSlots', globalDefaults),
             },
             {
                 key: 'scheduling',
@@ -110,6 +121,7 @@ export default function ClusterRotatorPanel({ cluster, variant = 'page', onClose
                 summary: schedulingManual
                     ? `${config.schedules.length} scheduled window${config.schedules.length !== 1 ? 's' : ''}`
                     : 'Deals follow their active dates and times',
+                overridden: isSectionOverridden(config, 'scheduling', globalDefaults),
             },
             {
                 key: 'frequency',
@@ -119,11 +131,12 @@ export default function ClusterRotatorPanel({ cluster, variant = 'page', onClose
                 summary: config.frequency.mode === 'automatic'
                     ? 'System-managed — customers see deals at a healthy pace'
                     : `Capped at ${config.frequency.maxViewsPerCustomerPerDay} views/day`,
+                overridden: isSectionOverridden(config, 'frequency', globalDefaults),
             },
         ];
-    }, [config, activeDealCount]);
+    }, [config, activeDealCount, globalDefaults]);
 
-    const overriddenCount = sections.filter(s => s.mode === 'manual').length;
+    const overriddenCount = sections.filter(s => s.overridden).length;
     const overridden = overriddenCount > 0;
 
     const openWhy = useCallback((deal: RotatorDeal | { id: string; name: string; businessName: string; category: string; status: 'active' }) => {
@@ -169,8 +182,22 @@ export default function ClusterRotatorPanel({ cluster, variant = 'page', onClose
         ? formatDistanceToNow(new Date(config.updatedAt), { addSuffix: true })
         : '—';
 
-    const content = isLoading || !config ? (
-        <div className="flex-1 flex flex-col items-center justify-center gap-3 text-text-secondary text-xs font-bold">
+    const content = configError ? (
+        <div className="flex-1 flex flex-col items-center justify-center gap-3 text-xs font-bold text-text-secondary p-8 text-center">
+            <span className="size-12 rounded-2xl bg-red-50 text-red-500 flex items-center justify-center">
+                <Info size={20} />
+            </span>
+            <p className="text-sm font-black text-text-main">Couldn't load rotation settings</p>
+            <p className="max-w-sm text-[11px] font-medium">This usually means the rotator service is unreachable. Your changes are safe — try again.</p>
+            <button
+                onClick={() => refetchConfig()}
+                className="mt-1 flex items-center gap-2 px-4 py-2.5 bg-primary text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-primary-hover transition-all"
+            >
+                <RotateCcw size={12} /> Try again
+            </button>
+        </div>
+    ) : isLoading || !config ? (
+        <div className="flex-1 flex flex-col items-center justify-center gap-3 text-text-secondary text-xs font-bold p-8">
             <Loader2 size={26} className="animate-spin text-primary" />
             Loading rotation settings…
         </div>
@@ -182,6 +209,7 @@ export default function ClusterRotatorPanel({ cluster, variant = 'page', onClose
             sections={sections}
             overridden={overridden}
             overriddenCount={overriddenCount}
+            globalDefaults={globalDefaults}
             saving={saving}
             analytics={analytics}
             analyticsLoading={analyticsLoading}
@@ -190,6 +218,7 @@ export default function ClusterRotatorPanel({ cluster, variant = 'page', onClose
             onResetAll={handleResetAll}
             onToggleStatus={handleToggleStatus}
             onPreview={() => setPreviewOpen(true)}
+            onOpenDefaults={() => setDefaultsOpen(true)}
         />
     ) : (
         <div className="flex-1 min-h-0 p-5 flex flex-col">
@@ -273,7 +302,7 @@ export default function ClusterRotatorPanel({ cluster, variant = 'page', onClose
         <div className={variant === 'page' ? "h-full flex flex-col bg-gray-50 overflow-hidden" : "flex flex-col h-full"}>
             {/* Header */}
             {variant === 'page' ? (
-                <div className="shrink-0 px-6 py-4 bg-white border-b border-gray-100 flex items-center justify-between gap-4">
+                <div className="shrink-0 px-4 sm:px-6 py-4 bg-white border-b border-gray-100 flex flex-wrap items-center justify-between gap-2 sm:gap-4">
                     <div className="flex items-center gap-3 min-w-0">
                         <button
                             onClick={onClose}
@@ -287,7 +316,7 @@ export default function ClusterRotatorPanel({ cluster, variant = 'page', onClose
                             <h2 className="text-lg font-display font-bold text-text-main truncate">{cluster.name}</h2>
                         </div>
                     </div>
-                    <div className="flex items-center gap-2 shrink-0">
+                    <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
                         <AutomationBadge overridden={overridden} loading={isLoading} />
                         {config && (
                             <span className={cn(
@@ -299,6 +328,9 @@ export default function ClusterRotatorPanel({ cluster, variant = 'page', onClose
                                 {config.status === 'active' ? <PlayCircle size={10} /> : <PauseCircle size={10} />}
                                 {config.status === 'active' ? 'Rotating' : 'Paused'}
                             </span>
+                        )}
+                        {config && (
+                            <RotationWindowBadge windowSeconds={config.rotationWindowSeconds} />
                         )}
                         <button
                             onClick={() => setPreviewOpen(true)}
@@ -328,6 +360,9 @@ export default function ClusterRotatorPanel({ cluster, variant = 'page', onClose
                                         {config.status === 'active' ? 'Rotating' : 'Paused'}
                                     </span>
                                 )}
+                                {config && (
+                                    <RotationWindowBadge windowSeconds={config.rotationWindowSeconds} />
+                                )}
                             </div>
                         </div>
                         <button onClick={onClose} className="size-8 rounded-full bg-white border border-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-100 transition-colors shrink-0">
@@ -349,6 +384,7 @@ export default function ClusterRotatorPanel({ cluster, variant = 'page', onClose
                 open={!!whyDeal}
                 clusterId={cluster.id}
                 deal={whyDeal}
+                config={config}
                 onClose={() => setWhyDeal(null)}
             />
 
@@ -365,7 +401,11 @@ export default function ClusterRotatorPanel({ cluster, variant = 'page', onClose
                 onWhy={openWhy}
                 onView={(d) => setDetailDeal(d)}
                 onClose={() => setPreviewOpen(false)}
+                windowSeconds={config?.rotationWindowSeconds}
+                config={config}
             />
+
+            <GlobalDefaultsPanel open={defaultsOpen} onClose={() => setDefaultsOpen(false)} />
         </div>
     );
 }
@@ -381,6 +421,7 @@ function Overview({
     sections,
     overridden,
     overriddenCount,
+    globalDefaults,
     saving,
     analytics,
     analyticsLoading,
@@ -389,6 +430,7 @@ function Overview({
     onResetAll,
     onToggleStatus,
     onPreview,
+    onOpenDefaults,
 }: {
     cluster: Cluster;
     config: RotationConfig;
@@ -396,6 +438,7 @@ function Overview({
     sections: SectionItem[];
     overridden: boolean;
     overriddenCount: number;
+    globalDefaults?: GlobalRotationDefaults | null;
     saving: boolean;
     analytics?: ReturnType<typeof useRotatorAnalytics>['data'];
     analyticsLoading: boolean;
@@ -404,6 +447,7 @@ function Overview({
     onResetAll: () => void;
     onToggleStatus: () => void;
     onPreview: () => void;
+    onOpenDefaults: () => void;
 }) {
     const weighted = config.rotation.mode === 'manual' && config.rotation.strategy === 'weighted';
     const slotsDisplay = config.featuredSlots.mode === 'manual' ? String(config.featuredSlots.count) : 'Auto';
@@ -429,6 +473,17 @@ function Overview({
                 <SummaryStat label="Featured Slots" value={slotsDisplay} sub={config.featuredSlots.mode === 'manual' ? 'Manual' : 'Automatic'} />
                 <SummaryStat label="Rotation" value={config.rotation.mode === 'automatic' ? 'Automatic' : STRATEGY_LABELS[config.rotation.strategy]} sub={weighted ? `${formatNumber(Object.keys(config.weights).length)} weighted deals` : config.rotation.mode === 'manual' ? 'Manual' : 'Vemtap default'} />
                 <SummaryStat label="Last Updated" value={updatedLabel} />
+            </div>
+
+            {/* Rotation window info strip */}
+            <div className="rounded-2xl border border-indigo-100 bg-indigo-50/50 p-4 flex items-start gap-2.5">
+                <Timer size={14} className="text-indigo-500 mt-0.5 shrink-0" />
+                <div>
+                    <p className="text-xs font-black text-text-main">Same deals for everyone in this window</p>
+                    <p className="text-[11px] text-text-secondary mt-0.5">
+                        Everyone scanning in this {config.rotationWindowSeconds}s rotation window sees the same featured deals. The next window recalculates.
+                    </p>
+                </div>
             </div>
 
             {/* Reset all */}
@@ -472,6 +527,11 @@ function Overview({
                                 <div className="flex items-center gap-2">
                                     <p className="text-[13px] font-black text-text-main">{s.label}</p>
                                     <SectionModeChip mode={s.mode} compact />
+                                    {!s.overridden && globalDefaults && (
+                                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-gray-50 text-gray-400 text-[8px] font-black uppercase tracking-widest">
+                                            <Settings2 size={8} /> Inherited
+                                        </span>
+                                    )}
                                 </div>
                                 <p className="text-[11px] text-text-secondary mt-0.5 truncate">{s.summary}</p>
                             </div>
@@ -522,11 +582,25 @@ function Overview({
 
             {/* Inheritance hierarchy */}
             <div className="rounded-2xl border border-gray-100 p-4">
-                <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Where these settings come from</p>
+                <div className="flex items-center justify-between">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Where these settings come from</p>
+                    <button
+                        onClick={onOpenDefaults}
+                        className="flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-primary hover:text-primary-hover transition-colors"
+                    >
+                        <Settings2 size={10} /> Edit Global Defaults
+                    </button>
+                </div>
                 <div className="flex items-center justify-center gap-2 mt-3 text-[10px] font-bold text-text-secondary">
-                    <span className="px-2.5 py-1.5 rounded-lg bg-gray-100">Global Defaults</span>
+                    <button
+                        onClick={onOpenDefaults}
+                        className="px-2.5 py-1.5 rounded-lg bg-primary/5 text-primary hover:bg-primary/10 transition-colors"
+                        title="Click to edit the site-wide defaults every cluster inherits."
+                    >
+                        Global Defaults
+                    </button>
                     <ChevronRight size={12} />
-                    <span className={cn("px-2.5 py-1.5 rounded-lg", overridden ? "bg-amber-50 text-amber-600" : "bg-primary/5 text-primary")}>Cluster</span>
+                    <span className={cn("px-2.5 py-1.5 rounded-lg", overridden ? "bg-amber-50 text-amber-600" : "bg-gray-100")}>Cluster</span>
                     <ChevronRight size={12} />
                     <span className="px-2.5 py-1.5 rounded-lg bg-gray-100">QR</span>
                     <ChevronRight size={12} />
@@ -534,7 +608,7 @@ function Overview({
                 </div>
                 <p className="text-center text-[10px] font-medium text-text-secondary mt-2">
                     {overridden
-                        ? 'Only overridden settings differ from the defaults above.'
+                        ? `${overriddenCount} of ${sections.length} controls are overridden here — the rest follow the global defaults.`
                         : 'Every level inherits the global defaults — nothing is customized.'}
                 </p>
             </div>

@@ -43,7 +43,8 @@ export function FeaturedPanel({ clusterId, config, saving, run, back }: Featured
     const isManual = mode === 'manual';
 
     return (
-        <div className="flex flex-col min-h-0 h-full">
+        <div className="flex flex-col min-h-0 flex-1">
+            <div className="flex-1 min-h-0 overflow-y-auto">
             <div>
                 <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Featured Slots</p>
                 <h3 className="text-base font-display font-bold text-text-main mt-0.5">How many deals are featured</h3>
@@ -111,8 +112,9 @@ export function FeaturedPanel({ clusterId, config, saving, run, back }: Featured
                     </div>
                 </>
             )}
+            </div>
 
-            <div className="flex items-center justify-between gap-3 pt-4 mt-auto border-t border-gray-100">
+            <div className="shrink-0 flex items-center justify-between gap-3 pt-4 border-t border-gray-100">
                 <button onClick={back} className="text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-gray-600 px-3 py-2">
                     Back
                 </button>
@@ -172,7 +174,8 @@ export function FrequencyPanel({ clusterId, config, saving, run, back }: Frequen
     const isManual = mode === 'manual';
 
     return (
-        <div className="flex flex-col min-h-0 h-full">
+        <div className="flex flex-col min-h-0 flex-1">
+            <div className="flex-1 min-h-0 overflow-y-auto">
             <div>
                 <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Customer Frequency</p>
                 <h3 className="text-base font-display font-bold text-text-main mt-0.5">How often customers see deals</h3>
@@ -227,8 +230,9 @@ export function FrequencyPanel({ clusterId, config, saving, run, back }: Frequen
                     <p className="text-[10px] font-medium text-text-secondary mt-2">We recommend leaving this automatic. Only change it for special campaigns.</p>
                 </div>
             )}
+            </div>
 
-            <div className="flex items-center justify-between gap-3 pt-4 mt-auto border-t border-gray-100">
+            <div className="shrink-0 flex items-center justify-between gap-3 pt-4 border-t border-gray-100">
                 <button onClick={back} className="text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-gray-600 px-3 py-2">
                     Back
                 </button>
