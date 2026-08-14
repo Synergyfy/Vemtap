@@ -67,6 +67,36 @@ export class PosController {
     return this.posService.findAllSales(req.user.businessId, query);
   }
 
+  @Get('sales/held')
+  @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.ADMIN, UserRole.STAFF)
+  @ApiOperation({ summary: 'List held/queued sales' })
+  async listHeldSales(
+    @Query('branchId') branchId: string | undefined,
+    @Req() req: RequestWithUser,
+  ) {
+    return this.posService.findAllHeldSales(req.user.businessId, branchId);
+  }
+
+  @Get('sales/held/:id')
+  @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.ADMIN, UserRole.STAFF)
+  @ApiOperation({ summary: 'Get held sale details (resume data)' })
+  async getHeldSale(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Req() req: RequestWithUser,
+  ) {
+    return this.posService.resumeHeldSale(id, req.user.businessId);
+  }
+
+  @Delete('sales/held/:id')
+  @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.ADMIN, UserRole.STAFF)
+  @ApiOperation({ summary: 'Delete a held sale' })
+  async deleteHeldSale(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Req() req: RequestWithUser,
+  ) {
+    return this.posService.deleteHeldSale(id, req.user.businessId);
+  }
+
   @Get('sales/:id')
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.ADMIN, UserRole.STAFF)
   @ApiOperation({ summary: 'Get a single sale by ID' })
@@ -98,36 +128,6 @@ export class PosController {
   @ApiOperation({ summary: 'Hold/queue a sale for later' })
   async holdSale(@Body() dto: HoldPosSaleDto, @Req() req: RequestWithUser) {
     return this.posService.holdSale(dto, req.user);
-  }
-
-  @Get('sales/held')
-  @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.ADMIN, UserRole.STAFF)
-  @ApiOperation({ summary: 'List held/queued sales' })
-  async listHeldSales(
-    @Query('branchId') branchId: string | undefined,
-    @Req() req: RequestWithUser,
-  ) {
-    return this.posService.findAllHeldSales(req.user.businessId, branchId);
-  }
-
-  @Get('sales/held/:id')
-  @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.ADMIN, UserRole.STAFF)
-  @ApiOperation({ summary: 'Get held sale details (resume data)' })
-  async getHeldSale(
-    @Param('id', ParseUUIDPipe) id: string,
-    @Req() req: RequestWithUser,
-  ) {
-    return this.posService.resumeHeldSale(id, req.user.businessId);
-  }
-
-  @Delete('sales/held/:id')
-  @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.ADMIN, UserRole.STAFF)
-  @ApiOperation({ summary: 'Delete a held sale' })
-  async deleteHeldSale(
-    @Param('id', ParseUUIDPipe) id: string,
-    @Req() req: RequestWithUser,
-  ) {
-    return this.posService.deleteHeldSale(id, req.user.businessId);
   }
 
   @Post('register/open')
