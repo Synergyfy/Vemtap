@@ -61,6 +61,10 @@ function toPromotion(offer: DealOffer): Promotion {
             ? calcPrice + discountAmount
             : calcPrice;
 
+    // Fallback: use first item's image if mainImage is missing
+    const image = offer.mainImage || offer.items?.[0]?.mainImage || '';
+    const galleryImages = offer.galleryImages || offer.items?.flatMap(i => i.galleryImages || []) || [];
+
     return {
         id: offer.id,
         business: toPromotionBusiness(offer),
@@ -72,8 +76,8 @@ function toPromotion(offer: DealOffer): Promotion {
         discountAmount,
         originalPrice: offer.originalPrice || originalPrice,
         dealPrice: Number(offer.dealPrice || offer.calculatedPrice),
-        image: offer.mainImage || '',
-        galleryImages: offer.galleryImages || [],
+        image,
+        galleryImages,
         startDate: offer.startDate || '',
         endDate: offer.endDate || '',
         claimedCount: offer.claimedCount,
@@ -179,7 +183,6 @@ export default function PromotionsPage() {
         return offersData.data
             .filter((offer): offer is DealOffer => {
                 if (!offer || !offer.id || (!offer.branch && !offer.branchId)) return false;
-                if (!offer.startDate && !offer.endDate) return false;
                 if (offer.endDate && new Date(offer.endDate) < now) return false;
                 if (offer.startDate && new Date(offer.startDate) > now) return false;
                 return true;
