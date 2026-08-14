@@ -2,7 +2,7 @@
 
 import React, { useState, useRef } from 'react';
 import {
-    Tag, Plus, X, CheckCircle2, ArrowRight, Search, ChevronRight, Loader2, Trash2, Clock, Sparkles, Image as ImageIcon, AlertCircle, RefreshCw, Users,
+    Tag, Plus, X, CheckCircle2, ArrowRight, Search, ChevronRight, Loader2, Trash2, Clock, Sparkles, Image as ImageIcon, AlertCircle, RefreshCw, Users, BadgeCheck,
 } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
@@ -13,6 +13,7 @@ import { useActiveBranch } from '@/hooks/useActiveBranch';
 import { useBranches } from '@/services/branches/hooks';
 import { useCatalogueOffersAdmin, useUpdateCatalogueOffer, useDeleteCatalogueOffer, useCreateCatalogueOffer, useCatalogueItems } from '@/services/catalogue/hooks';
 import { useGenerateDealTerms } from '@/services/deals/hooks';
+import { getPromoDaysLeft } from '@/lib/mock/promotions';
 import type { CatalogueOffer } from '@/services/catalogue/hooks';
 import { uploadToCloudinary } from '@/lib/cloudinary';
 import PartnershipVerificationGuard from '@/components/dashboard/partnership/PartnershipVerificationGuard';
@@ -21,6 +22,16 @@ const DeliveryRadiusMap = dynamic(() => import('@/components/dashboard/discovery
 
 function formatCurrency(value: number): string {
     return '₦' + value.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+}
+
+function DaysLeftLabel({ daysLeft }: { daysLeft: number }) {
+    if (daysLeft <= 0) {
+        return <span className="text-primary font-black">Last day</span>;
+    }
+    if (daysLeft === 1) {
+        return <span className="text-primary font-black">1 day left</span>;
+    }
+    return <span className="text-primary font-black">{daysLeft} days left</span>;
 }
 
 function ErrorState({ message, onRetry }: { message: string; onRetry?: () => void }) {
@@ -126,8 +137,8 @@ function PromotionsTab({ branchId, onCreatePromo, onEditPromo }: { branchId: str
                     <div className="h-7 w-40 bg-gray-100 rounded animate-pulse"></div>
                     <div className="h-10 w-44 bg-gray-100 rounded-full animate-pulse"></div>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {[1, 2].map(i => <div key={i} className="h-56 bg-gray-50 rounded-3xl animate-pulse"></div>)}
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5">
+                    {[1, 2, 3, 4].map(i => <div key={i} className="aspect-square bg-gray-50 rounded-2xl animate-pulse"></div>)}
                 </div>
             </div>
         );
@@ -149,101 +160,176 @@ function PromotionsTab({ branchId, onCreatePromo, onEditPromo }: { branchId: str
             {!promotions || promotions.length === 0 ? (
                 <EmptyState icon={Tag} title="Your first deal is ready to launch" description="Create a deal to attract new customers and bring them back again." />
             ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5">
                     {promotions.map((promo) => {
                         const expired = isExpired(promo);
+                        const claimedCount = (promo as any).claimedCount ?? 0;
+                        const maxClaims = promo.quantity ?? 0;
+                        const discountPercent = promo.pricingType === 'percentage_discount' ? (promo.discountValue ?? 0) : undefined;
+                        const discountAmount = promo.pricingType === 'fixed_discount_price' ? (promo.discountValue ?? 0) : undefined;
+                        const calcPrice = Number(promo.fixedPrice) || Number(promo.calculatedPrice) || 0;
+                        const originalPrice = discountPercent && discountPercent > 0
+                            ? Math.round(calcPrice / (1 - discountPercent / 100))
+                            : discountAmount && discountAmount > 0
+                                ? calcPrice + discountAmount
+                                : calcPrice;
+                        const dealPrice = Number(promo.fixedPrice) || Number(promo.calculatedPrice) || 0;
+                        const daysLeft = promo.endDate ? getPromoDaysLeft(promo.endDate) : 0;
+                        const claimPct = maxClaims > 0 ? Math.min((claimedCount / maxClaims) * 100, 100) : 0;
+                        const isStarSeller = claimedCount >= 5;
+
                         return (
-                        <div key={promo.id} className="bg-white rounded-3xl border border-gray-100 shadow-sm p-6 relative overflow-hidden">
-                            {expired && (
-                                <div className="absolute top-0 right-0 bg-red-500 text-white text-[9px] font-bold uppercase tracking-wider px-3 py-1 rounded-bl-2xl">
-                                    Expired
-                                </div>
-                            )}
-                            {promo.status === 'inactive' && !expired && (
-                                <div className="absolute top-0 right-0 bg-gray-400 text-white text-[9px] font-bold uppercase tracking-wider px-3 py-1 rounded-bl-2xl">
-                                    Paused
-                                </div>
-                            )}
-                            <div className="mb-4">
-                                <h4 className="font-semibold text-lg text-gray-800">{promo.name}</h4>
-                            </div>
+                            <div key={promo.id} className="group relative bg-white rounded-2xl overflow-hidden border border-gray-100 hover:border-primary/20 hover:shadow-lg transition-all duration-300 flex flex-col">
+                                {/* Image */}
+                                <div className="relative aspect-square overflow-hidden bg-gray-50">
+                                    {promo.mainImage ? (
+                                        <img
+                                            src={promo.mainImage}
+                                            alt={promo.name}
+                                            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                                            loading="lazy"
+                                        />
+                                    ) : (
+                                        <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100">
+                                            <span className="text-3xl font-headline font-bold text-gray-200">
+                                                {promo.name.charAt(0)}
+                                            </span>
+                                        </div>
+                                    )}
 
-                            {/* Deal Image */}
-                            <div className="mb-4 p-3 bg-gray-50 rounded-2xl border border-gray-100">
-                                <img
-                                    src={promo.mainImage || '/placeholder-deal.png'}
-                                    alt={promo.name}
-                                    className="w-full h-40 object-cover rounded-md"
-                                    loading="lazy"
-                                />
-                                {promo.galleryImages && promo.galleryImages.length > 0 && (
-                                    <div className="mt-2 grid grid-cols-2 gap-2">
-                                        {promo.galleryImages.map((img, idx) => (
-                                            <img
-                                                key={idx}
-                                                src={img}
-                                                alt={`Deal gallery ${idx}`}
-                                                className="w-full h-24 object-cover rounded-md"
-                                                loading="lazy"
-                                            />
-                                        ))}
+                                    {/* Deal badge — top left */}
+                                    {(discountPercent || discountAmount) && (
+                                        <span className="absolute top-2.5 left-2.5 inline-flex items-center gap-1 bg-primary text-white px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider shadow-sm">
+                                            <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+                                            Deal
+                                        </span>
+                                    )}
+
+                                    {/* Status badge — top right */}
+                                    {expired ? (
+                                        <span className="absolute top-2.5 right-2.5 bg-red-500 text-white text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md shadow-sm">
+                                            Expired
+                                        </span>
+                                    ) : promo.status === 'inactive' ? (
+                                        <span className="absolute top-2.5 right-2.5 bg-gray-400 text-white text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md shadow-sm">
+                                            Paused
+                                        </span>
+                                    ) : null}
+                                </div>
+
+                                {/* Content */}
+                                <div className="p-3 space-y-2 flex-1">
+                                    <h3 className="font-semibold text-gray-800 text-[13px] leading-snug line-clamp-2 min-h-[2.5rem]">
+                                        {promo.name}
+                                    </h3>
+
+                                    {/* Price row */}
+                                    <div className="flex items-baseline gap-2 flex-wrap">
+                                        <span className="text-[15px] font-black text-primary tracking-tight">
+                                            {formatCurrency(dealPrice)}
+                                        </span>
+                                        {originalPrice > dealPrice && (
+                                            <span className="text-[11px] text-gray-400 line-through font-medium">
+                                                {formatCurrency(originalPrice)}
+                                            </span>
+                                        )}
                                     </div>
-                                )}
-                            </div>
 
-                            <div className="grid grid-cols-3 gap-4 mb-4 p-4 bg-gray-50 rounded-2xl">
-                                <div>
-                                    <div className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1">Views</div>
-                                    <div className="font-bold text-gray-800">{(promo as any).views ?? '—'}</div>
-                                </div>
-                                <div>
-                                    <div className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1">Visits</div>
-                                    <div className="font-bold text-gray-800">{(promo as any).visits ?? '—'}</div>
-                                </div>
-                                <div>
-                                    <div className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1">Revenue</div>
-                                    <div className="font-bold text-emerald-600">{formatCurrency((promo as any).revenue ?? 0)}</div>
-                                </div>
-                            </div>
+                                    {/* Days left */}
+                                    {promo.endDate && (
+                                        <div className="flex items-center gap-1">
+                                            <Clock size={10} className="text-primary/60" />
+                                            <span className="text-[10px] font-bold">
+                                                <DaysLeftLabel daysLeft={daysLeft} />
+                                            </span>
+                                        </div>
+                                    )}
 
-                            {(promo as any).quantity != null && (
-                                <div className="mb-4 p-3 bg-blue-50 rounded-2xl border border-blue-100">
-                                    <div className="flex items-center justify-between text-sm">
-                                        <span className="font-semibold text-gray-600">Remaining claims</span>
-                                        <span className="font-bold text-blue-600">{Math.max(0, ((promo as any).quantity || 0) - ((promo as any).claimedCount || 0))} / {(promo as any).quantity}</span>
+                                    {/* Claims */}
+                                    {maxClaims > 0 && (
+                                        <div className="space-y-1">
+                                            <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                                                <div
+                                                    className="h-full bg-gradient-to-r from-amber-400 to-amber-500 rounded-full transition-all duration-500"
+                                                    style={{ width: `${claimPct}%` }}
+                                                />
+                                            </div>
+                                            <div className="flex items-center justify-between">
+                                                <span className="text-[10px] font-bold text-gray-400 flex items-center gap-0.5">
+                                                    <span className="text-orange-400">🔥</span>
+                                                    {claimedCount > 1
+                                                        ? `${claimedCount >= 1000
+                                                            ? `${(claimedCount / 1000).toFixed(0)}K`
+                                                            : claimedCount}+`
+                                                        : claimedCount}{' '}
+                                                    claimed
+                                                </span>
+                                                <span className="text-[10px] font-bold text-amber-500">
+                                                    {Math.round(claimPct)}%
+                                                </span>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Stats */}
+                                    <div className="grid grid-cols-3 gap-1 pt-1">
+                                        <div className="text-center">
+                                            <div className="text-[10px] font-bold text-gray-800">{(promo as any).views ?? '—'}</div>
+                                            <div className="text-[9px] font-semibold text-gray-400 uppercase tracking-wider">Views</div>
+                                        </div>
+                                        <div className="text-center border-x border-gray-100">
+                                            <div className="text-[10px] font-bold text-gray-800">{(promo as any).visits ?? '—'}</div>
+                                            <div className="text-[9px] font-semibold text-gray-400 uppercase tracking-wider">Visits</div>
+                                        </div>
+                                        <div className="text-center">
+                                            <div className="text-[10px] font-bold text-emerald-600">{formatCurrency((promo as any).revenue ?? 0)}</div>
+                                            <div className="text-[9px] font-semibold text-gray-400 uppercase tracking-wider">Revenue</div>
+                                        </div>
                                     </div>
-                                </div>
-                            )}
 
-                            <div className="flex flex-wrap sm:flex-nowrap gap-2">
-                                <Button variant="outline" className="flex-1 min-w-0 rounded-xl font-bold" onClick={() => onEditPromo(promo)}>Edit</Button>
-                                <Button
-                                    variant="outline"
-                                    className="flex-1 min-w-0 rounded-xl font-bold"
-                                    onClick={() => handleToggleStatus(promo)}
-                                    disabled={updateOffer.isPending || expired}
-                                >
-                                    {promo.status === 'active' ? 'Pause' : 'Resume'}
-                                </Button>
-                                <Button
-                                    asChild
-                                    className="order-4 sm:order-3 w-full sm:w-auto sm:flex-1 rounded-xl font-bold text-sm transition-colors"
-                                >
-                                    <Link href={`/promotions/${promo.id}`} className="flex items-center justify-center gap-2">
-                                        <ArrowRight size={14} className="text-[#066CF4]" />
-                                        View Deal on Site
-                                    </Link>
-                                </Button>
-                                <Button
-                                    variant="outline"
-                                    className="order-3 sm:order-4 min-w-0 rounded-xl px-4 text-red-500 hover:text-red-600 hover:bg-red-50"
-                                    onClick={() => handleDelete(promo)}
-                                    disabled={deleteOffer.isPending}
-                                >
-                                    <X size={16} />
-                                </Button>
+                                    {/* Star seller */}
+                                    {isStarSeller && (
+                                        <div className="flex items-center gap-1 pt-0.5">
+                                            <BadgeCheck size={12} className="text-primary fill-primary/10" />
+                                            <span className="text-[10px] font-bold text-primary">Star seller</span>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Admin actions */}
+                                <div className="p-3 pt-0 space-y-2">
+                                    <div className="flex gap-2">
+                                        <Button variant="outline" className="flex-1 min-w-0 rounded-xl font-bold text-xs h-9 px-2" onClick={() => onEditPromo(promo)}>
+                                            Edit
+                                        </Button>
+                                        <Button
+                                            variant="outline"
+                                            className="flex-1 min-w-0 rounded-xl font-bold text-xs h-9 px-2"
+                                            onClick={() => handleToggleStatus(promo)}
+                                            disabled={updateOffer.isPending || expired}
+                                        >
+                                            {promo.status === 'active' ? 'Pause' : 'Resume'}
+                                        </Button>
+                                        <Button
+                                            variant="outline"
+                                            className="min-w-0 rounded-xl px-3 h-9 text-red-500 hover:text-red-600 hover:bg-red-50"
+                                            onClick={() => handleDelete(promo)}
+                                            disabled={deleteOffer.isPending}
+                                        >
+                                            <X size={15} />
+                                        </Button>
+                                    </div>
+                                    <Button
+                                        asChild
+                                        className="w-full rounded-xl font-bold text-xs h-9 transition-colors"
+                                    >
+                                        <Link href={`/promotions/${promo.id}`} className="flex items-center justify-center gap-2">
+                                            <ArrowRight size={13} className="text-[#066CF4]" />
+                                            View Deal on Site
+                                        </Link>
+                                    </Button>
+                                </div>
                             </div>
-                        </div>
                         );
                     })}
                 </div>
