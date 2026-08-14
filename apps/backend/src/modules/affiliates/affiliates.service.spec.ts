@@ -3,7 +3,7 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { NotFoundException, BadRequestException } from '@nestjs/common';
 import { DataSource, In } from 'typeorm';
 import { AffiliatesService } from './affiliates.service';
-import { ExternalAffiliateService } from './external-affiliate.service';
+import { AffiliateSyncService } from './affiliate-sync.service';
 import {
   AffiliateProfile,
   KycStatus,
@@ -71,6 +71,8 @@ describe('AffiliatesService', () => {
         .fn()
         .mockImplementation((c) => Promise.resolve({ id: 'c1', ...c })),
       find: jest.fn(),
+      findOne: jest.fn(),
+      count: jest.fn().mockResolvedValue(0),
       createQueryBuilder: jest.fn().mockReturnValue({
         select: jest.fn().mockReturnThis(),
         addSelect: jest.fn().mockReturnThis(),
@@ -106,6 +108,8 @@ describe('AffiliatesService', () => {
       getGlobalSettings: jest.fn().mockResolvedValue({
         affiliateDirectCommission: 20,
         affiliateMinimumWithdrawal: 5000,
+        affiliateFirstPaymentCommission: 30,
+        affiliateRecurringCommission: 10,
       }),
       updateSettings: jest.fn(),
     };
@@ -187,11 +191,10 @@ describe('AffiliatesService', () => {
         { provide: SettingsService, useValue: settingsService },
         { provide: DataSource, useValue: dataSource },
         {
-          provide: ExternalAffiliateService,
+          provide: AffiliateSyncService,
           useValue: {
-            processWithdrawal: jest.fn().mockResolvedValue({ success: true }),
-            validateReferralCode: jest.fn().mockResolvedValue({ valid: false }),
-            recordReferral: jest.fn().mockResolvedValue({ success: true }),
+            enqueueProcessWithdrawal: jest.fn().mockResolvedValue(undefined),
+            enqueueRecordReferral: jest.fn().mockResolvedValue(undefined),
           },
         },
       ],
@@ -246,7 +249,7 @@ describe('AffiliatesService', () => {
   });
 
   describe('processSubscriptionCommission', () => {
-    it('should process commission and update balance', async () => {
+    it('should process first-payment commission at the first-payment rate', async () => {
       const affiliateId = 'a1';
 
       referralRepository.findOne.mockResolvedValue({
@@ -260,11 +263,139 @@ describe('AffiliatesService', () => {
       expect(referralRepository.save).toHaveBeenCalled();
       expect(commissionRepository.save).toHaveBeenCalledWith(
         expect.objectContaining({
-          amount: 2000, // 20% of 10000
+          amount: 3000, // 30% of 10000 (first payment)
         }),
       );
       // Balance is now updated atomically via createQueryBuilder — verify it was called
       expect(profileRepository.createQueryBuilder).toHaveBeenCalled();
+    });
+
+    it('should process recurring commission at the recurring rate when a prior commission exists', async () => {
+      const affiliateId = 'a1';
+
+      referralRepository.findOne.mockResolvedValue({
+        id: 'r1',
+        affiliateId,
+        status: ReferralStatus.CONVERTED,
+      });
+      commissionRepository.count.mockResolvedValue(1);
+
+      await service.processSubscriptionCommission('b1', 10000);
+
+      expect(commissionRepository.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          amount: 1000, // 10% of 10000 (recurring)
+        }),
+      );
+    });
+
+    it('resolves an agent referral from business.referralCode when the link was not created at registration', async () => {
+      referralRepository.findOne.mockResolvedValue(null);
+
+      dataSource.getRepository.mockReturnValue({
+        findOne: jest
+          .fn()
+          .mockResolvedValue({
+            id: 'b1',
+            referralCode: 'VEM-ABC-1234',
+            ownerId: 'u1',
+          }),
+      });
+      profileRepository.findOne.mockResolvedValue({
+        id: 'p1',
+        userId: 'u1',
+        referralCode: 'VEM-ABC-1234',
+      });
+
+      await service.processSubscriptionCommission('b1', 10000, 'PAY_1');
+
+      expect(referralRepository.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          affiliateId: 'p1',
+          referredBusinessId: 'b1',
+        }),
+      );
+      expect(commissionRepository.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          amount: 3000, // 30% of 10000 (first payment)
+        }),
+      );
+    });
+  });
+
+  describe('processBusinessReferralCommission', () => {
+    it('should credit the referring business and write a first-payment ledger row', async () => {
+      const businessRepo = {
+        findOne: jest
+          .fn()
+          .mockResolvedValueOnce({ id: 'b1', referralCode: 'REFBIZ' })
+          .mockResolvedValueOnce({ id: 'b0', uniqueCode: 'REFBIZ', balance: 0 }),
+      };
+      const ledgerRepo = {
+        findOne: jest.fn().mockResolvedValue(null),
+        count: jest.fn().mockResolvedValue(0),
+        create: jest.fn().mockImplementation((d) => d),
+        save: jest
+          .fn()
+          .mockImplementation((d) => Promise.resolve({ id: 'l1', ...d })),
+      };
+
+      dataSource.getRepository.mockImplementation((cls: any) =>
+        cls === Business ? businessRepo : ledgerRepo,
+      );
+
+      const manager = {
+        getRepository: jest.fn().mockImplementation((cls: any) =>
+          cls === Business
+            ? {
+                createQueryBuilder: jest.fn(() => ({
+                  update: jest.fn().mockReturnThis(),
+                  set: jest.fn().mockReturnThis(),
+                  where: jest.fn().mockReturnThis(),
+                  execute: jest.fn().mockResolvedValue({ affected: 1 }),
+                })),
+              }
+            : ledgerRepo,
+        ),
+      };
+      dataSource.transaction.mockImplementation(async (cb: any) => cb(manager));
+
+      await service.processBusinessReferralCommission('b1', 10000, 'PAY_1');
+
+      expect(ledgerRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          referringBusinessId: 'b0',
+          referredBusinessId: 'b1',
+          amount: 3000,
+          rate: 30,
+          isFirstPayment: true,
+          paymentReference: 'PAY_1',
+        }),
+      );
+    });
+  });
+
+  describe('getCommissionRateForBusiness', () => {
+    const paymentRepo = (count: number) => ({
+      createQueryBuilder: jest.fn(() => ({
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        getCount: jest.fn().mockResolvedValue(count),
+      })),
+    });
+
+    it('returns the first-payment rate when no prior paid subscription exists', async () => {
+      dataSource.getRepository.mockReturnValue(paymentRepo(0));
+
+      const result = await service.getCommissionRateForBusiness('b1', 'PAY_1');
+      expect(result).toEqual({ isFirstPayment: true, rate: 30 });
+    });
+
+    it('returns the recurring rate when a prior paid subscription exists', async () => {
+      dataSource.getRepository.mockReturnValue(paymentRepo(1));
+
+      const result = await service.getCommissionRateForBusiness('b1', 'PAY_1');
+      expect(result).toEqual({ isFirstPayment: false, rate: 10 });
     });
   });
 

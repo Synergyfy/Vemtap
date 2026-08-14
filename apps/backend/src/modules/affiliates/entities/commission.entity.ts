@@ -45,8 +45,11 @@ export class AffiliateCommission extends AbstractBaseEntity {
   @Column()
   description: string;
 
-  @ApiProperty({ example: 'uuid-string', description: 'Linked payment ID' })
-  @Column({ type: 'uuid', nullable: true })
+  @ApiProperty({
+    example: 'T123456789',
+    description: 'Linked payment reference (Paystack)',
+  })
+  @Column({ type: 'varchar', nullable: true })
   paymentId: string;
 
   @ManyToOne(() => Business, { nullable: true })

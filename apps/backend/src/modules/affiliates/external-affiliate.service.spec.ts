@@ -83,24 +83,39 @@ describe('ExternalAffiliateService', () => {
 
       httpService.post.mockReturnValue(of(mockResponse));
 
-      await service.recordReferral({
-        referralCode: 'REF123',
-        businessName: 'Test Biz',
-        ownerName: 'John Doe',
-        email: 'test@biz.com',
-        phone: '123456',
-        planType: 'Gold',
-      });
+      await service.recordReferral(
+        {
+          referralCode: 'REF123',
+          businessId: 'b1',
+          businessName: 'Test Biz',
+          ownerName: 'John Doe',
+          email: 'test@biz.com',
+          phone: '123456',
+          planName: 'Gold',
+          planId: 'plan-1',
+          amountPaid: 10000,
+          isFirstPayment: true,
+          rate: 30,
+          externalReference: 'PAY_1',
+        },
+        'affiliate-ref:PAY_1',
+      );
 
       expect(httpService.post).toHaveBeenCalledWith(
         'http://test-api.com/referrals/record',
         {
           referralCode: 'REF123',
+          businessId: 'b1',
           businessName: 'Test Biz',
           ownerName: 'John Doe',
           email: 'test@biz.com',
           phone: '123456',
-          planType: 'Gold',
+          planName: 'Gold',
+          planId: 'plan-1',
+          amountPaid: 10000,
+          isFirstPayment: true,
+          rate: 30,
+          externalReference: 'PAY_1',
         },
         expect.any(Object),
       );
@@ -119,14 +134,17 @@ describe('ExternalAffiliateService', () => {
 
       httpService.post.mockReturnValue(of(mockResponse));
 
-      await service.processWithdrawal({
-        email: 'test@user.com',
-        amount: 1000,
-        bankName: 'Test Bank',
-        accountNumber: '1234567890',
-        accountName: 'Test User',
-        reference: 'REF-001',
-      });
+      await service.processWithdrawal(
+        {
+          email: 'test@user.com',
+          amount: 1000,
+          bankName: 'Test Bank',
+          accountNumber: '1234567890',
+          accountName: 'Test User',
+          externalReference: 'REF-001',
+        },
+        'affiliate-wd:REF-001',
+      );
 
       expect(httpService.post).toHaveBeenCalledWith(
         'http://test-api.com/withdrawals/process',

@@ -114,6 +114,8 @@ export interface SystemSettings {
   affiliateIndirectCommission: number;
   affiliateCommissionDurationMonths: number;
   affiliateMinimumWithdrawal: number;
+  affiliateFirstPaymentCommission: number;
+  affiliateRecurringCommission: number;
   discoveryEnableNetwork: boolean;
   discoveryEnableSponsored: boolean;
   discoveryEnablePartnerships: boolean;
