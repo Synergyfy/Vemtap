@@ -3,144 +3,134 @@
 import React from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { MapPin, Clock, Users, ArrowRight } from 'lucide-react';
-import { MockPromotion, formatPromoPrice, formatPromoDate, getPromoDaysLeft } from '@/lib/mock/promotions';
-import { cn } from '@/lib/utils';
+import { ShoppingCart, BadgeCheck, Clock } from 'lucide-react';
+import { MockPromotion, formatPromoPrice, getPromoDaysLeft } from '@/lib/mock/promotions';
 
 interface PromotionCardProps {
     promotion: MockPromotion;
     index: number;
 }
 
-const CATEGORY_COLORS: Record<string, string> = {
-    'Food & Drinks': 'bg-orange-500',
-    'Fashion': 'bg-pink-500',
-    'Electronics': 'bg-blue-500',
-    'Health & Beauty': 'bg-purple-500',
-    'Services': 'bg-emerald-500',
-};
+function DaysLeftLabel({ daysLeft }: { daysLeft: number }) {
+    if (daysLeft <= 0) {
+        return <span className="text-primary font-black">Last day</span>;
+    }
+    if (daysLeft === 1) {
+        return <span className="text-primary font-black">1 day left</span>;
+    }
+    return <span className="text-primary font-black">{daysLeft} days left</span>;
+}
 
 export default function PromotionCard({ promotion, index }: PromotionCardProps) {
     const daysLeft = getPromoDaysLeft(promotion.endDate);
-    const claimPercent = Math.round((promotion.claimedCount / promotion.maxClaims) * 100);
+    const isStarSeller = promotion.claimedCount >= 5;
 
     return (
         <motion.div
-            initial={{ opacity: 0, y: 30 }}
+            initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: index * 0.08 }}
+            transition={{ duration: 0.35, delay: index * 0.05 }}
         >
             <Link href={`/promotions/${promotion.id}`} className="block group">
-                <div className="relative bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl border border-gray-100 hover:border-primary/20 transition-all duration-300 hover:-translate-y-1">
+                <div className="relative bg-white rounded-2xl overflow-hidden border border-gray-100 hover:border-primary/20 hover:shadow-lg transition-all duration-300">
                     {/* Image */}
-                    <div className="relative aspect-[4/3] overflow-hidden">
-                        <img
-                            src={promotion.image}
-                            alt={promotion.name}
-                            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-                        />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
-
-                        {/* Discount badge */}
-                        {promotion.discountPercent && (
-                            <div className="absolute top-3 left-3 bg-red-500 text-white px-3 py-1 rounded-full text-xs font-black tracking-wide shadow-lg">
-                                {promotion.discountPercent}% OFF
-                            </div>
-                        )}
-                        {promotion.discountAmount && !promotion.discountPercent && (
-                            <div className="absolute top-3 left-3 bg-red-500 text-white px-3 py-1 rounded-full text-xs font-black tracking-wide shadow-lg">
-                                SAVE {formatPromoPrice(promotion.discountAmount)}
+                    <div className="relative aspect-square overflow-hidden bg-gray-50">
+                        {promotion.image ? (
+                            <img
+                                src={promotion.image}
+                                alt={promotion.name}
+                                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                            />
+                        ) : (
+                            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100">
+                                <span className="text-3xl font-headline font-bold text-gray-200">
+                                    {promotion.name.charAt(0)}
+                                </span>
                             </div>
                         )}
 
-                        {/* Ends Today badge */}
-                        {daysLeft === 0 && (
-                            <div className="absolute top-3 right-3 bg-orange-500 text-white px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider shadow-lg">
-                                Ends Today
+                        {/* Deal badge — top left */}
+                        {(promotion.discountPercent || promotion.discountAmount) && (
+                            <div className="absolute top-2.5 left-2.5 flex items-center gap-1">
+                                <span className="inline-flex items-center gap-1 bg-primary text-white px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider shadow-sm">
+                                    <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+                                    Deal
+                                </span>
                             </div>
                         )}
 
-                        {/* Days left */}
-                        {daysLeft <= 7 && daysLeft > 0 && (
-                            <div className="absolute bottom-3 left-3 flex items-center gap-1 bg-black/60 backdrop-blur-sm text-white px-2.5 py-1 rounded-full text-[10px] font-bold">
-                                <Clock size={10} />
-                                {daysLeft}d left
+                        {/* Cart button — bottom right on image */}
+                        <div className="absolute bottom-2.5 right-2.5">
+                            <div className="size-8 bg-white rounded-full shadow-md border border-gray-100 flex items-center justify-center group-hover:bg-primary group-hover:border-primary transition-all duration-300">
+                                <ShoppingCart size={13} className="text-gray-500 group-hover:text-white transition-colors" />
                             </div>
-                        )}
-
-                        {/* Gallery indicator */}
-                        {promotion.galleryImages && promotion.galleryImages.length > 0 && (
-                            <div className="absolute bottom-3 right-3 bg-black/60 backdrop-blur-sm text-white px-2 py-1 rounded-full text-[9px] font-bold flex items-center gap-1">
-                                <span>1/{promotion.galleryImages.length + 1}</span>
-                            </div>
-                        )}
+                        </div>
                     </div>
 
                     {/* Content */}
-                    <div className="p-4 space-y-3">
-                        {/* Business name */}
-                        <p className="text-[10px] font-black uppercase tracking-widest text-primary">
-                            {promotion.businessName}
-                        </p>
-
+                    <div className="p-3 space-y-2">
                         {/* Title */}
-                        <h3 className="font-headline font-bold text-gray-900 text-base leading-tight line-clamp-1 group-hover:text-primary transition-colors">
+                        <h3 className="font-semibold text-gray-800 text-[13px] leading-snug line-clamp-2 min-h-[2.5rem]">
                             {promotion.name}
                         </h3>
 
-                        {/* Description */}
-                        <p className="text-xs text-gray-500 font-medium line-clamp-2 leading-relaxed">
-                            {promotion.description}
-                        </p>
-
-                        {/* Price */}
-                        <div className="flex items-baseline gap-2 pt-1">
-                            <span className="text-lg font-black text-primary font-display tracking-tight">
+                        {/* Price row */}
+                        <div className="flex items-baseline gap-2 flex-wrap">
+                            <span className="text-[15px] font-black text-primary tracking-tight">
                                 {formatPromoPrice(promotion.dealPrice)}
                             </span>
                             {promotion.originalPrice > promotion.dealPrice && (
-                                <span className="text-xs text-gray-400 line-through font-bold">
+                                <span className="text-[11px] text-gray-400 line-through font-medium">
                                     {formatPromoPrice(promotion.originalPrice)}
                                 </span>
                             )}
                         </div>
 
-                        {/* Footer with distance + claimed */}
-                        <div className="flex items-center justify-between pt-2 border-t border-gray-50">
-                            <div className="flex items-center gap-1 text-gray-400">
-                                <MapPin size={10} />
-                                <span className="text-[10px] font-bold truncate max-w-[100px]">{promotion.location}</span>
+                        {/* "Last day X days left" label */}
+                        {(promotion.endDate || daysLeft >= 0) && (
+                            <div className="flex items-center gap-1">
+                                <Clock size={10} className="text-primary/60" />
+                                <span className="text-[10px] font-bold">
+                                    <DaysLeftLabel daysLeft={daysLeft} />
+                                </span>
                             </div>
-                            <div className="flex items-center gap-1 text-gray-400">
-                                <span className="text-[10px] font-bold">{promotion.distance || ''}</span>
+                        )}
+
+                        {/* Claim info */}
+                        <div className="space-y-1">
+                            {promotion.maxClaims > 0 && (
+                                <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                                    <div
+                                        className="h-full bg-gradient-to-r from-amber-400 to-amber-500 rounded-full transition-all duration-500"
+                                        style={{ width: `${Math.min((promotion.claimedCount / promotion.maxClaims) * 100, 100)}%` }}
+                                    />
+                                </div>
+                            )}
+                            <div className="flex items-center justify-between">
+                                <span className="text-[10px] font-bold text-gray-400 flex items-center gap-0.5">
+                                    <span className="text-orange-400">🔥</span>
+                                    {promotion.claimedCount > 1
+                                        ? `${promotion.claimedCount >= 1000
+                                            ? `${(promotion.claimedCount / 1000).toFixed(0)}K`
+                                            : promotion.claimedCount}+`
+                                        : promotion.claimedCount}{' '}
+                                    claimed
+                                </span>
+                                {promotion.maxClaims > 0 && (
+                                    <span className="text-[10px] font-bold text-amber-500">
+                                        {Math.round((promotion.claimedCount / promotion.maxClaims) * 100)}%
+                                    </span>
+                                )}
                             </div>
                         </div>
 
-                        {/* Trending / Social proof */}
-                        <div className="flex items-center gap-1">
-                            <Users size={10} className="text-primary" />
-                            <span className="text-[10px] font-bold text-primary">
-                                {promotion.claimedCount} {promotion.claimedCount === 1 ? 'person' : 'people'} claimed this
-                            </span>
-                        </div>
-
-                        {/* Claim progress bar */}
-                        <div className="w-full h-1 bg-gray-100 rounded-full overflow-hidden">
-                            <div
-                                className="h-full bg-gradient-to-r from-primary to-secondary rounded-full transition-all duration-500"
-                                style={{ width: `${Math.min(claimPercent, 100)}%` }}
-                            />
-                        </div>
-
-                        {/* CTA */}
-                        <div className="flex items-center justify-between pt-1">
-                            <span className="text-[10px] text-gray-400 font-bold">
-                                {formatPromoDate(promotion.startDate)} — {formatPromoDate(promotion.endDate)}
-                            </span>
-                            <span className="flex items-center gap-1 text-xs font-black text-primary group-hover:gap-2 transition-all">
-                                View Offer <ArrowRight size={12} />
-                            </span>
-                        </div>
+                        {/* Star seller badge */}
+                        {isStarSeller && (
+                            <div className="flex items-center gap-1 pt-0.5">
+                                <BadgeCheck size={12} className="text-primary fill-primary/10" />
+                                <span className="text-[10px] font-bold text-primary">Star seller</span>
+                            </div>
+                        )}
                     </div>
                 </div>
             </Link>
