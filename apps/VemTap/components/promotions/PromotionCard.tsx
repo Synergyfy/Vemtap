@@ -97,32 +97,30 @@ export default function PromotionCard({ promotion, index }: PromotionCardProps) 
                         )}
 
                         {/* Claim info */}
-                        {promotion.claimedCount > 0 && (
-                            <div className="space-y-1">
-                                {promotion.maxClaims > 0 && (
-                                    <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                                        <div
-                                            className="h-full bg-gradient-to-r from-amber-400 to-amber-500 rounded-full transition-all duration-500"
-                                            style={{ width: `${Math.min((promotion.claimedCount / promotion.maxClaims) * 100, 100)}%` }}
-                                        />
-                                    </div>
-                                )}
-                                <div className="flex items-center justify-between">
-                                    <span className="text-[10px] font-bold text-gray-400 flex items-center gap-0.5">
-                                        <span className="text-orange-400">🔥</span>
-                                        {promotion.claimedCount >= 1000
-                                            ? `${(promotion.claimedCount / 1000).toFixed(0)}K+`
-                                            : `${promotion.claimedCount}+`}{' '}
-                                        claimed
-                                    </span>
-                                    {promotion.maxClaims > 0 && (
-                                        <span className="text-[10px] font-bold text-amber-500">
-                                            {Math.round((promotion.claimedCount / promotion.maxClaims) * 100)}%
-                                        </span>
-                                    )}
+                        <div className="space-y-1">
+                            {promotion.maxClaims > 0 && (
+                                <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                                    <div
+                                        className="h-full bg-gradient-to-r from-amber-400 to-amber-500 rounded-full transition-all duration-500"
+                                        style={{ width: `${Math.min((promotion.claimedCount / promotion.maxClaims) * 100, 100)}%` }}
+                                    />
                                 </div>
+                            )}
+                            <div className="flex items-center justify-between">
+                                <span className="text-[10px] font-bold text-gray-400 flex items-center gap-0.5">
+                                    <span className="text-orange-400">🔥</span>
+                                    {promotion.claimedCount >= 1000
+                                        ? `${(promotion.claimedCount / 1000).toFixed(0)}K+`
+                                        : `${promotion.claimedCount}+`}{' '}
+                                    claimed
+                                </span>
+                                {promotion.maxClaims > 0 && (
+                                    <span className="text-[10px] font-bold text-amber-500">
+                                        {Math.round((promotion.claimedCount / promotion.maxClaims) * 100)}%
+                                    </span>
+                                )}
                             </div>
-                        )}
+                        </div>
 
                         {/* Star seller badge */}
                         {isStarSeller && (
