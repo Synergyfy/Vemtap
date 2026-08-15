@@ -41,6 +41,11 @@ import { AffiliateSyncService } from '../affiliates/affiliate-sync.service';
 import { QrThriveService } from '../qr-thrive/qr-thrive.service';
 import { AddonsService } from './services/addons.service';
 import { AddOn } from './entities/addon.entity';
+import {
+  SubscriptionTaxService,
+  TaxCalculationResult,
+} from './services/subscription-tax.service';
+import { PricePreviewDto } from './dto/tax/price-preview.dto';
 
 @Injectable()
 export class SubscriptionsService {
@@ -75,6 +80,7 @@ export class SubscriptionsService {
     @Inject(forwardRef(() => QrThriveService))
     private readonly qrThriveService: QrThriveService,
     private readonly addonsService: AddonsService,
+    private readonly subscriptionTaxService: SubscriptionTaxService,
   ) {}
 
   async activeSubscription(businessId?: string): Promise<Subscription | null> {
@@ -247,7 +253,14 @@ export class SubscriptionsService {
             return sum + Number(addon.price) * qty;
           }, 0);
 
-          const totalAmount = planPrice + addonsTotal;
+          const subtotal = planPrice + addonsTotal;
+          const taxConfig =
+            await this.subscriptionTaxService.getActiveConfig();
+          const taxResult = this.subscriptionTaxService.calculateTax(
+            subtotal,
+            taxConfig,
+          );
+          const totalAmount = taxResult.total;
 
           await this.paymentsService.recordPayment({
             reference: paymentReference,
@@ -257,7 +270,19 @@ export class SubscriptionsService {
                 ? PaymentPurpose.PLAN_WITH_ADDONS
                 : PaymentPurpose.SUBSCRIPTION,
             status: PaymentStatus.SUCCESS,
-            metadata: { planId, billingPeriod, addonIds, addonQuantities },
+            metadata: {
+              planId,
+              billingPeriod,
+              addonIds,
+              addonQuantities,
+              subtotal: taxResult.subtotal,
+              taxAmount: taxResult.taxAmount,
+              taxRate: taxResult.taxRule.rate,
+              taxType: taxResult.taxRule.taxType,
+              taxName: taxResult.taxRule.name,
+              taxEnabled: taxResult.taxRule.isEnabled,
+              total: totalAmount,
+            },
             businessId,
             userId: business.ownerId,
           });
@@ -266,7 +291,7 @@ export class SubscriptionsService {
             business,
             plan,
             paymentReference,
-            totalAmount,
+            subtotal,
           );
         }
 
@@ -413,8 +438,16 @@ export class SubscriptionsService {
         sub.business?.owner?.email ||
         'billing@latap.com';
 
-      const charge: any = await this.paymentsService.chargeAuthorization(
+      const taxConfig =
+        await this.subscriptionTaxService.getActiveConfig();
+      const taxResult = this.subscriptionTaxService.calculateTax(
         amount,
+        taxConfig,
+      );
+      const chargeAmount = taxResult.total;
+
+      const charge: any = await this.paymentsService.chargeAuthorization(
+        chargeAmount,
         ownerEmail,
         sub.paystackAuthorizationCode,
       );
@@ -426,10 +459,20 @@ export class SubscriptionsService {
 
         await this.paymentsService.recordPayment({
           reference: charge.reference,
-          amount: amount,
+          amount: chargeAmount,
           purpose: PaymentPurpose.SUBSCRIPTION,
           status: PaymentStatus.SUCCESS,
-          metadata: { subscriptionId: sub.id, planId: sub.planId },
+          metadata: {
+            subscriptionId: sub.id,
+            planId: sub.planId,
+            subtotal: taxResult.subtotal,
+            taxAmount: taxResult.taxAmount,
+            taxRate: taxResult.taxRule.rate,
+            taxType: taxResult.taxRule.taxType,
+            taxName: taxResult.taxRule.name,
+            taxEnabled: taxResult.taxRule.isEnabled,
+            total: chargeAmount,
+          },
           businessId: sub.businessId,
           userId: sub.business?.ownerId,
         });
@@ -437,7 +480,7 @@ export class SubscriptionsService {
         await this.activateSubscription(sub);
         await this.subscriptionRepository.save(sub);
 
-        // Trigger affiliate commission
+        // Trigger affiliate commission (on base amount)
         if (sub.business) {
           await this.reportCommission(
             sub.business,
@@ -508,8 +551,16 @@ export class SubscriptionsService {
         sub.business?.owner?.email ||
         'billing@latap.com';
 
-      const charge: any = await this.paymentsService.chargeAuthorization(
+      const taxConfig =
+        await this.subscriptionTaxService.getActiveConfig();
+      const taxResult = this.subscriptionTaxService.calculateTax(
         amount,
+        taxConfig,
+      );
+      const chargeAmount = taxResult.total;
+
+      const charge: any = await this.paymentsService.chargeAuthorization(
+        chargeAmount,
         ownerEmail,
         sub.paystackAuthorizationCode,
       );
@@ -521,13 +572,20 @@ export class SubscriptionsService {
 
         await this.paymentsService.recordPayment({
           reference: charge.reference,
-          amount: amount,
+          amount: chargeAmount,
           purpose: PaymentPurpose.SUBSCRIPTION,
           status: PaymentStatus.SUCCESS,
           metadata: {
             subscriptionId: sub.id,
             planId: sub.planId,
             renewal: true,
+            subtotal: taxResult.subtotal,
+            taxAmount: taxResult.taxAmount,
+            taxRate: taxResult.taxRule.rate,
+            taxType: taxResult.taxRule.taxType,
+            taxName: taxResult.taxRule.name,
+            taxEnabled: taxResult.taxRule.isEnabled,
+            total: chargeAmount,
           },
           businessId: sub.businessId,
           userId: sub.business?.ownerId,
@@ -1158,5 +1216,43 @@ export class SubscriptionsService {
         );
       }
     }
+  }
+
+  async previewPrice(
+    dto: PricePreviewDto,
+  ): Promise<TaxCalculationResult & { plan: Plan; addons: AddOn[] }> {
+    const plan = await this.plansService.findOne(dto.planId);
+    if (!plan) {
+      throw new NotFoundException('Plan not found');
+    }
+
+    let planPrice = Number(plan.monthlyPrice || 0);
+    if (dto.billingPeriod === BillingPeriod.QUARTERLY)
+      planPrice = Number(plan.quarterlyPrice || 0);
+    else if (dto.billingPeriod === BillingPeriod.YEARLY)
+      planPrice = Number(plan.yearlyPrice || 0);
+
+    let addons: AddOn[] = [];
+    if (dto.addonIds && dto.addonIds.length > 0) {
+      addons = await this.addonsService.validateAddons(dto.addonIds);
+    }
+
+    const addonsTotal = addons.reduce((sum, addon, index) => {
+      const qty = dto.addonQuantities?.[index] ?? 1;
+      return sum + Number(addon.price) * qty;
+    }, 0);
+
+    const subtotal = planPrice + addonsTotal;
+    const taxConfig = await this.subscriptionTaxService.getActiveConfig();
+    const taxResult = this.subscriptionTaxService.calculateTax(
+      subtotal,
+      taxConfig,
+    );
+
+    return {
+      ...taxResult,
+      plan,
+      addons,
+    };
   }
 }

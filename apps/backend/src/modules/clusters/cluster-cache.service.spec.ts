@@ -83,6 +83,48 @@ describe('ClusterCacheService', () => {
     );
   });
 
+  it('uses the SCAN cursor iterator when the store exposes one', async () => {
+    async function* scanIterator(opts: {
+      MATCH: string;
+    }): AsyncIterable<string> {
+      if (opts.MATCH.includes('cluster:deals:CL-SCAN')) {
+        yield 'cluster:deals:CL-SCAN:100:123:1';
+        yield 'cluster:deals:CL-SCAN:100:123:2';
+      } else {
+        yield 'cluster:context:CL-SCAN';
+      }
+      await Promise.resolve();
+    }
+    const scanStore = {
+      keys: jest.fn(),
+      del: jest.fn(),
+      client: { scanIterator },
+    };
+    const cacheWithClient = {
+      ...mockCacheManager,
+      store: scanStore,
+    };
+    const clientModule: TestingModule = await Test.createTestingModule({
+      providers: [
+        ClusterCacheService,
+        { provide: CACHE_MANAGER, useValue: cacheWithClient },
+      ],
+    }).compile();
+    const clientService =
+      clientModule.get<ClusterCacheService>(ClusterCacheService);
+
+    await clientService.invalidateCluster('CL-SCAN');
+
+    expect(scanStore.keys).not.toHaveBeenCalled();
+    expect(scanStore.del).toHaveBeenCalledWith(
+      'cluster:deals:CL-SCAN:100:123:1',
+    );
+    expect(scanStore.del).toHaveBeenCalledWith(
+      'cluster:deals:CL-SCAN:100:123:2',
+    );
+    expect(scanStore.del).toHaveBeenCalledWith('cluster:context:CL-SCAN');
+  });
+
   it('survives cache read failures gracefully', async () => {
     mockCacheManager.get.mockRejectedValue(new Error('redis down'));
     const value = await service.get('cluster:context:CL-ABC');

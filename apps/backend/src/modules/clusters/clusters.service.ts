@@ -13,6 +13,7 @@ import { Cron } from '@nestjs/schedule';
 import { Cluster, ClusterType } from './entities/cluster.entity';
 import { ClusterOffer } from './entities/cluster-offer.entity';
 import { Branch } from '../branches/entities/branch.entity';
+import { BusinessStatus } from '../businesses/entities/business.entity';
 import {
   CatalogueOffer,
   CatalogueOfferStatus,
@@ -26,6 +27,12 @@ import {
   CLUSTER_DEALS_TTL,
   CLUSTER_CONTEXT_TTL,
 } from './cluster-cache.service';
+import {
+  RotatorEngineService,
+  RotationResult,
+} from '../rotator/rotator-engine.service';
+import { RotatorAnalyticsService } from '../rotator/rotator-analytics.service';
+import { RotatorInvalidationService } from '../rotator/rotator-invalidation.service';
 import {
   ClusterDealsQueryDto,
   ClusterDealsSortBy,
@@ -49,6 +56,105 @@ import {
 
 const ROTATION_BUCKET_MS = 15 * 60 * 1000;
 const MAX_OFFERS_FETCH = 1000;
+
+interface DealBusinessView {
+  id: string;
+  name: string;
+  logoUrl: string | null;
+}
+
+export interface ClusterContext {
+  qrActive: boolean;
+  cluster: {
+    id: string;
+    name: string;
+    uniqueCode: string;
+    description: string | null;
+    qrUrl: string;
+    branchCount: number;
+    radiusMeters: number;
+  };
+  branches: {
+    id: string;
+    name: string;
+    slug: string;
+    logoUrl: string | null;
+    address: string | null;
+    city: string | null;
+    state: string | null;
+    latitude: number;
+    longitude: number;
+  }[];
+}
+
+export interface ClusterDealView {
+  id: string;
+  name: string;
+  description: string;
+  longDescription: string | null;
+  terms: string[] | null;
+  pricingType: string;
+  discountValue: number | null;
+  fixedPrice: number | null;
+  calculatedPrice: number;
+  originalPrice: number;
+  dealPrice: number;
+  discountPercent: number;
+  mainImage: string | null;
+  galleryImages: string[];
+  startDate: Date | null;
+  endDate: Date | null;
+  isExpired: boolean;
+  isTrending: boolean;
+  claimedCount: number;
+  maxClaims: number | null;
+  remainingLimit: number | null;
+  status: string;
+  views: number;
+  offerType: string | null;
+  audience: string | null;
+  audienceTarget: string | null;
+  maxClaimsPerCustomer: number | null;
+  claimCodePrefix: string | null;
+  branchId: string;
+  businessId: string;
+  distanceMeters: number | null;
+  branch: DealBranchView | null;
+  business: DealBusinessView | null;
+}
+
+export interface ClusterDealsResponse {
+  active: boolean;
+  reason?: 'qr_deactivated' | 'cluster_inactive';
+  data: ClusterDealView[];
+  featured?: ClusterDealView[];
+  rotationWindowId?: number | null;
+  total: number;
+  page: number;
+  limit: number;
+  sortBy: ClusterDealsSortBy;
+  seed: number | null;
+  bucket: number | null;
+  reference: {
+    lat: number;
+    lng: number;
+    source: 'customer' | 'cluster_center';
+  };
+}
+
+interface OfferWithDistance extends CatalogueOffer {
+  distanceMeters?: number | null;
+}
+
+interface DealBranchView {
+  id: string;
+  name: string;
+  slug: string;
+  logoUrl: string | null;
+  address: string | null;
+  city: string | null;
+  state: string | null;
+}
 
 function stableHash(input: string): number {
   let hash = 0;
@@ -96,18 +202,17 @@ export class ClustersService {
     private readonly configService: ConfigService,
     @InjectQueue(CLUSTER_AUTO_ASSIGN_QUEUE)
     private readonly autoAssignQueue: Queue,
+    private readonly rotatorEngine: RotatorEngineService,
+    private readonly rotatorAnalytics: RotatorAnalyticsService,
+    private readonly rotatorInvalidation: RotatorInvalidationService,
   ) {}
 
   // ------------------------------------------------------------------
   // Public: scan context
   // ------------------------------------------------------------------
-  async getContext(uniqueCode: string) {
+  async getContext(uniqueCode: string): Promise<ClusterContext> {
     const cacheKey = `cluster:context:${uniqueCode}`;
-    const cached = await this.clusterCache.get<{
-      cluster: any;
-      branches: any[];
-      qrActive: boolean;
-    }>(cacheKey);
+    const cached = await this.clusterCache.get<ClusterContext>(cacheKey);
     if (cached) {
       if (cached.qrActive) {
         await this.incrementScan(uniqueCode);
@@ -177,7 +282,11 @@ export class ClustersService {
   // ------------------------------------------------------------------
   // Public: cluster deals feed (filters + fair rotation + sorting)
   // ------------------------------------------------------------------
-  async getClusterDeals(uniqueCode: string, query: ClusterDealsQueryDto) {
+  async getClusterDeals(
+    uniqueCode: string,
+    query: ClusterDealsQueryDto,
+    sessionToken?: string | null,
+  ): Promise<ClusterDealsResponse> {
     const page = Number(query.page ?? 1);
     const limit = Number(query.limit ?? 10);
     const sortBy = query.sortBy ?? ClusterDealsSortBy.FAIR;
@@ -207,25 +316,71 @@ export class ClustersService {
       };
     }
 
+    // Resolve the current rotation window first (cheap: Layer-2 window result).
+    // The response embeds this window's featured selection, so the deals cache
+    // MUST be keyed by windowId — otherwise a cached page could serve a stale
+    // window's featured set to customers in a newer window.
+    let rotation: RotationResult | null = null;
+    try {
+      rotation = await this.rotatorEngine.getCurrentResult(cluster.id);
+    } catch (err) {
+      this.logger.warn(
+        `Rotator result unavailable for cluster ${cluster.id}: ${(err as Error).message}`,
+      );
+    }
+
     const bucket = Math.floor(Date.now() / ROTATION_BUCKET_MS);
     const filtersHash = stableHash(
       JSON.stringify({
         categoryId: query.categoryId ?? null,
         search: query.search ?? null,
         sortBy,
+        limit,
         lat: query.lat ?? null,
         lng: query.lng ?? null,
       }),
     );
-    const cacheKey = `cluster:deals:${uniqueCode}:${bucket}:${filtersHash}:${page}`;
+    const windowKey = rotation?.windowId ?? 'none';
+    const cacheKey = `cluster:deals:${uniqueCode}:${windowKey}:${bucket}:${filtersHash}:${page}`;
 
-    const cached = await this.clusterCache.get<any>(cacheKey);
-    if (cached) return cached;
+    const cached = await this.clusterCache.get<ClusterDealsResponse>(cacheKey);
+    if (cached) {
+      void this.fireImpressions(cluster.id, cached, sessionToken);
+      return cached;
+    }
 
-    const result = await this.computeDeals(cluster, query);
+    const result = await this.computeDeals(cluster, query, rotation);
+
+    // Fire impression recording asynchronously (never blocks the request).
+    void this.fireImpressions(cluster.id, result, sessionToken);
 
     await this.clusterCache.set(cacheKey, result, CLUSTER_DEALS_TTL);
     return result;
+  }
+
+  private async fireImpressions(
+    clusterId: string,
+    result: { featured?: { id: string }[]; rotationWindowId?: number | null },
+    sessionToken?: string | null,
+  ): Promise<void> {
+    try {
+      const featuredIds = (result.featured ?? []).map((d) => d.id);
+      if (featuredIds.length === 0) return;
+      // No valid rotation window (rotator unavailable) → nothing to attribute
+      // impressions to. Skip rather than pollute window "0".
+      const windowId = result.rotationWindowId;
+      if (windowId == null) return;
+      await this.rotatorAnalytics.recordImpressions(
+        clusterId,
+        featuredIds,
+        windowId,
+        { sessionToken: sessionToken ?? null },
+      );
+    } catch (err) {
+      this.logger.warn(
+        `Failed to fire impressions for cluster ${clusterId}: ${(err as Error).message}`,
+      );
+    }
   }
 
   /**
@@ -237,13 +392,18 @@ export class ClustersService {
     clusterId: string,
     search?: string,
     categoryId?: string,
+    withItemsJoin = true,
   ) {
     const qb = this.offerRepository
       .createQueryBuilder('offer')
       .leftJoinAndSelect('offer.branch', 'branch')
-      .leftJoinAndSelect('offer.business', 'business')
-      .leftJoinAndSelect('offer.items', 'offerItems')
-      .where('branch.clusterId = :clusterId', { clusterId })
+      .leftJoinAndSelect('offer.business', 'business');
+    // The one-to-many items join is only needed when materialising rows. It is
+    // skipped for count queries, where it would multiply the row count.
+    if (withItemsJoin) {
+      qb.leftJoinAndSelect('offer.items', 'offerItems');
+    }
+    qb.where('branch.clusterId = :clusterId', { clusterId })
       .andWhere('offer.status = :status', {
         status: CatalogueOfferStatus.ACTIVE,
       })
@@ -254,6 +414,9 @@ export class ClustersService {
       })
       .andWhere('branch.allowPromotions = :allowPromotions', {
         allowPromotions: true,
+      })
+      .andWhere('business.status = :businessStatus', {
+        businessStatus: BusinessStatus.ACTIVE,
       });
 
     if (search) {
@@ -269,7 +432,11 @@ export class ClustersService {
     return qb;
   }
 
-  private async computeDeals(cluster: Cluster, query: ClusterDealsQueryDto) {
+  private async computeDeals(
+    cluster: Cluster,
+    query: ClusterDealsQueryDto,
+    rotation: RotationResult | null = null,
+  ): Promise<ClusterDealsResponse> {
     const page = Number(query.page ?? 1);
     const limit = Number(query.limit ?? 10);
     const sortBy = query.sortBy ?? ClusterDealsSortBy.FAIR;
@@ -300,14 +467,24 @@ export class ClustersService {
     }
 
     qb.orderBy('offer.createdAt', 'DESC');
+    // Compute the true total before the fetch cap: with more eligible offers
+    // than MAX_OFFERS_FETCH, `getMany` would truncate the result set and a
+    // `total` derived from it would silently under-count.
+    const total = await this.buildOfferQuery(
+      cluster.id,
+      query.search,
+      query.categoryId,
+      false,
+    ).getCount();
     qb.take(MAX_OFFERS_FETCH);
-    let offers = await qb.getMany();
+    let offers = (await qb.getMany()) as OfferWithDistance[];
 
-    const total = offers.length;
     if (offers.length === 0) {
       return {
         active: true,
         data: [],
+        featured: [],
+        rotationWindowId: null,
         total: 0,
         page,
         limit,
@@ -327,14 +504,36 @@ export class ClustersService {
       pinned.map((p) => [p.offerId, p.pinnedAt ?? p.createdAt]),
     );
 
+    const byId = new Map(offers.map((o) => [o.id, o]));
+
+    // Smart Deal Rotator: featured selection for the current rotation window.
+    const rotationFeaturedIds = (rotation?.featured ?? []).filter((id) =>
+      byId.has(id),
+    );
+
     // Ordering
     let seed: number | null = null;
     let bucket: number | null = null;
     if (sortBy === ClusterDealsSortBy.FAIR) {
-      const b = Math.floor(Date.now() / ROTATION_BUCKET_MS);
-      seed = stableHash(`${cluster.id}:${b}`);
-      bucket = b;
-      offers = this.applyFairRotation(offers, cluster.id, b);
+      if (rotationFeaturedIds.length > 0) {
+        // Featured deals lead in rotator order; the remaining eligible deals
+        // follow via the existing fair branch rotation.
+        const featuredSet = new Set(rotationFeaturedIds);
+        const rest = offers.filter((o) => !featuredSet.has(o.id));
+        const b = Math.floor(Date.now() / ROTATION_BUCKET_MS);
+        seed = stableHash(`${cluster.id}:${b}`);
+        bucket = b;
+        const restOrdered = this.applyFairRotation(rest, cluster.id, b);
+        offers = [
+          ...rotationFeaturedIds.map((id) => byId.get(id)!),
+          ...restOrdered,
+        ];
+      } else {
+        const b = Math.floor(Date.now() / ROTATION_BUCKET_MS);
+        seed = stableHash(`${cluster.id}:${b}`);
+        bucket = b;
+        offers = this.applyFairRotation(offers, cluster.id, b);
+      }
     } else if (sortBy === ClusterDealsSortBy.NEWEST) {
       offers.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
     } else if (sortBy === ClusterDealsSortBy.PRICE_ASC) {
@@ -354,9 +553,7 @@ export class ClustersService {
       });
       for (const offer of offers) {
         const d = this.distanceFromReference(offer, reference);
-        (
-          offer as CatalogueOffer & { distanceMeters?: number | null }
-        ).distanceMeters = Number.isFinite(d) ? Math.round(d) : null;
+        offer.distanceMeters = Number.isFinite(d) ? Math.round(d) : null;
       }
     }
 
@@ -371,9 +568,18 @@ export class ClustersService {
       pageOffers.map((offer) => this.mapDeal(offer)),
     );
 
+    const featured = await Promise.all(
+      rotationFeaturedIds
+        .map((id) => byId.get(id))
+        .filter((o): o is CatalogueOffer => !!o)
+        .map((offer) => this.mapDeal(offer)),
+    );
+
     return {
       active: true,
       data,
+      featured,
+      rotationWindowId: rotation?.windowId ?? null,
       total,
       page,
       limit,
@@ -465,9 +671,9 @@ export class ClustersService {
     );
   }
 
-  private async mapDeal(offer: CatalogueOffer) {
+  private async mapDeal(offer: OfferWithDistance): Promise<ClusterDealView> {
     const originalPrice = (offer.items || []).reduce(
-      (acc, it: any) => acc + Number(it.price || 0),
+      (acc, it) => acc + Number(it.price || 0),
       0,
     );
 
@@ -493,8 +699,8 @@ export class ClustersService {
     const isTrending = offer.views > 50 || offer.visits > 10;
     const maxClaims = offer.quantity ?? 100;
 
-    const branch = (offer as any).branch;
-    const business = (offer as any).business;
+    const branch = offer.branch;
+    const business = offer.business;
 
     return {
       id: offer.id,
@@ -529,9 +735,7 @@ export class ClustersService {
       branchId: offer.branchId,
       businessId: offer.businessId,
       distanceMeters:
-        (offer as any).distanceMeters != null
-          ? Number((offer as any).distanceMeters)
-          : null,
+        offer.distanceMeters != null ? Number(offer.distanceMeters) : null,
       branch: branch
         ? {
             id: branch.id,
@@ -588,9 +792,10 @@ export class ClustersService {
       if (cluster) {
         await this.clusterCache.invalidateCluster(cluster.uniqueCode);
       }
+      await this.rotatorInvalidation.invalidateClusters([branch.clusterId]);
     } catch (err) {
       this.logger.warn(
-        `Failed to invalidate cluster cache for branch ${branchId}: ${err.message}`,
+        `Failed to invalidate cluster cache for branch ${branchId}: ${(err as Error).message}`,
       );
     }
   }
@@ -771,13 +976,21 @@ export class ClustersService {
     Object.assign(cluster, dto);
     const saved = await this.clusterRepository.save(cluster);
     await this.clusterCache.invalidateCluster(saved.uniqueCode);
+    await this.rotatorInvalidation.invalidateClusters([saved.id]);
     return this.getDetail(saved.id);
   }
 
   // ------------------------------------------------------------------
   // Admin: offers (auto-match + pin/unpin)
   // ------------------------------------------------------------------
-  async getClusterOffers(clusterId: string, query: ClusterOffersQueryDto) {
+  async getClusterOffers(
+    clusterId: string,
+    query: ClusterOffersQueryDto,
+  ): Promise<{
+    autoMatched: ClusterDealView[];
+    pinned: (ClusterDealView & { pinnedAt: Date })[];
+    total: number;
+  }> {
     const cluster = await this.clusterRepository.findOne({
       where: { id: clusterId },
       select: ['id'],
@@ -796,7 +1009,7 @@ export class ClustersService {
       order: { pinnedAt: 'ASC' },
     });
 
-    let pinned: any[] = [];
+    let pinned: (ClusterDealView & { pinnedAt: Date })[] = [];
     if (pinnedRows.length > 0) {
       const pinnedOfferIds = pinnedRows.map((row) => row.offerId);
       const pinnedOffers = await this.offerRepository.find({
@@ -804,16 +1017,17 @@ export class ClustersService {
         relations: ['branch', 'business', 'items'],
       });
       const pinnedById = new Map(pinnedOffers.map((o) => [o.id, o]));
-      pinned = (
-        await Promise.all(
-          pinnedRows.map(async (row) => {
-            const offer = pinnedById.get(row.offerId);
-            if (!offer) return null;
-            const deal = await this.mapDeal(offer);
-            return { ...deal, pinnedAt: row.pinnedAt ?? row.createdAt };
-          }),
-        )
-      ).filter(Boolean);
+      const mapped = await Promise.all(
+        pinnedRows.map(async (row) => {
+          const offer = pinnedById.get(row.offerId);
+          if (!offer) return null;
+          const deal = await this.mapDeal(offer);
+          return { ...deal, pinnedAt: row.pinnedAt ?? row.createdAt };
+        }),
+      );
+      pinned = mapped.filter(
+        (item): item is ClusterDealView & { pinnedAt: Date } => item !== null,
+      );
     }
 
     return {
@@ -852,21 +1066,39 @@ export class ClustersService {
         existing.pinnedAt = new Date();
         await this.clusterOfferRepository.save(existing);
       } else {
-        await this.clusterOfferRepository.save(
-          this.clusterOfferRepository.create({
-            clusterId,
-            offerId,
-            isPinned: true,
-            pinnedBy: adminId,
-            pinnedAt: new Date(),
-          }),
-        );
+        // A previously unpinned row is soft-deleted and still holds the unique
+        // (clusterId, offerId) index slot. Restore it instead of inserting a
+        // duplicate, which would violate the unique constraint.
+        const trashed = await this.clusterOfferRepository.findOne({
+          where: { clusterId, offerId },
+          withDeleted: true,
+        });
+        if (trashed) {
+          trashed.isPinned = true;
+          trashed.pinnedBy = adminId;
+          trashed.pinnedAt = new Date();
+          await this.clusterOfferRepository.recover(trashed);
+        } else {
+          await this.clusterOfferRepository.save(
+            this.clusterOfferRepository.create({
+              clusterId,
+              offerId,
+              isPinned: true,
+              pinnedBy: adminId,
+              pinnedAt: new Date(),
+            }),
+          );
+        }
       }
     } else if (existing) {
-      await this.clusterOfferRepository.remove(existing);
+      // Keep the row (toggled off) rather than soft-deleting it, so re-pinning
+      // does not trip the unique index.
+      existing.isPinned = false;
+      await this.clusterOfferRepository.save(existing);
     }
 
     await this.clusterCache.invalidateCluster(cluster.uniqueCode);
+    await this.rotatorInvalidation.invalidateClusters([clusterId]);
 
     return { pinned: dto.pinned, offerId, clusterId };
   }
@@ -907,6 +1139,7 @@ export class ClustersService {
     await this.branchRepository.save(branch);
 
     await this.clusterCache.invalidateCluster(cluster.uniqueCode);
+    await this.rotatorInvalidation.invalidateClusters([cluster.id]);
     if (previousClusterId && previousClusterId !== cluster.id) {
       const previousCluster = await this.clusterRepository.findOne({
         where: { id: previousClusterId },
@@ -915,6 +1148,7 @@ export class ClustersService {
       if (previousCluster) {
         await this.clusterCache.invalidateCluster(previousCluster.uniqueCode);
       }
+      await this.rotatorInvalidation.invalidateClusters([previousClusterId]);
     }
 
     return { success: true };
@@ -936,6 +1170,7 @@ export class ClustersService {
     branch.clusterId = null;
     await this.branchRepository.save(branch);
     await this.clusterCache.invalidateCluster(cluster.uniqueCode);
+    await this.rotatorInvalidation.invalidateClusters([cluster.id]);
 
     return { success: true };
   }
@@ -1118,6 +1353,9 @@ export class ClustersService {
       await Promise.all(
         affected.map((c) => this.clusterCache.invalidateCluster(c.uniqueCode)),
       );
+      await this.rotatorInvalidation.invalidateClusters(
+        affectedClusterIds as string[],
+      );
     }
 
     return {
@@ -1137,7 +1375,7 @@ export class ClustersService {
       await this.clusterRepository.increment({ uniqueCode }, 'scanCount', 1);
     } catch (err) {
       this.logger.warn(
-        `Failed to increment scanCount for cluster ${uniqueCode}: ${err.message}`,
+        `Failed to increment scanCount for cluster ${uniqueCode}: ${(err as Error).message}`,
       );
     }
   }

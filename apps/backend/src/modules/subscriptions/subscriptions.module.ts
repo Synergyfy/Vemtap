@@ -27,6 +27,8 @@ import { SettingsModule } from '../settings/settings.module';
 import { BundleDiscount } from './entities/bundle-discount.entity';
 import { BundleDiscountsService } from './services/bundle-discounts.service';
 import { BundleDiscountsController } from './controllers/bundle-discounts.controller';
+import { SubscriptionTaxConfig } from './entities/subscription-tax-config.entity';
+import { SubscriptionTaxService } from './services/subscription-tax.service';
 
 import { Branch } from '../branches/entities/branch.entity';
 import { Device } from '../devices/entities/device.entity';
@@ -53,6 +55,7 @@ import { Reward } from '../loyalty/entities/reward.entity';
       AutomationRule,
       BundleDiscount,
       Reward,
+      SubscriptionTaxConfig,
     ]),
     forwardRef(() => BusinessesModule),
     PaymentsModule,
@@ -74,6 +77,7 @@ import { Reward } from '../loyalty/entities/reward.entity';
     SubscriptionsService,
     AddonsService,
     BundleDiscountsService,
+    SubscriptionTaxService,
     TrialRestrictionGuard,
     CapabilityGuard,
     AnalyticsLevelGuard,
@@ -83,6 +87,7 @@ import { Reward } from '../loyalty/entities/reward.entity';
     PlansService,
     SubscriptionsService,
     AddonsService,
+    SubscriptionTaxService,
     TrialRestrictionGuard,
     CapabilityGuard,
     AnalyticsLevelGuard,

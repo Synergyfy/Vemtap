@@ -8,7 +8,9 @@ import {
   Param,
   Query,
   Req,
+  Headers,
   UseGuards,
+  BadRequestException,
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
@@ -37,6 +39,13 @@ import {
   ClusterOffersQueryDto,
   SetClusterOfferPinnedDto,
 } from './dto/cluster-offer.dto';
+
+interface AuthenticatedAdminRequest {
+  user?: { id?: string };
+}
+
+const UUID_REGEX =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 @ApiTags('Clusters (Public)')
 @Controller('clusters')
@@ -90,8 +99,18 @@ export class ClustersPublicController {
   getDeals(
     @Param('uniqueCode') uniqueCode: string,
     @Query() query: ClusterDealsQueryDto,
+    @Headers('x-visit-session-token') sessionToken?: string,
   ) {
-    return this.clustersService.getClusterDeals(uniqueCode, query);
+    if (sessionToken && !UUID_REGEX.test(sessionToken)) {
+      throw new BadRequestException(
+        'Invalid x-visit-session-token header — expected a UUID',
+      );
+    }
+    return this.clustersService.getClusterDeals(
+      uniqueCode,
+      query,
+      sessionToken ?? null,
+    );
   }
 }
 
@@ -119,8 +138,8 @@ export class ClustersAdminController {
   @Post()
   @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Admin: Create a market cluster' })
-  create(@Body() dto: CreateClusterDto, @Req() req: any) {
-    return this.clustersService.create(dto, req.user?.id);
+  create(@Body() dto: CreateClusterDto, @Req() req: AuthenticatedAdminRequest) {
+    return this.clustersService.create(dto, req.user?.id ?? '');
   }
 
   @Post('auto-assign')
@@ -187,9 +206,14 @@ export class ClustersAdminController {
     @Param('id') id: string,
     @Param('offerId') offerId: string,
     @Body() dto: SetClusterOfferPinnedDto,
-    @Req() req: any,
+    @Req() req: AuthenticatedAdminRequest,
   ) {
-    return this.clustersService.setOfferPinned(id, offerId, dto, req.user?.id);
+    return this.clustersService.setOfferPinned(
+      id,
+      offerId,
+      dto,
+      req.user?.id ?? '',
+    );
   }
 
   @Delete(':id')

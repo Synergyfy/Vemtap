@@ -13,11 +13,13 @@ import { Subscription } from '../subscriptions/entities/subscription.entity';
 import { Plan } from '../subscriptions/entities/plan.entity';
 import { getQueueToken } from '@nestjs/bullmq';
 import { NotFoundException, ConflictException } from '@nestjs/common';
+import { RotatorInvalidationService } from '../rotator/rotator-invalidation.service';
 
 describe('BusinessesService', () => {
   let service: BusinessesService;
   let repository: any;
   let usersRepository: any;
+  let rotatorInvalidation: any;
 
   const mockBusiness = {
     id: 'biz-1',
@@ -25,6 +27,7 @@ describe('BusinessesService', () => {
     logoUrl: 'old-logo.png',
     ownerId: 'owner-1',
     owner: { id: 'owner-1' },
+    status: BusinessStatus.ACTIVE,
     branches: [],
     save: jest.fn(),
   };
@@ -149,12 +152,22 @@ describe('BusinessesService', () => {
           provide: getQueueToken('geocoding'),
           useValue: { add: jest.fn() },
         },
+        {
+          provide: RotatorInvalidationService,
+          useValue: {
+            invalidateClusters: jest.fn().mockResolvedValue(undefined),
+            invalidateForBranch: jest.fn().mockResolvedValue(undefined),
+            invalidateForOffer: jest.fn().mockResolvedValue(undefined),
+            invalidateForBusiness: jest.fn().mockResolvedValue(undefined),
+          },
+        },
       ],
     }).compile();
 
     service = module.get<BusinessesService>(BusinessesService);
     repository = module.get(getRepositoryToken(Business));
     usersRepository = module.get(getRepositoryToken(User));
+    rotatorInvalidation = module.get(RotatorInvalidationService);
   });
 
   it('should be defined', () => {
@@ -229,6 +242,36 @@ describe('BusinessesService', () => {
 
       await expect(service.adminCreate(dto as any)).rejects.toThrow(
         ConflictException,
+      );
+    });
+  });
+
+  describe('suspend/reactivate', () => {
+    beforeEach(() => {
+      jest.clearAllMocks();
+      mockRepository.findOne.mockResolvedValue(mockBusiness);
+      mockRepository.save.mockImplementation((biz) =>
+        Promise.resolve({ id: 'biz-1', ...biz }),
+      );
+    });
+
+    it('suspends the business and invalidates its clusters rotator caches', async () => {
+      const result = await service.suspend('biz-1', 'fraud');
+
+      expect(result.status).toBe(BusinessStatus.SUSPENDED);
+      expect(rotatorInvalidation.invalidateForBusiness).toHaveBeenCalledWith(
+        'biz-1',
+      );
+    });
+
+    it('reactivates the business and invalidates its clusters rotator caches', async () => {
+      mockBusiness.status = BusinessStatus.SUSPENDED;
+
+      const result = await service.reactivate('biz-1');
+
+      expect(result.status).toBe(BusinessStatus.ACTIVE);
+      expect(rotatorInvalidation.invalidateForBusiness).toHaveBeenCalledWith(
+        'biz-1',
       );
     });
   });

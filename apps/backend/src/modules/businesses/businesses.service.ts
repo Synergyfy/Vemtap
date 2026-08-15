@@ -32,6 +32,7 @@ import {
 import { Plan } from '../subscriptions/entities/plan.entity';
 import { MessageLog } from '../messaging/entities/message-log.entity';
 import { FinancialTransaction } from '../fos-core/entities/financial-transaction.entity';
+import { RotatorInvalidationService } from '../rotator/rotator-invalidation.service';
 import {
   GEOCODING_QUEUE,
   GeocodingJobData,
@@ -60,6 +61,7 @@ export class BusinessesService {
     private planRepository: Repository<Plan>,
     @InjectQueue(GEOCODING_QUEUE)
     private readonly geocodingQueue: Queue<GeocodingJobData>,
+    private readonly rotatorInvalidation: RotatorInvalidationService,
   ) {}
 
   async create(
@@ -982,7 +984,9 @@ export class BusinessesService {
     business.status = BusinessStatus.SUSPENDED;
     business.suspensionReason = reason;
     business.suspendedAt = new Date();
-    return this.businessesRepository.save(business);
+    const saved = await this.businessesRepository.save(business);
+    await this.rotatorInvalidation.invalidateForBusiness(id);
+    return saved;
   }
 
   async reactivate(id: string): Promise<Business> {
@@ -990,7 +994,9 @@ export class BusinessesService {
     business.status = BusinessStatus.ACTIVE;
     business.suspensionReason = null as any;
     business.suspendedAt = null as any;
-    return this.businessesRepository.save(business);
+    const saved = await this.businessesRepository.save(business);
+    await this.rotatorInvalidation.invalidateForBusiness(id);
+    return saved;
   }
 
   async getBusinessStatsForAdmin(businessId: string) {
