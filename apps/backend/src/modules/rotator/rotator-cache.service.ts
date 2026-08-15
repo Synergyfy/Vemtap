@@ -2,10 +2,8 @@ import { Injectable, Inject, Logger } from '@nestjs/common';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import type { Cache } from 'cache-manager';
 
-export const CLUSTER_CONTEXT_TTL = 60 * 60 * 1000; // 1 hour
-// Aligned with the Smart Deal Rotator's rotation window (60s): the deals feed
-// now embeds the rotator's featured selection, which changes every window.
-export const CLUSTER_DEALS_TTL = 60 * 1000; // 60 seconds (matches rotation window)
+export const ROTATOR_POOL_TTL = 60 * 1000; // 60s
+export const ROTATOR_RESULT_TTL_BUFFER = 10 * 1000; // extra beyond window end
 
 interface CacheStoreWithKeys {
   keys(pattern: string): Promise<string[]>;
@@ -19,10 +17,18 @@ interface CacheStoreWithKeys {
 }
 
 @Injectable()
-export class ClusterCacheService {
-  private readonly logger = new Logger(ClusterCacheService.name);
+export class RotatorCacheService {
+  private readonly logger = new Logger(RotatorCacheService.name);
 
   constructor(@Inject(CACHE_MANAGER) private readonly cacheManager: Cache) {}
+
+  poolKey(clusterId: string): string {
+    return `rotator:pool:${clusterId}`;
+  }
+
+  resultKey(clusterId: string, windowId: number): string {
+    return `rotator:result:${clusterId}:${windowId}`;
+  }
 
   async get<T>(key: string): Promise<T | null> {
     try {
@@ -46,24 +52,32 @@ export class ClusterCacheService {
     }
   }
 
-  async invalidateCluster(uniqueCode: string): Promise<void> {
+  async del(key: string): Promise<void> {
+    try {
+      await this.cacheManager.del(key);
+    } catch (err) {
+      this.logger.warn(
+        `Cache delete failed for "${key}": ${(err as Error).message}`,
+      );
+    }
+  }
+
+  /**
+   * Removes every rotator key for a cluster (both pool and all window results).
+   * Handles both the redis store (keys()/del) and the in-memory test store.
+   */
+  async invalidateCluster(clusterId: string): Promise<void> {
     try {
       const store = this.resolveStore();
       if (store?.keys) {
-        const dealKeys = await this.collectKeys(
-          store,
-          `*cluster:deals:${uniqueCode}:*`,
-        );
-        const contextKeys = await this.collectKeys(
-          store,
-          `*cluster:context:${uniqueCode}`,
-        );
-        const allKeys = [...new Set([...dealKeys, ...contextKeys])];
-        for (const key of allKeys) {
+        const keys = await this.collectKeys(store, `*rotator:*${clusterId}:*`);
+        for (const key of keys) {
           await store.del(key);
         }
+        // Pool key is covered by the wildcard above, but delete explicitly too.
+        await this.cacheManager.del(this.poolKey(clusterId));
       } else {
-        await this.cacheManager.del(`cluster:context:${uniqueCode}`);
+        await this.cacheManager.del(this.poolKey(clusterId));
         const resettable = this.cacheManager as unknown as {
           reset?: () => Promise<void>;
         };
@@ -73,7 +87,7 @@ export class ClusterCacheService {
       }
     } catch (err) {
       this.logger.error(
-        `Failed to invalidate cluster cache for ${uniqueCode}: ${(err as Error).message}`,
+        `Failed to invalidate rotator cache for cluster ${clusterId}: ${(err as Error).message}`,
       );
     }
   }

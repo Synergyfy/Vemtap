@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, Logger } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { join } from 'path';
@@ -78,6 +78,7 @@ import { AiCopilotModule } from './modules/ai-copilot/ai-copilot.module';
 import { FeedbackModule } from './modules/feedback/feedback.module';
 import { KnowledgeBaseModule } from './modules/knowledge-base/knowledge-base.module';
 import { ClustersModule } from './modules/clusters/clusters.module';
+import { RotatorModule } from './modules/rotator/rotator.module';
 
 @Module({
   imports: [
@@ -103,12 +104,27 @@ import { ClustersModule } from './modules/clusters/clusters.module';
         if (process.env.NODE_ENV === 'test') {
           return { ttl: 60 * 60 * 1000 };
         }
-        return {
-          store: await redisStore({
-            url: configService.get('REDIS_URL') || 'redis://localhost:6379',
-            ttl: 60 * 60 * 1000, // 1 hour default TTL
-          }),
-        };
+        const ttl = 60 * 60 * 1000; // 1 hour default TTL
+        const url =
+          configService.get<string>('REDIS_URL') || 'redis://localhost:6379';
+        try {
+          return {
+            store: await redisStore({
+              url,
+              ttl,
+            }),
+          };
+        } catch (err) {
+          // Redis is unreachable (e.g. local dev without Redis running). Fall
+          // back to the default in-memory store so the app can still boot and
+          // serve traffic; caches are non-authoritative, so a missing Redis
+          // must never take the whole API down.
+          Logger.warn(
+            `Redis cache unavailable (${(err as Error).message}); using in-memory cache store`,
+            'CacheModule',
+          );
+          return { ttl };
+        }
       },
     }),
     ThrottlerModule.forRootAsync({
@@ -209,6 +225,7 @@ import { ClustersModule } from './modules/clusters/clusters.module';
     FeedbackModule,
     KnowledgeBaseModule,
     ClustersModule,
+    RotatorModule,
     StatusModule,
     ScheduleModule.forRoot(),
   ],

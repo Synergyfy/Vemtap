@@ -16,6 +16,7 @@ import { Subscription } from '../subscriptions/entities/subscription.entity';
 import { Plan } from '../subscriptions/entities/plan.entity';
 import { SubscriptionsModule } from '../subscriptions/subscriptions.module';
 import { BusinessVerifiedGuard } from '../../common/guards/business-verified.guard';
+import { RotatorModule } from '../rotator/rotator.module';
 import {
   GeocodingProcessor,
   GEOCODING_QUEUE,
@@ -39,6 +40,7 @@ import {
     DevicesModule,
     forwardRef(() => BranchesModule),
     forwardRef(() => SubscriptionsModule),
+    RotatorModule,
   ],
   providers: [BusinessesService, GeocodingProcessor, BusinessVerifiedGuard],
   controllers: [BusinessesController, PublicBusinessesController],
