@@ -25,6 +25,7 @@ import { AffiliateSyncService } from '../affiliates/affiliate-sync.service';
 import { QrThriveService } from '../qr-thrive/qr-thrive.service';
 import { BranchesService } from '../branches/branches.service';
 import { Reward } from '../loyalty/entities/reward.entity';
+import { SubscriptionTaxService } from './services/subscription-tax.service';
 
 describe('SubscriptionsService', () => {
   let service: SubscriptionsService;
@@ -140,6 +141,44 @@ describe('SubscriptionsService', () => {
     findById: jest.fn(),
   };
 
+  const mockSubscriptionTaxService = {
+    getActiveConfig: jest.fn().mockResolvedValue({
+      id: 'tax-1',
+      name: 'VAT',
+      taxType: 'percentage',
+      rate: 7.5,
+      isEnabled: false,
+      isActive: true,
+    }),
+    calculateTax: jest.fn().mockImplementation((subtotal, config) => {
+      if (!config?.isEnabled) {
+        return {
+          subtotal,
+          taxAmount: 0,
+          total: subtotal,
+          taxRule: {
+            name: 'VAT',
+            taxType: 'percentage',
+            rate: 7.5,
+            isEnabled: false,
+          },
+        };
+      }
+      const taxAmount = (subtotal * config.rate) / 100;
+      return {
+        subtotal,
+        taxAmount,
+        total: subtotal + taxAmount,
+        taxRule: {
+          name: config.name,
+          taxType: config.taxType,
+          rate: config.rate,
+          isEnabled: true,
+        },
+      };
+    }),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -176,6 +215,7 @@ describe('SubscriptionsService', () => {
         { provide: PaymentsService, useValue: mockPaymentsService },
         { provide: CreditService, useValue: mockCreditService },
         { provide: AddonsService, useValue: mockAddonsService },
+        { provide: SubscriptionTaxService, useValue: mockSubscriptionTaxService },
         { provide: AffiliatesService, useValue: mockAffiliatesService },
         {
           provide: AffiliateSyncService,
@@ -550,6 +590,34 @@ describe('SubscriptionsService', () => {
       const result = await service.cancelSubscription('b1');
       expect(result.message).toBe('Subscription cancelled successfully');
       expect(result.subscription.status).toBe(SubscriptionStatus.CANCELED);
+    });
+  });
+
+  describe('previewPrice', () => {
+    it('should calculate price preview with tax breakdown', async () => {
+      mockPlansService.findOne.mockResolvedValueOnce({
+        id: 'plan-1',
+        name: 'Pro Plan',
+        monthlyPrice: 10000,
+      });
+
+      mockSubscriptionTaxService.getActiveConfig.mockResolvedValueOnce({
+        id: 'tax-1',
+        name: 'VAT',
+        taxType: 'percentage',
+        rate: 7.5,
+        isEnabled: true,
+      });
+
+      const result = await service.previewPrice({
+        planId: 'plan-1',
+        billingPeriod: BillingPeriod.MONTHLY,
+      });
+
+      expect(result.subtotal).toBe(10000);
+      expect(result.taxAmount).toBe(750);
+      expect(result.total).toBe(10750);
+      expect(result.plan.name).toBe('Pro Plan');
     });
   });
 });
