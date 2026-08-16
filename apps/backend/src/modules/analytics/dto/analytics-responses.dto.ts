@@ -91,6 +91,28 @@ export class TrafficByEntranceDto {
   count: string;
 }
 
+export class VisitDurationDistributionDto {
+  @ApiProperty({ example: '< 15 mins' })
+  label: string;
+
+  @ApiProperty({ example: '45' })
+  p: string;
+
+  @ApiProperty({ example: '45%' })
+  time: string;
+}
+
+export class VisitDurationDto {
+  @ApiProperty({ example: '18m 45s' })
+  averageStay: string;
+
+  @ApiProperty({ example: '+4.2%' })
+  trendText: string;
+
+  @ApiProperty({ type: [VisitDurationDistributionDto] })
+  distribution: VisitDurationDistributionDto[];
+}
+
 export class FootfallAnalyticsResponseDto {
   @ApiProperty({ type: [AnalyticsStatDto] })
   stats: AnalyticsStatDto[];
@@ -100,6 +122,9 @@ export class FootfallAnalyticsResponseDto {
 
   @ApiProperty({ type: [TrafficByEntranceDto] })
   trafficByEntrance: TrafficByEntranceDto[];
+
+  @ApiProperty({ type: VisitDurationDto })
+  visitDuration: VisitDurationDto;
 }
 
 export class WeeklyDataDto {

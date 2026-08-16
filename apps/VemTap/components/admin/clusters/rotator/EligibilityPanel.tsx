@@ -125,7 +125,8 @@ export default function EligibilityPanel({
     const isManual = mode === 'manual';
 
     return (
-        <div className="flex flex-col min-h-0 h-full">
+        <div className="flex flex-col min-h-0 flex-1">
+            <div className="flex-1 min-h-0 overflow-y-auto">
             <div>
                 <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Eligible Deals</p>
                 <h3 className="text-base font-display font-bold text-text-main mt-0.5">Which deals can rotate?</h3>
@@ -217,7 +218,7 @@ export default function EligibilityPanel({
             )}
 
             {/* List */}
-            <div className="mt-4 flex-1 min-h-0 flex flex-col">
+            <div className="mt-4">
                 {isManual ? (
                     <div className="grid grid-cols-2 gap-2 mb-3">
                         <div className="relative col-span-2">
@@ -257,7 +258,7 @@ export default function EligibilityPanel({
                     </p>
                 )}
 
-                <div className="flex-1 min-h-0 overflow-y-auto rounded-2xl border border-gray-100 divide-y divide-gray-50">
+                <div className="rounded-2xl border border-gray-100 divide-y divide-gray-50">
                     {dealsLoading ? (
                         <div className="p-8 flex items-center justify-center gap-2 text-text-secondary text-xs font-bold">
                             <Loader2 size={14} className="animate-spin" /> Loading deals…
@@ -308,9 +309,10 @@ export default function EligibilityPanel({
                     )}
                 </div>
             </div>
+            </div>
 
             {/* Footer */}
-            <div className="flex items-center justify-between gap-3 pt-4 mt-auto border-t border-gray-100">
+            <div className="shrink-0 flex items-center justify-between gap-3 pt-4 border-t border-gray-100">
                 <button onClick={back} className="text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-gray-600 px-3 py-2">
                     Back
                 </button>

@@ -19,7 +19,10 @@ import type {
     RotationPreview,
     DealEligibility,
     QrRotationConfig,
+    GlobalRotationDefaults,
 } from './types';
+
+import { DEFAULT_GLOBAL_ROTATION, DEFAULT_ROTATION_WINDOW_SECONDS } from './types';
 
 const STORAGE_KEY = 'vemtap_rotator_mock_v1';
 
@@ -182,12 +185,14 @@ export const defaultConfig = (clusterId: string, firstDeals: string[] = []): Rot
     schedules: [],
     featuredSlots: { mode: 'automatic', count: 5 },
     frequency: { mode: 'automatic', maxViewsPerCustomerPerDay: 3 },
+    rotationWindowSeconds: DEFAULT_ROTATION_WINDOW_SECONDS,
     updatedAt: iso(new Date()),
 });
 
 interface MockDb {
     configs: Record<string, RotationConfig>;
     qr: Record<string, QrRotationConfig>;
+    defaults?: GlobalRotationDefaults;
 }
 
 const loadDb = (): MockDb => {
@@ -202,7 +207,7 @@ const loadDb = (): MockDb => {
             // fall through to fresh mock state
         }
     }
-    return { configs: {}, qr: {} };
+    return { configs: {}, qr: {}, defaults: undefined };
 };
 
 const saveDb = (db: MockDb) => {
@@ -229,6 +234,15 @@ export const getMockConfig = (clusterId: string, deals: RotatorDeal[]): Rotation
         db.configs[clusterId] = defaultConfig(clusterId, ids);
         saveDb(db);
         return db.configs[clusterId];
+    }
+    // Pad stored configs with any fields added after they were last saved
+    // (e.g. rotationWindowSeconds) so old persisted values never leak NaN/undefined.
+    const base = defaultConfig(clusterId, ids);
+    const padded: RotationConfig = { ...base, ...existing, clusterId };
+    if (JSON.stringify(padded) !== JSON.stringify(existing)) {
+        db.configs[clusterId] = padded;
+        saveDb(db);
+        return padded;
     }
     // Keep weights aligned with the catalogue without losing manual edits.
     const mergedWeights: Record<string, number> = {};
@@ -408,4 +422,31 @@ export const saveMockQrRotation = (cfg: QrRotationConfig): QrRotationConfig => {
     db.qr[cfg.qrId] = cfg;
     saveDb(db);
     return cfg;
+};
+
+// -----------------------------------------------------------------------------
+// Global defaults (mock)
+// -----------------------------------------------------------------------------
+
+export const getMockGlobalDefaults = (): GlobalRotationDefaults => {
+    const db = loadDb();
+    if (db.defaults) return db.defaults;
+    const cfg: GlobalRotationDefaults = { ...DEFAULT_GLOBAL_ROTATION };
+    db.defaults = cfg;
+    saveDb(db);
+    return cfg;
+};
+
+export const saveMockGlobalDefaults = (patch: Partial<GlobalRotationDefaults>): GlobalRotationDefaults => {
+    const db = loadDb();
+    db.defaults = { ...(db.defaults ?? DEFAULT_GLOBAL_ROTATION), ...patch, updatedAt: iso(new Date()) };
+    saveDb(db);
+    return db.defaults;
+};
+
+export const resetMockGlobalDefaults = (): GlobalRotationDefaults => {
+    const db = loadDb();
+    db.defaults = { ...DEFAULT_GLOBAL_ROTATION };
+    saveDb(db);
+    return db.defaults;
 };

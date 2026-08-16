@@ -5,6 +5,9 @@ import { Plan } from './entities/plan.entity';
 import { Repository } from 'typeorm';
 import { PricingUtil } from './utils/pricing.util';
 
+import { SubscriptionTaxService } from './services/subscription-tax.service';
+import { TaxType } from './entities/subscription-tax-config.entity';
+
 describe('PlansService', () => {
   let service: PlansService;
   let repository: Repository<Plan>;
@@ -23,8 +26,38 @@ describe('PlansService', () => {
     whatsappCredits: 100,
   };
 
+  const mockTaxConfig = {
+    id: 'tax-1',
+    name: 'VAT',
+    taxType: TaxType.PERCENTAGE,
+    rate: 10,
+    isEnabled: true,
+    isActive: true,
+  };
+
+  const mockSubscriptionTaxService = {
+    getActiveConfig: jest.fn().mockResolvedValue(mockTaxConfig),
+    calculateTax: jest.fn().mockImplementation((subtotal, config) => {
+      if (!config?.isEnabled) {
+        return {
+          subtotal,
+          taxAmount: 0,
+          total: subtotal,
+          taxRule: { name: 'VAT', taxType: TaxType.PERCENTAGE, rate: 10, isEnabled: false },
+        };
+      }
+      const taxAmount = (subtotal * config.rate) / 100;
+      return {
+        subtotal,
+        taxAmount,
+        total: subtotal + taxAmount,
+        taxRule: { name: config.name, taxType: config.taxType, rate: config.rate, isEnabled: true },
+      };
+    }),
+  };
+
   const mockPlanRepository = {
-    create: jest.fn().mockImplementation((dto) => ({ ...dto })), // Mock create returning object similar to DTO
+    create: jest.fn().mockImplementation((dto) => ({ ...dto })),
     save: jest
       .fn()
       .mockImplementation((plan) => Promise.resolve({ id: '1', ...plan })),
@@ -41,6 +74,10 @@ describe('PlansService', () => {
         {
           provide: getRepositoryToken(Plan),
           useValue: mockPlanRepository,
+        },
+        {
+          provide: SubscriptionTaxService,
+          useValue: mockSubscriptionTaxService,
         },
       ],
     }).compile();
@@ -69,15 +106,23 @@ describe('PlansService', () => {
     expect(mockPlanRepository.save).toHaveBeenCalled();
   });
 
-  it('should return all plans', async () => {
+  it('should return all plans with tax breakdown and price with tax included', async () => {
     const plans = await service.findAll();
-    expect(plans).toEqual([mockPlan]);
+    expect(plans).toHaveLength(1);
+    expect(plans[0].id).toBe('1');
+    expect(plans[0].monthlyPrice).toBe(1000);
+    expect(plans[0].monthlyTax).toBe(100);
+    expect(plans[0].monthlyPriceWithTax).toBe(1100);
+    expect(plans[0].pricing.monthly.totalPrice).toBe(1100);
     expect(mockPlanRepository.find).toHaveBeenCalled();
   });
 
-  it('should return one plan by id', async () => {
+  it('should return one plan by id with tax breakdown', async () => {
     const plan = await service.findOne('1');
-    expect(plan).toEqual(mockPlan);
+    expect(plan.id).toBe('1');
+    expect(plan.monthlyPrice).toBe(1000);
+    expect(plan.monthlyTax).toBe(100);
+    expect(plan.monthlyPriceWithTax).toBe(1100);
     expect(mockPlanRepository.findOne).toHaveBeenCalledWith({
       where: { id: '1' },
     });

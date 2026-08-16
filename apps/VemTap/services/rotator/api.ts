@@ -22,6 +22,7 @@ import type {
     RotationStatus,
     RotationStrategy,
     AutoMode,
+    GlobalRotationDefaults,
 } from './types';
 import {
     buildCatalogue,
@@ -33,6 +34,9 @@ import {
     mockAnalytics,
     getMockQrRotation,
     saveMockQrRotation,
+    getMockGlobalDefaults,
+    saveMockGlobalDefaults,
+    resetMockGlobalDefaults,
     delay,
     type MockRotationMutation,
 } from './mock';
@@ -211,6 +215,14 @@ export const rotatorApi = {
         } as MockRotationMutation);
     },
 
+    // -> PATCH /admin/clusters/:id/rotation → rotationWindowSeconds
+    //    Internal-only: the platform team tunes this; never exposed to businesses.
+    saveRotationWindow: async (clusterId: string, seconds: number): Promise<RotationConfig> => {
+        return rotatorApi.updateConfig(clusterId, {
+            rotationWindowSeconds: seconds,
+        } as MockRotationMutation);
+    },
+
     // -> GET /admin/clusters/:id/rotation/analytics
     getAnalytics: async (clusterId: string, clusterName: string, qrScans: number): Promise<RotationAnalytics> => {
         try {
@@ -259,6 +271,39 @@ export const rotatorApi = {
         } catch {
             await delay();
             return saveMockQrRotation(cfg);
+        }
+    },
+
+    // -> GET /admin/rotator/defaults
+    getGlobalDefaults: async (): Promise<GlobalRotationDefaults> => {
+        try {
+            const res = await api.get('/admin/rotator/defaults');
+            return res as GlobalRotationDefaults;
+        } catch {
+            await delay();
+            return getMockGlobalDefaults();
+        }
+    },
+
+    // -> PATCH /admin/rotator/defaults
+    saveGlobalDefaults: async (patch: Partial<GlobalRotationDefaults>): Promise<GlobalRotationDefaults> => {
+        try {
+            const res = await api.patch('/admin/rotator/defaults', patch);
+            return res as GlobalRotationDefaults;
+        } catch {
+            await delay();
+            return saveMockGlobalDefaults(patch);
+        }
+    },
+
+    // -> POST /admin/rotator/defaults/reset
+    resetGlobalDefaults: async (): Promise<GlobalRotationDefaults> => {
+        try {
+            const res = await api.post('/admin/rotator/defaults/reset', {});
+            return res as GlobalRotationDefaults;
+        } catch {
+            await delay();
+            return resetMockGlobalDefaults();
         }
     },
 };

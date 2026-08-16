@@ -10,6 +10,7 @@ import type {
     RotationAnalytics,
     RotatorDeal,
     RotationPreview,
+    GlobalRotationDefaults,
 } from './types';
 
 export const useClusterRotation = (clusterId: string | null | undefined) =>
@@ -18,6 +19,14 @@ export const useClusterRotation = (clusterId: string | null | undefined) =>
         queryFn: () => rotatorApi.getConfig(clusterId!),
         enabled: !!clusterId,
         staleTime: 30_000,
+        retry: false,
+    });
+
+export const useGlobalRotationDefaults = () =>
+    useQuery<GlobalRotationDefaults>({
+        queryKey: ['rotator', 'defaults'],
+        queryFn: () => rotatorApi.getGlobalDefaults(),
+        staleTime: 60_000,
         retry: false,
     });
 

@@ -18,8 +18,8 @@ describe('AnalyticsService', () => {
   let service: AnalyticsService;
 
   const mockRepository = {
-    find: jest.fn().mockResolvedValue([]),
-    findOne: jest.fn().mockResolvedValue(null),
+    find: jest.fn().mockResolvedValue([{ id: 'b1', businessId: 'biz1' }]),
+    findOne: jest.fn().mockResolvedValue({ id: 'b1', businessId: 'biz1' }),
     count: jest.fn().mockResolvedValue(0),
     createQueryBuilder: jest.fn(() => ({
       where: jest.fn().mockReturnThis(),
@@ -122,6 +122,7 @@ describe('AnalyticsService', () => {
       expect(result.stats).toBeDefined();
       expect(result.hourlyData).toBeDefined();
       expect(result.trafficByEntrance).toBeDefined();
+      expect(result.visitDuration).toBeDefined();
     });
   });
 

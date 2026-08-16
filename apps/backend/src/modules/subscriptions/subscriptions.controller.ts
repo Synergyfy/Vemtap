@@ -2,8 +2,11 @@ import {
   Controller,
   Get,
   Post,
+  Put,
+  Patch,
   Body,
   Param,
+  Query,
   UseGuards,
   Request,
   BadRequestException,
@@ -22,8 +25,13 @@ import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { UserRole } from '../users/entities/user.entity';
 import { SkipSubscriptionCheck } from './decorators/skip-subscription-check.decorator';
+import { Public } from '../../common/decorators/public.decorator';
 import { BranchesService } from '../branches/branches.service';
 import { SubscribeWithAddonsDto } from './dto/addons/subscribe-with-addons.dto';
+import { SubscriptionTaxService } from './services/subscription-tax.service';
+import { UpdateSubscriptionTaxDto } from './dto/tax/update-subscription-tax.dto';
+import { ToggleSubscriptionTaxDto } from './dto/tax/toggle-subscription-tax.dto';
+import { PricePreviewDto } from './dto/tax/price-preview.dto';
 
 @ApiTags('Subscriptions (Owner / Capabilities)')
 @Controller('subscriptions')
@@ -33,6 +41,7 @@ export class SubscriptionsController {
   constructor(
     private readonly subscriptionsService: SubscriptionsService,
     private readonly branchesService: BranchesService,
+    private readonly subscriptionTaxService: SubscriptionTaxService,
   ) {}
 
   private async getBusinessId(req: any): Promise<string> {
@@ -157,6 +166,83 @@ export class SubscriptionsController {
   async getCapabilities(@Request() req) {
     const businessId = await this.getBusinessId(req);
     return this.subscriptionsService.getCapabilities(businessId);
+  }
+
+  // --- Subscription Tax (VAT) Endpoints ---
+
+  @Get('tax-config')
+  @Public()
+  @ApiOperation({
+    summary: 'Get active subscription VAT / Tax configuration',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Active subscription tax configuration',
+  })
+  async getTaxConfig() {
+    return this.subscriptionTaxService.getActiveConfig();
+  }
+
+  @Get('price-preview')
+  @Public()
+  @ApiOperation({
+    summary:
+      'Preview subscription checkout cost with VAT/tax breakdown and add-ons',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Calculated breakdown of subtotal, tax amount, and total',
+  })
+  async previewPrice(@Query() dto: PricePreviewDto) {
+    return this.subscriptionsService.previewPrice(dto);
+  }
+
+  // --- Admin Tax Endpoints ---
+
+  @Get('admin/tax-config/history')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({
+    summary: 'Admin: Get complete audit history of tax configuration changes',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'List of all tax configuration history records',
+  })
+  async getTaxHistory() {
+    return this.subscriptionTaxService.getHistory();
+  }
+
+  @Put('admin/tax-config')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({
+    summary:
+      'Admin: Update subscription tax rule (% or fixed price) and record history',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'New tax configuration saved successfully',
+  })
+  async updateTaxConfig(
+    @Request() req: any,
+    @Body() dto: UpdateSubscriptionTaxDto,
+  ) {
+    return this.subscriptionTaxService.updateTaxConfig(req.user.id, dto);
+  }
+
+  @Patch('admin/tax-config/toggle')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({
+    summary: 'Admin: Quick toggle to enable or disable VAT/Tax for subscriptions',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Tax status toggled successfully and recorded in history',
+  })
+  async toggleTax(
+    @Request() req: any,
+    @Body() dto: ToggleSubscriptionTaxDto,
+  ) {
+    return this.subscriptionTaxService.toggleTax(req.user.id, dto);
   }
 
   // --- Admin Endpoints ---

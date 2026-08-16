@@ -16,6 +16,9 @@ import {
   CLUSTER_AUTO_ASSIGN_QUEUE,
   CLUSTER_AUTO_ASSIGN_JOB_ID,
 } from './cluster-auto-assign.constants';
+import { RotatorEngineService } from '../rotator/rotator-engine.service';
+import { RotatorAnalyticsService } from '../rotator/rotator-analytics.service';
+import { RotatorInvalidationService } from '../rotator/rotator-invalidation.service';
 
 function stableHash(input: string): number {
   let hash = 0;
@@ -28,6 +31,38 @@ function stableHash(input: string): number {
 function bucketTime(bucket: number): number {
   return bucket * 15 * 60 * 1000 + 1;
 }
+
+type MockOfferBranch = Partial<Branch>;
+
+type MockOffer = {
+  id: string;
+  branchId: string;
+  branch: MockOfferBranch;
+  business: { id: string; name: string };
+  name: string;
+  description: string;
+  longDescription: string | null;
+  terms: string[];
+  pricingType: string;
+  discountValue: number | null;
+  fixedPrice: number | null;
+  calculatedPrice: number;
+  mainImage: string | null;
+  galleryImages: string[];
+  startDate: Date;
+  endDate: Date;
+  status: string;
+  views: number;
+  visits: number;
+  quantity: number;
+  maxClaimsPerCustomer: number;
+  claimCodePrefix: string | null;
+  offerType: string | null;
+  audience: string | null;
+  audienceTarget: string | null;
+  createdAt: Date;
+  businessId: string;
+};
 
 describe('ClustersService', () => {
   let service: ClustersService;
@@ -71,6 +106,7 @@ describe('ClustersService', () => {
     create: jest.fn(),
     save: jest.fn(),
     remove: jest.fn(),
+    recover: jest.fn(),
   };
 
   const claimRepo = {
@@ -94,8 +130,43 @@ describe('ClustersService', () => {
     add: jest.fn().mockResolvedValue({ id: 'job-1' }),
   };
 
-  function buildQb(overrides: Record<string, any> = {}) {
-    const qb: any = {
+  const rotatorEngine = {
+    getCurrentResult: jest.fn().mockResolvedValue(null),
+  };
+
+  const rotatorAnalytics = {
+    recordImpressions: jest.fn().mockResolvedValue(undefined),
+  };
+
+  const rotatorInvalidation = {
+    invalidateClusters: jest.fn().mockResolvedValue(undefined),
+    invalidateForBranch: jest.fn().mockResolvedValue(undefined),
+    invalidateForOffer: jest.fn().mockResolvedValue(undefined),
+  };
+
+  type MockQueryBuilder = {
+    where: jest.Mock;
+    andWhere: jest.Mock;
+    leftJoinAndSelect: jest.Mock;
+    addSelect: jest.Mock;
+    setParameters: jest.Mock;
+    take: jest.Mock;
+    orderBy: jest.Mock;
+    skip: jest.Mock;
+    limit: jest.Mock;
+    getMany: jest.Mock;
+    getManyAndCount: jest.Mock;
+    getCount: jest.Mock;
+    getRawOne: jest.Mock;
+    getOne: jest.Mock;
+    getRawMany: jest.Mock;
+    innerJoin: jest.Mock;
+    from: jest.Mock;
+    select: jest.Mock;
+  };
+
+  function buildQb(overrides: Record<string, unknown> = {}): MockQueryBuilder {
+    const qb = {
       where: jest.fn().mockReturnThis(),
       andWhere: jest.fn().mockReturnThis(),
       leftJoinAndSelect: jest.fn().mockReturnThis(),
@@ -121,15 +192,17 @@ describe('ClustersService', () => {
 
   beforeEach(async () => {
     jest.clearAllMocks();
-    clusterRepo.create.mockImplementation((data: any) => ({
+    clusterRepo.create.mockImplementation((data: Partial<Cluster>) => ({
       id: 'cluster-new',
       ...data,
     }));
     clusterOfferRepo.find.mockResolvedValue([]);
-    clusterOfferRepo.create.mockImplementation((data: any) => ({
-      id: 'cluster-offer-new',
-      ...data,
-    }));
+    clusterOfferRepo.create.mockImplementation(
+      (data: Partial<ClusterOffer>) => ({
+        id: 'cluster-offer-new',
+        ...data,
+      }),
+    );
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -151,6 +224,9 @@ describe('ClustersService', () => {
           provide: getQueueToken(CLUSTER_AUTO_ASSIGN_QUEUE),
           useValue: autoAssignQueue,
         },
+        { provide: RotatorEngineService, useValue: rotatorEngine },
+        { provide: RotatorAnalyticsService, useValue: rotatorAnalytics },
+        { provide: RotatorInvalidationService, useValue: rotatorInvalidation },
       ],
     }).compile();
 
@@ -222,7 +298,11 @@ describe('ClustersService', () => {
       qrIsActive: true,
     };
 
-    const makeOffer = (id: string, branchId: string, date: string) => ({
+    const makeOffer = (
+      id: string,
+      branchId: string,
+      date: string,
+    ): MockOffer => ({
       id,
       branchId,
       branch: { id: branchId, name: `Branch ${branchId}` },
@@ -282,12 +362,15 @@ describe('ClustersService', () => {
       expect(result.active).toBe(true);
       expect(result.data).toHaveLength(1);
       expect(result.data[0].id).toBe('o1');
-      expect(result.data[0].branch.id).toBe('b1');
+      expect(result.data[0].branch?.id).toBe('b1');
       expect(result.data[0].claimedCount).toBe(0);
 
-      const whereCalls = [...qb.where.mock.calls, ...qb.andWhere.mock.calls]
-        .map((c: any[]) => c[0])
-        .join(' ');
+      const whereArgs: string[] = [];
+      const whereCallsRaw = qb.where.mock.calls as unknown[][];
+      const andWhereCallsRaw = qb.andWhere.mock.calls as unknown[][];
+      for (const call of whereCallsRaw) whereArgs.push(String(call[0]));
+      for (const call of andWhereCallsRaw) whereArgs.push(String(call[0]));
+      const whereCalls = whereArgs.join(' ');
       expect(whereCalls).toContain('offer.status = :status');
       expect(whereCalls).toContain('branch.clusterId = :clusterId');
       expect(qb.andWhere).toHaveBeenCalled();
@@ -303,8 +386,9 @@ describe('ClustersService', () => {
         search: 'grill',
       });
 
-      const andWhereCalls = qb.andWhere.mock.calls
-        .map((c: any[]) => c[0])
+      const andWhereCallArgs = qb.andWhere.mock.calls as unknown[][];
+      const andWhereCalls = andWhereCallArgs
+        .map((c: unknown[]) => String(c[0]))
         .join(' ');
       expect(andWhereCalls).toContain('business.categoryId = :categoryId');
       expect(andWhereCalls).toContain('offer.name ILIKE :search');
@@ -323,25 +407,15 @@ describe('ClustersService', () => {
         sortBy: ClusterDealsSortBy.PRICE_ASC,
       });
 
-      expect(result.data.map((d: any) => d.id)).toEqual(['o2', 'o1']);
+      expect(result.data.map((d) => d.id)).toEqual(['o2', 'o1']);
     });
 
     it('computes distance from branch coordinates and uses customer location when provided', async () => {
       const qb = buildQb();
       const o1 = makeOffer('o1', 'b1', '2026-01-05');
-      o1.branch = {
-        id: 'b1',
-        name: 'Branch b1',
-        latitude: 9.052,
-        longitude: 7.492,
-      };
+      o1.branch = { ...o1.branch, latitude: 9.052, longitude: 7.492 };
       const o2 = makeOffer('o2', 'b2', '2026-01-04');
-      o2.branch = {
-        id: 'b2',
-        name: 'Branch b2',
-        latitude: 9.051,
-        longitude: 7.491,
-      };
+      o2.branch = { ...o2.branch, latitude: 9.051, longitude: 7.491 };
       qb.getMany.mockResolvedValue([o1, o2]);
       offerRepo.createQueryBuilder.mockReturnValue(qb);
 
@@ -352,7 +426,7 @@ describe('ClustersService', () => {
       });
 
       expect(result.reference.source).toBe('customer');
-      expect(result.data.map((d: any) => d.id)).toEqual(['o2', 'o1']);
+      expect(result.data.map((d) => d.id)).toEqual(['o2', 'o1']);
       expect(result.data[0].distanceMeters).toBeGreaterThan(0);
       expect(qb.addSelect).not.toHaveBeenCalled();
     });
@@ -388,8 +462,8 @@ describe('ClustersService', () => {
         const first = await service.getClusterDeals('CL-ABC123DEF', {});
         const second = await service.getClusterDeals('CL-ABC123DEF', {});
 
-        expect(first.data.map((d: any) => d.id)).toEqual(
-          second.data.map((d: any) => d.id),
+        expect(first.data.map((d) => d.id)).toEqual(
+          second.data.map((d) => d.id),
         );
       } finally {
         nowSpy.mockRestore();
@@ -412,7 +486,7 @@ describe('ClustersService', () => {
         sortBy: ClusterDealsSortBy.PRICE_ASC,
       });
 
-      expect(result.data.map((d: any) => d.id)).toEqual(['o2', 'o1']);
+      expect(result.data.map((d) => d.id)).toEqual(['o2', 'o1']);
       expect(clusterOfferRepo.find).toHaveBeenCalledWith({
         where: { clusterId: 'cl-1', isPinned: true },
         select: ['offerId', 'pinnedAt'],
@@ -455,14 +529,88 @@ describe('ClustersService', () => {
         const offsetB = stableHash(`cl-1:${bucketB}`) % memberCount;
         const expectedB = offsetB === 0 ? ['o1', 'o3'] : ['o3', 'o1'];
 
-        expect(resultA.data.map((d: any) => d.id)).toEqual(expectedA);
-        expect(resultB.data.map((d: any) => d.id)).toEqual(expectedB);
-        expect(resultA.data.map((d: any) => d.id)).not.toEqual(
-          resultB.data.map((d: any) => d.id),
+        expect(resultA.data.map((d) => d.id)).toEqual(expectedA);
+        expect(resultB.data.map((d) => d.id)).toEqual(expectedB);
+        expect(resultA.data.map((d) => d.id)).not.toEqual(
+          resultB.data.map((d) => d.id),
         );
       } finally {
         nowSpy.mockRestore();
       }
+    });
+
+    it('keys the deals cache on the current rotation window and passes the session token to impressions', async () => {
+      rotatorEngine.getCurrentResult.mockResolvedValue({
+        clusterId: 'cl-1',
+        windowId: 98765,
+        slotCount: 1,
+        featured: ['o1'],
+      });
+
+      const o1 = makeOffer('o1', 'b1', '2026-01-05');
+      const qb = buildQb();
+      qb.getMany.mockResolvedValue([o1]);
+      offerRepo.createQueryBuilder.mockReturnValue(qb);
+
+      const result = await service.getClusterDeals(
+        'CL-ABC123DEF',
+        {},
+        'sess-123',
+      );
+
+      expect(clusterCache.get).toHaveBeenCalledWith(
+        expect.stringContaining(':98765:'),
+      );
+      expect(clusterCache.set).toHaveBeenCalledWith(
+        expect.stringContaining(':98765:'),
+        expect.any(Object),
+        expect.any(Number),
+      );
+      expect(result.featured?.map((d) => d.id)).toEqual(['o1']);
+      expect(result.rotationWindowId).toBe(98765);
+      expect(rotatorAnalytics.recordImpressions).toHaveBeenCalledWith(
+        'cl-1',
+        ['o1'],
+        98765,
+        { sessionToken: 'sess-123' },
+      );
+    });
+
+    it('excludes offers from suspended businesses from the feed', async () => {
+      const qb = buildQb();
+      qb.getMany.mockResolvedValue([]);
+      offerRepo.createQueryBuilder.mockReturnValue(qb);
+
+      await service.getClusterDeals('CL-ABC123DEF', {});
+
+      const andWhereCallArgs = qb.andWhere.mock.calls as unknown[][];
+      const andWhereCalls = andWhereCallArgs
+        .map((c: unknown[]) => String(c[0]))
+        .join(' ');
+      expect(andWhereCalls).toContain('business.status = :businessStatus');
+    });
+
+    it('keys the deals cache distinctly per limit', async () => {
+      rotatorEngine.getCurrentResult.mockResolvedValue({
+        clusterId: 'cl-1',
+        windowId: 98765,
+        slotCount: 1,
+        featured: ['o1'],
+      });
+      const o1 = makeOffer('o1', 'b1', '2026-01-05');
+      const qb = buildQb();
+      qb.getMany.mockResolvedValue([o1]);
+      offerRepo.createQueryBuilder.mockReturnValue(qb);
+      clusterCache.get.mockResolvedValue(null);
+
+      await service.getClusterDeals('CL-ABC123DEF', { limit: 10 });
+      await service.getClusterDeals('CL-ABC123DEF', { limit: 50 });
+
+      const setKeys = (clusterCache.set.mock.calls as unknown[][]).map(
+        (c: unknown[]) => String(c[0]),
+      );
+      expect(setKeys).toHaveLength(2);
+      expect(setKeys[0]).not.toBe(setKeys[1]);
     });
   });
 
@@ -605,7 +753,7 @@ describe('ClustersService', () => {
   });
 
   describe('admin offers (auto-match + pin/unpin)', () => {
-    const makeOffer = (id: string, branchId: string) => ({
+    const makeOffer = (id: string, branchId: string): MockOffer => ({
       id,
       branchId,
       branch: { id: branchId, name: `Branch ${branchId}` },
@@ -657,8 +805,8 @@ describe('ClustersService', () => {
 
       const result = await service.getClusterOffers('cl-1', {});
 
-      expect(result.autoMatched.map((d: any) => d.id)).toEqual(['o1', 'o2']);
-      expect(result.pinned.map((d: any) => d.id)).toEqual(['o2']);
+      expect(result.autoMatched.map((d) => d.id)).toEqual(['o1', 'o2']);
+      expect(result.pinned.map((d) => d.id)).toEqual(['o2']);
       expect(result.total).toBe(2);
       expect(offerRepo.find).toHaveBeenCalledWith(
         expect.objectContaining({ relations: ['branch', 'business', 'items'] }),
@@ -698,7 +846,7 @@ describe('ClustersService', () => {
       );
     });
 
-    it('unpins an offer by removing its row and invalidates the cache', async () => {
+    it('unpins an offer by toggling isPinned off (row kept for re-pin)', async () => {
       clusterRepo.findOne.mockResolvedValue({
         id: 'cl-1',
         uniqueCode: 'CL-ABC123DEF',
@@ -715,10 +863,45 @@ describe('ClustersService', () => {
       );
 
       expect(result.pinned).toBe(false);
-      expect(clusterOfferRepo.remove).toHaveBeenCalledWith(existing);
+      expect(clusterOfferRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ ...existing, isPinned: false }),
+      );
+      expect(clusterOfferRepo.remove).not.toHaveBeenCalled();
       expect(clusterCache.invalidateCluster).toHaveBeenCalledWith(
         'CL-ABC123DEF',
       );
+    });
+
+    it('restores a soft-deleted row when re-pinning', async () => {
+      clusterRepo.findOne.mockResolvedValue({
+        id: 'cl-1',
+        uniqueCode: 'CL-ABC123DEF',
+      });
+      offerRepo.findOne.mockResolvedValue({ id: 'o1' });
+      const trashed = { id: 'co-1', clusterId: 'cl-1', offerId: 'o1' };
+      clusterOfferRepo.findOne
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce(trashed);
+
+      const result = await service.setOfferPinned(
+        'cl-1',
+        'o1',
+        { pinned: true },
+        'admin-1',
+      );
+
+      expect(result.pinned).toBe(true);
+      expect(clusterOfferRepo.findOne).toHaveBeenCalledWith(
+        expect.objectContaining({ withDeleted: true }),
+      );
+      expect(clusterOfferRepo.recover).toHaveBeenCalledWith(
+        expect.objectContaining({
+          ...trashed,
+          isPinned: true,
+          pinnedBy: 'admin-1',
+        }),
+      );
+      expect(clusterOfferRepo.create).not.toHaveBeenCalled();
     });
 
     it('throws NotFoundException when pinning an unknown offer', async () => {
