@@ -9,10 +9,7 @@ import {
     Sprout, Factory, Heart, Landmark, MoreHorizontal, LucideIcon,
     AlertCircle
 } from 'lucide-react';
-import { useQuery } from '@tanstack/react-query';
-import { getCategories } from '@/services/categories/hooks';
-import { Category } from '@/services/categories';
-import { SECTOR_CATEGORIES } from '@/lib/promotions';
+import { useCategories } from './useCategories';
 import { cn } from '@/lib/utils';
 
 const CATEGORY_ICON_MAP: Record<string, LucideIcon> = {
@@ -57,36 +54,12 @@ export default function CategoryDropdown({ selected, onSelect }: CategoryDropdow
     const [search, setSearch] = useState('');
     const dropdownRef = useRef<HTMLDivElement>(null);
 
-    const PAGE_SIZE = 50;
+    const { categories: rawCategories, isLoading, isError } = useCategories();
 
-    const { data: apiData, isLoading, isError } = useQuery({
-        queryKey: ['categories', 'all-pages'],
-        queryFn: async () => {
-            // Fetch page 1 first
-            const first = await getCategories({ page: 1, limit: PAGE_SIZE });
-            const allItems: { id: string; name: string }[] = [...(first.items || [])];
-            const totalPages = first.meta?.totalPages || 1;
-
-            // Fetch remaining pages in parallel
-            if (totalPages > 1) {
-                const remainingPages = Array.from({ length: totalPages - 1 }, (_, i) => i + 2);
-                const restResponses = await Promise.all(
-                    remainingPages.map(page => getCategories({ page, limit: PAGE_SIZE }))
-                );
-                restResponses.forEach(r => {
-                    if (r?.items) allItems.push(...r.items);
-                });
-            }
-
-            return { items: allItems };
-        },
-        staleTime: 5 * 60 * 1000,
-    });
-
-    const categories: DropdownCategory[] = useMemo(() => {
-        const raw: { id: string; name: string }[] = apiData?.items || SECTOR_CATEGORIES;
-        return raw.map(c => ({ id: c.id, name: c.name, icon: resolveIcon(c.name) }));
-    }, [apiData]);
+    const categories: DropdownCategory[] = useMemo(
+        () => rawCategories.map(c => ({ id: c.id, name: c.name, icon: resolveIcon(c.name) })),
+        [rawCategories],
+    );
 
     const filtered = search.trim()
         ? categories.filter(c => c.name.toLowerCase().includes(search.toLowerCase()))

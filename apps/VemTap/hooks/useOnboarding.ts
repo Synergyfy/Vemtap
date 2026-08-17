@@ -2,12 +2,13 @@
 
 import { useMemo } from 'react';
 import { 
-    QrCode, Download, UserPlus, Send, Tags, Image, MapPin, MapPinned, Crown
+    QrCode, UserPlus, Send, Tags, Image, MapPin, MapPinned, Crown, Tag
 } from 'lucide-react';
 import { useMyBusiness } from '@/services/businesses/hooks';
-import { useMarketingAssets, useAnalyticsOverview } from '@/services/marketing-assets/hooks';
+import { useAnalyticsOverview } from '@/services/marketing-assets/hooks';
 import { useDashboardAnalytics } from '@/services/analytics/hooks';
 import { useActiveSubscription } from '@/services/subscriptions/hooks';
+import { useCatalogueOffersAdmin } from '@/services/catalogue/hooks';
 import { useAuthStore } from '@/store/useAuthStore';
 import { getOnboardingCheck } from '@/lib/onboardingGate';
 
@@ -22,11 +23,11 @@ export interface OnboardingItem {
 
 export function useOnboarding() {
     const { data: myBusiness } = useMyBusiness();
-    const { data: assets } = useMarketingAssets();
     const { data: marketingAnalytics } = useAnalyticsOverview();
     const { data: dashboardAnalytics } = useDashboardAnalytics();
     const user = useAuthStore((state) => state.user);
     const { data: subscription } = useActiveSubscription();
+    const { data: offers } = useCatalogueOffersAdmin();
 
     const checklistItems = useMemo((): OnboardingItem[] => {
         const stats = dashboardAnalytics?.stats || [];
@@ -80,16 +81,16 @@ export function useOnboarding() {
                 title: 'My Business QR',
                 description: 'Manage your primary business QR and customer experience.',
                 icon: QrCode,
-                isCompleted: !!myBusiness?.id, // Business always has a QR once registered
+                isCompleted: !!myBusiness?.id,
                 route: '/dashboard/customer-experience'
             },
             {
-                id: 'assets',
-                title: 'Get Marketing Assets',
-                description: 'Download print-ready posters and cards.',
-                icon: Download,
-                isCompleted: !!assets && assets.length > 0,
-                route: '/dashboard/marketing-assets'
+                id: 'deals',
+                title: 'Create Deals',
+                description: 'Set up attractive offers to bring in customers.',
+                icon: Tag,
+                isCompleted: !!offers && offers.length > 0,
+                route: '/dashboard/discovery/deals'
             },
             {
                 id: 'customer',
@@ -104,11 +105,11 @@ export function useOnboarding() {
                 title: 'Send First Campaign',
                 description: 'Reward customers with a welcome offer.',
                 icon: Send,
-                isCompleted: false, // Placeholder for now
+                isCompleted: false,
                 route: '/dashboard/messaging'
             }
-        ];
-    }, [myBusiness, assets, marketingAnalytics, dashboardAnalytics, user?.planId, subscription]);
+        ].sort((a, b) => Number(a.isCompleted) - Number(b.isCompleted));
+    }, [myBusiness, marketingAnalytics, dashboardAnalytics, user?.planId, subscription, offers]);
 
     const completedCount = checklistItems.filter(i => i.isCompleted).length;
     const totalCount = checklistItems.length;
