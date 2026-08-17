@@ -17,6 +17,7 @@ import { getPromoDaysLeft } from '@/lib/mock/promotions';
 import type { CatalogueOffer } from '@/services/catalogue/hooks';
 import { uploadToCloudinary } from '@/lib/cloudinary';
 import PartnershipVerificationGuard from '@/components/dashboard/partnership/PartnershipVerificationGuard';
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu';
 
 const DeliveryRadiusMap = dynamic(() => import('@/components/dashboard/discovery/DeliveryRadiusMap'), { ssr: false });
 
@@ -111,6 +112,38 @@ function PromotionsTab({ branchId, onCreatePromo, onEditPromo }: { branchId: str
     const { data: promotions, isLoading, isError, error, refetch } = useCatalogueOffersAdmin({ branchId });
     const updateOffer = useUpdateCatalogueOffer();
     const deleteOffer = useDeleteCatalogueOffer();
+    const [statusFilter, setStatusFilter] = useState<'active' | 'all' | 'expired' | 'inactive'>('active');
+
+    const isExpired = (promo: CatalogueOffer) => {
+        if (!promo.endDate) return false;
+        return new Date(promo.endDate) < new Date();
+    };
+
+    const filteredPromotions = React.useMemo(() => {
+        if (!promotions) return [];
+        switch (statusFilter) {
+            case 'active':
+                return promotions.filter((p) => !isExpired(p) && p.status === 'active');
+            case 'expired':
+                return promotions.filter((p) => isExpired(p));
+            case 'inactive':
+                return promotions.filter((p) => p.status === 'inactive' && !isExpired(p));
+            case 'all':
+            default:
+                return promotions;
+        }
+    }, [promotions, statusFilter]);
+
+    const statusCounts = React.useMemo(() => {
+        if (!promotions) return { active: 0, expired: 0, inactive: 0, all: 0 };
+        let active = 0, expired = 0, inactive = 0;
+        for (const p of promotions) {
+            if (isExpired(p)) expired++;
+            else if (p.status === 'inactive') inactive++;
+            else active++;
+        }
+        return { active, expired, inactive, all: promotions.length };
+    }, [promotions]);
 
     const handleToggleStatus = (promo: CatalogueOffer) => {
         updateOffer.mutate({
@@ -123,11 +156,6 @@ function PromotionsTab({ branchId, onCreatePromo, onEditPromo }: { branchId: str
         if (window.confirm(`Delete "${promo.name}"?`)) {
             deleteOffer.mutate(promo.id);
         }
-    };
-
-    const isExpired = (promo: CatalogueOffer) => {
-        if (!promo.endDate) return false;
-        return new Date(promo.endDate) < new Date();
     };
 
     if (isLoading) {
@@ -157,11 +185,45 @@ function PromotionsTab({ branchId, onCreatePromo, onEditPromo }: { branchId: str
                 </Button>
             </div>
 
+            {promotions && promotions.length > 0 && (
+                <div className="flex items-center gap-3">
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <button className="flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold bg-white border border-gray-200 hover:border-gray-300 transition-all">
+                                <span className="text-gray-500">Status:</span>
+                                <span className="text-gray-800">{statusFilter === 'active' ? 'Active' : statusFilter === 'all' ? 'All' : statusFilter === 'expired' ? 'Expired' : 'Paused'}</span>
+                                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="text-gray-400"><polyline points="6 9 12 15 18 9"/></svg>
+                            </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="start" className="min-w-[140px]">
+                            {[
+                                { key: 'active' as const, label: 'Active', count: statusCounts.active },
+                                { key: 'all' as const, label: 'All', count: statusCounts.all },
+                                { key: 'expired' as const, label: 'Expired', count: statusCounts.expired },
+                                { key: 'inactive' as const, label: 'Paused', count: statusCounts.inactive },
+                            ].map((tab) => (
+                                <DropdownMenuItem key={tab.key} onClick={() => setStatusFilter(tab.key)}>
+                                    <span className="flex-1">{tab.label}</span>
+                                    <span className="text-[10px] font-black text-gray-400">{tab.count}</span>
+                                    {statusFilter === tab.key && <span className="text-primary">✓</span>}
+                                </DropdownMenuItem>
+                            ))}
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                </div>
+            )}
+
             {!promotions || promotions.length === 0 ? (
                 <EmptyState icon={Tag} title="Your first deal is ready to launch" description="Create a deal to attract new customers and bring them back again." />
+            ) : filteredPromotions.length === 0 ? (
+                <EmptyState
+                    icon={Tag}
+                    title={`No ${statusFilter === 'all' ? '' : statusFilter === 'active' ? 'active ' : statusFilter === 'expired' ? 'expired ' : 'paused '}deals found`}
+                    description="Try a different filter or create a new deal."
+                />
             ) : (
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 md:gap-5">
-                    {promotions.map((promo) => {
+                    {filteredPromotions.map((promo) => {
                         const expired = isExpired(promo);
                         const claimedCount = (promo as any).claimedCount ?? 0;
                         const maxClaims = promo.quantity ?? 0;
