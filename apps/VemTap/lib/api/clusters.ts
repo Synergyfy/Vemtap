@@ -1,7 +1,7 @@
 // =====================
-// CLUSTERS & CLUSTER QR DISCOVERY — HYBRID (real backend + local fallback)
+// CLUSTERS & CLUSTER QR DISCOVERY — REAL BACKEND ONLY
 // =====================
-// The real backend (`modules/clusters`) now provides:
+// The real backend (`modules/clusters`) provides:
 //   GET  /admin/clusters               (list)
 //   GET  /admin/clusters/:id           (detail)
 //   POST /admin/clusters               (create)
@@ -10,14 +10,15 @@
 //   POST /admin/clusters/auto-assign   (bulk branch assignment)
 //   POST /admin/clusters/:id/branches  (add branch)
 //   DELETE /admin/clusters/:id/branches/:branchId (remove branch)
-//   Public: /clusters/context/:uniqueCode, /clusters/:uniqueCode/deals
+//   GET  /admin/clusters/:id/offers    (auto-matched + pinned offers)
+//   PATCH /admin/clusters/:id/offers/:offerId (pin/unpin)
+//   Public: /clusters/context/:uniqueCode, /clusters/:uniqueCode/deals,
+//           /clusters/:uniqueCode/events
 //
-// CRUD (`list/get/create/update/remove`) hits the real backend and maps
-// responses into the rich UI model below. Where the backend has NO endpoint
-// yet, the former mock engine is kept as a LOCAL fallback so the UI keeps
-// working — see BACKEND_GAPS at the bottom for what to send to the backend
-// dev. `searchMockDeals` remains as a fallback when the public offers feed
-// is unreachable.
+// Every method here calls a real endpoint. There is NO mock fallback.
+// Features the backend does not model yet (multiple QR codes per cluster,
+// per-QR deal config, dynamic QR destinations, per-QR rotation) are listed in
+// BACKEND_GAPS at the bottom — the frontend does not fabricate them.
 
 import { api } from '../api';
 
@@ -55,6 +56,8 @@ export interface Cluster {
     updatedAt: string;
 }
 
+/** The single real QR of a cluster. Backend stores one QR per cluster — the
+ *  uniqueCode — so the list/gallery of extra codes is a BACKEND GAP. */
 export interface ClusterQrCode {
     id: string;
     clusterId: string;
@@ -65,7 +68,7 @@ export interface ClusterQrCode {
     createdAt: string;
 }
 
-/** What scanning a specific QR should show. Mock only — the backend does not
+/** What scanning a specific QR should show. BACKEND GAP — the backend does not
  *  yet model per-QR deal configuration (see BACKEND_GAPS). */
 export interface ClusterQrConfig {
     /** 'all' = show the cluster's whole deal feed; 'custom' = only curated offers. */
@@ -77,9 +80,7 @@ export interface ClusterQrConfig {
 }
 
 /** A QR's scannable code is stable forever; what it *lands on* is dynamic.
- *  'default' points to the cluster's main page; 'custom' redirects to a chosen
- *  URL, optionally only until `expiresAt` then falls back to default. Mock only
- *  — the backend does not yet model dynamic destinations (see BACKEND_GAPS). */
+ *  BACKEND GAP — the backend does not yet model dynamic destinations. */
 export interface ClusterQrDynamic {
     qrCodeId: string;
     /** 'default' = stable cluster scan page; 'custom' = redirect to `url`. */
@@ -141,412 +142,7 @@ export interface ClusterOffersResponse {
 }
 
 // ---------------------------------------------------------------
-// Mock data model
-// ---------------------------------------------------------------
-
-interface MockOffer {
-    id: string;
-    name: string;
-    description: string;
-    businessName: string;
-    businessSlug: string;
-    mainImage: string | null;
-    isTrending: boolean;
-    state: string;
-    city: string;
-    lat: number | null;
-    lng: number | null;
-}
-
-/** Minimal meta for clusters that came from the real backend (used so the
- *  QR modal can resolve the single real uniqueCode-based QR without a backend
- *  "list QR codes" endpoint). */
-export interface RealClusterMeta {
-    uniqueCode: string;
-    qrUrl?: string;
-    isActive: boolean;
-    totalScans: number;
-}
-
-interface MockDb {
-    clusters: Cluster[];
-    qrCodes: ClusterQrCode[];
-    offers: MockOffer[];
-    pinnedByCluster: Record<string, string[]>;
-    /** keyed by backend cluster id. */
-    realClusters?: Record<string, RealClusterMeta>;
-    /** keyed by QR code id. Mock per-QR deal config. */
-    qrConfigs?: Record<string, ClusterQrConfig>;
-    /** keyed by QR code id. Mock per-QR dynamic destination. */
-    qrDynamics?: Record<string, ClusterQrDynamic>;
-}
-
-const STORAGE_KEY = 'vemtap_clusters_mock_v1';
-
-const uid = () =>
-    (typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : Math.random().toString(36).slice(2)) +
-    Math.random().toString(36).slice(2, 8);
-
-const nowIso = () => new Date().toISOString();
-
-/** Public app origin — env-driven so local dev links point at localhost instead
- *  of the production domain. Order: NEXT_PUBLIC_APP_URL → window origin → prod. */
-const getAppBaseUrl = () =>
-    process.env.NEXT_PUBLIC_APP_URL ||
-    (typeof window !== 'undefined' ? window.location.origin : 'https://vemtap.com');
-
-const DEFAULT_QR_DYNAMIC = (qrCodeId: string): ClusterQrDynamic => ({
-    qrCodeId,
-    mode: 'default',
-    url: null,
-    expiresAt: null,
-});
-
-const distanceKm = (lat1: number, lng1: number, lat2: number, lng2: number) => {
-    const R = 6371;
-    const dLat = ((lat2 - lat1) * Math.PI) / 180;
-    const dLng = ((lng2 - lng1) * Math.PI) / 180;
-    const a =
-        Math.sin(dLat / 2) ** 2 +
-        Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLng / 2) ** 2;
-    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-};
-
-const seedOffers: MockOffer[] = [
-    {
-        id: 'mock-offer-1',
-        name: '2-for-1 Jollof Thursday',
-        description: 'Buy one jollof plate, get the second free. Every Thursday until 5pm.',
-        businessName: 'Naija Pot',
-        businessSlug: 'naija-pot',
-        mainImage: null,
-        isTrending: true,
-        state: 'Lagos',
-        city: 'Eti-Osa',
-        lat: 6.4412,
-        lng: 3.4618,
-    },
-    {
-        id: 'mock-offer-2',
-        name: 'Free Starter with Mains',
-        description: 'Order any main course and receive a free starter of your choice.',
-        businessName: 'Kaya Lounge',
-        businessSlug: 'kaya-lounge',
-        mainImage: null,
-        isTrending: false,
-        state: 'Lagos',
-        city: 'Eti-Osa',
-        lat: 6.4281,
-        lng: 3.4219,
-    },
-    {
-        id: 'mock-offer-3',
-        name: '20% Off Tailored Suits',
-        description: 'Flat 20% off all tailored suits this season. In-store only.',
-        businessName: 'Silk & Thread',
-        businessSlug: 'silk-and-thread',
-        mainImage: null,
-        isTrending: false,
-        state: 'Lagos',
-        city: 'Ikeja',
-        lat: 6.6018,
-        lng: 3.3515,
-    },
-    {
-        id: 'mock-offer-4',
-        name: 'Spa Day Package — 35% Off',
-        description: 'Full-day spa package including massage, facial and body scrub.',
-        businessName: 'The Glow Room',
-        businessSlug: 'the-glow-room',
-        mainImage: null,
-        isTrending: true,
-        state: 'Lagos',
-        city: 'Ikeja',
-        lat: 6.6005,
-        lng: 3.3491,
-    },
-    {
-        id: 'mock-offer-5',
-        name: 'Happy Hour — Buy 1 Get 1',
-        description: 'Unlimited buy-one-get-one on cocktails between 4pm and 7pm daily.',
-        businessName: 'Skyline Bar',
-        businessSlug: 'skyline-bar',
-        mainImage: null,
-        isTrending: false,
-        state: 'Abuja',
-        city: 'Garki',
-        lat: 9.058,
-        lng: 7.4894,
-    },
-    {
-        id: 'mock-offer-6',
-        name: 'Buy 1 Get 1 Coffee',
-        description: 'Pick up any two specialty coffees and pay for the first only.',
-        businessName: 'Brew & Co',
-        businessSlug: 'brew-and-co',
-        mainImage: null,
-        isTrending: false,
-        state: 'Lagos',
-        city: 'Eti-Osa',
-        lat: 6.4521,
-        lng: 3.4633,
-    },
-    {
-        id: 'mock-offer-7',
-        name: 'Weekend Brunch Special',
-        description: 'Two-course brunch menu for a fixed low price every weekend.',
-        businessName: 'Terra Green',
-        businessSlug: 'terra-green',
-        mainImage: null,
-        isTrending: true,
-        state: 'Abuja',
-        city: 'Wuse',
-        lat: 9.0832,
-        lng: 7.4796,
-    },
-];
-
-const seedClusters: Cluster[] = [
-    {
-        id: 'mock-cluster-nigeria',
-        name: 'Nigeria',
-        description: 'Nationwide deal collection covering every business on the platform.',
-        type: 'country',
-        parentId: null,
-        country: 'Nigeria',
-        state: '',
-        city: '',
-        area: '',
-        latitude: 9.082,
-        longitude: 8.6753,
-        radiusM: null,
-        isActive: true,
-        qrCodesCount: 0,
-        totalScans: 0,
-        autoMatchedOffersCount: 0,
-        pinnedOffersCount: 0,
-        createdAt: '2026-01-05T09:00:00.000Z',
-        updatedAt: '2026-01-05T09:00:00.000Z',
-    },
-    {
-        id: 'mock-cluster-lagos',
-        name: 'Lagos State',
-        description: 'All active deals from businesses across Lagos.',
-        type: 'state',
-        parentId: 'mock-cluster-nigeria',
-        country: 'Nigeria',
-        state: 'Lagos',
-        city: '',
-        area: '',
-        latitude: 6.5244,
-        longitude: 3.3792,
-        radiusM: null,
-        isActive: true,
-        qrCodesCount: 0,
-        totalScans: 0,
-        autoMatchedOffersCount: 0,
-        pinnedOffersCount: 0,
-        createdAt: '2026-01-12T09:00:00.000Z',
-        updatedAt: '2026-01-12T09:00:00.000Z',
-    },
-    {
-        id: 'mock-cluster-lekki',
-        name: 'Lekki Phase 1',
-        description: 'The premium peninsula — restaurants, lounges and boutiques along Admiralty Way.',
-        type: 'market',
-        parentId: 'mock-cluster-lagos',
-        country: 'Nigeria',
-        state: 'Lagos',
-        city: 'Eti-Osa',
-        area: 'Lekki Phase 1',
-        latitude: 6.4478,
-        longitude: 3.4723,
-        radiusM: 2000,
-        isActive: true,
-        qrCodesCount: 0,
-        totalScans: 0,
-        autoMatchedOffersCount: 0,
-        pinnedOffersCount: 0,
-        createdAt: '2026-02-02T09:00:00.000Z',
-        updatedAt: '2026-02-02T09:00:00.000Z',
-    },
-    {
-        id: 'mock-cluster-ikeja',
-        name: 'Ikeja City Mall',
-        description: 'One of the biggest shopping malls in West Africa.',
-        type: 'building',
-        parentId: 'mock-cluster-lagos',
-        country: 'Nigeria',
-        state: 'Lagos',
-        city: 'Ikeja',
-        area: 'Ikeja City Mall',
-        latitude: 6.6018,
-        longitude: 3.3515,
-        radiusM: 1500,
-        isActive: true,
-        qrCodesCount: 0,
-        totalScans: 0,
-        autoMatchedOffersCount: 0,
-        pinnedOffersCount: 0,
-        createdAt: '2026-02-10T09:00:00.000Z',
-        updatedAt: '2026-02-10T09:00:00.000Z',
-    },
-    {
-        id: 'mock-cluster-abuja',
-        name: 'Abuja',
-        description: 'Federal Capital Territory deals and promos.',
-        type: 'state',
-        parentId: 'mock-cluster-nigeria',
-        country: 'Nigeria',
-        state: 'Abuja',
-        city: '',
-        area: '',
-        latitude: 9.0765,
-        longitude: 7.3986,
-        radiusM: null,
-        isActive: true,
-        qrCodesCount: 0,
-        totalScans: 0,
-        autoMatchedOffersCount: 0,
-        pinnedOffersCount: 0,
-        createdAt: '2026-02-18T09:00:00.000Z',
-        updatedAt: '2026-02-18T09:00:00.000Z',
-    },
-];
-
-const seedQrCodes: ClusterQrCode[] = [
-    { id: 'mock-qr-lekki-1', clusterId: 'mock-cluster-lekki', code: 'LEK-001', scanUrl: '', isActive: true, totalScans: 124, createdAt: '2026-02-03T09:00:00.000Z' },
-    { id: 'mock-qr-lekki-2', clusterId: 'mock-cluster-lekki', code: 'LEK-002', scanUrl: '', isActive: true, totalScans: 87, createdAt: '2026-02-03T09:00:00.000Z' },
-    { id: 'mock-qr-ng-1', clusterId: 'mock-cluster-nigeria', code: 'NG-0001', scanUrl: '', isActive: true, totalScans: 542, createdAt: '2026-01-06T09:00:00.000Z' },
-    { id: 'mock-qr-ikeja-1', clusterId: 'mock-cluster-ikeja', code: 'ICM-001', scanUrl: '', isActive: true, totalScans: 63, createdAt: '2026-02-11T09:00:00.000Z' },
-];
-
-const seedPinnedByCluster: Record<string, string[]> = {
-    // Cross-location manual override: Ikeja suit offer pinned to Lekki Phase 1.
-    'mock-cluster-lekki': ['mock-offer-3'],
-};
-
-const buildSeed = (): MockDb => ({ clusters: seedClusters, qrCodes: seedQrCodes, offers: seedOffers, pinnedByCluster: seedPinnedByCluster });
-
-// ---------------------------------------------------------------
-// Storage helpers
-// ---------------------------------------------------------------
-
-const loadDb = (): MockDb => {
-    if (typeof window !== 'undefined') {
-        try {
-            const raw = window.localStorage.getItem(STORAGE_KEY);
-            if (raw) {
-                const parsed = JSON.parse(raw) as MockDb;
-                if (parsed && Array.isArray(parsed.clusters)) return parsed;
-            }
-        } catch {
-            // fall through to reseed
-        }
-    }
-    return buildSeed();
-};
-
-const saveDb = (db: MockDb) => {
-    if (typeof window !== 'undefined') {
-        try {
-            window.localStorage.setItem(STORAGE_KEY, JSON.stringify(db));
-        } catch {
-            // storage unavailable — mock still works in-memory
-        }
-    }
-};
-
-const delay = (ms = 250) => new Promise(resolve => setTimeout(resolve, ms));
-
-// ---------------------------------------------------------------
-// Auto-match engine (mirrors the planned backend behaviour)
-// ---------------------------------------------------------------
-
-const normalize = (v?: string) => (v || '').trim().toLowerCase();
-
-const computeMatchedOffers = (db: MockDb, cluster: Cluster): { autoMatched: MockOffer[]; matchReason: Record<string, string> } => {
-    const reasonMap: Record<string, string> = {};
-    const pinnedIds = new Set(db.pinnedByCluster[cluster.id] || []);
-
-    const matches = db.offers.filter(offer => {
-        if (pinnedIds.has(offer.id)) return false;
-        return offer.state && normalize(offer.state) === normalize(cluster.state) &&
-            (!cluster.city || normalize(offer.city) === normalize(cluster.city));
-    });
-
-    // Near-field (GPS radius) — adds offers even if the text location differs.
-    if (cluster.latitude != null && cluster.longitude != null) {
-        const radiusKm = (cluster.radiusM || 2000) / 1000;
-        db.offers.forEach(offer => {
-            if (pinnedIds.has(offer.id)) return;
-            if (offer.lat == null || offer.lng == null) return;
-            const dist = distanceKm(cluster.latitude!, cluster.longitude!, offer.lat, offer.lng);
-            if (dist <= radiusKm) {
-                if (!matches.some(m => m.id === offer.id)) {
-                    matches.push(offer);
-                    reasonMap[offer.id] = `${Math.round(dist * 10) / 10} km away`;
-                }
-            }
-        });
-    }
-
-    matches.forEach(offer => {
-        if (!reasonMap[offer.id]) {
-            reasonMap[offer.id] = [cluster.city, cluster.state].filter(Boolean).join(' · ');
-        }
-    });
-
-    return { autoMatched: matches, matchReason: reasonMap };
-};
-
-const toOfferRow = (db: MockDb, offer: MockOffer, reason?: string) => ({
-    id: offer.id,
-    name: offer.name,
-    description: offer.description,
-    businessName: offer.businessName,
-    businessSlug: offer.businessSlug,
-    mainImage: offer.mainImage,
-    isTrending: offer.isTrending,
-    state: offer.state,
-    city: offer.city,
-    matchReason: reason,
-});
-
-// ---------------------------------------------------------------
-// Public mock helpers
-// ---------------------------------------------------------------
-
-/** Searches the mocked deal catalogue (used as fallback when the real public
- *  offers endpoint is unreachable). Returns DealOffer-shaped rows. */
-export const searchMockDeals = (query: string) => {
-    const q = normalize(query);
-    const db = loadDb();
-    return db.offers
-        .filter(o => !q || normalize(o.name).includes(q) || normalize(o.businessName).includes(q))
-        .map(o => ({
-            id: o.id,
-            name: o.name,
-            description: o.description,
-            mainImage: o.mainImage,
-            isTrending: o.isTrending,
-            status: 'active',
-            pricingType: 'percentage_discount',
-            discountValue: 20,
-            fixedPrice: null,
-            calculatedPrice: 0,
-            claimedCount: 0,
-            maxClaims: 100,
-            startDate: null,
-            endDate: null,
-            business: { id: o.id + '-biz', name: o.businessName, slug: o.businessSlug },
-            businessId: o.id + '-biz',
-            branchId: o.id + '-branch',
-        }));
-};
-
-// ---------------------------------------------------------------
-// Admin API (hybrid: real backend + local mock fallback)
+// Admin API (real backend)
 // ---------------------------------------------------------------
 
 // ---- Real backend DTOs (internal) -------------------------------
@@ -571,6 +167,12 @@ interface BBackendCluster {
     scanCount: number;
     createdAt: string;
 }
+
+/** Public app origin — env-driven so local dev links point at localhost instead
+ *  of the production domain. Order: NEXT_PUBLIC_APP_URL → window origin → prod. */
+const getAppBaseUrl = () =>
+    process.env.NEXT_PUBLIC_APP_URL ||
+    (typeof window !== 'undefined' ? window.location.origin : 'https://vemtap.com');
 
 /** Map a real backend cluster into the rich UI model. */
 const toRichCluster = (b: BBackendCluster): Cluster => ({
@@ -614,130 +216,55 @@ const toBackendPayload = (data: Partial<CreateClusterDto>) => ({
     qrIsActive: data.qrIsActive ?? undefined,
 });
 
+/** Synthesise the single real QR of a cluster from its own backend fields
+ *  (uniqueCode + qrIsActive + scanCount). The backend stores exactly one QR
+ *  per cluster, so there is no per-cluster QR-list endpoint. */
+const toQrCode = (cluster: Cluster): ClusterQrCode => ({
+    id: `${cluster.id}-qr`,
+    clusterId: cluster.id,
+    code: cluster.uniqueCode || '',
+    scanUrl: cluster.qrUrl || `${getAppBaseUrl()}/c/${cluster.uniqueCode}`,
+    isActive: cluster.isActive && cluster.qrCodesCount > 0,
+    totalScans: cluster.totalScans,
+    createdAt: cluster.createdAt,
+});
+
 export const adminClustersApi = {
     // -> GET /admin/clusters
     list: async () => {
-        try {
-            const res = await api.get('/admin/clusters', { params: { limit: 100 } });
-            const items: BBackendCluster[] = Array.isArray(res) ? res : res?.data || [];
-            // Empty result (dev backend up, fresh DB) = no demo to show → let the
-            // seeded mock clusters below do the talking until real data exists.
-            if (!items.length) throw new Error('empty');
-            // Cache real meta so the QR modal can resolve the single uniqueCode.
-            const db = loadDb();
-            db.realClusters = {};
-            items.forEach(b => {
-                db.realClusters![b.id] = {
-                    uniqueCode: b.uniqueCode,
-                    qrUrl: `${getAppBaseUrl()}/c/${b.uniqueCode}`,
-                    isActive: b.qrIsActive && b.isActive,
-                    totalScans: b.scanCount,
-                };
-            });
-            saveDb(db);
-            return items.map(toRichCluster);
-        } catch {
-            // Backend unreachable / no token / empty → seeded demo data (former behaviour).
-            const db = loadDb();
-            await delay();
-            return db.clusters.map(cluster => {
-                const pinnedIds = db.pinnedByCluster[cluster.id] || [];
-                const qr = db.qrCodes.filter(q => q.clusterId === cluster.id);
-                const { autoMatched } = computeMatchedOffers(db, cluster);
-                return {
-                    ...cluster,
-                    qrCodesCount: qr.length,
-                    totalScans: qr.reduce((sum, q) => sum + q.totalScans, 0),
-                    autoMatchedOffersCount: autoMatched.length,
-                    pinnedOffersCount: pinnedIds.length,
-                };
-            });
-        }
+        const res = await api.get('/admin/clusters', { params: { limit: 100 } });
+        const items: BBackendCluster[] = Array.isArray(res) ? res : res?.data || [];
+        return items.map(toRichCluster);
     },
 
     // -> GET /admin/clusters/:id
     get: async (id: string) => {
-        try {
-            const b = await api.get(`/admin/clusters/${id}`) as BBackendCluster & {
-                branches?: Array<{ id: string; name: string; uniqueCode?: string; username?: string; logoUrl?: string | null; address?: string | null; city?: string | null; state?: string | null; isActive?: boolean }>;
-            };
-            const cluster = toRichCluster(b);
-            if (b.branches) {
-                cluster.branches = b.branches;
-            }
-            return cluster;
-        } catch {
-            const db = loadDb();
-            await delay();
-            return db.clusters.find(c => c.id === id) || null;
+        const b = await api.get(`/admin/clusters/${id}`) as BBackendCluster & {
+            branches?: Array<{ id: string; name: string; uniqueCode?: string; username?: string; logoUrl?: string | null; address?: string | null; city?: string | null; state?: string | null; isActive?: boolean }>;
+        };
+        const cluster = toRichCluster(b);
+        if (b.branches) {
+            cluster.branches = b.branches;
         }
+        return cluster;
     },
 
     // -> POST /admin/clusters
     create: async (data: CreateClusterDto) => {
-        try {
-            const b = await api.post('/admin/clusters', toBackendPayload(data));
-            return toRichCluster(b as BBackendCluster);
-        } catch {
-            const db = loadDb();
-            await delay();
-            const cluster: Cluster = {
-                id: uid(),
-                name: data.name,
-                description: data.description || '',
-                type: data.type,
-                parentId: data.parentId || null,
-                country: data.country || '',
-                state: data.state || '',
-                city: data.city || '',
-                area: data.area || '',
-                latitude: data.latitude ?? null,
-                longitude: data.longitude ?? null,
-                radiusM: data.radiusM ?? null,
-                isActive: data.isActive ?? true,
-                qrCodesCount: 0,
-                totalScans: 0,
-                autoMatchedOffersCount: 0,
-                pinnedOffersCount: 0,
-                createdAt: nowIso(),
-                updatedAt: nowIso(),
-            };
-            db.clusters.push(cluster);
-            saveDb(db);
-            return cluster;
-        }
+        const b = await api.post('/admin/clusters', toBackendPayload(data));
+        return toRichCluster(b as BBackendCluster);
     },
 
     // -> PATCH /admin/clusters/:id
     update: async (id: string, data: UpdateClusterDto) => {
-        try {
-            const b = await api.patch(`/admin/clusters/${id}`, toBackendPayload(data));
-            return toRichCluster(b as BBackendCluster);
-        } catch {
-            const db = loadDb();
-            await delay();
-            const index = db.clusters.findIndex(c => c.id === id);
-            if (index === -1) throw new Error('Cluster not found');
-            db.clusters[index] = { ...db.clusters[index], ...data, id, updatedAt: nowIso() };
-            saveDb(db);
-            return db.clusters[index];
-        }
+        const b = await api.patch(`/admin/clusters/${id}`, toBackendPayload(data));
+        return toRichCluster(b as BBackendCluster);
     },
 
     // -> DELETE /admin/clusters/:id
     remove: async (id: string) => {
-        try {
-            await api.delete(`/admin/clusters/${id}`);
-            return { success: true };
-        } catch {
-            const db = loadDb();
-            await delay();
-            db.clusters = db.clusters.filter(c => c.id !== id);
-            db.qrCodes = db.qrCodes.filter(q => q.clusterId !== id);
-            delete db.pinnedByCluster[id];
-            saveDb(db);
-            return { success: true };
-        }
+        await api.delete(`/admin/clusters/${id}`);
+        return { success: true };
     },
 
     // -> POST /admin/clusters/auto-assign
@@ -760,257 +287,92 @@ export const adminClustersApi = {
         return api.delete(`/admin/clusters/${clusterId}/branches/${branchId}`) as Promise<{ success: boolean }>;
     },
 
-    // -> GET /admin/clusters/:id/qr-codes
-    // BACKEND GAP: no per-cluster QR-code listing endpoint. For real backend
-    // clusters we resolve the single uniqueCode-based QR from `list()`; the
-    // multi-code gallery below is the local fallback / demo behaviour.
-    listQrCodes: async (clusterId: string) => {
-        const db = loadDb();
-        const real = db.realClusters?.[clusterId];
-        if (real) {
-            const origin = typeof window !== 'undefined' ? window.location.origin : '';
-            return [{
-                id: `${clusterId}-qr`,
-                clusterId,
-                code: real.uniqueCode,
-                scanUrl: real.qrUrl || `${origin}/c/${real.uniqueCode}`,
-                isActive: real.isActive,
-                totalScans: real.totalScans,
-                createdAt: '',
-            } as ClusterQrCode];
-        }
-        await delay();
-        const origin = typeof window !== 'undefined' ? window.location.origin : '';
-        return db.qrCodes
-            .filter(q => q.clusterId === clusterId)
-            .map(q => ({ ...q, scanUrl: q.scanUrl || `${origin}/tap/clusters/${q.code}` }));
+    // -> Single real QR per cluster (derived from cluster.uniqueCode).
+    // BACKEND GAP: no per-cluster QR-code listing endpoint. The single QR is
+    // built from the cluster's own real fields.
+    listQrCodes: async (cluster: Cluster): Promise<ClusterQrCode[]> => {
+        if (!cluster.uniqueCode) return [];
+        return [toQrCode(cluster)];
     },
 
-    // -> POST /admin/clusters/:id/qr-codes
-    // BACKEND GAP: backend only stores ONE QR per cluster (the uniqueCode).
-    // Generating multiple codes is a LOCAL demo feature — send the endpoint
-    // request to the backend dev to match.
-    generateQrCodes: async (clusterId: string, data: { quantity?: number; notes?: string }) => {
-        const db = loadDb();
-        await delay();
-        const quantity = Math.max(1, Math.min(100, data.quantity || 1));
-        const origin = typeof window !== 'undefined' ? window.location.origin : '';
-        const created: ClusterQrCode[] = [];
-        for (let i = 0; i < quantity; i++) {
-            const code = `CLU-${Math.random().toString(36).slice(2, 6).toUpperCase()}${Math.floor(10 + Math.random() * 90)}`;
-            const qr: ClusterQrCode = {
-                id: uid(),
-                clusterId,
-                code,
-                scanUrl: `${origin}/tap/clusters/${code}`,
-                isActive: true,
-                totalScans: 0,
-                createdAt: nowIso(),
-            };
-            db.qrCodes.push(qr);
-            created.push(qr);
-        }
-        saveDb(db);
-        return created;
+    // BACKEND GAP: no endpoint to generate additional QR codes per cluster.
+    generateQrCodes: async (_clusterId: string, _data: { quantity?: number; notes?: string }): Promise<ClusterQrCode[]> => {
+        throw new Error('BACKEND_GAP: POST /admin/clusters/:id/qr-codes is not implemented');
     },
 
-    // -> PATCH /admin/clusters/:id/qr-codes/:qrId
-    setQrCodeActive: async (clusterId: string, qrId: string, isActive: boolean) => {
-        const db = loadDb();
-        const real = db.realClusters?.[clusterId];
-        if (real) {
-            try {
-                // Real backend: toggling the QR is PATCH /admin/clusters/:id { qrIsActive }
-                const res = await api.patch(`/admin/clusters/${clusterId}`, { qrIsActive: isActive });
-                const active = res?.qrIsActive ?? isActive;
-                real.isActive = active;
-                saveDb(db);
-                return {
-                    id: qrId,
-                    clusterId,
-                    code: real.uniqueCode,
-                    scanUrl: real.qrUrl || '',
-                    isActive: active,
-                    totalScans: real.totalScans,
-                    createdAt: '',
-                } as ClusterQrCode;
-            } catch {
-                // fall through to local demo behaviour
-            }
-        }
-        await delay();
-        const qr = db.qrCodes.find(q => q.clusterId === clusterId && q.id === qrId);
-        if (qr) qr.isActive = isActive;
-        saveDb(db);
-        return qr || null;
+    // -> PATCH /admin/clusters/:id  { qrIsActive } — toggles the single cluster QR.
+    setQrCodeActive: async (cluster: Cluster, isActive: boolean): Promise<ClusterQrCode> => {
+        const b = await api.patch(`/admin/clusters/${cluster.id}`, { qrIsActive: isActive }) as Partial<BBackendCluster>;
+        return toQrCode({
+            ...cluster,
+            isActive: cluster.isActive,
+            qrCodesCount: (b.qrIsActive ?? isActive) ? 1 : 0,
+        });
     },
 
-    // -> DELETE /admin/clusters/:id/qr-codes/:qrId
-    // BACKEND GAP: no per-QR delete endpoint. Local demo behaviour only.
-    removeQrCode: async (clusterId: string, qrId: string) => {
-        const db = loadDb();
-        await delay();
-        db.qrCodes = db.qrCodes.filter(q => !(q.clusterId === clusterId && q.id === qrId));
-        if (db.qrConfigs) delete db.qrConfigs[qrId];
-        saveDb(db);
-        return { success: true };
+    // BACKEND GAP: no endpoint to delete a QR code.
+    removeQrCode: async (_clusterId: string, _qrId: string): Promise<{ success: boolean }> => {
+        throw new Error('BACKEND_GAP: DELETE /admin/clusters/:id/qr-codes/:qrId is not implemented');
     },
 
-    // -> Create a single QR code (with a per-QR config) — MOCK
-    // BACKEND GAP: per-QR deal configuration has no backend endpoint yet.
-    createQrCode: async (clusterId: string) => {
-        const db = loadDb();
-        await delay();
-        const origin = typeof window !== 'undefined' ? window.location.origin : '';
-        const code = `CLU-${Math.random().toString(36).slice(2, 6).toUpperCase()}${Math.floor(10 + Math.random() * 90)}`;
-        const qr: ClusterQrCode = {
-            id: uid(),
-            clusterId,
-            code,
-            scanUrl: `${origin}/tap/clusters/${code}`,
-            isActive: true,
-            totalScans: 0,
-            createdAt: nowIso(),
-        };
-        db.qrCodes.push(qr);
-        db.qrConfigs = db.qrConfigs || {};
-        db.qrConfigs[qr.id] = { mode: 'all', offerIds: [], slotCount: 12 };
-        saveDb(db);
-        return qr;
+    // BACKEND GAP: per-QR deal configuration is not modelled in the backend.
+    createQrCode: async (_clusterId: string): Promise<ClusterQrCode> => {
+        throw new Error('BACKEND_GAP: POST /admin/clusters/:id/qr-codes is not implemented');
     },
 
-    // -> Get the per-QR deal config — MOCK
-    getQrConfig: async (qrCodeId: string): Promise<ClusterQrConfig> => {
-        const db = loadDb();
-        await delay();
-        return db.qrConfigs?.[qrCodeId] || { mode: 'all', offerIds: [], slotCount: 12 };
+    getQrConfig: async (_qrCodeId: string): Promise<ClusterQrConfig> => {
+        throw new Error('BACKEND_GAP: GET /admin/clusters/:id/qr-codes/:qrId/config is not implemented');
     },
 
-    // -> Save the per-QR deal config — MOCK
-    saveQrConfig: async (qrCodeId: string, config: ClusterQrConfig): Promise<ClusterQrConfig> => {
-        const db = loadDb();
-        await delay();
-        db.qrConfigs = db.qrConfigs || {};
-        db.qrConfigs[qrCodeId] = config;
-        saveDb(db);
-        return config;
+    saveQrConfig: async (_qrCodeId: string, _config: ClusterQrConfig): Promise<ClusterQrConfig> => {
+        throw new Error('BACKEND_GAP: PUT /admin/clusters/:id/qr-codes/:qrId/config is not implemented');
     },
 
-    // -> Deal options available to configure a QR with — MOCK
-    // BACKEND GAP: picks from all mock offers; the backend should scope the
-    // offer pool per cluster (see Cluster deals gap above).
     getQrOfferOptions: async (): Promise<ClusterOfferRow[]> => {
-        const db = loadDb();
-        await delay();
-        return db.offers.map(o => toOfferRow(db, o, ''));
+        throw new Error('BACKEND_GAP: scoped offer picker endpoint is not implemented — use GET /admin/clusters/:id/offers');
     },
 
-    // ------------------------------------------------------------------
-    // Dynamic QR destinations — MOCK
-    // BACKEND GAP: QR codes are static artifacts today. To support dynamic
-    // redirects the backend would need a per-QR "destination" + "valid_until"
-    // on the QR record (or a small lookup table keyed by scan code) plus a
-    // redirect rule when a scanned code resolves. See BACKEND_GAPS.
-    // ------------------------------------------------------------------
-
-    getQrDynamic: async (qrCodeId: string): Promise<ClusterQrDynamic> => {
-        const db = loadDb();
-        await delay();
-        const cfg = db.qrDynamics?.[qrCodeId] || DEFAULT_QR_DYNAMIC(qrCodeId);
-        if (cfg.mode === 'custom' && cfg.expiresAt && Date.parse(cfg.expiresAt) <= Date.now()) {
-            const reset: ClusterQrDynamic = { qrCodeId, mode: 'default', url: null, expiresAt: null };
-            db.qrDynamics = db.qrDynamics || {};
-            db.qrDynamics[qrCodeId] = reset;
-            saveDb(db);
-            return reset;
-        }
-        return cfg;
+    getQrDynamic: async (_qrCodeId: string): Promise<ClusterQrDynamic> => {
+        throw new Error('BACKEND_GAP: GET /admin/clusters/:id/qr-codes/:qrId/destination is not implemented');
     },
 
-    setDynamicToDefault: async (qrCodeId: string): Promise<ClusterQrDynamic> => {
-        const db = loadDb();
-        await delay();
-        const reset: ClusterQrDynamic = { qrCodeId, mode: 'default', url: null, expiresAt: null };
-        db.qrDynamics = db.qrDynamics || {};
-        db.qrDynamics[qrCodeId] = reset;
-        saveDb(db);
-        return reset;
+    setDynamicToDefault: async (_qrCodeId: string): Promise<ClusterQrDynamic> => {
+        throw new Error('BACKEND_GAP: DELETE /admin/clusters/:id/qr-codes/:qrId/destination is not implemented');
     },
 
-    setDynamicUrl: async (qrCodeId: string, url: string, expiresAt?: string | null): Promise<ClusterQrDynamic> => {
-        const db = loadDb();
-        await delay();
-        const cfg: ClusterQrDynamic = { qrCodeId, mode: 'custom', url, expiresAt: expiresAt || null };
-        db.qrDynamics = db.qrDynamics || {};
-        db.qrDynamics[qrCodeId] = cfg;
-        saveDb(db);
-        return cfg;
+    setDynamicUrl: async (_qrCodeId: string, _url: string, _expiresAt?: string | null): Promise<ClusterQrDynamic> => {
+        throw new Error('BACKEND_GAP: PUT /admin/clusters/:id/qr-codes/:qrId/destination is not implemented');
     },
 
     // -> GET /admin/clusters/:id/offers  =>  { autoMatched, pinned, total }
     listOffers: async (clusterId: string): Promise<ClusterOffersResponse> => {
-        try {
-            const res = await api.get(`/admin/clusters/${clusterId}/offers`, { params: { limit: 100 } });
-            const body = (res || {}) as { autoMatched?: ClusterDeal[]; pinned?: ClusterDeal[]; total?: number };
-            const mapDeal = (d: ClusterDeal): ClusterOfferRow => ({
-                id: d.id,
-                name: d.name,
-                description: d.description || '',
-                businessName: d.business?.name || '',
-                businessSlug: d.business?.name || d.businessId || '',
-                mainImage: d.mainImage,
-                isTrending: d.isTrending,
-                state: d.branch?.state || '',
-                city: d.branch?.city || '',
-                matchReason: 'pinned manually',
-            });
-            const autoMatched = (body.autoMatched || []).map(d => ({ ...mapDeal(d), matchReason: 'auto-matched' }));
-            const pinned = (body.pinned || []).map(mapDeal);
-            return {
-                autoMatched,
-                pinned,
-                total: body.total ?? autoMatched.length + pinned.length,
-            };
-        } catch {
-            // Local fallback when the backend is unreachable.
-            const db = loadDb();
-            await delay();
-            const cluster = db.clusters.find(c => c.id === clusterId);
-            if (!cluster) return { autoMatched: [], pinned: [], total: 0 };
-
-            const { autoMatched, matchReason } = computeMatchedOffers(db, cluster);
-            const pinnedIds = db.pinnedByCluster[clusterId] || [];
-            const pinned = pinnedIds
-                .map(id => db.offers.find(o => o.id === id))
-                .filter((o): o is MockOffer => !!o)
-                .map(o => toOfferRow(db, o, 'pinned manually'));
-
-            return {
-                autoMatched: autoMatched.map(o => toOfferRow(db, o, matchReason[o.id])),
-                pinned,
-                total: autoMatched.length + pinned.length,
-            };
-        }
+        const res = await api.get(`/admin/clusters/${clusterId}/offers`);
+        const body = (res || {}) as { autoMatched?: ClusterDeal[]; pinned?: ClusterDeal[]; total?: number };
+        const mapDeal = (d: ClusterDeal): ClusterOfferRow => ({
+            id: d.id,
+            name: d.name,
+            description: d.description || '',
+            businessName: d.business?.name || '',
+            businessSlug: d.branch?.slug || '',
+            mainImage: d.mainImage,
+            isTrending: d.isTrending,
+            state: d.branch?.state || '',
+            city: d.branch?.city || '',
+            matchReason: 'pinned manually',
+        });
+        const autoMatched = (body.autoMatched || []).map(d => ({ ...mapDeal(d), matchReason: 'auto-matched' }));
+        const pinned = (body.pinned || []).map(mapDeal);
+        return {
+            autoMatched,
+            pinned,
+            total: body.total ?? autoMatched.length + pinned.length,
+        };
     },
 
     // -> PATCH /admin/clusters/:id/offers/:offerId  =>  { pinned: boolean }
     setOfferPinned: async (clusterId: string, offerId: string, pinned: boolean) => {
-        try {
-            const res = await api.patch(`/admin/clusters/${clusterId}/offers/${offerId}`, { pinned });
-            return { pinned: res?.pinned ?? pinned };
-        } catch {
-            // Local fallback when the backend is unreachable.
-            const db = loadDb();
-            await delay();
-            const list = db.pinnedByCluster[clusterId] || (db.pinnedByCluster[clusterId] = []);
-            if (pinned && !list.includes(offerId)) {
-                list.push(offerId);
-            } else if (!pinned) {
-                db.pinnedByCluster[clusterId] = list.filter(id => id !== offerId);
-            }
-            saveDb(db);
-            return { pinned };
-        }
+        const res = await api.patch(`/admin/clusters/${clusterId}/offers/${offerId}`, { pinned });
+        return { pinned: res?.pinned ?? pinned };
     },
 };
 
@@ -1093,6 +455,10 @@ export interface ClusterDealsResponse {
     active: boolean;
     reason?: 'qr_deactivated' | 'cluster_inactive';
     data: ClusterDeal[];
+    /** Featured deal objects selected for the current rotation window. */
+    featured?: ClusterDeal[];
+    /** Current rotation window id (see Smart Deal Rotator). */
+    rotationWindowId?: number;
     total: number;
     page: number;
     limit: number;
@@ -1119,24 +485,24 @@ export const clustersPublicApi = {
     // -> GET /clusters/:uniqueCode/deals
     getDeals: (uniqueCode: string, query: ClusterDealsQuery = {}) =>
         api.get(`/clusters/${uniqueCode}/deals`, { params: query }) as Promise<ClusterDealsResponse>,
+    // -> POST /clusters/:uniqueCode/events  (rotator view/click analytics)
+    //    Requires a valid RFC4122 UUID v4 as x-visit-session-token.
+    recordEvent: (
+        uniqueCode: string,
+        sessionToken: string,
+        body: { offerId: string; type: 'view' | 'click'; windowId?: number },
+    ) =>
+        api.post(`/clusters/${uniqueCode}/events`, body, {
+            headers: { 'x-visit-session-token': sessionToken },
+        }) as Promise<{ success: boolean; offerId: string }>,
 };
 
 // ---------------------------------------------------------------
 // BACKEND GAPS — what the backend must add to fully match this frontend
 // ---------------------------------------------------------------
-// Each gap maps to a former UI feature the admin control tower renders but the
-// backend does not yet model. Send these to the backend dev.
+// Each gap maps to a former UI feature the admin control tower would render but
+// the backend does not yet model. Send these to the backend dev.
 export const BACKEND_GAPS = [
-    {
-        feature: 'Cluster hierarchy & type',
-        ui: 'Tree groups clusters into Country > State > Market / Building > Custom (parentId + type + country/state/city/area on CreateClusterDto).',
-        missing: [
-            'Cluster entity fields: type (country|state|market|building|custom), parentId, country, state, city, area',
-            'GET /admin/clusters + GET /admin/clusters/:id return these fields',
-            'CreateClusterDto/UpdateClusterDto accept type, parentId, country, state, city, area',
-        ],
-        suggestedRoutes: [],
-    },
     {
         feature: 'Multiple QR codes per cluster',
         ui: 'QR modal lists/generates several scannable codes per cluster, each with its own scan count, active toggle and delete.',
@@ -1155,24 +521,12 @@ export const BACKEND_GAPS = [
         ],
     },
     {
-        feature: 'Cluster deals: auto-match + pin/unpin',
-        ui: 'Deals modal shows auto-matched offers for a cluster and lets admins manually pin/unpin offers.',
-        missing: [
-            'GET /admin/clusters/:id/offers  -> { autoMatched[], pinned[], total }',
-            'PATCH /admin/clusters/:id/offers/:offerId  -> { pinned }',
-        ],
-        suggestedRoutes: [
-            'GET /admin/clusters/:id/offers',
-            'PATCH /admin/clusters/:id/offers/:offerId',
-        ],
-    },
-    {
         feature: 'Per-QR deal configuration',
         ui: 'Each QR code has its own "Configure" flow choosing which deals it serves (all cluster deals vs a curated subset + slot count).',
         missing: [
             'GET  /admin/clusters/:id/qr-codes/:qrId/config  -> { mode: "all" | "custom", offerIds[], slotCount }',
             'PUT  /admin/clusters/:id/qr-codes/:qrId/config  { mode, offerIds?, slotCount }',
-            'deals endpoint for the picker: GET /admin/clusters/:id/offers (shared with pin/unpin gap)',
+            'deals endpoint for the picker: GET /admin/clusters/:id/offers (shared with pin/unpin)',
         ],
         suggestedRoutes: [
             'GET /admin/clusters/:id/qr-codes/:qrId/config',
@@ -1193,19 +547,31 @@ export const BACKEND_GAPS = [
         ],
     },
     {
+        feature: 'Per-QR rotation override',
+        ui: 'Each QR code can inherit the cluster rotation or override it with its own deal pool + strategy.',
+        missing: [
+            'GET  /clusters/qr/:qrId/rotation  ->  { inheritCluster, dealPool, rotation }',
+            'PATCH /clusters/qr/:qrId/rotation  { inheritCluster?, dealPool?, rotation? }',
+        ],
+        suggestedRoutes: [
+            'GET /clusters/qr/:qrId/rotation',
+            'PATCH /clusters/qr/:qrId/rotation',
+        ],
+    },
+    {
+        feature: 'Cluster deals: auto-match + pin/unpin',
+        ui: 'Deals modal shows auto-matched offers for a cluster and lets admins manually pin/unpin offers.',
+        missing: [
+            '(IMPLEMENTED — GET /admin/clusters/:id/offers + PATCH /admin/clusters/:id/offers/:offerId)',
+        ],
+        suggestedRoutes: [],
+    },
+    {
         feature: 'Branch membership management UI',
         ui: 'Admin should add/remove branches and run auto-assign from the UI.',
         missing: [
-            '(Implemented — see admin clusters page with Branches modal + Auto-Assign button)',
+            '(IMPLEMENTED — see admin clusters page with Branches modal + Auto-Assign button)',
         ],
         suggestedRoutes: [],
     },
 ];
-
-// ------------------------------------------------------------------
-// The following are ALREADY supported by the backend and are surfaced in
-// `adminClustersApi` (but not yet wired into the former UI):
-//   POST /admin/clusters/auto-assign
-//   POST /admin/clusters/:id/branches
-//   DELETE /admin/clusters/:id/branches/:branchId
-// ------------------------------------------------------------------

@@ -99,7 +99,9 @@ export default function PricingPage() {
                         {standardPlans.map((plan, index) => {
                             const highlight = plan.isPopular ?? false;
                             const isFree = plan.isFree;
-                            const price = billing === 'yearly' ? plan.yearlyPrice : plan.monthlyPrice;
+                            const price = billing === 'yearly'
+                                ? (plan.pricing?.yearly?.totalPrice ?? plan.yearlyPriceWithTax ?? plan.yearlyPrice)
+                                : (plan.pricing?.monthly?.totalPrice ?? plan.monthlyPriceWithTax ?? plan.monthlyPrice);
                             const features = normalizeFeatures(plan);
 
                             return (
@@ -134,6 +136,11 @@ export default function PricingPage() {
                                                 <span className="text-4xl font-bold">₦{price.toLocaleString()}</span>
                                                 <span className={cn("text-xs font-medium uppercase tracking-wider opacity-60")}>/{billing === 'monthly' ? 'mo' : 'yr'}</span>
                                             </div>
+                                        )}
+                                        {!isFree && plan.tax && plan.tax.isEnabled && (
+                                            <p className={cn("text-[10px] font-semibold mt-1", highlight ? "text-white/60" : "text-gray-400")}>
+                                                Tax inclusive · {plan.tax.name}{plan.tax.taxType === 'percentage' ? ` ${plan.tax.rate}%` : ''}
+                                            </p>
                                         )}
                                     </div>
 

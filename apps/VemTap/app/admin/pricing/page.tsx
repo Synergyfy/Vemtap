@@ -16,6 +16,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { PricingPlan } from '@/types/pricing';
 import FormattedNumberInput from '@/components/shared/FormattedNumberInput';
 import PlanPermissionsTab from '@/components/admin/pricing/PlanPermissionsTab';
+import TaxSettingsPanel from '@/components/admin/pricing/TaxSettingsPanel';
 import { useAdminPricingPlans, useAddPricingPlan, useUpdatePricingPlan, useDeletePricingPlan } from '@/services/pricing/hooks';
 import { useQrThrivePlans } from '@/services/qr-thrive/hooks';
 import { useAdminAddOns, useAddOnStats, useAddAddOn, useUpdateAddOn, useDeleteAddOn } from '@/services/addons/hooks';
@@ -392,7 +393,7 @@ const BundleDiscountsTab = () => {
 };
 
 export default function AdminPricingPage() {
-    const [activeTab, setActiveTab] = useState<'plans' | 'addons' | 'permissions' | 'ai-credits' | 'messaging-costs'>('plans');
+    const [activeTab, setActiveTab] = useState<'plans' | 'addons' | 'permissions' | 'ai-credits' | 'messaging-costs' | 'tax'>('plans');
 
     // System Settings for AI Credits & Messaging Costs
     const systemSettingsStore = useSystemSettingsStore();
@@ -816,7 +817,7 @@ export default function AdminPricingPage() {
                             <span className="text-xs font-black uppercase tracking-widest">Pricing Management</span>
                         </div>
                         <h1 className="text-4xl font-display font-bold text-text-main">
-                            {activeTab === 'plans' ? 'Subscription Plans' : activeTab === 'addons' ? 'Add-ons & Discounts' : activeTab === 'messaging-costs' ? 'Messaging Costs' : activeTab === 'ai-credits' ? 'AI Credits' : 'Plan Permissions'}
+                            {activeTab === 'plans' ? 'Subscription Plans' : activeTab === 'addons' ? 'Add-ons & Discounts' : activeTab === 'messaging-costs' ? 'Messaging Costs' : activeTab === 'ai-credits' ? 'AI Credits' : activeTab === 'tax' ? 'Subscription Tax & VAT' : 'Plan Permissions'}
                         </h1>
                     </div>
                     <div className="flex flex-wrap gap-3">
@@ -850,6 +851,12 @@ export default function AdminPricingPage() {
                                 className={`px-4 h-10 rounded-lg text-sm font-bold transition-all ${activeTab === 'ai-credits' ? 'bg-white text-primary shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
                             >
                                 AI Credits
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('tax')}
+                                className={`px-4 h-10 rounded-lg text-sm font-bold transition-all ${activeTab === 'tax' ? 'bg-white text-primary shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                            >
+                                Tax / VAT
                             </button>
                         </div>
                         {activeTab === 'plans' ? (
@@ -1196,6 +1203,8 @@ export default function AdminPricingPage() {
                             </div>
                         </div>
                     </div>
+                ) : activeTab === 'tax' ? (
+                    <TaxSettingsPanel />
                 ) : activeTab === 'ai-credits' ? (
                     <div className="bg-white rounded-3xl border border-gray-100 p-8 space-y-8 shadow-sm">
                         <div className="flex items-center justify-between border-b border-gray-50 pb-6">

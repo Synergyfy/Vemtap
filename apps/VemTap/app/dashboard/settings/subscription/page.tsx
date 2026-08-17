@@ -128,9 +128,11 @@ export default function DashboardPricingPage() {
     };
 
     const getPriceByCycle = (plan: PricingPlan, cycle: string) => {
-        if (cycle === 'yearly') return plan.yearlyPrice;
-        if (cycle === 'quarterly') return plan.quarterlyPrice;
-        return plan.monthlyPrice;
+        const taxTotal = plan.pricing?.[cycle as 'monthly' | 'quarterly' | 'yearly']?.totalPrice;
+        if (taxTotal !== undefined && taxTotal !== null) return taxTotal;
+        if (cycle === 'yearly') return plan.yearlyPriceWithTax ?? plan.yearlyPrice;
+        if (cycle === 'quarterly') return plan.quarterlyPriceWithTax ?? plan.quarterlyPrice;
+        return plan.monthlyPriceWithTax ?? plan.monthlyPrice;
     };
 
     const formatPrice = (price: number) => {
@@ -450,6 +452,11 @@ export default function DashboardPricingPage() {
                                         {billingPeriod !== 'monthly' && (
                                             <p className={`text-[10px] font-medium mt-1 ${highlight ? 'text-slate-500' : 'text-text-secondary'}`}>
                                                 ₦{billingTotal.toLocaleString()} {getBillingLabel(billingPeriod)}
+                                            </p>
+                                        )}
+                                        {plan.tax && plan.tax.isEnabled && (
+                                            <p className={`text-[9px] font-medium mt-1 ${highlight ? 'text-slate-400' : 'text-slate-400'}`}>
+                                                Tax inclusive · {plan.tax.name}{plan.tax.taxType === 'percentage' ? ` ${plan.tax.rate}%` : ''}
                                             </p>
                                         )}
                                     </>

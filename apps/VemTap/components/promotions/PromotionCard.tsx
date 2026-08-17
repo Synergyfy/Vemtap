@@ -3,134 +3,155 @@
 import React from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { ShoppingCart, BadgeCheck, Clock } from 'lucide-react';
+import { Clock, BadgeCheck, Zap } from 'lucide-react';
 import { MockPromotion, formatPromoPrice, getPromoDaysLeft } from '@/lib/mock/promotions';
 
 interface PromotionCardProps {
     promotion: MockPromotion;
     index: number;
+    /** Optional analytics/rotation hook fired when the customer opens the deal. */
+    onOpenDeal?: (id: string) => void;
+}
+
+function compactCount(n: number): string {
+    if (n >= 1000) return `${(n / 1000).toFixed(1).replace(/\.0$/, '')}K`;
+    return String(n);
 }
 
 function DaysLeftLabel({ daysLeft }: { daysLeft: number }) {
-    if (daysLeft <= 0) {
-        return <span className="text-primary font-black">Last day</span>;
-    }
-    if (daysLeft === 1) {
-        return <span className="text-primary font-black">1 day left</span>;
-    }
-    return <span className="text-primary font-black">{daysLeft} days left</span>;
+    if (daysLeft <= 0) return <span>Last day</span>;
+    if (daysLeft === 1) return <span>1 day left</span>;
+    return <span>{daysLeft} days left</span>;
 }
 
-export default function PromotionCard({ promotion, index }: PromotionCardProps) {
+export default function PromotionCard({ promotion, index, onOpenDeal }: PromotionCardProps) {
     const daysLeft = getPromoDaysLeft(promotion.endDate);
+    const isFree = promotion.dealPrice === 0;
+    const hasDiscount = (promotion.discountPercent ?? 0) > 0;
     const isStarSeller = promotion.claimedCount >= 5;
+    const claimPct = promotion.maxClaims > 0
+        ? Math.min(Math.round((promotion.claimedCount / promotion.maxClaims) * 100), 100)
+        : 0;
+    const flashHot = claimPct >= 70 && promotion.claimedCount > 10;
+
+    const discountLabel = promotion.discountPercent
+        ? `-${promotion.discountPercent}%`
+        : promotion.discountAmount
+            ? `-${formatPromoPrice(promotion.discountAmount)}`
+            : null;
 
     return (
         <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.35, delay: index * 0.05 }}
+            transition={{ duration: 0.35, delay: Math.min(index * 0.05, 0.4) }}
+            className="h-full"
         >
-            <Link href={`/promotions/${promotion.id}`} className="block group">
-                <div className="relative bg-white rounded-2xl overflow-hidden border border-gray-100 hover:border-primary/20 hover:shadow-lg transition-all duration-300">
+            <Link
+                href={`/promotions/${promotion.id}`}
+                className="block h-full group"
+                onClick={() => onOpenDeal?.(promotion.id)}
+            >
+                <div className="relative h-full flex flex-col bg-white rounded-[1.15rem] overflow-hidden ring-1 ring-black/[0.04] shadow-[0_1px_3px_rgba(15,23,42,0.06)] hover:shadow-[0_24px_48px_-16px_rgba(15,23,42,0.22)] hover:-translate-y-1 hover:ring-black/[0.07] transition-all duration-300">
+
                     {/* Image */}
-                    <div className="relative aspect-square overflow-hidden bg-gray-50">
+                    <div className="relative aspect-square overflow-hidden bg-gradient-to-br from-slate-50 to-slate-100">
                         {promotion.image ? (
                             <img
                                 src={promotion.image}
                                 alt={promotion.name}
-                                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                             />
                         ) : (
-                            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100">
-                                <span className="text-3xl font-headline font-bold text-gray-200">
+                            <div className="w-full h-full flex items-center justify-center">
+                                <span className="text-4xl font-headline font-bold text-slate-200">
                                     {promotion.name.charAt(0)}
                                 </span>
                             </div>
                         )}
 
-                        {/* Deal badge — top left */}
-                        {(promotion.discountPercent || promotion.discountAmount) && (
-                            <div className="absolute top-2.5 left-2.5 flex items-center gap-1">
-                                <span className="inline-flex items-center gap-1 bg-primary text-white px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider shadow-sm">
-                                    <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
-                                    Deal
-                                </span>
+                        {/* Discount sticker — rotated, vivid */}
+                        {discountLabel && (
+                            <div className="absolute top-2 left-2 -rotate-6 rounded-lg bg-gradient-to-br from-rose-500 to-orange-500 text-white px-2 py-1 shadow-md shadow-rose-500/30 leading-none">
+                                <span className="text-[13px] font-black tracking-tight">{discountLabel}</span>
+                                {hasDiscount && (
+                                    <span className="block text-[8px] font-bold tracking-[0.14em] opacity-90 mt-0.5">
+                                        OFF
+                                    </span>
+                                )}
                             </div>
                         )}
 
-                        {/* Cart button — bottom right on image */}
-                        <div className="absolute bottom-2.5 right-2.5">
-                            <div className="size-8 bg-white rounded-full shadow-md border border-gray-100 flex items-center justify-center group-hover:bg-primary group-hover:border-primary transition-all duration-300">
-                                <ShoppingCart size={13} className="text-gray-500 group-hover:text-white transition-colors" />
+                        {/* Flash chip when nearly gone */}
+                        {flashHot && (
+                            <div className="absolute top-2 right-2 rounded-full bg-black/35 backdrop-blur-sm text-white px-2 py-1 text-[9px] font-black uppercase tracking-wider inline-flex items-center gap-1 shadow-sm">
+                                <Zap size={10} className="text-amber-300 fill-amber-300" />
+                                Only {compactCount(promotion.maxClaims - promotion.claimedCount)} left
+                            </div>
+                        )}
+
+                        {/* Bottom gradient + claim meter */}
+                        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent px-2.5 pt-9 pb-2">
+                            <div className="w-full h-1.5 bg-white/25 rounded-full overflow-hidden">
+                                <div
+                                    className="h-full bg-gradient-to-r from-amber-300 to-orange-400 rounded-full transition-all duration-500"
+                                    style={{ width: `${Math.max(claimPct, 3)}%` }}
+                                />
+                            </div>
+                            <div className="flex items-center justify-between mt-1">
+                                <span className="text-[9px] font-black text-white drop-shadow">
+                                    🔥 {compactCount(promotion.claimedCount)} claimed
+                                </span>
+                                {promotion.maxClaims > 0 && (
+                                    <span className="text-[9px] font-black text-white/90 drop-shadow">
+                                        {claimPct}%
+                                    </span>
+                                )}
                             </div>
                         </div>
                     </div>
 
                     {/* Content */}
-                    <div className="p-3 space-y-2">
-                        {/* Title */}
-                        <h3 className="font-semibold text-gray-800 text-[13px] leading-snug line-clamp-2 min-h-[2.5rem]">
+                    <div className="p-2.5 space-y-1.5 flex-1 flex flex-col">
+                        <p className="text-[9px] font-black uppercase tracking-[0.12em] text-slate-400 truncate">
+                            {promotion.businessName}
+                        </p>
+
+                        <h3 className="font-semibold text-slate-800 text-[13px] leading-snug line-clamp-2 min-h-[2.5rem] group-hover:text-primary transition-colors">
                             {promotion.name}
                         </h3>
 
                         {/* Price row */}
-                        <div className="flex items-baseline gap-2 flex-wrap">
-                            <span className="text-[15px] font-black text-primary tracking-tight">
-                                {formatPromoPrice(promotion.dealPrice)}
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="text-[17px] font-black text-slate-900 tracking-tight">
+                                {isFree ? 'FREE' : formatPromoPrice(promotion.dealPrice)}
                             </span>
                             {promotion.originalPrice > promotion.dealPrice && (
-                                <span className="text-[11px] text-gray-400 line-through font-medium">
+                                <span className="text-[11px] text-slate-400 line-through font-semibold">
                                     {formatPromoPrice(promotion.originalPrice)}
                                 </span>
                             )}
                         </div>
 
-                        {/* "Last day X days left" label */}
-                        {(promotion.endDate || daysLeft >= 0) && (
-                            <div className="flex items-center gap-1">
-                                <Clock size={10} className="text-primary/60" />
-                                <span className="text-[10px] font-bold">
-                                    <DaysLeftLabel daysLeft={daysLeft} />
+                        {/* Footer */}
+                        <div className="mt-auto pt-1.5 flex items-center justify-between gap-2">
+                            <span
+                                className={
+                                    daysLeft <= 3
+                                        ? 'inline-flex items-center gap-1 text-[10px] font-black text-orange-600'
+                                        : 'inline-flex items-center gap-1 text-[10px] font-bold text-slate-400'
+                                }
+                            >
+                                <Clock size={10} className={daysLeft <= 3 ? 'text-orange-500' : ''} />
+                                <DaysLeftLabel daysLeft={daysLeft} />
+                            </span>
+                            {isStarSeller && (
+                                <span className="inline-flex items-center gap-1 text-[9px] font-black text-primary">
+                                    <BadgeCheck size={12} className="text-primary fill-primary/10" />
+                                    Star seller
                                 </span>
-                            </div>
-                        )}
-
-                        {/* Claim info */}
-                        <div className="space-y-1">
-                            {promotion.maxClaims > 0 && (
-                                <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                                    <div
-                                        className="h-full bg-gradient-to-r from-amber-400 to-amber-500 rounded-full transition-all duration-500"
-                                        style={{ width: `${Math.min((promotion.claimedCount / promotion.maxClaims) * 100, 100)}%` }}
-                                    />
-                                </div>
                             )}
-                            <div className="flex items-center justify-between">
-                                <span className="text-[10px] font-bold text-gray-400 flex items-center gap-0.5">
-                                    <span className="text-orange-400">🔥</span>
-                                    {promotion.claimedCount > 1
-                                        ? `${promotion.claimedCount >= 1000
-                                            ? `${(promotion.claimedCount / 1000).toFixed(0)}K`
-                                            : promotion.claimedCount}+`
-                                        : promotion.claimedCount}{' '}
-                                    claimed
-                                </span>
-                                {promotion.maxClaims > 0 && (
-                                    <span className="text-[10px] font-bold text-amber-500">
-                                        {Math.round((promotion.claimedCount / promotion.maxClaims) * 100)}%
-                                    </span>
-                                )}
-                            </div>
                         </div>
-
-                        {/* Star seller badge */}
-                        {isStarSeller && (
-                            <div className="flex items-center gap-1 pt-0.5">
-                                <BadgeCheck size={12} className="text-primary fill-primary/10" />
-                                <span className="text-[10px] font-bold text-primary">Star seller</span>
-                            </div>
-                        )}
                     </div>
                 </div>
             </Link>

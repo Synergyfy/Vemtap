@@ -21,7 +21,7 @@
 
 export type AutoMode = 'automatic' | 'manual';
 
-export type RotationStrategy = 'balanced' | 'weighted' | 'scheduled';
+export type RotationStrategy = 'balanced' | 'weighted' | 'scheduled' | 'smart';
 
 export type RotationStatus = 'active' | 'paused';
 
@@ -86,7 +86,7 @@ export interface RotationConfig {
      * within the same window receives the exact same cached deal arrangement.
      */
     rotationWindowSeconds: number;
-    updatedAt: string;
+    updatedAt: string | null;
 }
 
 /** The site-wide defaults every cluster inherits until it is overridden.
@@ -99,7 +99,8 @@ export interface GlobalRotationDefaults {
     featuredSlotsCount: number;
     frequencyMode: AutoMode;
     frequencyMaxViewsPerCustomerPerDay: number;
-    updatedAt: string;
+    frequencyWindowHours: number;
+    updatedAt: string | null;
 }
 
 export interface EligibilityMatch {
@@ -147,6 +148,79 @@ export interface RotationPreview {
     seed: number;
 }
 
+// -----------------------------------------------------------------------------
+// Backend-aligned contracts (implemented by /admin/clusters/:id/rotator)
+// The real backend returns these raw shapes. The frontend maps them into the
+// richer model above, and translates the richer mutations back into the flat
+// backend payloads before calling the endpoints.
+// -----------------------------------------------------------------------------
+
+/** Single rotation window result from the engine (admin preview + live feed). */
+export interface RotationResultDto {
+    clusterId: string;
+    windowId: number;
+    windowStart: string;
+    windowEnd: string;
+    slotCount: number;
+    featured: string[];
+}
+
+/** Raw backend config (global and merged-per-cluster). */
+export interface BackendRotatorConfig {
+    rotationMode: 'automatic' | 'manual';
+    distribution: RotationStrategy;
+    featuredSlotsMode: 'automatic' | 'manual';
+    featuredSlotCount: number | null;
+    windowSeconds: number;
+    frequencyWindowHours: number;
+    isOverridden?: boolean;
+    updatedAt?: string;
+}
+
+/** Raw backend eligibility summary. */
+export interface BackendEligibilitySummary {
+    automatic: boolean;
+    manual: boolean;
+    totalEligible: number;
+    included: string[];
+    excluded: string[];
+    mode: 'automatic' | 'manual';
+}
+
+/** Raw backend "why is this deal showing" explanation. */
+export interface BackendWhyDto {
+    offerId: string;
+    eligible: boolean;
+    businessActive: boolean;
+    dealActive: boolean;
+    clusterMatch: boolean;
+    notExpired: boolean;
+    schedule: boolean;
+    frequencyEligible: boolean;
+    included: boolean;
+    manualIncluded: boolean | null;
+    manualExcluded: boolean;
+    deliveryWeight: number;
+    rotation: string;
+    mode: string;
+    status: 'Eligible' | 'Excluded' | 'Expired' | 'Paused' | 'Scheduled-out';
+    reasons: string[];
+}
+
+/** Raw backend analytics summary. */
+export interface BackendAnalyticsSummary {
+    impressions: number;
+    uniqueReach: number;
+    clicks: number;
+    ctr?: number;
+    topExposure: Array<{
+        offerId: string;
+        name: string;
+        businessName: string;
+        impressions: number;
+    }>;
+}
+
 export type RotationOverrideKey =
     | 'eligibility'
     | 'rotation'
@@ -166,6 +240,7 @@ export const STRATEGY_LABELS: Record<RotationStrategy, string> = {
     balanced: 'Balanced',
     weighted: 'Weighted',
     scheduled: 'Scheduled',
+    smart: 'Smart',
 };
 
 export const DEAL_STATUS_LABELS: Record<DealStatus, string> = {
@@ -185,7 +260,8 @@ export const DEFAULT_GLOBAL_ROTATION: GlobalRotationDefaults = {
     featuredSlotsCount: 5,
     frequencyMode: 'automatic',
     frequencyMaxViewsPerCustomerPerDay: 3,
-    updatedAt: new Date(0).toISOString(),
+    frequencyWindowHours: 24,
+    updatedAt: null,
 };
 
 /** Returns true when a cluster section differs from the given global default —
