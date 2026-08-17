@@ -97,14 +97,14 @@ export function CartPanel({ onNavigate, isPublic = false, branchId: publicBranch
 
   if (cart.length === 0) {
     return (
-      <div className="h-full flex flex-col items-center justify-center p-8 text-center bg-gray-50/50">
-        <div className="size-24 bg-white rounded-full flex items-center justify-center border border-gray-100 shadow-sm mb-6">
-          <div className="size-16 bg-gray-50 rounded-full flex items-center justify-center text-gray-300">
+      <div className="flex-1 flex flex-col items-center justify-center p-6 md:p-8 text-center bg-gray-50/50">
+        <div className="size-20 md:size-24 bg-white rounded-full flex items-center justify-center border border-gray-100 shadow-sm mb-4 md:mb-6">
+          <div className="size-12 md:size-16 bg-gray-50 rounded-full flex items-center justify-center text-gray-300">
             <ShoppingBagIcon />
           </div>
         </div>
-        <h3 className="text-xl font-black text-gray-900 mb-2">Your next sale starts here</h3>
-        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest max-w-[200px] leading-relaxed">
+        <h3 className="text-lg md:text-xl font-black text-gray-900 mb-1.5 md:mb-2">Your next sale starts here</h3>
+        <p className="text-[9px] md:text-[10px] font-bold text-gray-400 uppercase tracking-widest max-w-[180px] md:max-w-[200px] leading-relaxed">
           Scan a barcode or tap products to add them to the cart
         </p>
       </div>
@@ -112,18 +112,18 @@ export function CartPanel({ onNavigate, isPublic = false, branchId: publicBranch
   }
 
   return (
-    <div className="h-full flex flex-col bg-white">
+    <div className="flex-1 min-h-0 flex flex-col bg-white">
       {/* Header */}
-      <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between bg-white shrink-0">
-        <div className="flex items-center gap-3">
-          <h2 className="text-lg font-black text-gray-900">Current Sale</h2>
-          <span className="bg-[#066CF4]/10 text-[#066CF4] text-[10px] font-black px-2 py-0.5 rounded-md">
+      <div className="px-4 py-3 md:px-6 md:py-5 border-b border-gray-100 flex items-center justify-between bg-white shrink-0">
+        <div className="flex items-center gap-2 md:gap-3">
+          <h2 className="text-base md:text-lg font-black text-gray-900">Current Sale</h2>
+          <span className="bg-[#066CF4]/10 text-[#066CF4] text-[9px] md:text-[10px] font-black px-2 py-0.5 rounded-md">
             {itemCount} items
           </span>
         </div>
         <button 
           onClick={clearCart}
-          className="text-[10px] font-black uppercase tracking-widest text-red-500 hover:text-red-600 transition-colors bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-lg"
+          className="text-[9px] md:text-[10px] font-black uppercase tracking-widest text-red-500 hover:text-red-600 transition-colors bg-red-50 hover:bg-red-100 px-2.5 md:px-3 py-1 md:py-1.5 rounded-lg"
         >
           Clear
         </button>
@@ -213,45 +213,45 @@ export function CartPanel({ onNavigate, isPublic = false, branchId: publicBranch
       )}
 
       {/* Cart Items */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-3">
+      <div className="flex-1 min-h-0 overflow-y-auto p-3 md:p-4 space-y-2 md:space-y-3">
         {cart.map((item) => (
-          <div key={item.id} className="flex flex-col p-4 bg-white border border-gray-100 rounded-[24px] shadow-sm relative group hover:border-[#066CF4]/30 transition-colors">
+          <div key={item.id} className="flex flex-col p-3 md:p-4 bg-white border border-gray-100 rounded-2xl md:rounded-[24px] shadow-sm relative group hover:border-[#066CF4]/30 transition-colors">
             <button
               onClick={() => removeFromCart(item.id)}
-              className="absolute -top-2 -right-2 size-6 bg-white border border-gray-200 rounded-full flex items-center justify-center text-gray-400 hover:text-red-500 hover:border-red-200 hover:bg-red-50 transition-all shadow-sm z-10"
+              className="absolute -top-1.5 -right-1.5 md:-top-2 md:-right-2 size-5 md:size-6 bg-white border border-gray-200 rounded-full flex items-center justify-center text-gray-400 hover:text-red-500 hover:border-red-200 hover:bg-red-50 transition-all shadow-sm z-10"
             >
-              <X size={11} />
+              <X size={10} />
             </button>
-            <div className="flex items-start gap-3">
-              <div className="size-12 bg-gray-50 rounded-[14px] flex items-center justify-center shrink-0 border border-gray-100 overflow-hidden">
+            <div className="flex items-start gap-2.5 md:gap-3">
+              <div className="size-10 md:size-12 bg-gray-50 rounded-xl md:rounded-[14px] flex items-center justify-center shrink-0 border border-gray-100 overflow-hidden">
                 {item.image ? (
                   <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
                 ) : (
-                  <ShoppingBagIcon size={20} className="text-gray-300" />
+                  <ShoppingBagIcon size={18} className="text-gray-300" />
                 )}
               </div>
               <div className="flex-1 min-w-0 pt-0.5">
-                <h4 className="text-[13px] font-black text-gray-900 leading-tight truncate">{item.name}</h4>
-                <div className="flex items-center gap-2 mt-1">
-                  <span className="text-[11px] font-black text-[#066CF4]">₦{item.price.toLocaleString()}</span>
+                <h4 className="text-[12px] md:text-[13px] font-black text-gray-900 leading-tight truncate">{item.name}</h4>
+                <div className="flex items-center gap-1.5 md:gap-2 mt-0.5 md:mt-1">
+                  <span className="text-[10px] md:text-[11px] font-black text-[#066CF4]">₦{item.price.toLocaleString()}</span>
                   {item.discount > 0 && (
-                    <span className="text-[9px] font-bold text-emerald-500 bg-emerald-50 px-1.5 rounded-sm">-₦{item.discount}</span>
+                    <span className="text-[8px] md:text-[9px] font-bold text-emerald-500 bg-emerald-50 px-1 md:px-1.5 rounded-sm">-₦{item.discount}</span>
                   )}
                 </div>
               </div>
               
-              <div className="text-right flex flex-col items-end gap-2 shrink-0">
-                <span className="text-[13px] font-black text-gray-900">
+              <div className="text-right flex flex-col items-end gap-1.5 md:gap-2 shrink-0">
+                <span className="text-[12px] md:text-[13px] font-black text-gray-900">
                   ₦{((item.price * item.quantity) - item.discount).toLocaleString()}
                 </span>
-                <div className="flex items-center bg-gray-50 rounded-xl p-0.5 border border-gray-100">
+                <div className="flex items-center bg-gray-50 rounded-lg md:rounded-xl p-0.5 border border-gray-100">
                   <button 
                     onClick={() => updateCartItemQuantity(item.id, item.quantity - 1)}
-                    className="size-7 flex items-center justify-center text-gray-500 hover:bg-white hover:text-gray-900 hover:shadow-sm rounded-lg transition-all"
+                    className="size-6 md:size-7 flex items-center justify-center text-gray-500 hover:bg-white hover:text-gray-900 hover:shadow-sm rounded-md md:rounded-lg transition-all"
                   >
-                    <Minus size={12} />
+                    <Minus size={11} />
                   </button>
-                  <span className="w-6 text-center text-[11px] font-black text-gray-900">{item.quantity}</span>
+                  <span className="w-5 md:w-6 text-center text-[10px] md:text-[11px] font-black text-gray-900">{item.quantity}</span>
                   <button 
                     onClick={() => {
                       if (item.stockQuantity != null && item.quantity >= item.stockQuantity) {
@@ -261,13 +261,13 @@ export function CartPanel({ onNavigate, isPublic = false, branchId: publicBranch
                       updateCartItemQuantity(item.id, item.quantity + 1);
                     }}
                     className={cn(
-                      "size-7 flex items-center justify-center rounded-lg transition-all",
+                      "size-6 md:size-7 flex items-center justify-center rounded-md md:rounded-lg transition-all",
                       item.stockQuantity != null && item.quantity >= item.stockQuantity
                         ? "text-gray-300 cursor-not-allowed"
                         : "text-gray-500 hover:bg-white hover:text-gray-900 hover:shadow-sm"
                     )}
                   >
-                    <Plus size={12} />
+                    <Plus size={11} />
                   </button>
                 </div>
               </div>
@@ -277,91 +277,91 @@ export function CartPanel({ onNavigate, isPublic = false, branchId: publicBranch
       </div>
 
       {/* Footer / Summary */}
-      <div className="p-6 bg-white border-t border-gray-100 shadow-[0_-10px_30px_rgba(0,0,0,0.02)] shrink-0 rounded-t-[32px] relative z-10">
-        <div className="space-y-3 mb-4">
-          <div className="flex justify-between text-[11px] font-bold text-gray-500">
+      <div className="p-4 md:p-6 bg-white border-t border-gray-100 shadow-[0_-10px_30px_rgba(0,0,0,0.02)] shrink-0 md:rounded-t-[32px] relative z-10">
+        <div className="space-y-2 md:space-y-3 mb-3 md:mb-4">
+          <div className="flex justify-between text-[10px] md:text-[11px] font-bold text-gray-500">
             <span>Subtotal</span>
             <span className="text-gray-900">₦{subtotal.toLocaleString()}</span>
           </div>
           {discount > 0 && (
-            <div className="flex justify-between text-[11px] font-bold text-emerald-500">
+            <div className="flex justify-between text-[10px] md:text-[11px] font-bold text-emerald-500">
               <span>Discount</span>
               <span>-₦{discount.toLocaleString()}</span>
             </div>
           )}
           {redeemedPromotion && (
-            <div className="flex justify-between text-[11px] font-bold text-blue-500">
-              <span className="flex items-center gap-1"><TicketCheck size={12} /> {redeemedPromotion.offerName}</span>
-              <span className="text-[9px] uppercase tracking-wider">Redeemed</span>
+            <div className="flex justify-between text-[10px] md:text-[11px] font-bold text-blue-500">
+              <span className="flex items-center gap-1"><TicketCheck size={10} /> {redeemedPromotion.offerName}</span>
+              <span className="text-[8px] md:text-[9px] uppercase tracking-wider">Redeemed</span>
             </div>
           )}
           {posSettings.taxEnabled && !posSettings.pricesIncludeTax && tax > 0 && (
-            <div className="flex justify-between text-[11px] font-bold text-gray-500">
+            <div className="flex justify-between text-[10px] md:text-[11px] font-bold text-gray-500">
               <span>{posSettings.taxLabel || 'Tax'}</span>
               <span className="text-gray-900">₦{tax.toLocaleString()}</span>
             </div>
           )}
-          <div className="flex justify-between items-end pt-3 border-t border-gray-100">
-            <span className="text-[12px] font-black uppercase tracking-widest text-gray-900">Total</span>
-            <span className="text-2xl font-black text-[#066CF4] tracking-tight">₦{total.toLocaleString()}</span>
+          <div className="flex justify-between items-end pt-2 md:pt-3 border-t border-gray-100">
+            <span className="text-[11px] md:text-[12px] font-black uppercase tracking-widest text-gray-900">Total</span>
+            <span className="text-xl md:text-2xl font-black text-[#066CF4] tracking-tight">₦{total.toLocaleString()}</span>
           </div>
         </div>
 
         {/* Customer, Discount & Claim Code — actions row only for non-public */}
         {!isPublic && (
-          <div className="grid grid-cols-3 gap-2 mb-4">
+          <div className="grid grid-cols-3 gap-1.5 md:gap-2 mb-3 md:mb-4">
             <div className={cn(
-              "flex items-center h-11 rounded-2xl border overflow-hidden transition-all",
+              "flex items-center h-9 md:h-11 rounded-xl md:rounded-2xl border overflow-hidden transition-all",
               attachedCustomer
                 ? "bg-blue-50 border-blue-100 text-blue-600"
                 : "bg-white border-gray-200 text-gray-600"
             )}>
               <button
                 onClick={() => setIsCustomerModalOpen(true)}
-                className="flex-1 flex items-center justify-center gap-2 text-[10px] font-black uppercase tracking-widest h-full"
+                className="flex-1 flex items-center justify-center gap-1 md:gap-2 text-[8px] md:text-[10px] font-black uppercase tracking-widest h-full"
               >
-                {attachedCustomer ? <User size={14} /> : <UserPlus size={14} />}
-                {attachedCustomer ? attachedCustomer.name.split(' ')[0] : 'Customer'}
+                {attachedCustomer ? <User size={12} /> : <UserPlus size={12} />}
+                <span className="truncate">{attachedCustomer ? attachedCustomer.name.split(' ')[0] : 'Customer'}</span>
               </button>
               {attachedCustomer && (
                 <button
                   onClick={() => attachCustomer(null)}
-                  className="size-11 flex items-center justify-center text-blue-400 hover:text-red-500 hover:bg-red-50 transition-all shrink-0 border-l border-blue-100"
+                  className="size-9 md:size-11 flex items-center justify-center text-blue-400 hover:text-red-500 hover:bg-red-50 transition-all shrink-0 border-l border-blue-100"
                   title="Remove customer"
                 >
-                  <X size={13} />
+                  <X size={11} />
                 </button>
               )}
             </div>
             <button
               onClick={() => setIsDiscountModalOpen(true)}
               className={cn(
-                "flex items-center justify-center gap-2 h-11 rounded-2xl border transition-all active:scale-95 text-[10px] font-black uppercase tracking-widest",
+                "flex items-center justify-center gap-1 md:gap-2 h-9 md:h-11 rounded-xl md:rounded-2xl border transition-all active:scale-95 text-[8px] md:text-[10px] font-black uppercase tracking-widest",
                 discount > 0
                   ? "bg-emerald-50 border-emerald-100 text-emerald-600"
                   : "bg-white border-gray-200 text-gray-600 hover:border-gray-300"
               )}
             >
-              <Tag size={14} />
-              {discount > 0 ? 'Discount' : 'Discount'}
+              <Tag size={12} />
+              Discount
             </button>
             <button
               onClick={() => setIsRedeemModalOpen(true)}
               className={cn(
-                "flex items-center justify-center gap-2 h-11 rounded-2xl border transition-all active:scale-95 text-[10px] font-black uppercase tracking-widest",
+                "flex items-center justify-center gap-1 md:gap-2 h-9 md:h-11 rounded-xl md:rounded-2xl border transition-all active:scale-95 text-[8px] md:text-[10px] font-black uppercase tracking-widest",
                 redeemedPromotion
                   ? "bg-blue-50 border-blue-100 text-blue-600"
                   : "bg-white border-gray-200 text-gray-600 hover:border-gray-300"
               )}
             >
-              <TicketCheck size={14} />
+              <TicketCheck size={12} />
               {redeemedPromotion ? 'Claimed' : 'Claim Code'}
             </button>
           </div>
         )}
 
         {!isPublic ? (
-          <div className="grid grid-cols-4 gap-2">
+          <div className="grid grid-cols-4 gap-1.5 md:gap-2">
             <button 
               onClick={() => {
                 holdSale.mutate({
@@ -385,24 +385,24 @@ export function CartPanel({ onNavigate, isPublic = false, branchId: publicBranch
                   },
                 });
               }}
-              className="col-span-1 h-14 bg-gray-50 hover:bg-gray-100 text-gray-600 rounded-[20px] flex items-center justify-center transition-colors border border-gray-200"
+              className="col-span-1 h-11 md:h-14 bg-gray-50 hover:bg-gray-100 text-gray-600 rounded-2xl md:rounded-[20px] flex items-center justify-center transition-colors border border-gray-200"
               title="Hold Sale"
             >
-              <span className="text-[9px] font-black uppercase tracking-widest">Hold</span>
+              <span className="text-[8px] md:text-[9px] font-black uppercase tracking-widest">Hold</span>
             </button>
             <button 
               onClick={() => { onNavigate?.(); router.push('/dashboard/pos/payment'); }}
-              className="col-span-3 h-14 bg-[#066CF4] text-white rounded-[20px] flex items-center justify-center gap-2 shadow-xl shadow-blue-500/20 hover:bg-blue-600 active:scale-95 transition-all"
+              className="col-span-3 h-11 md:h-14 bg-[#066CF4] text-white rounded-2xl md:rounded-[20px] flex items-center justify-center gap-1.5 md:gap-2 shadow-xl shadow-blue-500/20 hover:bg-blue-600 active:scale-95 transition-all"
             >
-              <span className="text-[12px] font-black uppercase tracking-[0.15em]">Charge ₦{total.toLocaleString()}</span>
-              <ArrowRight size={18} />
+              <span className="text-[10px] md:text-[12px] font-black uppercase tracking-[0.15em]">Charge ₦{total.toLocaleString()}</span>
+              <ArrowRight size={16} />
             </button>
           </div>
         ) : (
           <button 
             onClick={() => setIsCustomerModalOpen(true)}
             disabled={isSubmitting}
-            className="w-full h-14 bg-[#066CF4] text-white rounded-[20px] flex items-center justify-center gap-2 shadow-xl shadow-blue-500/20 hover:bg-blue-600 active:scale-95 transition-all disabled:opacity-50"
+            className="w-full h-11 md:h-14 bg-[#066CF4] text-white rounded-2xl md:rounded-[20px] flex items-center justify-center gap-2 shadow-xl shadow-blue-500/20 hover:bg-blue-600 active:scale-95 transition-all disabled:opacity-50"
           >
             {isSubmitting ? (
               <>

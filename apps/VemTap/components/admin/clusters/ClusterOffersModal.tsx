@@ -5,7 +5,7 @@ import { X, Loader2, Search, Pin, PinOff, MapPin, Tag, Sparkles, Hand, Link2 } f
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import { cn } from '@/lib/utils';
-import { adminClustersApi, searchMockDeals } from '@/lib/api/clusters';
+import { adminClustersApi } from '@/lib/api/clusters';
 import type { Cluster, ClusterOfferRow } from '@/lib/api/clusters';
 import { getPublicOffers } from '@/services/deals/hooks';
 import type { DealOffer } from '@/services/deals/types';
@@ -104,14 +104,8 @@ export default function ClusterOffersModal({ open, cluster, onClose, onChanged }
         }
         setDealSearching(true);
         try {
-            let results: DealOffer[];
-            try {
-                const res = await getPublicOffers({ search: query.trim(), limit: 8 });
-                results = Array.isArray(res) ? res : res?.data || [];
-            } catch {
-                // No backend yet — fall back to the mocked deal catalogue.
-                results = searchMockDeals(query.trim()) as DealOffer[];
-            }
+            const res = await getPublicOffers({ search: query.trim(), limit: 8 });
+            const results = Array.isArray(res) ? res : res?.data || [];
             setDealResults(results);
         } catch {
             setDealResults([]);

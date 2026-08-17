@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -18,8 +18,10 @@ import { useBusinessLoyaltyStats } from '@/services/loyalty/hooks';
 import { useActiveBranch } from '@/hooks/useActiveBranch';
 import { useMyBusiness } from '@/services/businesses/hooks';
 import { useBranches } from '@/services/branches/hooks';
+import { useCatalogueOffersAdmin } from '@/services/catalogue/hooks';
 import DashboardBannerWrapper from '@/components/dashboard/DashboardBannerWrapper';
 import OnboardingChecklist from '@/components/dashboard/OnboardingChecklist';
+import CreateDealPromptModal from '@/components/dashboard/CreateDealPromptModal';
 import { Button } from '@/components/ui/button';
 
 import { useQuery } from '@tanstack/react-query';
@@ -32,6 +34,7 @@ export default function DashboardPage() {
     const router = useRouter();
     const [isHealthExpanded, setIsHealthExpanded] = useState(false);
     const [isActivityExpanded, setIsActivityExpanded] = useState(false);
+    const [showDealPrompt, setShowDealPrompt] = useState(false);
     const user = useAuthStore((state) => state.user);
     const { activeBranchId } = useActiveBranch();
     const { data: myBusiness } = useMyBusiness();
@@ -42,6 +45,19 @@ export default function DashboardPage() {
         queryKey: ['dashboard', activeBranchId],
         queryFn: () => dashboardApi.fetchDashboardData(activeBranchId ?? undefined),
     });
+    const { data: offers, isLoading: isOffersLoading } = useCatalogueOffersAdmin(
+        activeBranchId ? { branchId: activeBranchId } : {},
+        { enabled: !!activeBranchId }
+    );
+
+    useEffect(() => {
+        if (!isOffersLoading && activeBranchId && offers && offers.length === 0) {
+            const dismissed = sessionStorage.getItem('deal_prompt_dismissed');
+            if (!dismissed) {
+                setShowDealPrompt(true);
+            }
+        }
+    }, [isOffersLoading, activeBranchId, offers]);
 
     const activeBranch = branches.find(b => b.id === activeBranchId);
     const businessName = user?.businessName || myBusiness?.name;
@@ -115,8 +131,14 @@ export default function DashboardPage() {
         triggerAnalysis('dashboard', aiContext);
     }, [triggerAnalysis, aiContext]);
 
+    const handleDealPromptClose = useCallback(() => {
+        sessionStorage.setItem('deal_prompt_dismissed', '1');
+        setShowDealPrompt(false);
+    }, []);
+
     return (
         <div className="min-h-screen bg-gray-50 pb-24">
+            <CreateDealPromptModal isOpen={showDealPrompt} onClose={handleDealPromptClose} />
             <main className="p-4 sm:p-6 max-w-7xl mx-auto">
                 <div className="space-y-6">
                         {/* 1. TOP SECTION: Greeting & Branding */}
@@ -167,7 +189,7 @@ export default function DashboardPage() {
                             <div className="flex items-center justify-between mb-2.5">
                                 <h2 className="text-[10px] font-bold uppercase tracking-[0.16em] text-gray-400">Quick Actions</h2>
                             </div>
-                            <div className="grid grid-cols-2 md:grid-cols-3 gap-2 md:gap-3">
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3">
                                 {useMemo(() => {
                                     const role = (user?.role as string)?.toLowerCase() || 'owner';
                                     if (role === 'cashier') {
@@ -202,11 +224,9 @@ export default function DashboardPage() {
                                     }
                                     // Default / Owner / Manager
                                     return [
-                                        { label: 'Sales', icon: TrendingUp, color: 'text-purple-600 bg-purple-50/50 border-purple-100/50', route: '/dashboard/sales' },
+                                        { label: 'Create Deals', icon: Tag, color: 'text-orange-600 bg-orange-50/50 border-orange-100/50', route: '/dashboard/discovery/deals' },
                                         { label: 'POS Terminal', icon: ShoppingBag, color: 'text-blue-600 bg-blue-50/50 border-blue-100/50', route: '/dashboard/pos' },
-                                        { label: 'Customer', icon: Users, color: 'text-indigo-600 bg-indigo-50/50 border-indigo-100/50', route: '/dashboard/pos/customers' },
                                         { label: 'Send Message', icon: Send, color: 'text-amber-600 bg-amber-50/50 border-amber-100/50', route: '/dashboard/messaging' },
-                                        { label: 'Get Customer', icon: QrCode, color: 'text-emerald-600 bg-emerald-50/50 border-emerald-100/50', route: '/dashboard/discovery' },
                                         { label: 'Refer a Business', icon: UserPlus, color: 'text-rose-600 bg-rose-50/50 border-rose-100/50', route: '/dashboard/business-partnership' }
                                     ];
                                 }, [user?.role]).map((action, i) => (

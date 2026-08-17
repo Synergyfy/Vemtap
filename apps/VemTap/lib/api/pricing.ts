@@ -60,6 +60,41 @@ const normalizePlan = (raw: any): PricingPlan => ({
     aiCopilotEnabled: Boolean(raw?.aiCopilotEnabled),
     aiCredits: raw?.aiCredits !== undefined && raw?.aiCredits !== null ? toNumber(raw.aiCredits) : 0,
     permissionsConfiguredAt: raw?.permissionsConfiguredAt ? String(raw.permissionsConfiguredAt) : null,
+    monthlyTax: raw?.monthlyTax !== undefined ? toNumber(raw.monthlyTax) : undefined,
+    monthlyPriceWithTax: raw?.monthlyPriceWithTax !== undefined ? toNumber(raw.monthlyPriceWithTax) : undefined,
+    quarterlyTax: raw?.quarterlyTax !== undefined ? toNumber(raw.quarterlyTax) : undefined,
+    quarterlyPriceWithTax: raw?.quarterlyPriceWithTax !== undefined ? toNumber(raw.quarterlyPriceWithTax) : undefined,
+    yearlyTax: raw?.yearlyTax !== undefined ? toNumber(raw.yearlyTax) : undefined,
+    yearlyPriceWithTax: raw?.yearlyPriceWithTax !== undefined ? toNumber(raw.yearlyPriceWithTax) : undefined,
+    tax: raw?.tax ? {
+        name: String(raw.tax.name ?? ''),
+        taxType: (raw.tax.taxType === 'fixed' ? 'fixed' : 'percentage'),
+        rate: toNumber(raw.tax.rate),
+        isEnabled: Boolean(raw.tax.isEnabled),
+    } : undefined,
+    pricing: raw?.pricing ? {
+        tax: {
+            name: String(raw.pricing.tax?.name ?? ''),
+            taxType: (raw.pricing.tax?.taxType === 'fixed' ? 'fixed' : 'percentage'),
+            rate: toNumber(raw.pricing.tax?.rate),
+            isEnabled: raw.pricing.tax?.isEnabled ?? true,
+        },
+        monthly: {
+            basePrice: toNumber(raw.pricing.monthly?.basePrice),
+            taxAmount: toNumber(raw.pricing.monthly?.taxAmount),
+            totalPrice: toNumber(raw.pricing.monthly?.totalPrice),
+        },
+        quarterly: {
+            basePrice: toNumber(raw.pricing.quarterly?.basePrice),
+            taxAmount: toNumber(raw.pricing.quarterly?.taxAmount),
+            totalPrice: toNumber(raw.pricing.quarterly?.totalPrice),
+        },
+        yearly: {
+            basePrice: toNumber(raw.pricing.yearly?.basePrice),
+            taxAmount: toNumber(raw.pricing.yearly?.taxAmount),
+            totalPrice: toNumber(raw.pricing.yearly?.totalPrice),
+        },
+    } : undefined,
 });
 
 const toPlanPayload = (plan: Partial<PricingPlan>) => {
