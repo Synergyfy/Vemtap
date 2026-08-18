@@ -187,15 +187,22 @@ export class SubscriptionsController {
   @Public()
   @ApiOperation({
     summary:
-      'Preview subscription checkout cost with VAT/tax breakdown and add-ons',
+      'Preview subscription checkout cost with VAT/tax breakdown, coupon discount, and add-ons',
   })
   @ApiResponse({
     status: 200,
-    description: 'Calculated breakdown of subtotal, tax amount, and total',
+    description: 'Calculated breakdown of subtotal, discount, tax amount, and total',
   })
-  async previewPrice(@Query() dto: PricePreviewDto) {
-    return this.subscriptionsService.previewPrice(dto);
+  async previewPrice(@Query() dto: PricePreviewDto, @Request() req: any) {
+    let businessId: string | undefined;
+    if (req?.user) {
+      try {
+        businessId = await this.getBusinessId(req);
+      } catch {}
+    }
+    return this.subscriptionsService.previewPrice(dto, businessId);
   }
+
 
   // --- Admin Tax Endpoints ---
 

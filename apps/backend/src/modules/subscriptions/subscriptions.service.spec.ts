@@ -26,6 +26,7 @@ import { QrThriveService } from '../qr-thrive/qr-thrive.service';
 import { BranchesService } from '../branches/branches.service';
 import { Reward } from '../loyalty/entities/reward.entity';
 import { SubscriptionTaxService } from './services/subscription-tax.service';
+import { CouponEngineService } from '../coupons/services/coupon-engine.service';
 
 describe('SubscriptionsService', () => {
   let service: SubscriptionsService;
@@ -223,6 +224,13 @@ describe('SubscriptionsService', () => {
         },
         { provide: QrThriveService, useValue: mockQrThriveService },
         { provide: BranchesService, useValue: mockBranchesService },
+        {
+          provide: CouponEngineService,
+          useValue: {
+            validatePromotion: jest.fn(),
+            recordRedemption: jest.fn(),
+          },
+        },
         {
           provide: 'DataSource',
           useValue: { transaction: jest.fn() },
