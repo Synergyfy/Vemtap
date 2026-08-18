@@ -3,7 +3,7 @@
 import React, { useState, useRef, useMemo } from 'react';
 import Modal from '@/components/ui/Modal';
 import { useRouter } from 'next/navigation';
-import { CreditCard, ShieldCheck, Zap, ArrowRight, Loader2, Info } from 'lucide-react';
+import { CreditCard, ShieldCheck, Zap, ArrowRight, Loader2, Info, Tag as TagIcon, XCircle } from 'lucide-react';
 import { useSubscribe, usePricePreview } from '@/services/subscriptions/hooks';
 import { useAddOns } from '@/services/addons/hooks';
 import AddOnSelectionList from './AddOnSelectionList';
@@ -12,6 +12,7 @@ import { useSubscriptionStore } from '@/store/useSubscriptionStore';
 import toast from 'react-hot-toast';
 import { loadPaystackScript } from '@/lib/loadPaystackScript';
 import { PricingPlan } from '@/types/pricing';
+import type { DiscountBreakdown } from '@/types/subscriptions';
 
 interface Props {
     isTrial?: boolean;
@@ -32,13 +33,29 @@ export default function SubscriptionCheckout({ isOpen, onClose, plan, billingPer
     const { data: addons = [] } = useAddOns();
     const [isProcessing, setIsProcessing] = useState(false);
     const [selectedAddonIds, setSelectedAddonIds] = useState<string[]>([]);
+    const [promoCodeInput, setPromoCodeInput] = useState('');
+    const [appliedPromo, setAppliedPromo] = useState<string | null>(null);
     const paymentSuccessful = useRef(false);
 
     const pricePreview = usePricePreview({
         planId: plan.id,
         billingPeriod,
         addonIds: isTrial ? undefined : selectedAddonIds,
+        promoCode: appliedPromo || undefined,
     });
+
+    const handleApplyPromo = () => {
+        const code = promoCodeInput.trim().toUpperCase();
+        if (!code) return;
+        setAppliedPromo(code);
+    };
+
+    const handleRemovePromo = () => {
+        setPromoCodeInput('');
+        setAppliedPromo(null);
+    };
+
+    const activePromo = appliedPromo && pricePreview.data?.discount ? appliedPromo : undefined;
 
     const toggleAddon = (id: string) => {
         setSelectedAddonIds(prev => 
@@ -72,7 +89,8 @@ export default function SubscriptionCheckout({ isOpen, onClose, plan, billingPer
                     billingPeriod,
                     paymentReference: `mock-ref-${Date.now()}`,
                     addonIds: selectedAddonIds,
-                    addonQuantities: selectedAddonIds.map(() => 1)
+                    addonQuantities: selectedAddonIds.map(() => 1),
+                    promoCode: activePromo,
                 }, {
                     onSuccess: () => {
                         toast.success(`Welcome to the ${plan.name} plan!`);
@@ -129,7 +147,8 @@ export default function SubscriptionCheckout({ isOpen, onClose, plan, billingPer
                     paymentReference: response.reference,
                     isTrial: isTrial,
                     addonIds: selectedAddonIds,
-                    addonQuantities: selectedAddonIds.map(() => 1)
+                    addonQuantities: selectedAddonIds.map(() => 1),
+                    promoCode: activePromo,
                 }, {
                     onSuccess: () => {
                         toast.success(isTrial ? `Trial started! You won't be charged for ${plan.trialDurationDays} days.` : `Welcome to the ${plan.name} plan!`);
@@ -196,6 +215,8 @@ export default function SubscriptionCheckout({ isOpen, onClose, plan, billingPer
         months: number;
         planTotal: number;
         addonTotal: number;
+        planOriginalPrice: number;
+        discount?: DiscountBreakdown | null;
     }>(() => {
         const label = billingPeriod === 'yearly' ? 'Charged annually' : billingPeriod === 'quarterly' ? 'Charged every 3 months' : 'Charged monthly';
         const months = billingPeriod === 'yearly' ? 12 : billingPeriod === 'quarterly' ? 3 : 1;
@@ -205,6 +226,7 @@ export default function SubscriptionCheckout({ isOpen, onClose, plan, billingPer
         if (p) {
             const addonTotal = (p.addons || []).reduce((sum, a) => sum + Number(a.price || 0), 0);
             const planTotal = Math.max(0, Number(p.subtotal || 0) - addonTotal);
+            const planOriginalPrice = Number(p.discount?.originalPlanPrice || planTotal);
             return {
                 subtotal: Number(p.subtotal || 0),
                 taxAmount: Number(p.taxAmount || 0),
@@ -217,6 +239,8 @@ export default function SubscriptionCheckout({ isOpen, onClose, plan, billingPer
                 months,
                 planTotal,
                 addonTotal,
+                planOriginalPrice,
+                discount: p.discount || null,
             };
         }
 
@@ -228,7 +252,7 @@ export default function SubscriptionCheckout({ isOpen, onClose, plan, billingPer
             return addon ? sum + Number(addon.price || 0) : sum;
         }, 0);
         const subtotal = base + addonTotal;
-        return { subtotal, taxAmount: 0, taxRate: 0, taxType: 'percentage', taxEnabled: false, taxName: 'VAT', total: subtotal, label, months, planTotal: base, addonTotal };
+        return { subtotal, taxAmount: 0, taxRate: 0, taxType: 'percentage', taxEnabled: false, taxName: 'VAT', total: subtotal, label, months, planTotal: base, addonTotal, planOriginalPrice: base, discount: null };
     }, [isTrial, pricePreview.data, billingPeriod, plan, selectedAddonIds, addons]);
 
     return (
@@ -288,6 +312,32 @@ export default function SubscriptionCheckout({ isOpen, onClose, plan, billingPer
                     {breakdown && !isTrial && (
                         <div className="mt-4 bg-white border border-slate-100 rounded-xl px-4 py-3 space-y-1.5">
                             <div className="flex items-center justify-between text-xs">
+                                <span className="font-medium text-slate-500">Plan ({plan.name})</span>
+                                <span className="font-bold text-slate-700">₦{Number(breakdown.planOriginalPrice).toLocaleString()}</span>
+                            </div>
+                            {breakdown.addonTotal > 0 && (
+                                <div className="flex items-center justify-between text-xs">
+                                    <span className="font-medium text-slate-500">Add-ons</span>
+                                    <span className="font-bold text-slate-700">₦{Number(breakdown.addonTotal).toLocaleString()}</span>
+                                </div>
+                            )}
+                            {breakdown.discount && (
+                                <div className="flex items-center justify-between text-xs text-emerald-600">
+                                    <span className="font-semibold uppercase truncate max-w-[55%]">
+                                        Promo ({breakdown.discount.code})
+                                        {breakdown.discount.discountType === 'PERCENTAGE'
+                                            ? ` ${breakdown.discount.amount}%`
+                                            : ` ₦${Number(breakdown.discount.amount).toLocaleString()}`}
+                                    </span>
+                                    <span className="font-bold flex items-center gap-2">
+                                        -₦{Number(breakdown.discount.discountAmount || 0).toLocaleString()}
+                                        <button onClick={handleRemovePromo} className="text-red-400 hover:text-red-600">
+                                            <XCircle size={13} />
+                                        </button>
+                                    </span>
+                                </div>
+                            )}
+                            <div className="flex items-center justify-between text-xs">
                                 <span className="font-medium text-slate-500">Subtotal</span>
                                 <span className="font-bold text-slate-700">₦{Number(breakdown.subtotal).toLocaleString()}</span>
                             </div>
@@ -313,6 +363,61 @@ export default function SubscriptionCheckout({ isOpen, onClose, plan, billingPer
                         </div>
                     )}
                 </div>
+
+                {/* Promo Code */}
+                {!isTrial && (
+                    <div className="bg-slate-50/50 border border-slate-100 rounded-3xl p-6">
+                        <div className="flex items-center gap-2 mb-2">
+                            <TagIcon size={15} className="text-primary" />
+                            <p className="text-xs font-black text-slate-700 uppercase tracking-widest">Got a promo code?</p>
+                        </div>
+                        {appliedPromo && pricePreview.data?.discount ? (
+                            <div className="flex items-center justify-between bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3">
+                                <div className="flex items-center gap-2">
+                                    <span className="text-emerald-600 font-black uppercase text-sm tracking-wider">{appliedPromo}</span>
+                                    {breakdown?.discount && (
+                                        <span className="text-xs font-bold text-emerald-700">
+                                            -₦{Number(breakdown.discount.discountAmount).toLocaleString()} applied
+                                        </span>
+                                    )}
+                                </div>
+                                <button onClick={handleRemovePromo} className="text-[10px] font-bold text-red-400 hover:text-red-600 uppercase tracking-widest">
+                                    Remove
+                                </button>
+                            </div>
+                        ) : (
+                            <>
+                                <div className="flex gap-2">
+                                    <input
+                                        type="text"
+                                        value={promoCodeInput}
+                                        onChange={(e) => setPromoCodeInput(e.target.value.toUpperCase())}
+                                        placeholder="Enter promo code"
+                                        className="flex-1 min-w-0 uppercase px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-bold focus:ring-2 focus:ring-primary/20 outline-none transition-all placeholder:normal-case placeholder:font-medium placeholder:text-slate-400"
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter') {
+                                                e.preventDefault();
+                                                handleApplyPromo();
+                                            }
+                                        }}
+                                    />
+                                    <button
+                                        onClick={handleApplyPromo}
+                                        disabled={!promoCodeInput.trim() || pricePreview.isFetching}
+                                        className="h-auto px-4 py-2 bg-slate-900 text-white rounded-xl font-bold text-xs uppercase tracking-widest disabled:opacity-40 disabled:cursor-not-allowed transition-all hover:bg-slate-800"
+                                    >
+                                        {pricePreview.isFetching ? <Loader2 className="animate-spin" size={14} /> : 'Apply'}
+                                    </button>
+                                </div>
+                                {pricePreview.isError && (
+                                    <p className="text-xs text-red-500 font-medium mt-2">
+                                        {pricePreview.error?.message || 'Invalid promo code. Please check and try again.'}
+                                    </p>
+                                )}
+                            </>
+                        )}
+                    </div>
+                )}
 
                 {/* Add-on Selection */}
                 {!isTrial && addons.length > 0 && (

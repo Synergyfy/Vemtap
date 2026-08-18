@@ -18,6 +18,7 @@ import { SurveysModule } from './modules/surveys/surveys.module';
 import { ProductsModule } from './modules/products/products.module';
 import { AnalyticsModule } from './modules/analytics/analytics.module';
 import { SubscriptionsModule } from './modules/subscriptions/subscriptions.module';
+import { CouponsModule } from './modules/coupons/coupons.module';
 import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
 import { UserStatusGuard } from './common/guards/user-status.guard';
@@ -178,6 +179,7 @@ import { RotatorModule } from './modules/rotator/rotator.module';
     ProductsModule,
     AnalyticsModule,
     SubscriptionsModule,
+    CouponsModule,
     SettingsModule,
     BranchesModule,
     PartnershipsModule,

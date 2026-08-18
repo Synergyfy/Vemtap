@@ -59,4 +59,13 @@ export class SubscribeDto {
   @IsString()
   @IsOptional()
   customEndDate?: string;
+
+  @ApiPropertyOptional({
+    description: 'Optional promotion or coupon code for discount',
+    example: 'SAVE50',
+  })
+  @IsString()
+  @IsOptional()
+  promoCode?: string;
 }
+

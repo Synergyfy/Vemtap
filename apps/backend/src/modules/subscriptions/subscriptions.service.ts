@@ -46,6 +46,10 @@ import {
   TaxCalculationResult,
 } from './services/subscription-tax.service';
 import { PricePreviewDto } from './dto/tax/price-preview.dto';
+import {
+  CouponEngineService,
+  PromotionValidationResult,
+} from '../coupons/services/coupon-engine.service';
 
 @Injectable()
 export class SubscriptionsService {
@@ -81,6 +85,8 @@ export class SubscriptionsService {
     private readonly qrThriveService: QrThriveService,
     private readonly addonsService: AddonsService,
     private readonly subscriptionTaxService: SubscriptionTaxService,
+    @Inject(forwardRef(() => CouponEngineService))
+    private readonly couponEngineService: CouponEngineService,
   ) {}
 
   async activeSubscription(businessId?: string): Promise<Subscription | null> {
@@ -253,14 +259,53 @@ export class SubscriptionsService {
             return sum + Number(addon.price) * qty;
           }, 0);
 
-          const subtotal = planPrice + addonsTotal;
-          const taxConfig =
-            await this.subscriptionTaxService.getActiveConfig();
-          const taxResult = this.subscriptionTaxService.calculateTax(
-            subtotal,
-            taxConfig,
-          );
-          const totalAmount = taxResult.total;
+          let promoValidation: PromotionValidationResult | null = null;
+          let subtotal: number;
+          let taxAmount: number;
+          let totalAmount: number;
+          let taxMetadata: any = {};
+
+          if (subscribeDto.promoCode) {
+            promoValidation = await this.couponEngineService.validatePromotion({
+              code: subscribeDto.promoCode,
+              planId,
+              billingPeriod,
+              businessId,
+              addonsSubtotal: addonsTotal,
+            });
+
+            subtotal = promoValidation.netSubtotal;
+            taxAmount = promoValidation.taxAmount;
+            totalAmount = promoValidation.total;
+            taxMetadata = {
+              taxAmount,
+              taxRate: promoValidation.taxRule.rate,
+              taxType: promoValidation.taxRule.taxType,
+              taxName: promoValidation.taxRule.name,
+              taxEnabled: promoValidation.taxRule.isEnabled,
+              discountAmount: promoValidation.discountAmount,
+              promoCode: promoValidation.promotionCode.code,
+              couponId: promoValidation.coupon.id,
+              couponName: promoValidation.coupon.name,
+            };
+          } else {
+            subtotal = planPrice + addonsTotal;
+            const taxConfig =
+              await this.subscriptionTaxService.getActiveConfig();
+            const taxResult = this.subscriptionTaxService.calculateTax(
+              subtotal,
+              taxConfig,
+            );
+            taxAmount = taxResult.taxAmount;
+            totalAmount = taxResult.total;
+            taxMetadata = {
+              taxAmount: taxResult.taxAmount,
+              taxRate: taxResult.taxRule.rate,
+              taxType: taxResult.taxRule.taxType,
+              taxName: taxResult.taxRule.name,
+              taxEnabled: taxResult.taxRule.isEnabled,
+            };
+          }
 
           await this.paymentsService.recordPayment({
             reference: paymentReference,
@@ -275,13 +320,9 @@ export class SubscriptionsService {
               billingPeriod,
               addonIds,
               addonQuantities,
-              subtotal: taxResult.subtotal,
-              taxAmount: taxResult.taxAmount,
-              taxRate: taxResult.taxRule.rate,
-              taxType: taxResult.taxRule.taxType,
-              taxName: taxResult.taxRule.name,
-              taxEnabled: taxResult.taxRule.isEnabled,
+              subtotal,
               total: totalAmount,
+              ...taxMetadata,
             },
             businessId,
             userId: business.ownerId,
@@ -293,7 +334,10 @@ export class SubscriptionsService {
             paymentReference,
             subtotal,
           );
+
+          (this as any)._lastPromoValidation = promoValidation;
         }
+
 
         if (billingPeriod === BillingPeriod.MONTHLY)
           endDate.setMonth(endDate.getMonth() + 1);
@@ -330,6 +374,35 @@ export class SubscriptionsService {
     });
 
     const savedSub = await this.subscriptionRepository.save(newSub);
+
+    // Record coupon redemption if promo code was used
+    const promoValidation: PromotionValidationResult | null = (this as any)._lastPromoValidation;
+    delete (this as any)._lastPromoValidation;
+
+    if (promoValidation && paymentReference) {
+      try {
+        await this.couponEngineService.recordRedemption({
+          promotionCodeId: promoValidation.promotionCode.id,
+          couponId: promoValidation.coupon.id,
+          businessId: business.id,
+          userId: business.ownerId,
+          subscriptionId: savedSub.id,
+          paymentReference,
+          planId,
+          billingPeriod,
+          originalAmount: promoValidation.originalPlanPrice,
+          discountAmount: promoValidation.discountAmount,
+          taxAmount: promoValidation.taxAmount,
+          finalAmount: promoValidation.total,
+          currency: plan.currency || 'NGN',
+        });
+      } catch (err) {
+        this.logger.error(
+          `Failed to record coupon redemption for subscription ${savedSub.id}: ${err.message}`,
+          err.stack,
+        );
+      }
+    }
 
     let purchasedAddOns: any[] = [];
     if (
@@ -1220,7 +1293,14 @@ export class SubscriptionsService {
 
   async previewPrice(
     dto: PricePreviewDto,
-  ): Promise<TaxCalculationResult & { plan: Plan; addons: AddOn[] }> {
+    businessId?: string,
+  ): Promise<
+    TaxCalculationResult & {
+      plan: Plan;
+      addons: any[];
+      discount?: any;
+    }
+  > {
     const plan = await this.plansService.findOne(dto.planId);
     if (!plan) {
       throw new NotFoundException('Plan not found');
@@ -1232,7 +1312,7 @@ export class SubscriptionsService {
     else if (dto.billingPeriod === BillingPeriod.YEARLY)
       planPrice = Number(plan.yearlyPrice || 0);
 
-    let addons: AddOn[] = [];
+    let addons: any[] = [];
     if (dto.addonIds && dto.addonIds.length > 0) {
       addons = await this.addonsService.validateAddons(dto.addonIds);
     }
@@ -1241,6 +1321,35 @@ export class SubscriptionsService {
       const qty = dto.addonQuantities?.[index] ?? 1;
       return sum + Number(addon.price) * qty;
     }, 0);
+
+    if (dto.promoCode) {
+      const promoValidation = await this.couponEngineService.validatePromotion({
+        code: dto.promoCode,
+        planId: dto.planId,
+        billingPeriod: dto.billingPeriod,
+        businessId,
+        addonsSubtotal: addonsTotal,
+      });
+
+      return {
+        subtotal: promoValidation.netSubtotal,
+        taxAmount: promoValidation.taxAmount,
+        total: promoValidation.total,
+        taxRule: promoValidation.taxRule,
+        plan,
+        addons,
+        discount: {
+          code: promoValidation.promotionCode.code,
+          couponName: promoValidation.coupon.name,
+          discountType: promoValidation.coupon.discountType,
+          amount: promoValidation.coupon.amount,
+          duration: promoValidation.coupon.duration,
+          discountAmount: promoValidation.discountAmount,
+          originalPlanPrice: promoValidation.originalPlanPrice,
+          discountedPlanPrice: promoValidation.discountedPlanPrice,
+        },
+      };
+    }
 
     const subtotal = planPrice + addonsTotal;
     const taxConfig = await this.subscriptionTaxService.getActiveConfig();
@@ -1256,3 +1365,4 @@ export class SubscriptionsService {
     };
   }
 }
+
