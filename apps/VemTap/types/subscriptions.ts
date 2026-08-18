@@ -149,6 +149,149 @@ export interface PricePreviewResponse {
     taxRule: PlanTaxInfo & { id?: string };
     plan: Partial<SubscriptionPlanTaxFields & { id: string; name: string }>;
     addons?: Array<{ id: string; name: string; price: number }>;
+    discount?: DiscountBreakdown | null;
+}
+
+// ---------------------------------------------------------------
+// Subscription Coupon & Discount system (see backend modules/coupons)
+// ---------------------------------------------------------------
+
+export enum DiscountType {
+    PERCENTAGE = 'PERCENTAGE',
+    FIXED_AMOUNT = 'FIXED_AMOUNT',
+}
+
+export enum CouponDuration {
+    ONCE = 'ONCE',
+    REPEATING = 'REPEATING',
+    FOREVER = 'FOREVER',
+}
+
+export interface DiscountBreakdown {
+    code: string;
+    couponName: string;
+    discountType: DiscountType;
+    amount: number;
+    duration: CouponDuration;
+    discountAmount: number;
+    originalPlanPrice: number;
+    discountedPlanPrice: number;
+}
+
+export interface ValidatePromoCodeResponse {
+    isValid: boolean;
+    originalPlanPrice: number;
+    discountAmount: number;
+    discountedPlanPrice: number;
+    addonsSubtotal: number;
+    netSubtotal: number;
+    taxAmount: number;
+    total: number;
+    taxRule: PlanTaxInfo & { id?: string };
+    coupon: {
+        id: string;
+        name: string;
+        discountType: DiscountType;
+        amount: number;
+        duration: CouponDuration;
+    };
+    promotionCode: {
+        id: string;
+        code: string;
+        timesRedeemed: number;
+        maxRedemptions?: number | null;
+    };
+}
+
+export interface CouponItem {
+    id: string;
+    name: string;
+    discountType: DiscountType;
+    amount: number;
+    currency: string;
+    maxDiscountAmount?: number | null;
+    minSubtotal?: number | null;
+    duration: CouponDuration;
+    durationInMonths?: number | null;
+    applicablePlanIds: string[];
+    applicableBillingPeriods: string[];
+    isActive: boolean;
+    createdAt: string;
+    createdById?: string | null;
+    promotionCodes?: PromoCodeItem[];
+}
+
+export interface PromoCodeItem {
+    id: string;
+    couponId: string;
+    code: string;
+    isActive: boolean;
+    startsAt?: string | null;
+    expiresAt?: string | null;
+    maxRedemptions?: number | null;
+    timesRedeemed: number;
+    maxRedemptionsPerUser: number;
+    firstTimeOnly: boolean;
+    allowedBusinessIds: string[];
+    createdAt: string;
+    coupon?: CouponItem;
+}
+
+export interface CouponRedemptionItem {
+    id: string;
+    promotionCodeId: string;
+    couponId: string;
+    businessId?: string;
+    userId?: string;
+    subscriptionId?: string;
+    paymentReference: string;
+    planId: string;
+    billingPeriod: BillingPeriod;
+    originalAmount: number;
+    discountAmount: number;
+    taxAmount: number;
+    finalAmount: number;
+    currency: string;
+    createdAt: string;
+    coupon?: CouponItem;
+    promotionCode?: PromoCodeItem;
+    business?: { id: string; name: string } | null;
+    user?: { id: string; firstName: string; lastName: string; email: string } | null;
+}
+
+export interface CouponStats {
+    totalCoupons: number;
+    activeCoupons: number;
+    totalPromoCodes: number;
+    activePromoCodes: number;
+    totalRedemptions: number;
+    totalDiscountAmountGiven: number;
+    totalRevenueFromDiscountedSales: number;
+}
+
+export interface CreateCouponPayload {
+    name: string;
+    discountType: DiscountType;
+    amount: number;
+    currency?: string;
+    maxDiscountAmount?: number;
+    minSubtotal?: number;
+    duration?: CouponDuration;
+    durationInMonths?: number;
+    applicablePlanIds?: string[];
+    applicableBillingPeriods?: string[];
+    isActive?: boolean;
+}
+
+export interface CreatePromoCodePayload {
+    code: string;
+    isActive?: boolean;
+    startsAt?: string;
+    expiresAt?: string;
+    maxRedemptions?: number;
+    maxRedemptionsPerUser?: number;
+    firstTimeOnly?: boolean;
+    allowedBusinessIds?: string[];
 }
 
 export interface UpdateSubscriptionTaxPayload {
