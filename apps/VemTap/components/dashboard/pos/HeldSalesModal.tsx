@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { X, Trash2, RotateCcw, Loader2, User } from 'lucide-react';
+import { X, Trash2, RotateCcw, Loader2, User, ChevronDown } from 'lucide-react';
 import { useHeldPosSales, useDeleteHeldPosSale } from '@/services/pos/hooks';
 import type { PosHeldSaleResponse } from '@/services/pos/types';
 import { usePosStore } from '@/store/usePosStore';
@@ -32,6 +32,7 @@ export function HeldSalesModal({ isOpen, onClose, branchId }: HeldSalesModalProp
   const { data: heldSales = [], isLoading } = useHeldPosSales(branchId);
   const deleteHeld = useDeleteHeldPosSale();
   const [resumingId, setResumingId] = useState<string | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   if (!isOpen) return null;
 
@@ -91,7 +92,7 @@ export function HeldSalesModal({ isOpen, onClose, branchId }: HeldSalesModalProp
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
 
-      <div className="relative w-full max-w-lg bg-white rounded-[32px] shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200 flex flex-col max-h-[85vh]">
+      <div className="relative w-full max-w-lg bg-white rounded-[32px] shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200 flex flex-col max-h-[75vh] md:max-h-[80vh]">
         {/* Header */}
         <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between shrink-0">
           <div>
@@ -109,7 +110,7 @@ export function HeldSalesModal({ isOpen, onClose, branchId }: HeldSalesModalProp
         </div>
 
         {/* Body */}
-        <div className="flex-1 overflow-y-auto p-4">
+        <div className="flex-1 min-h-0 overflow-y-auto p-4">
           {isLoading ? (
             <div className="flex items-center justify-center py-16">
               <Loader2 size={28} className="animate-spin text-gray-400" />
@@ -125,57 +126,76 @@ export function HeldSalesModal({ isOpen, onClose, branchId }: HeldSalesModalProp
               </p>
             </div>
           ) : (
-            <div className="space-y-3">
-              {heldSales.map((held) => (
-                <div key={held.id} className="border border-gray-100 rounded-[20px] p-4 bg-white shadow-sm">
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="flex items-center gap-2">
-                      <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">
-                        {formatHeldTime(held.heldAt)}
-                      </span>
-                      {held.customer && (
-                        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-[#066CF4] bg-[#066CF4]/5 px-2 py-0.5 rounded-lg">
-                          <User size={10} /> {held.customer.firstName || 'Customer'}
-                        </span>
-                      )}
-                    </div>
-                    <span className="text-sm font-black text-[#066CF4]">{formatNaira(held.total)}</span>
-                  </div>
-
-                  <div className="space-y-1.5 mb-4">
-                    {held.items.map((item) => (
-                      <div key={item.id} className="flex items-center justify-between text-[13px]">
-                        <span className="font-bold text-gray-700 truncate">
-                          {item.quantity} × {item.productName}
-                        </span>
-                        <span className="font-black text-gray-900 shrink-0">{formatNaira(item.totalPrice)}</span>
+            <div className="space-y-2">
+              {heldSales.map((held) => {
+                const isExpanded = expandedId === held.id;
+                return (
+                  <div key={held.id} className="border border-gray-100 rounded-2xl bg-white shadow-sm overflow-hidden">
+                    {/* Collapsed header — always visible */}
+                    <button
+                      onClick={() => setExpandedId(isExpanded ? null : held.id)}
+                      className="w-full flex items-center gap-3 p-3.5 text-left"
+                    >
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-0.5">
+                          <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">
+                            {formatHeldTime(held.heldAt)}
+                          </span>
+                          {held.customer && (
+                            <span className="inline-flex items-center gap-0.5 text-[9px] font-bold text-[#066CF4] bg-[#066CF4]/5 px-1.5 py-0.5 rounded-md">
+                              <User size={8} /> {held.customer.firstName || 'Customer'}
+                            </span>
+                          )}
+                        </div>
+                        <span className="text-sm font-black text-[#066CF4]">{formatNaira(held.total)}</span>
                       </div>
-                    ))}
-                  </div>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">
+                          {held.items.length} item{held.items.length !== 1 ? 's' : ''}
+                        </span>
+                        <ChevronDown size={16} className={cn('text-gray-400 transition-transform duration-200', isExpanded && 'rotate-180')} />
+                      </div>
+                    </button>
 
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => resume(held)}
-                      disabled={resumingId !== null}
-                      className="flex-1 h-11 bg-[#066CF4] text-white rounded-xl font-bold text-[11px] uppercase tracking-wider hover:bg-blue-600 transition-all active:scale-95 flex items-center justify-center gap-2 disabled:opacity-50"
-                    >
-                      {resumingId === held.id ? (
-                        <><Loader2 size={14} className="animate-spin" /> Restoring...</>
-                      ) : (
-                        <><RotateCcw size={14} /> Resume Sale</>
-                      )}
-                    </button>
-                    <button
-                      onClick={() => deleteHeld.mutate(held.id)}
-                      disabled={deleteHeld.isPending}
-                      className="size-9 rounded-xl border border-gray-200 flex items-center justify-center text-red-400 hover:text-red-600 hover:bg-red-50 transition-colors disabled:opacity-50 shrink-0"
-                      title="Delete held sale"
-                    >
-                      <Trash2 size={15} />
-                    </button>
+                    {/* Expanded content */}
+                    {isExpanded && (
+                      <div className="px-3.5 pb-3.5 border-t border-gray-50">
+                        <div className="space-y-1 py-2.5">
+                          {held.items.map((item) => (
+                            <div key={item.id} className="flex items-center justify-between text-[12px]">
+                              <span className="font-bold text-gray-600 truncate">
+                                {item.quantity} × {item.productName}
+                              </span>
+                              <span className="font-black text-gray-800 shrink-0 ml-2">{formatNaira(item.totalPrice)}</span>
+                            </div>
+                          ))}
+                        </div>
+                        <div className="flex gap-2 pt-1">
+                          <button
+                            onClick={(e) => { e.stopPropagation(); resume(held); }}
+                            disabled={resumingId !== null}
+                            className="flex-1 h-10 bg-[#066CF4] text-white rounded-xl font-bold text-[10px] uppercase tracking-wider hover:bg-blue-600 transition-all active:scale-95 flex items-center justify-center gap-2 disabled:opacity-50"
+                          >
+                            {resumingId === held.id ? (
+                              <><Loader2 size={13} className="animate-spin" /> Restoring...</>
+                            ) : (
+                              <><RotateCcw size={13} /> Resume Sale</>
+                            )}
+                          </button>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); deleteHeld.mutate(held.id); }}
+                            disabled={deleteHeld.isPending}
+                            className="size-9 rounded-xl border border-gray-200 flex items-center justify-center text-red-400 hover:text-red-600 hover:bg-red-50 transition-colors disabled:opacity-50 shrink-0"
+                            title="Delete held sale"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>

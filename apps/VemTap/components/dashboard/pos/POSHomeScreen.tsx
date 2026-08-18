@@ -60,6 +60,7 @@ export default function POSHomeScreen({ onOpenCart, businessCode, isPublic = fal
   const [categoryOpen, setCategoryOpen] = useState(false);
   const [showBarcodeScanner, setShowBarcodeScanner] = useState(false);
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('grid');
+  const [searchFocused, setSearchFocused] = useState(false);
   const categoryRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -173,129 +174,251 @@ export default function POSHomeScreen({ onOpenCart, businessCode, isPublic = fal
         </div>
       )}
 
-      <div className="shrink-0 mb-4 md:mb-5 space-y-3 md:space-y-4 px-1 md:px-4">
-        {/* Search bar + Quick Actions row */}
-        <div className="flex items-center gap-3">
-          <div className="relative flex-1 max-w-[360px]">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-            <input
-              ref={searchInputRef}
-              type="text"
-              placeholder="Search products, barcode, SKU, brand..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full h-12 md:h-14 pl-12 pr-12 rounded-[24px] border border-gray-200 bg-white shadow-sm focus:outline-none focus:border-[#066CF4]/50 focus:ring-4 focus:ring-[#066CF4]/10 text-sm font-bold text-gray-900 transition-all placeholder:font-medium placeholder:text-gray-400"
-            />
-            <button onClick={() => setShowBarcodeScanner(true)} className="absolute right-3 top-1/2 -translate-y-1/2 size-8 bg-[#066CF4]/10 rounded-xl flex items-center justify-center text-[#066CF4] hover:bg-[#066CF4]/20 transition-colors">
-              <ScanLine size={16} />
-            </button>
-          </div>
-          {headerActions && (
-            <div className="hidden md:flex items-center gap-2 overflow-x-auto scrollbar-hide pt-2">
-              {headerActions}
-              <button
-                onClick={() => router.push('/dashboard/pos/sales')}
-                className="flex items-center justify-center gap-1.5 h-10 px-3 rounded-xl bg-white border border-gray-200 text-gray-700 text-[10px] font-black uppercase tracking-widest hover:bg-gray-50 hover:border-gray-300 transition-all shrink-0"
-              >
-                <Clock size={12} /> History
-              </button>
-            </div>
-          )}
-        </div>
-
-        {/* Category dropdown */}
-        <div className="relative" ref={categoryRef}>
+      {/* Compact header: single row on mobile */}
+      <div className="shrink-0 mb-3 md:mb-5 px-1 md:px-4">
+        {/* Mobile: single compact row */}
+        <div className="flex md:hidden items-center gap-2">
           <button
-            onClick={() => { setCategoryOpen(!categoryOpen); setCategorySearch(''); }}
-            className="w-full flex items-center gap-3 px-4 h-12 md:h-14 bg-white border border-gray-200 rounded-2xl shadow-sm hover:border-gray-300 transition-all"
+            onClick={() => setSearchFocused(true)}
+            className="size-10 bg-white border border-gray-200 rounded-xl flex items-center justify-center text-gray-400 shrink-0 shadow-sm"
           >
-            <div className="flex-1 flex items-center gap-2 min-w-0">
-              <span className="text-xs font-black text-gray-900 uppercase tracking-widest truncate">
-                {activeCategory === 'all' ? 'All Items' : categories.find((c: any) => c.id === activeCategory)?.name || 'All Items'}
-              </span>
-            </div>
-            <ChevronDown size={16} className={cn('text-gray-400 transition-transform shrink-0', categoryOpen && 'rotate-180')} />
+            <Search size={16} />
           </button>
-          {categoryOpen && (
-            <div className="absolute top-full left-0 right-0 mt-1.5 bg-white border border-gray-100 rounded-2xl shadow-lg z-30 overflow-hidden">
-              <div className="p-2 border-b border-gray-50">
-                <div className="relative">
-                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                  <input
-                    type="text"
-                    placeholder="Search categories..."
-                    value={categorySearch}
-                    onChange={(e) => setCategorySearch(e.target.value)}
-                    className="w-full h-9 pl-9 pr-3 rounded-xl bg-gray-50 border border-gray-100 text-xs font-medium text-gray-900 focus:outline-none focus:border-gray-200 placeholder:text-gray-400"
-                    autoFocus
-                  />
+          <div className="relative" ref={categoryRef}>
+            <button
+              onClick={() => { setCategoryOpen(!categoryOpen); setCategorySearch(''); }}
+              className="h-10 px-3 bg-white border border-gray-200 rounded-xl flex items-center gap-1.5 shadow-sm"
+            >
+              <span className="text-[10px] font-black text-gray-700 uppercase tracking-widest truncate max-w-[80px]">
+                {activeCategory === 'all' ? 'All' : categories.find((c: any) => c.id === activeCategory)?.name || 'All'}
+              </span>
+              <ChevronDown size={12} className={cn('text-gray-400 transition-transform shrink-0', categoryOpen && 'rotate-180')} />
+            </button>
+            {categoryOpen && (
+              <div className="absolute top-full left-0 mt-1.5 bg-white border border-gray-100 rounded-2xl shadow-lg z-30 overflow-hidden w-52">
+                <div className="p-2 border-b border-gray-50">
+                  <div className="relative">
+                    <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                    <input
+                      type="text"
+                      placeholder="Search categories..."
+                      value={categorySearch}
+                      onChange={(e) => setCategorySearch(e.target.value)}
+                      className="w-full h-9 pl-9 pr-3 rounded-xl bg-gray-50 border border-gray-100 text-xs font-medium text-gray-900 focus:outline-none focus:border-gray-200 placeholder:text-gray-400"
+                      autoFocus
+                    />
+                  </div>
+                </div>
+                <div className="max-h-56 overflow-y-auto p-1.5 space-y-0.5">
+                  <button
+                    onClick={() => { setActiveCategory('all'); setCategoryOpen(false); }}
+                    className={cn(
+                      'w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all',
+                      activeCategory === 'all'
+                        ? 'bg-gray-900 text-white'
+                        : 'text-gray-600 hover:bg-gray-50'
+                    )}
+                  >
+                    All Items
+                  </button>
+                  {categories
+                    .filter((cat: any) => cat.name?.toLowerCase().includes(categorySearch.toLowerCase()))
+                    .map((cat: any) => (
+                      <button
+                        key={cat.id}
+                        onClick={() => { setActiveCategory(cat.id); setCategoryOpen(false); }}
+                        className={cn(
+                          'w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all',
+                          activeCategory === cat.id
+                            ? 'bg-[#066CF4]/10 text-[#066CF4] font-black'
+                            : 'text-gray-700 hover:bg-gray-50'
+                        )}
+                      >
+                        <span className="text-sm">{cat.icon}</span>
+                        <span className="truncate">{cat.name}</span>
+                      </button>
+                    ))}
                 </div>
               </div>
-              <div className="max-h-56 overflow-y-auto p-1.5 space-y-0.5">
-                <button
-                  onClick={() => { setActiveCategory('all'); setCategoryOpen(false); }}
-                  className={cn(
-                    'w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all',
-                    activeCategory === 'all'
-                      ? 'bg-gray-900 text-white'
-                      : 'text-gray-600 hover:bg-gray-50'
-                  )}
-                >
-                  All Items
-                </button>
-                {categories
-                  .filter((cat: any) => cat.name?.toLowerCase().includes(categorySearch.toLowerCase()))
-                  .map((cat: any) => (
-                    <button
-                      key={cat.id}
-                      onClick={() => { setActiveCategory(cat.id); setCategoryOpen(false); }}
-                      className={cn(
-                        'w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all',
-                        activeCategory === cat.id
-                          ? 'bg-[#066CF4]/10 text-[#066CF4] font-black'
-                          : 'text-gray-700 hover:bg-gray-50'
-                      )}
-                    >
-                      <span className="text-sm">{cat.icon}</span>
-                      <span className="truncate">{cat.name}</span>
-                    </button>
-                  ))}
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* View toggle */}
-      <div className="shrink-0 mb-4 px-1 md:px-4 flex items-center justify-between">
-        <div className="flex items-center gap-2 min-w-0">
-          <span className="text-xs font-black text-gray-400 uppercase tracking-widest">{filteredProducts.length} items</span>
+            )}
+          </div>
+          <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest shrink-0">{filteredProducts.length}</span>
           {usingCached && (
-            <span className="flex items-center gap-1.5 bg-amber-50 border border-amber-200 text-amber-700 text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-lg shrink-0" title="Showing saved catalog — stock may be stale">
-              <WifiOff size={11} />
-              Offline catalog{!isOnline && cachedAt ? ` · saved ${cachedAt}` : ''}
+            <span className="flex items-center gap-1 bg-amber-50 border border-amber-200 text-amber-700 text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded-md shrink-0" title="Showing saved catalog — stock may be stale">
+              <WifiOff size={9} />
+              Cache
             </span>
           )}
+          <div className="flex items-center gap-0.5 bg-white p-0.5 rounded-lg border border-gray-100 shadow-sm ml-auto shrink-0">
+            <button
+              onClick={() => setViewMode('list')}
+              className={cn(
+                'p-1.5 rounded-md transition-all',
+                viewMode === 'list' ? 'bg-gray-900 text-white' : 'text-gray-400'
+              )}
+            >
+              <List size={12} />
+            </button>
+            <button
+              onClick={() => setViewMode('grid')}
+              className={cn(
+                'p-1.5 rounded-md transition-all',
+                viewMode === 'grid' ? 'bg-gray-900 text-white' : 'text-gray-400'
+              )}
+            >
+              <LayoutGrid size={12} />
+            </button>
+          </div>
         </div>
-        <div className="flex items-center gap-1 bg-white p-1 rounded-xl border border-gray-100 shadow-sm">
-          <button
-            onClick={() => setViewMode('list')}
-            className={cn(
-              'px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-1.5',
-              viewMode === 'list' ? 'bg-gray-900 text-white' : 'text-gray-400 hover:text-gray-600'
+
+        {/* Mobile: expanded search (shown when tapping search icon) */}
+        {searchFocused && (
+          <div className="flex md:hidden items-center gap-2 mt-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+              <input
+                ref={searchInputRef}
+                type="text"
+                placeholder="Search products, barcode, SKU..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onBlur={() => { if (!searchQuery) setSearchFocused(false); }}
+                autoFocus
+                className="w-full h-10 pl-10 pr-10 rounded-xl border border-gray-200 bg-white shadow-sm focus:outline-none focus:border-[#066CF4]/50 focus:ring-2 focus:ring-[#066CF4]/10 text-sm font-bold text-gray-900 transition-all placeholder:font-medium placeholder:text-gray-400"
+              />
+              <button onClick={() => setShowBarcodeScanner(true)} className="absolute right-2 top-1/2 -translate-y-1/2 size-7 bg-[#066CF4]/10 rounded-lg flex items-center justify-center text-[#066CF4]">
+                <ScanLine size={14} />
+              </button>
+            </div>
+            <button
+              onClick={() => { setSearchFocused(false); setSearchQuery(''); }}
+              className="text-[10px] font-black text-gray-400 uppercase tracking-widest shrink-0"
+            >
+              Cancel
+            </button>
+          </div>
+        )}
+
+        {/* Desktop: current layout (unchanged) */}
+        <div className="hidden md:block space-y-4">
+          <div className="flex items-center gap-3">
+            <div className="relative flex-1 max-w-[360px]">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+              <input
+                ref={searchInputRef}
+                type="text"
+                placeholder="Search products, barcode, SKU, brand..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full h-14 pl-12 pr-12 rounded-[24px] border border-gray-200 bg-white shadow-sm focus:outline-none focus:border-[#066CF4]/50 focus:ring-4 focus:ring-[#066CF4]/10 text-sm font-bold text-gray-900 transition-all placeholder:font-medium placeholder:text-gray-400"
+              />
+              <button onClick={() => setShowBarcodeScanner(true)} className="absolute right-3 top-1/2 -translate-y-1/2 size-8 bg-[#066CF4]/10 rounded-xl flex items-center justify-center text-[#066CF4] hover:bg-[#066CF4]/20 transition-colors">
+                <ScanLine size={16} />
+              </button>
+            </div>
+            {headerActions && (
+              <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide pt-2">
+                {headerActions}
+                <button
+                  onClick={() => router.push('/dashboard/pos/sales')}
+                  className="flex items-center justify-center gap-1.5 h-10 px-3 rounded-xl bg-white border border-gray-200 text-gray-700 text-[10px] font-black uppercase tracking-widest hover:bg-gray-50 hover:border-gray-300 transition-all shrink-0"
+                >
+                  <Clock size={12} /> History
+                </button>
+              </div>
             )}
-          >
-            <List size={12} /> List
-          </button>
-          <button
-            onClick={() => setViewMode('grid')}
-            className={cn(
-              'px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-1.5',
-              viewMode === 'grid' ? 'bg-gray-900 text-white' : 'text-gray-400 hover:text-gray-600'
+          </div>
+          <div className="relative" ref={categoryRef}>
+            <button
+              onClick={() => { setCategoryOpen(!categoryOpen); setCategorySearch(''); }}
+              className="w-full flex items-center gap-3 px-4 h-14 bg-white border border-gray-200 rounded-2xl shadow-sm hover:border-gray-300 transition-all"
+            >
+              <div className="flex-1 flex items-center gap-2 min-w-0">
+                <span className="text-xs font-black text-gray-900 uppercase tracking-widest truncate">
+                  {activeCategory === 'all' ? 'All Items' : categories.find((c: any) => c.id === activeCategory)?.name || 'All Items'}
+                </span>
+              </div>
+              <ChevronDown size={16} className={cn('text-gray-400 transition-transform shrink-0', categoryOpen && 'rotate-180')} />
+            </button>
+            {categoryOpen && (
+              <div className="absolute top-full left-0 right-0 mt-1.5 bg-white border border-gray-100 rounded-2xl shadow-lg z-30 overflow-hidden">
+                <div className="p-2 border-b border-gray-50">
+                  <div className="relative">
+                    <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                    <input
+                      type="text"
+                      placeholder="Search categories..."
+                      value={categorySearch}
+                      onChange={(e) => setCategorySearch(e.target.value)}
+                      className="w-full h-9 pl-9 pr-3 rounded-xl bg-gray-50 border border-gray-100 text-xs font-medium text-gray-900 focus:outline-none focus:border-gray-200 placeholder:text-gray-400"
+                      autoFocus
+                    />
+                  </div>
+                </div>
+                <div className="max-h-56 overflow-y-auto p-1.5 space-y-0.5">
+                  <button
+                    onClick={() => { setActiveCategory('all'); setCategoryOpen(false); }}
+                    className={cn(
+                      'w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all',
+                      activeCategory === 'all'
+                        ? 'bg-gray-900 text-white'
+                        : 'text-gray-600 hover:bg-gray-50'
+                    )}
+                  >
+                    All Items
+                  </button>
+                  {categories
+                    .filter((cat: any) => cat.name?.toLowerCase().includes(categorySearch.toLowerCase()))
+                    .map((cat: any) => (
+                      <button
+                        key={cat.id}
+                        onClick={() => { setActiveCategory(cat.id); setCategoryOpen(false); }}
+                        className={cn(
+                          'w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all',
+                          activeCategory === cat.id
+                            ? 'bg-[#066CF4]/10 text-[#066CF4] font-black'
+                            : 'text-gray-700 hover:bg-gray-50'
+                        )}
+                      >
+                        <span className="text-sm">{cat.icon}</span>
+                        <span className="truncate">{cat.name}</span>
+                      </button>
+                    ))}
+                </div>
+              </div>
             )}
-          >
-            <LayoutGrid size={12} /> Grid
-          </button>
+          </div>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="text-xs font-black text-gray-400 uppercase tracking-widest">{filteredProducts.length} items</span>
+              {usingCached && (
+                <span className="flex items-center gap-1.5 bg-amber-50 border border-amber-200 text-amber-700 text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-lg shrink-0" title="Showing saved catalog — stock may be stale">
+                  <WifiOff size={11} />
+                  Offline catalog{!isOnline && cachedAt ? ` · saved ${cachedAt}` : ''}
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-1 bg-white p-1 rounded-xl border border-gray-100 shadow-sm">
+              <button
+                onClick={() => setViewMode('list')}
+                className={cn(
+                  'px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-1.5',
+                  viewMode === 'list' ? 'bg-gray-900 text-white' : 'text-gray-400 hover:text-gray-600'
+                )}
+              >
+                <List size={12} /> List
+              </button>
+              <button
+                onClick={() => setViewMode('grid')}
+                className={cn(
+                  'px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-1.5',
+                  viewMode === 'grid' ? 'bg-gray-900 text-white' : 'text-gray-400 hover:text-gray-600'
+                )}
+              >
+                <LayoutGrid size={12} /> Grid
+              </button>
+            </div>
+          </div>
         </div>
       </div>
 
