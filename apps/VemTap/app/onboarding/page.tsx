@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -749,6 +749,16 @@ function DetailsStep({ data, onNext, refCode }: { data: Partial<OnboardingData>,
                     linkedinUrl: socialsMap.linkedin || undefined,
                     whatsappNumber: socialsMap.whatsapp || undefined,
                     ...(refCode ? { referralCode: refCode } : {}),
+                }
+            }).then((biz) => {
+                // Immediately propagate the business id to the auth store so
+                // dashboard gating never bounces a paid owner back to
+                // onboarding. This is the authoritative source; the profile
+                // re-sync below is only a best-effort follow-up for branchId.
+                if (biz?.id) {
+                    useAuthStore.setState((s) => ({
+                        user: s.user ? { ...s.user, businessId: biz.id } : s.user,
+                    }));
                 }
             });
 
@@ -1851,9 +1861,11 @@ function PlanConfirmation({ data, onNext, onBack, isSubscribingFree }: { data: P
         { cycle: 'yearly' as const, label: 'Yearly', save: 'Save 20%' },
     ];
 
+    // Only update local state — the billing cycle is committed to the parent
+    // when the user clicks "Proceed to Payment". Advancing here (via onNext)
+    // caused the cycle tabs to jump straight to the payment step.
     const selectCycle = (c: 'monthly' | 'quarterly' | 'yearly') => {
         setCycle(c);
-        onNext({ billingCycle: c });
     };
 
     return (
@@ -1995,10 +2007,15 @@ function PlanConfirmation({ data, onNext, onBack, isSubscribingFree }: { data: P
 function PaymentStep({ data, onNext }: { data: Partial<OnboardingData>, onNext: (d: Partial<OnboardingData>) => void }) {
     const [isProcessing, setIsProcessing] = useState(false);
     const [isSuccess, setIsSuccess] = useState(false);
+    const [isPending, setIsPending] = useState(false);
+    const [chargedAmount, setChargedAmount] = useState<number | null>(null);
     const { user } = useAuthStore();
     const plan = useSubscriptionStore((s) => s.getPlan(data.planId));
     const subscribe = useSubscribe();
     const { data: activeSubscription, isLoading: subscriptionLoading } = useActiveSubscription();
+    const pollTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+    const advancedRef = useRef(false);
+    const payingRef = useRef(false);
 
     const isTrialMode = data.isTrial || false;
     const billingCycle = data.billingCycle || 'monthly';
@@ -2009,11 +2026,142 @@ function PaymentStep({ data, onNext }: { data: Partial<OnboardingData>, onNext: 
             : (plan?.monthlyPrice || 0);
 
     const subtotal = isTrialMode ? 100 : planPrice;
-    const tax = isTrialMode ? 0 : Math.round(subtotal * 0.075);
-    const total = subtotal + tax;
+    const total = chargedAmount ?? subtotal;
+    const tax = !isTrialMode && chargedAmount != null ? chargedAmount - planPrice : 0;
+
+    const clearPoll = () => {
+        if (pollTimer.current) {
+            clearInterval(pollTimer.current);
+            pollTimer.current = null;
+        }
+    };
+
+    const advance = useCallback(() => {
+        if (advancedRef.current) return;
+        advancedRef.current = true;
+        onNext({});
+    }, [onNext]);
+
+    // If the webhook already activated the subscription (e.g. bank transfer
+    // completed while the user was on this screen), advance without re-charging.
+    // Never fire while a payment is in flight (handlePay) — doing so unmounts
+    // PaymentStep mid-checkout and skips the Paystack popup entirely.
+    useEffect(() => {
+        if (payingRef.current) return;
+        if (plan?.isFree) return;
+        if (subscriptionLoading || !activeSubscription || !plan) return;
+        const active =
+            activeSubscription.status === 'active' ||
+            activeSubscription.status === 'trial';
+        if (active && activeSubscription.planId === plan.id) {
+            advance();
+        }
+    }, [activeSubscription, subscriptionLoading, plan, advance]);
+
+    useEffect(() => () => clearPoll(), []);
+
+    // Preload the Paystack script while the payment screen is visible so the
+    // checkout opens synchronously with the click (no async gap / focus loss).
+    useEffect(() => {
+        if (plan?.isFree) return;
+        loadPaystackScript().catch(() => {});
+    }, [plan]);
+
+    // Fetch the exact server-computed total (plan + tax) so the summary matches
+    // what will actually be charged. The trial deposit is a flat ₦100.
+    useEffect(() => {
+        if (!plan || plan.isFree || isTrialMode) return;
+        let cancelled = false;
+        api.get('/subscriptions/price-preview', {
+            params: { planId: plan.id, billingPeriod: billingCycle },
+        }).then((res) => {
+            if (cancelled) return;
+            if (typeof res?.total === 'number') {
+                setChargedAmount(res.total);
+            }
+        }).catch(() => {});
+        return () => { cancelled = true; };
+    }, [plan, isTrialMode, billingCycle]);
+
+    const activateSubscription = (reference: string) =>
+        subscribe.mutateAsync({
+            planId: plan!.id,
+            billingPeriod: billingCycle,
+            businessId: user?.businessId,
+            isTrial: isTrialMode,
+            paymentReference: reference,
+        });
+
+    const handleConfirmed = async (reference: string) => {
+        try {
+            await activateSubscription(reference);
+            setIsPending(false);
+            setIsSuccess(true);
+            setTimeout(() => onNext({}), 2000);
+        } catch (e) {
+            toast.error(getErrorMessage(e, 'Payment confirmed but activation failed. Please retry.'));
+            setIsPending(false);
+            setIsProcessing(false);
+        }
+    };
+
+    const checkPayment = async (reference: string): Promise<'success' | 'pending' | 'failed' | 'error'> => {
+        try {
+            const res = await api.get(`/payments/verify/${reference}`);
+            if (res?.success === true) return 'success';
+            if (res?.status === 'pending') return 'pending';
+            if (res?.status === 'failed' || res?.status === 'abandoned') return 'failed';
+            return 'error';
+        } catch {
+            return 'error';
+        }
+    };
+
+    const pollForPayment = async (reference: string) => {
+        clearPoll();
+        const outcome = await checkPayment(reference);
+        if (outcome === 'success') {
+            await handleConfirmed(reference);
+            return;
+        }
+        if (outcome === 'failed') {
+            setIsPending(false);
+            toast.error('Payment was not completed. Please try again.');
+            return;
+        }
+        // pending (or transient error): show the waiting state and poll.
+        setIsPending(true);
+        let attempts = 0;
+        const maxAttempts = 120; // ~10 min at 5s intervals
+        pollTimer.current = setInterval(async () => {
+            attempts += 1;
+            const res = await checkPayment(reference);
+            if (res === 'success') {
+                clearPoll();
+                await handleConfirmed(reference);
+                return;
+            }
+            if (res === 'failed') {
+                clearPoll();
+                setIsPending(false);
+                toast.error('Payment was not completed. Please try again.');
+                return;
+            }
+            if (attempts >= maxAttempts) {
+                clearPoll();
+                setIsPending(false);
+                toast.error('We could not confirm your payment yet. It may still be processing — please contact support.');
+            }
+        }, 5000);
+    };
 
     const handlePay = async () => {
-        if (plan?.isFree) {
+        if (!plan) {
+            toast.error('Plan details are still loading. Please try again.');
+            return;
+        }
+
+        if (plan.isFree) {
             setIsProcessing(true);
             try {
                 await subscribe.mutateAsync({
@@ -2032,63 +2180,75 @@ function PaymentStep({ data, onNext }: { data: Partial<OnboardingData>, onNext: 
             return;
         }
 
-        const publicKey = process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY;
-        if (!publicKey || publicKey.includes('placeholder')) {
-            toast.error('Payment gateway not configured. Please contact support.');
-            return;
-        }
-
-        // If the user already has a fully paid subscription to this exact plan
-        // (e.g. they were bounced back into onboarding after paying), don't
-        // charge them again — just advance to the completion step. A trial is
-        // NOT a paid subscription, so it must still go through payment.
-        const alreadyPaid =
+        // If the user already has an active/trial subscription to this plan
+        // (e.g. the webhook fired or they were bounced back after paying),
+        // don't charge them again — just advance.
+        const alreadyActive =
             !subscriptionLoading &&
-            !!user?.businessId &&
             !!activeSubscription &&
-            activeSubscription.businessId === user.businessId &&
-            activeSubscription.status === 'active' &&
-            activeSubscription.planId === plan!.id &&
-            !isTrialMode;
-        if (alreadyPaid) {
-            onNext({});
+            (activeSubscription.status === 'active' || activeSubscription.status === 'trial') &&
+            activeSubscription.planId === plan.id;
+        if (alreadyActive) {
+            advance();
             return;
         }
 
+        // Flag the payment as in-flight so the auto-advance effect above cannot
+        // unmount this component (and skip the Paystack popup) mid-checkout.
+        payingRef.current = true;
         setIsProcessing(true);
         try {
+            // Server-side initialization: the backend computes the exact amount
+            // and returns an access_code. No secret key is exposed to the client.
+            const init = await api.post('/subscriptions/initialize-payment', {
+                planId: plan.id,
+                billingPeriod: billingCycle,
+                businessId: user?.businessId,
+                isTrial: isTrialMode,
+            });
+            const accessCode: string | undefined = init?.access_code;
+            const reference: string | undefined = init?.reference;
+            if (!accessCode || !reference) {
+                throw new Error('Payment could not be initialized');
+            }
+            if (typeof init?.amount === 'number') {
+                setChargedAmount(init.amount);
+            }
+
             await loadPaystackScript();
-            const email = user?.email || '';
-            const paystackRef = `SUB-${user?.businessId || 'anon'}-${Date.now()}`;
             // @ts-expect-error PaystackPop is attached to window by loadPaystackScript()
-            const handler = window.PaystackPop.setup({
-                key: publicKey,
-                email,
-                amount: total * 100,
-                currency: 'NGN',
-                ref: paystackRef,
-                onClose: function () {
+            const popup = new window.PaystackPop();
+            popup.resumeTransaction(accessCode, {
+                onSuccess: (transaction: { reference?: string }) => {
+                    const ref = transaction?.reference || reference;
+                    activateSubscription(ref)
+                        .then(() => {
+                            payingRef.current = false;
+                            setIsProcessing(false);
+                            setIsSuccess(true);
+                            setTimeout(() => onNext({}), 2000);
+                        })
+                        .catch((err) => {
+                            payingRef.current = false;
+                            toast.error(getErrorMessage(err, 'Payment verified but subscription sync failed'));
+                            setIsProcessing(false);
+                        });
+                },
+                onCancel: () => {
+                    // Could be a cancelled card OR a bank transfer the customer
+                    // has just initiated. Confirm via the verify endpoint.
+                    payingRef.current = false;
+                    setIsProcessing(false);
+                    pollForPayment(reference);
+                },
+                onError: (error: { message?: string }) => {
+                    payingRef.current = false;
+                    toast.error(error?.message || 'Payment could not be loaded');
                     setIsProcessing(false);
                 },
-                callback: function (response: { reference: string }) {
-                    subscribe.mutateAsync({
-                        planId: plan!.id,
-                        billingPeriod: billingCycle,
-                        businessId: user?.businessId,
-                        isTrial: isTrialMode,
-                        paymentReference: response.reference,
-                    }).then(() => {
-                        setIsProcessing(false);
-                        setIsSuccess(true);
-                        setTimeout(() => onNext({}), 2000);
-                    }).catch((err) => {
-                        toast.error(getErrorMessage(err, 'Payment verified but subscription sync failed'));
-                        setIsProcessing(false);
-                    });
-                },
             });
-            handler.openIframe();
         } catch (err) {
+            payingRef.current = false;
             toast.error(getErrorMessage(err, 'Failed to initialize payment'));
             setIsProcessing(false);
         }
@@ -2103,6 +2263,31 @@ function PaymentStep({ data, onNext }: { data: Partial<OnboardingData>, onNext: 
                         {isTrialMode ? 'Verifying Bank Card...' : 'Processing Payment...'}
                     </h1>
                     <p className="text-text-secondary font-medium">Please complete the Paystack transaction. Do not close this page.</p>
+                </div>
+            </motion.div>
+        );
+    }
+
+    if (isPending) {
+        return (
+            <motion.div key="pending" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="flex flex-col items-center justify-center py-20 text-center space-y-6">
+                <div className="size-24 bg-amber-50 text-amber-500 rounded-full flex items-center justify-center shadow-lg shadow-amber-100">
+                    <Clock size={48} />
+                </div>
+                <div className="space-y-2">
+                    <h1 className="text-2xl md:text-3xl font-bold text-text-main tracking-tight">Waiting For Your Payment</h1>
+                    <p className="text-text-secondary font-medium max-w-sm">
+                        Complete your transfer and we&apos;ll activate your account automatically. This page updates on its own.
+                    </p>
+                </div>
+                <div className="flex flex-col gap-3 w-full max-w-xs">
+                    <Button
+                        onClick={() => setIsPending(false)}
+                        variant="outline"
+                        className="w-full text-text-main font-bold uppercase tracking-wider text-[10px] py-4 rounded-xl cursor-pointer"
+                    >
+                        Cancel
+                    </Button>
                 </div>
             </motion.div>
         );
@@ -2186,10 +2371,12 @@ function PaymentStep({ data, onNext }: { data: Partial<OnboardingData>, onNext: 
                             <span>{billingCycle === 'yearly' ? 'Yearly' : billingCycle === 'quarterly' ? 'Quarterly' : 'Monthly'} Subscription</span>
                             <span>₦{subtotal.toLocaleString()}</span>
                         </div>
-                        <div className="flex justify-between text-sm font-semibold text-text-secondary opacity-60">
-                            <span>Tax (7.5%)</span>
-                            <span>₦{tax.toLocaleString()}</span>
-                        </div>
+                        {tax > 0 && (
+                            <div className="flex justify-between text-sm font-semibold text-text-secondary opacity-60">
+                                <span>Tax</span>
+                                <span>₦{tax.toLocaleString()}</span>
+                            </div>
+                        )}
                         <div className="pt-3 border-t border-gray-200 flex justify-between text-lg font-bold text-primary">
                             <span>Total Due</span>
                             <span>{plan?.isFree ? 'Free' : `₦${total.toLocaleString()}`}</span>

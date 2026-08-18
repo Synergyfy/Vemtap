@@ -42,19 +42,23 @@ describe('PaymentsService', () => {
   });
 
   describe('verifyTransaction', () => {
-    it('should return true if paystack status is success', async () => {
+    it('should return success status if paystack status is success', async () => {
       mockHttpService.get.mockReturnValue(
         of({
-          data: { status: true, data: { status: 'success' } },
+          data: {
+            status: true,
+            data: { status: 'success', amount: 5000, currency: 'NGN', channel: 'card' },
+          },
         }),
       );
 
       const result = await service.verifyTransaction('ref_123');
       expect(result).toBeTruthy();
       expect(result.status).toBe('success');
+      expect(result.amount).toBe(5000);
     });
 
-    it('should return false if paystack status is not success', async () => {
+    it('should return failed status if paystack status is not success', async () => {
       mockHttpService.get.mockReturnValue(
         of({
           data: { status: true, data: { status: 'failed' } },
@@ -62,15 +66,27 @@ describe('PaymentsService', () => {
       );
 
       const result = await service.verifyTransaction('ref_123');
-      expect(result).toBe(false);
+      expect(result).toBeTruthy();
+      expect(result.status).toBe('failed');
     });
 
-    it('should return false on error', async () => {
+    it('should return pending status for async channels', async () => {
+      mockHttpService.get.mockReturnValue(
+        of({
+          data: { status: true, data: { status: 'ongoing' } },
+        }),
+      );
+
+      const result = await service.verifyTransaction('ref_123');
+      expect(result.status).toBe('pending');
+    });
+
+    it('should return null on error', async () => {
       mockHttpService.get.mockImplementation(() => {
         throw new Error('Network error');
       });
       const result = await service.verifyTransaction('ref_123');
-      expect(result).toBe(false);
+      expect(result).toBeNull();
     });
   });
 
