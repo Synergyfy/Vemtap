@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
 import {
@@ -304,6 +304,16 @@ function PromoCodeModal({ open, onClose, promo, coupons, presetCouponId }: {
     const [firstTimeOnly, setFirstTimeOnly] = useState(promo?.firstTimeOnly ?? false);
     const [allowedBusinessIds, setAllowedBusinessIds] = useState((promo?.allowedBusinessIds || []).join(', '));
 
+    const startsAtRef = useRef<HTMLInputElement>(null);
+    const expiresAtRef = useRef<HTMLInputElement>(null);
+
+    const openPicker = (ref: React.RefObject<HTMLInputElement | null>) => () => {
+        const el = ref.current;
+        if (el && typeof el.showPicker === 'function') {
+            try { el.showPicker(); } catch { /* already open or unsupported */ }
+        }
+    };
+
     const isSaving = createMutation.isPending || updateMutation.isPending;
 
     const handleSave = async () => {
@@ -367,8 +377,10 @@ function PromoCodeModal({ open, onClose, promo, coupons, presetCouponId }: {
                     <div>
                         <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1.5">Starts At</label>
                         <input
+                            ref={startsAtRef}
                             type="datetime-local"
                             value={startsAt}
+                            onClick={openPicker(startsAtRef)}
                             onChange={(e) => setStartsAt(e.target.value)}
                             className="w-full h-11 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-text-main focus:outline-none focus:ring-2 focus:ring-primary/15 focus:border-primary/30"
                         />
@@ -376,8 +388,10 @@ function PromoCodeModal({ open, onClose, promo, coupons, presetCouponId }: {
                     <div>
                         <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1.5">Expires At</label>
                         <input
+                            ref={expiresAtRef}
                             type="datetime-local"
                             value={expiresAt}
+                            onClick={openPicker(expiresAtRef)}
                             onChange={(e) => setExpiresAt(e.target.value)}
                             className="w-full h-11 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-text-main focus:outline-none focus:ring-2 focus:ring-primary/15 focus:border-primary/30"
                         />
