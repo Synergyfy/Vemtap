@@ -33,7 +33,9 @@ export function useOnboarding() {
         const stats = dashboardAnalytics?.stats || [];
         const visitorsCount = stats.find(s => s.label.toLowerCase().includes('total visitors'))?.value || '0';
         const hasPlan = !!user?.planId || !!subscription?.plan?.id || !!subscription?.planId;
+        const mainBranch = myBusiness?.branches?.find(b => b.isMainBranch) || myBusiness?.branches?.[0];
         const check = getOnboardingCheck(myBusiness ?? null, hasPlan);
+        const hasLogo = check.hasLogo || !!mainBranch?.logoUrl || !!user?.businessLogo;
 
         return [
             {
@@ -49,8 +51,8 @@ export function useOnboarding() {
                 title: 'Upload Business Logo',
                 description: 'Add your brand logo so customers can recognise you.',
                 icon: Image,
-                isCompleted: check.hasLogo,
-                route: '/onboarding?step=3'
+                isCompleted: hasLogo,
+                route: '/dashboard/settings/profile'
             },
             {
                 id: 'address',
@@ -109,7 +111,7 @@ export function useOnboarding() {
                 route: '/dashboard/messaging'
             }
         ].sort((a, b) => Number(a.isCompleted) - Number(b.isCompleted));
-    }, [myBusiness, marketingAnalytics, dashboardAnalytics, user?.planId, subscription, offers]);
+    }, [myBusiness, marketingAnalytics, dashboardAnalytics, user?.planId, user?.businessLogo, subscription, offers]);
 
     const completedCount = checklistItems.filter(i => i.isCompleted).length;
     const totalCount = checklistItems.length;
