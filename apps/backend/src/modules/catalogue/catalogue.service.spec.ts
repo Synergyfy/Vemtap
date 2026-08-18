@@ -7,6 +7,7 @@ import {
   CatalogueItemStatus,
 } from './entities/catalogue-item.entity';
 import { Branch } from '../branches/entities/branch.entity';
+import { Business } from '../businesses/entities/business.entity';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { NotFoundException, BadRequestException } from '@nestjs/common';
 
@@ -51,6 +52,10 @@ describe('CatalogueService', () => {
     findOne: jest.fn(),
   };
 
+  const mockBusinessRepo = {
+    findOne: jest.fn(),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -77,6 +82,10 @@ describe('CatalogueService', () => {
         {
           provide: getRepositoryToken(Branch),
           useValue: mockBranchRepo,
+        },
+        {
+          provide: getRepositoryToken(Business),
+          useValue: mockBusinessRepo,
         },
       ],
     }).compile();

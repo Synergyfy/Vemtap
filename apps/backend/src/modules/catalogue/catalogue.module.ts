@@ -14,7 +14,7 @@ import { CatalogueOfferClaim } from './entities/catalogue-offer-claim.entity';
 import { Otp } from '../auth/entities/otp.entity';
 import { MailModule } from '../mail/mail.module';
 import { AiCopilotModule } from '../ai-copilot/ai-copilot.module';
-import { ClustersModule } from '../clusters/clusters.module';
+import { Business } from '../businesses/entities/business.entity';
 
 @Module({
   imports: [
@@ -24,6 +24,7 @@ import { ClustersModule } from '../clusters/clusters.module';
       CatalogueOffer,
       CatalogueOfferClaim,
       Branch,
+      Business,
       Otp,
     ]),
     SubscriptionsModule,
