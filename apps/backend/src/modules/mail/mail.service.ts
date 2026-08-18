@@ -376,4 +376,319 @@ export class MailService {
 
     return { subject, html };
   }
+
+  async sendPlanChangeEmail(params: {
+    email: string;
+    customerName: string;
+    businessName: string;
+    planName: string;
+    billingPeriod?: string;
+    startDate?: Date;
+    endDate?: Date;
+    isTrial?: boolean;
+    isAdminOverride?: boolean;
+    previousPlanName?: string;
+    currency?: string;
+    amount?: number | string;
+    features?: string[];
+    credits?: {
+      sms?: number;
+      email?: number;
+      whatsapp?: number;
+    };
+    limits?: {
+      branches?: number;
+      teamMembers?: number | null;
+      catalogueItems?: number | null;
+    };
+  }) {
+    const { subject, html } = this.generatePlanChangeEmailHtml(params);
+
+    try {
+      const { data } = await this.resend.emails.send({
+        from: this.fromEmail,
+        to: params.email,
+        subject,
+        html,
+      });
+      this.logger.log(
+        `Plan change email sent to ${params.email}, id: ${data?.id}`,
+      );
+      return true;
+    } catch (error) {
+      this.logger.error(
+        `Error sending plan change email to ${params.email}:`,
+        error,
+      );
+      return false;
+    }
+  }
+
+  public generatePlanChangeEmailHtml(params: {
+    customerName: string;
+    businessName: string;
+    planName: string;
+    billingPeriod?: string;
+    startDate?: Date;
+    endDate?: Date;
+    isTrial?: boolean;
+    isAdminOverride?: boolean;
+    previousPlanName?: string;
+    currency?: string;
+    amount?: number | string;
+    features?: string[];
+    credits?: {
+      sms?: number;
+      email?: number;
+      whatsapp?: number;
+    };
+    limits?: {
+      branches?: number;
+      teamMembers?: number | null;
+      catalogueItems?: number | null;
+    };
+  }): { subject: string; html: string } {
+    const {
+      customerName,
+      businessName,
+      planName,
+      billingPeriod,
+      startDate = new Date(),
+      endDate,
+      isTrial = false,
+      isAdminOverride = false,
+      previousPlanName,
+      features = [],
+      credits,
+      limits,
+    } = params;
+
+    const subject = isTrial
+      ? `Your ${planName} Trial is Now Active! - VemTap`
+      : isAdminOverride
+        ? `Your Plan has been Updated to ${planName} - VemTap`
+        : `Subscription Confirmation: You're now on the ${planName} - VemTap`;
+
+    const formattedBilling = billingPeriod
+      ? billingPeriod.charAt(0).toUpperCase() + billingPeriod.slice(1)
+      : 'Active';
+
+    const formattedStartDate = new Date(startDate).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+    });
+
+    const formattedEndDate = endDate
+      ? new Date(endDate).toLocaleDateString('en-US', {
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric',
+        })
+      : 'Continuous';
+
+    const badgeLabel = isTrial
+      ? 'Trial Activated'
+      : isAdminOverride
+        ? 'Plan Updated by Admin'
+        : 'Plan Subscribed';
+
+    const html = `
+      <!DOCTYPE html>
+      <html lang="en">
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>${subject}</title>
+        <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+      </head>
+      <body style="margin: 0; padding: 0; background-color: #f8fafc; font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #0f172a; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;">
+        <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #f8fafc; padding: 40px 12px;">
+          <tr>
+            <td align="center">
+              <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 600px; background-color: #ffffff; border-radius: 24px; overflow: hidden; box-shadow: 0 20px 25px -5px rgba(15, 23, 42, 0.08), 0 8px 10px -6px rgba(15, 23, 42, 0.04); border: 1px solid #e2e8f0;">
+                
+                <!-- Hero Header Banner with Gradient & Visual Illustration -->
+                <tr>
+                  <td style="background: linear-gradient(135deg, #4338CA 0%, #6366F1 45%, #8B5CF6 100%); padding: 44px 32px; text-align: center; position: relative;">
+                    <!-- VemTap Brand Pill -->
+                    <div style="display: inline-block; background: rgba(255, 255, 255, 0.16); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.25); padding: 6px 18px; border-radius: 9999px; margin-bottom: 20px;">
+                      <span style="color: #ffffff; font-size: 11px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase;">${badgeLabel}</span>
+                    </div>
+
+                    <!-- Visual Icon Shield / Sparkle -->
+                    <div style="margin: 0 auto 16px auto; width: 68px; height: 68px; background: rgba(255, 255, 255, 0.2); border-radius: 20px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid rgba(255, 255, 255, 0.35); box-shadow: 0 10px 20px rgba(0, 0, 0, 0.12);">
+                      <span style="font-size: 34px; line-height: 1;">⚡</span>
+                    </div>
+
+                    <!-- Header Title -->
+                    <h1 style="color: #ffffff; margin: 0 0 10px 0; font-size: 28px; font-weight: 800; letter-spacing: -0.03em; line-height: 1.2;">
+                      Plan Activated
+                    </h1>
+                    <p style="color: #e0e7ff; margin: 0; font-size: 15px; font-weight: 500; max-width: 440px; margin: 0 auto; line-height: 1.5;">
+                      Your business <strong style="color: #ffffff;">${businessName}</strong> is now equipped with the <strong style="color: #ffffff;">${planName}</strong>.
+                    </p>
+                  </td>
+                </tr>
+
+                <!-- Content Body -->
+                <tr>
+                  <td style="padding: 36px 32px;">
+                    
+                    <!-- Greeting -->
+                    <div style="margin-bottom: 24px;">
+                      <h2 style="margin: 0 0 8px 0; font-size: 19px; font-weight: 700; color: #0f172a;">
+                        Hello ${customerName || 'there'},
+                      </h2>
+                      <p style="margin: 0; font-size: 14px; line-height: 1.6; color: #475569;">
+                        ${
+                          isAdminOverride
+                            ? `An administrator has updated your subscription package for <strong>${businessName}</strong>. You now have immediate access to all entitlements and features associated with this plan.`
+                            : `Thank you for choosing VemTap. Your subscription has been successfully updated and your new tier benefits are ready to use.`
+                        }
+                      </p>
+                    </div>
+
+                    ${
+                      previousPlanName && previousPlanName !== planName
+                        ? `
+                    <!-- Plan Change Pill Banner -->
+                    <div style="background-color: #f1f5f9; border-radius: 12px; padding: 12px 18px; margin-bottom: 24px; border: 1px solid #e2e8f0; display: flex; align-items: center; justify-content: space-between;">
+                      <span style="font-size: 12px; color: #64748b; font-weight: 600;">Plan Transition:</span>
+                      <div style="font-size: 13px; font-weight: 700; color: #1e293b;">
+                        <span style="color: #94a3b8; text-decoration: line-through;">${previousPlanName}</span>
+                        <span style="color: #6366F1; margin: 0 6px;">→</span>
+                        <span style="color: #4338CA;">${planName}</span>
+                      </div>
+                    </div>
+                    `
+                        : ''
+                    }
+
+                    <!-- Subscription Details Card -->
+                    <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 18px; padding: 24px; margin-bottom: 28px;">
+                      <div style="font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; color: #6366F1; margin-bottom: 18px;">
+                        Plan Overview
+                      </div>
+
+                      <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="font-size: 14px;">
+                        <tr>
+                          <td style="padding: 8px 0; color: #64748b; font-weight: 500;">Plan Name</td>
+                          <td style="padding: 8px 0; text-align: right; font-weight: 700; color: #0f172a;">
+                            <span style="background-color: #e0e7ff; color: #3730a3; padding: 3px 10px; border-radius: 6px; font-size: 13px;">${planName}</span>
+                          </td>
+                        </tr>
+                        <tr>
+                          <td style="padding: 8px 0; color: #64748b; font-weight: 500;">Billing Cycle</td>
+                          <td style="padding: 8px 0; text-align: right; font-weight: 600; color: #0f172a;">${formattedBilling}</td>
+                        </tr>
+                        <tr>
+                          <td style="padding: 8px 0; color: #64748b; font-weight: 500;">Effective Date</td>
+                          <td style="padding: 8px 0; text-align: right; font-weight: 600; color: #0f172a;">${formattedStartDate}</td>
+                        </tr>
+                        <tr>
+                          <td style="padding: 8px 0; color: #64748b; font-weight: 500;">Next Renewal / Expiry</td>
+                          <td style="padding: 8px 0; text-align: right; font-weight: 600; color: #0f172a;">${formattedEndDate}</td>
+                        </tr>
+                        <tr>
+                          <td style="padding: 8px 0; color: #64748b; font-weight: 500;">Account Status</td>
+                          <td style="padding: 8px 0; text-align: right; font-weight: 700; color: #16a34a;">● Active</td>
+                        </tr>
+                      </table>
+                    </div>
+
+                    <!-- Features & Entitlements Section -->
+                    ${
+                      features.length > 0 || credits || limits
+                        ? `
+                    <div style="margin-bottom: 32px;">
+                      <div style="font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; color: #0f172a; margin-bottom: 14px;">
+                        What's Included with ${planName}
+                      </div>
+
+                      <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%">
+                        ${
+                          credits && (credits.sms || credits.email || credits.whatsapp)
+                            ? `
+                        <tr>
+                          <td style="padding: 6px 0; font-size: 13px; color: #334155;">
+                            <span style="color: #6366F1; font-weight: bold; margin-right: 8px;">✓</span>
+                            <strong>Included Credits:</strong> 
+                            ${credits.sms ? `${credits.sms.toLocaleString()} SMS` : ''}${credits.sms && credits.email ? ', ' : ''}
+                            ${credits.email ? `${credits.email.toLocaleString()} Email` : ''}${(credits.sms || credits.email) && credits.whatsapp ? ', ' : ''}
+                            ${credits.whatsapp ? `${credits.whatsapp.toLocaleString()} WhatsApp` : ''}
+                          </td>
+                        </tr>
+                        `
+                            : ''
+                        }
+                        ${
+                          limits?.branches
+                            ? `
+                        <tr>
+                          <td style="padding: 6px 0; font-size: 13px; color: #334155;">
+                            <span style="color: #6366F1; font-weight: bold; margin-right: 8px;">✓</span>
+                            <strong>Branch Limit:</strong> ${limits.branches} location${limits.branches > 1 ? 's' : ''}
+                          </td>
+                        </tr>
+                        `
+                            : ''
+                        }
+                        ${features
+                          .slice(0, 6)
+                          .map(
+                            (f) => `
+                        <tr>
+                          <td style="padding: 6px 0; font-size: 13px; color: #334155;">
+                            <span style="color: #6366F1; font-weight: bold; margin-right: 8px;">✓</span>
+                            ${f}
+                          </td>
+                        </tr>
+                        `,
+                          )
+                          .join('')}
+                      </table>
+                    </div>
+                    `
+                        : ''
+                    }
+
+                    <!-- CTA Action Button -->
+                    <div style="text-align: center; margin: 32px 0 16px 0;">
+                      <a href="https://vemtap.vercel.app/admin/subscriptions" style="display: inline-block; background: linear-gradient(135deg, #4338CA 0%, #6366F1 100%); color: #ffffff; padding: 16px 36px; border-radius: 12px; text-decoration: none; font-weight: 700; font-size: 15px; box-shadow: 0 10px 15px -3px rgba(99, 102, 241, 0.35); letter-spacing: -0.01em;">
+                        Go to Your Dashboard
+                      </a>
+                    </div>
+                    
+                    <p style="text-align: center; font-size: 12px; color: #94a3b8; margin-top: 14px;">
+                      Need assistance or have questions? Contact us anytime at <a href="mailto:support@vemtap.com" style="color: #6366F1; text-decoration: none; font-weight: 600;">support@vemtap.com</a>
+                    </p>
+
+                  </td>
+                </tr>
+
+                <!-- Clean Footer -->
+                <tr>
+                  <td style="background-color: #f8fafc; padding: 28px 32px; text-align: center; border-top: 1px solid #e2e8f0;">
+                    <div style="margin-bottom: 12px;">
+                      <span style="font-weight: 800; font-size: 16px; color: #1e293b; letter-spacing: -0.02em;">VemTap</span>
+                    </div>
+                    <p style="margin: 0; font-size: 12px; color: #94a3b8; line-height: 1.6;">
+                      &copy; ${new Date().getFullYear()} VemTap Technologies. All rights reserved.<br>
+                      This is an automated notification regarding your subscription status.
+                    </p>
+                  </td>
+                </tr>
+
+              </table>
+            </td>
+          </tr>
+        </table>
+      </body>
+      </html>
+    `;
+
+    return { subject, html };
+  }
 }
+

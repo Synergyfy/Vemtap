@@ -60,7 +60,7 @@ export default function ManagePlanPage() {
         (activePlanNameFromSub && p.name.toLowerCase() === activePlanNameFromSub)
     ) || freePlan;
 
-    const isCancelled = subscription?.status === 'cancelled' || subscription?.status === 'expired';
+    const isCancelled = subscription?.status === 'canceled' || subscription?.status === 'expired';
     const isOnTrial = subscription?.status === 'trial' || subscription?.status === 'trialing';
     
     const periodStart = subscription?.currentPeriodStart || subscription?.startDate || null;

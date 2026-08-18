@@ -114,6 +114,30 @@ export class SubscriptionsController {
     return this.subscriptionsService.subscribe(subscribeDto);
   }
 
+  @Post('initialize-payment')
+  @SkipSubscriptionCheck()
+  @Roles(UserRole.OWNER, UserRole.ADMIN)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Initialize a subscription payment via Paystack',
+    description:
+      'Computes the exact amount server-side (plan price + tax, or the ₦100 trial deposit), creates a pending payment record, and returns a Paystack access_code for the client to complete the transaction.',
+  })
+  async initializePayment(
+    @Request() req,
+    @Body() subscribeDto: SubscribeWithAddonsDto,
+  ) {
+    if (!subscribeDto.businessId) {
+      subscribeDto.businessId = await this.getBusinessId(req);
+    }
+    return this.subscriptionsService.initializePayment({
+      planId: subscribeDto.planId,
+      businessId: subscribeDto.businessId,
+      billingPeriod: subscribeDto.billingPeriod,
+      isTrial: subscribeDto.isTrial ?? false,
+    });
+  }
+
   @Get('active')
   @SkipSubscriptionCheck()
   @Roles(UserRole.OWNER, UserRole.ADMIN, UserRole.MANAGER, UserRole.STAFF)
