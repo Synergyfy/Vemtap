@@ -40,6 +40,7 @@ import { AffiliatesService } from '../affiliates/affiliates.service';
 import { AffiliateSyncService } from '../affiliates/affiliate-sync.service';
 import { QrThriveService } from '../qr-thrive/qr-thrive.service';
 import { AddonsService } from './services/addons.service';
+import { AddOn } from './entities/addon.entity';
 import {
   SubscriptionTaxService,
   TaxCalculationResult,
@@ -383,7 +384,7 @@ export class SubscriptionsService {
         await this.couponEngineService.recordRedemption({
           promotionCodeId: promoValidation.promotionCode.id,
           couponId: promoValidation.coupon.id,
-          businessId,
+          businessId: business.id,
           userId: business.ownerId,
           subscriptionId: savedSub.id,
           paymentReference,
