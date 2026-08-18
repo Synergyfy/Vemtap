@@ -104,16 +104,18 @@ export const usePricePreview = (params: {
     planId?: string;
     billingPeriod: BillingPeriod;
     addonIds?: string[];
+    promoCode?: string;
     enabled?: boolean;
 }) =>
     useQuery<PricePreviewResponse, Error>({
-        queryKey: ['subscription', 'price-preview', params.planId, params.billingPeriod, params.addonIds],
+        queryKey: ['subscription', 'price-preview', params.planId, params.billingPeriod, params.addonIds, params.promoCode ?? ''],
         queryFn: () =>
             previewSubscriptionPrice({
                 planId: params.planId as string,
                 billingPeriod: params.billingPeriod,
                 addonIds: params.addonIds,
                 addonQuantities: params.addonIds?.map(() => 1),
+                promoCode: params.promoCode,
             }),
         enabled: !!params.planId && (params.enabled ?? true),
         staleTime: 30_000,

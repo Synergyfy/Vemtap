@@ -12,4 +12,5 @@ export interface SubscribeRequest {
     isTrial?: boolean;
     addonIds?: string[];
     addonQuantities?: number[];
+    promoCode?: string;
 }

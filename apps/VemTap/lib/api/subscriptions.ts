@@ -1,5 +1,6 @@
 import { api } from '@/lib/api';
 import { SubscriptionCapabilities, Subscription, SubscriptionTaxConfig, PricePreviewResponse, UpdateSubscriptionTaxPayload, ToggleSubscriptionTaxPayload, BillingPeriod } from '@/types/subscriptions';
+import { ValidatePromoCodeResponse } from '@/types/subscriptions';
 
 export const subscriptionsApi = {
   getCapabilities: async (): Promise<SubscriptionCapabilities> => {
@@ -25,7 +26,13 @@ export const subscriptionsApi = {
 };
 
 export const previewSubscriptionPrice = async (
-  params: { planId: string; billingPeriod: BillingPeriod; addonIds?: string[]; addonQuantities?: number[] },
+    params: { planId: string; billingPeriod: BillingPeriod; addonIds?: string[]; addonQuantities?: number[]; promoCode?: string },
 ): Promise<PricePreviewResponse> => {
-  return await api.get('/subscriptions/price-preview', { params });
+    return await api.get('/subscriptions/price-preview', { params });
+};
+
+export const validatePromoCode = async (
+    payload: { code: string; planId: string; billingPeriod: BillingPeriod; businessId?: string },
+): Promise<ValidatePromoCodeResponse> => {
+    return await api.post('/coupons/validate', payload);
 };
