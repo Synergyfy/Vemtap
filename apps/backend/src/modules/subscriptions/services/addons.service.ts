@@ -203,7 +203,7 @@ export class AddonsService {
     if (paymentReference) {
       const paymentData =
         await this.paymentsService.verifyTransaction(paymentReference);
-      if (!paymentData) {
+      if (!paymentData || paymentData.status !== 'success') {
         throw new BadRequestException('Payment verification failed');
       }
     }

@@ -24,7 +24,17 @@ export function configureApp(app: INestApplication) {
   // Body parsing. We opt out of Nest's default 100kb parser so the support
   // attachment endpoint can accept up to its documented 25MB total. Both the
   // JSON and urlencoded parsers are re-registered here.
-  app.use(json({ limit: '25mb' }));
+  // The `verify` hook captures the raw request body so the Paystack webhook
+  // can validate the HMAC-SHA512 signature against the exact bytes received
+  // (NestJS otherwise re-serializes parsed JSON, breaking the signature check).
+  app.use(
+    json({
+      limit: '25mb',
+      verify: (req: any, _res, buf) => {
+        (req as any).rawBody = buf;
+      },
+    }),
+  );
   app.use(urlencoded({ extended: true, limit: '25mb' }));
 
   // Security

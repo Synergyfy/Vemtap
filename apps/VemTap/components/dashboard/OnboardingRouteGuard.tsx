@@ -16,7 +16,12 @@ export default function OnboardingRouteGuard({ children }: { children: ReactNode
     const role = (user?.role as string)?.toLowerCase() || '';
     const isOwner = role === 'owner';
 
-    const hasBusiness = !!user?.businessId && !!myBusiness?.id;
+    // The business is the source of truth here, not the auth store's cached
+    // `businessId` (which can be missing if the onboarding profile sync failed
+    // even though a business exists and is linked to this owner). Requiring the
+    // store hint caused owners who had just paid to be bounced back to
+    // /onboarding.
+    const hasBusiness = !!myBusiness?.id;
 
     const hasActivePlan =
         !!user?.planId ||
@@ -25,7 +30,7 @@ export default function OnboardingRouteGuard({ children }: { children: ReactNode
         !!subscription?.id;
 
     const planLocked =
-        subscription?.status === 'expired' || subscription?.status === 'cancelled';
+        subscription?.status === 'expired' || subscription?.status === 'canceled';
 
     const isSubscriptionPage = pathname?.startsWith('/dashboard/settings/subscription');
 

@@ -30,6 +30,7 @@ import { BundleDiscountsController } from './controllers/bundle-discounts.contro
 import { SubscriptionTaxConfig } from './entities/subscription-tax-config.entity';
 import { SubscriptionTaxService } from './services/subscription-tax.service';
 import { CouponsModule } from '../coupons/coupons.module';
+import { MailModule } from '../mail/mail.module';
 
 import { Branch } from '../branches/entities/branch.entity';
 import { Device } from '../devices/entities/device.entity';
@@ -59,13 +60,14 @@ import { Reward } from '../loyalty/entities/reward.entity';
       SubscriptionTaxConfig,
     ]),
     forwardRef(() => BusinessesModule),
-    PaymentsModule,
+    forwardRef(() => PaymentsModule),
     forwardRef(() => BranchesModule),
     forwardRef(() => MessagingModule),
     forwardRef(() => AffiliatesModule),
     ExternalAffiliateModule,
     forwardRef(() => QrThriveModule),
     forwardRef(() => CouponsModule),
+    MailModule,
     SettingsModule,
   ],
 

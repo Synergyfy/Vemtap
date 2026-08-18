@@ -20,7 +20,10 @@ import { SubscribeDto } from './dto/subscribe.dto';
 import { Business } from '../businesses/entities/business.entity';
 import { User, UserStatus, UserRole } from '../users/entities/user.entity';
 import { Branch } from '../branches/entities/branch.entity';
-import { PaymentsService } from '../payments/payments.service';
+import {
+  PaymentsService,
+  VerifiedTransaction,
+} from '../payments/payments.service';
 import { Device } from '../devices/entities/device.entity';
 import {
   PaymentPurpose,
@@ -50,6 +53,7 @@ import {
   CouponEngineService,
   PromotionValidationResult,
 } from '../coupons/services/coupon-engine.service';
+import { MailService } from '../mail/mail.service';
 
 @Injectable()
 export class SubscriptionsService {
@@ -87,6 +91,7 @@ export class SubscriptionsService {
     private readonly subscriptionTaxService: SubscriptionTaxService,
     @Inject(forwardRef(() => CouponEngineService))
     private readonly couponEngineService: CouponEngineService,
+    private readonly mailService: MailService,
   ) {}
 
   async activeSubscription(businessId?: string): Promise<Subscription | null> {
@@ -210,16 +215,32 @@ export class SubscriptionsService {
     let trialEndDate: Date | null = null;
     const startDate = new Date();
     let endDate = new Date(startDate);
-    let authCode = null;
-    let paymentData: any = null;
+    let authCode: string | null = null;
+    let paymentData: VerifiedTransaction | null = null;
 
     if (paymentReference) {
       paymentData =
         await this.paymentsService.verifyTransaction(paymentReference);
-      if (!paymentData) {
+      if (!paymentData || paymentData.status !== 'success') {
+        if (paymentData?.status === 'pending') {
+          throw new BadRequestException(
+            'Payment is still being processed. Please check back shortly.',
+          );
+        }
         throw new BadRequestException('Payment verification failed');
       }
-      authCode = paymentData.authorization?.authorization_code;
+      authCode = paymentData.authorization?.authorization_code ?? null;
+
+      // Idempotency: if this reference already produced a subscription (e.g.
+      // the webhook processed it before the client callback arrived), return
+      // the existing subscription instead of creating a duplicate.
+      const existingByRef = await this.subscriptionRepository.findOne({
+        where: { paystackReference: paymentReference },
+        relations: ['plan'],
+      });
+      if (existingByRef) {
+        return { subscription: existingByRef, addOns: [] };
+      }
     }
 
     if (plan.isFree) {
@@ -233,6 +254,24 @@ export class SubscriptionsService {
           throw new BadRequestException(
             'This plan does not offer a trial period.',
           );
+        }
+        if (paymentData && paymentData.amount !== 10000) {
+          throw new BadRequestException(
+            'Payment amount does not match the ₦100 verification deposit.',
+          );
+        }
+        if (paymentReference) {
+          // Record the ₦100 verification deposit so the pending intent created
+          // at initialize-payment is upgraded to Success (data consistency).
+          await this.paymentsService.recordPayment({
+            reference: paymentReference,
+            amount: 100,
+            purpose: PaymentPurpose.SUBSCRIPTION,
+            status: PaymentStatus.SUCCESS,
+            metadata: { planId, billingPeriod, isTrial: true },
+            businessId,
+            userId: business.ownerId,
+          });
         }
         status = SubscriptionStatus.TRIAL;
         const trialEnd = new Date(startDate);
@@ -307,6 +346,12 @@ export class SubscriptionsService {
             };
           }
 
+          if (paymentData && Math.round(totalAmount * 100) !== paymentData.amount) {
+            throw new BadRequestException(
+              'Payment amount does not match the selected plan total.',
+            );
+          }
+
           await this.paymentsService.recordPayment({
             reference: paymentReference,
             amount: totalAmount,
@@ -356,6 +401,7 @@ export class SubscriptionsService {
     }
 
     const activeSub = await this.activeSubscription(businessId);
+    const previousPlanName = activeSub?.plan?.name;
     if (activeSub) {
       activeSub.status = SubscriptionStatus.CANCELED;
       await this.subscriptionRepository.save(activeSub);
@@ -442,9 +488,163 @@ export class SubscriptionsService {
       await this.creditService.allocateSubscriptionCredits(business.id, plan);
 
       await this.syncUserSubscriptionToQrThrive(business.id);
+
+      // Send plan change notification email asynchronously
+      try {
+        let owner: User | null = business.owner;
+        if (!owner && business.ownerId) {
+          owner = await this.userRepository.findOne({
+            where: { id: business.ownerId },
+          });
+        }
+
+        if (owner?.email) {
+          const customerName =
+            `${owner.firstName || ''} ${owner.lastName || ''}`.trim() ||
+            'Valued Customer';
+          this.mailService
+            .sendPlanChangeEmail({
+              email: owner.email,
+              customerName,
+              businessName: business.name,
+              planName: plan.name,
+              billingPeriod,
+              startDate,
+              endDate,
+              isTrial,
+              isAdminOverride,
+              previousPlanName,
+              features: plan.features || [],
+              credits: {
+                sms: plan.smsCredits,
+                email: plan.emailCredits,
+                whatsapp: plan.whatsappCredits,
+              },
+              limits: {
+                branches: plan.branchLimit,
+                teamMembers: plan.teamMembersLimit,
+                catalogueItems: plan.maxCatalogueItems,
+              },
+            })
+            .catch((err) => {
+              this.logger.error(
+                `Failed to send plan change email to ${owner?.email}: ${err.message}`,
+              );
+            });
+        }
+      } catch (emailErr) {
+        this.logger.error(
+          `Error triggering plan change email for business ${businessId}: ${emailErr.message}`,
+        );
+      }
     }
 
     return { subscription: savedSub, addOns: purchasedAddOns };
+  }
+
+  /**
+   * Server-side payment initialization for subscription checkout. Computes the
+   * exact amount (plan price + tax, or the ₦100 trial deposit), creates a
+   * pending payment record (used to map the reference back to a business/plan
+   * when the webhook fires), and returns the Paystack access_code so the
+   * frontend can complete payment without ever holding the secret key.
+   */
+  async initializePayment(input: {
+    planId: string;
+    businessId: string;
+    billingPeriod: BillingPeriod;
+    isTrial?: boolean;
+  }): Promise<{
+    reference: string;
+    access_code: string;
+    authorization_url: string;
+    amount: number;
+  }> {
+    const { planId, businessId, billingPeriod, isTrial = false } = input;
+
+    const plan = await this.plansService.findOne(planId);
+    if (!plan.isActive) {
+      throw new BadRequestException('Selected plan is not active');
+    }
+
+    let amount: number;
+    if (plan.isFree) {
+      amount = 0;
+    } else if (isTrial) {
+      amount = 100;
+    } else {
+      let planPrice = Number(plan.monthlyPrice || 0);
+      if (billingPeriod === BillingPeriod.QUARTERLY)
+        planPrice = Number(plan.quarterlyPrice || 0);
+      else if (billingPeriod === BillingPeriod.YEARLY)
+        planPrice = Number(plan.yearlyPrice || 0);
+
+      const taxConfig = await this.subscriptionTaxService.getActiveConfig();
+      const taxResult = this.subscriptionTaxService.calculateTax(
+        planPrice,
+        taxConfig,
+      );
+      amount = taxResult.total;
+    }
+
+    const business = await this.businessRepository.findOne({
+      where: { id: businessId },
+      relations: ['owner'],
+    });
+    if (!business) {
+      throw new NotFoundException('Business not found');
+    }
+    const email = business.officialEmail || business.owner?.email;
+    if (!email) {
+      throw new BadRequestException(
+        'Business owner email is required to initialize payment',
+      );
+    }
+
+    const reference = `SUB-${businessId}-${Date.now()}-${Math.random()
+      .toString(36)
+      .slice(2, 8)}`;
+
+    const init = await this.paymentsService.initializeTransaction({
+      email,
+      amount: Math.round(amount * 100),
+      reference,
+      currency: plan.currency || 'NGN',
+      metadata: {
+        businessId,
+        planId,
+        billingPeriod,
+        isTrial,
+        purpose: 'subscription',
+      },
+    });
+    if (!init) {
+      throw new BadRequestException(
+        'Failed to initialize payment with Paystack',
+      );
+    }
+
+    await this.paymentsService.recordPayment({
+      reference,
+      amount,
+      purpose: PaymentPurpose.SUBSCRIPTION,
+      status: PaymentStatus.PENDING,
+      metadata: {
+        businessId,
+        planId,
+        billingPeriod,
+        isTrial,
+      },
+      businessId,
+      userId: business.ownerId,
+    });
+
+    return {
+      reference,
+      access_code: init.access_code,
+      authorization_url: init.authorization_url,
+      amount,
+    };
   }
 
   async getSubscriptionStatus(
