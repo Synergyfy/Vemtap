@@ -24,6 +24,7 @@ import {
   BulkImportItemsDto,
 } from './dto/item.dto';
 import { Branch } from '../branches/entities/branch.entity';
+import { Business } from '../businesses/entities/business.entity';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { paginateWithCursor } from '../../common/utils/cursor-pagination.util';
 
@@ -36,6 +37,8 @@ export class CatalogueService {
     private readonly itemRepository: Repository<CatalogueItem>,
     @InjectRepository(Branch)
     private readonly branchRepository: Repository<Branch>,
+    @InjectRepository(Business)
+    private readonly businessRepository: Repository<Business>,
     private readonly subscriptionsService: SubscriptionsService,
   ) {}
 
@@ -88,11 +91,28 @@ export class CatalogueService {
   // --- Items ---
 
   async createItem(dto: CreateCatalogueItemDto, businessId: string) {
-    const branch = await this.branchRepository.findOne({
-      where: { id: dto.branchId, businessId },
-    });
-    if (!branch)
+    let branch: Branch | null = null;
+    if (dto.branchId) {
+      branch = await this.branchRepository.findOne({
+        where: { id: dto.branchId, businessId },
+      });
+    }
+
+    // If branchId is not found, omitted, or points to businessId, fallback to main branch
+    if (!branch) {
+      branch = await this.branchRepository.findOne({
+        where: { businessId, isMainBranch: true },
+      });
+      if (!branch) {
+        branch = await this.branchRepository.findOne({
+          where: { businessId, isActive: true },
+        });
+      }
+    }
+
+    if (!branch) {
       throw new BadRequestException('Branch not found or unauthorized');
+    }
 
     const caps = await this.subscriptionsService.getCapabilities(businessId);
     if (!caps.capabilities.catalogueItems.enabled) {
@@ -435,6 +455,34 @@ export class CatalogueService {
     return this.itemRepository.save(item);
   }
 
+  private async ensureBranchItemAssociations(branchId: string): Promise<void> {
+    try {
+      const branch = await this.branchRepository.findOne({
+        where: { id: branchId },
+      });
+      if (!branch) return;
+
+      // Find active items for this business that have no branches associated
+      const unassociatedItems = await this.itemRepository
+        .createQueryBuilder('item')
+        .leftJoin('item.branches', 'branch')
+        .where('item.businessId = :businessId', {
+          businessId: branch.businessId,
+        })
+        .andWhere('branch.id IS NULL')
+        .getMany();
+
+      if (unassociatedItems.length > 0) {
+        for (const item of unassociatedItems) {
+          item.branches = [branch];
+          await this.itemRepository.save(item);
+        }
+      }
+    } catch {
+      // Non-blocking best-effort association
+    }
+  }
+
   private async resolveBranchId(branchIdOrCode: string): Promise<string> {
     const isUuid =
       /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
@@ -444,26 +492,62 @@ export class CatalogueService {
       const branch = await this.branchRepository.findOne({
         where: { id: branchIdOrCode, isActive: true },
       });
-      if (!branch) {
-        throw new NotFoundException(`Branch not found`);
+      if (branch) {
+        return branch.id;
       }
-      return branch.id;
+
+      // Check if this UUID is a businessId, and resolve to its main branch
+      const business = await this.businessRepository.findOne({
+        where: { id: branchIdOrCode },
+      });
+      if (business) {
+        const mainBranch =
+          (await this.branchRepository.findOne({
+            where: { businessId: business.id, isMainBranch: true },
+          })) ||
+          (await this.branchRepository.findOne({
+            where: { businessId: business.id, isActive: true },
+          }));
+        if (mainBranch) return mainBranch.id;
+      }
+
+      throw new NotFoundException(`Branch not found`);
     }
+
+    // Try finding by branch uniqueCode
     const branch = await this.branchRepository.findOne({
       where: { uniqueCode: branchIdOrCode, isActive: true },
     });
-    if (!branch) {
-      throw new NotFoundException(
-        `Branch with code ${branchIdOrCode} not found`,
-      );
+    if (branch) {
+      return branch.id;
     }
-    return branch.id;
+
+    // Fallback: Check if branchIdOrCode is a business uniqueCode
+    const business = await this.businessRepository.findOne({
+      where: { uniqueCode: branchIdOrCode },
+    });
+    if (business) {
+      const mainBranch =
+        (await this.branchRepository.findOne({
+          where: { businessId: business.id, isMainBranch: true },
+        })) ||
+        (await this.branchRepository.findOne({
+          where: { businessId: business.id, isActive: true },
+        }));
+      if (mainBranch) return mainBranch.id;
+    }
+
+    throw new NotFoundException(
+      `Branch with code ${branchIdOrCode} not found`,
+    );
   }
 
   // --- Public Listing ---
 
   async findAllItemsPublic(branchId: string, query: CatalogueQueryDto) {
     const resolvedBranchId = await this.resolveBranchId(branchId);
+    await this.ensureBranchItemAssociations(resolvedBranchId);
+
     const qb = this.itemRepository
       .createQueryBuilder('item')
       .innerJoin('item.branches', 'branch', 'branch.id = :branchId', {
@@ -557,6 +641,8 @@ export class CatalogueService {
 
   async findAllCategoriesByBranch(branchId: string) {
     const resolvedBranchId = await this.resolveBranchId(branchId);
+    await this.ensureBranchItemAssociations(resolvedBranchId);
+
     // Return categories that have at least one active, non-suspended item in this branch
     const categories = await this.categoryRepository
       .createQueryBuilder('category')

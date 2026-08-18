@@ -49,4 +49,13 @@ export class PricePreviewDto {
     return value;
   })
   addonQuantities?: number[];
+
+  @ApiPropertyOptional({
+    description: 'Optional promotion or coupon code to apply discount in preview',
+    example: 'SAVE50',
+  })
+  @IsOptional()
+  @IsString()
+  promoCode?: string;
 }
+

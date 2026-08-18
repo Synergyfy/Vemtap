@@ -232,15 +232,48 @@ export class BranchesService {
   }
 
   async findByCode(uniqueCode: string): Promise<Branch> {
-    const branch = await this.branchesRepository.findOne({
+    let branch = await this.branchesRepository.findOne({
       where: {
         uniqueCode,
         business: { status: Not(BusinessStatus.SUSPENDED) },
       },
       relations: ['business'],
     });
-    if (!branch)
+
+    // Fallback: If code is a business unique code, return the business's main branch
+    if (!branch) {
+      const business = await this.businessRepository.findOne({
+        where: {
+          uniqueCode,
+          status: Not(BusinessStatus.SUSPENDED),
+        },
+      });
+
+      if (business) {
+        branch = await this.branchesRepository.findOne({
+          where: {
+            businessId: business.id,
+            isMainBranch: true,
+          },
+          relations: ['business'],
+        });
+
+        // If no explicit main branch found, pick the first active branch for the business
+        if (!branch) {
+          branch = await this.branchesRepository.findOne({
+            where: {
+              businessId: business.id,
+              isActive: true,
+            },
+            relations: ['business'],
+          });
+        }
+      }
+    }
+
+    if (!branch) {
       throw new NotFoundException(`Branch with code ${uniqueCode} not found`);
+    }
     return branch;
   }
 
