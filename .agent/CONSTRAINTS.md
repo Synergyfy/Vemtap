@@ -6,7 +6,7 @@ Follow these strict rules to maintain system integrity and security.
 
 1.  **Never Return Passwords**: Always use `@Exclude()` or `ClassSerializerInterceptor` to ensure sensitive fields like `password` are never leaked in API responses.
 2.  **Enforce Roles**: Every non-public endpoint MUST be protected by `@Roles()` and the `RolesGuard`.
-3.  **Validate Input**: Use `class-validator` decorators in all DTOs. Ensure `whitelist: true` and `forbidNonWhitelisted: true` are respected.
+3.  **Validate Input**: Use `class-validator` and `class-transformer` decorators in all DTOs (see `[VALIDATION.md](file:///.agent/VALIDATION.md)`). Ensure `whitelist: true` and `forbidNonWhitelisted: true` are respected. Never accept raw unvalidated parameters.
 4.  **Audit Impersonation**: All state-changing actions performed via AMIS MUST be logged in the audit trail.
 5.  **Multi-Tenancy**: Always ensure queries are scoped to the correct `businessId` or `branchId` to prevent data leakage between businesses.
 

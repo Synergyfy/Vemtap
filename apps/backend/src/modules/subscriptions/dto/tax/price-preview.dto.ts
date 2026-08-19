@@ -32,8 +32,21 @@ export class PricePreviewDto {
   @IsOptional()
   @IsArray()
   @Transform(({ value }) => {
-    if (typeof value === 'string') return [value];
-    return value;
+    if (!value) return undefined;
+    if (typeof value === 'string') {
+      const parts = value
+        .split(',')
+        .map((s) => s.trim())
+        .filter((s) => s.length > 0);
+      return parts.length > 0 ? parts : undefined;
+    }
+    if (Array.isArray(value)) {
+      const filtered = value
+        .filter((v) => typeof v === 'string' && v.trim().length > 0)
+        .map((v) => v.trim());
+      return filtered.length > 0 ? filtered : undefined;
+    }
+    return undefined;
   })
   addonIds?: string[];
 
@@ -44,9 +57,21 @@ export class PricePreviewDto {
   @IsOptional()
   @IsArray()
   @Transform(({ value }) => {
-    if (typeof value === 'string') return [parseInt(value, 10)];
-    if (Array.isArray(value)) return value.map((v) => parseInt(v, 10));
-    return value;
+    if (!value) return undefined;
+    if (typeof value === 'string') {
+      const parts = value
+        .split(',')
+        .map((s) => parseInt(s.trim(), 10))
+        .filter((n) => !isNaN(n));
+      return parts.length > 0 ? parts : undefined;
+    }
+    if (Array.isArray(value)) {
+      const mapped = value
+        .map((v) => (typeof v === 'number' ? v : parseInt(String(v).trim(), 10)))
+        .filter((n) => !isNaN(n));
+      return mapped.length > 0 ? mapped : undefined;
+    }
+    return undefined;
   })
   addonQuantities?: number[];
 
@@ -56,6 +81,13 @@ export class PricePreviewDto {
   })
   @IsOptional()
   @IsString()
+  @Transform(({ value }) => {
+    if (typeof value === 'string') {
+      const trimmed = value.trim();
+      return trimmed.length > 0 ? trimmed : undefined;
+    }
+    return undefined;
+  })
   promoCode?: string;
 }
 

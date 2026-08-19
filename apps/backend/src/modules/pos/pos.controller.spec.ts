@@ -119,7 +119,7 @@ describe('PosController', () => {
 
   describe('listHeldSales', () => {
     it('should call service.findAllHeldSales', async () => {
-      await controller.listHeldSales('br-1', mockReq);
+      await controller.listHeldSales({ branchId: 'br-1' }, mockReq);
 
       expect(mockPosService.findAllHeldSales).toHaveBeenCalledWith(
         'bus-1',
@@ -191,7 +191,7 @@ describe('PosController', () => {
 
   describe('getDashboard', () => {
     it('should call service.getDashboard', async () => {
-      await controller.getDashboard('br-1', mockReq);
+      await controller.getDashboard({ branchId: 'br-1' }, mockReq);
 
       expect(mockPosService.getDashboard).toHaveBeenCalledWith('bus-1', 'br-1');
     });
@@ -199,7 +199,7 @@ describe('PosController', () => {
 
   describe('getTopProducts', () => {
     it('should call service.getTopProducts', async () => {
-      await controller.getTopProducts('br-1', mockReq);
+      await controller.getTopProducts({ branchId: 'br-1' }, mockReq);
 
       expect(mockPosService.getTopProducts).toHaveBeenCalledWith(
         'bus-1',

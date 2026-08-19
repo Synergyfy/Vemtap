@@ -1522,9 +1522,10 @@ export class SubscriptionsService {
       return sum + Number(addon.price) * qty;
     }, 0);
 
-    if (dto.promoCode) {
+    const promoCode = dto.promoCode?.trim();
+    if (promoCode) {
       const promoValidation = await this.couponEngineService.validatePromotion({
-        code: dto.promoCode,
+        code: promoCode,
         planId: dto.planId,
         billingPeriod: dto.billingPeriod,
         businessId,

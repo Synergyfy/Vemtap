@@ -437,12 +437,16 @@ describe('AddonsService', () => {
     });
   });
 
-  describe('getActiveBusinessAddons', () => {
-    it('should return only active add-ons not expired', async () => {
-      mockBusinessAddonRepository.find.mockResolvedValue([mockBusinessAddon]);
-      const result = await service.getActiveBusinessAddons('b1');
-      expect(mockBusinessAddonRepository.find).toHaveBeenCalled();
-      expect(result).toHaveLength(1);
+  describe('validateAddons', () => {
+    it('should return empty array if addonIds is empty or contains only whitespace', async () => {
+      expect(await service.validateAddons([])).toEqual([]);
+      expect(await service.validateAddons(['', '   '])).toEqual([]);
+    });
+
+    it('should return found addons when IDs are valid', async () => {
+      mockAddonRepository.findBy.mockResolvedValueOnce([mockAddon]);
+      const res = await service.validateAddons([mockAddon.id]);
+      expect(res).toEqual([mockAddon]);
     });
   });
 });

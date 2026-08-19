@@ -8,6 +8,9 @@ export class BranchFilterDto {
     example: 'd290f1ee-6c54-4b01-90e6-d701748f0851',
   })
   @IsOptional()
+  @Transform(({ value }) =>
+    typeof value === 'string' && value.trim() === '' ? undefined : value,
+  )
   @IsUUID('4', { message: 'branchId must be a valid UUID v4' })
   branchId?: string;
 
