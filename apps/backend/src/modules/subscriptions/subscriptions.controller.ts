@@ -135,6 +135,9 @@ export class SubscriptionsController {
       businessId: subscribeDto.businessId,
       billingPeriod: subscribeDto.billingPeriod,
       isTrial: subscribeDto.isTrial ?? false,
+      promoCode: subscribeDto.promoCode,
+      addonIds: subscribeDto.addonIds,
+      addonQuantities: subscribeDto.addonQuantities,
     });
   }
 
