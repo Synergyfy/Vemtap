@@ -413,12 +413,24 @@ export class AddonsService {
   }
 
   async validateAddons(addonIds: string[]): Promise<AddOn[]> {
+    if (!addonIds || addonIds.length === 0) {
+      return [];
+    }
+
+    const cleanIds = addonIds.filter(
+      (id) => typeof id === 'string' && id.trim().length > 0,
+    );
+
+    if (cleanIds.length === 0) {
+      return [];
+    }
+
     const addons = await this.addonRepository.findBy({
-      id: In(addonIds),
+      id: In(cleanIds),
       isActive: true,
     });
 
-    if (addons.length !== addonIds.length) {
+    if (addons.length !== cleanIds.length) {
       throw new BadRequestException(
         'One or more add-ons not found or inactive',
       );

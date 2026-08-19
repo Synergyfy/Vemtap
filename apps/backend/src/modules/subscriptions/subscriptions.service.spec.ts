@@ -655,5 +655,33 @@ describe('SubscriptionsService', () => {
       expect(result.total).toBe(10750);
       expect(result.plan.name).toBe('Pro Plan');
     });
+
+    it('should handle empty or blank addonIds and promoCode gracefully without crashing', async () => {
+      mockPlansService.findOne.mockResolvedValueOnce({
+        id: 'plan-1',
+        name: 'Pro Plan',
+        monthlyPrice: 10000,
+      });
+
+      mockSubscriptionTaxService.getActiveConfig.mockResolvedValueOnce({
+        id: 'tax-1',
+        name: 'VAT',
+        taxType: 'percentage',
+        rate: 7.5,
+        isEnabled: true,
+      });
+
+      const result = await service.previewPrice({
+        planId: 'plan-1',
+        billingPeriod: BillingPeriod.MONTHLY,
+        addonIds: [] as any,
+        promoCode: '   ',
+      });
+
+      expect(result.subtotal).toBe(10000);
+      expect(result.taxAmount).toBe(750);
+      expect(result.total).toBe(10750);
+      expect(mockAddonsService.validateAddons).not.toHaveBeenCalled();
+    });
   });
 });

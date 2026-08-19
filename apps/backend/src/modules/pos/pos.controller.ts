@@ -23,6 +23,7 @@ import { OpenRegisterDto, RegisterHistoryQueryDto } from './dto/register.dto';
 import { PosCustomerQueryDto } from './dto/pos-customer-query.dto';
 import { CashDropDto } from './dto/cash-drop.dto';
 import { Public } from '../../common/decorators/public.decorator';
+import { BranchFilterDto } from '../../common/dto/branch-filter.dto';
 import { User, UserRole } from '../users/entities/user.entity';
 import { Roles } from '../../common/decorators/roles.decorator';
 
@@ -71,10 +72,10 @@ export class PosController {
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.ADMIN, UserRole.STAFF)
   @ApiOperation({ summary: 'List held/queued sales' })
   async listHeldSales(
-    @Query('branchId') branchId: string | undefined,
+    @Query() filter: BranchFilterDto,
     @Req() req: RequestWithUser,
   ) {
-    return this.posService.findAllHeldSales(req.user.businessId, branchId);
+    return this.posService.findAllHeldSales(req.user.businessId, filter.branchId);
   }
 
   @Get('sales/held/:id')
@@ -182,20 +183,20 @@ export class PosController {
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.ADMIN, UserRole.STAFF)
   @ApiOperation({ summary: 'Get POS dashboard stats' })
   async getDashboard(
-    @Query('branchId') branchId: string | undefined,
+    @Query() filter: BranchFilterDto,
     @Req() req: RequestWithUser,
   ) {
-    return this.posService.getDashboard(req.user.businessId, branchId);
+    return this.posService.getDashboard(req.user.businessId, filter.branchId);
   }
 
   @Get('dashboard/top-products')
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.ADMIN, UserRole.STAFF)
   @ApiOperation({ summary: 'Get top selling products today' })
   async getTopProducts(
-    @Query('branchId') branchId: string | undefined,
+    @Query() filter: BranchFilterDto,
     @Req() req: RequestWithUser,
   ) {
-    return this.posService.getTopProducts(req.user.businessId, branchId);
+    return this.posService.getTopProducts(req.user.businessId, filter.branchId);
   }
 
   @Get('customers')
