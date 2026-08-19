@@ -11,7 +11,6 @@ interface FormState {
     name: string;
     taxType: TaxType;
     rate: string;
-    changeReason: string;
 }
 
 export default function TaxSettingsPanel() {
@@ -25,8 +24,8 @@ export default function TaxSettingsPanel() {
 
     const [form, setForm] = useState<FormState>(() =>
         activeConfig
-            ? { name: activeConfig.name, taxType: activeConfig.taxType, rate: String(activeConfig.rate), changeReason: '' }
-            : { name: 'VAT', taxType: 'percentage', rate: '7.5', changeReason: '' },
+            ? { name: activeConfig.name, taxType: activeConfig.taxType, rate: String(activeConfig.rate) }
+            : { name: 'VAT', taxType: 'percentage', rate: '7.5' },
     );
 
     const [dirty, setDirty] = useState(false);
@@ -34,7 +33,7 @@ export default function TaxSettingsPanel() {
 
     const syncFormFromConfig = (cfg: SubscriptionTaxConfig | null | undefined) => {
         if (!cfg) return;
-        setForm({ name: cfg.name, taxType: cfg.taxType, rate: String(cfg.rate), changeReason: '' });
+        setForm({ name: cfg.name, taxType: cfg.taxType, rate: String(cfg.rate) });
         setDirty(false);
     };
 
@@ -202,8 +201,8 @@ export default function TaxSettingsPanel() {
                             <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1.5">Change Reason*</label>
                             <input
                                 type="text"
-                                value={form.changeReason}
-                                onChange={(e) => { setForm({ ...form, changeReason: e.target.value }); setDirty(true); }}
+                                value={reason}
+                                onChange={(e) => { setReason(e.target.value); setDirty(true); }}
                                 placeholder="e.g. Statutory VAT rate adjustment"
                                 className="w-full h-11 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-text-main placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/15 focus:border-primary/30"
                             />
@@ -213,7 +212,7 @@ export default function TaxSettingsPanel() {
                     <div className="flex items-center gap-3">
                         <button
                             onClick={handleSave}
-                            disabled={updateMutation.isPending || !dirty || !form.changeReason.trim()}
+                            disabled={updateMutation.isPending || !dirty || !reason.trim()}
                             className="inline-flex items-center gap-2 h-11 px-6 bg-primary text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-primary/20 hover:bg-primary-hover transition-all disabled:opacity-40 disabled:cursor-not-allowed"
                         >
                             {updateMutation.isPending ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />}
