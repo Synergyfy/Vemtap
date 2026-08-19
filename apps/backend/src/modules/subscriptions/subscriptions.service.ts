@@ -554,24 +554,48 @@ export class SubscriptionsService {
     businessId: string;
     billingPeriod: BillingPeriod;
     isTrial?: boolean;
+    promoCode?: string;
+    addonIds?: string[];
+    addonQuantities?: number[];
   }): Promise<{
     reference: string;
     access_code: string;
     authorization_url: string;
     amount: number;
   }> {
-    const { planId, businessId, billingPeriod, isTrial = false } = input;
+    const {
+      planId,
+      businessId,
+      billingPeriod,
+      isTrial = false,
+      promoCode,
+      addonIds,
+      addonQuantities,
+    } = input;
 
     const plan = await this.plansService.findOne(planId);
     if (!plan.isActive) {
       throw new BadRequestException('Selected plan is not active');
     }
 
+    let addons: AddOn[] = [];
+    if (addonIds && addonIds.length > 0) {
+      addons = await this.addonsService.validateAddons(addonIds);
+    }
+
+    const addonsTotal = addons.reduce((sum, addon, index) => {
+      const qty = addonQuantities?.[index] ?? 1;
+      return sum + Number(addon.price) * qty;
+    }, 0);
+
     let amount: number;
+    let paymentMetadata: any = {};
+
     if (plan.isFree) {
       amount = 0;
     } else if (isTrial) {
       amount = 100;
+      paymentMetadata = { isTrial: true };
     } else {
       let planPrice = Number(plan.monthlyPrice || 0);
       if (billingPeriod === BillingPeriod.QUARTERLY)
@@ -579,12 +603,49 @@ export class SubscriptionsService {
       else if (billingPeriod === BillingPeriod.YEARLY)
         planPrice = Number(plan.yearlyPrice || 0);
 
-      const taxConfig = await this.subscriptionTaxService.getActiveConfig();
-      const taxResult = this.subscriptionTaxService.calculateTax(
-        planPrice,
-        taxConfig,
-      );
-      amount = taxResult.total;
+      const cleanPromo = promoCode?.trim();
+      if (cleanPromo) {
+        const promoValidation =
+          await this.couponEngineService.validatePromotion({
+            code: cleanPromo,
+            planId,
+            billingPeriod,
+            businessId,
+            addonsSubtotal: addonsTotal,
+          });
+
+        amount = promoValidation.total;
+        paymentMetadata = {
+          subtotal: promoValidation.netSubtotal,
+          taxAmount: promoValidation.taxAmount,
+          taxRate: promoValidation.taxRule?.rate,
+          taxType: promoValidation.taxRule?.taxType,
+          taxName: promoValidation.taxRule?.name,
+          taxEnabled: promoValidation.taxRule?.isEnabled,
+          discountAmount: promoValidation.discountAmount,
+          promoCode: promoValidation.promotionCode.code,
+          couponId: promoValidation.coupon.id,
+          couponName: promoValidation.coupon.name,
+          originalPlanPrice: promoValidation.originalPlanPrice,
+          discountedPlanPrice: promoValidation.discountedPlanPrice,
+        };
+      } else {
+        const subtotal = planPrice + addonsTotal;
+        const taxConfig = await this.subscriptionTaxService.getActiveConfig();
+        const taxResult = this.subscriptionTaxService.calculateTax(
+          subtotal,
+          taxConfig,
+        );
+        amount = taxResult.total;
+        paymentMetadata = {
+          subtotal,
+          taxAmount: taxResult.taxAmount,
+          taxRate: taxResult.taxRule.rate,
+          taxType: taxResult.taxRule.taxType,
+          taxName: taxResult.taxRule.name,
+          taxEnabled: taxResult.taxRule.isEnabled,
+        };
+      }
     }
 
     const business = await this.businessRepository.findOne({
@@ -605,6 +666,8 @@ export class SubscriptionsService {
       .toString(36)
       .slice(2, 8)}`;
 
+    const normalizedPromo = promoCode?.trim().toUpperCase();
+
     const init = await this.paymentsService.initializeTransaction({
       email,
       amount: Math.round(amount * 100),
@@ -615,7 +678,14 @@ export class SubscriptionsService {
         planId,
         billingPeriod,
         isTrial,
-        purpose: 'subscription',
+        addonIds,
+        addonQuantities,
+        promoCode: normalizedPromo,
+        purpose:
+          addons.length > 0
+            ? PaymentPurpose.PLAN_WITH_ADDONS
+            : PaymentPurpose.SUBSCRIPTION,
+        ...paymentMetadata,
       },
     });
     if (!init) {
@@ -627,13 +697,21 @@ export class SubscriptionsService {
     await this.paymentsService.recordPayment({
       reference,
       amount,
-      purpose: PaymentPurpose.SUBSCRIPTION,
+      purpose:
+        addons.length > 0
+          ? PaymentPurpose.PLAN_WITH_ADDONS
+          : PaymentPurpose.SUBSCRIPTION,
       status: PaymentStatus.PENDING,
       metadata: {
         businessId,
         planId,
         billingPeriod,
         isTrial,
+        addonIds,
+        addonQuantities,
+        promoCode: normalizedPromo,
+        total: amount,
+        ...paymentMetadata,
       },
       businessId,
       userId: business.ownerId,

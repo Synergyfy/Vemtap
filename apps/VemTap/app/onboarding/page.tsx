@@ -2012,6 +2012,7 @@ function PaymentStep({ data, onNext }: { data: Partial<OnboardingData>, onNext: 
     const [isSuccess, setIsSuccess] = useState(false);
     const [isPending, setIsPending] = useState(false);
     const [chargedAmount, setChargedAmount] = useState<number | null>(null);
+    const [taxAmount, setTaxAmount] = useState<number>(0);
     const [promoCodeInput, setPromoCodeInput] = useState('');
     const [appliedPromo, setAppliedPromo] = useState<string | null>(null);
     const [discount, setDiscount] = useState<DiscountBreakdown | null>(null);
@@ -2034,9 +2035,8 @@ function PaymentStep({ data, onNext }: { data: Partial<OnboardingData>, onNext: 
             ? (plan?.quarterlyPrice || (plan?.monthlyPrice || 0) * 3)
             : (plan?.monthlyPrice || 0);
 
-    const subtotal = isTrialMode ? 100 : planPrice;
+    const subtotal = isTrialMode ? 100 : (discount?.originalPlanPrice ?? planPrice);
     const total = chargedAmount ?? subtotal;
-    const tax = !isTrialMode && chargedAmount != null ? chargedAmount - planPrice : 0;
 
     const clearPoll = () => {
         if (pollTimer.current) {
@@ -2091,6 +2091,9 @@ function PaymentStep({ data, onNext }: { data: Partial<OnboardingData>, onNext: 
             if (cancelled) return;
             if (typeof res?.total === 'number') {
                 setChargedAmount(res.total);
+            }
+            if (typeof res?.taxAmount === 'number') {
+                setTaxAmount(res.taxAmount);
             }
             if (res?.taxRule) {
                 setTaxName(res.taxRule.name || 'VAT');
@@ -2410,7 +2413,7 @@ function PaymentStep({ data, onNext }: { data: Partial<OnboardingData>, onNext: 
                                     ? `${taxName} (${taxRate}%)`
                                     : `${taxName} (exempt)`}
                             </span>
-                            <span>{taxEnabled ? `₦${tax.toLocaleString()}` : '₦0'}</span>
+                            <span>{taxEnabled && taxAmount > 0 ? `₦${taxAmount.toLocaleString()}` : '₦0'}</span>
                         </div>
                         <div className="pt-3 border-t border-gray-200 flex justify-between text-lg font-bold text-primary">
                             <span>Total Due</span>

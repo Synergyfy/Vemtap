@@ -128,6 +128,10 @@ export class PaymentsController {
           return;
         }
 
+        const promoCode = meta?.promoCode;
+        const addonIds = meta?.addonIds;
+        const addonQuantities = meta?.addonQuantities;
+
         // Idempotent: a duplicate webhook for an already-processed reference
         // simply returns the existing subscription.
         await this.subscriptionsService.subscribe({
@@ -136,6 +140,9 @@ export class PaymentsController {
           billingPeriod,
           isTrial,
           paymentReference: reference,
+          promoCode,
+          addonIds,
+          addonQuantities,
         });
       } catch (err: any) {
         this.logger.error(
