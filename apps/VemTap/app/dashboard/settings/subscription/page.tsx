@@ -222,6 +222,7 @@ export default function DashboardPricingPage() {
             <PageHeader
                 title="Billing & Subscription"
                 description="Manage your business plan, limits, and billing cycles."
+                isSticky={false}
                 actions={
                     <div className="flex items-center gap-3 flex-wrap justify-end">
                         <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 border border-primary/20">
