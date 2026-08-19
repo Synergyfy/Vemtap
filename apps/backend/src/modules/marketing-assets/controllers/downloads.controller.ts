@@ -21,6 +21,9 @@ import { RolesGuard } from '../../../common/guards/roles.guard';
 import { User } from '../../users/entities/user.entity';
 import { MarketingDownload } from '../entities/marketing-download.entity';
 
+import { ParseUUIDPipe } from '@nestjs/common';
+import { RecordDownloadDto, FindDownloadsQueryDto } from '../dto/download.dto';
+
 interface RequestWithUser extends Request {
   user: User;
 }
@@ -37,16 +40,16 @@ export class DownloadsController {
   @ApiResponse({ status: 201, type: MarketingDownload })
   record(
     @Req() req: RequestWithUser,
-    @Param('assetId') assetId: string,
-    @Body('format') format: string,
+    @Param('assetId', ParseUUIDPipe) assetId: string,
+    @Body() dto: RecordDownloadDto,
   ) {
-    return this.downloadsService.recordDownload(assetId, format, req.user);
+    return this.downloadsService.recordDownload(assetId, dto.format, req.user);
   }
 
   @Get()
   @ApiOperation({ summary: 'Get print downloads log history for business' })
   @ApiResponse({ status: 200, type: [MarketingDownload] })
-  findAll(@Req() req: RequestWithUser, @Query('assetId') assetId?: string) {
-    return this.downloadsService.getDownloads(req.user, assetId);
+  findAll(@Req() req: RequestWithUser, @Query() query: FindDownloadsQueryDto) {
+    return this.downloadsService.getDownloads(req.user, query.assetId);
   }
 }

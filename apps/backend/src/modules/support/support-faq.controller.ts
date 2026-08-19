@@ -3,6 +3,8 @@ import { ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
 import { Public } from '../../common/decorators/public.decorator';
 import { KnowledgeBaseService } from '../knowledge-base/knowledge-base.service';
 
+import { SearchFaqQueryDto } from './dto/search-faq-query.dto';
+
 @ApiTags('Support FAQs')
 @Controller('support')
 export class SupportFaqController {
@@ -11,12 +13,12 @@ export class SupportFaqController {
   @Public()
   @Get('faqs')
   @ApiOperation({ summary: 'Get public support FAQs' })
-  @ApiQuery({ name: 'search', required: false, type: String })
-  async getFaqs(@Query('search') search?: string) {
+  async getFaqs(@Query() query: SearchFaqQueryDto) {
     const tree = await this.knowledgeBaseService.getPublicTree();
-    if (!search?.trim()) return tree;
+    const search = query.search;
+    if (!search) return tree;
 
-    const needle = search.trim().toLowerCase();
+    const needle = search.toLowerCase();
     return {
       categories: tree.categories
         .map((category) => ({

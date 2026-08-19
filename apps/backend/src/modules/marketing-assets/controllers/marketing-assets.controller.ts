@@ -26,6 +26,9 @@ import { Roles } from '../../../common/decorators/roles.decorator';
 import { User, UserRole } from '../../users/entities/user.entity';
 import { MarketingAsset } from '../entities/marketing-asset.entity';
 
+import { ParseUUIDPipe } from '@nestjs/common';
+import { FindMarketingAssetsQueryDto } from '../dto/find-assets-query.dto';
+
 interface RequestWithUser extends Request {
   user: User;
 }
@@ -51,17 +54,16 @@ export class MarketingAssetsController {
   @ApiResponse({ status: 200, type: [MarketingAsset] })
   findAll(
     @Req() req: RequestWithUser,
-    @Query('branchId') branchId?: string,
-    @Query('type') type?: string,
+    @Query() query: FindMarketingAssetsQueryDto,
   ) {
-    return this.assetsService.findAll(req.user, branchId, type);
+    return this.assetsService.findAll(req.user, query.branchId, query.type);
   }
 
   @Get(':id')
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF, UserRole.ADMIN)
   @ApiOperation({ summary: 'Get a specific marketing asset' })
   @ApiResponse({ status: 200, type: MarketingAsset })
-  findOne(@Req() req: RequestWithUser, @Param('id') id: string) {
+  findOne(@Req() req: RequestWithUser, @Param('id', ParseUUIDPipe) id: string) {
     return this.assetsService.findOne(id, req.user);
   }
 

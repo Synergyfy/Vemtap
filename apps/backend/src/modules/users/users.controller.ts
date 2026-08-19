@@ -41,6 +41,7 @@ import { ParseUUIDPipe, Inject, forwardRef } from '@nestjs/common';
 import { QrThriveService } from '../qr-thrive/qr-thrive.service';
 import { BusinessesService } from '../businesses/businesses.service';
 import { RenameSessionDto } from './dto/rename-session.dto';
+import { CheckPhoneQueryDto } from './dto/check-phone-query.dto';
 
 @ApiTags('Users')
 @ApiBearerAuth()
@@ -81,12 +82,8 @@ export class UsersController {
   @Public()
   @Get('public/check-phone')
   @ApiOperation({ summary: 'Check if phone number exists (Public)' })
-  @ApiQuery({ name: 'phone', required: true, type: String })
-  async existsByPhone(@Query('phone') phone: string) {
-    if (!phone) {
-      throw new BadRequestException('Phone number query param is required');
-    }
-    return this.usersService.existsByPhone(phone);
+  async existsByPhone(@Query() query: CheckPhoneQueryDto) {
+    return this.usersService.existsByPhone(query.phone);
   }
 
   @Get('profile')

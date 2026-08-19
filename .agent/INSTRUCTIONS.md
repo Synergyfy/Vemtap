@@ -10,7 +10,8 @@ This folder contains the project-specific knowledge base for AI coding assistant
 4.  **[ROLES.md](file:///.agent/ROLES.md)**: User roles (Admin, Owner, Manager, Staff, Agent, Customer).
 5.  **[MIGRATIONS.md](file:///.agent/MIGRATIONS.md)**: Database schema management workflow (TypeORM + pnpm).
 6.  **[TESTING.md](file:///.agent/TESTING.md)**: Standards for Jest (backend) and Playwright (frontend).
-7.  **[SUMMARY.md](file:///.agent/SUMMARY.md)**: High-level ecosystem overview and technical deep dives.
+7.  **[VALIDATION.md](file:///.agent/VALIDATION.md)**: Payload and query validation, DTO sanitization, and Swagger standards.
+8.  **[SUMMARY.md](file:///.agent/SUMMARY.md)**: High-level ecosystem overview and technical deep dives.
 
 ## General Operational Rules
 
