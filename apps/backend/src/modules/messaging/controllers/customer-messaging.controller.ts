@@ -30,6 +30,7 @@ import { ReplyDto } from '../dto/reply.dto';
 import { UpdateMessageDto } from '../dto/update-message.dto';
 import { StartConversationDto } from '../dto/start-conversation.dto';
 import { ThreadIdDto } from '../dto/thread-id.dto';
+import { BranchFilterDto } from '../../../common/dto/branch-filter.dto';
 
 @ApiTags('Customer Messaging')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -46,21 +47,16 @@ export class CustomerMessagingController {
     description:
       'Retrieves all active conversations between the customer and various business branches. Access: CUSTOMER',
   })
-  @ApiQuery({
-    name: 'branchId',
-    required: false,
-    description: 'Optional branch ID to find or create a thread',
-  })
   @ApiResponse({
     status: 200,
     description: 'List of business threads for the visitor',
   })
   async getThreads(
     @Request() req: { user: User },
-    @Query('branchId') branchId?: string,
+    @Query() filter: BranchFilterDto,
   ) {
-    if (branchId) {
-      await this.inboxService.findOrCreateCustomerThread(req.user.id, branchId);
+    if (filter.branchId) {
+      await this.inboxService.findOrCreateCustomerThread(req.user.id, filter.branchId);
     }
     return this.inboxService.getCustomerThreads(req.user.id);
   }

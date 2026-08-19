@@ -28,6 +28,9 @@ import { UserRole } from '../users/entities/user.entity';
 import { Plan } from './entities/plan.entity';
 import { Public } from '../../common/decorators/public.decorator';
 
+import { ParseUUIDPipe } from '@nestjs/common';
+import { FindPlansQueryDto } from './dto/find-plans-query.dto';
+
 @ApiTags('Plans (Admin Pricing Page)')
 @Controller('plans')
 export class PlansController {
@@ -50,10 +53,9 @@ export class PlansController {
   @Get()
   @Public()
   @ApiOperation({ summary: 'Get all pricing plans' })
-  @ApiQuery({ name: 'onlyActive', required: false, type: Boolean })
   @ApiResponse({ status: 200, description: 'Return all plans', type: [Plan] })
-  findAll(@Query('onlyActive') onlyActive?: string) {
-    const isOnlyActive = onlyActive === 'true';
+  findAll(@Query() query: FindPlansQueryDto) {
+    const isOnlyActive = query.onlyActive ?? false;
     return this.plansService.findAll(isOnlyActive);
   }
 
@@ -61,7 +63,7 @@ export class PlansController {
   @Public()
   @ApiOperation({ summary: 'Get a pricing plan by ID' })
   @ApiResponse({ status: 200, description: 'Return plan details', type: Plan })
-  findOne(@Param('id') id: string) {
+  findOne(@Param('id', ParseUUIDPipe) id: string) {
     return this.plansService.findOne(id);
   }
 

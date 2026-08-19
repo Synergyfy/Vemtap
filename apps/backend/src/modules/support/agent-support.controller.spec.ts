@@ -61,9 +61,9 @@ describe('AgentSupportController', () => {
       const result = [{ id: 'chat-1', type: TicketType.CHAT }];
       mockSupportService.findAssigned.mockResolvedValue(result);
 
-      expect(await controller.getAssignedChats(mockReq as any, 1, 10)).toBe(
-        result,
-      );
+      expect(
+        await controller.getAssignedChats(mockReq as any, { page: 1, limit: 10 }),
+      ).toBe(result);
       expect(mockSupportService.findAssigned).toHaveBeenCalledWith(
         mockAgent.id,
         TicketType.CHAT,
@@ -79,9 +79,9 @@ describe('AgentSupportController', () => {
       const result = [{ id: 'ticket-1', type: TicketType.TICKET }];
       mockSupportService.findAssigned.mockResolvedValue(result);
 
-      expect(await controller.getAssignedTickets(mockReq as any, 1, 10)).toBe(
-        result,
-      );
+      expect(
+        await controller.getAssignedTickets(mockReq as any, { page: 1, limit: 10 }),
+      ).toBe(result);
       expect(mockSupportService.findAssigned).toHaveBeenCalledWith(
         mockAgent.id,
         TicketType.TICKET,

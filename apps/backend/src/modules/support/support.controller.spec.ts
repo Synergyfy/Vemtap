@@ -61,7 +61,7 @@ describe('SupportController', () => {
       mockSupportService.findAll.mockResolvedValue(result);
 
       expect(
-        await controller.getTickets(mockReq as any, query.page, query.limit),
+        await controller.getTickets(mockReq as any, query),
       ).toBe(result);
       expect(mockSupportService.findAll).toHaveBeenCalledWith(
         mockUser.id,
