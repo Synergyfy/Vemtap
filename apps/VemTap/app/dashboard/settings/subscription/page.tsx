@@ -218,10 +218,11 @@ export default function DashboardPricingPage() {
     );
 
     return (
-        <div className="max-w-6xl mx-auto pb-20">
+        <div className="max-w-6xl mx-auto pb-20 px-4 sm:px-6 lg:px-8">
             <PageHeader
                 title="Billing & Subscription"
                 description="Manage your business plan, limits, and billing cycles."
+                isSticky={false}
                 actions={
                     <div className="flex items-center gap-3 flex-wrap justify-end">
                         <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 border border-primary/20">
