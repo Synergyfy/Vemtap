@@ -27,6 +27,7 @@ import { BranchesService } from '../branches/branches.service';
 import { Reward } from '../loyalty/entities/reward.entity';
 import { SubscriptionTaxService } from './services/subscription-tax.service';
 import { CouponEngineService } from '../coupons/services/coupon-engine.service';
+import { MailService } from '../mail/mail.service';
 
 describe('SubscriptionsService', () => {
   let service: SubscriptionsService;
@@ -96,9 +97,21 @@ describe('SubscriptionsService', () => {
     findOne: jest.fn().mockResolvedValue(mockBusiness),
   };
 
-  const mockUserRepo = { update: jest.fn(), count: jest.fn() };
+  const mockUserRepo = {
+    update: jest.fn(),
+    count: jest.fn(),
+    findOne: jest.fn().mockResolvedValue({
+      id: 'u1',
+      email: 'owner@example.com',
+      firstName: 'John',
+      lastName: 'Doe',
+    }),
+  };
   const mockBranchRepo = { find: jest.fn() };
   const mockDeviceRepo = { count: jest.fn() };
+  const mockMailService = {
+    sendPlanChangeEmail: jest.fn().mockResolvedValue(true),
+  };
 
   const mockPlansService = {
     findOne: jest.fn().mockResolvedValue(mockPlan),
@@ -108,9 +121,9 @@ describe('SubscriptionsService', () => {
   const mockPaymentsService = {
     verifyTransaction: jest.fn().mockResolvedValue({
       status: 'success',
-      data: {
-        amount: 5000,
-      },
+      amount: 500000,
+      currency: 'NGN',
+      channel: 'card',
       authorization: { authorization_code: 'AUTH_123' },
     }),
     recordPayment: jest.fn().mockResolvedValue({}),
@@ -232,6 +245,10 @@ describe('SubscriptionsService', () => {
           },
         },
         {
+          provide: MailService,
+          useValue: mockMailService,
+        },
+        {
           provide: 'DataSource',
           useValue: { transaction: jest.fn() },
         },
@@ -294,6 +311,15 @@ describe('SubscriptionsService', () => {
       });
 
       expect(result.subscription.endDate.toISOString()).toBe(customEndDateStr);
+      expect(mockMailService.sendPlanChangeEmail).toHaveBeenCalledWith(
+        expect.objectContaining({
+          email: 'owner@example.com',
+          customerName: 'John Doe',
+          businessName: 'Test Business',
+          planName: 'Test Plan',
+          isAdminOverride: true,
+        }),
+      );
     });
 
     describe('permissions guard', () => {
@@ -341,7 +367,9 @@ describe('SubscriptionsService', () => {
         mockBranchRepo.find.mockResolvedValue([]);
         mockPaymentsService.verifyTransaction.mockResolvedValue({
           status: 'success',
-          data: { amount: 5000 },
+          amount: 500000,
+          currency: 'NGN',
+          channel: 'card',
           authorization: { authorization_code: 'AUTH_123' },
         });
 
@@ -626,6 +654,34 @@ describe('SubscriptionsService', () => {
       expect(result.taxAmount).toBe(750);
       expect(result.total).toBe(10750);
       expect(result.plan.name).toBe('Pro Plan');
+    });
+
+    it('should handle empty or blank addonIds and promoCode gracefully without crashing', async () => {
+      mockPlansService.findOne.mockResolvedValueOnce({
+        id: 'plan-1',
+        name: 'Pro Plan',
+        monthlyPrice: 10000,
+      });
+
+      mockSubscriptionTaxService.getActiveConfig.mockResolvedValueOnce({
+        id: 'tax-1',
+        name: 'VAT',
+        taxType: 'percentage',
+        rate: 7.5,
+        isEnabled: true,
+      });
+
+      const result = await service.previewPrice({
+        planId: 'plan-1',
+        billingPeriod: BillingPeriod.MONTHLY,
+        addonIds: [] as any,
+        promoCode: '   ',
+      });
+
+      expect(result.subtotal).toBe(10000);
+      expect(result.taxAmount).toBe(750);
+      expect(result.total).toBe(10750);
+      expect(mockAddonsService.validateAddons).not.toHaveBeenCalled();
     });
   });
 });

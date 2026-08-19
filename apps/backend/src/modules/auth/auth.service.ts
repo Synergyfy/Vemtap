@@ -45,6 +45,18 @@ import {
 
 const BASE32 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
 
+// Referral codes are short codes like `VEM-8OGUU4` or a 9-char unique code.
+// Reject values that look like emails/free text so they never get persisted.
+function isValidReferralCode(value: string | null | undefined): boolean {
+  if (!value) return false;
+  const trimmed = value.trim();
+  return (
+    trimmed.length > 0 &&
+    trimmed === value &&
+    /^[A-Za-z0-9-]+$/.test(trimmed)
+  );
+}
+
 function encodeBase32(value: Buffer): string {
   let bits = 0;
   let buffer = 0;
@@ -719,6 +731,11 @@ export class AuthService {
     const existingUser = await this.usersService.findByEmail(dto.email);
     const isGoogleUser = existingUser?.authProvider === AuthProvider.GOOGLE;
 
+    // Only persist a referral code that looks like a real code (never an email).
+    const referralCode = isValidReferralCode(dto.referralCode)
+      ? dto.referralCode
+      : undefined;
+
     let registrationData: Partial<RequestOtpDto> = {};
 
     if (!isGoogleUser) {
@@ -776,7 +793,7 @@ export class AuthService {
       if (lastName) existingUser.lastName = lastName;
       if (phone) existingUser.phone = phone;
       if (hashedPassword) existingUser.password = hashedPassword;
-      if (dto.referralCode) existingUser.referralCode = dto.referralCode;
+      if (referralCode) existingUser.referralCode = referralCode;
 
       existingUser.role = UserRole.OWNER;
       // If manual signup finishes, make them active
@@ -800,7 +817,7 @@ export class AuthService {
             ? UserStatus.ACTIVE
             : UserStatus.PENDING,
         phone,
-        referralCode: dto.referralCode,
+        referralCode,
         authProvider: isGoogleUser ? AuthProvider.GOOGLE : AuthProvider.LOCAL,
       });
     }
@@ -885,10 +902,9 @@ export class AuthService {
     }
 
     // --- Post-Registration Affiliate Logic (for Owners) ---
-    if (dto.referralCode) {
-      const affiliate = await this.affiliatesService.findByReferralCode(
-        dto.referralCode,
-      );
+    if (referralCode) {
+      const affiliate =
+        await this.affiliatesService.findByReferralCode(referralCode);
 
       if (affiliate) {
         const business = await this.businessesService.findByOwner(
@@ -901,7 +917,7 @@ export class AuthService {
         );
       } else {
         await this.handleB2BReferralAndPartnership(
-          dto.referralCode,
+          referralCode,
           updatedUser.id,
         );
       }

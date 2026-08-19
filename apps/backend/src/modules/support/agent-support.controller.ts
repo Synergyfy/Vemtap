@@ -27,6 +27,9 @@ import { TicketReplyDto } from './dto/ticket-reply.dto';
 import { SupportTicket, TicketType } from './entities/support-ticket.entity';
 import { UpdateAgentProfileDto } from './dto/update-agent-profile.dto';
 
+import { ParseUUIDPipe } from '@nestjs/common';
+import { PaginationQueryDto } from '../../common/dto/pagination.dto';
+
 type AuthRequest = { user: { id: string; role: UserRole } };
 
 @ApiTags('Agent Support')
@@ -39,15 +42,8 @@ export class AgentSupportController {
 
   @Get('all')
   @ApiOperation({ summary: 'Get all agents (for assignment/listing)' })
-  @ApiQuery({ name: 'page', required: false, type: Number })
-  @ApiQuery({ name: 'limit', required: false, type: Number })
-  @ApiQuery({ name: 'cursor', required: false, type: String })
-  async getAgents(
-    @Query('page') page?: number,
-    @Query('limit') limit?: number,
-    @Query('cursor') cursor?: string,
-  ) {
-    return this.supportService.findAllAgents(page, limit, cursor);
+  async getAgents(@Query() query: PaginationQueryDto) {
+    return this.supportService.findAllAgents(query.page, query.limit, query.cursor);
   }
 
   @Get('stats')
@@ -59,48 +55,40 @@ export class AgentSupportController {
 
   @Get('chats')
   @ApiOperation({ summary: 'Get all chats assigned to agent' })
-  @ApiQuery({ name: 'page', required: false, type: Number })
-  @ApiQuery({ name: 'limit', required: false, type: Number })
-  @ApiQuery({ name: 'cursor', required: false, type: String })
   async getAssignedChats(
     @Request() req: AuthRequest,
-    @Query('page') page?: number,
-    @Query('limit') limit?: number,
-    @Query('cursor') cursor?: string,
+    @Query() query: PaginationQueryDto,
   ) {
     return this.supportService.findAssigned(
       req.user.id,
       TicketType.CHAT,
-      page,
-      limit,
-      cursor,
+      query.page,
+      query.limit,
+      query.cursor,
     );
   }
 
   @Get('tickets')
   @ApiOperation({ summary: 'Get all tickets assigned to agent' })
-  @ApiQuery({ name: 'page', required: false, type: Number })
-  @ApiQuery({ name: 'limit', required: false, type: Number })
-  @ApiQuery({ name: 'cursor', required: false, type: String })
   async getAssignedTickets(
     @Request() req: AuthRequest,
-    @Query('page') page?: number,
-    @Query('limit') limit?: number,
-    @Query('cursor') cursor?: string,
+    @Query() query: PaginationQueryDto,
   ) {
     return this.supportService.findAssigned(
       req.user.id,
       TicketType.TICKET,
-      page,
-      limit,
-      cursor,
+      query.page,
+      query.limit,
+      query.cursor,
     );
   }
 
   @Get('tickets/:id')
   @ApiOperation({ summary: 'Get ticket/chat details' })
   @ApiResponse({ status: 200, type: SupportTicket })
-  async getTicketDetails(@Param('id') id: string): Promise<SupportTicket> {
+  async getTicketDetails(
+    @Param('id', ParseUUIDPipe) id: string,
+  ): Promise<SupportTicket> {
     return this.supportService.findOneAgent(id);
   }
 

@@ -18,6 +18,7 @@ import { ConversationContextService } from './conversation-context.service';
 import { CreateTicketDto } from './dto/create-ticket.dto';
 import { BotQueryDto, CreateKnowledgeDto } from './dto/support-bot.dto';
 import { FindTicketsAdminDto } from './dto/find-tickets-admin.dto';
+import { SupportSessionQueryDto } from './dto/support-session-query.dto';
 import { AddTicketAttachmentsDto } from './dto/ticket-attachment.dto';
 import { TicketStatus, TicketType } from './entities/support-ticket.entity';
 import {
@@ -128,12 +129,11 @@ export class SupportController {
     UserRole.ADMIN,
   )
   @ApiOperation({ summary: 'Get conversation context' })
-  @ApiQuery({ name: 'sessionId', required: false })
   async getContext(
     @Request() req: AuthRequest,
-    @Query('sessionId') sessionId?: string,
+    @Query() query: SupportSessionQueryDto,
   ) {
-    return this.conversationContextService.getContext(req.user.id, sessionId);
+    return this.conversationContextService.getContext(req.user.id, query.sessionId);
   }
 
   @Delete('bot/context')
@@ -146,12 +146,11 @@ export class SupportController {
     UserRole.ADMIN,
   )
   @ApiOperation({ summary: 'Clear conversation context' })
-  @ApiQuery({ name: 'sessionId', required: false })
   async clearContext(
     @Request() req: AuthRequest,
-    @Query('sessionId') sessionId?: string,
+    @Query() query: SupportSessionQueryDto,
   ) {
-    await this.conversationContextService.clearContext(req.user.id, sessionId);
+    await this.conversationContextService.clearContext(req.user.id, query.sessionId);
     return { success: true, message: 'Context cleared' };
   }
 
@@ -168,16 +167,11 @@ export class SupportController {
   @Get('tickets')
   @Roles(UserRole.CUSTOMER, UserRole.STAFF, UserRole.MANAGER, UserRole.OWNER)
   @ApiOperation({ summary: 'Get all tickets for current user' })
-  @ApiQuery({ name: 'page', required: false, type: Number })
-  @ApiQuery({ name: 'limit', required: false, type: Number })
-  @ApiQuery({ name: 'cursor', required: false, type: String })
   async getTickets(
     @Request() req: AuthRequest,
-    @Query('page') page?: number,
-    @Query('limit') limit?: number,
-    @Query('cursor') cursor?: string,
+    @Query() query: PaginationQueryDto,
   ) {
-    return this.supportService.findAll(req.user.id, page, limit, cursor);
+    return this.supportService.findAll(req.user.id, query.page, query.limit, query.cursor);
   }
 
   @Get('tickets/:id')

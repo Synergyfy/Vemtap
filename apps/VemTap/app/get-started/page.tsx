@@ -48,6 +48,15 @@ function StepShell({ title, subtitle, children }: { title: string; subtitle: Rea
 const getErrorMessage = (err: unknown, fallback: string): string =>
     err instanceof Error && err.message ? err.message : fallback;
 
+// Referral codes are short codes like `VEM-8OGUU4` or a 9-char unique code.
+// Reject anything that looks like an email or free text so it can't be
+// auto-populated or submitted as a referral.
+const isValidReferralCode = (value: string | null | undefined): boolean => {
+    if (!value) return false;
+    const trimmed = value.trim();
+    return trimmed.length > 0 && trimmed === value && /^[A-Za-z0-9-]+$/.test(trimmed);
+};
+
 export default function GetStartedPage() {
     const router = useRouter();
     const [step, setStep] = useState(1);
@@ -69,9 +78,9 @@ export default function GetStartedPage() {
 
     // Apply the ?ref= code once. Adjusted during render (guarded by the previous
     // value) instead of an effect so the referral autofill doesn't trigger a
-    // setState-in-effect lint error.
+    // setState-in-effect lint error. Only valid codes (never emails) are applied.
     const [appliedRefCode, setAppliedRefCode] = useState<string | null>(null);
-    if (refCode && refCode !== appliedRefCode) {
+    if (refCode && isValidReferralCode(refCode) && refCode !== appliedRefCode) {
         setAppliedRefCode(refCode);
         setFormData(p => ({ ...p, referralCode: refCode }));
     }
@@ -182,13 +191,13 @@ export default function GetStartedPage() {
                 firstName: formData.firstName,
                 lastName: formData.lastName,
                 ...(formData.phone && formData.phone.trim().length > 0 ? { businessNumber: formData.phone.trim() } : {}),
-                ...(formData.referralCode ? { referralCode: formData.referralCode } : {}),
+                ...(isValidReferralCode(formData.referralCode) ? { referralCode: formData.referralCode } : {}),
             };
             const response = await registerOwner(ownerPayload);
 
             await login(response.user, response.access_token);
 
-            router.push(formData.referralCode ? `/onboarding?ref=${encodeURIComponent(formData.referralCode)}` : '/onboarding');
+            router.push(isValidReferralCode(formData.referralCode) ? `/onboarding?ref=${encodeURIComponent(formData.referralCode)}` : '/onboarding');
         } catch (err: unknown) {
             setError(getErrorMessage(err, 'Something went wrong'));
         } finally {
@@ -206,7 +215,7 @@ export default function GetStartedPage() {
                 firstName: formData.firstName,
                 lastName: formData.lastName,
                 ...(formData.phone && formData.phone.trim().length > 0 ? { businessNumber: formData.phone.trim() } : {}),
-                ...(formData.referralCode ? { referralCode: formData.referralCode } : {}),
+                ...(isValidReferralCode(formData.referralCode) ? { referralCode: formData.referralCode } : {}),
             };
             const response = await registerOwner(ownerPayload);
 
@@ -214,7 +223,7 @@ export default function GetStartedPage() {
             await login(response.user, response.access_token);
 
             // Redirect immediately to onboarding
-            router.push(formData.referralCode ? `/onboarding?ref=${encodeURIComponent(formData.referralCode)}` : '/onboarding');
+            router.push(isValidReferralCode(formData.referralCode) ? `/onboarding?ref=${encodeURIComponent(formData.referralCode)}` : '/onboarding');
         } catch (err: unknown) {
             setError(getErrorMessage(err, 'Registration failed. Please try again.'));
         } finally {
@@ -497,6 +506,7 @@ export default function GetStartedPage() {
                                                                 value={formData.firstName}
                                                                 onChange={(e) => setFormData({...formData, firstName: e.target.value})}
                                                                 placeholder="First Name"
+                                                                autoComplete="given-name"
                                                                 className={fieldBase}
                                                             />
                                                         </div>
@@ -510,6 +520,7 @@ export default function GetStartedPage() {
                                                                 value={formData.lastName}
                                                                 onChange={(e) => setFormData({...formData, lastName: e.target.value})}
                                                                 placeholder="Last Name"
+                                                                autoComplete="family-name"
                                                                 className={fieldBase}
                                                             />
                                                         </div>
@@ -527,6 +538,7 @@ export default function GetStartedPage() {
                                                                     value={formData.phone}
                                                                     onChange={(e) => setFormData({...formData, phone: e.target.value.replace(/\D/g, '')})}
                                                                     placeholder="WhatsApp / Phone Number"
+                                                                    autoComplete="tel"
                                                                     className={fieldBase}
                                                                 />
                                                             </div>
@@ -541,6 +553,7 @@ export default function GetStartedPage() {
                                                                     value={formData.referralCode}
                                                                     onChange={(e) => setFormData({...formData, referralCode: e.target.value})}
                                                                     placeholder="e.g. VEM-XXXXX"
+                                                                    autoComplete="off"
                                                                     className={cn(fieldBase, "uppercase")}
                                                                 />
                                                             </div>
@@ -556,6 +569,7 @@ export default function GetStartedPage() {
                                                                         value={formData.password}
                                                                         onChange={(e) => setFormData({...formData, password: e.target.value})}
                                                                         placeholder="••••••••"
+                                                                        autoComplete="new-password"
                                                                         className={cn(fieldBase, "pr-12")}
                                                                     />
                                                                     <button
@@ -578,6 +592,7 @@ export default function GetStartedPage() {
                                                                         value={formData.confirmPassword}
                                                                         onChange={(e) => setFormData({...formData, confirmPassword: e.target.value})}
                                                                         placeholder="••••••••"
+                                                                        autoComplete="new-password"
                                                                         className={cn(fieldBase, "pr-12")}
                                                                     />
                                                                     <button
