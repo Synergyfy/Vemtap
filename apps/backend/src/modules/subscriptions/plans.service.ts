@@ -6,12 +6,47 @@ import { CreatePlanDto } from './dto/create-plan.dto';
 import { UpdatePlanDto } from './dto/update-plan.dto';
 import { SavePlanPermissionsDto } from './dto/save-plan-permissions.dto';
 import { PricingUtil } from './utils/pricing.util';
+import { SubscriptionTaxService } from './services/subscription-tax.service';
+import {
+  SubscriptionTaxConfig,
+  TaxType,
+} from './entities/subscription-tax-config.entity';
+
+export interface PlanPricingCycle {
+  basePrice: number;
+  taxAmount: number;
+  totalPrice: number;
+}
+
+export interface PlanTaxInfo {
+  name: string;
+  taxType: TaxType;
+  rate: number;
+  isEnabled: boolean;
+}
+
+export interface PlanWithTax extends Plan {
+  tax: PlanTaxInfo;
+  monthlyTax: number;
+  monthlyPriceWithTax: number;
+  quarterlyTax: number;
+  quarterlyPriceWithTax: number;
+  yearlyTax: number;
+  yearlyPriceWithTax: number;
+  pricing: {
+    tax: PlanTaxInfo;
+    monthly: PlanPricingCycle;
+    quarterly: PlanPricingCycle;
+    yearly: PlanPricingCycle;
+  };
+}
 
 @Injectable()
 export class PlansService {
   constructor(
     @InjectRepository(Plan)
     private readonly planRepository: Repository<Plan>,
+    private readonly subscriptionTaxService: SubscriptionTaxService,
   ) {}
 
   private sanitizePlanDefaults(plan: Plan): void {
@@ -38,6 +73,88 @@ export class PlansService {
     }
   }
 
+  enrichPlanWithTax(
+    plan: Plan,
+    taxConfig: SubscriptionTaxConfig,
+  ): PlanWithTax {
+    const taxInfo: PlanTaxInfo = {
+      name: taxConfig?.name || 'VAT',
+      taxType: taxConfig?.taxType || TaxType.PERCENTAGE,
+      rate: Number(taxConfig?.rate || 0),
+      isEnabled: Boolean(taxConfig?.isEnabled),
+    };
+
+    if (plan.isFree) {
+      const zeroCycle: PlanPricingCycle = {
+        basePrice: 0,
+        taxAmount: 0,
+        totalPrice: 0,
+      };
+      return {
+        ...plan,
+        tax: taxInfo,
+        monthlyTax: 0,
+        monthlyPriceWithTax: 0,
+        quarterlyTax: 0,
+        quarterlyPriceWithTax: 0,
+        yearlyTax: 0,
+        yearlyPriceWithTax: 0,
+        pricing: {
+          tax: taxInfo,
+          monthly: zeroCycle,
+          quarterly: zeroCycle,
+          yearly: zeroCycle,
+        },
+      };
+    }
+
+    const monthlyPrice = Number(plan.monthlyPrice) || 0;
+    const quarterlyPrice = Number(plan.quarterlyPrice) || 0;
+    const yearlyPrice = Number(plan.yearlyPrice) || 0;
+
+    const monthlyCalc = this.subscriptionTaxService.calculateTax(
+      monthlyPrice,
+      taxConfig,
+    );
+    const quarterlyCalc = this.subscriptionTaxService.calculateTax(
+      quarterlyPrice,
+      taxConfig,
+    );
+    const yearlyCalc = this.subscriptionTaxService.calculateTax(
+      yearlyPrice,
+      taxConfig,
+    );
+
+    return {
+      ...plan,
+      tax: taxInfo,
+      monthlyTax: monthlyCalc.taxAmount,
+      monthlyPriceWithTax: monthlyCalc.total,
+      quarterlyTax: quarterlyCalc.taxAmount,
+      quarterlyPriceWithTax: quarterlyCalc.total,
+      yearlyTax: yearlyCalc.taxAmount,
+      yearlyPriceWithTax: yearlyCalc.total,
+      pricing: {
+        tax: taxInfo,
+        monthly: {
+          basePrice: monthlyCalc.subtotal,
+          taxAmount: monthlyCalc.taxAmount,
+          totalPrice: monthlyCalc.total,
+        },
+        quarterly: {
+          basePrice: quarterlyCalc.subtotal,
+          taxAmount: quarterlyCalc.taxAmount,
+          totalPrice: quarterlyCalc.total,
+        },
+        yearly: {
+          basePrice: yearlyCalc.subtotal,
+          taxAmount: yearlyCalc.taxAmount,
+          totalPrice: yearlyCalc.total,
+        },
+      },
+    };
+  }
+
   async create(createPlanDto: CreatePlanDto): Promise<Plan> {
     const plan = this.planRepository.create(createPlanDto);
 
@@ -56,12 +173,17 @@ export class PlansService {
     });
   }
 
-  async findAll(onlyActive: boolean = false): Promise<Plan[]> {
+  async findAll(onlyActive: boolean = false): Promise<PlanWithTax[]> {
     const where = onlyActive ? { isActive: true } : {};
-    return this.planRepository.find({ where, order: { monthlyPrice: 'ASC' } });
+    const plans = await this.planRepository.find({
+      where,
+      order: { monthlyPrice: 'ASC' },
+    });
+    const taxConfig = await this.subscriptionTaxService.getActiveConfig();
+    return plans.map((p) => this.enrichPlanWithTax(p, taxConfig));
   }
 
-  async findOne(id: string): Promise<Plan> {
+  async findEntityById(id: string): Promise<Plan> {
     const plan = await this.planRepository.findOne({ where: { id } });
     if (!plan) {
       throw new NotFoundException(`Plan with ID ${id} not found`);
@@ -69,8 +191,14 @@ export class PlansService {
     return plan;
   }
 
+  async findOne(id: string): Promise<PlanWithTax> {
+    const plan = await this.findEntityById(id);
+    const taxConfig = await this.subscriptionTaxService.getActiveConfig();
+    return this.enrichPlanWithTax(plan, taxConfig);
+  }
+
   async update(id: string, updatePlanDto: UpdatePlanDto): Promise<Plan> {
-    const plan = await this.findOne(id);
+    const plan = await this.findEntityById(id);
     Object.assign(plan, updatePlanDto);
 
     const monthly = Number(plan.monthlyPrice) || 0;
@@ -83,7 +211,7 @@ export class PlansService {
   }
 
   async remove(id: string): Promise<void> {
-    const plan = await this.findOne(id);
+    const plan = await this.findEntityById(id);
     await this.planRepository.softRemove(plan);
   }
 
@@ -91,7 +219,7 @@ export class PlansService {
     id: string,
     dto: SavePlanPermissionsDto,
   ): Promise<Plan> {
-    const plan = await this.findOne(id);
+    const plan = await this.findEntityById(id);
     Object.assign(plan, dto);
     this.sanitizePlanDefaults(plan);
     plan.permissionsConfiguredAt = new Date();
@@ -99,7 +227,7 @@ export class PlansService {
   }
 
   async getPermissions(id: string): Promise<Partial<Plan>> {
-    const plan = await this.findOne(id);
+    const plan = await this.findEntityById(id);
     const permissionFields: (keyof Plan)[] = [
       'messagingEnabled',
       'smsCredits',

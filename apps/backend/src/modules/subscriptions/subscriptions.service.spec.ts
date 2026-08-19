@@ -25,6 +25,9 @@ import { AffiliateSyncService } from '../affiliates/affiliate-sync.service';
 import { QrThriveService } from '../qr-thrive/qr-thrive.service';
 import { BranchesService } from '../branches/branches.service';
 import { Reward } from '../loyalty/entities/reward.entity';
+import { SubscriptionTaxService } from './services/subscription-tax.service';
+import { CouponEngineService } from '../coupons/services/coupon-engine.service';
+import { MailService } from '../mail/mail.service';
 
 describe('SubscriptionsService', () => {
   let service: SubscriptionsService;
@@ -94,9 +97,21 @@ describe('SubscriptionsService', () => {
     findOne: jest.fn().mockResolvedValue(mockBusiness),
   };
 
-  const mockUserRepo = { update: jest.fn(), count: jest.fn() };
+  const mockUserRepo = {
+    update: jest.fn(),
+    count: jest.fn(),
+    findOne: jest.fn().mockResolvedValue({
+      id: 'u1',
+      email: 'owner@example.com',
+      firstName: 'John',
+      lastName: 'Doe',
+    }),
+  };
   const mockBranchRepo = { find: jest.fn() };
   const mockDeviceRepo = { count: jest.fn() };
+  const mockMailService = {
+    sendPlanChangeEmail: jest.fn().mockResolvedValue(true),
+  };
 
   const mockPlansService = {
     findOne: jest.fn().mockResolvedValue(mockPlan),
@@ -106,9 +121,9 @@ describe('SubscriptionsService', () => {
   const mockPaymentsService = {
     verifyTransaction: jest.fn().mockResolvedValue({
       status: 'success',
-      data: {
-        amount: 5000,
-      },
+      amount: 500000,
+      currency: 'NGN',
+      channel: 'card',
       authorization: { authorization_code: 'AUTH_123' },
     }),
     recordPayment: jest.fn().mockResolvedValue({}),
@@ -138,6 +153,44 @@ describe('SubscriptionsService', () => {
   const mockBranchesService = {
     findBusinessByOwner: jest.fn(),
     findById: jest.fn(),
+  };
+
+  const mockSubscriptionTaxService = {
+    getActiveConfig: jest.fn().mockResolvedValue({
+      id: 'tax-1',
+      name: 'VAT',
+      taxType: 'percentage',
+      rate: 7.5,
+      isEnabled: false,
+      isActive: true,
+    }),
+    calculateTax: jest.fn().mockImplementation((subtotal, config) => {
+      if (!config?.isEnabled) {
+        return {
+          subtotal,
+          taxAmount: 0,
+          total: subtotal,
+          taxRule: {
+            name: 'VAT',
+            taxType: 'percentage',
+            rate: 7.5,
+            isEnabled: false,
+          },
+        };
+      }
+      const taxAmount = (subtotal * config.rate) / 100;
+      return {
+        subtotal,
+        taxAmount,
+        total: subtotal + taxAmount,
+        taxRule: {
+          name: config.name,
+          taxType: config.taxType,
+          rate: config.rate,
+          isEnabled: true,
+        },
+      };
+    }),
   };
 
   beforeEach(async () => {
@@ -176,6 +229,7 @@ describe('SubscriptionsService', () => {
         { provide: PaymentsService, useValue: mockPaymentsService },
         { provide: CreditService, useValue: mockCreditService },
         { provide: AddonsService, useValue: mockAddonsService },
+        { provide: SubscriptionTaxService, useValue: mockSubscriptionTaxService },
         { provide: AffiliatesService, useValue: mockAffiliatesService },
         {
           provide: AffiliateSyncService,
@@ -183,6 +237,17 @@ describe('SubscriptionsService', () => {
         },
         { provide: QrThriveService, useValue: mockQrThriveService },
         { provide: BranchesService, useValue: mockBranchesService },
+        {
+          provide: CouponEngineService,
+          useValue: {
+            validatePromotion: jest.fn(),
+            recordRedemption: jest.fn(),
+          },
+        },
+        {
+          provide: MailService,
+          useValue: mockMailService,
+        },
         {
           provide: 'DataSource',
           useValue: { transaction: jest.fn() },
@@ -246,6 +311,15 @@ describe('SubscriptionsService', () => {
       });
 
       expect(result.subscription.endDate.toISOString()).toBe(customEndDateStr);
+      expect(mockMailService.sendPlanChangeEmail).toHaveBeenCalledWith(
+        expect.objectContaining({
+          email: 'owner@example.com',
+          customerName: 'John Doe',
+          businessName: 'Test Business',
+          planName: 'Test Plan',
+          isAdminOverride: true,
+        }),
+      );
     });
 
     describe('permissions guard', () => {
@@ -293,7 +367,9 @@ describe('SubscriptionsService', () => {
         mockBranchRepo.find.mockResolvedValue([]);
         mockPaymentsService.verifyTransaction.mockResolvedValue({
           status: 'success',
-          data: { amount: 5000 },
+          amount: 500000,
+          currency: 'NGN',
+          channel: 'card',
           authorization: { authorization_code: 'AUTH_123' },
         });
 
@@ -550,6 +626,34 @@ describe('SubscriptionsService', () => {
       const result = await service.cancelSubscription('b1');
       expect(result.message).toBe('Subscription cancelled successfully');
       expect(result.subscription.status).toBe(SubscriptionStatus.CANCELED);
+    });
+  });
+
+  describe('previewPrice', () => {
+    it('should calculate price preview with tax breakdown', async () => {
+      mockPlansService.findOne.mockResolvedValueOnce({
+        id: 'plan-1',
+        name: 'Pro Plan',
+        monthlyPrice: 10000,
+      });
+
+      mockSubscriptionTaxService.getActiveConfig.mockResolvedValueOnce({
+        id: 'tax-1',
+        name: 'VAT',
+        taxType: 'percentage',
+        rate: 7.5,
+        isEnabled: true,
+      });
+
+      const result = await service.previewPrice({
+        planId: 'plan-1',
+        billingPeriod: BillingPeriod.MONTHLY,
+      });
+
+      expect(result.subtotal).toBe(10000);
+      expect(result.taxAmount).toBe(750);
+      expect(result.total).toBe(10750);
+      expect(result.plan.name).toBe('Pro Plan');
     });
   });
 });

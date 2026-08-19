@@ -14,6 +14,7 @@ import {
 import { ClusterCacheService } from './cluster-cache.service';
 import { ClusterAutoAssignProcessor } from './cluster-auto-assign.processor';
 import { CLUSTER_AUTO_ASSIGN_QUEUE } from './cluster-auto-assign.constants';
+import { RotatorModule } from '../rotator/rotator.module';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { CLUSTER_AUTO_ASSIGN_QUEUE } from './cluster-auto-assign.constants';
     BullModule.registerQueue({
       name: CLUSTER_AUTO_ASSIGN_QUEUE,
     }),
+    RotatorModule,
   ],
   controllers: [ClustersPublicController, ClustersAdminController],
   providers: [ClustersService, ClusterCacheService, ClusterAutoAssignProcessor],

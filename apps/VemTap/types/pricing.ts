@@ -53,6 +53,25 @@ export interface PricingPlan {
     aiCredits?: number | null;
     permissionsConfiguredAt?: string | null;
     badge?: 'free' | 'silver' | 'gold' | 'platinum';
+    // Tax-aware pricing returned by GET /plans (VAT system)
+    monthlyTax?: number;
+    monthlyPriceWithTax?: number;
+    quarterlyTax?: number;
+    quarterlyPriceWithTax?: number;
+    yearlyTax?: number;
+    yearlyPriceWithTax?: number;
+    tax?: {
+        name: string;
+        taxType: 'percentage' | 'fixed';
+        rate: number;
+        isEnabled: boolean;
+    };
+    pricing?: {
+        tax: { name: string; taxType: 'percentage' | 'fixed'; rate: number; isEnabled: boolean };
+        monthly: { basePrice: number; taxAmount: number; totalPrice: number };
+        quarterly: { basePrice: number; taxAmount: number; totalPrice: number };
+        yearly: { basePrice: number; taxAmount: number; totalPrice: number };
+    };
 }
 
 export interface HardwareOption {

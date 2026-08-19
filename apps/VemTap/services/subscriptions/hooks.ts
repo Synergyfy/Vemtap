@@ -2,6 +2,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/store/useAuthStore';
 import { Subscription, SubscriptionCapabilities, SubscribeRequest } from './types';
+import { subscriptionsApi, previewSubscriptionPrice } from '@/lib/api/subscriptions';
+import type { SubscriptionTaxConfig, PricePreviewResponse, UpdateSubscriptionTaxPayload, ToggleSubscriptionTaxPayload, BillingPeriod } from '@/types/subscriptions';
 
 export const useActiveSubscription = () => {
     const user = useAuthStore((state) => state.user);
@@ -56,3 +58,65 @@ export const useSubscribe = () => {
         },
     });
 };
+
+// ---------------------------------------------------------------
+// Subscription VAT / Tax hooks
+// ---------------------------------------------------------------
+
+export const useTaxConfig = (enabled = true) =>
+    useQuery<SubscriptionTaxConfig, Error>({
+        queryKey: ['subscription', 'tax', 'config'],
+        queryFn: () => subscriptionsApi.getTaxConfig(),
+        enabled,
+        staleTime: 5 * 60_000,
+    });
+
+export const useTaxHistory = (enabled = true) =>
+    useQuery<SubscriptionTaxConfig[], Error>({
+        queryKey: ['subscription', 'tax', 'history'],
+        queryFn: () => subscriptionsApi.getTaxHistory(),
+        enabled,
+    });
+
+export const useUpdateTaxConfig = () => {
+    const queryClient = useQueryClient();
+    return useMutation<SubscriptionTaxConfig, Error, UpdateSubscriptionTaxPayload>({
+        mutationFn: (payload) => subscriptionsApi.updateTaxConfig(payload),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['subscription', 'tax', 'config'] });
+            queryClient.invalidateQueries({ queryKey: ['subscription', 'tax', 'history'] });
+        },
+    });
+};
+
+export const useToggleTaxConfig = () => {
+    const queryClient = useQueryClient();
+    return useMutation<SubscriptionTaxConfig, Error, ToggleSubscriptionTaxPayload>({
+        mutationFn: (payload) => subscriptionsApi.toggleTaxConfig(payload),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['subscription', 'tax', 'config'] });
+            queryClient.invalidateQueries({ queryKey: ['subscription', 'tax', 'history'] });
+        },
+    });
+};
+
+export const usePricePreview = (params: {
+    planId?: string;
+    billingPeriod: BillingPeriod;
+    addonIds?: string[];
+    promoCode?: string;
+    enabled?: boolean;
+}) =>
+    useQuery<PricePreviewResponse, Error>({
+        queryKey: ['subscription', 'price-preview', params.planId, params.billingPeriod, params.addonIds, params.promoCode ?? ''],
+        queryFn: () =>
+            previewSubscriptionPrice({
+                planId: params.planId as string,
+                billingPeriod: params.billingPeriod,
+                addonIds: params.addonIds,
+                addonQuantities: params.addonIds?.map(() => 1),
+                promoCode: params.promoCode,
+            }),
+        enabled: !!params.planId && (params.enabled ?? true),
+        staleTime: 30_000,
+    });

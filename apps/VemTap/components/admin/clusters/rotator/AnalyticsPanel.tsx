@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { QrCode, Sparkles, Eye, MousePointerClick, BadgeCheck, TrendingUp, Loader2, BarChart3 } from 'lucide-react';
+import { QrCode, Sparkles, Eye, MousePointerClick, BadgeCheck, TrendingUp, Loader2, Filter, Trophy } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatNumber } from '@/lib/utils/number';
 import type { RotationAnalytics } from '@/services/rotator/types';
@@ -20,6 +20,8 @@ const KPIS: Array<{ key: keyof Pick<RotationAnalytics, 'qrScans' | 'dealsServed'
     { key: 'clicks', label: 'Clicks', icon: MousePointerClick, tone: 'text-amber-600', bg: 'bg-amber-50' },
     { key: 'redemptions', label: 'Redemptions', icon: BadgeCheck, tone: 'text-emerald-600', bg: 'bg-emerald-50' },
 ];
+
+const pct = (n: number, d: number) => (d > 0 ? Math.round((n / d) * 100) : 0);
 
 export default function AnalyticsPanel({ analytics, loading, detailed = false }: AnalyticsPanelProps) {
     if (loading && !analytics) {
@@ -81,14 +83,37 @@ export default function AnalyticsPanel({ analytics, loading, detailed = false }:
             </div>
 
             {detailed ? (
-                <div className="rounded-2xl border border-gray-100 bg-white p-4 flex items-center gap-3">
-                    <div className="size-9 rounded-xl bg-primary/5 text-primary flex items-center justify-center shrink-0">
-                        <BarChart3 size={16} />
+                <div className="rounded-2xl border border-gray-100 bg-white p-4">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary flex items-center gap-1.5">
+                        <Filter size={11} className="text-primary" /> Funnel · engagement rates
+                    </p>
+                    <div className="mt-3 grid grid-cols-3 gap-2">
+                        <div className="rounded-xl border border-gray-100 p-3">
+                            <p className="text-lg font-display font-bold text-text-main">{pct(analytics.dealViews, analytics.dealsServed)}%</p>
+                            <p className="text-[9px] font-black uppercase tracking-widest text-text-secondary mt-0.5 flex items-center gap-1">
+                                <Eye size={9} /> Views / served
+                            </p>
+                        </div>
+                        <div className="rounded-xl border border-gray-100 p-3">
+                            <p className="text-lg font-display font-bold text-text-main">{pct(analytics.clicks, analytics.dealViews)}%</p>
+                            <p className="text-[9px] font-black uppercase tracking-widest text-text-secondary mt-0.5 flex items-center gap-1">
+                                <MousePointerClick size={9} /> Clicks / views
+                            </p>
+                        </div>
+                        <div className="rounded-xl border border-gray-100 p-3">
+                            <p className="text-lg font-display font-bold text-text-main">{pct(analytics.redemptions, analytics.clicks)}%</p>
+                            <p className="text-[9px] font-black uppercase tracking-widest text-text-secondary mt-0.5 flex items-center gap-1">
+                                <BadgeCheck size={9} /> Redemptions / clicks
+                            </p>
+                        </div>
                     </div>
-                    <div>
-                        <p className="text-xs font-black text-text-main">Deeper rotation analytics</p>
-                        <p className="text-[11px] text-text-secondary">Full funnel, trend charts and per-QR breakdowns land with the analytics module.</p>
-                    </div>
+                    <p className="mt-3 flex items-center gap-1.5 text-[10px] font-medium text-text-secondary">
+                        <Trophy size={11} className="text-amber-500" />
+                        {analytics.topExposure[0]
+                            ? `${analytics.topExposure[0].businessName} leads exposure with ${formatNumber(analytics.topExposure[0].impressions)} impressions.`
+                            : 'No exposure data yet.'}
+                        Full trend charts land with the analytics module.
+                    </p>
                 </div>
             ) : (
                 <p className="text-[9px] font-medium text-text-secondary text-right">Data simulated · updates with real rotation traffic</p>

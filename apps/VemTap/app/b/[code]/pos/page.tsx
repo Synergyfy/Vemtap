@@ -67,8 +67,10 @@ export default function PublicPOSPage() {
         <POSHomeScreen onOpenCart={() => setMobileCartOpen(true)} businessCode={branchId} isPublic={true} />
       </div>
 
-      <div className="hidden md:block w-[380px] lg:w-[420px] border-l border-gray-100 bg-white h-full relative">
-        <CartPanel isPublic={true} branchId={branchId} />
+      <div className="hidden md:flex flex-col w-[380px] lg:w-[420px] border-l border-gray-100 bg-white h-full relative overflow-hidden">
+        <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+          <CartPanel isPublic={true} branchId={branchId} />
+        </div>
       </div>
 
       {itemCount > 0 && !mobileCartOpen && (
@@ -93,7 +95,7 @@ export default function PublicPOSPage() {
             onClick={() => setMobileCartOpen(false)}
           />
 
-          <div className="absolute bottom-0 inset-x-0 bg-white rounded-t-[32px] shadow-2xl max-h-[92vh] flex flex-col animate-in slide-in-from-bottom duration-300">
+          <div className="absolute bottom-0 inset-x-0 bg-white rounded-t-[32px] shadow-2xl max-h-[70vh] flex flex-col animate-in slide-in-from-bottom duration-300">
             <div className="flex items-center justify-between px-6 pt-4 pb-2 shrink-0">
               <div className="w-10 h-1 bg-gray-200 rounded-full mx-auto absolute left-1/2 -translate-x-1/2 top-3" />
               <span className="text-xs font-black text-gray-400 uppercase tracking-widest pt-2">Your Cart</span>
@@ -105,7 +107,7 @@ export default function PublicPOSPage() {
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto">
+            <div className="flex-1 min-h-0 flex flex-col">
               <CartPanel onNavigate={() => setMobileCartOpen(false)} isPublic={true} branchId={branchId} />
             </div>
           </div>

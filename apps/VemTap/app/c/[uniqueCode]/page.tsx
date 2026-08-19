@@ -1,18 +1,38 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { Search, Store, Sparkles, MapPin, Loader2, QrCode, ArrowLeft, ArrowDownWideNarrow } from 'lucide-react';
+import { Search, Store, Sparkles, MapPin, Loader2, QrCode, ArrowLeft, ArrowDownWideNarrow, Timer } from 'lucide-react';
 import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
 import CategoryDropdown from '@/components/promotions/CategoryStep';
 import PromotionCard from '@/components/promotions/PromotionCard';
 import { useClusterContext } from '@/services/clusters/hooks';
 import { useClusterDeals } from '@/services/clusters/hooks';
+import { clustersPublicApi } from '@/lib/api/clusters';
 import type { ClusterDealsSortBy, ClusterDeal } from '@/lib/api/clusters';
 import type { Promotion, PromotionBusiness } from '@/lib/promotions';
 import type { MockPromotion } from '@/lib/mock/promotions';
+
+// RFC4122 v4 UUID for the visit-session-token analytics correlation header.
+const genSessionToken = (): string => {
+    if (typeof window !== 'undefined') {
+        const raw = window.localStorage.getItem('vemtap_visit_session');
+        if (raw) return raw;
+        const id = (typeof crypto !== 'undefined' && crypto.randomUUID)
+            ? crypto.randomUUID()
+            : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+                const r = (Math.random() * 16) | 0;
+                return (c === 'x' ? r : (r & 0x3) | 0x8).toString(16);
+            });
+        window.localStorage.setItem('vemtap_visit_session', id);
+        return id;
+    }
+    return '';
+};
+
+const ROTATION_WINDOW_SECONDS = 60;
 
 function toPromotionBusiness(offer: ClusterDeal): PromotionBusiness {
     const branch = offer.branch;
@@ -171,6 +191,54 @@ export default function ClusterDiscoveryPage() {
             .slice(0, 5);
     }, [promotions]);
 
+    const featuredPromotions = useMemo(() => {
+        if (!dealsData?.featured?.length) return [];
+        return dealsData.featured
+            .filter((offer) => offer && offer.id && offer.branch)
+            .map(toPromotion);
+    }, [dealsData]);
+
+    const sessionToken = useMemo(() => genSessionToken(), []);
+    const windowStart = useMemo(
+        () => (dealsData?.rotationWindowId != null
+            ? dealsData.rotationWindowId * ROTATION_WINDOW_SECONDS * 1000
+            : Date.now()),
+        [dealsData?.rotationWindowId],
+    );
+    const [now, setNow] = useState(() => Date.now());
+    useEffect(() => {
+        const t = setInterval(() => setNow(Date.now()), 1000);
+        return () => clearInterval(t);
+    }, []);
+    const secondsLeft = Math.max(0, Math.ceil((windowStart + ROTATION_WINDOW_SECONDS * 1000 - now) / 1000));
+
+    const isFairView = !selectedCategory && !search && sortBy === 'fair';
+
+    // Record a view for each featured deal once per fair (rotator) render.
+    useEffect(() => {
+        if (!isFairView || !featuredPromotions.length) return;
+        const t = setTimeout(() => {
+            featuredPromotions.forEach((p) => fireView(p.id));
+        }, 0);
+        return () => clearTimeout(t);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [dealsData?.featured]);
+
+    const fireView = (offerId: string) => {
+        void clustersPublicApi.recordEvent(uniqueCode, sessionToken, {
+            offerId,
+            type: 'view',
+            windowId: dealsData?.rotationWindowId,
+        });
+    };
+    const fireClick = (offerId: string) => {
+        void clustersPublicApi.recordEvent(uniqueCode, sessionToken, {
+            offerId,
+            type: 'click',
+            windowId: dealsData?.rotationWindowId,
+        });
+    };
+
     if (contextLoading) {
         return (
             <div className="min-h-screen bg-[#f4f5f6] font-body text-text-main">
@@ -292,9 +360,9 @@ export default function ClusterDiscoveryPage() {
             </section>
 
             {/* Filters bar */}
-            <section className="sticky top-0 z-30 bg-white/80 backdrop-blur-xl border-b border-gray-100">
-                <div className="max-w-7xl mx-auto px-4 md:px-8 py-4">
-                    <div className="flex flex-col sm:flex-row gap-3">
+            <section className="sticky top-0 z-30 bg-white/85 backdrop-blur-xl border-b border-black/[0.04]">
+                <div className="max-w-7xl mx-auto px-4 md:px-8 py-3">
+                    <div className="flex flex-col sm:flex-row gap-2.5">
                         <div className="relative flex-1">
                             <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
                             <input
@@ -302,7 +370,7 @@ export default function ClusterDiscoveryPage() {
                                 value={search}
                                 onChange={(e) => setSearch(e.target.value)}
                                 placeholder="Search deals or businesses…"
-                                className="w-full h-12 pl-11 pr-4 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/15 focus:border-primary/30 transition-all"
+                                className="w-full h-12 pl-11 pr-4 bg-white border border-gray-200 rounded-full text-sm font-bold text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary/30 shadow-sm transition-all"
                             />
                         </div>
                         <div className="w-full sm:w-56">
@@ -316,7 +384,7 @@ export default function ClusterDiscoveryPage() {
                             <select
                                 value={sortBy}
                                 onChange={(e) => setSortBy(e.target.value as ClusterDealsSortBy)}
-                                className="w-full h-12 pl-10 pr-4 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold text-gray-800 focus:outline-none focus:ring-2 focus:ring-primary/15 appearance-none cursor-pointer"
+                                className="w-full h-12 pl-10 pr-4 bg-white border border-gray-200 rounded-full text-sm font-bold text-gray-800 focus:outline-none focus:ring-4 focus:ring-primary/10 shadow-sm appearance-none cursor-pointer"
                             >
                                 {SORTS.map(s => (
                                     <option key={s.value} value={s.value}>{s.label}</option>
@@ -364,31 +432,62 @@ export default function ClusterDiscoveryPage() {
                     </div>
                 ) : promotions.length > 0 ? (
                     <>
-                        {!selectedCategory && !search && sortBy === 'fair' && trendingPromotions.length > 0 && (
+                        {isFairView && featuredPromotions.length > 0 && (
+                            <div className="mb-8">
+                                <div className="flex items-center justify-between mb-4">
+                                    <div className="flex items-center gap-2">
+                                        <span className="size-7 rounded-lg bg-gradient-to-br from-primary to-blue-500 text-white flex items-center justify-center shadow-md shadow-primary/25">
+                                            <Sparkles size={13} />
+                                        </span>
+                                        <span className="text-xs font-black text-gray-700 uppercase tracking-widest">Featured right now</span>
+                                    </div>
+                                    <span className="inline-flex items-center gap-1.5 text-[10px] font-black text-primary bg-primary/5 border border-primary/10 rounded-full px-2.5 py-1.5">
+                                        <Timer size={10} />
+                                        rotates in {secondsLeft}s
+                                    </span>
+                                </div>
+                                <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-5">
+                                    {featuredPromotions.map((p, i) => (
+                                        <PromotionCard
+                                            key={p.id}
+                                            promotion={toMockPromotion(p)}
+                                            index={i}
+                                            onOpenDeal={fireClick}
+                                        />
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {isFairView && trendingPromotions.length > 0 && (
                             <div className="mb-8">
                                 <div className="flex items-center gap-2 mb-4">
-                                    <Sparkles size={14} className="text-primary" />
-                                    <span className="text-xs font-black text-gray-500 uppercase tracking-widest">Trending in this market</span>
+                                    <span className="size-7 rounded-lg bg-gradient-to-br from-amber-400 to-orange-500 text-white flex items-center justify-center shadow-md shadow-orange-500/20">
+                                        <Sparkles size={13} />
+                                    </span>
+                                    <span className="text-xs font-black text-gray-700 uppercase tracking-widest">Trending in this market</span>
                                 </div>
                                 <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-5">
                                     {trendingPromotions.map((p, i) => (
-                                        <PromotionCard key={p.id} promotion={toMockPromotion(p)} index={i} />
+                                        <PromotionCard key={p.id} promotion={toMockPromotion(p)} index={i} onOpenDeal={fireClick} />
                                     ))}
                                 </div>
                             </div>
                         )}
 
                         <div className="flex items-center justify-between mb-4">
-                            <span className="text-xs font-black text-gray-500 uppercase tracking-widest">
+                            <span className="text-xs font-black text-gray-700 uppercase tracking-widest">
                                 {dealsData?.total ?? promotions.length} {dealsData?.total === 1 ? 'deal' : 'deals'}
                                 {selectedCategory && <> in <span className="text-primary">this category</span></>}
                             </span>
-                            <span className="text-[10px] font-bold text-gray-400">Fair rotation refreshes every 15 min</span>
+                            <span className="inline-flex items-center gap-1 text-[10px] font-black text-slate-400">
+                                <Timer size={10} /> Fair rotation refreshes every 60s
+                            </span>
                         </div>
 
                         <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-5">
                             {promotions.map((p, i) => (
-                                <PromotionCard key={p.id} promotion={toMockPromotion(p)} index={i} />
+                                <PromotionCard key={p.id} promotion={toMockPromotion(p)} index={i} onOpenDeal={fireClick} />
                             ))}
                         </div>
                     </>

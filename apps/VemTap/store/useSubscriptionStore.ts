@@ -51,7 +51,7 @@ export const useSubscriptionStore = create<SubscriptionState>()(
           const capabilities = capsRes.status === 'fulfilled' ? capsRes.value : get().capabilities;
           const activeSubscription = subRes.status === 'fulfilled' ? subRes.value : get().activeSubscription;
           
-          const isExpired = activeSubscription?.status === 'expired' || activeSubscription?.status === 'cancelled';
+          const isExpired = activeSubscription?.status === 'expired' || activeSubscription?.status === 'canceled';
           
           set({ 
             capabilities, 

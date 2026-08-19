@@ -5,16 +5,19 @@ import { X, Check, X as XIcon, Loader2, Info, ExternalLink } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { rotatorApi } from '@/services/rotator/api';
-import type { DealEligibility, RotatorDeal } from '@/services/rotator/types';
+import { STRATEGY_LABELS } from '@/services/rotator/types';
+import type { DealEligibility, RotatorDeal, RotationConfig } from '@/services/rotator/types';
 
 interface DealWhyModalProps {
     open: boolean;
     clusterId: string;
     deal: RotatorDeal | null;
+    /** The cluster's live rotation config, used to explain strategy + weight. */
+    config?: RotationConfig | null;
     onClose: () => void;
 }
 
-export default function DealWhyModal({ open, clusterId, deal, onClose }: DealWhyModalProps) {
+export default function DealWhyModal({ open, clusterId, deal, config, onClose }: DealWhyModalProps) {
     const [eligibility, setEligibility] = useState<DealEligibility | null>(null);
     const [loading, setLoading] = useState(true);
 
@@ -33,9 +36,20 @@ export default function DealWhyModal({ open, clusterId, deal, onClose }: DealWhy
     const isEligible = eligibility?.eligible ?? false;
     const failedChecks = eligibility?.checks.filter(c => !c.passed) || [];
 
+    // Real rotation facts, falling back to clear "default" phrasing when the
+    // cluster is on automatic so nothing reads as a hardcoded value.
+    const strategyMode = config?.rotation?.mode ?? 'automatic';
+    const strategyLabel = strategyMode === 'manual'
+        ? STRATEGY_LABELS[config!.rotation.strategy] ?? 'Manual'
+        : 'Vemtap default';
+    const isWeighted = strategyMode === 'manual' && config?.rotation?.strategy === 'weighted';
+    const weightValue = isWeighted && deal
+        ? config!.weights[deal.id] ?? 1
+        : null;
+
     return (
         <AnimatePresence>
-            <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+            <div className="fixed inset-0 z-[85] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
                 <motion.div
                     initial={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}
@@ -109,11 +123,21 @@ export default function DealWhyModal({ open, clusterId, deal, onClose }: DealWhy
                                 <div className="grid grid-cols-2 gap-2">
                                     <div className="rounded-xl border border-gray-100 p-3">
                                         <p className="text-[9px] font-black uppercase tracking-widest text-text-secondary">Strategy</p>
-                                        <p className="text-sm font-bold text-text-main mt-1">Automatic</p>
+                                        <p className="text-sm font-bold text-text-main mt-1">
+                                            {strategyMode === 'automatic' ? 'Automatic' : strategyLabel}
+                                        </p>
+                                        <p className="text-[10px] text-text-secondary mt-0.5">
+                                            {strategyMode === 'automatic' ? 'Vemtap balances exposure' : 'Manually configured'}
+                                        </p>
                                     </div>
                                     <div className="rounded-xl border border-gray-100 p-3">
                                         <p className="text-[9px] font-black uppercase tracking-widest text-text-secondary">Weight</p>
-                                        <p className="text-sm font-bold text-text-main mt-1">Automatic</p>
+                                        <p className="text-sm font-bold text-text-main mt-1">
+                                            {weightValue != null ? `${weightValue}×` : 'Auto'}
+                                        </p>
+                                        <p className="text-[10px] text-text-secondary mt-0.5">
+                                            {weightValue != null ? 'This deal weighs in' : 'Equal chance for all deals'}
+                                        </p>
                                     </div>
                                 </div>
 

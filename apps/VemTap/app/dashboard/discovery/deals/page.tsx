@@ -17,6 +17,7 @@ import { getPromoDaysLeft } from '@/lib/mock/promotions';
 import type { CatalogueOffer } from '@/services/catalogue/hooks';
 import { uploadToCloudinary } from '@/lib/cloudinary';
 import PartnershipVerificationGuard from '@/components/dashboard/partnership/PartnershipVerificationGuard';
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu';
 
 const DeliveryRadiusMap = dynamic(() => import('@/components/dashboard/discovery/DeliveryRadiusMap'), { ssr: false });
 
@@ -36,15 +37,15 @@ function DaysLeftLabel({ daysLeft }: { daysLeft: number }) {
 
 function ErrorState({ message, onRetry }: { message: string; onRetry?: () => void }) {
     return (
-        <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-12 text-center">
-            <div className="size-16 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4 text-red-500">
-                <AlertCircle size={32} />
+        <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-8 md:p-12 text-center">
+            <div className="size-14 md:size-16 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-3 md:mb-4 text-red-500">
+                <AlertCircle size={28} />
             </div>
-            <h3 className="font-semibold text-gray-800 text-lg mb-2">Something went wrong</h3>
-            <p className="text-gray-500 text-sm mb-6">{message}</p>
+            <h3 className="font-semibold text-gray-800 text-base md:text-lg mb-1.5 md:mb-2">Something went wrong</h3>
+            <p className="text-gray-500 text-xs md:text-sm mb-4 md:mb-6">{message}</p>
             {onRetry && (
-                <Button onClick={onRetry} variant="outline" className="rounded-full font-bold gap-2">
-                    <RefreshCw size={16} /> Try Again
+                <Button onClick={onRetry} variant="outline" className="rounded-full font-bold gap-2 text-xs md:text-sm">
+                    <RefreshCw size={14} /> Try Again
                 </Button>
             )}
         </div>
@@ -53,12 +54,12 @@ function ErrorState({ message, onRetry }: { message: string; onRetry?: () => voi
 
 function EmptyState({ icon: Icon, title, description }: { icon: React.ElementType; title: string; description: string }) {
     return (
-        <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-12 text-center">
-            <div className="size-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4 text-gray-400">
-                <Icon size={32} />
+        <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-8 md:p-12 text-center">
+            <div className="size-14 md:size-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-3 md:mb-4 text-gray-400">
+                <Icon size={28} />
             </div>
-            <h3 className="font-semibold text-gray-800 text-lg mb-2">{title}</h3>
-            <p className="text-gray-500 text-sm">{description}</p>
+            <h3 className="font-semibold text-gray-800 text-base md:text-lg mb-1.5 md:mb-2">{title}</h3>
+            <p className="text-gray-500 text-xs md:text-sm">{description}</p>
         </div>
     );
 }
@@ -70,7 +71,7 @@ export default function DealsPage() {
 
     return (
         <PartnershipVerificationGuard>
-            <div className="relative p-4 md:p-8 pb-32 max-w-7xl mx-auto font-sans">
+            <div className="relative p-3 md:p-8 pb-32 max-w-7xl mx-auto font-sans">
                 <PageHeader
                     title="Deals"
                     description="Create and manage deals that attract new customers."
@@ -80,13 +81,13 @@ export default function DealsPage() {
                 {!isCreatingPromo ? (
                     <>
                         {isAllBranches && (
-                            <div className="bg-amber-50 border border-amber-200 rounded-3xl p-6 mb-6 flex items-center gap-4">
-                                <div className="size-10 bg-amber-100 rounded-full flex items-center justify-center text-amber-600 shrink-0">
-                                    <AlertCircle size={20} />
+                            <div className="bg-amber-50 border border-amber-200 rounded-2xl md:rounded-3xl p-4 md:p-6 mb-4 md:mb-6 flex items-center gap-3 md:gap-4">
+                                <div className="size-9 md:size-10 bg-amber-100 rounded-full flex items-center justify-center text-amber-600 shrink-0">
+                                    <AlertCircle size={18} />
                                 </div>
                                 <div>
-                                    <p className="font-semibold text-amber-800">Select a branch to view deals</p>
-                                    <p className="text-sm text-amber-600">Use the branch filter at the top of the page to choose a specific branch.</p>
+                                    <p className="font-semibold text-amber-800 text-sm md:text-base">Select a branch to view deals</p>
+                                    <p className="text-xs md:text-sm text-amber-600">Use the branch filter at the top of the page to choose a specific branch.</p>
                                 </div>
                             </div>
                         )}
@@ -111,6 +112,38 @@ function PromotionsTab({ branchId, onCreatePromo, onEditPromo }: { branchId: str
     const { data: promotions, isLoading, isError, error, refetch } = useCatalogueOffersAdmin({ branchId });
     const updateOffer = useUpdateCatalogueOffer();
     const deleteOffer = useDeleteCatalogueOffer();
+    const [statusFilter, setStatusFilter] = useState<'active' | 'all' | 'expired' | 'inactive'>('active');
+
+    const isExpired = (promo: CatalogueOffer) => {
+        if (!promo.endDate) return false;
+        return new Date(promo.endDate) < new Date();
+    };
+
+    const filteredPromotions = React.useMemo(() => {
+        if (!promotions) return [];
+        switch (statusFilter) {
+            case 'active':
+                return promotions.filter((p) => !isExpired(p) && p.status === 'active');
+            case 'expired':
+                return promotions.filter((p) => isExpired(p));
+            case 'inactive':
+                return promotions.filter((p) => p.status === 'inactive' && !isExpired(p));
+            case 'all':
+            default:
+                return promotions;
+        }
+    }, [promotions, statusFilter]);
+
+    const statusCounts = React.useMemo(() => {
+        if (!promotions) return { active: 0, expired: 0, inactive: 0, all: 0 };
+        let active = 0, expired = 0, inactive = 0;
+        for (const p of promotions) {
+            if (isExpired(p)) expired++;
+            else if (p.status === 'inactive') inactive++;
+            else active++;
+        }
+        return { active, expired, inactive, all: promotions.length };
+    }, [promotions]);
 
     const handleToggleStatus = (promo: CatalogueOffer) => {
         updateOffer.mutate({
@@ -125,20 +158,15 @@ function PromotionsTab({ branchId, onCreatePromo, onEditPromo }: { branchId: str
         }
     };
 
-    const isExpired = (promo: CatalogueOffer) => {
-        if (!promo.endDate) return false;
-        return new Date(promo.endDate) < new Date();
-    };
-
     if (isLoading) {
         return (
-            <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <div className="space-y-4 md:space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
                 <div className="flex items-center justify-between">
-                    <div className="h-7 w-40 bg-gray-100 rounded animate-pulse"></div>
-                    <div className="h-10 w-44 bg-gray-100 rounded-full animate-pulse"></div>
+                    <div className="h-5 md:h-7 w-28 md:w-40 bg-gray-100 rounded animate-pulse"></div>
+                    <div className="h-9 md:h-10 w-20 md:w-44 bg-gray-100 rounded-full animate-pulse"></div>
                 </div>
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5">
-                    {[1, 2, 3, 4].map(i => <div key={i} className="aspect-square bg-gray-50 rounded-2xl animate-pulse"></div>)}
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 md:gap-5">
+                    {[1, 2, 3, 4].map(i => <div key={i} className="aspect-square bg-gray-50 rounded-xl md:rounded-2xl animate-pulse"></div>)}
                 </div>
             </div>
         );
@@ -149,19 +177,53 @@ function PromotionsTab({ branchId, onCreatePromo, onEditPromo }: { branchId: str
     }
 
     return (
-        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <div className="space-y-4 md:space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div className="flex items-center justify-between">
-                <h3 className="text-xl font-semibold text-gray-800">My Deals</h3>
-                <Button onClick={onCreatePromo} className="rounded-full font-bold gap-2">
-                    <Plus size={16} /> Create Deal
+                <h3 className="text-lg md:text-xl font-semibold text-gray-800">My Deals</h3>
+                <Button onClick={onCreatePromo} className="rounded-full font-bold gap-1.5 md:gap-2 text-xs md:text-sm h-9 md:h-10 px-3 md:px-4">
+                    <Plus size={14} /> <span className="hidden sm:inline">Create Deal</span><span className="sm:hidden">New</span>
                 </Button>
             </div>
 
+            {promotions && promotions.length > 0 && (
+                <div className="flex items-center gap-3">
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <button className="flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold bg-white border border-gray-200 hover:border-gray-300 transition-all">
+                                <span className="text-gray-500">Status:</span>
+                                <span className="text-gray-800">{statusFilter === 'active' ? 'Active' : statusFilter === 'all' ? 'All' : statusFilter === 'expired' ? 'Expired' : 'Paused'}</span>
+                                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="text-gray-400"><polyline points="6 9 12 15 18 9"/></svg>
+                            </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="start" className="min-w-[140px]">
+                            {[
+                                { key: 'active' as const, label: 'Active', count: statusCounts.active },
+                                { key: 'all' as const, label: 'All', count: statusCounts.all },
+                                { key: 'expired' as const, label: 'Expired', count: statusCounts.expired },
+                                { key: 'inactive' as const, label: 'Paused', count: statusCounts.inactive },
+                            ].map((tab) => (
+                                <DropdownMenuItem key={tab.key} onClick={() => setStatusFilter(tab.key)}>
+                                    <span className="flex-1">{tab.label}</span>
+                                    <span className="text-[10px] font-black text-gray-400">{tab.count}</span>
+                                    {statusFilter === tab.key && <span className="text-primary">✓</span>}
+                                </DropdownMenuItem>
+                            ))}
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                </div>
+            )}
+
             {!promotions || promotions.length === 0 ? (
                 <EmptyState icon={Tag} title="Your first deal is ready to launch" description="Create a deal to attract new customers and bring them back again." />
+            ) : filteredPromotions.length === 0 ? (
+                <EmptyState
+                    icon={Tag}
+                    title={`No ${statusFilter === 'all' ? '' : statusFilter === 'active' ? 'active ' : statusFilter === 'expired' ? 'expired ' : 'paused '}deals found`}
+                    description="Try a different filter or create a new deal."
+                />
             ) : (
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5">
-                    {promotions.map((promo) => {
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 md:gap-5">
+                    {filteredPromotions.map((promo) => {
                         const expired = isExpired(promo);
                         const claimedCount = (promo as any).claimedCount ?? 0;
                         const maxClaims = promo.quantity ?? 0;
@@ -218,7 +280,7 @@ function PromotionsTab({ branchId, onCreatePromo, onEditPromo }: { branchId: str
                                 </div>
 
                                 {/* Content */}
-                                <div className="p-3 space-y-2 flex-1">
+                                <div className="p-2 md:p-3 space-y-1.5 md:space-y-2 flex-1">
                                     <h3 className="font-semibold text-gray-800 text-[13px] leading-snug line-clamp-2 min-h-[2.5rem]">
                                         {promo.name}
                                     </h3>
@@ -297,14 +359,14 @@ function PromotionsTab({ branchId, onCreatePromo, onEditPromo }: { branchId: str
                                 </div>
 
                                 {/* Admin actions */}
-                                <div className="p-3 pt-0 space-y-2">
-                                    <div className="flex gap-2">
-                                        <Button variant="outline" className="flex-1 min-w-0 rounded-xl font-bold text-xs h-9 px-2" onClick={() => onEditPromo(promo)}>
+                                <div className="p-2 md:p-3 pt-0 space-y-1.5 md:space-y-2">
+                                    <div className="flex gap-1.5 md:gap-2">
+                                        <Button variant="outline" className="flex-1 min-w-0 rounded-xl font-bold text-[10px] md:text-xs h-8 md:h-9 px-1.5 md:px-2" onClick={() => onEditPromo(promo)}>
                                             Edit
                                         </Button>
                                         <Button
                                             variant="outline"
-                                            className="flex-1 min-w-0 rounded-xl font-bold text-xs h-9 px-2"
+                                            className="flex-1 min-w-0 rounded-xl font-bold text-[10px] md:text-xs h-8 md:h-9 px-1.5 md:px-2"
                                             onClick={() => handleToggleStatus(promo)}
                                             disabled={updateOffer.isPending || expired}
                                         >
@@ -312,16 +374,16 @@ function PromotionsTab({ branchId, onCreatePromo, onEditPromo }: { branchId: str
                                         </Button>
                                         <Button
                                             variant="outline"
-                                            className="min-w-0 rounded-xl px-3 h-9 text-red-500 hover:text-red-600 hover:bg-red-50"
+                                            className="min-w-0 rounded-xl px-2 md:px-3 h-8 md:h-9 text-red-500 hover:text-red-600 hover:bg-red-50"
                                             onClick={() => handleDelete(promo)}
                                             disabled={deleteOffer.isPending}
                                         >
-                                            <X size={15} />
+                                            <X size={13} />
                                         </Button>
                                     </div>
                                     <Button
                                         asChild
-                                        className="w-full rounded-xl font-bold text-xs h-9 transition-colors"
+                                        className="w-full rounded-xl font-bold text-[10px] md:text-xs h-8 md:h-9 transition-colors"
                                     >
                                         <Link href={`/promotions/${promo.id}`} className="flex items-center justify-center gap-2">
                                             <ArrowRight size={13} className="text-[#066CF4]" />
@@ -616,20 +678,20 @@ function CreatePromotionFlow({ branchId, onCancel, editPromo }: { branchId: stri
     };
 
     return (
-        <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-8 min-h-[600px] animate-in slide-in-from-right-8 duration-300">
-            <div className="flex items-center justify-between mb-8 pb-6 border-b border-gray-50">
+        <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-4 md:p-8 min-h-[600px] animate-in slide-in-from-right-8 duration-300">
+            <div className="flex items-center justify-between mb-4 md:mb-8 pb-4 md:pb-6 border-b border-gray-50">
                 <div>
-                    <h2 className="text-2xl font-semibold text-gray-800">{isEditing ? 'Edit Deal' : 'Create Deal'}</h2>
-                    <div className="text-sm font-bold text-gray-400 mt-1">Step {step} of 5</div>
+                    <h2 className="text-lg md:text-2xl font-semibold text-gray-800">{isEditing ? 'Edit Deal' : 'Create Deal'}</h2>
+                    <div className="text-xs md:text-sm font-bold text-gray-400 mt-0.5 md:mt-1">Step {step} of 5</div>
                 </div>
-                <Button variant="ghost" onClick={onCancel} className="text-gray-400 hover:text-gray-800 rounded-full size-10 p-0"><X size={20} /></Button>
+                <Button variant="ghost" onClick={onCancel} className="text-gray-400 hover:text-gray-800 rounded-full size-9 md:size-10 p-0"><X size={18} /></Button>
             </div>
 
-            <div className="max-w-xl mx-auto pt-8">
+            <div className="max-w-xl mx-auto pt-2 md:pt-8">
                 {step === 1 && (
-                    <div className="space-y-6 animate-in fade-in">
-                        <h3 className="text-xl font-semibold text-gray-800 text-center mb-8">What are you offering?</h3>
-                        <div className="grid grid-cols-1 gap-4">
+                    <div className="space-y-4 md:space-y-6 animate-in fade-in">
+                        <h3 className="text-lg md:text-xl font-semibold text-gray-800 text-center mb-4 md:mb-8">What are you offering?</h3>
+                        <div className="grid grid-cols-1 gap-2.5 md:gap-4">
                             {[
                                 { label: 'Discount', value: 'discount', description: 'Offer a percentage or fixed amount off your products' },
                                 { label: 'Free Item', value: 'free_item', description: 'Give away a free item with purchase to attract new customers' },
@@ -637,20 +699,20 @@ function CreatePromotionFlow({ branchId, onCancel, editPromo }: { branchId: stri
                                 { label: 'Free Delivery', value: 'free_delivery', description: 'Offer free delivery on orders above a minimum amount' },
                                 { label: 'Custom Offer', value: 'custom', description: 'Create a custom offer with your own terms' }
                             ].map((offer, i) => (
-                                <button key={i} onClick={() => { setOfferType(offer.value); }} className={cn("w-full p-6 text-left border-2 rounded-2xl transition-all group flex items-center justify-between", offerType === offer.value ? "border-primary bg-blue-50" : "border-gray-100 hover:border-primary hover:bg-blue-50")}>
+                                <button key={i} onClick={() => { setOfferType(offer.value); }} className={cn("w-full p-3.5 md:p-6 text-left border-2 rounded-xl md:rounded-2xl transition-all group flex items-center justify-between", offerType === offer.value ? "border-primary bg-blue-50" : "border-gray-100 hover:border-primary hover:bg-blue-50")}>
                                     <div>
-                                        <span className={cn("text-lg transition-all", offerType === offer.value ? "text-primary font-bold" : "font-semibold text-gray-700 group-hover:text-primary")}>{offer.label}</span>
-                                        <p className="text-sm text-gray-400 mt-1">{offer.description}</p>
+                                        <span className={cn("text-sm md:text-lg transition-all", offerType === offer.value ? "text-primary font-bold" : "font-semibold text-gray-700 group-hover:text-primary")}>{offer.label}</span>
+                                        <p className="text-xs md:text-sm text-gray-400 mt-0.5 md:mt-1">{offer.description}</p>
                                     </div>
-                                    <div className={cn("size-7 rounded-full border-2 flex items-center justify-center shrink-0", offerType === offer.value ? "border-primary bg-primary text-white" : "border-gray-300 group-hover:border-primary")}>
-                                        {offerType === offer.value && <CheckCircle2 size={14} />}
+                                    <div className={cn("size-6 md:size-7 rounded-full border-2 flex items-center justify-center shrink-0", offerType === offer.value ? "border-primary bg-primary text-white" : "border-gray-300 group-hover:border-primary")}>
+                                        {offerType === offer.value && <CheckCircle2 size={12} />}
                                     </div>
                                 </button>
                             ))}
                         </div>
                         {offerType && (
-                            <div className="flex justify-center pt-4">
-                                <Button onClick={() => setStep(2)} className="rounded-full px-10 font-bold">
+                            <div className="flex justify-center pt-2 md:pt-4">
+                                <Button onClick={() => setStep(2)} className="w-full md:w-auto rounded-full px-10 font-bold">
                                     Continue <ArrowRight size={16} className="ml-2" />
                                 </Button>
                             </div>
@@ -659,8 +721,8 @@ function CreatePromotionFlow({ branchId, onCancel, editPromo }: { branchId: stri
                 )}
 
                 {step === 2 && (
-                    <div className="space-y-6 animate-in fade-in">
-                        <h3 className="text-xl font-semibold text-gray-800 mb-6">Deal Details</h3>
+                    <div className="space-y-4 md:space-y-6 animate-in fade-in">
+                        <h3 className="text-lg md:text-xl font-semibold text-gray-800 mb-4 md:mb-6">Deal Details</h3>
                         <div className="space-y-4">
                             <div className="mb-2">
                                 <span className="text-xs font-bold text-primary uppercase tracking-wider bg-primary/10 px-3 py-1 rounded-full">
@@ -1232,37 +1294,37 @@ function CreatePromotionFlow({ branchId, onCancel, editPromo }: { branchId: stri
                                 )}
                             </div>
                         </div>
-                        <div className="flex justify-between pt-6">
-                            <Button variant="ghost" onClick={() => { setStep(1); resetTypeFields(); }} className="font-bold">Back</Button>
-                            <Button onClick={() => setStep(3)} disabled={!title} className="rounded-full px-8 font-bold">Next</Button>
+                        <div className="flex justify-between pt-4 md:pt-6">
+                            <Button variant="ghost" onClick={() => { setStep(1); resetTypeFields(); }} className="font-bold text-xs md:text-sm">Back</Button>
+                            <Button onClick={() => setStep(3)} disabled={!title} className="rounded-full px-6 md:px-8 font-bold text-xs md:text-sm">Next</Button>
                         </div>
                     </div>
                 )}
 
                 {step === 3 && (
-                    <div className="space-y-6 animate-in fade-in">
-                        <h3 className="text-xl font-semibold text-gray-800 text-center mb-8">Show this deal to:</h3>
-                        <div className="grid grid-cols-1 gap-4">
+                    <div className="space-y-4 md:space-y-6 animate-in fade-in">
+                        <h3 className="text-lg md:text-xl font-semibold text-gray-800 text-center mb-4 md:mb-8">Show this deal to:</h3>
+                        <div className="grid grid-cols-1 gap-2.5 md:gap-4">
                             {[
                                 { label: 'Nearby Customers', value: 'nearby_customers' },
                                 { label: 'Nearby Businesses', value: 'nearby_businesses' },
                                 { label: 'Everyone Nearby', value: 'everyone_nearby' }
                             ].map((item, i) => (
-                                <button key={i} onClick={() => { setAudience(item.value); setStep(4); }} className="w-full p-6 text-left border-2 border-gray-100 rounded-2xl hover:border-primary hover:bg-blue-50 transition-all group flex items-center justify-between">
-                                    <span className="font-semibold text-gray-700 group-hover:text-primary text-lg">{item.label}</span>
-                                    <ChevronRight className="text-gray-300 group-hover:text-primary" />
+                                <button key={i} onClick={() => { setAudience(item.value); setStep(4); }} className="w-full p-3.5 md:p-6 text-left border-2 border-gray-100 rounded-xl md:rounded-2xl hover:border-primary hover:bg-blue-50 transition-all group flex items-center justify-between">
+                                    <span className="font-semibold text-gray-700 group-hover:text-primary text-sm md:text-lg">{item.label}</span>
+                                    <ChevronRight className="text-gray-300 group-hover:text-primary" size={18} />
                                 </button>
                             ))}
                         </div>
-                        <div className="flex justify-between pt-6">
-                            <Button variant="ghost" onClick={() => setStep(2)} className="font-bold">Back</Button>
+                        <div className="flex justify-between pt-4 md:pt-6">
+                            <Button variant="ghost" onClick={() => setStep(2)} className="font-bold text-xs md:text-sm">Back</Button>
                         </div>
                     </div>
                 )}
 
                 {step === 4 && (
-                    <div className="space-y-6 animate-in fade-in">
-                        <h3 className="text-xl font-semibold text-gray-800 mb-6 text-center">Preview your Deal</h3>
+                    <div className="space-y-4 md:space-y-6 animate-in fade-in">
+                        <h3 className="text-lg md:text-xl font-semibold text-gray-800 mb-4 md:mb-6 text-center">Preview your Deal</h3>
 
                         {/* Card matching public PromotionCard design */}
                         <div className="max-w-sm mx-auto bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-100">
@@ -1390,20 +1452,20 @@ function CreatePromotionFlow({ branchId, onCancel, editPromo }: { branchId: stri
                             </div>
                         </div>
 
-                        <div className="flex justify-between pt-8">
-                            <Button variant="ghost" onClick={() => setStep(3)} className="font-bold">Back</Button>
-                            <Button onClick={() => setStep(5)} className="rounded-full px-8 font-bold">Looks Good</Button>
+                        <div className="flex justify-between pt-4 md:pt-8">
+                            <Button variant="ghost" onClick={() => setStep(3)} className="font-bold text-xs md:text-sm">Back</Button>
+                            <Button onClick={() => setStep(5)} className="rounded-full px-6 md:px-8 font-bold text-xs md:text-sm">Looks Good</Button>
                         </div>
                     </div>
                 )}
 
                 {step === 5 && (
-                    <div className="space-y-6 animate-in fade-in text-center">
-                        <div className="size-20 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                            <CheckCircle2 size={40} />
+                    <div className="space-y-4 md:space-y-6 animate-in fade-in text-center">
+                        <div className="size-16 md:size-20 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-3 md:mb-4">
+                            <CheckCircle2 size={32} />
                         </div>
-                        <h3 className="text-2xl font-semibold text-gray-800 mb-2">{isEditing ? 'Ready to Update!' : 'Ready to Publish!'}</h3>
-                        <p className="text-gray-500 text-sm mb-6 max-w-md mx-auto">{isEditing ? 'Your deal changes will be saved and immediately visible to customers and businesses nearby.' : 'Your deal will immediately be visible to customers and businesses nearby.'}</p>
+                        <h3 className="text-xl md:text-2xl font-semibold text-gray-800 mb-1.5 md:mb-2">{isEditing ? 'Ready to Update!' : 'Ready to Publish!'}</h3>
+                        <p className="text-gray-500 text-xs md:text-sm mb-4 md:mb-6 max-w-md mx-auto">{isEditing ? 'Your deal changes will be saved and immediately visible to customers and businesses nearby.' : 'Your deal will immediately be visible to customers and businesses nearby.'}</p>
 
                         {/* Mini preview card */}
                         <div className="max-w-xs mx-auto bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-100 text-left">
@@ -1455,11 +1517,11 @@ function CreatePromotionFlow({ branchId, onCancel, editPromo }: { branchId: stri
                             </div>
                         </div>
 
-                        <div className="flex items-center justify-center gap-4 mt-6">
-                            <Button variant="ghost" onClick={() => setStep(4)} className="font-bold">Back</Button>
+                        <div className="flex items-center justify-center gap-3 md:gap-4 mt-4 md:mt-6">
+                            <Button variant="ghost" onClick={() => setStep(4)} className="font-bold text-xs md:text-sm">Back</Button>
                             <Button
                                 onClick={handlePublish}
-                                className="rounded-full px-12 py-6 text-lg font-bold bg-primary hover:bg-primary/90"
+                                className="rounded-full px-8 md:px-12 py-4 md:py-6 text-sm md:text-lg font-bold bg-primary hover:bg-primary/90"
                                 disabled={isEditing ? updateOffer.isPending : createOffer.isPending}
                             >
                                 {isEditing
