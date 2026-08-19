@@ -128,6 +128,7 @@ describe('SubscriptionsService', () => {
     }),
     recordPayment: jest.fn().mockResolvedValue({}),
     chargeAuthorization: jest.fn(),
+    initializeTransaction: jest.fn(),
   };
 
   const mockCreditService = {
@@ -193,6 +194,11 @@ describe('SubscriptionsService', () => {
     }),
   };
 
+  const mockCouponEngineService = {
+    validatePromotion: jest.fn(),
+    recordRedemption: jest.fn(),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -239,10 +245,7 @@ describe('SubscriptionsService', () => {
         { provide: BranchesService, useValue: mockBranchesService },
         {
           provide: CouponEngineService,
-          useValue: {
-            validatePromotion: jest.fn(),
-            recordRedemption: jest.fn(),
-          },
+          useValue: mockCouponEngineService,
         },
         {
           provide: MailService,
@@ -682,6 +685,84 @@ describe('SubscriptionsService', () => {
       expect(result.taxAmount).toBe(750);
       expect(result.total).toBe(10750);
       expect(mockAddonsService.validateAddons).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('initializePayment', () => {
+    it('should calculate discounted amount and pass promo metadata to Paystack when promoCode is applied', async () => {
+      mockPlansService.findOne.mockResolvedValueOnce({
+        id: 'plan-1',
+        name: 'Silver Plan',
+        monthlyPrice: 7999,
+        isActive: true,
+        currency: 'NGN',
+      });
+
+      mockBusRepository.findOne.mockResolvedValueOnce({
+        id: 'b1',
+        officialEmail: 'test@business.com',
+        ownerId: 'u1',
+      });
+
+      mockCouponEngineService.validatePromotion.mockResolvedValueOnce({
+        isValid: true,
+        coupon: { id: 'c1', name: 'SAVE5K Discount', discountType: 'FIXED_AMOUNT', amount: 5000 },
+        promotionCode: { id: 'promo-1', code: 'SAVE5K' },
+        originalPlanPrice: 7999,
+        discountAmount: 5000,
+        discountedPlanPrice: 2999,
+        addonsSubtotal: 0,
+        netSubtotal: 2999,
+        taxAmount: 0,
+        total: 2999,
+        taxRule: { name: 'VAT', isEnabled: false, rate: 0, taxType: 'percentage' },
+      });
+
+      mockPaymentsService.initializeTransaction.mockResolvedValueOnce({
+        reference: 'SUB-b1-ref',
+        access_code: 'access-code-123',
+        authorization_url: 'https://checkout.paystack.com/access-code-123',
+      });
+
+      const result = await service.initializePayment({
+        planId: 'plan-1',
+        businessId: 'b1',
+        billingPeriod: BillingPeriod.MONTHLY,
+        promoCode: 'SAVE5K',
+      });
+
+      expect(mockCouponEngineService.validatePromotion).toHaveBeenCalledWith({
+        code: 'SAVE5K',
+        planId: 'plan-1',
+        billingPeriod: BillingPeriod.MONTHLY,
+        businessId: 'b1',
+        addonsSubtotal: 0,
+      });
+
+      expect(mockPaymentsService.initializeTransaction).toHaveBeenCalledWith(
+        expect.objectContaining({
+          email: 'test@business.com',
+          amount: 299900, // 2999 * 100 kobo
+          metadata: expect.objectContaining({
+            promoCode: 'SAVE5K',
+            discountAmount: 5000,
+            subtotal: 2999,
+          }),
+        }),
+      );
+
+      expect(mockPaymentsService.recordPayment).toHaveBeenCalledWith(
+        expect.objectContaining({
+          amount: 2999,
+          metadata: expect.objectContaining({
+            promoCode: 'SAVE5K',
+            total: 2999,
+          }),
+        }),
+      );
+
+      expect(result.amount).toBe(2999);
+      expect(result.access_code).toBe('access-code-123');
     });
   });
 });
