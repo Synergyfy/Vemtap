@@ -218,7 +218,7 @@ export default function DashboardPricingPage() {
     );
 
     return (
-        <div className="max-w-6xl mx-auto pb-20">
+        <div className="max-w-6xl mx-auto pb-20 px-4 sm:px-6 lg:px-8">
             <PageHeader
                 title="Billing & Subscription"
                 description="Manage your business plan, limits, and billing cycles."
