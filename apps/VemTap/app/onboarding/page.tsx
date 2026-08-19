@@ -33,7 +33,9 @@ import {
     Trash2,
     Plus,
     X,
-    Copy
+    Copy,
+    Tag,
+    Loader2
 } from 'lucide-react';
 import Logo from '@/components/brand/Logo';
 import LogoIcon from '@/components/brand/LogoIcon';
@@ -48,6 +50,7 @@ import { useSubscriptionStore } from '@/store/subscriptionStore';
 import type { PricingPlan } from '@/types/pricing';
 import { usePricingPlans } from '@/services/pricing/hooks';
 import { useSubscribe, useActiveSubscription } from '@/services/subscriptions/hooks';
+import type { DiscountBreakdown } from '@/types/subscriptions';
 import { loadPaystackScript } from '@/lib/loadPaystackScript';
 import { uploadToCloudinary } from '@/lib/cloudinary';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -2009,6 +2012,12 @@ function PaymentStep({ data, onNext }: { data: Partial<OnboardingData>, onNext: 
     const [isSuccess, setIsSuccess] = useState(false);
     const [isPending, setIsPending] = useState(false);
     const [chargedAmount, setChargedAmount] = useState<number | null>(null);
+    const [promoCodeInput, setPromoCodeInput] = useState('');
+    const [appliedPromo, setAppliedPromo] = useState<string | null>(null);
+    const [discount, setDiscount] = useState<DiscountBreakdown | null>(null);
+    const [taxName, setTaxName] = useState('VAT');
+    const [taxRate, setTaxRate] = useState(0);
+    const [taxEnabled, setTaxEnabled] = useState(false);
     const { user } = useAuthStore();
     const plan = useSubscriptionStore((s) => s.getPlan(data.planId));
     const subscribe = useSubscribe();
@@ -2067,21 +2076,31 @@ function PaymentStep({ data, onNext }: { data: Partial<OnboardingData>, onNext: 
         loadPaystackScript().catch(() => {});
     }, [plan]);
 
-    // Fetch the exact server-computed total (plan + tax) so the summary matches
-    // what will actually be charged. The trial deposit is a flat ₦100.
+    // Fetch the exact server-computed total (plan + tax + promo) so the summary
+    // matches what will actually be charged. The trial deposit is a flat ₦100.
     useEffect(() => {
         if (!plan || plan.isFree || isTrialMode) return;
         let cancelled = false;
         api.get('/subscriptions/price-preview', {
-            params: { planId: plan.id, billingPeriod: billingCycle },
+            params: {
+                planId: plan.id,
+                billingPeriod: billingCycle,
+                ...(appliedPromo ? { promoCode: appliedPromo } : {}),
+            },
         }).then((res) => {
             if (cancelled) return;
             if (typeof res?.total === 'number') {
                 setChargedAmount(res.total);
             }
+            if (res?.taxRule) {
+                setTaxName(res.taxRule.name || 'VAT');
+                setTaxRate(Number(res.taxRule.rate || 0));
+                setTaxEnabled(!!res.taxRule.isEnabled);
+            }
+            setDiscount(res?.discount || null);
         }).catch(() => {});
         return () => { cancelled = true; };
-    }, [plan, isTrialMode, billingCycle]);
+    }, [plan, isTrialMode, billingCycle, appliedPromo]);
 
     const activateSubscription = (reference: string) =>
         subscribe.mutateAsync({
@@ -2090,6 +2109,7 @@ function PaymentStep({ data, onNext }: { data: Partial<OnboardingData>, onNext: 
             businessId: user?.businessId,
             isTrial: isTrialMode,
             paymentReference: reference,
+            promoCode: appliedPromo || undefined,
         });
 
     const handleConfirmed = async (reference: string) => {
@@ -2169,6 +2189,7 @@ function PaymentStep({ data, onNext }: { data: Partial<OnboardingData>, onNext: 
                     billingPeriod: billingCycle,
                     businessId: user?.businessId,
                     isTrial: true,
+                    promoCode: appliedPromo || undefined,
                 });
                 setIsProcessing(false);
                 setIsSuccess(true);
@@ -2205,6 +2226,7 @@ function PaymentStep({ data, onNext }: { data: Partial<OnboardingData>, onNext: 
                 billingPeriod: billingCycle,
                 businessId: user?.businessId,
                 isTrial: isTrialMode,
+                promoCode: appliedPromo || undefined,
             });
             const accessCode: string | undefined = init?.access_code;
             const reference: string | undefined = init?.reference;
@@ -2371,12 +2393,25 @@ function PaymentStep({ data, onNext }: { data: Partial<OnboardingData>, onNext: 
                             <span>{billingCycle === 'yearly' ? 'Yearly' : billingCycle === 'quarterly' ? 'Quarterly' : 'Monthly'} Subscription</span>
                             <span>₦{subtotal.toLocaleString()}</span>
                         </div>
-                        {tax > 0 && (
-                            <div className="flex justify-between text-sm font-semibold text-text-secondary opacity-60">
-                                <span>Tax</span>
-                                <span>₦{tax.toLocaleString()}</span>
+                        {discount && (
+                            <div className="flex justify-between text-sm font-semibold text-emerald-600">
+                                <span className="uppercase truncate max-w-[60%]">
+                                    Promo ({discount.code})
+                                    {discount.discountType === 'PERCENTAGE'
+                                        ? ` ${discount.amount}%`
+                                        : ` ₦${Number(discount.amount).toLocaleString()}`}
+                                </span>
+                                <span>-₦{Number(discount.discountAmount || 0).toLocaleString()}</span>
                             </div>
                         )}
+                        <div className="flex justify-between text-sm font-semibold text-text-secondary opacity-60">
+                            <span>
+                                {taxEnabled
+                                    ? `${taxName} (${taxRate}%)`
+                                    : `${taxName} (exempt)`}
+                            </span>
+                            <span>{taxEnabled ? `₦${tax.toLocaleString()}` : '₦0'}</span>
+                        </div>
                         <div className="pt-3 border-t border-gray-200 flex justify-between text-lg font-bold text-primary">
                             <span>Total Due</span>
                             <span>{plan?.isFree ? 'Free' : `₦${total.toLocaleString()}`}</span>
@@ -2384,6 +2419,58 @@ function PaymentStep({ data, onNext }: { data: Partial<OnboardingData>, onNext: 
                     </div>
                 )}
             </div>
+
+            {/* Promo Code */}
+            {!isTrialMode && (
+                <div className="bg-gray-50/50 border border-gray-100 rounded-2xl p-5 max-w-md mx-auto space-y-3">
+                    <div className="flex items-center gap-2">
+                        <Tag size={14} className="text-primary" />
+                        <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Got a promo code?</p>
+                    </div>
+                    {appliedPromo && discount ? (
+                        <div className="flex items-center justify-between bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3">
+                            <div className="flex items-center gap-2">
+                                <span className="text-emerald-600 font-black uppercase text-sm tracking-wider">{appliedPromo}</span>
+                                <span className="text-xs font-bold text-emerald-700">
+                                    -₦{Number(discount.discountAmount || 0).toLocaleString()} applied
+                                </span>
+                            </div>
+                            <button
+                                onClick={() => { setPromoCodeInput(''); setAppliedPromo(null); setDiscount(null); }}
+                                className="text-[10px] font-bold text-red-400 hover:text-red-600 uppercase tracking-widest"
+                            >
+                                Remove
+                            </button>
+                        </div>
+                    ) : (
+                        <div className="flex gap-2">
+                            <input
+                                type="text"
+                                value={promoCodeInput}
+                                onChange={(e) => setPromoCodeInput(e.target.value.toUpperCase())}
+                                placeholder="Enter promo code"
+                                className="flex-1 min-w-0 uppercase px-4 py-3 bg-white border border-gray-200 rounded-xl text-sm font-bold focus:ring-2 focus:ring-primary/20 outline-none transition-all placeholder:normal-case placeholder:font-medium placeholder:text-gray-400"
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                        e.preventDefault();
+                                        if (promoCodeInput.trim()) setAppliedPromo(promoCodeInput.trim().toUpperCase());
+                                    }
+                                }}
+                            />
+                            <button
+                                onClick={() => {
+                                    const code = promoCodeInput.trim().toUpperCase();
+                                    if (code) setAppliedPromo(code);
+                                }}
+                                disabled={!promoCodeInput.trim()}
+                                className="h-auto px-4 py-2 bg-slate-900 text-white rounded-xl font-bold text-xs uppercase tracking-widest disabled:opacity-40 disabled:cursor-not-allowed transition-all hover:bg-slate-800"
+                            >
+                                Apply
+                            </button>
+                        </div>
+                    )}
+                </div>
+            )}
 
             <div className="max-w-md mx-auto">
                 <Button
