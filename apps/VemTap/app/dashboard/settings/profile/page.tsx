@@ -2041,7 +2041,7 @@ export default function BusinessProfilePage() {
                     </div>
                 )}
 
-                {activeTab === 'documents' && (isAllBranches || branches.length <= 1) && (
+                {activeTab === 'documents' && (
                     <div className="space-y-6">
                         {/* Business Identity Section (Redesigned & Collapsible) */}
                         <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">

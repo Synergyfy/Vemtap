@@ -260,100 +260,107 @@ export default function SubscriptionCheckout({ isOpen, onClose, plan, billingPer
             isOpen={isOpen}
             onClose={onClose}
             title="Complete Subscription"
-            description={`Upgrade your business to the ${plan.name} plan.`}
+            description={`Upgrade your business to the ${plan.name.replace(/\s*plan$/i, '')} plan.`}
         >
-            <div className="space-y-6 py-4">
-                {/* Plan Summary */}
-                <div className="bg-primary/5 border border-primary/20 rounded-2xl p-6">
-                    <div className="flex items-center justify-between mb-4">
-                        <div>
-                            <p className="text-[10px] font-black text-primary uppercase tracking-widest mb-1.5">Selected Plan</p>
-                            <h4 className="text-xl font-black text-text-main tracking-tight">{plan.name}</h4>
-                            <div className="flex items-center gap-1 mt-2 bg-white p-1 rounded-lg border border-primary/10 w-fit">
-                                {(['monthly', 'quarterly', 'yearly'] as const).map((cycle) => (
-                                    <button
-                                        key={cycle}
-                                        type="button"
-                                        onClick={() => onBillingPeriodChange?.(cycle)}
-                                        className={`px-2.5 py-1 rounded text-[9px] font-black uppercase tracking-widest transition-colors ${billingPeriod === cycle
-                                            ? 'bg-primary text-white'
-                                            : 'text-primary hover:bg-primary/10'
-                                            }`}
-                                    >
-                                        {cycle}
-                                    </button>
-                                ))}
-                            </div>
+            <div className="space-y-4 sm:space-y-6 py-2">
+                {/* Plan Summary Card */}
+                <div className="bg-primary/5 border border-primary/20 rounded-2xl p-4 sm:p-6">
+                    {/* Top Row: Plan info & Price */}
+                    <div className="flex items-start justify-between gap-3 mb-3">
+                        <div className="min-w-0 flex-1">
+                            <p className="text-[10px] font-black text-primary uppercase tracking-widest mb-1">Selected Plan</p>
+                            <h4 className="text-xl sm:text-2xl font-black text-text-main tracking-tight truncate">{plan.name}</h4>
                         </div>
-                        <div className="text-right flex flex-col items-end max-w-[50%]">
+                        <div className="text-right shrink-0">
                             {isTrial ? (
                                 <>
-                                    <p className="text-2xl font-black text-primary tracking-tighter">₦50</p>
-                                    <p className="text-[10px] text-text-secondary font-black uppercase tracking-widest leading-tight">Verification Fee<br />(refundable)</p>
+                                    <p className="text-xl sm:text-2xl font-black text-primary tracking-tight whitespace-nowrap">₦50</p>
+                                    <p className="text-[9px] sm:text-[10px] text-text-secondary font-black uppercase tracking-wider leading-tight">Verification Fee</p>
                                 </>
                             ) : breakdown ? (
                                 <>
-                                    <p className="text-xl md:text-2xl font-black text-primary tracking-tighter break-all">
+                                    <p className="text-xl sm:text-2xl font-black text-primary tracking-tight whitespace-nowrap">
                                         ₦{Number(breakdown.total).toLocaleString()}
                                     </p>
-                                    <p className="text-[10px] text-text-secondary font-black uppercase tracking-widest">{breakdown.label}</p>
+                                    <p className="text-[9px] sm:text-[10px] text-text-secondary font-black uppercase tracking-wider whitespace-nowrap">{breakdown.label}</p>
                                 </>
                             ) : (
                                 <>
-                                    <p className="text-xl md:text-2xl font-black text-primary tracking-tighter break-all">
+                                    <p className="text-xl sm:text-2xl font-black text-primary tracking-tight whitespace-nowrap">
                                         {formatPrice(Number(plan.monthlyPrice || 0))}
                                     </p>
-                                    <p className="text-[10px] text-text-secondary font-black uppercase tracking-widest">/mo</p>
+                                    <p className="text-[9px] sm:text-[10px] text-text-secondary font-black uppercase tracking-wider">/mo</p>
                                 </>
                             )}
                         </div>
                     </div>
 
+                    {/* Billing Period Selector */}
+                    <div className="pt-1 pb-1">
+                        <div className="flex w-full p-1 bg-white/90 rounded-xl border border-primary/10 shadow-xs">
+                            {(['monthly', 'quarterly', 'yearly'] as const).map((cycle) => (
+                                <button
+                                    key={cycle}
+                                    type="button"
+                                    onClick={() => onBillingPeriodChange?.(cycle)}
+                                    className={`flex-1 py-1.5 px-2 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all text-center ${
+                                        billingPeriod === cycle
+                                            ? 'bg-primary text-white shadow-sm'
+                                            : 'text-primary hover:bg-primary/10'
+                                    }`}
+                                >
+                                    {cycle}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Breakdown Table */}
                     {breakdown && !isTrial && (
-                        <div className="mt-4 bg-white border border-slate-100 rounded-xl px-4 py-3 space-y-1.5">
-                            <div className="flex items-center justify-between text-xs">
-                                <span className="font-medium text-slate-500">Plan ({plan.name})</span>
-                                <span className="font-bold text-slate-700">₦{Number(breakdown.planOriginalPrice).toLocaleString()}</span>
+                        <div className="mt-4 bg-white border border-slate-100 rounded-xl p-3.5 sm:p-4 space-y-2">
+                            <div className="flex items-center justify-between text-xs gap-2">
+                                <span className="font-medium text-slate-500 truncate">Plan ({plan.name})</span>
+                                <span className="font-bold text-slate-700 shrink-0 whitespace-nowrap">₦{Number(breakdown.planOriginalPrice).toLocaleString()}</span>
                             </div>
                             {breakdown.addonTotal > 0 && (
-                                <div className="flex items-center justify-between text-xs">
-                                    <span className="font-medium text-slate-500">Add-ons</span>
-                                    <span className="font-bold text-slate-700">₦{Number(breakdown.addonTotal).toLocaleString()}</span>
+                                <div className="flex items-center justify-between text-xs gap-2">
+                                    <span className="font-medium text-slate-500 truncate">Add-ons</span>
+                                    <span className="font-bold text-slate-700 shrink-0 whitespace-nowrap">₦{Number(breakdown.addonTotal).toLocaleString()}</span>
                                 </div>
                             )}
                             {breakdown.discount && (
-                                <div className="flex items-center justify-between text-xs text-emerald-600">
-                                    <span className="font-semibold uppercase truncate max-w-[55%]">
+                                <div className="flex items-center justify-between text-xs text-emerald-600 gap-2">
+                                    <span className="font-semibold uppercase truncate">
                                         Promo ({breakdown.discount.code})
                                         {breakdown.discount.discountType === 'PERCENTAGE'
                                             ? ` ${breakdown.discount.amount}%`
                                             : ` ₦${Number(breakdown.discount.amount).toLocaleString()}`}
                                     </span>
-                                    <span className="font-bold flex items-center gap-2">
+                                    <span className="font-bold flex items-center gap-1.5 shrink-0 whitespace-nowrap">
                                         -₦{Number(breakdown.discount.discountAmount || 0).toLocaleString()}
-                                        <button onClick={handleRemovePromo} className="text-red-400 hover:text-red-600">
-                                            <XCircle size={13} />
+                                        <button onClick={handleRemovePromo} className="text-red-400 hover:text-red-600 transition-colors p-0.5" title="Remove Promo">
+                                            <XCircle size={14} />
                                         </button>
                                     </span>
                                 </div>
                             )}
-                            <div className="flex items-center justify-between text-xs">
+                            <div className="flex items-center justify-between text-xs gap-2">
                                 <span className="font-medium text-slate-500">Subtotal</span>
-                                <span className="font-bold text-slate-700">₦{Number(breakdown.subtotal).toLocaleString()}</span>
+                                <span className="font-bold text-slate-700 shrink-0 whitespace-nowrap">₦{Number(breakdown.subtotal).toLocaleString()}</span>
                             </div>
-                            <div className="flex items-center justify-between text-xs">
-                                <span className="font-medium text-slate-500">
+                            <div className="flex items-center justify-between text-xs gap-2">
+                                <span className="font-medium text-slate-500 truncate">
                                     {breakdown.taxEnabled
                                         ? `${breakdown.taxName}${breakdown.taxType === 'percentage' ? ` (${breakdown.taxRate}%)` : ` (${formatPrice(breakdown.taxRate)})`}`
                                         : `${breakdown.taxName || 'VAT'} (exempt)`}
                                 </span>
-                                <span className="font-bold text-slate-700">
+                                <span className="font-bold text-slate-700 shrink-0 whitespace-nowrap">
                                     {breakdown.taxEnabled ? `₦${Number(breakdown.taxAmount).toLocaleString()}` : '₦0'}
                                 </span>
                             </div>
-                            <div className="flex items-center justify-between text-sm border-t border-slate-100 pt-1.5 mt-1">
+                            <div className="flex items-center justify-between text-sm sm:text-base border-t border-slate-100 pt-2 mt-1 gap-2">
                                 <span className="font-black text-slate-900">Total</span>
-                                <span className="font-black text-primary">₦{Number(breakdown.total).toLocaleString()}</span>
+                                <span className="font-black text-primary text-base sm:text-lg shrink-0 whitespace-nowrap">₦{Number(breakdown.total).toLocaleString()}</span>
                             </div>
                             {breakdown.taxEnabled && breakdown.taxType === 'percentage' && (
                                 <p className="text-[10px] font-medium text-slate-400 pt-0.5">
@@ -366,22 +373,22 @@ export default function SubscriptionCheckout({ isOpen, onClose, plan, billingPer
 
                 {/* Promo Code */}
                 {!isTrial && (
-                    <div className="bg-slate-50/50 border border-slate-100 rounded-3xl p-6">
-                        <div className="flex items-center gap-2 mb-2">
-                            <TagIcon size={15} className="text-primary" />
-                            <p className="text-xs font-black text-slate-700 uppercase tracking-widest">Got a promo code?</p>
+                    <div className="bg-slate-50/70 border border-slate-100 rounded-2xl p-4 sm:p-5">
+                        <div className="flex items-center gap-2 mb-2.5">
+                            <TagIcon size={14} className="text-primary" />
+                            <p className="text-[11px] font-black text-slate-700 uppercase tracking-wider">Got a promo code?</p>
                         </div>
                         {appliedPromo && pricePreview.data?.discount ? (
-                            <div className="flex items-center justify-between bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3">
-                                <div className="flex items-center gap-2">
-                                    <span className="text-emerald-600 font-black uppercase text-sm tracking-wider">{appliedPromo}</span>
+                            <div className="flex items-center justify-between bg-emerald-50 border border-emerald-200 rounded-xl px-3.5 py-2.5 gap-2">
+                                <div className="flex items-center gap-2 min-w-0">
+                                    <span className="text-emerald-700 font-black uppercase text-xs sm:text-sm tracking-wider truncate">{appliedPromo}</span>
                                     {breakdown?.discount && (
-                                        <span className="text-xs font-bold text-emerald-700">
+                                        <span className="text-[11px] sm:text-xs font-bold text-emerald-600 whitespace-nowrap">
                                             -₦{Number(breakdown.discount.discountAmount).toLocaleString()} applied
                                         </span>
                                     )}
                                 </div>
-                                <button onClick={handleRemovePromo} className="text-[10px] font-bold text-red-400 hover:text-red-600 uppercase tracking-widest">
+                                <button onClick={handleRemovePromo} className="text-[10px] font-bold text-red-500 hover:text-red-700 uppercase tracking-wider shrink-0 cursor-pointer">
                                     Remove
                                 </button>
                             </div>
@@ -393,7 +400,7 @@ export default function SubscriptionCheckout({ isOpen, onClose, plan, billingPer
                                         value={promoCodeInput}
                                         onChange={(e) => setPromoCodeInput(e.target.value.toUpperCase())}
                                         placeholder="Enter promo code"
-                                        className="flex-1 min-w-0 uppercase px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-bold focus:ring-2 focus:ring-primary/20 outline-none transition-all placeholder:normal-case placeholder:font-medium placeholder:text-slate-400"
+                                        className="flex-1 min-w-0 uppercase px-3.5 py-2.5 sm:py-3 bg-white border border-slate-200 rounded-xl text-xs sm:text-sm font-bold focus:ring-2 focus:ring-primary/20 outline-none transition-all placeholder:normal-case placeholder:font-medium placeholder:text-slate-400"
                                         onKeyDown={(e) => {
                                             if (e.key === 'Enter') {
                                                 e.preventDefault();
@@ -404,7 +411,7 @@ export default function SubscriptionCheckout({ isOpen, onClose, plan, billingPer
                                     <button
                                         onClick={handleApplyPromo}
                                         disabled={!promoCodeInput.trim() || pricePreview.isFetching}
-                                        className="h-auto px-4 py-2 bg-slate-900 text-white rounded-xl font-bold text-xs uppercase tracking-widest disabled:opacity-40 disabled:cursor-not-allowed transition-all hover:bg-slate-800"
+                                        className="px-4 py-2.5 sm:py-3 bg-slate-900 text-white rounded-xl font-bold text-xs uppercase tracking-wider disabled:opacity-40 disabled:cursor-not-allowed transition-all hover:bg-slate-800 shrink-0 min-w-[72px] flex items-center justify-center cursor-pointer"
                                     >
                                         {pricePreview.isFetching ? <Loader2 className="animate-spin" size={14} /> : 'Apply'}
                                     </button>
@@ -421,7 +428,7 @@ export default function SubscriptionCheckout({ isOpen, onClose, plan, billingPer
 
                 {/* Add-on Selection */}
                 {!isTrial && addons.length > 0 && (
-                    <div className="bg-slate-50/50 border border-slate-100 rounded-3xl p-6">
+                    <div className="bg-slate-50/70 border border-slate-100 rounded-2xl p-4 sm:p-5">
                         <AddOnSelectionList 
                             addons={addons.filter(a => a.isActive)}
                             selectedIds={selectedAddonIds}
@@ -432,11 +439,11 @@ export default function SubscriptionCheckout({ isOpen, onClose, plan, billingPer
                 )}
 
                 {/* Secure Info */}
-                <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4 flex gap-4">
-                    <div className="size-10 bg-white border border-slate-200 rounded-xl flex items-center justify-center shrink-0">
-                        <CreditCard className="text-slate-400" size={20} />
+                <div className="bg-slate-50 border border-slate-100 rounded-2xl p-3.5 sm:p-4 flex gap-3.5 items-start">
+                    <div className="size-9 bg-white border border-slate-200 rounded-xl flex items-center justify-center shrink-0 mt-0.5">
+                        <CreditCard className="text-slate-400" size={18} />
                     </div>
-                    <div>
+                    <div className="min-w-0">
                         <p className="text-xs font-bold text-slate-900 mb-0.5">Secure Payment via Paystack</p>
                         <p className="text-[10px] font-medium text-slate-500 leading-relaxed">
                             Your payment is encrypted and processed securely. We never store your card details on our servers.
@@ -445,11 +452,11 @@ export default function SubscriptionCheckout({ isOpen, onClose, plan, billingPer
                 </div>
 
                 {isTrial && (
-                    <div className="bg-amber-50 border border-amber-100 rounded-2xl p-4 flex gap-4">
-                        <div className="size-10 bg-white border border-amber-200 rounded-xl flex items-center justify-center shrink-0">
-                            <Info className="text-amber-500" size={20} />
+                    <div className="bg-amber-50 border border-amber-100 rounded-2xl p-3.5 sm:p-4 flex gap-3.5 items-start">
+                        <div className="size-9 bg-white border border-amber-200 rounded-xl flex items-center justify-center shrink-0 mt-0.5">
+                            <Info className="text-amber-500" size={18} />
                         </div>
-                        <div>
+                        <div className="min-w-0">
                             <p className="text-xs font-bold text-amber-900 mb-0.5">Card Verification</p>
                             <p className="text-[10px] font-medium text-amber-700 leading-relaxed">
                                 A small fee of <span className="font-bold">₦50</span> will be charged to verify your card and secure your trial. Your subscription will automatically start after {plan.trialDurationDays} days.
@@ -459,33 +466,34 @@ export default function SubscriptionCheckout({ isOpen, onClose, plan, billingPer
                 )}
 
                 {/* Trust Badges */}
-                <div className="flex items-center justify-center gap-8 text-[9px] font-black text-text-secondary uppercase tracking-widest py-2 border-y border-slate-50">
-                    <div className="flex items-center gap-2">
-                        <ShieldCheck size={14} className="text-primary" />
-                        SSL SECURE
+                <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-8 text-[9px] font-black text-text-secondary uppercase tracking-widest py-2 border-y border-slate-100">
+                    <div className="flex items-center gap-1.5">
+                        <ShieldCheck size={14} className="text-primary shrink-0" />
+                        <span>SSL SECURE</span>
                     </div>
-                    <div className="flex items-center gap-2">
-                        <Zap size={14} className="text-primary" />
-                        INSTANT ACTIVATION
+                    <div className="flex items-center gap-1.5">
+                        <Zap size={14} className="text-primary shrink-0" />
+                        <span>INSTANT ACTIVATION</span>
                     </div>
                 </div>
 
+                {/* Pay Button */}
                 <button
                     onClick={handlePayment}
                     disabled={isProcessing}
-                    className="w-full h-14 bg-primary text-white font-black rounded-xl hover:bg-primary-hover transition-all shadow-xl shadow-primary/25 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3 group text-xs uppercase tracking-widest"
+                    className="w-full h-13 sm:h-14 bg-primary text-white font-black rounded-2xl hover:bg-primary-hover transition-all shadow-xl shadow-primary/25 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 px-4 group text-xs sm:text-sm uppercase tracking-wider cursor-pointer active:scale-[0.99]"
                 >
                     {isProcessing ? (
                         <>
                             <Loader2 className="animate-spin" size={18} />
-                            Securing {isTrial ? 'Trial' : 'Transaction'}...
+                            <span>Securing {isTrial ? 'Trial' : 'Transaction'}...</span>
                         </>
                     ) : (
-                        <div className="flex items-center justify-center gap-2 px-2 w-full overflow-hidden">
-                            <span className="shrink-0">
+                        <div className="flex items-center justify-center gap-2 w-full">
+                            <span className="whitespace-nowrap">
                                 {isTrial ? 'Start' : 'Pay'}
                             </span>
-                            <span className="font-black truncate max-w-[150px] md:max-w-none">
+                            <span className="font-black whitespace-nowrap">
                                 {isTrial 
                                     ? `${plan.trialDurationDays}-Day Trial`
                                     : breakdown 
@@ -493,7 +501,7 @@ export default function SubscriptionCheckout({ isOpen, onClose, plan, billingPer
                                         : formatPrice(Number(plan.monthlyPrice || 0))
                                 }
                             </span>
-                            {!isTrial && <span className="shrink-0">& Activate</span>}
+                            {!isTrial && <span className="whitespace-nowrap hidden xs:inline">& Activate</span>}
                             <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform shrink-0" />
                         </div>
                     )}

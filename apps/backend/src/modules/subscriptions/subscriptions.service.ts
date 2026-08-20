@@ -94,9 +94,12 @@ export class SubscriptionsService {
     private readonly mailService: MailService,
   ) {}
 
-  async activeSubscription(businessId?: string): Promise<Subscription | null> {
+  async activeSubscription(
+    businessId?: string,
+    autoAssignFree = true,
+  ): Promise<Subscription | null> {
     if (!businessId) return null;
-    const sub = await this.subscriptionRepository.findOne({
+    let sub = await this.subscriptionRepository.findOne({
       where: {
         businessId,
         status: In([SubscriptionStatus.ACTIVE, SubscriptionStatus.TRIAL]),
@@ -115,7 +118,38 @@ export class SubscriptionsService {
       if (now > gracePeriod) {
         sub.status = SubscriptionStatus.EXPIRED;
         await this.subscriptionRepository.save(sub);
-        return null;
+        sub = null;
+      }
+    }
+
+    if (!sub && autoAssignFree) {
+      // Find latest subscription record to check past history
+      const lastSub = await this.subscriptionRepository.findOne({
+        where: { businessId },
+        relations: ['plan'],
+        order: { createdAt: 'DESC' },
+      });
+
+      // If business has NEVER had a subscription, OR their last subscription is EXPIRED:
+      // Auto-assign to Free plan and send email
+      if (!lastSub || lastSub.status === SubscriptionStatus.EXPIRED) {
+        try {
+          const isExpiredDowngrade = lastSub?.status === SubscriptionStatus.EXPIRED;
+          const freeSubResult = await this.subscribeToFreePlan(
+            businessId,
+            isExpiredDowngrade,
+          );
+          if (freeSubResult?.subscription) {
+            return this.subscriptionRepository.findOne({
+              where: { id: freeSubResult.subscription.id },
+              relations: ['plan'],
+            });
+          }
+        } catch (err: any) {
+          this.logger.error(
+            `Failed to auto-assign free plan in activeSubscription for ${businessId}: ${err?.message}`,
+          );
+        }
       }
     }
 
@@ -124,6 +158,7 @@ export class SubscriptionsService {
 
   async subscribeToFreePlan(
     businessId: string,
+    isExpiredDowngrade = false,
   ): Promise<{ subscription: Subscription; addOns?: any[] } | null> {
     const freePlan = await this.plansService.findFreePlan();
     if (!freePlan) {
@@ -137,7 +172,8 @@ export class SubscriptionsService {
       planId: freePlan.id,
       businessId,
       billingPeriod: BillingPeriod.YEARLY, // Default for free plan
-    });
+      isExpiredDowngrade,
+    } as any);
   }
 
   async cancelSubscription(
@@ -400,11 +436,20 @@ export class SubscriptionsService {
       }
     }
 
-    const activeSub = await this.activeSubscription(businessId);
-    const previousPlanName = activeSub?.plan?.name;
+    const activeSub = await this.activeSubscription(businessId, false);
+    let previousPlanName = activeSub?.plan?.name;
     if (activeSub) {
       activeSub.status = SubscriptionStatus.CANCELED;
       await this.subscriptionRepository.save(activeSub);
+    } else {
+      const lastSub = await this.subscriptionRepository.findOne({
+        where: { businessId },
+        relations: ['plan'],
+        order: { createdAt: 'DESC' },
+      });
+      if (lastSub?.plan?.name) {
+        previousPlanName = lastSub.plan.name;
+      }
     }
 
     const newSub = this.subscriptionRepository.create({
@@ -502,6 +547,11 @@ export class SubscriptionsService {
           const customerName =
             `${owner.firstName || ''} ${owner.lastName || ''}`.trim() ||
             'Valued Customer';
+          const isExpiredDowngrade = Boolean(
+            (subscribeDto as any)?.isExpiredDowngrade ||
+            (previousPlanName && plan.isFree && !isTrial && !isAdminOverride),
+          );
+
           this.mailService
             .sendPlanChangeEmail({
               email: owner.email,
@@ -513,6 +563,7 @@ export class SubscriptionsService {
               endDate,
               isTrial,
               isAdminOverride,
+              isExpiredDowngrade,
               previousPlanName,
               features: plan.features || [],
               credits: {
