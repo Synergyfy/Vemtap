@@ -266,9 +266,9 @@ export default function DashboardPricingPage() {
             )}
 
             {/* Current Plan Overview */}
-            <div className="mb-12 rounded-2xl border border-primary/10 bg-slate-50/70 p-6 md:p-8">
-                <div className="text-center max-w-3xl mx-auto mb-8">
-                    <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-primary/10 text-primary rounded-full text-[10px] font-semibold uppercase tracking-wider mb-4">
+            <div className="mb-8 sm:mb-12 rounded-2xl border border-primary/10 bg-slate-50/70 p-4 sm:p-6 md:p-8">
+                <div className="text-center max-w-3xl mx-auto mb-6 sm:mb-8">
+                    <div className="inline-flex items-center gap-2 px-3.5 sm:px-4 py-1.5 bg-primary/10 text-primary rounded-full text-[10px] font-semibold uppercase tracking-wider mb-3 sm:mb-4">
                         <Crown size={12} />
                         {showFreeTrialHeader ? 'Limited Time Offer' : 'Current Plan'}
                         {activePlan?.badge && (
@@ -282,40 +282,40 @@ export default function DashboardPricingPage() {
                             </span>
                         )}
                     </div>
-                    <h2 className="text-2xl md:text-4xl font-display font-bold text-text-main tracking-tight mb-4">
+                    <h2 className="text-2xl md:text-4xl font-display font-bold text-text-main tracking-tight mb-3 sm:mb-4">
                         {showFreeTrialHeader ? 'Keep Full Access Before Trial Ends' : `You are on ${activePlanName}`}
                     </h2>
-                    <p className="text-text-secondary font-medium">
+                    <p className="text-xs sm:text-sm text-text-secondary font-medium">
                         {activePlan?.description || 'Manage your subscription, billing cycle, and upgrade path from one place.'}
                     </p>
                 </div>
 
                 {showTrialCountdown && (
-                    <TrialCountdown trialEndDate={effectiveTrialEndDate} variant="panel" className="mb-8" />
+                    <TrialCountdown trialEndDate={effectiveTrialEndDate} variant="panel" className="mb-6 sm:mb-8" />
                 )}
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="rounded-2xl bg-white border border-slate-200 px-5 py-4 shadow-sm">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
+                    <div className="rounded-2xl bg-white border border-slate-200 px-4 sm:px-5 py-4 shadow-sm">
                         <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Status</p>
-                        <p className="mt-2 text-lg font-bold text-text-main">{showTrialCountdown ? 'Trial Active' : 'Active Subscription'}</p>
+                        <p className="mt-1.5 text-base sm:text-lg font-bold text-text-main">{showTrialCountdown ? 'Trial Active' : 'Active Subscription'}</p>
                     </div>
-                    <div className="rounded-2xl bg-white border border-slate-200 px-5 py-4 shadow-sm">
+                    <div className="rounded-2xl bg-white border border-slate-200 px-4 sm:px-5 py-4 shadow-sm">
                         <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Current Price</p>
-                        <p className="mt-2 text-lg font-bold text-text-main">
+                        <p className="mt-1.5 text-base sm:text-lg font-bold text-text-main">
                             {activePlan ? formatPrice(activePlan.monthlyPrice) : formatPrice(0)}
                             {activePlan?.id !== 'free' && <span className="text-xs font-bold text-slate-500"> / {activeBillingPeriod === 'yearly' ? 'yr' : activeBillingPeriod === 'quarterly' ? 'qtr' : 'mo'}</span>}
                         </p>
                     </div>
-                    <div className="rounded-2xl bg-white border border-slate-200 px-5 py-4 shadow-sm">
+                    <div className="rounded-2xl bg-white border border-slate-200 px-4 sm:px-5 py-4 shadow-sm sm:col-span-2 md:col-span-1">
                         <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Period</p>
                         {activePlan?.isFree ? (
-                            <p className="mt-2 text-lg font-bold text-green-600">Free Plan</p>
+                            <p className="mt-1.5 text-base sm:text-lg font-bold text-green-600">Free Plan</p>
                         ) : (
                             <>
-                                <p className="mt-2 text-lg font-bold text-text-main">
+                                <p className="mt-1.5 text-base sm:text-lg font-bold text-text-main">
                                     {periodStart ? `Start ${new Date(periodStart).toLocaleDateString()}` : 'Start N/A'}
                                 </p>
-                                <p className="mt-1 text-xs font-bold text-slate-500">
+                                <p className="mt-0.5 text-xs font-bold text-slate-500">
                                     {displayPeriodEnd ? `End ${new Date(displayPeriodEnd).toLocaleDateString()}` : 'End N/A'}
                                 </p>
                             </>
@@ -323,11 +323,11 @@ export default function DashboardPricingPage() {
                     </div>
                 </div>
 
-                <div className="mt-6 flex flex-wrap gap-3">
-                    <Link href="/dashboard/settings/subscription/manage" className="h-10 px-5 bg-primary text-white rounded-xl font-semibold text-xs uppercase tracking-wider hover:bg-primary-hover transition-all flex items-center justify-center gap-2 shadow-lg shadow-primary/25">
+                <div className="mt-6 flex flex-wrap gap-2.5 sm:gap-3">
+                    <Link href="/dashboard/settings/subscription/manage" className="h-10 px-4 sm:px-5 bg-primary text-white rounded-xl font-semibold text-xs uppercase tracking-wider hover:bg-primary-hover transition-all flex items-center justify-center gap-2 shadow-lg shadow-primary/25 flex-1 sm:flex-initial text-center">
                         Update Pricing
                     </Link>
-                    <Link href="/dashboard/settings/subscription/details" className="h-10 px-5 bg-white text-primary border border-primary/30 rounded-xl font-semibold text-xs uppercase tracking-wider hover:bg-primary/5 transition-all flex items-center justify-center gap-2">
+                    <Link href="/dashboard/settings/subscription/details" className="h-10 px-4 sm:px-5 bg-white text-primary border border-primary/30 rounded-xl font-semibold text-xs uppercase tracking-wider hover:bg-primary/5 transition-all flex items-center justify-center gap-2 flex-1 sm:flex-initial text-center">
                         See More Details
                     </Link>
                     {isOnTrial && activePlan && !activePlan.isFree && isOwner && (
@@ -336,21 +336,21 @@ export default function DashboardPricingPage() {
                                 setIsTrialSelection(false);
                                 setCheckoutPlan({ ...activePlan, billingPeriod: activeBillingPeriod });
                             }}
-                            className="h-10 px-5 bg-primary-dark text-white rounded-xl font-semibold text-xs uppercase tracking-wider hover:bg-primary-hover transition-all"
+                            className="h-10 px-4 sm:px-5 bg-primary-dark text-white rounded-xl font-semibold text-xs uppercase tracking-wider hover:bg-primary-hover transition-all flex-1 sm:flex-initial text-center cursor-pointer"
                         >
                             Upgrade Before Trial Ends
                         </button>
                     )}
                     <a
                         href="#addons-section"
-                        className="h-10 px-5 bg-white text-emerald-600 border border-emerald-300 rounded-xl font-semibold text-xs uppercase tracking-wider hover:bg-emerald-50 transition-all flex items-center justify-center gap-2"
+                        className="h-10 px-4 sm:px-5 bg-white text-emerald-600 border border-emerald-300 rounded-xl font-semibold text-xs uppercase tracking-wider hover:bg-emerald-50 transition-all flex items-center justify-center gap-2 flex-1 sm:flex-initial text-center"
                     >
                         <Zap size={14} />
                         Power-Ups
                     </a>
                     <a
                         href="#credits-section"
-                        className="h-10 px-5 bg-white text-amber-600 border border-amber-300 rounded-xl font-semibold text-xs uppercase tracking-wider hover:bg-amber-50 transition-all flex items-center justify-center gap-2"
+                        className="h-10 px-4 sm:px-5 bg-white text-amber-600 border border-amber-300 rounded-xl font-semibold text-xs uppercase tracking-wider hover:bg-amber-50 transition-all flex items-center justify-center gap-2 flex-1 sm:flex-initial text-center"
                     >
                         <Coins size={14} />
                         Credit Packs
@@ -359,14 +359,14 @@ export default function DashboardPricingPage() {
             </div>
 
             {/* Change Plan Section */}
-            <div className="flex items-center justify-between mb-8">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 sm:mb-8">
                 <h3 className="text-xl md:text-2xl font-bold text-slate-900 tracking-tight">Available Plans</h3>
-                <div className="bg-slate-100 p-1 rounded-xl flex items-center gap-1">
+                <div className="bg-slate-100 p-1 rounded-xl flex items-center gap-1 w-full sm:w-auto">
                     {(['monthly', 'quarterly', 'yearly'] as const).map((cycle) => (
                         <button
                             key={cycle}
                             onClick={() => setBillingPeriod(cycle)}
-                            className={`px-4 py-1.5 rounded-lg text-[10px] font-semibold uppercase tracking-wider transition-all ${billingPeriod === cycle ? 'bg-white text-primary shadow-sm' : 'text-slate-500 hover:text-slate-900'
+                            className={`flex-1 sm:flex-initial px-3 sm:px-4 py-1.5 rounded-lg text-[10px] font-semibold uppercase tracking-wider transition-all text-center cursor-pointer ${billingPeriod === cycle ? 'bg-white text-primary shadow-sm font-bold' : 'text-slate-500 hover:text-slate-900'
                                 }`}
                         >
                             {cycle}
@@ -562,39 +562,39 @@ export default function DashboardPricingPage() {
                 const price = getPriceByCycle(enterprisePlan, billingPeriod);
 
                 return (
-                    <div className="mt-12 relative flex flex-col md:flex-row items-center gap-8 p-6 md:p-8 rounded-2xl bg-gradient-to-br from-primary to-primary-dark text-white shadow-2xl shadow-primary/20 border border-white/10 overflow-hidden">
+                    <div className="mt-8 sm:mt-12 relative flex flex-col md:flex-row items-stretch md:items-center gap-6 sm:gap-8 p-5 sm:p-8 rounded-2xl bg-gradient-to-br from-primary to-primary-dark text-white shadow-2xl shadow-primary/20 border border-white/10 overflow-hidden">
                         <div className="absolute top-0 right-0 w-64 h-64 bg-primary-light/30 blur-[100px] rounded-full -mr-32 -mt-32" />
 
-                        <div className="relative z-10 flex-1 text-center md:text-left">
+                        <div className="relative z-10 flex-1 text-left">
                             <div className="inline-block px-2.5 py-1 bg-white/10 text-white text-[8px] font-semibold rounded-full uppercase tracking-wider mb-3 border border-white/10">
                                 Enterprise
                             </div>
                             <h3 className="text-xl md:text-2xl font-bold mb-1 tracking-tight text-white">
                                 {enterprisePlan.name}
                             </h3>
-                            <p className="text-xs mb-6 font-bold text-white/50 max-w-xl">
+                            <p className="text-xs mb-6 font-medium text-white/70 max-w-xl">
                                 {enterprisePlan.description}
                             </p>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-2">
                                 {[...features.included, ...features.limits].slice(0, 4).map((item: string, i: number) => (
-                                    <li key={i} className="flex items-center text-[10px] font-semibold uppercase tracking-wider gap-2.5 list-none justify-center md:justify-start">
-                                        <CheckCircle2 size={12} className="text-primary shrink-0" />
-                                        <span className="text-white/70">{item}</span>
+                                    <li key={i} className="flex items-center text-[10px] font-semibold uppercase tracking-wider gap-2.5 list-none justify-start">
+                                        <CheckCircle2 size={12} className="text-white shrink-0" />
+                                        <span className="text-white/80">{item}</span>
                                     </li>
                                 ))}
                             </div>
                         </div>
 
-                        <div className="relative z-10 flex flex-col items-center md:items-end gap-5 shrink-0">
-                            <div className="text-center md:text-right">
-                                <span className="text-3xl md:text-4xl font-bold block leading-none">{formatPrice(price)}</span>
-                                <span className="text-[10px] font-semibold uppercase tracking-wider opacity-40 mt-1 block">
+                        <div className="relative z-10 flex flex-col items-start md:items-end gap-4 shrink-0">
+                            <div className="text-left md:text-right">
+                                <span className="text-2xl sm:text-3xl md:text-4xl font-bold block leading-none whitespace-nowrap">{formatPrice(price)}</span>
+                                <span className="text-[10px] font-semibold uppercase tracking-wider opacity-60 mt-1 block">
                                     /{billingPeriod === 'yearly' ? 'yr' : billingPeriod === 'quarterly' ? 'qtr' : 'mo'}
                                 </span>
                             </div>
                             <button
                                 onClick={() => handlePlanSelect(enterprisePlan)}
-                                className="px-6 h-10 bg-white text-slate-900 rounded-xl font-semibold text-xs uppercase tracking-wider hover:bg-slate-50 transition-all shadow-lg active:scale-[0.98] whitespace-nowrap"
+                                className="w-full sm:w-auto px-6 h-11 bg-white text-slate-900 rounded-xl font-semibold text-xs uppercase tracking-wider hover:bg-slate-50 transition-all shadow-lg active:scale-[0.98] whitespace-nowrap cursor-pointer text-center"
                             >
                                 Contact Sales
                             </button>
@@ -774,28 +774,28 @@ export default function DashboardPricingPage() {
             </div>
 
             {/* Credit Packs Section */}
-            <div id="credits-section" className="mt-20">
-                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-200 rounded-2xl p-8">
+            <div id="credits-section" className="mt-12 sm:mt-20">
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6 bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-200 rounded-2xl p-5 sm:p-8">
                     <div>
-                        <h3 className="text-xl md:text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-3 mb-2">
-                            <Coins className="text-amber-500" />
+                        <h3 className="text-xl md:text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2.5 sm:gap-3 mb-2">
+                            <Coins className="text-amber-500 shrink-0" />
                             Credit Packs
                         </h3>
-                        <p className="text-sm font-medium text-slate-600 max-w-xl">
+                        <p className="text-xs sm:text-sm font-medium text-slate-600 max-w-xl">
                             Top up AI analysis credits, SMS, Email, and WhatsApp messaging credits for your business.
                         </p>
                     </div>
-                    <div className="flex gap-3 shrink-0">
+                    <div className="flex flex-wrap gap-2.5 sm:gap-3 shrink-0 w-full sm:w-auto">
                         <a
                             href="/dashboard/ai"
-                            className="h-10 px-6 bg-amber-500 text-white rounded-xl font-semibold text-xs uppercase tracking-wider hover:bg-amber-600 transition-all flex items-center gap-2 shadow-lg shadow-amber-500/20"
+                            className="h-10 px-5 sm:px-6 bg-amber-500 text-white rounded-xl font-semibold text-xs uppercase tracking-wider hover:bg-amber-600 transition-all flex items-center justify-center gap-2 shadow-lg shadow-amber-500/20 flex-1 sm:flex-initial text-center"
                         >
                             <Sparkles size={16} />
                             AI Credit
                         </a>
                         <a
                             href="/dashboard/messaging/credits"
-                            className="h-10 px-6 bg-white text-slate-700 border border-slate-200 rounded-xl font-semibold text-xs uppercase tracking-wider hover:bg-slate-50 transition-all flex items-center gap-2"
+                            className="h-10 px-5 sm:px-6 bg-white text-slate-700 border border-slate-200 rounded-xl font-semibold text-xs uppercase tracking-wider hover:bg-slate-50 transition-all flex items-center justify-center gap-2 flex-1 sm:flex-initial text-center"
                         >
                             <Mail size={16} />
                             SMS/Email Credit
