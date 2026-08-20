@@ -164,6 +164,22 @@ describe('MailService', () => {
       expect(html).toContain('Unlimited Staff');
     });
 
+    it('should generate expired plan downgrade email HTML with appropriate notice and renewal CTA', () => {
+      const { subject, html } = service.generatePlanChangeEmailHtml({
+        ...mockParams,
+        planName: 'Free Plan',
+        previousPlanName: 'Enterprise Growth',
+        isAdminOverride: false,
+        isExpiredDowngrade: true,
+      });
+
+      expect(subject).toContain('Enterprise Growth Plan Expired — Free Plan Activated');
+      expect(html).toContain('Subscription Expired');
+      expect(html).toContain('Subscription Expired • Free Plan Active');
+      expect(html).toContain('Free Plan');
+      expect(html).toContain('Renew / Upgrade Plan');
+    });
+
     it('should send plan change email via resend', async () => {
       const sendSpy = jest
         .spyOn((service as any).resend.emails, 'send')
