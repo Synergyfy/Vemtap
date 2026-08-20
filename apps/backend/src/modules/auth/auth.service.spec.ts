@@ -106,6 +106,7 @@ describe('AuthService', () => {
 
   const mockSubscriptionsService = {
     subscribeToFreePlan: jest.fn().mockResolvedValue({ id: 'sub-1' }),
+    activeSubscription: jest.fn().mockResolvedValue(null),
     syncUserSubscriptionToQrThrive: jest.fn().mockResolvedValue(undefined),
   };
 
@@ -650,6 +651,27 @@ describe('AuthService', () => {
 
       expect(result.access_token).toBe('mock_token');
       expect(result.user.role).toBe(UserRole.CUSTOMER);
+    });
+
+    it('should auto-subscribe owner with business to free plan on login if no active plan exists', async () => {
+      const user = {
+        id: 'owner-1',
+        email: 'owner@example.com',
+        role: UserRole.OWNER,
+        password: 'hashed_password',
+      };
+      usersService.findByIdentifier.mockResolvedValue(user);
+      (bcrypt.compare as jest.Mock).mockResolvedValue(true);
+      mockBusinessesService.findByOwner.mockResolvedValue({ id: 'biz-1' });
+      mockSubscriptionsService.activeSubscription.mockResolvedValue(null);
+
+      const result = await service.login({
+        identifier: 'owner@example.com',
+        password: 'password123',
+      });
+
+      expect(result.access_token).toBe('mock_token');
+      expect(mockSubscriptionsService.subscribeToFreePlan).toHaveBeenCalledWith('biz-1', true);
     });
 
     it('should throw for non-existent user', async () => {

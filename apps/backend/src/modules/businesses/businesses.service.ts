@@ -183,6 +183,16 @@ export class BusinessesService {
       );
     }
 
+    // Auto-subscribe to free plan if available
+    try {
+      await this.subscriptionsService.subscribeToFreePlan(savedBusiness.id);
+    } catch (error) {
+      console.error(
+        `Failed to auto-subscribe business ${savedBusiness.id} to free plan:`,
+        error,
+      );
+    }
+
     return savedBusiness;
   }
 

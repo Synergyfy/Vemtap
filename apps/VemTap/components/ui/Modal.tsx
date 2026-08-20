@@ -75,15 +75,15 @@ export default function Modal({
                     >
                         {/* Header */}
                         {(title || showClose) && (
-                            <div className="flex items-center justify-between p-8 pb-4">
-                                <div className="flex-1">
+                            <div className="flex items-start justify-between p-5 sm:p-7 pb-2 sm:pb-3">
+                                <div className="flex-1 min-w-0 pr-2">
                                     {title && (
-                                        <h3 className="text-xl font-display font-bold text-slate-900 leading-tight">
+                                        <h3 className="text-lg sm:text-xl font-display font-bold text-slate-900 leading-tight">
                                             {title}
                                         </h3>
                                     )}
                                     {description && (
-                                        <p className="text-sm text-slate-500 font-medium mt-1">
+                                        <p className="text-xs sm:text-sm text-slate-500 font-medium mt-1">
                                             {description}
                                         </p>
                                     )}
@@ -91,16 +91,16 @@ export default function Modal({
                                 {showClose && (
                                     <button
                                         onClick={onClose}
-                                        className="p-2 hover:bg-primary/5 rounded-lg text-slate-400 hover:text-primary transition-colors shrink-0 ml-4 cursor-pointer"
+                                        className="p-2 hover:bg-primary/5 rounded-xl text-slate-400 hover:text-primary transition-colors shrink-0 cursor-pointer"
                                     >
-                                        <X size={20} />
+                                        <X size={18} />
                                     </button>
                                 )}
                             </div>
                         )}
 
                         {/* Body */}
-                        <div className="flex-1 overflow-y-auto p-8 scrollbar-hide">
+                        <div className="flex-1 overflow-y-auto p-5 sm:p-7 pt-1 sm:pt-1 scrollbar-hide">
                             {children}
                         </div>
                     </motion.div>

@@ -277,24 +277,50 @@ export class AuthService {
       }
     }
 
+    const effectiveBusinessId = businessId || (user as any).businessId;
+
+    // Auto-subscribe to free plan before returning auth response if no active plan exists
+    if (
+      effectiveBusinessId &&
+      (user.role === UserRole.OWNER || user.role === UserRole.MANAGER)
+    ) {
+      try {
+        const activeSub =
+          await this.subscriptionsService.activeSubscription(
+            effectiveBusinessId,
+          );
+        if (!activeSub) {
+          await this.subscriptionsService.subscribeToFreePlan(
+            effectiveBusinessId,
+            true,
+          );
+        }
+      } catch (err) {
+        console.error(
+          `Failed to auto-subscribe business ${effectiveBusinessId} to free plan on login:`,
+          err,
+        );
+      }
+    }
+
     const session = await this.usersService.createSession(user.id as string);
     const payload = {
       email: user.email,
       sub: user.id,
       role: user.role,
       branchId: branchId,
-      businessId: businessId || (user as any).businessId,
+      businessId: effectiveBusinessId,
       referralCode,
       sid: session.id,
     };
     delete user.password;
     // Background sync subscription to QR-Thrive
     if (
-      businessId &&
+      effectiveBusinessId &&
       (user.role === UserRole.OWNER || user.role === UserRole.MANAGER)
     ) {
       this.subscriptionsService
-        .syncUserSubscriptionToQrThrive(businessId)
+        .syncUserSubscriptionToQrThrive(effectiveBusinessId)
         .catch((err) => {
           console.error('Background QR-Thrive sync failed on login:', err);
         });
@@ -305,7 +331,7 @@ export class AuthService {
       sessionId: session.id,
       user: {
         ...user,
-        businessId: businessId || (user as any).businessId,
+        businessId: effectiveBusinessId,
         branchId: branchId,
         referralCode,
       },

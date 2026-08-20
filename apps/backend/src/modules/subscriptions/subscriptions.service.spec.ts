@@ -114,8 +114,14 @@ describe('SubscriptionsService', () => {
   };
 
   const mockPlansService = {
-    findOne: jest.fn().mockResolvedValue(mockPlan),
+    findOne: jest.fn().mockImplementation((id) => {
+      if (id === '2' || id === mockFreePlan.id) {
+        return Promise.resolve(mockFreePlan);
+      }
+      return Promise.resolve(mockPlan);
+    }),
     findAll: jest.fn().mockResolvedValue([mockFreePlan, mockPlan]),
+    findFreePlan: jest.fn().mockResolvedValue(mockFreePlan),
   };
 
   const mockPaymentsService = {
@@ -404,6 +410,108 @@ describe('SubscriptionsService', () => {
 
         expect(result.subscription.status).toBe(SubscriptionStatus.ACTIVE);
       });
+    });
+  });
+
+  describe('activeSubscription', () => {
+    it('should return active subscription if present', async () => {
+      mockSubRepository.findOne.mockResolvedValueOnce(mockSubscription);
+      const sub = await service.activeSubscription('b1');
+      expect(sub).toEqual(mockSubscription);
+    });
+
+    it('should auto-subscribe to free plan if business has no subscription history', async () => {
+      // 1st findOne: active sub check -> null
+      // 2nd findOne: any past sub check -> null
+      // 3rd findOne: active sub check inside subscribe() -> null
+      // 4th findOne: fetch created free sub with relation -> returns created sub
+      mockSubRepository.findOne
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce({
+          ...mockSubscription,
+          id: 'new-free-sub',
+          plan: mockFreePlan,
+          status: SubscriptionStatus.ACTIVE,
+        });
+
+      mockPlansService.findFreePlan = jest.fn().mockResolvedValue(mockFreePlan);
+      mockPlansService.findOne = jest.fn().mockResolvedValue(mockFreePlan);
+      mockBusRepository.findOne.mockResolvedValue({ id: 'b1', owner: { id: 'u1' } });
+      mockSubRepository.create.mockReturnValue({
+        ...mockSubscription,
+        id: 'new-free-sub',
+        plan: mockFreePlan,
+        status: SubscriptionStatus.ACTIVE,
+      });
+      mockSubRepository.save.mockResolvedValue({
+        ...mockSubscription,
+        id: 'new-free-sub',
+        plan: mockFreePlan,
+        status: SubscriptionStatus.ACTIVE,
+      });
+
+      const result = await service.activeSubscription('b1');
+      expect(result).toBeDefined();
+      expect(result?.plan?.id).toBe(mockFreePlan.id);
+    });
+
+    it('should auto-downgrade to free plan and send email if subscription is expired', async () => {
+      const expiredSub = {
+        ...mockSubscription,
+        id: 'expired-sub-1',
+        status: SubscriptionStatus.ACTIVE,
+        endDate: new Date(Date.now() - 48 * 3600 * 1000), // 48h ago (past grace period)
+      };
+
+      // 1st findOne: active sub check (found expired sub)
+      // 2nd findOne: lastSub check in activeSubscription (returns expired sub)
+      // 3rd findOne: active sub check inside subscribe() -> null
+      // 4th findOne: lastSub check inside subscribe() for previousPlanName -> returns expired sub
+      // 5th findOne: fetch created free sub with relation -> returns created free sub
+      mockSubRepository.findOne
+        .mockResolvedValueOnce(expiredSub)
+        .mockResolvedValueOnce({ ...expiredSub, status: SubscriptionStatus.EXPIRED })
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce({ ...expiredSub, status: SubscriptionStatus.EXPIRED })
+        .mockResolvedValueOnce({
+          ...mockSubscription,
+          id: 'downgraded-free-sub',
+          plan: mockFreePlan,
+          status: SubscriptionStatus.ACTIVE,
+        });
+
+      mockPlansService.findFreePlan = jest.fn().mockResolvedValue(mockFreePlan);
+      mockPlansService.findOne = jest.fn().mockResolvedValue(mockFreePlan);
+      mockBusRepository.findOne.mockResolvedValue({
+        id: 'b1',
+        name: 'My Store',
+        owner: { id: 'u1', email: 'owner@example.com', firstName: 'John' },
+      });
+      mockSubRepository.create.mockReturnValue({
+        ...mockSubscription,
+        id: 'downgraded-free-sub',
+        plan: mockFreePlan,
+        status: SubscriptionStatus.ACTIVE,
+      });
+      mockSubRepository.save.mockResolvedValue({
+        ...mockSubscription,
+        id: 'downgraded-free-sub',
+        plan: mockFreePlan,
+        status: SubscriptionStatus.ACTIVE,
+      });
+
+      const result = await service.activeSubscription('b1');
+      expect(result).toBeDefined();
+      expect(result?.id).toBe('downgraded-free-sub');
+      expect(mockMailService.sendPlanChangeEmail).toHaveBeenCalledWith(
+        expect.objectContaining({
+          isExpiredDowngrade: true,
+          planName: mockFreePlan.name,
+        }),
+      );
     });
   });
 

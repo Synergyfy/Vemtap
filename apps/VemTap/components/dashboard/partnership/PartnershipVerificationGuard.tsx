@@ -58,7 +58,7 @@ export default function PartnershipVerificationGuard({ children }: PartnershipVe
 
                         {/* Action Button */}
                         <button
-                            onClick={() => router.push('/dashboard/settings/profile')}
+                            onClick={() => router.push('/dashboard/settings/profile?tab=documents')}
                             className="w-full h-12 md:h-13 bg-primary text-white rounded-2xl font-bold text-sm hover:bg-primary/90 transition-all shadow-lg shadow-primary/25 flex items-center justify-center gap-2 cursor-pointer active:scale-95"
                         >
                             <FileText size={18} />
