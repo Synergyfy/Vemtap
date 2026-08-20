@@ -4,8 +4,9 @@ import React, { useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import {
-    ChevronDown, X, Search, LogOut, User, Settings as SettingsIcon, ArrowRight
+    ChevronDown, X, Search, LogOut, User, Settings as SettingsIcon, ArrowRight, Download
 } from 'lucide-react';
+import { usePwaInstall } from '@/components/providers/PWAProvider';
 import { NAVIGATION_SECTIONS } from '@/constants/ownerNavigation';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useSudoStore } from '@/store/useSudoStore';
@@ -18,8 +19,7 @@ interface DashboardMobileMoreSheetProps {
     onClose: () => void;
 }
 
-// These modules are already reachable from the bottom icon tabs, so the
-// "More" panel shows everything else.
+// These modules are already reachable from the bottom icon tabs
 const BOTTOM_TAB_HREFS = [
     '/dashboard',
     '/dashboard/visitors',
@@ -34,6 +34,7 @@ export default function DashboardMobileMoreSheet({ open, onClose }: DashboardMob
     const logout = useAuthStore((state) => state.logout);
     const { activeSession } = useSudoStore();
     const isAdminMode = activeSession !== null;
+    const { openPrompt, canInstall } = usePwaInstall();
     const [searchQuery, setSearchQuery] = useState('');
     const [expanded, setExpanded] = useState<string[]>([]);
     const userPermissions = useMemo(() => user?.permissions || [], [user]);
@@ -168,16 +169,28 @@ export default function DashboardMobileMoreSheet({ open, onClose }: DashboardMob
                                                             />
                                                         ) : null}
                                                     </button>
+
                                                     {item.submenu && item.submenu.length > 0 && isExpanded && (
                                                         <div className="ml-[3.25rem] pl-3 border-l border-gray-100 space-y-0.5 pt-1 pb-1.5">
                                                             {filteredSubmenu(item).map((sub, idx) => (
-                                                                <button
-                                                                    key={idx}
-                                                                    onClick={() => go(sub.href)}
-                                                                    className="w-full text-left px-3 py-2.5 rounded-lg text-sm font-medium text-gray-500 hover:text-primary hover:bg-gray-50 transition-colors cursor-pointer"
-                                                                >
-                                                                    {sub.label}
-                                                                </button>
+                                                                <React.Fragment key={idx}>
+                                                                    <button
+                                                                        onClick={() => go(sub.href)}
+                                                                        className="w-full text-left px-3 py-2.5 rounded-lg text-sm font-medium text-gray-500 hover:text-primary hover:bg-gray-50 transition-colors cursor-pointer"
+                                                                    >
+                                                                        {sub.label}
+                                                                    </button>
+                                                                    {/* Install Now — positioned immediately after Subscription */}
+                                                                    {item.id === 'preferences' && sub.href.includes('/subscription') && canInstall && (
+                                                                        <button
+                                                                            onClick={() => { onClose(); openPrompt(); }}
+                                                                            className="w-full flex items-center gap-2 text-left px-3 py-2.5 rounded-lg text-sm font-semibold text-primary hover:bg-primary/5 transition-colors cursor-pointer"
+                                                                        >
+                                                                            <Download size={14} />
+                                                                            <span>Install Now</span>
+                                                                        </button>
+                                                                    )}
+                                                                </React.Fragment>
                                                             ))}
                                                         </div>
                                                     )}

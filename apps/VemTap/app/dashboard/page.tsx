@@ -28,6 +28,7 @@ import { useQuery } from '@tanstack/react-query';
 import { dashboardApi } from '@/lib/api/dashboard';
 
 import { PageGuideButton, AICopilotButton } from '@/components/ai';
+import InstallAppButton from '@/components/shared/InstallAppButton';
 import { useAIStore } from '@/store/useAIStore';
 
 export default function DashboardPage() {
@@ -36,7 +37,7 @@ export default function DashboardPage() {
     const [isActivityExpanded, setIsActivityExpanded] = useState(false);
     const [showDealPrompt, setShowDealPrompt] = useState(false);
     const user = useAuthStore((state) => state.user);
-    const { activeBranchId } = useActiveBranch();
+    const { activeBranchId, getLinkWithBranch } = useActiveBranch();
     const { data: myBusiness } = useMyBusiness();
     const { data: branches = [] } = useBranches();
     const { data: analytics, isLoading: isAnalyticsLoading } = useDashboardAnalytics();
@@ -144,12 +145,15 @@ export default function DashboardPage() {
                         {/* 1. TOP SECTION: Greeting & Branding */}
                         <section className="space-y-1">
                             <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-3">
-                                    <h1 className="text-2xl md:text-3xl font-bold text-text-main tracking-tight">
+                                <div className="flex items-center gap-2.5 sm:gap-3">
+                                    <h1 className="text-2xl md:text-3xl font-bold text-text-main tracking-tight mr-1">
                                         Good {new Date().getHours() < 12 ? 'Morning' : new Date().getHours() < 17 ? 'Afternoon' : 'Evening'}, {user?.firstName || 'Owner'}
                                     </h1>
-                                    <PageGuideButton />
-                                    <AICopilotButton />
+                                    <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+                                        <PageGuideButton />
+                                        <AICopilotButton />
+                                        <InstallAppButton iconOnly />
+                                    </div>
                                 </div>
                                 {isAnalyticsLoading && (
                                     <div className="size-5 border-2 border-primary/20 border-t-primary rounded-full animate-spin" />
@@ -226,13 +230,13 @@ export default function DashboardPage() {
                                     return [
                                         { label: 'Create Deals', icon: Tag, color: 'text-orange-600 bg-orange-50/50 border-orange-100/50', route: '/dashboard/discovery/deals' },
                                         { label: 'POS Terminal', icon: ShoppingBag, color: 'text-blue-600 bg-blue-50/50 border-blue-100/50', route: '/dashboard/pos' },
-                                        { label: 'Send Message', icon: Send, color: 'text-amber-600 bg-amber-50/50 border-amber-100/50', route: '/dashboard/messaging' },
+                                        { label: 'Add Product', icon: Package, color: 'text-emerald-600 bg-emerald-50/50 border-emerald-100/50', route: '/dashboard/catalogue/products?action=add' },
                                         { label: 'Refer a Business', icon: UserPlus, color: 'text-rose-600 bg-rose-50/50 border-rose-100/50', route: '/dashboard/business-partnership' }
                                     ];
                                 }, [user?.role]).map((action, i) => (
                                     <button 
                                         key={i}
-                                        onClick={() => router.push(action.route)}
+                                        onClick={() => router.push(getLinkWithBranch(action.route))}
                                         className={`bg-white border border-gray-100 rounded-xl px-3 py-3 flex items-center gap-3 active:scale-[0.98] transition-all shadow-sm group hover:border-primary/20 hover:shadow-md`}
                                     >
                                         <div className={`size-9 md:size-10 rounded-lg ${action.color} border shrink-0 flex items-center justify-center transition-transform group-hover:scale-110`}>
