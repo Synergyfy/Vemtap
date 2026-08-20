@@ -11,11 +11,12 @@ import toast from 'react-hot-toast';
 import ProductModal from '@/components/dashboard/catalogue/ProductModal';
 import AddProductMethodModal from '@/components/dashboard/catalogue/AddProductMethodModal';
 import PageLockWrapper from '@/components/dashboard/PageLockWrapper';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { cn } from '@/lib/utils';
 
 export default function ProductsPage() {
     const router = useRouter();
+    const searchParams = useSearchParams();
     const { activeBranchId } = useActiveBranch();
     const [searchQuery, setSearchQuery] = useState('');
     const [activeCategory, setActiveCategory] = useState<string>('all');
@@ -31,6 +32,12 @@ export default function ProductsPage() {
     const [isMethodOpen, setIsMethodOpen] = useState(false);
     const [selectedProduct, setSelectedProduct] = useState<CatalogueItem | null>(null);
     const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+
+    useEffect(() => {
+        if (searchParams?.get('action') === 'add' || searchParams?.get('add') === 'true') {
+            setIsMethodOpen(true);
+        }
+    }, [searchParams]);
 
     useEffect(() => {
         if (!openMenuId) return;
