@@ -174,6 +174,20 @@ describe('BusinessesService', () => {
     expect(service).toBeDefined();
   });
 
+  describe('create', () => {
+    it('should create a business and auto-subscribe to free plan', async () => {
+      mockRepository.findOne.mockResolvedValueOnce(null);
+      const result = await service.create({
+        name: 'My Store',
+        ownerId: 'owner-1',
+      });
+
+      expect(repository.save).toHaveBeenCalled();
+      expect(mockSubscriptionsService.subscribeToFreePlan).toHaveBeenCalledWith('biz-1');
+      expect(result).toBeDefined();
+    });
+  });
+
   describe('update', () => {
     it('should update business name and logo', async () => {
       const updateDto = {
