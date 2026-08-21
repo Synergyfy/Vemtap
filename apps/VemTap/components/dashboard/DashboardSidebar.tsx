@@ -27,7 +27,7 @@ import DashboardMobileNav from './DashboardMobileNav';
 import { useChatStore } from '@/lib/store/useChatStore';
 import Modal from '@/components/ui/Modal';
 import UpgradeModal from './UpgradeModal';
-import InstallAppModal from './InstallAppModal';
+import { usePwaInstall } from '@/components/providers/PWAProvider';
 import SubscriptionExpiredModal from './SubscriptionExpiredModal';
 import { useSudoStore } from '@/store/useSudoStore';
 import { canAccessMenuItem } from '@/lib/utils/nav-filter';
@@ -109,44 +109,10 @@ export default function DashboardSidebar({ children }: SidebarProps) {
 
     const currentBranchLogo = currentBranch?.logoUrl || myBusiness?.logoUrl;
     const [upgradeModal, setUpgradeModal] = useState({ isOpen: false, featureName: '' });
-    const [showInstallModal, setShowInstallModal] = useState(false);
     const isChatRoute = pathname.includes('/messaging/chat');
     const isCreateAssetPage = pathname.includes('/marketing-assets/create');
     const activeConversationId = useChatStore(s => s.activeConversationId);
-
-    const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
-
-    useEffect(() => {
-        const handler = (e: Event) => {
-            e.preventDefault();
-            setDeferredPrompt(e);
-        };
-        window.addEventListener('beforeinstallprompt', handler);
-        return () => window.removeEventListener('beforeinstallprompt', handler);
-    }, []);
-
-    const handleDownloadApp = () => {
-        setShowInstallModal(true);
-    };
-
-    const handleInstallApp = async () => {
-        if (deferredPrompt) {
-            deferredPrompt.prompt();
-            const result = await deferredPrompt.userChoice;
-            if (result.outcome === 'accepted') {
-                toast.success('App installed successfully!');
-                setShowInstallModal(false);
-            } else {
-                toast('App installation cancelled', { icon: '📱' });
-            }
-            setDeferredPrompt(null);
-        } else {
-            toast('Open your browser menu and tap "Install App" or "Add to Home Screen"', {
-                icon: '📱',
-                duration: 4000,
-            });
-        }
-    };
+    const { openPrompt: openPwaPrompt, canInstall: canInstallPwa } = usePwaInstall();
     const mainRef = useRef<HTMLElement | null>(null);
 
     // Auto-expand the menu corresponding to the current path
@@ -392,21 +358,32 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                                                                      if (userPermissions.includes(item.permission!) && idx === 0) return true;
                                                                      return false;
                                                                  }).map((sub, idx) => (
-                                                                     <Link 
-                                                                          key={idx}
-                                                                          href={withBranch(sub.href)}
-                                                                          onClick={() => {
-                                                                              if (wasCollapsedRef.current) {
-                                                                                  wasCollapsedRef.current = false;
-                                                                                  toggleCollapse();
-                                                                              }
-                                                                          }}
-                                                                           className={`block text-[15px] font-medium py-2 transition-colors ${
-                                                                             isActive(sub.href) ? 'text-primary font-semibold' : 'text-gray-500 hover:text-gray-700'
-                                                                         }`}
-                                                                     >
-                                                                         {sub.label}
-                                                                     </Link>
+                                                                     <React.Fragment key={idx}>
+                                                                         <Link 
+                                                                              href={withBranch(sub.href)}
+                                                                              onClick={() => {
+                                                                                  if (wasCollapsedRef.current) {
+                                                                                      wasCollapsedRef.current = false;
+                                                                                      toggleCollapse();
+                                                                                  }
+                                                                              }}
+                                                                               className={`block text-[15px] font-medium py-2 transition-colors ${
+                                                                                 isActive(sub.href) ? 'text-primary font-semibold' : 'text-gray-500 hover:text-gray-700'
+                                                                             }`}
+                                                                         >
+                                                                             {sub.label}
+                                                                         </Link>
+                                                                         {/* Install Now — positioned immediately after Subscription */}
+                                                                         {item.id === 'preferences' && sub.href.includes('/subscription') && canInstallPwa && (
+                                                                             <button
+                                                                                 onClick={openPwaPrompt}
+                                                                                 className="flex items-center gap-2 text-[15px] font-semibold py-2 text-primary hover:opacity-80 transition-opacity"
+                                                                             >
+                                                                                 <Download size={14} />
+                                                                                 Install Now
+                                                                             </button>
+                                                                         )}
+                                                                     </React.Fragment>
                                                                  ))}
                                                             </div>
                                                         )}
@@ -468,18 +445,6 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                         </div>
                     ))}
                 </nav>
-
-                {/* Download App */}
-                <div className="border-t border-gray-100 px-3 pt-4 pb-2 space-y-1">
-                    <button
-                        onClick={handleDownloadApp}
-                        className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all text-gray-700 hover:bg-gray-100 hover:text-gray-900 ${isCollapsed ? 'justify-center' : ''}`}
-                        title="Download App"
-                    >
-                        <Download size={20} className="shrink-0" />
-                        {!isCollapsed && <span className="text-[15px] font-semibold truncate">Download App</span>}
-                    </button>
-                </div>
 
                 {/* Footer / Branch Switcher */}
                 <div className="border-t border-gray-100 p-4 space-y-2">
@@ -668,6 +633,12 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                                         <HelpCircle size={14} />
                                         <span>Help & Support</span>
                                     </DropdownMenuItem>
+                                    {canInstallPwa && (
+                                        <DropdownMenuItem onClick={openPwaPrompt} className="text-primary font-semibold">
+                                            <Download size={14} />
+                                            <span>Install Now</span>
+                                        </DropdownMenuItem>
+                                    )}
                                     <div className="h-px bg-gray-50 my-1" />
                                     <DropdownMenuItem onClick={handleLogout} className="text-red-600 hover:bg-red-50 hover:text-red-600">
                                         <LogOut size={14} />
@@ -725,7 +696,6 @@ export default function DashboardSidebar({ children }: SidebarProps) {
 
             <UpgradeModal isOpen={upgradeModal.isOpen} onClose={() => setUpgradeModal({ ...upgradeModal, isOpen: false })} featureName={upgradeModal.featureName} />
             <SubscriptionExpiredModal isOpen={isSubscriptionExpired && !pathname.includes('/settings/subscription')} />
-            <InstallAppModal isOpen={showInstallModal} onClose={() => setShowInstallModal(false)} onInstall={handleInstallApp} />
             {!(isChatRoute && activeConversationId) && !isCreateAssetPage && <DashboardMobileNav />}
         </div>
     );

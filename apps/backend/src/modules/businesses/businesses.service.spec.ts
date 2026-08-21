@@ -14,6 +14,7 @@ import { Plan } from '../subscriptions/entities/plan.entity';
 import { getQueueToken } from '@nestjs/bullmq';
 import { NotFoundException, ConflictException } from '@nestjs/common';
 import { RotatorInvalidationService } from '../rotator/rotator-invalidation.service';
+import { BranchesService } from '../branches/branches.service';
 
 describe('BusinessesService', () => {
   let service: BusinessesService;
@@ -104,6 +105,10 @@ describe('BusinessesService', () => {
     subscribeToFreePlan: jest.fn().mockResolvedValue({}),
   };
 
+  const mockBranchesService = {
+    generateUniqueUsername: jest.fn().mockResolvedValue('main-branch'),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -141,6 +146,10 @@ describe('BusinessesService', () => {
           useValue: mockSubscriptionsService,
         },
         {
+          provide: BranchesService,
+          useValue: mockBranchesService,
+        },
+        {
           provide: getRepositoryToken(Subscription),
           useValue: mockRepository,
         },
@@ -172,6 +181,41 @@ describe('BusinessesService', () => {
 
   it('should be defined', () => {
     expect(service).toBeDefined();
+  });
+
+  describe('create', () => {
+    it('should create a business and auto-subscribe to free plan', async () => {
+      mockRepository.findOne.mockResolvedValueOnce(null);
+      const result = await service.create({
+        name: 'My Store',
+        ownerId: 'owner-1',
+      });
+
+      expect(repository.save).toHaveBeenCalled();
+      expect(mockSubscriptionsService.subscribeToFreePlan).toHaveBeenCalledWith(
+        'biz-1',
+      );
+      expect(result).toBeDefined();
+    });
+
+    it('should auto-generate a username for the main branch', async () => {
+      mockRepository.findOne.mockResolvedValueOnce(null);
+      mockBranchesService.generateUniqueUsername.mockResolvedValueOnce(
+        'main-branch',
+      );
+
+      await service.create({
+        name: 'My Store',
+        ownerId: 'owner-1',
+      });
+
+      expect(mockBranchesService.generateUniqueUsername).toHaveBeenCalledWith(
+        'Main Branch',
+      );
+      expect(mockBranchRepository.create).toHaveBeenCalledWith(
+        expect.objectContaining({ username: 'main-branch' }),
+      );
+    });
   });
 
   describe('update', () => {

@@ -387,6 +387,7 @@ export class MailService {
     endDate?: Date;
     isTrial?: boolean;
     isAdminOverride?: boolean;
+    isExpiredDowngrade?: boolean;
     previousPlanName?: string;
     currency?: string;
     amount?: number | string;
@@ -433,6 +434,7 @@ export class MailService {
     endDate?: Date;
     isTrial?: boolean;
     isAdminOverride?: boolean;
+    isExpiredDowngrade?: boolean;
     previousPlanName?: string;
     currency?: string;
     amount?: number | string;
@@ -457,17 +459,20 @@ export class MailService {
       endDate,
       isTrial = false,
       isAdminOverride = false,
+      isExpiredDowngrade = false,
       previousPlanName,
       features = [],
       credits,
       limits,
     } = params;
 
-    const subject = isTrial
-      ? `Your ${planName} Trial is Now Active! - VemTap`
-      : isAdminOverride
-        ? `Your Plan has been Updated to ${planName} - VemTap`
-        : `Subscription Confirmation: You're now on the ${planName} - VemTap`;
+    const subject = isExpiredDowngrade
+      ? `Your ${previousPlanName || 'VemTap'} Plan Expired — Free Plan Activated - VemTap`
+      : isTrial
+        ? `Your ${planName} Trial is Now Active! - VemTap`
+        : isAdminOverride
+          ? `Your Plan has been Updated to ${planName} - VemTap`
+          : `Subscription Confirmation: You're now on the ${planName} - VemTap`;
 
     const formattedBilling = billingPeriod
       ? billingPeriod.charAt(0).toUpperCase() + billingPeriod.slice(1)
@@ -487,11 +492,27 @@ export class MailService {
         })
       : 'Continuous';
 
-    const badgeLabel = isTrial
-      ? 'Trial Activated'
+    const badgeLabel = isExpiredDowngrade
+      ? 'Subscription Expired • Free Plan Active'
+      : isTrial
+        ? 'Trial Activated'
+        : isAdminOverride
+          ? 'Plan Updated by Admin'
+          : 'Plan Subscribed';
+
+    const headerTitle = isExpiredDowngrade
+      ? 'Subscription Expired'
+      : 'Plan Activated';
+
+    const headerSubtitle = isExpiredDowngrade
+      ? `Your previous subscription has ended. Your business <strong style="color: #ffffff;">${businessName}</strong> has been switched to the <strong style="color: #ffffff;">${planName}</strong> so your operations continue.`
+      : `Your business <strong style="color: #ffffff;">${businessName}</strong> is now equipped with the <strong style="color: #ffffff;">${planName}</strong>.`;
+
+    const greetingBody = isExpiredDowngrade
+      ? `Your previous subscription to <strong>${previousPlanName || 'your paid plan'}</strong> has expired and was not renewed. To ensure your business operations continue uninterrupted, we have automatically transitioned <strong>${businessName}</strong> to the <strong>${planName}</strong>. You can renew or upgrade at any time to restore premium features and higher limits.`
       : isAdminOverride
-        ? 'Plan Updated by Admin'
-        : 'Plan Subscribed';
+        ? `An administrator has updated your subscription package for <strong>${businessName}</strong>. You now have immediate access to all entitlements and features associated with this plan.`
+        : `Thank you for choosing VemTap. Your subscription has been successfully updated and your new tier benefits are ready to use.`;
 
     const html = `
       <!DOCTYPE html>
@@ -523,10 +544,10 @@ export class MailService {
 
                     <!-- Header Title -->
                     <h1 style="color: #ffffff; margin: 0 0 10px 0; font-size: 28px; font-weight: 800; letter-spacing: -0.03em; line-height: 1.2;">
-                      Plan Activated
+                      ${headerTitle}
                     </h1>
                     <p style="color: #e0e7ff; margin: 0; font-size: 15px; font-weight: 500; max-width: 440px; margin: 0 auto; line-height: 1.5;">
-                      Your business <strong style="color: #ffffff;">${businessName}</strong> is now equipped with the <strong style="color: #ffffff;">${planName}</strong>.
+                      ${headerSubtitle}
                     </p>
                   </td>
                 </tr>
@@ -541,11 +562,7 @@ export class MailService {
                         Hello ${customerName || 'there'},
                       </h2>
                       <p style="margin: 0; font-size: 14px; line-height: 1.6; color: #475569;">
-                        ${
-                          isAdminOverride
-                            ? `An administrator has updated your subscription package for <strong>${businessName}</strong>. You now have immediate access to all entitlements and features associated with this plan.`
-                            : `Thank you for choosing VemTap. Your subscription has been successfully updated and your new tier benefits are ready to use.`
-                        }
+                        ${greetingBody}
                       </p>
                     </div>
 
@@ -655,8 +672,8 @@ export class MailService {
 
                     <!-- CTA Action Button -->
                     <div style="text-align: center; margin: 32px 0 16px 0;">
-                      <a href="https://vemtap.vercel.app/admin/subscriptions" style="display: inline-block; background: linear-gradient(135deg, #4338CA 0%, #6366F1 100%); color: #ffffff; padding: 16px 36px; border-radius: 12px; text-decoration: none; font-weight: 700; font-size: 15px; box-shadow: 0 10px 15px -3px rgba(99, 102, 241, 0.35); letter-spacing: -0.01em;">
-                        Go to Your Dashboard
+                      <a href="${isExpiredDowngrade ? 'https://vemtap.vercel.app/dashboard/settings/subscription' : 'https://vemtap.vercel.app/dashboard'}" style="display: inline-block; background: linear-gradient(135deg, #4338CA 0%, #6366F1 100%); color: #ffffff; padding: 16px 36px; border-radius: 12px; text-decoration: none; font-weight: 700; font-size: 15px; box-shadow: 0 10px 15px -3px rgba(99, 102, 241, 0.35); letter-spacing: -0.01em;">
+                        ${isExpiredDowngrade ? 'Renew / Upgrade Plan' : 'Go to Your Dashboard'}
                       </a>
                     </div>
                     

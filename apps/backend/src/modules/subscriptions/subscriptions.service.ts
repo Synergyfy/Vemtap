@@ -94,9 +94,12 @@ export class SubscriptionsService {
     private readonly mailService: MailService,
   ) {}
 
-  async activeSubscription(businessId?: string): Promise<Subscription | null> {
+  async activeSubscription(
+    businessId?: string,
+    autoAssignFree = true,
+  ): Promise<Subscription | null> {
     if (!businessId) return null;
-    const sub = await this.subscriptionRepository.findOne({
+    let sub = await this.subscriptionRepository.findOne({
       where: {
         businessId,
         status: In([SubscriptionStatus.ACTIVE, SubscriptionStatus.TRIAL]),
@@ -115,7 +118,38 @@ export class SubscriptionsService {
       if (now > gracePeriod) {
         sub.status = SubscriptionStatus.EXPIRED;
         await this.subscriptionRepository.save(sub);
-        return null;
+        sub = null;
+      }
+    }
+
+    if (!sub && autoAssignFree) {
+      // Find latest subscription record to check past history
+      const lastSub = await this.subscriptionRepository.findOne({
+        where: { businessId },
+        relations: ['plan'],
+        order: { createdAt: 'DESC' },
+      });
+
+      // If business has NEVER had a subscription, OR their last subscription is EXPIRED:
+      // Auto-assign to Free plan and send email
+      if (!lastSub || lastSub.status === SubscriptionStatus.EXPIRED) {
+        try {
+          const isExpiredDowngrade = lastSub?.status === SubscriptionStatus.EXPIRED;
+          const freeSubResult = await this.subscribeToFreePlan(
+            businessId,
+            isExpiredDowngrade,
+          );
+          if (freeSubResult?.subscription) {
+            return this.subscriptionRepository.findOne({
+              where: { id: freeSubResult.subscription.id },
+              relations: ['plan'],
+            });
+          }
+        } catch (err: any) {
+          this.logger.error(
+            `Failed to auto-assign free plan in activeSubscription for ${businessId}: ${err?.message}`,
+          );
+        }
       }
     }
 
@@ -124,6 +158,7 @@ export class SubscriptionsService {
 
   async subscribeToFreePlan(
     businessId: string,
+    isExpiredDowngrade = false,
   ): Promise<{ subscription: Subscription; addOns?: any[] } | null> {
     const freePlan = await this.plansService.findFreePlan();
     if (!freePlan) {
@@ -137,7 +172,8 @@ export class SubscriptionsService {
       planId: freePlan.id,
       businessId,
       billingPeriod: BillingPeriod.YEARLY, // Default for free plan
-    });
+      isExpiredDowngrade,
+    } as any);
   }
 
   async cancelSubscription(
@@ -400,11 +436,20 @@ export class SubscriptionsService {
       }
     }
 
-    const activeSub = await this.activeSubscription(businessId);
-    const previousPlanName = activeSub?.plan?.name;
+    const activeSub = await this.activeSubscription(businessId, false);
+    let previousPlanName = activeSub?.plan?.name;
     if (activeSub) {
       activeSub.status = SubscriptionStatus.CANCELED;
       await this.subscriptionRepository.save(activeSub);
+    } else {
+      const lastSub = await this.subscriptionRepository.findOne({
+        where: { businessId },
+        relations: ['plan'],
+        order: { createdAt: 'DESC' },
+      });
+      if (lastSub?.plan?.name) {
+        previousPlanName = lastSub.plan.name;
+      }
     }
 
     const newSub = this.subscriptionRepository.create({
@@ -502,6 +547,11 @@ export class SubscriptionsService {
           const customerName =
             `${owner.firstName || ''} ${owner.lastName || ''}`.trim() ||
             'Valued Customer';
+          const isExpiredDowngrade = Boolean(
+            (subscribeDto as any)?.isExpiredDowngrade ||
+            (previousPlanName && plan.isFree && !isTrial && !isAdminOverride),
+          );
+
           this.mailService
             .sendPlanChangeEmail({
               email: owner.email,
@@ -513,6 +563,7 @@ export class SubscriptionsService {
               endDate,
               isTrial,
               isAdminOverride,
+              isExpiredDowngrade,
               previousPlanName,
               features: plan.features || [],
               credits: {
@@ -554,24 +605,48 @@ export class SubscriptionsService {
     businessId: string;
     billingPeriod: BillingPeriod;
     isTrial?: boolean;
+    promoCode?: string;
+    addonIds?: string[];
+    addonQuantities?: number[];
   }): Promise<{
     reference: string;
     access_code: string;
     authorization_url: string;
     amount: number;
   }> {
-    const { planId, businessId, billingPeriod, isTrial = false } = input;
+    const {
+      planId,
+      businessId,
+      billingPeriod,
+      isTrial = false,
+      promoCode,
+      addonIds,
+      addonQuantities,
+    } = input;
 
     const plan = await this.plansService.findOne(planId);
     if (!plan.isActive) {
       throw new BadRequestException('Selected plan is not active');
     }
 
+    let addons: AddOn[] = [];
+    if (addonIds && addonIds.length > 0) {
+      addons = await this.addonsService.validateAddons(addonIds);
+    }
+
+    const addonsTotal = addons.reduce((sum, addon, index) => {
+      const qty = addonQuantities?.[index] ?? 1;
+      return sum + Number(addon.price) * qty;
+    }, 0);
+
     let amount: number;
+    let paymentMetadata: any = {};
+
     if (plan.isFree) {
       amount = 0;
     } else if (isTrial) {
       amount = 100;
+      paymentMetadata = { isTrial: true };
     } else {
       let planPrice = Number(plan.monthlyPrice || 0);
       if (billingPeriod === BillingPeriod.QUARTERLY)
@@ -579,12 +654,49 @@ export class SubscriptionsService {
       else if (billingPeriod === BillingPeriod.YEARLY)
         planPrice = Number(plan.yearlyPrice || 0);
 
-      const taxConfig = await this.subscriptionTaxService.getActiveConfig();
-      const taxResult = this.subscriptionTaxService.calculateTax(
-        planPrice,
-        taxConfig,
-      );
-      amount = taxResult.total;
+      const cleanPromo = promoCode?.trim();
+      if (cleanPromo) {
+        const promoValidation =
+          await this.couponEngineService.validatePromotion({
+            code: cleanPromo,
+            planId,
+            billingPeriod,
+            businessId,
+            addonsSubtotal: addonsTotal,
+          });
+
+        amount = promoValidation.total;
+        paymentMetadata = {
+          subtotal: promoValidation.netSubtotal,
+          taxAmount: promoValidation.taxAmount,
+          taxRate: promoValidation.taxRule?.rate,
+          taxType: promoValidation.taxRule?.taxType,
+          taxName: promoValidation.taxRule?.name,
+          taxEnabled: promoValidation.taxRule?.isEnabled,
+          discountAmount: promoValidation.discountAmount,
+          promoCode: promoValidation.promotionCode.code,
+          couponId: promoValidation.coupon.id,
+          couponName: promoValidation.coupon.name,
+          originalPlanPrice: promoValidation.originalPlanPrice,
+          discountedPlanPrice: promoValidation.discountedPlanPrice,
+        };
+      } else {
+        const subtotal = planPrice + addonsTotal;
+        const taxConfig = await this.subscriptionTaxService.getActiveConfig();
+        const taxResult = this.subscriptionTaxService.calculateTax(
+          subtotal,
+          taxConfig,
+        );
+        amount = taxResult.total;
+        paymentMetadata = {
+          subtotal,
+          taxAmount: taxResult.taxAmount,
+          taxRate: taxResult.taxRule.rate,
+          taxType: taxResult.taxRule.taxType,
+          taxName: taxResult.taxRule.name,
+          taxEnabled: taxResult.taxRule.isEnabled,
+        };
+      }
     }
 
     const business = await this.businessRepository.findOne({
@@ -605,6 +717,8 @@ export class SubscriptionsService {
       .toString(36)
       .slice(2, 8)}`;
 
+    const normalizedPromo = promoCode?.trim().toUpperCase();
+
     const init = await this.paymentsService.initializeTransaction({
       email,
       amount: Math.round(amount * 100),
@@ -615,7 +729,14 @@ export class SubscriptionsService {
         planId,
         billingPeriod,
         isTrial,
-        purpose: 'subscription',
+        addonIds,
+        addonQuantities,
+        promoCode: normalizedPromo,
+        purpose:
+          addons.length > 0
+            ? PaymentPurpose.PLAN_WITH_ADDONS
+            : PaymentPurpose.SUBSCRIPTION,
+        ...paymentMetadata,
       },
     });
     if (!init) {
@@ -627,13 +748,21 @@ export class SubscriptionsService {
     await this.paymentsService.recordPayment({
       reference,
       amount,
-      purpose: PaymentPurpose.SUBSCRIPTION,
+      purpose:
+        addons.length > 0
+          ? PaymentPurpose.PLAN_WITH_ADDONS
+          : PaymentPurpose.SUBSCRIPTION,
       status: PaymentStatus.PENDING,
       metadata: {
         businessId,
         planId,
         billingPeriod,
         isTrial,
+        addonIds,
+        addonQuantities,
+        promoCode: normalizedPromo,
+        total: amount,
+        ...paymentMetadata,
       },
       businessId,
       userId: business.ownerId,

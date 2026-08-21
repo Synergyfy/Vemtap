@@ -1,56 +1,46 @@
-"use client";
+'use client';
 
-import { useEffect, useState } from "react";
-import { Download } from "lucide-react";
+import { Download } from 'lucide-react';
+import { usePwaInstall } from '@/components/providers/PWAProvider';
 
-interface BeforeInstallPromptEvent extends Event {
-    prompt: () => Promise<void>;
-    userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
+interface InstallAppButtonProps {
+    className?: string;
+    label?: string;
+    iconOnly?: boolean;
+    title?: string;
 }
 
-export default function InstallAppButton() {
-    const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
-    const [isInstalling, setIsInstalling] = useState(false);
+export default function InstallAppButton({ 
+    className, 
+    label = 'Install App', 
+    iconOnly = false,
+    title = 'Install App'
+}: InstallAppButtonProps) {
+    const { openPrompt, canInstall } = usePwaInstall();
 
-    useEffect(() => {
-        const handler = (e: Event) => {
-            if (window.matchMedia("(display-mode: standalone)").matches) {
-                return; // Already installed
-            }
-            e.preventDefault();
-            setDeferredPrompt(e as BeforeInstallPromptEvent);
-        };
+    if (!canInstall) return null;
 
-        window.addEventListener("beforeinstallprompt", handler);
-        
-        return () => window.removeEventListener("beforeinstallprompt", handler);
-    }, []);
-
-    const handleInstall = async () => {
-        if (!deferredPrompt || isInstalling) return;
-
-        setIsInstalling(true);
-        deferredPrompt.prompt();
-        const { outcome } = await deferredPrompt.userChoice;
-
-        if (outcome === "accepted") {
-            setDeferredPrompt(null);
-        }
-        setIsInstalling(false);
-    };
-
-    if (!deferredPrompt) {
-        return null;
+    if (iconOnly) {
+        return (
+            <button
+                onClick={openPrompt}
+                className={className ?? "inline-flex items-center justify-center size-9 rounded-full bg-white border border-gray-200 text-gray-500 hover:text-primary hover:border-primary/30 hover:bg-primary/5 shadow-sm hover:shadow transition-all active:scale-95 cursor-pointer shrink-0"}
+                title={title}
+                aria-label={title}
+            >
+                <Download size={16} />
+            </button>
+        );
     }
 
     return (
         <button
-            onClick={handleInstall}
-            disabled={isInstalling}
-            className="flex items-center gap-2 px-6 py-2.5 bg-indigo-50 text-indigo-700 font-bold rounded-xl hover:bg-indigo-100 border border-indigo-200 transition-all text-sm shadow-sm disabled:opacity-50"
+            onClick={openPrompt}
+            className={className ?? 'flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-white text-sm font-semibold hover:opacity-90 transition-opacity cursor-pointer'}
+            title={title}
         >
-            <Download size={16} className={isInstalling ? "animate-pulse" : ""} />
-            {isInstalling ? "Installing..." : "Install App"}
+            <Download className="w-4 h-4" />
+            {label}
         </button>
     );
 }

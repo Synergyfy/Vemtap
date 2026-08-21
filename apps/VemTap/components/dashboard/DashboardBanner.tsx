@@ -49,7 +49,7 @@ export default function DashboardBanner({ slides, autoPlayInterval = 5000 }: Das
 
     return (
         <div 
-            className="relative w-full overflow-hidden group mb-4"
+            className="relative w-full overflow-hidden group"
             onMouseEnter={() => setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}
         >
