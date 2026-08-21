@@ -134,7 +134,7 @@ export default function POSSuccessScreen() {
     return null;
   }
 
-  const businessLogo = currentBranch?.logoUrl || myBusiness?.logoUrl || '/VEMTAP_PNG.png';
+  const businessLogo = currentBranch?.logoUrl || myBusiness?.logoUrl;
 
   const receiptData = {
     business: {

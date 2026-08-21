@@ -5,13 +5,12 @@ import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useSubscriptionStore } from '@/store/useSubscriptionStore';
-const defaultLogo = '/VEMTAP_PNG.png';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { dashboardApi } from '@/lib/api/dashboard';
 import {
     Home, Users, Gift, BarChart, Users2, Settings,
     ChevronDown, Lock, LogOut, Bell, HelpCircle, MessageSquare, ShieldCheck,
-    MessageCircle, LucideIcon, Zap, ShoppingBag, QrCode, AlertCircle, FileText,
+    MessageCircle, LucideIcon, ShoppingBag, QrCode, AlertCircle, FileText,
     ClipboardCheck, Search, Star, Pin, PinOff, ChevronLeft, ChevronRight, LayoutDashboard,
     X, MoreHorizontal, User, Download, Sun, Moon, Crown, ArrowRight, CheckCircle2,
     Maximize2, Minimize2
@@ -108,7 +107,7 @@ export default function DashboardSidebar({ children }: SidebarProps) {
         return branches.find(b => b.id === activeBranchId);
     }, [branches, activeBranchId]);
 
-    const currentBranchLogo = currentBranch?.logoUrl || myBusiness?.logoUrl || defaultLogo;
+    const currentBranchLogo = currentBranch?.logoUrl || myBusiness?.logoUrl;
     const [upgradeModal, setUpgradeModal] = useState({ isOpen: false, featureName: '' });
     const isChatRoute = pathname.includes('/messaging/chat');
     const isCreateAssetPage = pathname.includes('/marketing-assets/create');
@@ -229,7 +228,7 @@ export default function DashboardSidebar({ children }: SidebarProps) {
         return true;
     };
 
-    const businessLogo = myBusiness?.logoUrl || defaultLogo;
+    const businessLogo = myBusiness?.logoUrl;
     const businessName = myBusiness?.name || 'Business Profile';
     const publicProfileHref = getLinkWithBranch(myBusiness?.uniqueCode ? `/b/${myBusiness.uniqueCode}` : `/dashboard/settings/profile`);
 
@@ -248,7 +247,7 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                                 {businessLogo ? (
                                     <img src={businessLogo} alt={businessName} className="size-full object-cover p-1" />
                                 ) : (
-                                    <Zap className="text-primary size-4" />
+                                    <User className="text-gray-400 size-4" />
                                 )}
                             </div>
                             <span className="text-sm font-semibold text-gray-900 truncate max-w-[120px]">{businessName}</span>
@@ -467,7 +466,7 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                     <div className="flex items-center gap-4 flex-1">
                         <div className="flex items-center gap-3">
                             <div className="size-8 rounded-lg bg-gray-50 border border-gray-100 overflow-hidden flex items-center justify-center shrink-0 hidden sm:flex">
-                                {currentBranchLogo ? <img src={currentBranchLogo} alt="Logo" className="size-full object-cover p-1" /> : <Zap className="text-primary size-4" />}
+                                {currentBranchLogo ? <img src={currentBranchLogo} alt="Logo" className="size-full object-cover p-1" /> : <User className="text-gray-400 size-4" />}
                             </div>
                             <div className="min-w-0">
                                 <p className="text-[10px] font-medium text-gray-400 leading-none mb-0.5 truncate max-w-[120px]">{currentBranch?.name || businessName}</p>
@@ -608,9 +607,7 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                                         {currentBranchLogo ? (
                                             <img src={currentBranchLogo} alt="Branch Logo" className="size-full object-cover p-1" />
                                         ) : (
-                                            <div className="text-primary font-bold text-[10px] lg:text-xs">
-                                                {(user?.firstName?.[0] || '') + (user?.lastName?.[0] || '')}
-                                            </div>
+                                            <User className="text-gray-400 size-4 lg:size-[18px]" />
                                         )}
                                     </button>
                                 </DropdownMenuTrigger>
