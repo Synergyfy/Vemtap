@@ -6,6 +6,7 @@ import {
   Inject,
   forwardRef,
 } from '@nestjs/common';
+import { BranchesService } from '../branches/branches.service';
 import { InjectRepository } from '@nestjs/typeorm';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
@@ -62,6 +63,8 @@ export class BusinessesService {
     @InjectQueue(GEOCODING_QUEUE)
     private readonly geocodingQueue: Queue<GeocodingJobData>,
     private readonly rotatorInvalidation: RotatorInvalidationService,
+    @Inject(forwardRef(() => BranchesService))
+    private readonly branchesService: BranchesService,
   ) {}
 
   async create(
@@ -127,8 +130,11 @@ export class BusinessesService {
     const savedBusiness = await this.businessesRepository.save(business);
 
     // Automatically create Main Branch
+    const mainBranchUsername =
+      await this.branchesService.generateUniqueUsername('Main Branch');
     const mainBranch = this.branchRepository.create({
       name: 'Main Branch',
+      username: mainBranchUsername,
       businessId: savedBusiness.id,
       isMainBranch: true,
       logoUrl,
