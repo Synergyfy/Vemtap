@@ -128,7 +128,7 @@ export default function CustomerDetailsScreen() {
                   <tr key={p.id} onClick={() => setSelectedReceipt({
                     business: {
                       name: posSettings.businessName,
-                      logoUrl: currentBranch?.logoUrl || myBusiness?.logoUrl || '/VEMTAP_PNG.png',
+                      logoUrl: currentBranch?.logoUrl || myBusiness?.logoUrl,
                       address: posSettings.businessAddress || undefined,
                       phone: posSettings.phoneNumber || undefined,
                     },
