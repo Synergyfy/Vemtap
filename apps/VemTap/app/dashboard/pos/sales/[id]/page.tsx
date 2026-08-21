@@ -32,7 +32,7 @@ export default function SingleTransactionScreen() {
   }, [branches, activeBranchId]);
 
   const posSettings = usePosSettingsStore();
-  const businessLogo = currentBranch?.logoUrl || myBusiness?.logoUrl || '/VEMTAP_PNG.png';
+  const businessLogo = currentBranch?.logoUrl || myBusiness?.logoUrl;
 
   const handleRefund = (data: { status: 'refunded' | 'partial_refund'; reason?: string; refundItems?: { saleItemId: string; quantity: number }[] }) => {
     updateStatus.mutate(
