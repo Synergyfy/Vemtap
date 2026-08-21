@@ -14,7 +14,6 @@ import { Plan } from '../subscriptions/entities/plan.entity';
 import { getQueueToken } from '@nestjs/bullmq';
 import { NotFoundException, ConflictException } from '@nestjs/common';
 import { RotatorInvalidationService } from '../rotator/rotator-invalidation.service';
-import { BranchesService } from '../branches/branches.service';
 
 describe('BusinessesService', () => {
   let service: BusinessesService;
@@ -76,6 +75,7 @@ describe('BusinessesService', () => {
         Promise.resolve({ id: 'branch-1', ...branch }),
       ),
     find: jest.fn().mockResolvedValue([]),
+    exists: jest.fn().mockResolvedValue(false),
   };
 
   const mockVisitRepository = {
@@ -103,10 +103,6 @@ describe('BusinessesService', () => {
 
   const mockSubscriptionsService = {
     subscribeToFreePlan: jest.fn().mockResolvedValue({}),
-  };
-
-  const mockBranchesService = {
-    generateUniqueUsername: jest.fn().mockResolvedValue('main-branch'),
   };
 
   beforeEach(async () => {
@@ -144,10 +140,6 @@ describe('BusinessesService', () => {
         {
           provide: SubscriptionsService,
           useValue: mockSubscriptionsService,
-        },
-        {
-          provide: BranchesService,
-          useValue: mockBranchesService,
         },
         {
           provide: getRepositoryToken(Subscription),
@@ -200,18 +192,16 @@ describe('BusinessesService', () => {
 
     it('should auto-generate a username for the main branch', async () => {
       mockRepository.findOne.mockResolvedValueOnce(null);
-      mockBranchesService.generateUniqueUsername.mockResolvedValueOnce(
-        'main-branch',
-      );
+      mockBranchRepository.exists.mockResolvedValueOnce(false);
 
       await service.create({
         name: 'My Store',
         ownerId: 'owner-1',
       });
 
-      expect(mockBranchesService.generateUniqueUsername).toHaveBeenCalledWith(
-        'Main Branch',
-      );
+      expect(mockBranchRepository.exists).toHaveBeenCalledWith({
+        where: { username: 'main-branch' },
+      });
       expect(mockBranchRepository.create).toHaveBeenCalledWith(
         expect.objectContaining({ username: 'main-branch' }),
       );
