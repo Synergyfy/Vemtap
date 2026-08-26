@@ -7,6 +7,7 @@ import { Cluster } from '../clusters/entities/cluster.entity';
 import { User } from '../users/entities/user.entity';
 import { RotatorImpression } from '../rotator/entities/rotator-impression.entity';
 import { NotificationsModule } from '../notifications/notifications.module';
+import { MailModule } from '../mail/mail.module';
 import { SubscriptionRemindersService } from './subscription-reminders.service';
 
 @Module({
@@ -20,6 +21,7 @@ import { SubscriptionRemindersService } from './subscription-reminders.service';
       RotatorImpression,
     ]),
     NotificationsModule,
+    MailModule,
   ],
   providers: [SubscriptionRemindersService],
   exports: [SubscriptionRemindersService],

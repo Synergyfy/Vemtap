@@ -625,7 +625,8 @@ export class MailService {
 
                       <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%">
                         ${
-                          credits && (credits.sms || credits.email || credits.whatsapp)
+                          credits &&
+                          (credits.sms || credits.email || credits.whatsapp)
                             ? `
                         <tr>
                           <td style="padding: 6px 0; font-size: 13px; color: #334155;">
@@ -707,5 +708,204 @@ export class MailService {
 
     return { subject, html };
   }
-}
 
+  async sendSubscriptionRenewalReminder(params: {
+    email: string;
+    customerName: string;
+    businessName: string;
+    planName: string;
+    daysLeft: number;
+    isLapsed: boolean;
+    clusterName: string;
+    clusterStats?: { people: number; businesses: number };
+    renewalUrl?: string;
+  }) {
+    const { subject, html } =
+      this.generateSubscriptionRenewalReminderHtml(params);
+
+    try {
+      const { data } = await this.resend.emails.send({
+        from: this.fromEmail,
+        to: params.email,
+        subject,
+        html,
+      });
+      this.logger.log(
+        `Subscription renewal reminder email sent to ${params.email}, id: ${data?.id}`,
+      );
+      return true;
+    } catch (error) {
+      this.logger.error(
+        `Error sending subscription renewal reminder email to ${params.email}:`,
+        error,
+      );
+      return false;
+    }
+  }
+
+  public generateSubscriptionRenewalReminderHtml(params: {
+    customerName: string;
+    businessName: string;
+    planName: string;
+    daysLeft: number;
+    isLapsed: boolean;
+    clusterName: string;
+    clusterStats?: { people: number; businesses: number };
+    renewalUrl?: string;
+  }): { subject: string; html: string } {
+    const {
+      customerName,
+      businessName,
+      planName,
+      daysLeft,
+      isLapsed,
+      clusterName,
+      clusterStats,
+      renewalUrl = 'https://vemtap.vercel.app/dashboard/settings/subscription',
+    } = params;
+
+    const people = clusterStats?.people ?? 0;
+    const businesses = clusterStats?.businesses ?? 0;
+    const peopleText = people.toLocaleString();
+    const businessesText = businesses.toLocaleString();
+    const daysText = `${daysLeft} ${daysLeft === 1 ? 'day' : 'days'}`;
+
+    let subject: string;
+    let badgeLabel: string;
+    let headerTitle: string;
+    let headerSubtitle: string;
+    let headerGradient: string;
+    let urgencyMessage: string;
+
+    if (isLapsed) {
+      subject = `Your offers left the ${clusterName} deals feed - Renew now`;
+      badgeLabel = 'Subscription Lapsed';
+      headerTitle = 'Offers Removed from Deals Feed';
+      headerSubtitle = `Your subscription for <strong style="color: #ffffff;">${businessName}</strong> has ended.`;
+      headerGradient =
+        'linear-gradient(135deg, #DC2626 0%, #EF4444 45%, #F87171 100%)';
+      urgencyMessage = `Your plan expired, so customers in <strong>${clusterName}</strong> can no longer see your deals. There are currently <strong>${businessesText} businesses</strong> reaching <strong>${peopleText} shoppers</strong> in your area. Renew now to restore your visibility immediately.`;
+    } else if (daysLeft <= 3) {
+      subject = `Urgent: Your ${planName} plan in ${clusterName} expires in ${daysText}`;
+      badgeLabel = 'Action Required • Final Notice';
+      headerTitle = `Expires in ${daysText}`;
+      headerSubtitle = `Keep <strong style="color: #ffffff;">${businessName}</strong> active in the ${clusterName} deals feed.`;
+      headerGradient =
+        'linear-gradient(135deg, #EA580C 0%, #F97316 45%, #FB923C 100%)';
+      urgencyMessage = `In <strong>${daysText}</strong>, your deals will automatically leave the <strong>${clusterName}</strong> feed while <strong>${businessesText} nearby businesses</strong> continue reaching <strong>${peopleText} local shoppers</strong>. Renew today to avoid losing your spot.`;
+    } else {
+      subject = `Reminder: Your ${planName} plan in ${clusterName} expires in ${daysLeft} days`;
+      badgeLabel = 'Renewal Reminder';
+      headerTitle = `Renewal Due in ${daysLeft} Days`;
+      headerSubtitle = `Maintain continuous visibility for <strong style="color: #ffffff;">${businessName}</strong>.`;
+      headerGradient =
+        'linear-gradient(135deg, #4338CA 0%, #6366F1 45%, #8B5CF6 100%)';
+      urgencyMessage = `Over <strong>${peopleText} shoppers</strong> browsed deals in <strong>${clusterName}</strong> this month, and <strong>${businessesText} businesses</strong> are staying visible. Renew your subscription to keep attracting customers without interruption.`;
+    }
+
+    const html = `
+      <!DOCTYPE html>
+      <html lang="en">
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>${subject}</title>
+        <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+      </head>
+      <body style="margin: 0; padding: 0; background-color: #f8fafc; font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #0f172a; -webkit-font-smoothing: antialiased;">
+        <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #f8fafc; padding: 40px 12px;">
+          <tr>
+            <td align="center">
+              <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 600px; background-color: #ffffff; border-radius: 24px; overflow: hidden; box-shadow: 0 20px 25px -5px rgba(15, 23, 42, 0.08); border: 1px solid #e2e8f0;">
+                
+                <!-- Hero Header Banner -->
+                <tr>
+                  <td style="background: ${headerGradient}; padding: 44px 32px; text-align: center;">
+                    <div style="display: inline-block; background: rgba(255, 255, 255, 0.18); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.25); padding: 6px 18px; border-radius: 9999px; margin-bottom: 18px;">
+                      <span style="color: #ffffff; font-size: 11px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase;">${badgeLabel}</span>
+                    </div>
+
+                    <h1 style="color: #ffffff; margin: 0 0 10px 0; font-size: 26px; font-weight: 800; letter-spacing: -0.02em;">
+                      ${headerTitle}
+                    </h1>
+                    <p style="color: #ffffff; opacity: 0.95; margin: 0; font-size: 15px; font-weight: 500; max-width: 440px; margin: 0 auto; line-height: 1.5;">
+                      ${headerSubtitle}
+                    </p>
+                  </td>
+                </tr>
+
+                <!-- Content Body -->
+                <tr>
+                  <td style="padding: 36px 32px;">
+                    
+                    <div style="margin-bottom: 24px;">
+                      <h2 style="margin: 0 0 10px 0; font-size: 19px; font-weight: 700; color: #0f172a;">
+                        Hello ${customerName || 'there'},
+                      </h2>
+                      <p style="margin: 0; font-size: 14px; line-height: 1.6; color: #475569;">
+                        ${urgencyMessage}
+                      </p>
+                    </div>
+
+                    <!-- Cluster Performance Metrics Card -->
+                    <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 18px; padding: 24px; margin-bottom: 28px;">
+                      <div style="font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; color: #6366F1; margin-bottom: 16px;">
+                        ${clusterName} Deals Feed Activity (Last 30 Days)
+                      </div>
+
+                      <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="font-size: 14px;">
+                        <tr>
+                          <td style="padding: 8px 0; color: #64748b; font-weight: 500;">Active Shoppers Browsing</td>
+                          <td style="padding: 8px 0; text-align: right; font-weight: 700; color: #0f172a;">
+                            <span style="background-color: #e0e7ff; color: #3730a3; padding: 3px 10px; border-radius: 6px; font-size: 13px;">${peopleText}</span>
+                          </td>
+                        </tr>
+                        <tr>
+                          <td style="padding: 8px 0; color: #64748b; font-weight: 500;">Competitor Businesses Active</td>
+                          <td style="padding: 8px 0; text-align: right; font-weight: 600; color: #0f172a;">${businessesText}</td>
+                        </tr>
+                        <tr>
+                          <td style="padding: 8px 0; color: #64748b; font-weight: 500;">Current Plan</td>
+                          <td style="padding: 8px 0; text-align: right; font-weight: 600; color: #0f172a;">${planName}</td>
+                        </tr>
+                      </table>
+                    </div>
+
+                    <!-- CTA Action Button -->
+                    <div style="text-align: center; margin: 32px 0 16px 0;">
+                      <a href="${renewalUrl}" style="display: inline-block; background: linear-gradient(135deg, #4338CA 0%, #6366F1 100%); color: #ffffff; padding: 16px 36px; border-radius: 12px; text-decoration: none; font-weight: 700; font-size: 15px; box-shadow: 0 10px 15px -3px rgba(99, 102, 241, 0.35);">
+                        ${isLapsed ? 'Reactivate Subscription' : 'Renew Subscription'}
+                      </a>
+                    </div>
+                    
+                    <p style="text-align: center; font-size: 12px; color: #94a3b8; margin-top: 14px;">
+                      Questions or need help? Reply to this email or visit our <a href="mailto:support@vemtap.com" style="color: #6366F1; text-decoration: none; font-weight: 600;">Support Desk</a>.
+                    </p>
+
+                  </td>
+                </tr>
+
+                <!-- Clean Footer -->
+                <tr>
+                  <td style="background-color: #f8fafc; padding: 28px 32px; text-align: center; border-top: 1px solid #e2e8f0;">
+                    <div style="margin-bottom: 12px;">
+                      <span style="font-weight: 800; font-size: 16px; color: #1e293b; letter-spacing: -0.02em;">VemTap</span>
+                    </div>
+                    <p style="margin: 0; font-size: 12px; color: #94a3b8; line-height: 1.6;">
+                      &copy; ${new Date().getFullYear()} VemTap Technologies. All rights reserved.<br>
+                      This is an automated notification regarding your subscription status.
+                    </p>
+                  </td>
+                </tr>
+
+              </table>
+            </td>
+          </tr>
+        </table>
+      </body>
+      </html>
+    `;
+
+    return { subject, html };
+  }
+}

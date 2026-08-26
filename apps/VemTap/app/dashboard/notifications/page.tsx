@@ -1,13 +1,15 @@
 'use client';
 
 import React from 'react';
+import { useRouter } from 'next/navigation';
 import PageHeader from '@/components/dashboard/PageHeader';
 import { useNotifications, useMarkAsRead, useMarkAllAsRead } from '@/services/notifications/hooks';
 import { Notification } from '@/services/notifications/types';
-import { Bell, CheckCircle2, Info, AlertTriangle, Clock, Trash2, Loader2 } from 'lucide-react';
+import { Bell, CheckCircle2, Info, AlertTriangle, Clock, Loader2, ArrowRight } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export default function NotificationsPage() {
+    const router = useRouter();
     const { data: notifications, isLoading } = useNotifications();
     const readMutation = useMarkAsRead();
     const readAllMutation = useMarkAllAsRead();
@@ -22,6 +24,15 @@ export default function NotificationsPage() {
                 toast.success('All notifications marked as read');
             }
         });
+    };
+
+    const handleNotificationClick = (note: Notification) => {
+        if (!note.read) {
+            handleMarkAsRead(note.id);
+        }
+        if (note.actionUrl) {
+            router.push(note.actionUrl);
+        }
     };
 
     const getIcon = (type: string) => {
@@ -74,7 +85,7 @@ export default function NotificationsPage() {
                         {notificationList.map((note: Notification) => (
                             <div
                                 key={note.id}
-                                onClick={() => !note.read && handleMarkAsRead(note.id)}
+                                onClick={() => handleNotificationClick(note)}
                                 className={`p-6 flex items-start gap-4 hover:bg-gray-50 transition-colors cursor-pointer ${!note.read ? 'bg-primary/5' : ''}`}
                             >
                                 <div className="mt-1">{getIcon(note.type)}</div>
@@ -91,17 +102,30 @@ export default function NotificationsPage() {
                                     <p className="text-sm text-text-secondary max-w-2xl leading-relaxed">
                                         {note.message}
                                     </p>
-                                    {!note.read && (
-                                        <button
-                                            className="mt-3 text-xs font-bold text-primary hover:underline flex items-center gap-1"
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                handleMarkAsRead(note.id);
-                                            }}
-                                        >
-                                            Mark as read
-                                        </button>
-                                    )}
+                                    <div className="flex items-center gap-4 mt-3">
+                                        {note.actionUrl && (
+                                            <button
+                                                className="text-xs font-bold text-primary hover:underline flex items-center gap-1"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleNotificationClick(note);
+                                                }}
+                                            >
+                                                Take Action <ArrowRight size={12} />
+                                            </button>
+                                        )}
+                                        {!note.read && (
+                                            <button
+                                                className="text-xs font-bold text-text-secondary hover:underline flex items-center gap-1"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleMarkAsRead(note.id);
+                                                }}
+                                            >
+                                                Mark as read
+                                            </button>
+                                        )}
+                                    </div>
                                 </div>
                                 {!note.read && (
                                     <div className="mt-1.5 w-2 h-2 rounded-full bg-primary shadow-sm shadow-primary/40"></div>
@@ -114,4 +138,5 @@ export default function NotificationsPage() {
         </div>
     );
 }
+
 

@@ -14,6 +14,7 @@ import { User, UserStatus } from '../users/entities/user.entity';
 import { RotatorImpression } from '../rotator/entities/rotator-impression.entity';
 import { NotificationsService } from '../notifications/notifications.service';
 import { PushNotificationService } from '../notifications/push-notification.service';
+import { MailService } from '../mail/mail.service';
 import {
   SUBSCRIPTION_REMINDER_STAGES,
   SUBSCRIPTION_REMINDER_LAPSED_STAGE,
@@ -31,7 +32,15 @@ export interface SubscriptionReminderRunResult {
   lapsed: number;
   sentInApp: number;
   sentPush: number;
+  sentEmail: number;
+  failed: number;
   skippedNoCluster: number;
+}
+
+interface ReminderTarget {
+  sub: Subscription;
+  daysLeft: number;
+  isLapsed: boolean;
 }
 
 interface ClusterStats {
@@ -49,9 +58,9 @@ interface ClusterStats {
  * the business owner as that gate approaches (14/7/3 days) and right after the
  * plan lapses, using each cluster's live engagement numbers in the copy.
  *
- * Delivery is both an in-app Notification (NotificationsService) and a web
- * push (PushNotificationService → BullMQ). The subscription's
- * lastRenewalReminderStage column dedupes so each escalation stage fires once.
+ * Delivery is multi-channel: in-app Notification (NotificationsService), web
+ * push (PushNotificationService → BullMQ), and email (MailService) for urgent stages.
+ * The subscription's lastRenewalReminderStage column dedupes so each escalation stage fires once.
  */
 @Injectable()
 export class SubscriptionRemindersService {
@@ -76,6 +85,7 @@ export class SubscriptionRemindersService {
     private readonly impressionRepository: Repository<RotatorImpression>,
     private readonly notificationsService: NotificationsService,
     private readonly pushNotificationService: PushNotificationService,
+    private readonly mailService: MailService,
     private readonly configService: ConfigService,
   ) {
     this.stages = this.parseStages(
@@ -96,9 +106,9 @@ export class SubscriptionRemindersService {
     this.logger.log('Running subscription renewal reminders');
     const result = await this.runRenewalReminders();
     this.logger.log(
-      `Renewal reminders done: ${result.sentInApp} in-app, ${result.sentPush} push ` +
-        `(${result.expiring} expiring, ${result.lapsed} lapsed, ` +
-        `${result.skippedNoCluster} skipped for lack of a cluster)`,
+      `Renewal reminders done: ${result.sentInApp} in-app, ${result.sentPush} push, ` +
+        `${result.sentEmail} email (${result.expiring} expiring, ${result.lapsed} lapsed, ` +
+        `${result.failed} failed, ${result.skippedNoCluster} skipped for lack of a cluster)`,
     );
   }
 
@@ -125,15 +135,18 @@ export class SubscriptionRemindersService {
       lapsed: lapsedCandidates.length,
       sentInApp: 0,
       sentPush: 0,
+      sentEmail: 0,
+      failed: 0,
       skippedNoCluster: 0,
     };
 
-    const targets = [
+    const targets: ReminderTarget[] = [
       ...expiring.map((sub) => ({
         sub,
         daysLeft: this.daysUntil(sub.endDate, now),
+        isLapsed: false,
       })),
-      ...lapsed.map((sub) => ({ sub, daysLeft: 0 })),
+      ...lapsed.map((sub) => ({ sub, daysLeft: 0, isLapsed: true })),
     ];
 
     if (targets.length === 0) return result;
@@ -153,57 +166,103 @@ export class SubscriptionRemindersService {
 
     let sentInApp = 0;
     let sentPush = 0;
+    let sentEmail = 0;
+    let failed = 0;
     let skippedNoCluster = 0;
 
-    for (const { sub, daysLeft } of targets) {
-      const clusterId = clusterByBusiness.get(sub.businessId);
-      if (!clusterId) {
-        skippedNoCluster++;
-        continue;
+    for (const { sub, daysLeft, isLapsed } of targets) {
+      try {
+        const clusterId = clusterByBusiness.get(sub.businessId);
+        if (!clusterId) {
+          skippedNoCluster++;
+          continue;
+        }
+        const ownerId = sub.business?.ownerId;
+        if (!ownerId) continue;
+        const owner = owners.get(ownerId);
+        if (!owner) continue;
+
+        const stage = isLapsed
+          ? SUBSCRIPTION_REMINDER_LAPSED_STAGE
+          : this.stageForDays(daysLeft);
+
+        if (this.alreadyRemindedAtStage(sub, stage)) continue;
+
+        const clusterStats = stats.get(clusterId);
+        const { title, message, type } = this.buildCopy(
+          daysLeft,
+          isLapsed,
+          clusterStats,
+        );
+
+        await this.notificationsService.create(
+          ownerId,
+          title,
+          message,
+          type,
+          SUBSCRIPTION_RENEWAL_URL,
+        );
+        sentInApp++;
+
+        const pushResult = await this.pushNotificationService.sendNotification(
+          ownerId,
+          title,
+          message,
+          {
+            url: SUBSCRIPTION_RENEWAL_URL,
+            category: 'marketing',
+            stage,
+            clusterId,
+          },
+        );
+        if (pushResult.queued) sentPush++;
+
+        // Send email reminder for urgent and lapsed stages (stage <= 3 or isLapsed)
+        if ((stage <= 3 || isLapsed) && owner.email) {
+          const customerName =
+            [owner.firstName, owner.lastName].filter(Boolean).join(' ') ||
+            'Valued Merchant';
+          const businessName = sub.business?.name || 'Your Business';
+          const planName = sub.plan?.name || 'Discovery Plan';
+
+          const emailSent =
+            await this.mailService.sendSubscriptionRenewalReminder({
+              email: owner.email,
+              customerName,
+              businessName,
+              planName,
+              daysLeft,
+              isLapsed,
+              clusterName: clusterStats?.name ?? 'your area',
+              clusterStats: clusterStats
+                ? {
+                    people: clusterStats.people,
+                    businesses: clusterStats.businesses,
+                  }
+                : undefined,
+            });
+          if (emailSent) sentEmail++;
+        }
+
+        await this.subscriptionRepository.update(sub.id, {
+          lastRenewalReminderAt: now,
+          lastRenewalReminderStage: stage,
+        });
+      } catch (error) {
+        failed++;
+        this.logger.error(
+          `Failed processing renewal reminder for subscription ${sub.id}: ${
+            (error as Error).message
+          }`,
+          (error as Error).stack,
+        );
       }
-      const ownerId = sub.business?.ownerId;
-      if (!ownerId || !owners.has(ownerId)) continue;
-
-      const isLapsed = daysLeft === 0;
-      const stage = isLapsed
-        ? SUBSCRIPTION_REMINDER_LAPSED_STAGE
-        : this.stageForDays(daysLeft);
-
-      if (this.alreadyRemindedAtStage(sub, stage)) continue;
-
-      const clusterStats = stats.get(clusterId);
-      const { title, message, type } = this.buildCopy(daysLeft, clusterStats);
-
-      await this.notificationsService.create(
-        ownerId,
-        title,
-        message,
-        type,
-        SUBSCRIPTION_RENEWAL_URL,
-      );
-      sentInApp++;
-
-      const pushResult = await this.pushNotificationService.sendNotification(
-        ownerId,
-        title,
-        message,
-        {
-          url: SUBSCRIPTION_RENEWAL_URL,
-          category: 'marketing',
-          stage,
-          clusterId,
-        },
-      );
-      if (pushResult.queued) sentPush++;
-
-      await this.subscriptionRepository.update(sub.id, {
-        lastRenewalReminderAt: now,
-        lastRenewalReminderStage: stage,
-      });
     }
 
     result.sentInApp = sentInApp;
     result.sentPush = sentPush;
+    result.sentEmail = sentEmail;
+    result.failed = failed;
     result.skippedNoCluster = skippedNoCluster;
     return result;
   }
@@ -252,9 +311,7 @@ export class SubscriptionRemindersService {
       .where('sub.deletedAt IS NULL')
       .andWhere('plan.discoveryEnabled = :discovery', { discovery: true })
       .andWhere('sub.endDate >= :lapsedSince', { lapsedSince })
-      .andWhere("sub.endDate + INTERVAL '24 hours' <= :gracePassed", {
-        gracePassed,
-      })
+      .andWhere('sub.endDate <= :gracePassed', { gracePassed })
       .getMany();
   }
 
@@ -364,6 +421,7 @@ export class SubscriptionRemindersService {
 
   private buildCopy(
     daysLeft: number,
+    isLapsed: boolean,
     stats?: ClusterStats,
   ): { title: string; message: string; type: string } {
     const clusterName = stats?.name ?? 'your area';
@@ -373,7 +431,7 @@ export class SubscriptionRemindersService {
     const businessesText = `${businesses.toLocaleString()}`;
     const daysText = `${daysLeft} ${daysLeft === 1 ? 'day' : 'days'}`;
 
-    if (daysLeft <= 0) {
+    if (isLapsed) {
       return {
         title: `Your offers left the ${clusterName} deals feed`,
         message: `Your plan expired, so customers in ${clusterName} can no longer see your deals. ${businessesText} businesses there are reaching ${peopleText} shoppers. Renew to rejoin.`,
@@ -406,19 +464,21 @@ export class SubscriptionRemindersService {
 
   private async resolveActiveOwners(
     businessIds: string[],
-  ): Promise<Set<string>> {
+  ): Promise<Map<string, User>> {
     const businesses = await this.businessRepository.find({
       where: { id: In(businessIds) },
-      select: ['ownerId'],
+      select: ['id', 'ownerId'],
     });
-    const ownerIds = [...new Set(businesses.map((b) => b.ownerId))];
-    if (ownerIds.length === 0) return new Set();
+    const ownerIds = [
+      ...new Set(businesses.map((b) => b.ownerId).filter(Boolean)),
+    ];
+    if (ownerIds.length === 0) return new Map();
 
     const owners = await this.userRepository.find({
       where: { id: In(ownerIds), status: UserStatus.ACTIVE },
-      select: ['id'],
+      select: ['id', 'email', 'firstName', 'lastName'],
     });
-    return new Set(owners.map((o) => o.id));
+    return new Map(owners.map((o) => [o.id, o]));
   }
 
   // ------------------------------------------------------------------
