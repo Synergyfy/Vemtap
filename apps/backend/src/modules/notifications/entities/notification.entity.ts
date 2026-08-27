@@ -22,4 +22,7 @@ export class Notification extends AbstractBaseEntity {
 
   @Column({ default: false })
   isRead: boolean;
+
+  @Column({ type: 'varchar', nullable: true })
+  actionUrl: string | null;
 }

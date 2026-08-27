@@ -6,6 +6,7 @@ import { Branch } from '../branches/entities/branch.entity';
 import { Business } from '../businesses/entities/business.entity';
 import { CatalogueOffer } from '../catalogue/entities/catalogue-offer.entity';
 import { CatalogueOfferClaim } from '../catalogue/entities/catalogue-offer-claim.entity';
+import { Subscription } from '../subscriptions/entities/subscription.entity';
 import { RotatorConfig } from './entities/rotator-config.entity';
 import { RotatorClusterConfig } from './entities/rotator-cluster-config.entity';
 import { RotatorClusterOffer } from './entities/rotator-cluster-offer.entity';
@@ -40,6 +41,7 @@ import { ROTATOR_REFRESH_QUEUE } from './rotator.constants';
       RotatorDealSchedule,
       RotatorRotationRecord,
       RotatorImpression,
+      Subscription,
     ]),
     BullModule.registerQueue({
       name: ROTATOR_REFRESH_QUEUE,
