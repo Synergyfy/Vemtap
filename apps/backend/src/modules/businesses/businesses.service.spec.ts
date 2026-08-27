@@ -75,6 +75,7 @@ describe('BusinessesService', () => {
         Promise.resolve({ id: 'branch-1', ...branch }),
       ),
     find: jest.fn().mockResolvedValue([]),
+    exists: jest.fn().mockResolvedValue(false),
   };
 
   const mockVisitRepository = {
@@ -183,8 +184,27 @@ describe('BusinessesService', () => {
       });
 
       expect(repository.save).toHaveBeenCalled();
-      expect(mockSubscriptionsService.subscribeToFreePlan).toHaveBeenCalledWith('biz-1');
+      expect(mockSubscriptionsService.subscribeToFreePlan).toHaveBeenCalledWith(
+        'biz-1',
+      );
       expect(result).toBeDefined();
+    });
+
+    it('should auto-generate a username for the main branch', async () => {
+      mockRepository.findOne.mockResolvedValueOnce(null);
+      mockBranchRepository.exists.mockResolvedValueOnce(false);
+
+      await service.create({
+        name: 'My Store',
+        ownerId: 'owner-1',
+      });
+
+      expect(mockBranchRepository.exists).toHaveBeenCalledWith({
+        where: { username: 'main-branch' },
+      });
+      expect(mockBranchRepository.create).toHaveBeenCalledWith(
+        expect.objectContaining({ username: 'main-branch' }),
+      );
     });
   });
 

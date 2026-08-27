@@ -17,6 +17,7 @@ import { RotatorDealSchedule } from './entities/rotator-deal-schedule.entity';
 import { RotatorConfig } from './entities/rotator-config.entity';
 import { RotatorClusterConfig } from './entities/rotator-cluster-config.entity';
 import { RotatorCacheService } from './rotator-cache.service';
+import { Subscription } from '../subscriptions/entities/subscription.entity';
 
 function makeOffer(id: string, overrides: Partial<CatalogueOffer> = {}) {
   return {
@@ -24,6 +25,7 @@ function makeOffer(id: string, overrides: Partial<CatalogueOffer> = {}) {
     status: CatalogueOfferStatus.ACTIVE,
     startDate: null,
     endDate: null,
+    businessId: 'biz-1',
     branch: { id: 'br-1', clusterId: 'c1', isActive: true },
     business: { status: BusinessStatus.ACTIVE },
     ...overrides,
@@ -53,6 +55,7 @@ describe('RotatorEligibilityService', () => {
     save: jest.fn(),
   };
   const clusterConfigRepo = { findOne: jest.fn() };
+  const subscriptionRepo = { findOne: jest.fn() };
 
   const cache = {
     get: jest.fn().mockResolvedValue(null),
@@ -103,6 +106,10 @@ describe('RotatorEligibilityService', () => {
         {
           provide: getRepositoryToken(RotatorClusterConfig),
           useValue: clusterConfigRepo,
+        },
+        {
+          provide: getRepositoryToken(Subscription),
+          useValue: subscriptionRepo,
         },
         { provide: RotatorCacheService, useValue: cache },
       ],
@@ -193,6 +200,42 @@ describe('RotatorEligibilityService', () => {
     expect(subQb.andWhere).toHaveBeenCalledWith('co."deletedAt" IS NULL');
   });
 
+  it('filters the eligible pool to businesses with an active Discovery subscription', async () => {
+    configRepo.find.mockResolvedValue([
+      {
+        rotationMode: 'automatic',
+        windowSeconds: 60,
+        frequencyWindowHours: 24,
+      },
+    ]);
+    clusterConfigRepo.findOne.mockResolvedValue(null);
+
+    const qb = buildQb([
+      {
+        offerId: 'o1',
+        branchId: 'b1',
+        businessId: 'bi1',
+        branchName: 'B1',
+        businessName: 'Biz1',
+        pinned: false,
+        startDate: null,
+        endDate: null,
+      },
+    ]);
+    offerRepo.createQueryBuilder.mockReturnValue(qb);
+
+    await service.getEligiblePool('c1', { ignoreCache: true });
+
+    const andWhereCalls = (qb.andWhere.mock.calls as unknown[][])
+      .map((c: unknown[]) => String(c[0]))
+      .join(' ');
+    expect(andWhereCalls).toContain('"subscriptions"');
+    expect(andWhereCalls).toContain('INNER JOIN "plans" plan');
+    expect(andWhereCalls).toContain('sub."status" IN');
+    expect(andWhereCalls).toContain('sub."deletedAt" IS NULL');
+    expect(andWhereCalls).toContain('plan."discoveryEnabled" = true');
+  });
+
   it('manual mode keeps only included (non-excluded) deals', async () => {
     configRepo.find.mockResolvedValue([
       {
@@ -241,6 +284,10 @@ describe('RotatorEligibilityService', () => {
     });
     offerRepo.findOne.mockResolvedValue(expired);
     scheduleRepo.find.mockResolvedValue([]);
+    subscriptionRepo.findOne.mockResolvedValue({
+      endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+      plan: { discoveryEnabled: true },
+    });
     configRepo.find.mockResolvedValue([
       {
         rotationMode: 'automatic',
@@ -261,6 +308,10 @@ describe('RotatorEligibilityService', () => {
   it('explain marks an eligible active deal correctly', async () => {
     offerRepo.findOne.mockResolvedValue(makeOffer('o-ok'));
     scheduleRepo.find.mockResolvedValue([]);
+    subscriptionRepo.findOne.mockResolvedValue({
+      endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+      plan: { discoveryEnabled: true },
+    });
     configRepo.find.mockResolvedValue([
       {
         rotationMode: 'automatic',
@@ -274,7 +325,58 @@ describe('RotatorEligibilityService', () => {
 
     const explanation = await service.explain('c1', 'o-ok');
     expect(explanation.eligible).toBe(true);
+    expect(explanation.subscriptionActive).toBe(true);
+    expect(explanation.planHasDiscovery).toBe(true);
     expect(explanation.status).toBe('Eligible');
+  });
+
+  it('explain excludes a deal whose business has no active Discovery subscription', async () => {
+    offerRepo.findOne.mockResolvedValue(makeOffer('o-sub'));
+    scheduleRepo.find.mockResolvedValue([]);
+    subscriptionRepo.findOne.mockResolvedValue(null);
+    configRepo.find.mockResolvedValue([
+      {
+        rotationMode: 'automatic',
+        distribution: 'balanced',
+        windowSeconds: 60,
+        frequencyWindowHours: 24,
+      },
+    ]);
+    clusterConfigRepo.findOne.mockResolvedValue(null);
+    clusterOfferRepo.findOne.mockResolvedValue(null);
+
+    const explanation = await service.explain('c1', 'o-sub');
+    expect(explanation.eligible).toBe(false);
+    expect(explanation.subscriptionActive).toBe(false);
+    expect(explanation.planHasDiscovery).toBe(false);
+    expect(explanation.status).toBe('Excluded');
+    expect(explanation.reasons).toContain(
+      'Business has no active subscription with the Discovery plan',
+    );
+  });
+
+  it('explain excludes a deal whose plan lacks the Discovery feature', async () => {
+    offerRepo.findOne.mockResolvedValue(makeOffer('o-nodisc'));
+    scheduleRepo.find.mockResolvedValue([]);
+    subscriptionRepo.findOne.mockResolvedValue({
+      endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+      plan: { discoveryEnabled: false },
+    });
+    configRepo.find.mockResolvedValue([
+      {
+        rotationMode: 'automatic',
+        distribution: 'balanced',
+        windowSeconds: 60,
+        frequencyWindowHours: 24,
+      },
+    ]);
+    clusterConfigRepo.findOne.mockResolvedValue(null);
+    clusterOfferRepo.findOne.mockResolvedValue(null);
+
+    const explanation = await service.explain('c1', 'o-nodisc');
+    expect(explanation.eligible).toBe(false);
+    expect(explanation.planHasDiscovery).toBe(false);
+    expect(explanation.status).toBe('Excluded');
   });
 
   it('throws NotFound for explain when offer missing', async () => {

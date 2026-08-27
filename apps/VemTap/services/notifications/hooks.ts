@@ -13,8 +13,8 @@ export const useNotifications = () => {
                 title: n.title,
                 message: n.message,
                 type: n.type || 'info',
-                read: n.isRead,
-                timestamp: n.createdAt,
+                read: n.read ?? n.isRead ?? false,
+                timestamp: n.createdAt || n.timestamp || new Date().toISOString(),
                 actionUrl: n.actionUrl
             }));
         },

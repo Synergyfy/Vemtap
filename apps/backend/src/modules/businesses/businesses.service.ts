@@ -25,6 +25,7 @@ import { DevicesService } from '../devices/devices.service';
 import { Reward } from '../loyalty/entities/reward.entity';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { paginateWithCursor } from '../../common/utils/cursor-pagination.util';
+import { generateUsernameFromName } from '../../common/utils/username.util';
 import {
   Subscription,
   SubscriptionStatus,
@@ -127,8 +128,12 @@ export class BusinessesService {
     const savedBusiness = await this.businessesRepository.save(business);
 
     // Automatically create Main Branch
+    const mainBranchUsername = await this.generateUniqueBranchUsername(
+      'Main Branch',
+    );
     const mainBranch = this.branchRepository.create({
       name: 'Main Branch',
+      username: mainBranchUsername,
       businessId: savedBusiness.id,
       isMainBranch: true,
       logoUrl,
@@ -1063,6 +1068,27 @@ export class BusinessesService {
     return this.branchRepository.findOne({
       where: { businessId, isMainBranch: true },
     });
+  }
+
+  private async generateUniqueBranchUsername(
+    branchName: string,
+  ): Promise<string> {
+    const base = generateUsernameFromName(branchName);
+    let candidate = base;
+    let attempt = 0;
+
+    while (
+      await this.branchRepository.exists({ where: { username: candidate } })
+    ) {
+      attempt++;
+      candidate = `${base}-${attempt}`;
+      if (attempt > 10) {
+        candidate = `${base}-${Math.floor(Math.random() * 1000)}`;
+        break;
+      }
+    }
+
+    return candidate;
   }
 
   private toNumber(value: number | string): number {

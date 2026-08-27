@@ -68,12 +68,14 @@ export class NotificationsService {
     title: string,
     message: string,
     type: string = 'info',
+    actionUrl?: string | null,
   ) {
     const notification = this.notificationsRepository.create({
       userId,
       title,
       message,
       type,
+      actionUrl: actionUrl ?? null,
     });
     return this.notificationsRepository.save(notification);
   }

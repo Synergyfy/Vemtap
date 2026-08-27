@@ -22,6 +22,7 @@ import {
   CatalogueOfferClaim,
   CatalogueOfferClaimStatus,
 } from '../catalogue/entities/catalogue-offer-claim.entity';
+import { SubscriptionStatus } from '../subscriptions/entities/subscription.entity';
 import {
   ClusterCacheService,
   CLUSTER_DEALS_TTL,
@@ -417,7 +418,24 @@ export class ClustersService {
       })
       .andWhere('business.status = :businessStatus', {
         businessStatus: BusinessStatus.ACTIVE,
-      });
+      })
+      // Discovery gate: only businesses with a currently-valid subscription
+      // whose plan includes the Discovery Network feature may surface deals in
+      // a cluster. Mirrors SubscriptionsService.activeSubscription semantics
+      // (status active/trial + 24h renewal grace on endDate) and the plan's
+      // discoveryEnabled capability flag.
+      .andWhere(
+        `EXISTS (
+          SELECT 1
+          FROM "subscriptions" sub
+          INNER JOIN "plans" plan ON plan."id" = sub."planId"
+          WHERE sub."businessId" = business."id"
+            AND sub."deletedAt" IS NULL
+            AND sub."status" IN ('${SubscriptionStatus.ACTIVE}', '${SubscriptionStatus.TRIAL}')
+            AND (sub."endDate" IS NULL OR sub."endDate" + INTERVAL '24 hours' > NOW())
+            AND plan."discoveryEnabled" = true
+        )`,
+      );
 
     if (search) {
       qb.andWhere(

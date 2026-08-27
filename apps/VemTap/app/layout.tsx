@@ -83,11 +83,12 @@ import AuthProvider from "@/components/providers/AuthProvider";
 import CookieBanner from "@/components/shared/CookieBanner";
 import ToastProvider from "@/components/providers/ToastProvider";
 import SupportChatbot from "@/components/shared/SupportChatbot";
-import InstallPWA from "@/components/shared/InstallPWA";
+import PwaInstallProvider from "@/components/providers/PWAProvider";
 import GoogleAuthProvider from "./providers/GoogleAuthProvider";
 import AdminViewerBanner from "@/components/admin/control-tower/AdminViewerBanner";
 import FloatingBackButton from "@/components/shared/FloatingBackButton";
 import ConflictModal from "@/components/ui/ConflictModal";
+
 export default function RootLayout({
     children,
 }: Readonly<{
@@ -96,7 +97,7 @@ export default function RootLayout({
     return (
         <html lang="en" className={`${geist.variable} ${inter.variable} ${GeistMono.variable}`}>
             <head>
-                <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />  
+                <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
                 <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet" />
                 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
                 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -109,13 +110,14 @@ export default function RootLayout({
                     <OfflineSyncProvider>
                         <AuthProvider>
                             <GoogleAuthProvider>
-                                <ToastProvider />
-                                <ConflictModal />
-                                <AdminViewerBanner />
-                                {children}
-                                <CookieBanner />
-                                <SupportChatbot />
-                                <InstallPWA />
+                                <PwaInstallProvider>
+                                    <ToastProvider />
+                                    <ConflictModal />
+                                    <AdminViewerBanner />
+                                    {children}
+                                    <CookieBanner />
+                                    <SupportChatbot />
+                                </PwaInstallProvider>
                             </GoogleAuthProvider>
                         </AuthProvider>
                     </OfflineSyncProvider>
