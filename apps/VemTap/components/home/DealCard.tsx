@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { Heart, Bookmark, Share2, MapPin, ArrowRight, MessageCircle, Eye } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 
 interface DealCardProps {
   id: string;
@@ -34,6 +35,7 @@ export default function DealCard({
   cta = 'View Deal',
   viewCount,
 }: DealCardProps) {
+  const router = useRouter();
   const [liked, setLiked] = useState(false);
   const [saved, setSaved] = useState(false);
 
@@ -72,7 +74,7 @@ export default function DealCard({
           </span>
         </div>
 
-        <Link href={`/deals/${businessSlug}/${id}`} className="shrink-0">
+      <Link href={`/promotions/${id}`} className="shrink-0">
           <h3 className="text-sm font-bold text-gray-900 mb-1 line-clamp-2 leading-snug group-hover:text-primary transition-colors min-h-[36px]">
             {title}
           </h3>
@@ -100,7 +102,7 @@ export default function DealCard({
             )}
 
             <Link
-              href={`/deals/${businessSlug}/${id}`}
+              href={`/promotions/${id}`}
               className="shrink-0 flex items-center gap-1 text-xs font-bold text-primary hover:text-primary-hover transition-colors"
             >
               {cta}
@@ -130,7 +132,7 @@ export default function DealCard({
                 {liked ? '1' : '0'}
               </button>
               <button
-                onClick={(e) => { e.preventDefault(); }}
+                onClick={(e) => { e.preventDefault(); router.push(`/promotions/${id}#reviews`); }}
                 className="flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-semibold bg-gray-50 text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
               >
                 <MessageCircle size={12} />

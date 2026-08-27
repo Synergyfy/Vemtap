@@ -3,6 +3,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, MapPin, X, SlidersHorizontal, ArrowUpDown, Flame, Clock, TrendingUp, Star, Sparkles, Check, ChevronDown } from 'lucide-react';
+import { useSearchParams } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
@@ -84,6 +85,7 @@ function toPromotion(offer: DealOffer): Promotion {
         audience: offer.audience,
         maxClaimsPerCustomer: offer.maxClaimsPerCustomer,
         claimCodePrefix: offer.claimCodePrefix,
+        viewCount: offer.views,
     };
 }
 
@@ -112,10 +114,13 @@ function toMockPromotion(p: Promotion): MockPromotion {
         maxClaims: p.maxClaims,
         maxClaimsPerCustomer: p.maxClaimsPerCustomer,
         claimCodePrefix: p.claimCodePrefix,
+        viewCount: p.viewCount,
     };
 }
 
 export default function PromotionsPage() {
+    const searchParams = useSearchParams();
+    const initialSort = (searchParams.get('sortBy') as 'popular' | 'newest' | 'trending' | 'featured' | 'price-low' | 'price-high') || 'popular';
     const [search, setSearch] = useState('');
     const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
     const [location, setLocation] = useState<GeolocationCoordinates | null>(null);
@@ -128,7 +133,7 @@ export default function PromotionsPage() {
     const [freeOnly, setFreeOnly] = useState(false);
     const [priceFrom, setPriceFrom] = useState('');
     const [priceTo, setPriceTo] = useState('');
-    const [sortBy, setSortBy] = useState<'popular' | 'newest' | 'trending' | 'featured' | 'price-low' | 'price-high'>('popular');
+    const [sortBy, setSortBy] = useState<'popular' | 'newest' | 'trending' | 'featured' | 'price-low' | 'price-high'>(initialSort);
     const [locationRange, setLocationRange] = useState<number>(50);
 
     // Hero carousel
@@ -148,12 +153,23 @@ export default function PromotionsPage() {
         return () => clearTimeout(t);
     }, [heroSlide, heroPaused]);
 
+    const apiSortBy = useMemo(() => {
+        switch (sortBy) {
+            case 'price-low': return 'price_asc';
+            case 'price-high': return 'price_desc';
+            case 'trending': return 'trending';
+            case 'newest': return 'newest';
+            default: return undefined;
+        }
+    }, [sortBy]);
+
     const queryParams = useMemo(() => ({
         search: search || undefined,
         categoryId: selectedCategory || undefined,
         lat: location?.lat,
         lng: location?.lng,
-    }), [search, selectedCategory, location]);
+        sortBy: apiSortBy,
+    }), [search, selectedCategory, location, apiSortBy]);
 
     const { data: offersData, isLoading, isError, refetch } = usePublicOffers(queryParams);
 
@@ -1080,7 +1096,7 @@ export default function PromotionsPage() {
 
                                 {/* Grid */}
                                 {filteredPromotions.length > 0 ? (
-                                    <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-5">
+                                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
                                         {filteredPromotions.map((promo, i) => (
                                             <PromotionCard key={promo.id} promotion={toMockPromotion(promo)} index={i} />
                                         ))}

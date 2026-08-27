@@ -1,7 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { MapPin, Store } from 'lucide-react';
+import { MapPin, Store, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
 import { MOCK_NEW_ON_VEMTAP } from './mockData';
 
@@ -16,6 +16,9 @@ export default function NewOnVemtap() {
             </h2>
             <p className="text-sm text-gray-500 mt-1">Recently added businesses</p>
           </div>
+          <Link href="/deals?sortBy=newest" className="text-sm font-semibold text-primary hover:text-primary/80 transition-colors flex items-center gap-1 shrink-0">
+            View More <ArrowRight size={14} />
+          </Link>
         </div>
 
         <motion.div

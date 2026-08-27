@@ -15,6 +15,10 @@ import Footer from '@/components/layout/Footer';
 import { MOCK_PROMOTIONS, formatPromoPrice, formatPromoDate, getPromoDaysLeft } from '@/lib/mock/promotions';
 import type { MockPromotion } from '@/lib/mock/promotions';
 import { usePublicOfferDetails, useRequestClaimOtp, useVerifyClaimOtp } from '@/services/deals/hooks';
+import EngagementBar from '@/components/deals/EngagementBar';
+import ReviewSection from '@/components/deals/ReviewSection';
+import WriteReviewModal from '@/components/deals/WriteReviewModal';
+import { useDealEngagementStore } from '@/store/useDealEngagementStore';
 import { toast } from 'react-hot-toast';
 
 type ClaimStep = 'phone' | 'otp' | 'success';
@@ -63,6 +67,10 @@ export default function PromotionDetailPage() {
     const [otp, setOtp] = useState('');
     const [couponCode, setCouponCode] = useState('');
     const [showShareModal, setShowShareModal] = useState(false);
+    const [showWriteReview, setShowWriteReview] = useState(false);
+
+    const { getDealReviewCount } = useDealEngagementStore();
+    const reviewCount = getDealReviewCount(id);
 
     const requestClaimOtp = useRequestClaimOtp();
     const verifyClaimOtp = useVerifyClaimOtp();
@@ -324,6 +332,15 @@ href="/deals"
                                     ))}
                                 </ul>
                             </motion.div>
+
+                            {/* Reviews Preview */}
+                            <motion.div
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: 0.35 }}
+                            >
+                                <ReviewSection offerId={id} />
+                            </motion.div>
                         </div>
 
                         {/* Right: Sidebar */}
@@ -339,7 +356,7 @@ href="/deals"
                                     <div className="flex items-center gap-2 text-gray-500">
                                         <Clock size={14} />
                                         <span className="text-xs font-bold">
-                                            {daysLeft > 0 ? `${daysLeft} days left` : 'Ending today'}
+                                            {daysLeft === -1 ? 'No end date' : daysLeft > 0 ? `${daysLeft} days left` : 'Ending today'}
                                         </span>
                                     </div>
                                     <div className="flex items-center gap-2 text-gray-500">
@@ -361,6 +378,15 @@ href="/deals"
                                 >
                                     <Share2 size={14} /> Share Deal
                                 </button>
+
+                                <EngagementBar
+                                    offerId={id}
+                                    offerTitle={promotion.name}
+                                    offerDescription={promotion.longDescription}
+                                    dealUrl={typeof window !== 'undefined' ? window.location.href : ''}
+                                    reviewCount={reviewCount}
+                                    onCommentClick={() => setShowWriteReview(true)}
+                                />
 
                                 {/* Business info */}
                                 <div className="pt-4 border-t border-gray-100 space-y-3">
@@ -690,7 +716,7 @@ href="/deals"
                                         </div>
 
                                         <p className="text-[10px] text-gray-400 font-bold">
-                                            This code is valid for {promotion?.endDate ? getPromoDaysLeft(promotion.endDate) : 7} days.
+                                            This code is valid for {(() => { const d = promotion?.endDate ? getPromoDaysLeft(promotion.endDate) : 7; return d === -1 ? 'unlimited' : `${d} days`; })()}.
                                         </p>
                                     </motion.div>
                                 )}
@@ -699,6 +725,12 @@ href="/deals"
                     </div>
                 )}
             </AnimatePresence>
+
+            <WriteReviewModal
+                isOpen={showWriteReview}
+                onClose={() => setShowWriteReview(false)}
+                offerId={id}
+            />
         </div>
     );
 }

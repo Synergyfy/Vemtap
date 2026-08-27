@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { Heart, MessageCircle, Share2, Bookmark, MapPin, ArrowRight, Tag, Store } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 
 interface ContentCardProps {
   type: 'deal' | 'business';
@@ -36,10 +37,11 @@ export default function ContentCard({
   businessSlug,
   cta,
 }: ContentCardProps) {
+  const router = useRouter();
   const [liked, setLiked] = useState(false);
   const [saved, setSaved] = useState(false);
 
-  const href = type === 'deal' ? `/deals/${businessSlug}/${id}` : `/b/${businessSlug}`;
+  const href = type === 'deal' ? `/promotions/${id}` : `/b/${businessSlug}`;
   const defaultCta = type === 'deal' ? 'View Deal' : 'View Business';
 
   return (
@@ -119,7 +121,7 @@ export default function ContentCard({
               <Heart size={13} fill={liked ? 'currentColor' : 'none'} />
             </button>
             <button
-              onClick={(e) => { e.preventDefault(); }}
+              onClick={(e) => { e.preventDefault(); if (type === 'deal') router.push(`/promotions/${id}#reviews`); }}
               className="w-7 h-7 rounded-full bg-gray-50 flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
             >
               <MessageCircle size={13} />

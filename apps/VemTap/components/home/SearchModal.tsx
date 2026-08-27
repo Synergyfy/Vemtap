@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, X, MapPin, Store, Tag, ArrowRight, Clock } from 'lucide-react';
 import Link from 'next/link';
-import { MOCK_BUSINESSES, MOCK_TRENDING, HOME_CATEGORIES } from './mockData';
+import { usePublicOffers } from '@/services/deals/hooks';
+import { HOME_CATEGORIES } from './mockData';
 
 interface SearchModalProps {
   isOpen: boolean;
@@ -20,51 +21,40 @@ type SearchResult = {
   icon: React.ReactNode;
 };
 
+const LOCATIONS = ['Wuse 2, Abuja', 'Lekki, Lagos', 'Victoria Island, Lagos', 'Gwarinpa, Abuja', 'Ikoyi, Lagos', 'Computer Village, Lagos'];
+
 export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
   const [query, setQuery] = useState('');
-  const [results, setResults] = useState<SearchResult[]>([]);
   const [recentSearches] = useState(['Restaurants near me', 'Fashion deals', 'Electronics Abuja']);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const { data: dealsData } = usePublicOffers({ search: query.trim() || undefined, limit: 8 });
+  const offers = dealsData?.data || [];
 
   useEffect(() => {
     if (isOpen) {
       setTimeout(() => inputRef.current?.focus(), 100);
     } else {
       setQuery('');
-      setResults([]);
     }
   }, [isOpen]);
 
-  useEffect(() => {
-    if (!query.trim()) {
-      setResults([]);
-      return;
-    }
-
+  const results: SearchResult[] = useMemo(() => {
+    if (!query.trim()) return [];
     const q = query.toLowerCase();
     const found: SearchResult[] = [];
 
-    MOCK_BUSINESSES.forEach((biz) => {
-      if (biz.name.toLowerCase().includes(q) || biz.categoryName.toLowerCase().includes(q) || biz.city.toLowerCase().includes(q)) {
+    offers.forEach((offer: any) => {
+      const name = offer.name || '';
+      const bizName = offer.business?.name || '';
+      const catName = offer.business?.categoryName || '';
+      if (name.toLowerCase().includes(q) || bizName.toLowerCase().includes(q) || catName.toLowerCase().includes(q)) {
         found.push({
-          id: biz.id,
-          type: 'business',
-          title: biz.name,
-          subtitle: `${biz.categoryName} · ${biz.address}`,
-          href: `/b/${biz.slug}`,
-          icon: <Store size={16} className="text-primary" />,
-        });
-      }
-    });
-
-    MOCK_TRENDING.forEach((deal) => {
-      if (deal.title.toLowerCase().includes(q) || deal.businessName.toLowerCase().includes(q) || deal.category.toLowerCase().includes(q) || deal.location.toLowerCase().includes(q)) {
-        found.push({
-          id: deal.id,
+          id: offer.id,
           type: 'deal',
-          title: deal.title,
-          subtitle: `${deal.businessName} · ${deal.location}`,
-          href: `/deals`,
+          title: name,
+          subtitle: `${bizName} · ${offer.business?.address || ''}`,
+          href: `/deals/${offer.business?.slug || ''}/${offer.id}`,
           icon: <Tag size={16} className="text-rose-500" />,
         });
       }
@@ -83,8 +73,7 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
       }
     });
 
-    const locations = ['Wuse 2, Abuja', 'Lekki, Lagos', 'Victoria Island, Lagos', 'Gwarinpa, Abuja', 'Ikoyi, Lagos', 'Computer Village, Lagos'];
-    locations.forEach((loc) => {
+    LOCATIONS.forEach((loc) => {
       if (loc.toLowerCase().includes(q)) {
         found.push({
           id: loc,
@@ -97,8 +86,8 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
       }
     });
 
-    setResults(found.slice(0, 8));
-  }, [query]);
+    return found.slice(0, 8);
+  }, [query, offers]);
 
   return (
     <AnimatePresence>

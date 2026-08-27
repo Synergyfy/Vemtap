@@ -1,9 +1,10 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { Clock, BadgeCheck, Zap } from 'lucide-react';
+import { Clock, BadgeCheck, Zap, Heart, MessageCircle, Bookmark, Eye } from 'lucide-react';
 import { MockPromotion, formatPromoPrice, getPromoDaysLeft } from '@/lib/mock/promotions';
 
 interface PromotionCardProps {
@@ -19,12 +20,16 @@ function compactCount(n: number): string {
 }
 
 function DaysLeftLabel({ daysLeft }: { daysLeft: number }) {
+    if (daysLeft === -1) return <span>No end date</span>;
     if (daysLeft <= 0) return <span>Last day</span>;
     if (daysLeft === 1) return <span>1 day left</span>;
     return <span>{daysLeft} days left</span>;
 }
 
 export default function PromotionCard({ promotion, index, onOpenDeal }: PromotionCardProps) {
+    const router = useRouter();
+    const [liked, setLiked] = useState(false);
+    const [saved, setSaved] = useState(false);
     const daysLeft = getPromoDaysLeft(promotion.endDate);
     const isFree = promotion.dealPrice === 0;
     const hasDiscount = (promotion.discountPercent ?? 0) > 0;
@@ -45,7 +50,7 @@ export default function PromotionCard({ promotion, index, onOpenDeal }: Promotio
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.35, delay: Math.min(index * 0.05, 0.4) }}
-            className="h-full"
+            className="h-[340px]"
         >
             <Link
                 href={`/promotions/${promotion.id}`}
@@ -134,23 +139,64 @@ export default function PromotionCard({ promotion, index, onOpenDeal }: Promotio
                         </div>
 
                         {/* Footer */}
-                        <div className="mt-auto pt-1.5 flex items-center justify-between gap-2">
-                            <span
-                                className={
-                                    daysLeft <= 3
-                                        ? 'inline-flex items-center gap-1 text-[10px] font-black text-orange-600'
-                                        : 'inline-flex items-center gap-1 text-[10px] font-bold text-slate-400'
-                                }
-                            >
-                                <Clock size={10} className={daysLeft <= 3 ? 'text-orange-500' : ''} />
-                                <DaysLeftLabel daysLeft={daysLeft} />
-                            </span>
-                            {isStarSeller && (
-                                <span className="inline-flex items-center gap-1 text-[9px] font-black text-primary">
-                                    <BadgeCheck size={12} className="text-primary fill-primary/10" />
-                                    Star seller
+                        <div className="mt-auto pt-1.5 space-y-2">
+                            <div className="flex items-center justify-between gap-2">
+                                <span
+                                    className={
+                                        daysLeft <= 3
+                                            ? 'inline-flex items-center gap-1 text-[10px] font-black text-orange-600'
+                                            : 'inline-flex items-center gap-1 text-[10px] font-bold text-slate-400'
+                                    }
+                                >
+                                    <Clock size={10} className={daysLeft <= 3 ? 'text-orange-500' : ''} />
+                                    <DaysLeftLabel daysLeft={daysLeft} />
                                 </span>
-                            )}
+                                {isStarSeller && (
+                                    <span className="inline-flex items-center gap-1 text-[9px] font-black text-primary">
+                                        <BadgeCheck size={12} className="text-primary fill-primary/10" />
+                                        Star seller
+                                    </span>
+                                )}
+                            </div>
+
+                            {/* Engagement buttons */}
+                            <div className="flex items-center justify-between">
+                                {promotion.viewCount !== undefined ? (
+                                    <div className="flex items-center gap-1 text-[10px] text-gray-400">
+                                        <Eye size={10} />
+                                        {(promotion.viewCount || 0).toLocaleString()} views
+                                    </div>
+                                ) : (
+                                    <div />
+                                )}
+                                <div className="flex items-center gap-1">
+                                    <button
+                                        onClick={(e) => { e.preventDefault(); setLiked(!liked); }}
+                                        className={`flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold transition-colors ${
+                                            liked ? 'bg-rose-50 text-rose-500' : 'bg-gray-50 text-gray-400 hover:text-rose-500 hover:bg-rose-50'
+                                        }`}
+                                    >
+                                        <Heart size={10} fill={liked ? 'currentColor' : 'none'} />
+                                        {liked ? '1' : '0'}
+                                    </button>
+                                    <button
+                                        onClick={(e) => { e.preventDefault(); router.push(`/promotions/${promotion.id}#reviews`); }}
+                                        className="flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-gray-50 text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+                                    >
+                                        <MessageCircle size={10} />
+                                        0
+                                    </button>
+                                    <button
+                                        onClick={(e) => { e.preventDefault(); setSaved(!saved); }}
+                                        className={`flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold transition-colors ${
+                                            saved ? 'bg-primary/10 text-primary' : 'bg-gray-50 text-gray-400 hover:text-primary hover:bg-primary/5'
+                                        }`}
+                                    >
+                                        <Bookmark size={10} fill={saved ? 'currentColor' : 'none'} />
+                                        {saved ? '1' : '0'}
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>

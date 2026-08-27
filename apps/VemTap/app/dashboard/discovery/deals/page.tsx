@@ -18,6 +18,7 @@ import type { CatalogueOffer } from '@/services/catalogue/hooks';
 import { uploadToCloudinary } from '@/lib/cloudinary';
 import PartnershipVerificationGuard from '@/components/dashboard/partnership/PartnershipVerificationGuard';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu';
+import { useDealEngagementStore } from '@/store/useDealEngagementStore';
 
 const DeliveryRadiusMap = dynamic(() => import('@/components/dashboard/discovery/DeliveryRadiusMap'), { ssr: false });
 
@@ -113,6 +114,7 @@ function PromotionsTab({ branchId, onCreatePromo, onEditPromo }: { branchId: str
     const updateOffer = useUpdateCatalogueOffer();
     const deleteOffer = useDeleteCatalogueOffer();
     const [statusFilter, setStatusFilter] = useState<'active' | 'all' | 'expired' | 'inactive'>('active');
+    const { getDealLikeCount, getDealReviewCount } = useDealEngagementStore();
 
     const isExpired = (promo: CatalogueOffer) => {
         if (!promo.endDate) return false;
@@ -356,6 +358,21 @@ function PromotionsTab({ branchId, onCreatePromo, onEditPromo }: { branchId: str
                                             <span className="text-[10px] font-bold text-primary">Star seller</span>
                                         </div>
                                     )}
+
+                                    {/* Engagement stats */}
+                                    <div className="flex items-center gap-3 pt-1 border-t border-gray-50">
+                                        <div className="flex items-center gap-1 text-[10px] font-bold text-gray-400">
+                                            <span className="text-rose-400">❤️</span>
+                                            {getDealLikeCount(promo.id)}
+                                        </div>
+                                        <Link
+                                            href={`/promotions/${promo.id}#reviews`}
+                                            className="flex items-center gap-1 text-[10px] font-bold text-gray-400 hover:text-primary transition-colors"
+                                        >
+                                            <span>💬</span>
+                                            {getDealReviewCount(promo.id)}
+                                        </Link>
+                                    </div>
                                 </div>
 
                                 {/* Admin actions */}

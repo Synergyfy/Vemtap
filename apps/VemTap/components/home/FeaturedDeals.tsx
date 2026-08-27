@@ -23,7 +23,7 @@ export default function FeaturedDeals() {
             </h2>
             <p className="text-sm text-gray-500 mt-1">Deals people are checking out right now</p>
           </div>
-          <Link href="/deals" className="text-sm font-semibold text-primary hover:text-primary/80 transition-colors flex items-center gap-1 shrink-0">
+          <Link href="/deals?sortBy=trending" className="text-sm font-semibold text-primary hover:text-primary/80 transition-colors flex items-center gap-1 shrink-0">
             View More <ArrowRight size={14} />
           </Link>
         </div>
