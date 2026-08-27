@@ -84,13 +84,16 @@ self.addEventListener("push", (event: PushEvent) => {
     }
   }
 
-  const title = payload.title || "VemTap Notification";
+  // The backend nests title/body/icon under `notification` (web-push spec),
+  // but older clients sent a flat payload — accept both.
+  const notification = payload.notification ?? payload;
+  const title = notification.title || "VemTap Notification";
   const options: NotificationOptions = {
-    body: payload.body || "You have a new update.",
+    body: notification.body || "You have a new update.",
     icon: "/icons/icon-192.png",
     badge: "/icons/icon-192.png",
     data: {
-      url: payload.url || "/",
+      url: notification.url || notification.data?.url || "/",
       ...payload,
     },
   };

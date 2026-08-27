@@ -590,6 +590,25 @@ describe('ClustersService', () => {
       expect(andWhereCalls).toContain('business.status = :businessStatus');
     });
 
+    it('filters the feed to businesses with an active Discovery subscription', async () => {
+      const qb = buildQb();
+      qb.getMany.mockResolvedValue([]);
+      offerRepo.createQueryBuilder.mockReturnValue(qb);
+
+      await service.getClusterDeals('CL-ABC123DEF', {});
+
+      const andWhereCallArgs = qb.andWhere.mock.calls as unknown[][];
+      const andWhereCalls = andWhereCallArgs
+        .map((c: unknown[]) => String(c[0]))
+        .join(' ');
+      expect(andWhereCalls).toContain('"subscriptions"');
+      expect(andWhereCalls).toContain('INNER JOIN "plans" plan');
+      expect(andWhereCalls).toContain('sub."status" IN');
+      expect(andWhereCalls).toContain('sub."deletedAt" IS NULL');
+      expect(andWhereCalls).toContain('plan."discoveryEnabled" = true');
+      expect(andWhereCalls).toContain('sub."endDate" + INTERVAL');
+    });
+
     it('keys the deals cache distinctly per limit', async () => {
       rotatorEngine.getCurrentResult.mockResolvedValue({
         clusterId: 'cl-1',

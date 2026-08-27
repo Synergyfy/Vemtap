@@ -576,7 +576,7 @@ export default function DashboardSidebar({ children }: SidebarProps) {
                                             ))}
                                         </div>
                                         <div className="border-t border-gray-50 px-2 py-1.5">
-                                            <DropdownMenuItem onClick={() => router.push(withBranch('/dashboard/settings/notifications'))} className="rounded-lg">
+                                            <DropdownMenuItem onClick={() => router.push(withBranch('/dashboard/notifications'))} className="rounded-lg">
                                                 <Bell size={14} />
                                                 <span>View All Notifications</span>
                                             </DropdownMenuItem>

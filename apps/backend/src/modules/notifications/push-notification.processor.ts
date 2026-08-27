@@ -144,9 +144,11 @@ export class PushNotificationProcessor extends WorkerHost {
         icon: '/logo.png',
         data: {
           ...data,
-          url: data.threadId
-            ? `/dashboard/messaging/${data.threadId}`
-            : undefined,
+          url:
+            data.url ??
+            (data.threadId
+              ? `/dashboard/messaging/${data.threadId}`
+              : undefined),
         },
       },
     });
