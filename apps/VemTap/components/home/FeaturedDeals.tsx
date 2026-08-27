@@ -1,62 +1,99 @@
 'use client';
 
-import React, { useMemo } from 'react';
+import { motion } from 'framer-motion';
 import Link from 'next/link';
-import { Flame, ArrowRight } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import { usePublicOffers } from '@/services/deals/hooks';
-import { offerToHomeDeal } from './mappers';
-import DealCard from './cards/DealCard';
-import HorizontalRail from './rails/HorizontalRail';
-import SectionSkeleton from './states/SectionSkeleton';
-import SectionEmpty from './states/SectionEmpty';
-import SectionError from './states/SectionError';
+import DealCard from './DealCard';
+import { DealCardSkeleton } from './Skeletons';
+import { MOCK_TRENDING } from './mockData';
 
 export default function FeaturedDeals() {
-  const { data, isLoading, isError, refetch } = usePublicOffers({
-    limit: 8,
-    sortBy: 'trending',
-  });
-
-  const deals = useMemo(
-    () => (data?.data ?? []).map(offerToHomeDeal),
-    [data]
-  );
+  const { data, isLoading, isError } = usePublicOffers({ limit: 8, sortBy: 'trending' });
+  const offers = data?.data || [];
+  const useMock = isError || (!isLoading && offers.length === 0);
 
   return (
-    <section className="py-8 sm:py-10">
-      <div className="container mx-auto max-w-6xl px-4 sm:px-6">
-        <div className="flex items-end justify-between gap-4 mb-5">
+    <section className="py-8 md:py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-7xl mx-auto">
+        <div className="flex items-center justify-between mb-5">
           <div>
-            <div className="flex items-center gap-2 mb-1">
-              <Flame size={18} className="text-orange-500" />
-              <h2 className="text-xl sm:text-2xl font-bold text-gray-900 tracking-tight">
-                Featured Deals
-              </h2>
-            </div>
-            <p className="text-sm text-gray-500">Offers worth checking out</p>
+            <h2 className="text-xl md:text-2xl font-bold text-gray-900 tracking-tight">
+              Trending
+            </h2>
+            <p className="text-sm text-gray-500 mt-1">Deals people are checking out right now</p>
           </div>
-          <Link
-            href="/deals"
-            className="hidden sm:inline-flex items-center gap-1 text-sm font-bold text-[#066CF4] hover:underline"
-          >
-            See all <ArrowRight size={14} />
+          <Link href="/deals" className="text-sm font-semibold text-primary hover:text-primary/80 transition-colors flex items-center gap-1 shrink-0">
+            View More <ArrowRight size={14} />
           </Link>
         </div>
 
-        {isLoading && <SectionSkeleton variant="deal" count={4} />}
-        {isError && <SectionError onRetry={() => refetch()} />}
-        {!isLoading && !isError && deals.length === 0 && (
-          <SectionEmpty
-            title="No deals found yet"
-            description="Try another location or explore more categories."
-          />
-        )}
-        {!isLoading && !isError && deals.length > 0 && (
-          <HorizontalRail gridOnDesktop>
-            {deals.map((deal) => (
-              <DealCard key={deal.id} deal={deal} />
+        {isLoading ? (
+          <div className="flex gap-4 overflow-hidden">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <DealCardSkeleton key={i} />
             ))}
-          </HorizontalRail>
+          </div>
+        ) : useMock ? (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="flex gap-4 overflow-x-auto snap-x snap-mandatory scrollbar-hide -mx-4 px-4 md:mx-0 md:px-0 pb-4"
+          >
+            {MOCK_TRENDING.map((deal, i) => (
+              <motion.div
+                key={deal.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.05 }}
+                className="snap-start"
+              >
+                <DealCard
+                  id={deal.id}
+                  title={deal.title}
+                  businessName={deal.businessName}
+                  businessSlug="mock"
+                  category={deal.category}
+                  location={deal.location}
+                  discountPercent={deal.discountPercent}
+                  originalPrice={deal.originalPrice}
+                  dealPrice={deal.dealPrice}
+                  imageColor={deal.imageColor}
+                  viewCount={deal.viewCount}
+                />
+              </motion.div>
+            ))}
+          </motion.div>
+        ) : (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="flex gap-4 overflow-x-auto snap-x snap-mandatory scrollbar-hide -mx-4 px-4 md:mx-0 md:px-0 pb-4"
+          >
+            {offers.map((offer, i) => (
+              <motion.div
+                key={offer.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.05 }}
+                className="snap-start"
+              >
+                <DealCard
+                  id={offer.id}
+                  title={offer.name}
+                  businessName={offer.business?.name || 'Business'}
+                  businessSlug={offer.business?.slug || ''}
+                  category={offer.business?.categoryName || 'Category'}
+                  location={offer.business?.address || ''}
+                  discountPercent={offer.discountPercent}
+                  originalPrice={offer.originalPrice}
+                  dealPrice={offer.dealPrice}
+                  imageColor={offer.business?.photos?.[0] ? '#066CF4' : '#E5E7EB'}
+                  viewCount={(offer as any).viewCount}
+                />
+              </motion.div>
+            ))}
+          </motion.div>
         )}
       </div>
     </section>

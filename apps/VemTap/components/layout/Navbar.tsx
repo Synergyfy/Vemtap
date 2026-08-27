@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { Menu, X, ChevronRight, ShieldCheck, HelpCircle } from 'lucide-react';
 import Logo from '@/components/brand/Logo';
 import { Button } from '@/components/ui/button';
@@ -12,15 +13,16 @@ import { useMyBusiness } from '@/services/businesses/hooks';
 
 const navLinks = [
     { label: 'Home', href: '/' },
-    { label: 'Features', href: '/features' },
     { label: 'Nearby Deals', href: '/deals' },
-    { label: 'Pricing', href: '/pricing' },
     { label: 'How It Works', href: '/how-it-works' },
+    { label: 'Pricing', href: '/pricing' },
+    { label: 'For Businesses', href: '/business-landing' },
 ];
 
 export default function Navbar() {
     const [isOpen, setIsOpen] = useState(false);
     const [scrolled, setScrolled] = useState(false);
+    const pathname = usePathname();
     
     const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
     const user = useAuthStore((state) => state.user);
@@ -49,15 +51,23 @@ export default function Navbar() {
 
                 {/* Desktop Navigation */}
                 <div className="hidden lg:flex items-center gap-8">
-                    {navLinks.map((link) => (
-                        <Link 
-                            key={link.label} 
-                            href={link.href}
-                            className="text-sm font-bold text-gray-600 hover:text-[#066CF4] transition-colors"
-                        >
-                            {link.label}
-                        </Link>
-                    ))}
+                    {navLinks.map((link) => {
+                        const isActive = link.href !== '/' && pathname === link.href;
+                        return (
+                            <Link 
+                                key={link.label} 
+                                href={link.href}
+                                className={cn(
+                                    "text-sm font-bold transition-colors relative py-1",
+                                    isActive
+                                        ? "text-[#066CF4] after:absolute after:bottom-0 after:left-0 after:right-0 after:h-[2px] after:bg-[#066CF4] after:rounded-full"
+                                        : "text-gray-600 hover:text-[#066CF4]"
+                                )}
+                            >
+                                {link.label}
+                            </Link>
+                        );
+                    })}
                 </div>
 
                 {/* Desktop CTAs */}
