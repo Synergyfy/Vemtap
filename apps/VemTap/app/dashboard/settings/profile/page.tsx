@@ -19,6 +19,16 @@ import { Reward } from '@/services/loyalty/types';
 import { useUserProfile, useUpdateSocials } from '@/services/users/hooks';
 import Modal from '@/components/ui/Modal';
 import { api } from '@/lib/api';
+import {
+    getPushSupportInfo,
+    getCurrentPermission,
+    requestNotificationPermission,
+    getPushSubscription,
+    subscribeToPush,
+    unsubscribeFromPush,
+    getVapidPublicKey,
+    detectBrowser,
+} from '@/lib/pushNotifications';
 import ProfileTabs from '@/components/dashboard/settings/profile/ProfileTabs';
 import PushNotificationsTab from '@/components/dashboard/settings/profile/PushNotificationsTab';
 import InstallAppButton from '@/components/shared/InstallAppButton';
@@ -283,72 +293,98 @@ export default function BusinessProfilePage() {
         }
     }, []);
 
-    const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || '';
-
-    const urlBase64ToUint8Array = (base64String: string) => {
-        const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
-        const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
-        const rawData = window.atob(base64);
-        const outputArray = new Uint8Array(rawData.length);
-        for (let i = 0; i < rawData.length; i += 1) {
-            outputArray[i] = rawData.charCodeAt(i);
-        }
-        return outputArray;
-    };
+    const vapidPublicKey = getVapidPublicKey();
 
     const refreshPushStatus = async () => {
         if (typeof window === 'undefined') return;
-        if (!('serviceWorker' in navigator)) return;
-        const registration = await navigator.serviceWorker.getRegistration();
-        if (!registration) {
+        const support = getPushSupportInfo();
+        setPushSupported(support.supported);
+        if (!support.supported) {
             setPushSubscribed(false);
             return;
         }
-        const subscription = await registration.pushManager.getSubscription();
-        setPushSubscribed(!!subscription);
+
+        setPushPermission(getCurrentPermission());
+
+        try {
+            const subscription = await getPushSubscription();
+            setPushSubscribed(!!subscription);
+        } catch (err) {
+            console.warn('Failed to get push subscription:', err);
+            setPushSubscribed(false);
+        }
     };
 
     const handleEnablePush = async () => {
-        if (!pushSupported) {
-            toast.error('Push notifications are not supported on this device.');
+        if (typeof window === 'undefined') return;
+
+        const support = getPushSupportInfo();
+        if (!support.supported) {
+            const msg = support.insecureContext
+                ? 'Push notifications require a secure (HTTPS) connection. localhost works in development.'
+                : 'Push notifications are not supported on this browser.';
+            setPushError(msg);
+            toast.error(msg);
             return;
         }
+
         setPushLoading(true);
         setPushError(null);
+
         try {
-            const permission = await Notification.requestPermission();
-            setPushPermission(permission);
+            const browser = detectBrowser();
+            let permission = getCurrentPermission();
+
+            // Previously declined: browsers never re-prompt after a 'denied'
+            // state, so requesting again would silently return 'denied'. Guide
+            // the user to browser site settings instead.
+            if (permission === 'denied') {
+                setPushPermission(permission);
+                const msg = `Notifications are blocked for this site in ${browser.name}. Add this site to the "Allowed to send notifications" list under ${browser.settingsLabel}, then click "Sync Status" below.`;
+                setPushError(msg);
+                toast.error(msg);
+                return;
+            }
+
             if (permission !== 'granted') {
-                toast.error('Please allow browser notifications to continue.');
-                return;
-            }
-            if (!vapidPublicKey) {
-                setPushError('Missing VAPID public key. Add NEXT_PUBLIC_VAPID_PUBLIC_KEY to enable push.');
-                toast.error('Push setup is missing a VAPID public key.');
-                return;
+                // New user (or previously dismissed) — request inside the user gesture.
+                permission = await requestNotificationPermission();
+                setPushPermission(permission);
+
+                if (permission === 'denied') {
+                    const msg = `Notifications are blocked for this site in ${browser.name}. Add this site to the "Allowed to send notifications" list under ${browser.settingsLabel}, then click "Sync Status" below.`;
+                    setPushError(msg);
+                    toast.error(msg);
+                    return;
+                }
+
+                if (permission !== 'granted') {
+                    // Prompt was dismissed or silenced (e.g. a "quiet" prompt mode).
+                    const quietHint = browser.hasQuietPromptSetting
+                        ? ` ${browser.name} has a "Quiet notification requests" setting that suppresses the popup — turning it off also helps.`
+                        : '';
+                    const msg =
+                        `${browser.name} did not show the permission prompt.` +
+                        ` Add this site to the "Allowed to send notifications" list under ${browser.settingsLabel},` +
+                        ` or click ${browser.addressBarIconHint} and choose Allow — then reload and try again.${quietHint}`;
+                    setPushError(msg);
+                    toast.error(msg);
+                    return;
+                }
             }
 
-            await navigator.serviceWorker.register('/sw.js');
-            const registration = await navigator.serviceWorker.ready;
-
-            if (!registration.active) {
-                throw new Error('Service Worker failed to activate.');
-            }
-
-            const existing = await registration.pushManager.getSubscription();
-            const subscription = existing || await registration.pushManager.subscribe({
-                userVisibleOnly: true,
-                applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
-            });
+            // Permission granted — subscribe and register the token with the backend.
+            const subscription = await subscribeToPush();
 
             await api.post('/notifications/push-token', {
                 token: JSON.stringify(subscription),
-                isUser: user?.role === 'customer',
             });
 
             setPushSubscribed(true);
-            toast.success('Push notifications enabled.');
+            setPushError(null);
+            toast.success('Push notifications enabled successfully!');
         } catch (error: any) {
+            console.error('Failed to enable push notifications:', error);
             const message = error?.message || 'Failed to enable push notifications.';
             setPushError(message);
             toast.error(message);
@@ -357,14 +393,49 @@ export default function BusinessProfilePage() {
         }
     };
 
+    const handleSendTestNotification = async () => {
+        try {
+            if (typeof window === 'undefined' || !('Notification' in window)) {
+                toast.error('Notifications are not supported on this device.');
+                return;
+            }
+            if (Notification.permission !== 'granted') {
+                toast.error('Notification permission is not granted yet.');
+                return;
+            }
+            if ('serviceWorker' in navigator) {
+                const registration = await navigator.serviceWorker.ready;
+                if (registration && registration.showNotification) {
+                    await registration.showNotification('VemTap Alert Test', {
+                        body: 'Push notifications are connected and working properly on your device!',
+                        icon: '/icons/icon-192.png',
+                        badge: '/icons/icon-192.png',
+                        tag: 'vemtap-test-preview',
+                    });
+                    toast.success('Test notification triggered!');
+                    return;
+                }
+            }
+            new Notification('VemTap Alert Test', {
+                body: 'Push notifications are connected and working properly on your device!',
+                icon: '/icons/icon-192.png',
+            });
+            toast.success('Test notification triggered!');
+        } catch (err: any) {
+            console.error('Test notification error:', err);
+            toast.error(err?.message || 'Failed to send test notification.');
+        }
+    };
+
     const handleDisablePush = async () => {
         setPushLoading(true);
         setPushError(null);
         try {
-            const registration = await navigator.serviceWorker.getRegistration();
-            const subscription = await registration?.pushManager.getSubscription();
-            if (subscription) {
-                await subscription.unsubscribe();
+            await unsubscribeFromPush();
+            try {
+                await api.delete('/notifications/push-token');
+            } catch (err) {
+                console.warn('Failed to clear push token on server:', err);
             }
             setPushSubscribed(false);
             toast.success('Push notifications disabled.');
@@ -378,12 +449,35 @@ export default function BusinessProfilePage() {
     };
 
     useEffect(() => {
-        if (typeof window === 'undefined') return;
-        const supported = 'Notification' in window && 'serviceWorker' in navigator && 'PushManager' in window;
-        setPushSupported(supported);
-        if (!supported) return;
-        setPushPermission(Notification.permission);
         refreshPushStatus();
+
+        // Listen for permission changes via Permissions API
+        let permissionStatus: PermissionStatus | null = null;
+        if (typeof navigator !== 'undefined' && 'permissions' in navigator && navigator.permissions.query) {
+            try {
+                navigator.permissions.query({ name: 'notifications' as PermissionName }).then((status) => {
+                    permissionStatus = status;
+                    status.onchange = () => {
+                        refreshPushStatus();
+                    };
+                }).catch(() => {});
+            } catch {
+                // Permissions query not supported on all browsers
+            }
+        }
+
+        // Re-check when window regains focus (e.g. user returns from browser site settings)
+        const handleWindowFocus = () => {
+            refreshPushStatus();
+        };
+        window.addEventListener('focus', handleWindowFocus);
+
+        return () => {
+            window.removeEventListener('focus', handleWindowFocus);
+            if (permissionStatus) {
+                permissionStatus.onchange = null;
+            }
+        };
     }, []);
 
     useEffect(() => {
@@ -1725,6 +1819,8 @@ export default function BusinessProfilePage() {
                         vapidPublicKey={vapidPublicKey}
                         onEnable={handleEnablePush}
                         onDisable={handleDisablePush}
+                        onRefresh={refreshPushStatus}
+                        onTest={handleSendTestNotification}
                         supportEmail={supportEmail}
                     />
                 )}
