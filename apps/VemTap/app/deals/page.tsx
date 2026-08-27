@@ -171,6 +171,12 @@ export default function PromotionsPage() {
     const [heroPaused, setHeroPaused] = useState(false);
 
     useEffect(() => {
+        const params = new URLSearchParams(window.location.search);
+        const q = params.get('q') || params.get('search') || '';
+        if (q) setSearch(q);
+    }, []);
+
+    useEffect(() => {
         if (heroPaused) return;
         const t = setTimeout(
             () => setHeroSlide(s => (s + 1) % HERO_SLIDES.length),

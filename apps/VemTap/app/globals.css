@@ -86,6 +86,8 @@
     --spacing-container-margin: 20px;
     --spacing-gutter: 16px;
     --spacing-touch-target-min: 48px;
+
+    --color-home-brand: #066CF4;
 }
 
 @layer utilities {
@@ -491,4 +493,9 @@ body {
     font-family: 'Material Symbols Outlined' !important;
 }
 
+@media (prefers-reduced-motion: reduce) {
+    .animate-ping {
+        animation: none !important;
+    }
+}
 
