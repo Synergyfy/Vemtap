@@ -1,142 +1,212 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import PageHeader from '@/components/dashboard/PageHeader';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { adminNotificationsApi } from '@/lib/api/admin';
-import { Bell, CheckCircle2, Info, AlertTriangle, Clock, Trash2 } from 'lucide-react';
+import { useNotifications, useMarkAsRead, useMarkAllAsRead } from '@/services/notifications/hooks';
+import AdminBroadcastComposer from '@/components/admin/notifications/AdminBroadcastComposer';
+import AdminBroadcastHistoryTable from '@/components/admin/notifications/AdminBroadcastHistoryTable';
+import AdminReminderTemplatesList from '@/components/admin/notifications/AdminReminderTemplatesList';
+import {
+    Bell,
+    Send,
+    FileText,
+    Inbox,
+    CheckCircle2,
+    Info,
+    AlertTriangle,
+    Clock,
+    Sparkles,
+} from 'lucide-react';
 import toast from 'react-hot-toast';
 
-type AdminNotification = {
-    id: string;
-    title: string;
-    message: string;
-    type: 'info' | 'success' | 'warning' | 'error';
-    isRead: boolean;
-    createdAt: string;
-};
+type ActiveTab = 'broadcasts' | 'templates' | 'inbox';
 
 export default function AdminNotificationsPage() {
-    const queryClient = useQueryClient();
-    const { data: notifications = [], isLoading } = useQuery<AdminNotification[]>({
-        queryKey: ['admin-notifications'],
-        queryFn: async () => {
-            const response = await adminNotificationsApi.getAll();
-            return (Array.isArray(response) ? response : response?.data || []) as AdminNotification[];
-        },
-    });
+    const [activeTab, setActiveTab] = useState<ActiveTab>('broadcasts');
 
-    const readMutation = useMutation({
-        mutationFn: adminNotificationsApi.markRead,
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['admin-notifications'] });
-        }
-    });
-
-    const readAllMutation = useMutation({
-        mutationFn: adminNotificationsApi.markAllRead,
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['admin-notifications'] });
-            toast.success('All notifications marked as read');
-        }
-    });
+    // Inbox notifications
+    const { data: notifications = [], isLoading: isInboxLoading } = useNotifications();
+    const markReadMutation = useMarkAsRead();
+    const markAllReadMutation = useMarkAllAsRead();
 
     const getIcon = (type: string) => {
         switch (type) {
-            case 'success': return <CheckCircle2 className="text-green-500" size={20} />;
-            case 'warning': return <AlertTriangle className="text-orange-500" size={20} />;
-            case 'info': return <Info className="text-blue-500" size={20} />;
-            default: return <Bell className="text-gray-500" size={20} />;
+            case 'success':
+                return <CheckCircle2 className="text-green-500" size={18} />;
+            case 'warning':
+                return <AlertTriangle className="text-orange-500" size={18} />;
+            case 'info':
+                return <Info className="text-blue-500" size={18} />;
+            default:
+                return <Bell className="text-gray-500" size={18} />;
         }
     };
 
+    const unreadCount = notifications.filter((n) => !n.read).length;
+
     return (
-        <div className="p-8">
+        <div className="p-6 sm:p-8 space-y-8 max-w-7xl mx-auto">
+            {/* Top Page Header */}
             <PageHeader
-                title="Platform Notifications"
-                description="System-wide alerts and updates for platform administrators"
-                actions={
-                    <div className="flex gap-3">
-                        <button
-                            onClick={() => readAllMutation.mutate()}
-                            disabled={notifications.length === 0}
-                            className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 text-text-main font-bold rounded-xl hover:bg-gray-50 transition-all text-xs disabled:opacity-50"
-                        >
-                            <CheckCircle2 size={16} />
-                            Mark All Read
-                        </button>
-                        <button
-                            onClick={() => {
-                                toast('Clear history is not available from backend yet.');
-                            }}
-                            disabled={notifications.length === 0}
-                            className="flex items-center gap-2 px-4 py-2 bg-red-50 text-red-600 font-bold rounded-xl hover:bg-red-100 transition-all text-xs disabled:opacity-50"
-                        >
-                            <Trash2 size={16} />
-                            Clear History
-                        </button>
-                    </div>
-                }
+                title="Notification & Broadcast Center"
+                description="Push targeted alerts to all users, businesses, or customers, customize automated subscription renewal templates, and monitor platform logs."
             />
 
-            <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
-                {isLoading ? (
-                    <div className="p-20 flex flex-col items-center justify-center gap-4">
-                        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary"></div>
-                        <p className="text-sm text-text-secondary font-medium">Loading notifications...</p>
-                    </div>
-                ) : notifications.length === 0 ? (
-                    <div className="p-20 flex flex-col items-center justify-center text-center">
-                        <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mb-4">
-                            <Bell className="text-gray-300" size={32} />
+            {/* Navigation Tabs */}
+            <div className="flex items-center gap-2 p-1.5 bg-gray-200/70 backdrop-blur-sm rounded-2xl w-fit border border-gray-200">
+                <button
+                    onClick={() => setActiveTab('broadcasts')}
+                    className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-xs transition-all ${
+                        activeTab === 'broadcasts'
+                            ? 'bg-white text-text-main shadow-sm'
+                            : 'text-text-secondary hover:text-text-main'
+                    }`}
+                >
+                    <Send size={15} className={activeTab === 'broadcasts' ? 'text-primary' : ''} />
+                    Broadcast & Push Alerts
+                </button>
+
+                <button
+                    onClick={() => setActiveTab('templates')}
+                    className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-xs transition-all ${
+                        activeTab === 'templates'
+                            ? 'bg-white text-text-main shadow-sm'
+                            : 'text-text-secondary hover:text-text-main'
+                    }`}
+                >
+                    <FileText size={15} className={activeTab === 'templates' ? 'text-primary' : ''} />
+                    Subscription Reminder Templates
+                </button>
+
+                <button
+                    onClick={() => setActiveTab('inbox')}
+                    className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-xs transition-all ${
+                        activeTab === 'inbox'
+                            ? 'bg-white text-text-main shadow-sm'
+                            : 'text-text-secondary hover:text-text-main'
+                    }`}
+                >
+                    <Inbox size={15} className={activeTab === 'inbox' ? 'text-primary' : ''} />
+                    Admin Inbox Alerts
+                    {unreadCount > 0 && (
+                        <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-primary text-white">
+                            {unreadCount}
+                        </span>
+                    )}
+                </button>
+            </div>
+
+            {/* Tab 1: Broadcast & Push Alerts */}
+            {activeTab === 'broadcasts' && (
+                <div className="space-y-8 animate-in fade-in duration-200">
+                    <AdminBroadcastComposer />
+                    <AdminBroadcastHistoryTable />
+                </div>
+            )}
+
+            {/* Tab 2: Subscription Reminder Templates */}
+            {activeTab === 'templates' && (
+                <div className="animate-in fade-in duration-200">
+                    <AdminReminderTemplatesList />
+                </div>
+            )}
+
+            {/* Tab 3: Admin Inbox Alerts */}
+            {activeTab === 'inbox' && (
+                <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm animate-in fade-in duration-200">
+                    <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
+                        <div>
+                            <h3 className="text-base font-bold text-text-main flex items-center gap-2">
+                                <Inbox className="text-primary" size={18} />
+                                System Alerts & Administrative Notices
+                            </h3>
+                            <p className="text-xs text-text-secondary mt-0.5">
+                                Direct notifications and system health alerts received by administrator accounts.
+                            </p>
                         </div>
-                        <h3 className="text-lg font-bold text-text-main mb-1">No notifications yet</h3>
-                        <p className="text-sm text-text-secondary max-w-xs">
-                            Platform alerts and system notifications will appear here.
-                        </p>
+
+                        <button
+                            onClick={() => {
+                                markAllReadMutation.mutate(undefined, {
+                                    onSuccess: () => toast.success('All notifications marked as read'),
+                                });
+                            }}
+                            disabled={notifications.length === 0 || unreadCount === 0}
+                            className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 text-text-main font-bold rounded-xl hover:bg-gray-50 transition-all text-xs disabled:opacity-50"
+                        >
+                            <CheckCircle2 size={15} />
+                            Mark All Read
+                        </button>
                     </div>
-                ) : (
-                    <div className="divide-y divide-gray-100">
-                        {notifications.map((note) => (
-                            <div
-                                key={note.id}
-                                onClick={() => !note.isRead && readMutation.mutate(note.id)}
-                                className={`p-6 flex items-start gap-4 hover:bg-gray-50 transition-colors cursor-pointer ${!note.isRead ? 'bg-primary/5' : ''}`}
-                            >
-                                <div className="mt-1">{getIcon(note.type)}</div>
-                                <div className="flex-1">
-                                    <div className="flex items-center justify-between gap-4 mb-1">
-                                        <h4 className={`text-sm ${!note.isRead ? 'font-bold text-text-main' : 'text-text-secondary'}`}>
-                                            {note.title}
-                                        </h4>
-                                        <div className="flex items-center gap-1.5 text-[10px] text-text-secondary font-medium">
-                                            <Clock size={12} />
-                                            {new Date(note.createdAt).toLocaleDateString()} at {new Date(note.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+
+                    {isInboxLoading ? (
+                        <div className="p-20 flex flex-col items-center justify-center gap-3">
+                            <div className="animate-spin rounded-full size-8 border-2 border-primary border-t-transparent"></div>
+                            <p className="text-xs text-text-secondary font-medium">Loading notifications...</p>
+                        </div>
+                    ) : notifications.length === 0 ? (
+                        <div className="p-20 flex flex-col items-center justify-center text-center">
+                            <div className="size-16 bg-gray-50 rounded-2xl flex items-center justify-center mb-4 text-gray-300">
+                                <Bell size={32} />
+                            </div>
+                            <h4 className="text-base font-bold text-text-main mb-1">No alerts yet</h4>
+                            <p className="text-xs text-text-secondary max-w-xs leading-relaxed">
+                                Platform alerts, system notices, and urgent warnings for admins will appear here.
+                            </p>
+                        </div>
+                    ) : (
+                        <div className="divide-y divide-gray-100">
+                            {notifications.map((note) => (
+                                <div
+                                    key={note.id}
+                                    onClick={() => !note.read && markReadMutation.mutate(note.id)}
+                                    className={`p-6 flex items-start gap-4 hover:bg-gray-50 transition-colors cursor-pointer ${
+                                        !note.read ? 'bg-primary/5' : ''
+                                    }`}
+                                >
+                                    <div className="mt-1">{getIcon(note.type)}</div>
+                                    <div className="flex-1">
+                                        <div className="flex items-center justify-between gap-4 mb-1">
+                                            <h4
+                                                className={`text-sm ${
+                                                    !note.read ? 'font-bold text-text-main' : 'text-text-secondary'
+                                                }`}
+                                            >
+                                                {note.title}
+                                            </h4>
+                                            <div className="flex items-center gap-1.5 text-[11px] text-text-secondary font-medium">
+                                                <Clock size={12} />
+                                                {new Date(note.timestamp).toLocaleDateString()} at{' '}
+                                                {new Date(note.timestamp).toLocaleTimeString([], {
+                                                    hour: '2-digit',
+                                                    minute: '2-digit',
+                                                })}
+                                            </div>
                                         </div>
+                                        <p className="text-xs text-text-secondary max-w-2xl leading-relaxed">
+                                            {note.message}
+                                        </p>
+                                        {!note.read && (
+                                            <button
+                                                className="mt-3 text-xs font-bold text-primary hover:underline flex items-center gap-1"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    markReadMutation.mutate(note.id);
+                                                }}
+                                            >
+                                                Mark as read
+                                            </button>
+                                        )}
                                     </div>
-                                    <p className="text-sm text-text-secondary max-w-2xl leading-relaxed">
-                                        {note.message}
-                                    </p>
-                                    {!note.isRead && (
-                                        <button
-                                            className="mt-3 text-xs font-bold text-primary hover:underline flex items-center gap-1"
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                readMutation.mutate(note.id);
-                                            }}
-                                        >
-                                            Mark as read
-                                        </button>
+                                    {!note.read && (
+                                        <div className="mt-1.5 size-2 rounded-full bg-primary shadow-sm shadow-primary/40"></div>
                                     )}
                                 </div>
-                                {!note.isRead && (
-                                    <div className="mt-1.5 w-2 h-2 rounded-full bg-primary shadow-sm shadow-primary/40"></div>
-                                )}
-                            </div>
-                        ))}
-                    </div>
-                )}
-            </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            )}
         </div>
     );
 }

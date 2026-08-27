@@ -3,10 +3,12 @@ import {
   Get,
   Post,
   Patch,
+  Delete,
   Param,
   UseGuards,
   Request,
   Body,
+  Query,
 } from '@nestjs/common';
 import { NotificationsService } from './notifications.service';
 import { PushNotificationService } from './push-notification.service';
@@ -24,6 +26,11 @@ import {
 import { NotificationResponseDto } from './dto/notification-response.dto';
 import { RegisterPushTokenDto } from './dto/register-push-token.dto';
 import { UpdateNotificationPreferencesDto } from './dto/update-notification-preferences.dto';
+import {
+  AdminBroadcastDto,
+  BroadcastQueryDto,
+} from './dto/admin-broadcast.dto';
+import { TargetAudience } from './entities/notification-broadcast.entity';
 
 @ApiTags('notifications')
 @ApiBearerAuth()
@@ -70,6 +77,13 @@ export class NotificationsController {
       dto.token,
       true,
     );
+  }
+
+  @Delete('push-token')
+  @ApiOperation({ summary: 'Clear the push token for the current user' })
+  @ApiResponse({ status: 200, description: 'Push token cleared successfully' })
+  async clearPushToken(@Request() req) {
+    return this.pushNotificationService.clearToken(req.user.id, true);
   }
 
   @Post('visitor/push-token')
@@ -181,25 +195,38 @@ export class NotificationsController {
     return { ...notification, read: notification.isRead };
   }
 
+  @Post('admin/broadcast')
   @Post('broadcast')
-  @UseGuards(RolesGuard)
   @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @ApiOperation({
-    summary: 'Broadcast a notification to all agents (affiliates)',
+    summary: 'Admin: Push custom notification to ALL, BUSINESSES, or CUSTOMERS',
+    description:
+      'Creates in-app notifications and queues web push notifications for targeted users. Persists to broadcast history.',
   })
-  async broadcast(@Body() data: { title: string; message: string }) {
-    return this.notificationsService.broadcastToRole(
-      UserRole.AGENT,
-      data.title,
-      data.message,
-    );
+  @ApiResponse({
+    status: 201,
+    description: 'Broadcast dispatched successfully',
+  })
+  async broadcast(@Body() data: AdminBroadcastDto, @Request() req) {
+    const targetAudience = data.targetAudience || TargetAudience.ALL;
+    return this.notificationsService.sendAdminBroadcast(req.user?.id, {
+      ...data,
+      targetAudience,
+    });
   }
 
+  @Get('admin/broadcasts')
   @Get('admin/history/broadcasts')
-  @UseGuards(RolesGuard)
   @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
-  @ApiOperation({ summary: 'Get broadcast history for admins' })
-  async getHistory() {
-    return this.notificationsService.getBroadcastHistory();
+  @ApiOperation({ summary: 'Admin: Get paginated broadcast history' })
+  async getBroadcastHistory(@Query() query: BroadcastQueryDto) {
+    return this.notificationsService.getBroadcastHistory(query);
+  }
+
+  @Get('admin/broadcasts/:id')
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Admin: Get broadcast details by ID' })
+  async getBroadcastById(@Param('id') id: string) {
+    return this.notificationsService.getBroadcastById(id);
   }
 }

@@ -36,9 +36,7 @@ export class PushNotificationService {
     private readonly contactRepo: Repository<Contact>,
     private readonly configService: ConfigService,
   ) {
-    const publicKey =
-      this.configService.get<string>('VAPID_PUBLIC_KEY') ||
-      this.configService.get<string>('NEXT_PUBLIC_VAPID_PUBLIC_KEY');
+    const publicKey = this.configService.get<string>('VAPID_PUBLIC_KEY');
     const privateKey = this.configService.get<string>('VAPID_PRIVATE_KEY');
     const email = this.configService.get<string>(
       'VAPID_EMAIL',
@@ -49,7 +47,10 @@ export class PushNotificationService {
       try {
         webpush.setVapidDetails(email, publicKey, privateKey);
         this.isConfigured = true;
-        this.logger.log('Web Push (VAPID) configured successfully');
+        const fingerprint = publicKey.replace(/[_-]/g, '').slice(0, 12);
+        this.logger.log(
+          `Web Push (VAPID) configured successfully (public key ${fingerprint}…)`,
+        );
       } catch (error: any) {
         this.logger.error(
           `Failed to configure Web Push (VAPID): ${error.message}. Push notifications will be disabled.`,
@@ -57,7 +58,7 @@ export class PushNotificationService {
       }
     } else {
       this.logger.warn(
-        'Web Push (VAPID) keys missing. Push notifications will be disabled.',
+        'Web Push (VAPID) keys missing (VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY). Push notifications will be disabled.',
       );
     }
   }
@@ -68,6 +69,16 @@ export class PushNotificationService {
       await this.userRepo.update(userId, { pushToken: token });
     } else {
       await this.contactRepo.update(userId, { pushToken: token });
+    }
+    return { success: true };
+  }
+
+  /** Clear the push subscription token for a user or contact. */
+  async clearToken(userId: string, isUser = true) {
+    if (isUser) {
+      await this.userRepo.update(userId, { pushToken: null });
+    } else {
+      await this.contactRepo.update(userId, { pushToken: null });
     }
     return { success: true };
   }

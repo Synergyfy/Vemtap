@@ -191,6 +191,64 @@ export const adminNotificationsApi = {
     markRead: (id: string) => api.patch(`/notifications/${id}/read`, {}),
     markAllRead: () => api.post('/notifications/mark-all-read', {}),
     registerPushToken: (token: string) => api.post('/notifications/push-token', { token }),
+    sendBroadcast: (data: {
+        title: string;
+        message: string;
+        targetAudience: 'ALL' | 'BUSINESSES' | 'CUSTOMERS' | 'AGENTS';
+        type?: string;
+        actionUrl?: string;
+        sendPush?: boolean;
+        sendInApp?: boolean;
+    }) => api.post('/notifications/admin/broadcast', data),
+    getBroadcastHistory: (params?: { page?: number; limit?: number; targetAudience?: string; search?: string }) => {
+        const q = new URLSearchParams();
+        if (params?.page) q.set('page', String(params.page));
+        if (params?.limit) q.set('limit', String(params.limit));
+        if (params?.targetAudience) q.set('targetAudience', params.targetAudience);
+        if (params?.search) q.set('search', params.search);
+        return api.get(`/notifications/admin/broadcasts?${q.toString()}`);
+    },
+    getBroadcastById: (id: string) => api.get(`/notifications/admin/broadcasts/${id}`),
+};
+
+export const adminSubscriptionRemindersApi = {
+    getPlaceholders: () => api.get('/subscription-reminders/admin/placeholders'),
+    getTemplates: () => api.get('/subscription-reminders/admin/templates'),
+    getTemplateById: (id: string) => api.get(`/subscription-reminders/admin/templates/${id}`),
+    createTemplate: (data: {
+        stage: number;
+        name: string;
+        description?: string;
+        titleTemplate: string;
+        messageTemplate: string;
+        type?: string;
+        actionUrl?: string;
+        isEnabled?: boolean;
+        sendPush?: boolean;
+        sendInApp?: boolean;
+        sendEmail?: boolean;
+        emailSubjectTemplate?: string;
+    }) => api.post('/subscription-reminders/admin/templates', data),
+    updateTemplate: (id: string, data: {
+        name?: string;
+        description?: string;
+        titleTemplate?: string;
+        messageTemplate?: string;
+        type?: string;
+        actionUrl?: string;
+        isEnabled?: boolean;
+        sendPush?: boolean;
+        sendInApp?: boolean;
+        sendEmail?: boolean;
+        emailSubjectTemplate?: string;
+    }) => api.patch(`/subscription-reminders/admin/templates/${id}`, data),
+    resetTemplate: (id: string) => api.post(`/subscription-reminders/admin/templates/${id}/reset`, {}),
+    previewTemplate: (data: {
+        titleTemplate: string;
+        messageTemplate: string;
+        variables?: Record<string, any>;
+    }) => api.post('/subscription-reminders/admin/templates/preview', data),
+    runRemindersNow: () => api.post('/subscription-reminders/admin/run-now', {}),
 };
 
 export const adminFlowApi = {

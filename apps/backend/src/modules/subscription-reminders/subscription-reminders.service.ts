@@ -1,4 +1,9 @@
-import { Injectable, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ConfigService } from '@nestjs/config';
@@ -12,6 +17,7 @@ import { Cluster } from '../clusters/entities/cluster.entity';
 import { Business } from '../businesses/entities/business.entity';
 import { User, UserStatus } from '../users/entities/user.entity';
 import { RotatorImpression } from '../rotator/entities/rotator-impression.entity';
+import { SubscriptionReminderTemplate } from './entities/subscription-reminder-template.entity';
 import { NotificationsService } from '../notifications/notifications.service';
 import { PushNotificationService } from '../notifications/push-notification.service';
 import { MailService } from '../mail/mail.service';
@@ -22,7 +28,14 @@ import {
   SUBSCRIPTION_REMINDER_CUSTOMER_LOOKBACK_DAYS,
   SUBSCRIPTION_REMINDER_CRON,
   SUBSCRIPTION_RENEWAL_URL,
+  DEFAULT_REMINDER_TEMPLATES,
+  SUBSCRIPTION_REMINDER_PLACEHOLDERS,
 } from './subscription-reminders.constants';
+import {
+  CreateReminderTemplateDto,
+  UpdateReminderTemplateDto,
+  PreviewReminderTemplateDto,
+} from './dto/subscription-reminder-template.dto';
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 const RENEWAL_GRACE_HOURS = 24;
@@ -35,6 +48,7 @@ export interface SubscriptionReminderRunResult {
   sentEmail: number;
   failed: number;
   skippedNoCluster: number;
+  skippedDisabledTemplate: number;
 }
 
 interface ReminderTarget {
@@ -49,18 +63,22 @@ interface ClusterStats {
   businesses: number;
 }
 
+export interface ReminderRenderResult {
+  title: string;
+  message: string;
+  type: string;
+  actionUrl: string;
+  sendInApp: boolean;
+  sendPush: boolean;
+  sendEmail: boolean;
+  emailSubjectTemplate?: string | null;
+}
+
 /**
  * Periodic renewal reminders for the cluster deals feed.
  *
- * A business's offers are only surfaced in a cluster while it holds a valid
- * subscription whose plan enables the Discovery Network (the gate in
- * ClustersService.buildOfferQuery / RotatorEligibilityService). This job nudges
- * the business owner as that gate approaches (14/7/3 days) and right after the
- * plan lapses, using each cluster's live engagement numbers in the copy.
- *
- * Delivery is multi-channel: in-app Notification (NotificationsService), web
- * push (PushNotificationService → BullMQ), and email (MailService) for urgent stages.
- * The subscription's lastRenewalReminderStage column dedupes so each escalation stage fires once.
+ * Dispatches customized multi-channel notifications (in-app, push, email)
+ * following admin-customizable templates for each expiration stage.
  */
 @Injectable()
 export class SubscriptionRemindersService {
@@ -83,6 +101,8 @@ export class SubscriptionRemindersService {
     private readonly userRepository: Repository<User>,
     @InjectRepository(RotatorImpression)
     private readonly impressionRepository: Repository<RotatorImpression>,
+    @InjectRepository(SubscriptionReminderTemplate)
+    private readonly templateRepository: Repository<SubscriptionReminderTemplate>,
     private readonly notificationsService: NotificationsService,
     private readonly pushNotificationService: PushNotificationService,
     private readonly mailService: MailService,
@@ -108,7 +128,8 @@ export class SubscriptionRemindersService {
     this.logger.log(
       `Renewal reminders done: ${result.sentInApp} in-app, ${result.sentPush} push, ` +
         `${result.sentEmail} email (${result.expiring} expiring, ${result.lapsed} lapsed, ` +
-        `${result.failed} failed, ${result.skippedNoCluster} skipped for lack of a cluster)`,
+        `${result.failed} failed, ${result.skippedNoCluster} skipped for lack of a cluster, ` +
+        `${result.skippedDisabledTemplate} skipped disabled)`,
     );
   }
 
@@ -138,6 +159,7 @@ export class SubscriptionRemindersService {
       sentEmail: 0,
       failed: 0,
       skippedNoCluster: 0,
+      skippedDisabledTemplate: 0,
     };
 
     const targets: ReminderTarget[] = [
@@ -163,12 +185,14 @@ export class SubscriptionRemindersService {
       now,
     );
     const owners = await this.resolveActiveOwners(businessIds);
+    const templatesMap = await this.loadTemplatesMap();
 
     let sentInApp = 0;
     let sentPush = 0;
     let sentEmail = 0;
     let failed = 0;
     let skippedNoCluster = 0;
+    let skippedDisabledTemplate = 0;
 
     for (const { sub, daysLeft, isLapsed } of targets) {
       try {
@@ -188,41 +212,62 @@ export class SubscriptionRemindersService {
 
         if (this.alreadyRemindedAtStage(sub, stage)) continue;
 
+        const template = templatesMap.get(stage);
+        if (template && template.isEnabled === false) {
+          skippedDisabledTemplate++;
+          continue;
+        }
+
         const clusterStats = stats.get(clusterId);
-        const { title, message, type } = this.buildCopy(
+        const rendered = this.renderReminderCopy(
+          stage,
           daysLeft,
           isLapsed,
+          sub,
+          owner,
           clusterStats,
+          template,
         );
 
-        await this.notificationsService.create(
-          ownerId,
-          title,
-          message,
-          type,
-          SUBSCRIPTION_RENEWAL_URL,
-        );
-        sentInApp++;
+        // In-App Notification
+        if (rendered.sendInApp) {
+          await this.notificationsService.create(
+            ownerId,
+            rendered.title,
+            rendered.message,
+            rendered.type,
+            rendered.actionUrl,
+          );
+          sentInApp++;
+        }
 
-        const pushResult = await this.pushNotificationService.sendNotification(
-          ownerId,
-          title,
-          message,
-          {
-            url: SUBSCRIPTION_RENEWAL_URL,
-            category: 'marketing',
-            stage,
-            clusterId,
-          },
-        );
-        if (pushResult.queued) sentPush++;
+        // Web Push Notification
+        if (rendered.sendPush) {
+          const pushResult = await this.pushNotificationService.sendNotification(
+            ownerId,
+            rendered.title,
+            rendered.message,
+            {
+              url: rendered.actionUrl,
+              category: 'marketing',
+              stage,
+              clusterId,
+            },
+          );
+          if (pushResult.queued) sentPush++;
+        }
 
-        // Send email reminder for urgent and lapsed stages (stage <= 3 or isLapsed)
-        if ((stage <= 3 || isLapsed) && owner.email) {
+        // Email reminder for urgent and lapsed stages (or if enabled in template)
+        const shouldSendEmail =
+          rendered.sendEmail || (stage <= 3 || isLapsed);
+        if (shouldSendEmail && owner.email) {
           const customerName =
             [owner.firstName, owner.lastName].filter(Boolean).join(' ') ||
             'Valued Merchant';
-          const businessName = sub.business?.name || 'Your Business';
+          const businessName =
+            sub.business?.name ||
+            (sub.business as any)?.businessName ||
+            'Your Business';
           const planName = sub.plan?.name || 'Discovery Plan';
 
           const emailSent =
@@ -264,7 +309,292 @@ export class SubscriptionRemindersService {
     result.sentEmail = sentEmail;
     result.failed = failed;
     result.skippedNoCluster = skippedNoCluster;
+    result.skippedDisabledTemplate = skippedDisabledTemplate;
     return result;
+  }
+
+  // ------------------------------------------------------------------
+  // Template Management (CRUD & Interpolation)
+  // ------------------------------------------------------------------
+
+  async getPlaceholders() {
+    return SUBSCRIPTION_REMINDER_PLACEHOLDERS;
+  }
+
+  async getTemplates(): Promise<SubscriptionReminderTemplate[]> {
+    const templates = await this.templateRepository.find({
+      order: { stage: 'DESC' },
+    });
+    if (templates.length === 0) {
+      await this.seedDefaultTemplates();
+      return this.templateRepository.find({
+        order: { stage: 'DESC' },
+      });
+    }
+    return templates;
+  }
+
+  async getTemplateById(id: string): Promise<SubscriptionReminderTemplate> {
+    const template = await this.templateRepository.findOne({ where: { id } });
+    if (!template) {
+      throw new NotFoundException(`Template with ID ${id} not found`);
+    }
+    return template;
+  }
+
+  async createTemplate(
+    dto: CreateReminderTemplateDto,
+  ): Promise<SubscriptionReminderTemplate> {
+    const existing = await this.templateRepository.findOne({
+      where: { stage: dto.stage },
+    });
+    if (existing) {
+      throw new BadRequestException(
+        `A reminder template for stage ${dto.stage} already exists. Please update the existing template instead.`,
+      );
+    }
+
+    const template = this.templateRepository.create({
+      stage: dto.stage,
+      name: dto.name,
+      description: dto.description ?? null,
+      titleTemplate: dto.titleTemplate,
+      messageTemplate: dto.messageTemplate,
+      type: dto.type || 'warning',
+      actionUrl: dto.actionUrl || SUBSCRIPTION_RENEWAL_URL,
+      isEnabled: dto.isEnabled ?? true,
+      sendPush: dto.sendPush ?? true,
+      sendInApp: dto.sendInApp ?? true,
+      sendEmail: dto.sendEmail ?? false,
+      emailSubjectTemplate: dto.emailSubjectTemplate ?? null,
+      isDefault: false,
+    });
+
+    return this.templateRepository.save(template);
+  }
+
+  async updateTemplate(
+    id: string,
+    dto: UpdateReminderTemplateDto,
+  ): Promise<SubscriptionReminderTemplate> {
+    const template = await this.getTemplateById(id);
+
+    if (dto.name !== undefined) template.name = dto.name;
+    if (dto.description !== undefined) template.description = dto.description;
+    if (dto.titleTemplate !== undefined)
+      template.titleTemplate = dto.titleTemplate;
+    if (dto.messageTemplate !== undefined)
+      template.messageTemplate = dto.messageTemplate;
+    if (dto.type !== undefined) template.type = dto.type;
+    if (dto.actionUrl !== undefined) template.actionUrl = dto.actionUrl;
+    if (dto.isEnabled !== undefined) template.isEnabled = dto.isEnabled;
+    if (dto.sendPush !== undefined) template.sendPush = dto.sendPush;
+    if (dto.sendInApp !== undefined) template.sendInApp = dto.sendInApp;
+    if (dto.sendEmail !== undefined) template.sendEmail = dto.sendEmail;
+    if (dto.emailSubjectTemplate !== undefined)
+      template.emailSubjectTemplate = dto.emailSubjectTemplate;
+
+    return this.templateRepository.save(template);
+  }
+
+  async resetTemplate(id: string): Promise<SubscriptionReminderTemplate> {
+    const template = await this.getTemplateById(id);
+    const defaultDef = DEFAULT_REMINDER_TEMPLATES[template.stage];
+    if (!defaultDef) {
+      throw new BadRequestException(
+        `No default configuration found for stage ${template.stage}`,
+      );
+    }
+
+    template.name = defaultDef.name;
+    template.description = defaultDef.description;
+    template.titleTemplate = defaultDef.titleTemplate;
+    template.messageTemplate = defaultDef.messageTemplate;
+    template.type = defaultDef.type;
+    template.actionUrl = defaultDef.actionUrl;
+    template.isEnabled = defaultDef.isEnabled;
+    template.sendPush = defaultDef.sendPush;
+    template.sendInApp = defaultDef.sendInApp;
+    template.sendEmail = defaultDef.sendEmail;
+    template.emailSubjectTemplate = defaultDef.emailSubjectTemplate ?? null;
+
+    return this.templateRepository.save(template);
+  }
+
+  async previewTemplate(dto: PreviewReminderTemplateDto) {
+    const defaultMockVariables = {
+      businessName: 'Apex Electronics',
+      ownerName: 'Alex Johnson',
+      planName: 'Discovery Pro',
+      daysLeft: 7,
+      daysText: '7 days',
+      clusterName: 'Ikeja Tech Hub',
+      people: '1,840',
+      businesses: '42',
+      renewalUrl: SUBSCRIPTION_RENEWAL_URL,
+    };
+
+    const variables = { ...defaultMockVariables, ...(dto.variables || {}) };
+
+    const renderedTitle = this.interpolate(dto.titleTemplate, variables);
+    const renderedMessage = this.interpolate(dto.messageTemplate, variables);
+
+    return {
+      title: renderedTitle,
+      message: renderedMessage,
+      variablesUsed: variables,
+    };
+  }
+
+  /**
+   * Replace {{variableName}} tags in template strings with values from context.
+   */
+  private interpolate(template: string, variables: Record<string, any>): string {
+    if (!template) return '';
+    return template.replace(/\{\{\s*(\w+)\s*\}\}/g, (match, key) => {
+      if (
+        key in variables &&
+        variables[key] !== undefined &&
+        variables[key] !== null
+      ) {
+        return String(variables[key]);
+      }
+      return match;
+    });
+  }
+
+  private async loadTemplatesMap(): Promise<
+    Map<number, SubscriptionReminderTemplate>
+  > {
+    try {
+      const list = await this.templateRepository.find();
+      const map = new Map<number, SubscriptionReminderTemplate>();
+      for (const t of list) {
+        map.set(t.stage, t);
+      }
+      return map;
+    } catch {
+      return new Map();
+    }
+  }
+
+  private async seedDefaultTemplates(): Promise<void> {
+    try {
+      for (const [stageStr, def] of Object.entries(DEFAULT_REMINDER_TEMPLATES)) {
+        const stage = Number(stageStr);
+        const exists = await this.templateRepository.findOne({
+          where: { stage },
+        });
+        if (!exists) {
+          const t = this.templateRepository.create({
+            stage: def.stage,
+            name: def.name,
+            description: def.description,
+            titleTemplate: def.titleTemplate,
+            messageTemplate: def.messageTemplate,
+            type: def.type,
+            actionUrl: def.actionUrl,
+            isEnabled: def.isEnabled,
+            sendPush: def.sendPush,
+            sendInApp: def.sendInApp,
+            sendEmail: def.sendEmail,
+            emailSubjectTemplate: def.emailSubjectTemplate ?? null,
+            isDefault: true,
+          });
+          await this.templateRepository.save(t);
+        }
+      }
+    } catch (err: any) {
+      this.logger.warn(`Could not seed default templates: ${err.message}`);
+    }
+  }
+
+  private renderReminderCopy(
+    stage: number,
+    daysLeft: number,
+    isLapsed: boolean,
+    sub: Subscription,
+    owner: User,
+    clusterStats?: ClusterStats,
+    customTemplate?: SubscriptionReminderTemplate,
+  ): ReminderRenderResult {
+    const clusterName = clusterStats?.name ?? 'your area';
+    const people = clusterStats?.people ?? 0;
+    const businesses = clusterStats?.businesses ?? 0;
+    const peopleText = `${people.toLocaleString()}`;
+    const businessesText = `${businesses.toLocaleString()}`;
+    const daysText = `${daysLeft} ${daysLeft === 1 ? 'day' : 'days'}`;
+    const ownerName =
+      [owner.firstName, owner.lastName].filter(Boolean).join(' ') ||
+      'Valued Merchant';
+    const businessName =
+      sub.business?.name ||
+      (sub.business as any)?.businessName ||
+      'Your Business';
+    const planName = sub.plan?.name || 'Discovery Plan';
+
+    const variables = {
+      businessName,
+      ownerName,
+      planName,
+      daysLeft,
+      daysText,
+      clusterName,
+      people: peopleText,
+      businesses: businessesText,
+      renewalUrl: SUBSCRIPTION_RENEWAL_URL,
+    };
+
+    if (customTemplate) {
+      return {
+        title: this.interpolate(customTemplate.titleTemplate, variables),
+        message: this.interpolate(customTemplate.messageTemplate, variables),
+        type: customTemplate.type || (isLapsed ? 'error' : 'warning'),
+        actionUrl: customTemplate.actionUrl || SUBSCRIPTION_RENEWAL_URL,
+        sendInApp: customTemplate.sendInApp !== false,
+        sendPush: customTemplate.sendPush !== false,
+        sendEmail: customTemplate.sendEmail === true,
+        emailSubjectTemplate: customTemplate.emailSubjectTemplate,
+      };
+    }
+
+    // Default template fallbacks if not in DB
+    const defaultDef = DEFAULT_REMINDER_TEMPLATES[stage];
+    if (defaultDef) {
+      return {
+        title: this.interpolate(defaultDef.titleTemplate, variables),
+        message: this.interpolate(defaultDef.messageTemplate, variables),
+        type: defaultDef.type,
+        actionUrl: defaultDef.actionUrl,
+        sendInApp: defaultDef.sendInApp,
+        sendPush: defaultDef.sendPush,
+        sendEmail: defaultDef.sendEmail,
+        emailSubjectTemplate: defaultDef.emailSubjectTemplate,
+      };
+    }
+
+    // Generic fallback copy
+    if (isLapsed) {
+      return {
+        title: `Your offers left the ${clusterName} deals feed`,
+        message: `Your plan expired, so customers in ${clusterName} can no longer see your deals. ${businessesText} businesses there are reaching ${peopleText} shoppers. Renew to rejoin.`,
+        type: 'error',
+        actionUrl: SUBSCRIPTION_RENEWAL_URL,
+        sendInApp: true,
+        sendPush: true,
+        sendEmail: true,
+      };
+    }
+
+    return {
+      title: `Your deals in ${clusterName} expire in ${daysLeft} days`,
+      message: `${peopleText} people checked deals in ${clusterName} this month — renew now to stay visible to them.`,
+      type: 'warning',
+      actionUrl: SUBSCRIPTION_RENEWAL_URL,
+      sendInApp: true,
+      sendPush: true,
+      sendEmail: daysLeft <= 3,
+    };
   }
 
   // ------------------------------------------------------------------
@@ -413,53 +743,6 @@ export class SubscriptionRemindersService {
       });
     }
     return stats;
-  }
-
-  // ------------------------------------------------------------------
-  // Copy + delivery helpers
-  // ------------------------------------------------------------------
-
-  private buildCopy(
-    daysLeft: number,
-    isLapsed: boolean,
-    stats?: ClusterStats,
-  ): { title: string; message: string; type: string } {
-    const clusterName = stats?.name ?? 'your area';
-    const people = stats?.people ?? 0;
-    const businesses = stats?.businesses ?? 0;
-    const peopleText = `${people.toLocaleString()}`;
-    const businessesText = `${businesses.toLocaleString()}`;
-    const daysText = `${daysLeft} ${daysLeft === 1 ? 'day' : 'days'}`;
-
-    if (isLapsed) {
-      return {
-        title: `Your offers left the ${clusterName} deals feed`,
-        message: `Your plan expired, so customers in ${clusterName} can no longer see your deals. ${businessesText} businesses there are reaching ${peopleText} shoppers. Renew to rejoin.`,
-        type: 'error',
-      };
-    }
-
-    if (daysLeft <= 3) {
-      return {
-        title: `Last call: renew before ${clusterName} expires`,
-        message: `In ${daysText} your offers leave the ${clusterName} deals feed while ${businessesText} nearby businesses reach ${peopleText} shoppers. Renew today.`,
-        type: 'warning',
-      };
-    }
-
-    if (daysLeft <= 7) {
-      return {
-        title: `Your offers leave ${clusterName} in ${daysLeft} days`,
-        message: `Your offers will disappear from the ${clusterName} feed in ${daysText}. ${peopleText} shoppers browsed deals there this month — and ${businessesText} businesses are staying visible. Renew to keep showing up.`,
-        type: 'warning',
-      };
-    }
-
-    return {
-      title: `Your deals in ${clusterName} expire in ${daysLeft} days`,
-      message: `${peopleText} people checked deals in ${clusterName} this month — renew now to stay visible to them.`,
-      type: 'warning',
-    };
   }
 
   private async resolveActiveOwners(

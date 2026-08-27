@@ -6,10 +6,19 @@ import { User, Mail, Phone, Bell, Shield, Trash2, Camera, Check, LogOut, Chevron
 import { useAuthStore } from '@/store/useAuthStore';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useChangePassword } from '@/services/auth/hooks';
-import { useRegisterPushToken, useNotificationPreferences, useUpdateNotificationPreferences } from '@/services/notifications/hooks';
+import { useRegisterPushToken, useClearPushToken, useNotificationPreferences, useUpdateNotificationPreferences } from '@/services/notifications/hooks';
 import { useLinkedDevices, useRenameDevice, useRevokeDevice } from '@/services/users/hooks';
 import { useSetup2FA, useConfirm2FA, useDisable2FA, useSendEmailVerification, useVerifyEmail } from '@/services/auth/hooks';
 import { uploadToCloudinary } from '@/lib/cloudinary';
+import {
+    getPushSupportInfo,
+    getCurrentPermission,
+    requestNotificationPermission,
+    getPushSubscription,
+    subscribeToPush,
+    unsubscribeFromPush,
+    detectBrowser,
+} from '@/lib/pushNotifications';
 
 export default function CustomerSettingsPage() {
     const searchParams = useSearchParams();
@@ -28,6 +37,7 @@ export default function CustomerSettingsPage() {
     const [pushLoading, setPushLoading] = useState(false);
 
     const registerPushToken = useRegisterPushToken();
+    const clearPushToken = useClearPushToken();
 
     useEffect(() => {
         if (typeof window !== 'undefined') {
@@ -41,10 +51,10 @@ export default function CustomerSettingsPage() {
 
     useEffect(() => {
         if (typeof window !== 'undefined') {
-            const supported = 'Notification' in window && 'serviceWorker' in navigator && 'PushManager' in window;
+            const supported = getPushSupportInfo().supported;
             setPushSupported(supported);
             if (supported) {
-                setPushPermission(Notification.permission);
+                setPushPermission(getCurrentPermission());
                 checkPushStatus();
             } else {
                 // On unsupported browsers, restore the in-app preference
@@ -55,22 +65,8 @@ export default function CustomerSettingsPage() {
 
     const checkPushStatus = async () => {
         if (typeof window === 'undefined' || !('serviceWorker' in navigator)) return;
-        const registration = await navigator.serviceWorker.getRegistration();
-        if (registration) {
-            const subscription = await registration.pushManager.getSubscription();
-            setPushSubscribed(!!subscription);
-        }
-    };
-
-    const urlBase64ToUint8Array = (base64String: string) => {
-        const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
-        const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
-        const rawData = window.atob(base64);
-        const outputArray = new Uint8Array(rawData.length);
-        for (let i = 0; i < rawData.length; i += 1) {
-            outputArray[i] = rawData.charCodeAt(i);
-        }
-        return outputArray;
+        const subscription = await getPushSubscription();
+        setPushSubscribed(!!subscription);
     };
 
     const handleTogglePush = async () => {
@@ -87,36 +83,49 @@ export default function CustomerSettingsPage() {
         try {
             if (pushSubscribed) {
                 // Disable
-                const registration = await navigator.serviceWorker.getRegistration();
-                const subscription = await registration?.pushManager.getSubscription();
-                if (subscription) {
-                    await subscription.unsubscribe();
+                await unsubscribeFromPush();
+                try {
+                    await clearPushToken.mutateAsync();
+                } catch {
+                    // Best effort — clearing the local subscription is enough.
                 }
                 setPushSubscribed(false);
                 localStorage.setItem('push-preference', 'false');
                 notify.success('Notifications disabled');
             } else {
                 // Enable
-                const permission = await Notification.requestPermission();
-                setPushPermission(permission);
+                let permission = getCurrentPermission();
+
+                // Previously declined: browsers never re-prompt after 'denied'.
+                if (permission === 'denied') {
+                    setPushPermission(permission);
+                    const browser = detectBrowser();
+                    notify.error(`Notifications are blocked for this site in ${browser.name}. Add this site to the "Allowed to send notifications" list under ${browser.settingsLabel}, then try again.`);
+                    return;
+                }
+
                 if (permission !== 'granted') {
-                    notify.error('Notification permission denied');
-                    return;
+                    // New user (or previously dismissed) — request inside the user gesture.
+                    permission = await requestNotificationPermission();
+                    setPushPermission(permission);
+
+                    if (permission === 'denied') {
+                        const browser = detectBrowser();
+                        notify.error(`Notifications are blocked for this site in ${browser.name}. Add this site to the "Allowed to send notifications" list under ${browser.settingsLabel}, then try again.`);
+                        return;
+                    }
+
+                    if (permission !== 'granted') {
+                        const browser = detectBrowser();
+                        const quietHint = browser.hasQuietPromptSetting
+                            ? ` ${browser.name} has a "Quiet notification requests" setting that suppresses the popup — turning it off also helps.`
+                            : '';
+                        notify.error(`${browser.name} did not show the permission prompt. Add this site to the "Allowed to send notifications" list under ${browser.settingsLabel}, or click ${browser.addressBarIconHint} and choose Allow, then try again.${quietHint}`);
+                        return;
+                    }
                 }
 
-                const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
-                if (!vapidPublicKey) {
-                    notify.error('System error: Missing VAPID key');
-                    return;
-                }
-
-                await navigator.serviceWorker.register('/sw.js');
-                const registration = await navigator.serviceWorker.ready;
-                const subscription = await registration.pushManager.subscribe({
-                    userVisibleOnly: true,
-                    applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
-                });
-
+                const subscription = await subscribeToPush();
                 await registerPushToken.mutateAsync({ token: JSON.stringify(subscription) });
                 setPushSubscribed(true);
                 localStorage.setItem('push-preference', 'true');
