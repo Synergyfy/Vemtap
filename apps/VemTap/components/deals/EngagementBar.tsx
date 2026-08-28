@@ -3,6 +3,7 @@
 import { Heart, MessageCircle, Bookmark, Share2, Loader2 } from 'lucide-react';
 import { useEngagement, useSetReaction, useToggleSave } from '@/services/deals/engagement-hooks';
 import ShareDealModal from '@/components/promotions/ShareDealModal';
+import AuthGuard from '@/components/auth/AuthGuard';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 
@@ -12,6 +13,7 @@ interface EngagementBarProps {
     offerDescription: string;
     dealUrl: string;
     onCommentClick?: () => void;
+    businessName?: string;
 }
 
 export default function EngagementBar({
@@ -20,6 +22,7 @@ export default function EngagementBar({
     offerDescription,
     dealUrl,
     onCommentClick,
+    businessName = 'Business',
 }: EngagementBarProps) {
     const router = useRouter();
     const [showShare, setShowShare] = useState(false);
@@ -52,23 +55,24 @@ export default function EngagementBar({
     return (
         <>
             <div className="flex items-center gap-2 flex-wrap">
-                <button
-                    onClick={handleLike}
-                    disabled={setReaction.isPending}
-                    className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-colors ${
-                        liked
-                            ? 'bg-rose-50 text-rose-500 border border-rose-200'
-                            : 'bg-gray-50 text-gray-500 hover:text-rose-500 hover:bg-rose-50 border border-transparent'
-                    }`}
-                >
-                    {setReaction.isPending ? (
-                        <Loader2 size={14} className="animate-spin" />
-                    ) : (
-                        <Heart size={14} fill={liked ? 'currentColor' : 'none'} />
-                    )}
-                    {likesCount > 0 ? likesCount : ''}
-                    Like
-                </button>
+                <AuthGuard onAction={handleLike} businessName={businessName}>
+                    <button
+                        disabled={setReaction.isPending}
+                        className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-colors ${
+                            liked
+                                ? 'bg-rose-50 text-rose-500 border border-rose-200'
+                                : 'bg-gray-50 text-gray-500 hover:text-rose-500 hover:bg-rose-50 border border-transparent'
+                        }`}
+                    >
+                        {setReaction.isPending ? (
+                            <Loader2 size={14} className="animate-spin" />
+                        ) : (
+                            <Heart size={14} fill={liked ? 'currentColor' : 'none'} />
+                        )}
+                        {likesCount > 0 ? likesCount : ''}
+                        Like
+                    </button>
+                </AuthGuard>
 
                 <button
                     onClick={handleComment}
@@ -79,22 +83,23 @@ export default function EngagementBar({
                     Comment
                 </button>
 
-                <button
-                    onClick={handleSave}
-                    disabled={toggleSave.isPending}
-                    className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-colors ${
-                        saved
-                            ? 'bg-primary/10 text-primary border border-primary/20'
-                            : 'bg-gray-50 text-gray-500 hover:text-primary hover:bg-primary/5 border border-transparent'
-                    }`}
-                >
-                    {toggleSave.isPending ? (
-                        <Loader2 size={14} className="animate-spin" />
-                    ) : (
-                        <Bookmark size={14} fill={saved ? 'currentColor' : 'none'} />
-                    )}
-                    Save
-                </button>
+                <AuthGuard onAction={handleSave} businessName={businessName}>
+                    <button
+                        disabled={toggleSave.isPending}
+                        className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-colors ${
+                            saved
+                                ? 'bg-primary/10 text-primary border border-primary/20'
+                                : 'bg-gray-50 text-gray-500 hover:text-primary hover:bg-primary/5 border border-transparent'
+                        }`}
+                    >
+                        {toggleSave.isPending ? (
+                            <Loader2 size={14} className="animate-spin" />
+                        ) : (
+                            <Bookmark size={14} fill={saved ? 'currentColor' : 'none'} />
+                        )}
+                        Save
+                    </button>
+                </AuthGuard>
 
                 <button
                     onClick={() => setShowShare(true)}

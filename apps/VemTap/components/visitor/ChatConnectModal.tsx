@@ -35,6 +35,14 @@ interface ChatConnectModalProps {
     onSuccess: () => void;
     storeName: string;
     logoUrl?: string | null;
+    /** Custom header title for sign-in mode */
+    signInTitle?: string;
+    /** Custom subtitle for sign-in mode */
+    signInSubtitle?: string;
+    /** Custom header title for sign-up mode */
+    signUpTitle?: string;
+    /** Custom subtitle for sign-up mode */
+    signUpSubtitle?: string;
 }
 
 export const ChatConnectModal: React.FC<ChatConnectModalProps> = ({
@@ -43,6 +51,10 @@ export const ChatConnectModal: React.FC<ChatConnectModalProps> = ({
     onSuccess,
     storeName,
     logoUrl,
+    signInTitle = 'Welcome Back',
+    signInSubtitle = 'Sign in to continue to chat.',
+    signUpTitle = 'Join Us',
+    signUpSubtitle = 'Create an account to start chatting.',
 }) => {
     const [mode, setMode] = useState<'signup' | 'signin'>('signin');
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -152,12 +164,10 @@ export const ChatConnectModal: React.FC<ChatConnectModalProps> = ({
                                 <VisitorHeader logoUrl={logoUrl} storeName={storeName} />
                                 <div className="mt-3">
                                     <h1 className="text-lg md:text-xl font-black text-slate-900 tracking-tight leading-tight mb-1">
-                                        {mode === 'signin' ? 'Welcome Back' : 'Join Us'}
+                                        {mode === 'signin' ? signInTitle : signUpTitle}
                                     </h1>
                                     <p className="text-xs md:text-sm font-medium text-slate-500 leading-relaxed">
-                                        {mode === 'signin'
-                                            ? 'Sign in to continue to chat.'
-                                            : 'Create an account to start chatting.'}
+                                        {mode === 'signin' ? signInSubtitle : signUpSubtitle}
                                     </p>
                                 </div>
                             </div>

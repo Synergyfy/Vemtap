@@ -386,6 +386,7 @@ href="/deals"
                                     dealUrl={typeof window !== 'undefined' ? window.location.href : ''}
                                     reviewCount={reviewCount}
                                     onCommentClick={() => setShowWriteReview(true)}
+                                    businessName={promotion.businessName || 'Business'}
                                 />
 
                                 {/* Business info */}
@@ -730,6 +731,7 @@ href="/deals"
                 isOpen={showWriteReview}
                 onClose={() => setShowWriteReview(false)}
                 offerId={id}
+                businessName={promotion.businessName || 'Business'}
             />
         </div>
     );

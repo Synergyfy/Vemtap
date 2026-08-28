@@ -2,6 +2,7 @@
 
 import { Heart } from 'lucide-react';
 import { useToggleReviewLike } from '@/services/deals/engagement-hooks';
+import AuthGuard from '@/components/auth/AuthGuard';
 import type { DealReview } from '@/services/deals/types';
 
 interface ReviewCardProps {
@@ -46,16 +47,17 @@ export default function ReviewCard({ review, offerId }: ReviewCardProps) {
                     </div>
                 </div>
 
-                <button
-                    onClick={handleLike}
-                    disabled={toggleLike.isPending}
-                    className={`flex items-center gap-1 text-[11px] font-bold transition-colors ${
-                        review.isLiked ? 'text-rose-500' : 'text-gray-400 hover:text-rose-500'
-                    }`}
-                >
-                    <Heart size={12} fill={review.isLiked ? 'currentColor' : 'none'} />
-                    {review.likesCount > 0 && review.likesCount}
-                </button>
+                <AuthGuard onAction={handleLike} businessName="Review">
+                    <button
+                        disabled={toggleLike.isPending}
+                        className={`flex items-center gap-1 text-[11px] font-bold transition-colors ${
+                            review.isLiked ? 'text-rose-500' : 'text-gray-400 hover:text-rose-500'
+                        }`}
+                    >
+                        <Heart size={12} fill={review.isLiked ? 'currentColor' : 'none'} />
+                        {review.likesCount > 0 && review.likesCount}
+                    </button>
+                </AuthGuard>
             </div>
 
             <p className="text-sm text-gray-600 font-medium mt-3 leading-relaxed">

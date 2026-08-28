@@ -174,6 +174,7 @@ export default function PromotionReviewsPage() {
                 isOpen={showWriteReview}
                 onClose={() => setShowWriteReview(false)}
                 offerId={offerId}
+                businessName={offer?.branch?.name || offer?.branchName || offer?.business?.name || 'Business'}
             />
         </div>
     );
