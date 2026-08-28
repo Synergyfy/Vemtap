@@ -1,4 +1,4 @@
-import { api } from '@/lib/api';
+import { api, publicApi } from '@/lib/api';
 import type {
     DealReview,
     DealReviewsResponse,
@@ -47,4 +47,4 @@ export const getSaveStatus = (offerId: string): Promise<{ isSaved: boolean }> =>
 // ─── Engagement summary ───────────────────────────────────────────────────────
 
 export const getEngagement = (offerId: string): Promise<DealEngagementResponse> =>
-    api.get(`/deals/${offerId}/engagement`);
+    publicApi.get(`/deals/${offerId}/engagement`);
