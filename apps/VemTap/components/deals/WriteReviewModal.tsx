@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Send, User, Loader2, CheckCircle2 } from 'lucide-react';
+import { X, Send, User, Loader2, CheckCircle2, Star } from 'lucide-react';
 import { useCreateReview } from '@/services/deals/engagement-hooks';
 import { useAuthStore } from '@/store/useAuthStore';
 import { ChatConnectModal } from '@/components/visitor/ChatConnectModal';
@@ -18,19 +18,19 @@ interface WriteReviewModalProps {
 export default function WriteReviewModal({ isOpen, onClose, offerId, businessName = 'Business' }: WriteReviewModalProps) {
     const [name, setName] = useState('');
     const [comment, setComment] = useState('');
+    const [rating, setRating] = useState(0);
+    const [hoveredStar, setHoveredStar] = useState(0);
     const [submitted, setSubmitted] = useState(false);
     const [showAuthModal, setShowAuthModal] = useState(false);
     const { isAuthenticated } = useAuthStore();
     const createReview = useCreateReview(offerId);
     const pendingSubmitRef = useRef(false);
 
-    // When auth completes while modal is open, close auth modal and submit review
     useEffect(() => {
         if (isAuthenticated && showAuthModal && pendingSubmitRef.current) {
             pendingSubmitRef.current = false;
             setShowAuthModal(false);
             toast.success('Signed in! Submitting your review...');
-            // Submit after brief delay to let modal close
             setTimeout(() => submitReview(), 200);
         }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -43,12 +43,13 @@ export default function WriteReviewModal({ isOpen, onClose, offerId, businessNam
         }
 
         createReview.mutate(
-            { comment: comment.trim(), name: name.trim() || undefined },
+            { comment: comment.trim(), name: name.trim() || undefined, rating: rating || undefined },
             {
                 onSuccess: () => {
                     setSubmitted(true);
                     setName('');
                     setComment('');
+                    setRating(0);
                 },
                 onError: (err: any) => {
                     const msg = err?.message || '';
@@ -78,6 +79,7 @@ export default function WriteReviewModal({ isOpen, onClose, offerId, businessNam
         setSubmitted(false);
         setName('');
         setComment('');
+        setRating(0);
         onClose();
     };
 
@@ -133,6 +135,39 @@ export default function WriteReviewModal({ isOpen, onClose, offerId, businessNam
                             ) : (
                                 <>
                                     <div className="space-y-4">
+                                        {/* Star Rating */}
+                                        <div>
+                                            <label className="text-xs font-bold text-gray-500 mb-2 block">
+                                                Rating (optional)
+                                            </label>
+                                            <div className="flex items-center gap-1">
+                                                {[1, 2, 3, 4, 5].map((star) => (
+                                                    <button
+                                                        key={star}
+                                                        type="button"
+                                                        onMouseEnter={() => setHoveredStar(star)}
+                                                        onMouseLeave={() => setHoveredStar(0)}
+                                                        onClick={() => setRating(star === rating ? 0 : star)}
+                                                        className="p-0.5 transition-transform hover:scale-110"
+                                                    >
+                                                        <Star
+                                                            size={28}
+                                                            className={`transition-colors ${
+                                                                star <= (hoveredStar || rating)
+                                                                    ? 'text-amber-400 fill-amber-400'
+                                                                    : 'text-gray-200'
+                                                            }`}
+                                                        />
+                                                    </button>
+                                                ))}
+                                                {rating > 0 && (
+                                                    <span className="text-xs font-bold text-gray-500 ml-2">
+                                                        {rating}/5
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
+
                                         <div>
                                             <label className="text-xs font-bold text-gray-500 mb-1.5 block">
                                                 Your name (optional)

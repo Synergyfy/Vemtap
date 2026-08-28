@@ -122,6 +122,7 @@ export interface DealReview {
     id: string;
     reviewerName: string;
     comment: string;
+    rating?: number;
     likesCount: number;
     createdAt: string;
     isLiked?: boolean;
@@ -154,6 +155,7 @@ export interface DealSaveResponse {
 export interface CreateReviewDto {
     comment: string;
     name?: string;
+    rating?: number;
 }
 
 // ─── Public Discovery Types ────────────────────────────────────────────────────

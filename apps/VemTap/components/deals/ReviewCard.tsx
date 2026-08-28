@@ -1,6 +1,6 @@
 'use client';
 
-import { Heart } from 'lucide-react';
+import { Heart, Star } from 'lucide-react';
 import { useToggleReviewLike } from '@/services/deals/engagement-hooks';
 import AuthGuard from '@/components/auth/AuthGuard';
 import type { DealReview } from '@/services/deals/types';
@@ -60,7 +60,24 @@ export default function ReviewCard({ review, offerId }: ReviewCardProps) {
                 </AuthGuard>
             </div>
 
-            <p className="text-sm text-gray-600 font-medium mt-3 leading-relaxed">
+            {/* Star Rating */}
+            {review.rating && review.rating > 0 && (
+                <div className="flex items-center gap-0.5 mt-2">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                        <Star
+                            key={star}
+                            size={14}
+                            className={`${
+                                star <= review.rating
+                                    ? 'text-amber-400 fill-amber-400'
+                                    : 'text-gray-200'
+                            }`}
+                        />
+                    ))}
+                </div>
+            )}
+
+            <p className="text-sm text-gray-600 font-medium mt-2 leading-relaxed">
                 {review.comment}
             </p>
         </div>
