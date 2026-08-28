@@ -2,8 +2,8 @@
 
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Send, User } from 'lucide-react';
-import { useDealEngagementStore } from '@/store/useDealEngagementStore';
+import { X, Send, User, Loader2, CheckCircle2 } from 'lucide-react';
+import { useCreateReview } from '@/services/deals/engagement-hooks';
 import { toast } from 'react-hot-toast';
 
 interface WriteReviewModalProps {
@@ -15,8 +15,8 @@ interface WriteReviewModalProps {
 export default function WriteReviewModal({ isOpen, onClose, offerId }: WriteReviewModalProps) {
     const [name, setName] = useState('');
     const [comment, setComment] = useState('');
-    const [isSubmitting, setIsSubmitting] = useState(false);
-    const { addReview } = useDealEngagementStore();
+    const [submitted, setSubmitted] = useState(false);
+    const createReview = useCreateReview(offerId);
 
     const handleSubmit = () => {
         if (!comment.trim()) {
@@ -24,21 +24,33 @@ export default function WriteReviewModal({ isOpen, onClose, offerId }: WriteRevi
             return;
         }
 
-        setIsSubmitting(true);
+        createReview.mutate(
+            { comment: comment.trim(), name: name.trim() || undefined },
+            {
+                onSuccess: () => {
+                    setSubmitted(true);
+                    setName('');
+                    setComment('');
+                },
+                onError: (err: any) => {
+                    const msg = err?.message || '';
+                    if (msg.toLowerCase().includes('already reviewed')) {
+                        toast.error("You've already reviewed this deal");
+                    } else if (msg.toLowerCase().includes('already submitted')) {
+                        toast.error('A review from this device was already submitted in the last 24 hours');
+                    } else {
+                        toast.error(msg || 'Failed to submit review');
+                    }
+                },
+            }
+        );
+    };
 
-        setTimeout(() => {
-            addReview(offerId, {
-                offerId,
-                reviewerName: name.trim() || 'Anonymous',
-                comment: comment.trim(),
-            });
-
-            toast.success('Review submitted!');
-            setName('');
-            setComment('');
-            setIsSubmitting(false);
-            onClose();
-        }, 500);
+    const handleClose = () => {
+        setSubmitted(false);
+        setName('');
+        setComment('');
+        onClose();
     };
 
     return (
@@ -49,7 +61,7 @@ export default function WriteReviewModal({ isOpen, onClose, offerId }: WriteRevi
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
                     className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm"
-                    onClick={onClose}
+                    onClick={handleClose}
                 >
                     <motion.div
                         initial={{ y: '100%' }}
@@ -60,54 +72,86 @@ export default function WriteReviewModal({ isOpen, onClose, offerId }: WriteRevi
                         className="w-full sm:max-w-md bg-white rounded-t-3xl sm:rounded-2xl p-6 space-y-5"
                     >
                         <div className="flex items-center justify-between">
-                            <h3 className="text-base font-bold text-gray-900">Write a Review</h3>
+                            <h3 className="text-base font-bold text-gray-900">
+                                {submitted ? 'Thank You!' : 'Write a Review'}
+                            </h3>
                             <button
-                                onClick={onClose}
+                                onClick={handleClose}
                                 className="size-8 rounded-full bg-gray-100 flex items-center justify-center hover:bg-gray-200 transition-colors"
                             >
                                 <X size={16} className="text-gray-500" />
                             </button>
                         </div>
 
-                        <div className="space-y-4">
-                            <div>
-                                <label className="text-xs font-bold text-gray-500 mb-1.5 block">
-                                    Your name (optional)
-                                </label>
-                                <div className="relative">
-                                    <User size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                                    <input
-                                        type="text"
-                                        value={name}
-                                        onChange={(e) => setName(e.target.value)}
-                                        placeholder="Anonymous"
-                                        className="w-full h-11 pl-9 pr-4 rounded-xl border border-gray-200 text-sm font-medium text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
-                                    />
+                        {submitted ? (
+                            <div className="text-center py-6 space-y-4">
+                                <div className="size-16 mx-auto bg-green-50 rounded-full flex items-center justify-center">
+                                    <CheckCircle2 size={32} className="text-green-500" />
                                 </div>
+                                <div className="space-y-2">
+                                    <p className="text-sm font-bold text-gray-900">Review submitted!</p>
+                                    <p className="text-xs text-gray-500 font-medium">
+                                        Your review is awaiting moderation and will appear once approved.
+                                    </p>
+                                </div>
+                                <button
+                                    onClick={handleClose}
+                                    className="w-full h-11 bg-primary text-white font-bold text-sm rounded-xl hover:bg-primary/90 transition-colors"
+                                >
+                                    Done
+                                </button>
                             </div>
+                        ) : (
+                            <>
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className="text-xs font-bold text-gray-500 mb-1.5 block">
+                                            Your name (optional)
+                                        </label>
+                                        <div className="relative">
+                                            <User size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                                            <input
+                                                type="text"
+                                                value={name}
+                                                onChange={(e) => setName(e.target.value)}
+                                                placeholder="Anonymous"
+                                                className="w-full h-11 pl-9 pr-4 rounded-xl border border-gray-200 text-sm font-medium text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
+                                            />
+                                        </div>
+                                    </div>
 
-                            <div>
-                                <label className="text-xs font-bold text-gray-500 mb-1.5 block">
-                                    Your review *
-                                </label>
-                                <textarea
-                                    value={comment}
-                                    onChange={(e) => setComment(e.target.value)}
-                                    placeholder="Share your experience with this deal..."
-                                    rows={4}
-                                    className="w-full p-3 rounded-xl border border-gray-200 text-sm font-medium text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors resize-none"
-                                />
-                            </div>
-                        </div>
+                                    <div>
+                                        <label className="text-xs font-bold text-gray-500 mb-1.5 block">
+                                            Your review *
+                                        </label>
+                                        <textarea
+                                            value={comment}
+                                            onChange={(e) => setComment(e.target.value)}
+                                            placeholder="Share your experience with this deal..."
+                                            rows={4}
+                                            maxLength={1000}
+                                            className="w-full p-3 rounded-xl border border-gray-200 text-sm font-medium text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors resize-none"
+                                        />
+                                        <p className="text-[10px] text-gray-400 mt-1 text-right">
+                                            {comment.length}/1000
+                                        </p>
+                                    </div>
+                                </div>
 
-                        <button
-                            onClick={handleSubmit}
-                            disabled={!comment.trim() || isSubmitting}
-                            className="w-full h-12 bg-primary text-white font-bold text-sm rounded-xl shadow-lg shadow-primary/20 hover:bg-primary/90 transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                            <Send size={16} />
-                            {isSubmitting ? 'Submitting...' : 'Submit Review'}
-                        </button>
+                                <button
+                                    onClick={handleSubmit}
+                                    disabled={!comment.trim() || createReview.isPending}
+                                    className="w-full h-12 bg-primary text-white font-bold text-sm rounded-xl shadow-lg shadow-primary/20 hover:bg-primary/90 transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    {createReview.isPending ? (
+                                        <Loader2 size={16} className="animate-spin" />
+                                    ) : (
+                                        <Send size={16} />
+                                    )}
+                                    {createReview.isPending ? 'Submitting...' : 'Submit Review'}
+                                </button>
+                            </>
+                        )}
                     </motion.div>
                 </motion.div>
             )}

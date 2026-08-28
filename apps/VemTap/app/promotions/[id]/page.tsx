@@ -18,7 +18,7 @@ import { usePublicOfferDetails, useRequestClaimOtp, useVerifyClaimOtp } from '@/
 import EngagementBar from '@/components/deals/EngagementBar';
 import ReviewSection from '@/components/deals/ReviewSection';
 import WriteReviewModal from '@/components/deals/WriteReviewModal';
-import { useDealEngagementStore } from '@/store/useDealEngagementStore';
+import { useEngagement } from '@/services/deals/engagement-hooks';
 import { toast } from 'react-hot-toast';
 
 type ClaimStep = 'phone' | 'otp' | 'success';
@@ -69,8 +69,8 @@ export default function PromotionDetailPage() {
     const [showShareModal, setShowShareModal] = useState(false);
     const [showWriteReview, setShowWriteReview] = useState(false);
 
-    const { getDealReviewCount } = useDealEngagementStore();
-    const reviewCount = getDealReviewCount(id);
+    const { data: engagement } = useEngagement(id);
+    const reviewCount = engagement?.reviewsCount ?? 0;
 
     const requestClaimOtp = useRequestClaimOtp();
     const verifyClaimOtp = useVerifyClaimOtp();

@@ -1,15 +1,16 @@
 'use client';
 
 import { Heart } from 'lucide-react';
-import { DealReview, useDealEngagementStore } from '@/store/useDealEngagementStore';
+import { useToggleReviewLike } from '@/services/deals/engagement-hooks';
+import type { DealReview } from '@/services/deals/types';
 
 interface ReviewCardProps {
     review: DealReview;
     offerId: string;
 }
 
-function timeAgo(timestamp: number): string {
-    const seconds = Math.floor((Date.now() - timestamp) / 1000);
+function timeAgo(timestamp: string): string {
+    const seconds = Math.floor((Date.now() - new Date(timestamp).getTime()) / 1000);
     if (seconds < 60) return 'just now';
     const minutes = Math.floor(seconds / 60);
     if (minutes < 60) return `${minutes}m ago`;
@@ -24,8 +25,11 @@ function timeAgo(timestamp: number): string {
 }
 
 export default function ReviewCard({ review, offerId }: ReviewCardProps) {
-    const { toggleReviewLike, isReviewLiked } = useDealEngagementStore();
-    const liked = isReviewLiked(review.id);
+    const toggleLike = useToggleReviewLike(offerId);
+
+    const handleLike = () => {
+        toggleLike.mutate(review.id);
+    };
 
     return (
         <div className="bg-white rounded-xl p-4 border border-gray-100">
@@ -43,12 +47,13 @@ export default function ReviewCard({ review, offerId }: ReviewCardProps) {
                 </div>
 
                 <button
-                    onClick={() => toggleReviewLike(offerId, review.id)}
+                    onClick={handleLike}
+                    disabled={toggleLike.isPending}
                     className={`flex items-center gap-1 text-[11px] font-bold transition-colors ${
-                        liked ? 'text-rose-500' : 'text-gray-400 hover:text-rose-500'
+                        review.isLiked ? 'text-rose-500' : 'text-gray-400 hover:text-rose-500'
                     }`}
                 >
-                    <Heart size={12} fill={liked ? 'currentColor' : 'none'} />
+                    <Heart size={12} fill={review.isLiked ? 'currentColor' : 'none'} />
                     {review.likesCount > 0 && review.likesCount}
                 </button>
             </div>

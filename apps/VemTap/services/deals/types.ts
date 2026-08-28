@@ -115,3 +115,77 @@ export interface ClaimVerifyResponse {
         status: string;
     };
 }
+
+// ─── Engagement Types ──────────────────────────────────────────────────────────
+
+export interface DealReview {
+    id: string;
+    reviewerName: string;
+    comment: string;
+    likesCount: number;
+    createdAt: string;
+    isLiked?: boolean;
+}
+
+export interface DealReviewsResponse {
+    reviews: DealReview[];
+    total: number;
+    page: number;
+}
+
+export interface DealEngagementResponse {
+    likesCount: number;
+    dislikesCount: number;
+    reviewsCount: number;
+    type?: 'like' | 'dislike' | null;
+    isSaved?: boolean;
+}
+
+export interface DealReactionResponse {
+    type: 'like' | 'dislike' | null;
+    likesCount: number;
+    dislikesCount: number;
+}
+
+export interface DealSaveResponse {
+    saved: boolean;
+}
+
+export interface CreateReviewDto {
+    comment: string;
+    name?: string;
+}
+
+// ─── Public Discovery Types ────────────────────────────────────────────────────
+
+export interface PublicBusiness {
+    id: string;
+    name: string;
+    logoUrl?: string;
+    description?: string;
+    address?: string;
+    state?: string;
+    city?: string;
+    categoryId?: string;
+    categoryName?: string;
+    isVerified?: boolean;
+    slug: string;
+    branchCode?: string;
+}
+
+export interface PublicBusinessesResponse {
+    businesses: PublicBusiness[];
+}
+
+export interface PublicSearchResponse {
+    deals: DealOffer[];
+    businesses: PublicBusiness[];
+    categories: { id: string; name: string; description?: string }[];
+}
+
+export interface PublicStatsResponse {
+    totalBusinesses: number;
+    totalActiveDeals: number;
+    totalClaims: number;
+    totalBranches: number;
+}

@@ -3,14 +3,12 @@
 import { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { ArrowLeft, MessageCircle, PenLine, Star, Loader2 } from 'lucide-react';
+import { ArrowLeft, MessageCircle, PenLine, Star, Loader2, ChevronDown } from 'lucide-react';
 import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
 import ReviewCard from '@/components/deals/ReviewCard';
 import WriteReviewModal from '@/components/deals/WriteReviewModal';
-import { useDealEngagementStore } from '@/store/useDealEngagementStore';
-import { getMockReviews } from '@/lib/mock/dealReviews';
-import { MOCK_PROMOTIONS } from '@/lib/mock/promotions';
+import { useReviews, useEngagement } from '@/services/deals/engagement-hooks';
 import { usePublicOfferDetails } from '@/services/deals/hooks';
 
 export default function PromotionReviewsPage() {
@@ -18,19 +16,18 @@ export default function PromotionReviewsPage() {
     const router = useRouter();
     const offerId = params.id as string;
 
-    const mockPromotion = MOCK_PROMOTIONS.find(p => p.id === offerId);
-    const { data: offer, isLoading } = usePublicOfferDetails(offerId);
-    const promotionName = mockPromotion?.name || offer?.name || 'Deal';
-
-    const { getReviews } = useDealEngagementStore();
+    const { data: offer, isLoading: offerLoading } = usePublicOfferDetails(offerId);
+    const { data: engagement } = useEngagement(offerId);
+    const [page, setPage] = useState(1);
+    const { data: reviewsData, isLoading: reviewsLoading } = useReviews(offerId, page, 10);
     const [showWriteReview, setShowWriteReview] = useState(false);
 
-    const storeReviews = getReviews(offerId);
-    const mockReviews = getMockReviews(offerId);
-    const reviews = storeReviews.length > 0 ? storeReviews : mockReviews;
-    const totalCount = reviews.length;
+    const promotionName = offer?.name || 'Deal';
+    const reviews = reviewsData?.reviews || [];
+    const totalCount = reviewsData?.total || 0;
+    const totalPages = Math.ceil(totalCount / 10);
 
-    if (isLoading) {
+    if (offerLoading) {
         return (
             <div className="min-h-screen bg-[#f4f5f6] flex flex-col">
                 <Navbar />
@@ -103,7 +100,13 @@ export default function PromotionReviewsPage() {
                     </motion.div>
 
                     {/* Reviews List */}
-                    {totalCount === 0 ? (
+                    {reviewsLoading ? (
+                        <div className="space-y-3">
+                            {[1, 2, 3].map((i) => (
+                                <div key={i} className="h-24 bg-white rounded-xl border border-gray-100 animate-pulse" />
+                            ))}
+                        </div>
+                    ) : totalCount === 0 ? (
                         <motion.div
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
@@ -124,18 +127,43 @@ export default function PromotionReviewsPage() {
                             </button>
                         </motion.div>
                     ) : (
-                        <div className="space-y-3">
-                            {reviews.map((review, index) => (
-                                <motion.div
-                                    key={review.id}
-                                    initial={{ opacity: 0, y: 20 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    transition={{ delay: index * 0.05 }}
-                                >
-                                    <ReviewCard review={review} offerId={offerId} />
-                                </motion.div>
-                            ))}
-                        </div>
+                        <>
+                            <div className="space-y-3">
+                                {reviews.map((review, index) => (
+                                    <motion.div
+                                        key={review.id}
+                                        initial={{ opacity: 0, y: 20 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        transition={{ delay: index * 0.05 }}
+                                    >
+                                        <ReviewCard review={review} offerId={offerId} />
+                                    </motion.div>
+                                ))}
+                            </div>
+
+                            {/* Pagination */}
+                            {totalPages > 1 && (
+                                <div className="flex items-center justify-center gap-2 mt-8">
+                                    <button
+                                        onClick={() => setPage(p => Math.max(1, p - 1))}
+                                        disabled={page === 1}
+                                        className="px-4 py-2 text-xs font-bold text-gray-500 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                                    >
+                                        Previous
+                                    </button>
+                                    <span className="text-xs font-bold text-gray-500 px-3">
+                                        Page {page} of {totalPages}
+                                    </span>
+                                    <button
+                                        onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                                        disabled={page === totalPages}
+                                        className="px-4 py-2 text-xs font-bold text-gray-500 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                                    >
+                                        Next
+                                    </button>
+                                </div>
+                            )}
+                        </>
                     )}
                 </div>
             </main>

@@ -159,6 +159,8 @@ export default function PromotionsPage() {
             case 'price-high': return 'price_desc';
             case 'trending': return 'trending';
             case 'newest': return 'newest';
+            case 'popular': return 'popular';
+            case 'featured': return 'featured';
             default: return undefined;
         }
     }, [sortBy]);
