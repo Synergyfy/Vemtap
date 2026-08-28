@@ -299,6 +299,13 @@ export class CatalogueOffer extends AbstractBaseEntity {
   })
   averageRating: number | null;
 
+  @ApiProperty({
+    example: false,
+    description: 'Whether the deal is featured',
+  })
+  @Column({ default: false })
+  isFeatured: boolean;
+
   @ManyToMany(() => CatalogueItem)
   @JoinTable({
     name: 'catalogue_offer_items',

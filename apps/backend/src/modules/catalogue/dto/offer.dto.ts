@@ -7,9 +7,10 @@ import {
   IsNumber,
   IsEnum,
   IsArray,
+  IsBoolean,
   Min,
 } from 'class-validator';
-import { Type } from 'class-transformer';
+import { Type, Transform } from 'class-transformer';
 import {
   CatalogueOfferPricingType,
   CatalogueOfferStatus,
@@ -172,6 +173,11 @@ export class CreateCatalogueOfferDto {
   @IsOptional()
   @IsString()
   longDescription?: string;
+
+  @ApiPropertyOptional({ description: 'Whether the offer is featured', example: false })
+  @IsOptional()
+  @IsBoolean()
+  isFeatured?: boolean;
 }
 
 export class UpdateCatalogueOfferDto {
@@ -179,6 +185,11 @@ export class UpdateCatalogueOfferDto {
   @IsOptional()
   @IsString()
   name?: string;
+
+  @ApiPropertyOptional({ description: 'Whether the offer is featured', example: false })
+  @IsOptional()
+  @IsBoolean()
+  isFeatured?: boolean;
 
   @ApiPropertyOptional()
   @IsOptional()
@@ -428,4 +439,112 @@ export class PublicCatalogueOffersQueryDto {
   @IsOptional()
   @IsString()
   audience?: string;
+}
+
+export enum AdminDealsSortBy {
+  NEWEST = 'newest',
+  MOST_POPULAR = 'most_popular',
+  FEATURED_FIRST = 'featured_first',
+  PRICE_LOW_HIGH = 'price_low_high',
+  PRICE_HIGH_LOW = 'price_high_low',
+  ENDING_SOON = 'ending_soon',
+}
+
+export enum AdminDealsStatusFilter {
+  ACTIVE = 'active',
+  INACTIVE = 'inactive',
+  EXPIRED = 'expired',
+}
+
+export class AdminDealsQueryDto {
+  @ApiPropertyOptional({ default: 1, minimum: 1 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(1)
+  page?: number = 1;
+
+  @ApiPropertyOptional({ default: 10, minimum: 1, maximum: 100 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(1)
+  limit?: number = 10;
+
+  @ApiPropertyOptional({ description: 'Search by deal name or business name' })
+  @IsOptional()
+  @IsString()
+  search?: string;
+
+  @ApiPropertyOptional({ description: 'Filter by business UUID' })
+  @IsOptional()
+  @IsUUID()
+  businessId?: string;
+
+  @ApiPropertyOptional({
+    description:
+      'Filter by subscription plan name or tier (e.g. platinum, gold, silver, free)',
+  })
+  @IsOptional()
+  @IsString()
+  plan?: string;
+
+  @ApiPropertyOptional({
+    enum: AdminDealsStatusFilter,
+    description: 'Filter by deal status (active, inactive, expired)',
+  })
+  @IsOptional()
+  @IsEnum(AdminDealsStatusFilter)
+  status?: AdminDealsStatusFilter;
+
+  @ApiPropertyOptional({ description: 'Filter by featured flag (true/false)' })
+  @IsOptional()
+  @Transform(({ value }) => {
+    if (value === 'true' || value === true) return true;
+    if (value === 'false' || value === false) return false;
+    return undefined;
+  })
+  @IsBoolean()
+  isFeatured?: boolean;
+
+  @ApiPropertyOptional({ description: 'Minimum price filter' })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  minPrice?: number;
+
+  @ApiPropertyOptional({ description: 'Maximum price filter' })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  maxPrice?: number;
+
+  @ApiPropertyOptional({ description: 'Start date filter (ISO format)' })
+  @IsOptional()
+  @IsString()
+  startDate?: string;
+
+  @ApiPropertyOptional({ description: 'End date filter (ISO format)' })
+  @IsOptional()
+  @IsString()
+  endDate?: string;
+
+  @ApiPropertyOptional({
+    enum: AdminDealsSortBy,
+    default: AdminDealsSortBy.NEWEST,
+    description:
+      'Sort order: newest, most_popular, featured_first, price_low_high, price_high_low, ending_soon',
+  })
+  @IsOptional()
+  @IsEnum(AdminDealsSortBy)
+  sortBy?: AdminDealsSortBy = AdminDealsSortBy.NEWEST;
+}
+
+export class AdminBusinessesQueryDto {
+  @ApiPropertyOptional({ description: 'Search businesses by name' })
+  @IsOptional()
+  @IsString()
+  search?: string;
 }

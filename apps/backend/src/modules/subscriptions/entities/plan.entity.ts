@@ -154,6 +154,9 @@ export class Plan extends AbstractBaseEntity {
   @Column({ type: 'int', default: 0 })
   aiCredits: number; // Monthly AI credit allowance. 0 = disabled. -1 = unlimited.
 
+  @Column({ default: false })
+  autoFeatureDeals: boolean;
+
   @Column({ type: 'timestamp', nullable: true })
   permissionsConfiguredAt: Date | null;
 
