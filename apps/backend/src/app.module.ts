@@ -81,6 +81,8 @@ import { KnowledgeBaseModule } from './modules/knowledge-base/knowledge-base.mod
 import { ClustersModule } from './modules/clusters/clusters.module';
 import { RotatorModule } from './modules/rotator/rotator.module';
 import { SubscriptionRemindersModule } from './modules/subscription-reminders/subscription-reminders.module';
+import { DealEngagementModule } from './modules/deal-engagement/deal-engagement.module';
+import { PublicDiscoveryModule } from './modules/public-discovery/public-discovery.module';
 
 @Module({
   imports: [
@@ -230,6 +232,8 @@ import { SubscriptionRemindersModule } from './modules/subscription-reminders/su
     ClustersModule,
     RotatorModule,
     SubscriptionRemindersModule,
+    DealEngagementModule,
+    PublicDiscoveryModule,
     StatusModule,
     ScheduleModule.forRoot(),
   ],

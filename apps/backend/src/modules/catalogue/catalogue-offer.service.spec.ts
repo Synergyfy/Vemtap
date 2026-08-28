@@ -409,4 +409,84 @@ describe('CatalogueOfferService', () => {
       );
     });
   });
+
+  describe('findAllOffersPublicGlobal', () => {
+    const makeOfferQb = () => ({
+      leftJoinAndSelect: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
+      andWhere: jest.fn().mockReturnThis(),
+      setParameter: jest.fn().mockReturnThis(),
+      orderBy: jest.fn().mockReturnThis(),
+      skip: jest.fn().mockReturnThis(),
+      take: jest.fn().mockReturnThis(),
+      getManyAndCount: jest.fn().mockResolvedValue([
+        [
+          {
+            id: 'offer-1',
+            name: 'Deal',
+            description: 'desc',
+            pricingType: 'sum',
+            fixedPrice: null,
+            discountValue: null,
+            calculatedPrice: 100,
+            status: 'active',
+            branchId: 'branch-1',
+            branch: {
+              name: 'Branch',
+              business: { category: { name: 'Food' } },
+            },
+            items: [{ price: 100 }],
+            quantity: 10,
+            startDate: null,
+            endDate: null,
+            maxClaimsPerCustomer: 1,
+            audienceTarget: 'all',
+            terms: [],
+            claimCodePrefix: 'VEM',
+          },
+        ],
+        1,
+      ]),
+    });
+
+    it('orders by claim count for sortBy=popular and returns claimedCount', async () => {
+      const qb = makeOfferQb();
+      offerRepo.createQueryBuilder = jest.fn().mockReturnValue(qb);
+      claimRepo.count.mockResolvedValue(5);
+
+      const result = await service.findAllOffersPublicGlobal({
+        sortBy: 'popular',
+        page: 1,
+        limit: 10,
+      });
+
+      expect(qb.orderBy).toHaveBeenCalledWith(
+        expect.stringContaining('catalogue_offer_claims'),
+        'DESC',
+      );
+      expect(qb.skip).toHaveBeenCalledWith(0);
+      expect(qb.take).toHaveBeenCalledWith(10);
+      expect(result.data[0].claimedCount).toBe(5);
+      expect(result.total).toBe(1);
+      expect(result.data[0].id).toBe('offer-1');
+    });
+
+    it('orders by a weighted views+claims score for sortBy=featured', async () => {
+      const qb = makeOfferQb();
+      offerRepo.createQueryBuilder = jest.fn().mockReturnValue(qb);
+      claimRepo.count.mockResolvedValue(2);
+
+      const result = await service.findAllOffersPublicGlobal({
+        sortBy: 'featured',
+        page: 1,
+        limit: 10,
+      });
+
+      expect(qb.orderBy).toHaveBeenCalledWith(
+        expect.stringContaining('offer.views'),
+        'DESC',
+      );
+      expect(result.data[0].claimedCount).toBe(2);
+    });
+  });
 });

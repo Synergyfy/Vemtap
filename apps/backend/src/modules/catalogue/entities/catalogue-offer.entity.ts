@@ -261,6 +261,27 @@ export class CatalogueOffer extends AbstractBaseEntity {
   })
   revenue: number;
 
+  @ApiProperty({
+    example: 12,
+    description: 'Number of likes on this deal',
+  })
+  @Column({ type: 'int', default: 0 })
+  likesCount: number;
+
+  @ApiProperty({
+    example: 2,
+    description: 'Number of dislikes on this deal',
+  })
+  @Column({ type: 'int', default: 0 })
+  dislikesCount: number;
+
+  @ApiProperty({
+    example: 37,
+    description: 'Number of approved reviews on this deal',
+  })
+  @Column({ type: 'int', default: 0 })
+  reviewsCount: number;
+
   @ManyToMany(() => CatalogueItem)
   @JoinTable({
     name: 'catalogue_offer_items',
