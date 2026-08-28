@@ -26,6 +26,7 @@ import {
 } from './entities/deal-reaction.entity';
 import { DealSave } from './entities/deal-save.entity';
 import {
+  BusinessReviewsQueryDto,
   CreateDealReviewDto,
   ListReviewsQueryDto,
 } from './dto/deal-review.dto';
@@ -57,6 +58,7 @@ export class DealEngagementService {
   private async getOfferOrThrow(offerId: string): Promise<CatalogueOffer> {
     const offer = await this.offerRepository.findOne({
       where: { id: offerId },
+      relations: ['business'],
     });
     if (!offer) throw new NotFoundException('Deal not found');
     return offer;
@@ -151,6 +153,23 @@ export class DealEngagementService {
     return count;
   }
 
+  private async syncAverageRating(offerId: string): Promise<number | null> {
+    const raw = await this.reviewRepository
+      .createQueryBuilder('review')
+      .select('AVG(review.rating)', 'avg')
+      .where('review.offerId = :offerId', { offerId })
+      .andWhere('review.status = :status', {
+        status: DealReviewStatus.APPROVED,
+      })
+      .andWhere('review.rating IS NOT NULL')
+      .getRawOne<{ avg: string | null }>();
+
+    const avg =
+      raw?.avg != null ? parseFloat(Number(raw.avg).toFixed(2)) : null;
+    await this.offerRepository.update(offerId, { averageRating: avg });
+    return avg;
+  }
+
   // --- Reviews ---
 
   async createReview(
@@ -159,7 +178,7 @@ export class DealEngagementService {
     dto: CreateDealReviewDto,
     ip?: string,
   ) {
-    await this.getOfferOrThrow(offerId);
+    const offer = await this.getOfferOrThrow(offerId);
 
     const reviewerName =
       dto.name?.trim() ||
@@ -195,20 +214,34 @@ export class DealEngagementService {
       }
     }
 
+    // Auto-approve reviews unless the business has enabled moderation
+    const requireApproval = Boolean(offer.business?.requireReviewApproval);
+    const initialStatus = requireApproval
+      ? DealReviewStatus.PENDING
+      : DealReviewStatus.APPROVED;
+
     const review = this.reviewRepository.create({
       offerId,
       userId: user?.id ?? null,
       ipHash,
       reviewerName,
       comment: dto.comment,
-      status: DealReviewStatus.PENDING,
+      rating: dto.rating ?? null,
+      status: initialStatus,
     });
     const saved = await this.reviewRepository.save(review);
+
+    if (initialStatus === DealReviewStatus.APPROVED) {
+      await this.syncReviewsCount(offerId);
+      await this.syncAverageRating(offerId);
+      await this.clearOfferCaches(offer.id, offer.branchId);
+    }
 
     return {
       id: saved.id,
       reviewerName: saved.reviewerName,
       comment: saved.comment,
+      rating: saved.rating,
       status: saved.status,
       createdAt: saved.createdAt,
     };
@@ -243,6 +276,7 @@ export class DealEngagementService {
         id: r.id,
         reviewerName: r.reviewerName,
         comment: r.comment,
+        rating: r.rating,
         likesCount: r.likesCount,
         createdAt: r.createdAt,
         ...(user?.id ? { isLiked: likedIds.has(r.id) } : {}),
@@ -264,6 +298,7 @@ export class DealEngagementService {
         id: r.id,
         reviewerName: r.reviewerName,
         comment: r.comment,
+        rating: r.rating,
         likesCount: r.likesCount,
         createdAt: r.createdAt,
       })),
@@ -377,6 +412,8 @@ export class DealEngagementService {
       likesCount: Number(offer.likesCount || 0),
       dislikesCount: Number(offer.dislikesCount || 0),
       reviewsCount: Number(offer.reviewsCount || 0),
+      averageRating:
+        offer.averageRating != null ? Number(offer.averageRating) : null,
     };
     if (user?.id) {
       const reaction = await this.reactionRepository.findOne({
@@ -388,6 +425,107 @@ export class DealEngagementService {
       }));
     }
     return result;
+  }
+
+  // --- Business review management ---
+
+  async findReviewsForBusiness(
+    businessId: string,
+    query: BusinessReviewsQueryDto,
+  ) {
+    const page = query.page ?? 1;
+    const limit = query.limit ?? 20;
+
+    const qb = this.reviewRepository
+      .createQueryBuilder('review')
+      .innerJoinAndSelect('review.offer', 'offer')
+      .where('offer.businessId = :businessId', { businessId })
+      .orderBy('review.createdAt', 'DESC')
+      .skip((page - 1) * limit)
+      .take(limit);
+
+    if (query.status) {
+      qb.andWhere('review.status = :status', { status: query.status });
+    }
+
+    if (query.offerId) {
+      qb.andWhere('review.offerId = :offerId', { offerId: query.offerId });
+    }
+
+    const [data, total] = await qb.getManyAndCount();
+
+    return {
+      reviews: data.map((r) => ({
+        id: r.id,
+        offerId: r.offerId,
+        offerName: r.offer?.name,
+        reviewerName: r.reviewerName,
+        comment: r.comment,
+        rating: r.rating,
+        likesCount: r.likesCount,
+        status: r.status,
+        userId: r.userId,
+        ipHash: r.ipHash,
+        createdAt: r.createdAt,
+      })),
+      total,
+      page,
+      limit,
+    };
+  }
+
+  async approveReviewByBusiness(businessId: string, reviewId: string) {
+    return this.setReviewStatusForBusiness(
+      businessId,
+      reviewId,
+      DealReviewStatus.APPROVED,
+    );
+  }
+
+  async rejectReviewByBusiness(businessId: string, reviewId: string) {
+    return this.setReviewStatusForBusiness(
+      businessId,
+      reviewId,
+      DealReviewStatus.REJECTED,
+    );
+  }
+
+  async setReviewStatusForBusiness(
+    businessId: string,
+    reviewId: string,
+    status: DealReviewStatus,
+  ) {
+    const review = await this.reviewRepository.findOne({
+      where: { id: reviewId },
+      relations: ['offer'],
+    });
+    if (!review || review.offer?.businessId !== businessId) {
+      throw new NotFoundException('Review not found');
+    }
+    review.status = status;
+    await this.reviewRepository.save(review);
+    await this.syncReviewsCount(review.offerId);
+    await this.syncAverageRating(review.offerId);
+    if (review.offer) {
+      await this.clearOfferCaches(review.offer.id, review.offer.branchId);
+    }
+    return { id: review.id, status: review.status };
+  }
+
+  async removeReviewByBusiness(businessId: string, reviewId: string) {
+    const review = await this.reviewRepository.findOne({
+      where: { id: reviewId },
+      relations: ['offer'],
+    });
+    if (!review || review.offer?.businessId !== businessId) {
+      throw new NotFoundException('Review not found');
+    }
+    await this.reviewRepository.softDelete(reviewId);
+    await this.syncReviewsCount(review.offerId);
+    await this.syncAverageRating(review.offerId);
+    if (review.offer) {
+      await this.clearOfferCaches(review.offer.id, review.offer.branchId);
+    }
   }
 
   // --- Admin moderation ---
@@ -409,6 +547,7 @@ export class DealEngagementService {
         offerName: r.offer?.name,
         reviewerName: r.reviewerName,
         comment: r.comment,
+        rating: r.rating,
         likesCount: r.likesCount,
         status: r.status,
         userId: r.userId,
@@ -435,6 +574,7 @@ export class DealEngagementService {
     review.status = status;
     await this.reviewRepository.save(review);
     await this.syncReviewsCount(review.offerId);
+    await this.syncAverageRating(review.offerId);
     const offer = await this.offerRepository.findOne({
       where: { id: review.offerId },
     });
@@ -447,6 +587,7 @@ export class DealEngagementService {
     if (!review) throw new NotFoundException('Review not found');
     await this.reviewRepository.softDelete(id);
     await this.syncReviewsCount(review.offerId);
+    await this.syncAverageRating(review.offerId);
     const offer = await this.offerRepository.findOne({
       where: { id: review.offerId },
     });

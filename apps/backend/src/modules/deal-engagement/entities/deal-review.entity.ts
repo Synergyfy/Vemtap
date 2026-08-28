@@ -43,6 +43,14 @@ export class DealReview extends AbstractBaseEntity {
   @Column({ type: 'int', default: 0 })
   likesCount: number;
 
+  @ApiProperty({
+    example: 5,
+    description: 'Rating from 1 to 5 (optional)',
+    nullable: true,
+  })
+  @Column({ type: 'int', nullable: true })
+  rating: number | null;
+
   @ApiProperty({ enum: DealReviewStatus, example: DealReviewStatus.PENDING })
   @Column({
     type: 'simple-enum',
