@@ -408,3 +408,48 @@ export const adminBannersApi = {
     delete: (id: string) => api.delete(`/admin/banners/${id}`),
     reorder: (orderedIds: string[]) => api.patch('/admin/banners/reorder', { orderedIds }),
 };
+
+// =====================
+// DEALS (Admin)
+// =====================
+export const adminDealsApi = {
+    getAll: (params?: {
+        search?: string;
+        businessId?: string;
+        branchId?: string;
+        plan?: string;
+        status?: string;
+        sortBy?: string;
+        priceFrom?: number;
+        priceTo?: number;
+        dateFrom?: string;
+        dateTo?: string;
+        featured?: boolean;
+        page?: number;
+        limit?: number;
+    }) => {
+        const q = new URLSearchParams();
+        if (params?.search) q.set('search', params.search);
+        if (params?.businessId) q.set('businessId', params.businessId);
+        if (params?.branchId) q.set('branchId', params.branchId);
+        if (params?.plan) q.set('plan', params.plan);
+        if (params?.status) q.set('status', params.status);
+        if (params?.sortBy) q.set('sortBy', params.sortBy);
+        if (params?.priceFrom != null) q.set('priceFrom', String(params.priceFrom));
+        if (params?.priceTo != null) q.set('priceTo', String(params.priceTo));
+        if (params?.dateFrom) q.set('dateFrom', params.dateFrom);
+        if (params?.dateTo) q.set('dateTo', params.dateTo);
+        if (params?.featured != null) q.set('featured', String(params.featured));
+        if (params?.page) q.set('page', String(params.page));
+        if (params?.limit) q.set('limit', String(params.limit));
+        return api.get(`/admin/deals?${q.toString()}`);
+    },
+    getStats: () => api.get('/admin/deals/stats'),
+    toggleFeatured: (id: string) => api.patch(`/admin/deals/${id}/featured`),
+    updateStatus: (id: string, status: string) => api.patch(`/admin/deals/${id}/status`, { status }),
+    getBusinesses: (search?: string) => {
+        const q = new URLSearchParams();
+        if (search) q.set('search', search);
+        return api.get(`/admin/deals/businesses${q.toString() ? `?${q.toString()}` : ''}`);
+    },
+};
