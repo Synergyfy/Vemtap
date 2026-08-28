@@ -1,7 +1,10 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
+  HttpCode,
+  HttpStatus,
   Param,
   ParseUUIDPipe,
   Post,
@@ -11,14 +14,23 @@ import {
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { DealEngagementService } from './deal-engagement.service';
 import {
+  BusinessReviewsQueryDto,
   CreateDealReviewDto,
   ListReviewsQueryDto,
 } from './dto/deal-review.dto';
 import { DealReactionDto } from './dto/deal-reaction.dto';
 import { Public } from '../../common/decorators/public.decorator';
+import { Roles } from '../../common/decorators/roles.decorator';
+import { UserRole } from '../users/entities/user.entity';
 
 interface DealEngagementRequest {
-  user?: { id: string; firstName?: string; lastName?: string };
+  user?: {
+    id: string;
+    firstName?: string;
+    lastName?: string;
+    businessId?: string;
+    role?: UserRole;
+  };
   ip?: string;
   headers?: { 'x-forwarded-for'?: string | string[] };
 }
@@ -27,6 +39,87 @@ interface DealEngagementRequest {
 @Controller('deals')
 export class DealEngagementController {
   constructor(private readonly engagementService: DealEngagementService) {}
+
+  // =====================
+  // BUSINESS REVIEW MANAGEMENT
+  // =====================
+
+  @ApiBearerAuth()
+  @Roles(UserRole.OWNER, UserRole.MANAGER)
+  @Get('business/reviews')
+  @ApiOperation({
+    summary: 'List deal reviews for the current user business (Merchant)',
+  })
+  async listBusinessReviews(
+    @Request() req: DealEngagementRequest,
+    @Query() query: BusinessReviewsQueryDto,
+  ) {
+    return this.engagementService.findReviewsForBusiness(
+      this.getBusinessIdOrThrow(req),
+      query,
+    );
+  }
+
+  @ApiBearerAuth()
+  @Roles(UserRole.OWNER, UserRole.MANAGER)
+  @Post('business/reviews/:id/approve')
+  @ApiOperation({
+    summary: 'Approve a deal review for current user business (Merchant)',
+  })
+  async approveBusinessReview(
+    @Request() req: DealEngagementRequest,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    return this.engagementService.approveReviewByBusiness(
+      this.getBusinessIdOrThrow(req),
+      id,
+    );
+  }
+
+  @ApiBearerAuth()
+  @Roles(UserRole.OWNER, UserRole.MANAGER)
+  @Post('business/reviews/:id/reject')
+  @ApiOperation({
+    summary: 'Reject a deal review for current user business (Merchant)',
+  })
+  async rejectBusinessReview(
+    @Request() req: DealEngagementRequest,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    return this.engagementService.rejectReviewByBusiness(
+      this.getBusinessIdOrThrow(req),
+      id,
+    );
+  }
+
+  @ApiBearerAuth()
+  @Roles(UserRole.OWNER, UserRole.MANAGER)
+  @Delete('business/reviews/:id')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({
+    summary: 'Delete a deal review on current user business offer (Merchant)',
+  })
+  async removeBusinessReview(
+    @Request() req: DealEngagementRequest,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    await this.engagementService.removeReviewByBusiness(
+      this.getBusinessIdOrThrow(req),
+      id,
+    );
+  }
+
+  private getBusinessIdOrThrow(req: DealEngagementRequest): string {
+    const businessId = req.user?.businessId;
+    if (!businessId) {
+      throw new BadRequestException('User is not associated with a business');
+    }
+    return businessId;
+  }
+
+  // =====================
+  // PUBLIC & CUSTOMER ENDPOINTS
+  // =====================
 
   @Public()
   @Post(':offerId/reviews')

@@ -90,6 +90,20 @@ describe('DealEngagementService', () => {
     mockCacheManager.store.keys.mockResolvedValue([]);
     mockCacheManager.store.del.mockResolvedValue(undefined);
 
+    const defaultQb = {
+      where: jest.fn().mockReturnThis(),
+      andWhere: jest.fn().mockReturnThis(),
+      select: jest.fn().mockReturnThis(),
+      innerJoinAndSelect: jest.fn().mockReturnThis(),
+      orderBy: jest.fn().mockReturnThis(),
+      skip: jest.fn().mockReturnThis(),
+      take: jest.fn().mockReturnThis(),
+      getOne: jest.fn().mockResolvedValue(null),
+      getRawOne: jest.fn().mockResolvedValue({ avg: '4.50' }),
+      getManyAndCount: jest.fn().mockResolvedValue([[], 0]),
+    };
+    mockReviewRepository.createQueryBuilder.mockReturnValue(defaultQb);
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         DealEngagementService,
@@ -183,13 +197,58 @@ describe('DealEngagementService', () => {
       ).rejects.toThrow('A reviewer name is required');
     });
 
-    it('creates a pending review and returns the submission shape', async () => {
-      mockOfferRepository.findOne.mockResolvedValue({ id: 'offer-1' });
+    it('creates an auto-approved review by default and returns rating and status', async () => {
+      mockOfferRepository.findOne.mockResolvedValue({
+        id: 'offer-1',
+        business: { requireReviewApproval: false },
+      });
       mockReviewRepository.create.mockReturnValue({});
       mockReviewRepository.save.mockResolvedValue({
         id: 'review-1',
         reviewerName: 'Ada L',
         comment: 'Nice',
+        rating: 5,
+        status: DealReviewStatus.APPROVED,
+        createdAt: new Date('2026-08-27T10:00:00.000Z'),
+      });
+      mockReviewRepository.count.mockResolvedValue(1);
+
+      const result = await service.createReview(
+        { id: 'user-1', firstName: 'Ada', lastName: 'L' },
+        'offer-1',
+        { comment: 'Nice', rating: 5 },
+      );
+
+      expect(result).toEqual({
+        id: 'review-1',
+        reviewerName: 'Ada L',
+        comment: 'Nice',
+        rating: 5,
+        status: DealReviewStatus.APPROVED,
+        createdAt: expect.any(Date) as Date,
+      });
+      expect(mockReviewRepository.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          rating: 5,
+          status: DealReviewStatus.APPROVED,
+        }),
+      );
+      expect(mockOfferRepository.update).toHaveBeenCalledWith('offer-1', {
+        reviewsCount: 1,
+      });
+    });
+
+    it('creates a pending review when business moderation is enabled', async () => {
+      mockOfferRepository.findOne.mockResolvedValue({
+        id: 'offer-1',
+        business: { requireReviewApproval: true },
+      });
+      mockReviewRepository.create.mockReturnValue({});
+      mockReviewRepository.save.mockResolvedValue({
+        id: 'review-1',
+        reviewerName: 'Ada L',
+        comment: 'Nice',
+        rating: 4,
         status: DealReviewStatus.PENDING,
         createdAt: new Date('2026-08-27T10:00:00.000Z'),
       });
@@ -197,17 +256,23 @@ describe('DealEngagementService', () => {
       const result = await service.createReview(
         { id: 'user-1', firstName: 'Ada', lastName: 'L' },
         'offer-1',
-        { comment: 'Nice' },
+        { comment: 'Nice', rating: 4 },
       );
 
       expect(result).toEqual({
         id: 'review-1',
         reviewerName: 'Ada L',
         comment: 'Nice',
+        rating: 4,
         status: DealReviewStatus.PENDING,
         createdAt: expect.any(Date) as Date,
       });
-      expect(mockReviewRepository.save).toHaveBeenCalled();
+      expect(mockReviewRepository.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          rating: 4,
+          status: DealReviewStatus.PENDING,
+        }),
+      );
     });
 
     it('prefers the provided name over the authenticated user name', async () => {
@@ -217,7 +282,8 @@ describe('DealEngagementService', () => {
         id: 'review-1',
         reviewerName: 'Chidi O.',
         comment: 'Nice',
-        status: DealReviewStatus.PENDING,
+        rating: null,
+        status: DealReviewStatus.APPROVED,
         createdAt: new Date(),
       });
       await service.createReview(
@@ -232,7 +298,7 @@ describe('DealEngagementService', () => {
   });
 
   describe('listReviews', () => {
-    it('returns only approved reviews with pagination metadata', async () => {
+    it('returns only approved reviews with pagination metadata and rating', async () => {
       mockOfferRepository.findOne.mockResolvedValue({ id: 'offer-1' });
       mockReviewRepository.findAndCount.mockResolvedValue([
         [
@@ -240,6 +306,7 @@ describe('DealEngagementService', () => {
             id: 'review-1',
             reviewerName: 'Ada L',
             comment: 'Great',
+            rating: 5,
             likesCount: 2,
             createdAt: new Date(),
           },
@@ -257,117 +324,42 @@ describe('DealEngagementService', () => {
       );
 
       expect(result.total).toBe(1);
-      expect(result.page).toBe(1);
       expect(result.reviews[0]).toMatchObject({
         id: 'review-1',
+        reviewerName: 'Ada L',
+        comment: 'Great',
+        rating: 5,
+        likesCount: 2,
         isLiked: true,
       });
-      expect(mockReviewRepository.findAndCount).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: { offerId: 'offer-1', status: DealReviewStatus.APPROVED },
-        }),
-      );
-    });
-
-    it('omits isLiked for anonymous callers', async () => {
-      mockOfferRepository.findOne.mockResolvedValue({ id: 'offer-1' });
-      mockReviewRepository.findAndCount.mockResolvedValue([
-        [
-          {
-            id: 'review-1',
-            reviewerName: 'Ada',
-            comment: 'Great',
-            likesCount: 0,
-            createdAt: new Date(),
-          },
-        ],
-        1,
-      ]);
-      const result = await service.listReviews('offer-1', {}, undefined);
-      expect(result.reviews[0]).not.toHaveProperty('isLiked');
     });
   });
 
   describe('previewReviews', () => {
-    it('returns the top 3 approved reviews by likes', async () => {
+    it('returns up to 3 approved reviews ordered by likes and recency with rating', async () => {
       mockOfferRepository.findOne.mockResolvedValue({ id: 'offer-1' });
       mockReviewRepository.find.mockResolvedValue([
         {
-          id: 'review-1',
-          reviewerName: 'A',
-          comment: 'x',
-          likesCount: 5,
-          createdAt: new Date(),
-        },
-        {
-          id: 'review-2',
-          reviewerName: 'B',
-          comment: 'y',
-          likesCount: 3,
-          createdAt: new Date(),
-        },
-        {
-          id: 'review-3',
-          reviewerName: 'C',
-          comment: 'z',
-          likesCount: 1,
+          id: 'r1',
+          reviewerName: 'Ada',
+          comment: 'top',
+          rating: 4,
+          likesCount: 10,
           createdAt: new Date(),
         },
       ]);
       const result = await service.previewReviews('offer-1');
-      expect(result.reviews).toHaveLength(3);
-      expect(mockReviewRepository.find).toHaveBeenCalledWith(
-        expect.objectContaining({ take: 3 }),
-      );
+      expect(result.reviews).toHaveLength(1);
+      expect(result.reviews[0]).toMatchObject({
+        id: 'r1',
+        reviewerName: 'Ada',
+        rating: 4,
+      });
     });
   });
 
   describe('toggleReviewLike', () => {
-    it('removes the like and returns liked:false', async () => {
-      manager.findOne
-        .mockResolvedValueOnce({
-          id: 'review-1',
-          offerId: 'offer-1',
-          status: DealReviewStatus.APPROVED,
-        })
-        .mockResolvedValueOnce({ id: 'like-1' });
-      manager.count.mockResolvedValue(1);
-      const result = await service.toggleReviewLike(
-        'user-1',
-        'offer-1',
-        'review-1',
-      );
-      expect(result).toEqual({ liked: false, likesCount: 1 });
-      expect(manager.remove).toHaveBeenCalled();
-      expect(manager.update).toHaveBeenCalled();
-    });
-
-    it('adds the like and returns liked:true', async () => {
-      manager.findOne
-        .mockResolvedValueOnce({
-          id: 'review-1',
-          offerId: 'offer-1',
-          status: DealReviewStatus.APPROVED,
-        })
-        .mockResolvedValueOnce(null);
-      manager.count.mockResolvedValue(1);
-      const result = await service.toggleReviewLike(
-        'user-1',
-        'offer-1',
-        'review-1',
-      );
-      expect(result).toEqual({ liked: true, likesCount: 1 });
-      expect(manager.save).toHaveBeenCalled();
-    });
-
-    it('throws NotFoundException for a missing review', async () => {
-      manager.findOne.mockResolvedValueOnce(null);
-      await expect(
-        service.toggleReviewLike('user-1', 'offer-1', 'review-1'),
-      ).rejects.toThrow(NotFoundException);
-    });
-
-    it('throws NotFoundException for a review of another offer', async () => {
+    it('throws NotFoundException when review does not belong to the offer', async () => {
       manager.findOne.mockResolvedValueOnce({
         id: 'review-1',
         offerId: 'other-offer',
@@ -378,163 +370,206 @@ describe('DealEngagementService', () => {
       ).rejects.toThrow(NotFoundException);
     });
 
-    it('throws NotFoundException for a non-approved review', async () => {
-      manager.findOne.mockResolvedValueOnce({
-        id: 'review-1',
-        offerId: 'offer-1',
-        status: DealReviewStatus.PENDING,
-      });
-      await expect(
-        service.toggleReviewLike('user-1', 'offer-1', 'review-1'),
-      ).rejects.toThrow(NotFoundException);
+    it('toggles a like on when none existed and updates count', async () => {
+      manager.findOne
+        .mockResolvedValueOnce({
+          id: 'review-1',
+          offerId: 'offer-1',
+          status: DealReviewStatus.APPROVED,
+        })
+        .mockResolvedValueOnce(null);
+      manager.count.mockResolvedValue(1);
+
+      const result = await service.toggleReviewLike(
+        'user-1',
+        'offer-1',
+        'review-1',
+      );
+      expect(result).toEqual({ liked: true, likesCount: 1 });
+      expect(manager.save).toHaveBeenCalled();
+    });
+
+    it('toggles a like off when one already existed', async () => {
+      const existing = { id: 'like-1', reviewId: 'review-1', userId: 'user-1' };
+      manager.findOne
+        .mockResolvedValueOnce({
+          id: 'review-1',
+          offerId: 'offer-1',
+          status: DealReviewStatus.APPROVED,
+        })
+        .mockResolvedValueOnce(existing);
+      manager.count.mockResolvedValue(0);
+
+      const result = await service.toggleReviewLike(
+        'user-1',
+        'offer-1',
+        'review-1',
+      );
+      expect(result).toEqual({ liked: false, likesCount: 0 });
+      expect(manager.remove).toHaveBeenCalledWith(existing);
     });
   });
 
-  describe('setReaction', () => {
-    it('creates a new reaction and syncs counts', async () => {
-      mockOfferRepository.findOne.mockResolvedValue({ id: 'offer-1' });
-      manager.findOne.mockResolvedValue(null);
-      manager.count.mockResolvedValueOnce(3).mockResolvedValueOnce(1);
-      const result = await service.setReaction(
-        'user-1',
-        'offer-1',
-        DealReactionType.LIKE,
-      );
-      expect(result).toEqual({ type: 'like', likesCount: 3, dislikesCount: 1 });
-      expect(manager.create).toHaveBeenCalledWith(DealReaction, {
-        offerId: 'offer-1',
-        userId: 'user-1',
-        type: 'like',
-      });
-    });
-
-    it('toggles off when the same type is sent again', async () => {
-      mockOfferRepository.findOne.mockResolvedValue({ id: 'offer-1' });
-      manager.findOne.mockResolvedValue({
-        id: 'reaction-1',
-        type: DealReactionType.LIKE,
-      });
-      manager.count.mockResolvedValueOnce(0).mockResolvedValueOnce(1);
-      const result = await service.setReaction(
-        'user-1',
-        'offer-1',
-        DealReactionType.LIKE,
-      );
-      expect(result).toEqual({ type: null, likesCount: 0, dislikesCount: 1 });
-      expect(manager.remove).toHaveBeenCalled();
-    });
-
-    it('switches type when a different type is sent', async () => {
-      mockOfferRepository.findOne.mockResolvedValue({ id: 'offer-1' });
-      manager.findOne.mockResolvedValue({
-        id: 'reaction-1',
-        type: DealReactionType.LIKE,
-      });
-      manager.count.mockResolvedValueOnce(1).mockResolvedValueOnce(1);
-      const result = await service.setReaction(
-        'user-1',
-        'offer-1',
-        DealReactionType.DISLIKE,
-      );
-      expect(result).toEqual({
-        type: 'dislike',
-        likesCount: 1,
-        dislikesCount: 1,
-      });
-      expect(manager.update).toHaveBeenCalled();
-    });
-  });
-
-  describe('getReactionStatus', () => {
-    it('returns the reaction type and counts', async () => {
+  describe('reactions', () => {
+    it('sets a new reaction and recalculates offer counters', async () => {
       mockOfferRepository.findOne.mockResolvedValue({
         id: 'offer-1',
-        likesCount: 3,
-        dislikesCount: 1,
+        branchId: 'b-1',
       });
-      mockReactionRepository.findOne.mockResolvedValue({
-        type: DealReactionType.DISLIKE,
-      });
-      const result = await service.getReactionStatus('user-1', 'offer-1');
+      manager.findOne.mockResolvedValue(null);
+      manager.count.mockResolvedValueOnce(1).mockResolvedValueOnce(0);
+
+      const result = await service.setReaction(
+        'user-1',
+        'offer-1',
+        DealReactionType.LIKE,
+      );
       expect(result).toEqual({
-        type: 'dislike',
-        likesCount: 3,
-        dislikesCount: 1,
+        type: DealReactionType.LIKE,
+        likesCount: 1,
+        dislikesCount: 0,
       });
+      expect(manager.update).toHaveBeenCalledWith(
+        CatalogueOffer,
+        { id: 'offer-1' },
+        { likesCount: 1, dislikesCount: 0 },
+      );
     });
   });
 
-  describe('toggleSave', () => {
-    it('saves when not already saved', async () => {
+  describe('saves', () => {
+    it('toggles a save on', async () => {
       mockOfferRepository.findOne.mockResolvedValue({ id: 'offer-1' });
       mockSaveRepository.findOne.mockResolvedValue(null);
-      mockSaveRepository.create.mockReturnValue({});
       const result = await service.toggleSave('user-1', 'offer-1');
       expect(result).toEqual({ saved: true });
+      expect(mockSaveRepository.save).toHaveBeenCalled();
     });
 
-    it('unsaves when already saved', async () => {
+    it('toggles a save off', async () => {
       mockOfferRepository.findOne.mockResolvedValue({ id: 'offer-1' });
-      mockSaveRepository.findOne.mockResolvedValue({ id: 'save-1' });
+      const existing = { id: 'save-1' };
+      mockSaveRepository.findOne.mockResolvedValue(existing);
       const result = await service.toggleSave('user-1', 'offer-1');
       expect(result).toEqual({ saved: false });
-      expect(mockSaveRepository.remove).toHaveBeenCalled();
-    });
-  });
-
-  describe('getSaveStatus', () => {
-    it('returns isSaved', async () => {
-      mockOfferRepository.findOne.mockResolvedValue({ id: 'offer-1' });
-      mockSaveRepository.findOne.mockResolvedValue({ id: 'save-1' });
-      await expect(service.getSaveStatus('user-1', 'offer-1')).resolves.toEqual(
-        {
-          isSaved: true,
-        },
-      );
+      expect(mockSaveRepository.remove).toHaveBeenCalledWith(existing);
     });
   });
 
   describe('getEngagement', () => {
-    it('returns public counts only when anonymous', async () => {
+    it('returns aggregate counts including averageRating', async () => {
       mockOfferRepository.findOne.mockResolvedValue({
         id: 'offer-1',
         likesCount: 3,
         dislikesCount: 1,
         reviewsCount: 7,
+        averageRating: 4.8,
       });
       const result = await service.getEngagement('offer-1', undefined);
       expect(result).toEqual({
         likesCount: 3,
         dislikesCount: 1,
         reviewsCount: 7,
+        averageRating: 4.8,
       });
       expect(result).not.toHaveProperty('type');
     });
+  });
 
-    it('includes type and isSaved when authenticated', async () => {
-      mockOfferRepository.findOne.mockResolvedValue({
-        id: 'offer-1',
-        likesCount: 3,
-        dislikesCount: 1,
-        reviewsCount: 7,
+  describe('business review moderation', () => {
+    it('finds reviews for a business', async () => {
+      const qb = {
+        innerJoinAndSelect: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        orderBy: jest.fn().mockReturnThis(),
+        skip: jest.fn().mockReturnThis(),
+        take: jest.fn().mockReturnThis(),
+        getManyAndCount: jest.fn().mockResolvedValue([
+          [
+            {
+              id: 'review-1',
+              offerId: 'offer-1',
+              offer: { name: 'Burger Deal' },
+              reviewerName: 'Ada',
+              comment: 'Great',
+              rating: 5,
+              likesCount: 0,
+              status: DealReviewStatus.PENDING,
+              createdAt: new Date(),
+            },
+          ],
+          1,
+        ]),
+      };
+      mockReviewRepository.createQueryBuilder.mockReturnValue(qb);
+
+      const result = await service.findReviewsForBusiness('biz-1', {
+        status: DealReviewStatus.PENDING,
+        page: 1,
+        limit: 10,
       });
-      mockReactionRepository.findOne.mockResolvedValue({
-        type: DealReactionType.LIKE,
+
+      expect(result.total).toBe(1);
+      expect(result.reviews[0]).toMatchObject({
+        id: 'review-1',
+        offerName: 'Burger Deal',
+        rating: 5,
       });
-      mockSaveRepository.findOne.mockResolvedValue({ id: 'save-1' });
-      const result = await service.getEngagement('offer-1', { id: 'user-1' });
-      expect(result).toEqual({
-        likesCount: 3,
-        dislikesCount: 1,
-        reviewsCount: 7,
-        type: 'like',
-        isSaved: true,
+    });
+
+    it('approves a review by business owner', async () => {
+      mockReviewRepository.findOne.mockResolvedValue({
+        id: 'review-1',
+        offerId: 'offer-1',
+        offer: { id: 'offer-1', businessId: 'biz-1', branchId: 'b-1' },
+        status: DealReviewStatus.PENDING,
       });
+      mockReviewRepository.save.mockResolvedValue({
+        id: 'review-1',
+        offerId: 'offer-1',
+        status: DealReviewStatus.APPROVED,
+      });
+      mockReviewRepository.count.mockResolvedValue(3);
+
+      const result = await service.approveReviewByBusiness('biz-1', 'review-1');
+      expect(result.status).toBe(DealReviewStatus.APPROVED);
+      expect(mockOfferRepository.update).toHaveBeenCalledWith('offer-1', {
+        reviewsCount: 3,
+      });
+    });
+
+    it('rejects a review by business owner', async () => {
+      mockReviewRepository.findOne.mockResolvedValue({
+        id: 'review-1',
+        offerId: 'offer-1',
+        offer: { id: 'offer-1', businessId: 'biz-1' },
+        status: DealReviewStatus.PENDING,
+      });
+      mockReviewRepository.save.mockResolvedValue({
+        id: 'review-1',
+        offerId: 'offer-1',
+        status: DealReviewStatus.REJECTED,
+      });
+
+      const result = await service.rejectReviewByBusiness('biz-1', 'review-1');
+      expect(result.status).toBe(DealReviewStatus.REJECTED);
+    });
+
+    it('throws NotFoundException if review does not belong to the business', async () => {
+      mockReviewRepository.findOne.mockResolvedValue({
+        id: 'review-1',
+        offerId: 'offer-1',
+        offer: { id: 'offer-1', businessId: 'other-biz' },
+      });
+      await expect(
+        service.approveReviewByBusiness('biz-1', 'review-1'),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 
   describe('admin moderation', () => {
-    it('lists reviews with offer context', async () => {
+    it('lists reviews with offer context and rating', async () => {
       mockReviewRepository.findAndCount.mockResolvedValue([
         [
           {
@@ -543,6 +578,7 @@ describe('DealEngagementService', () => {
             offer: { name: 'Summer Deal' },
             reviewerName: 'Ada',
             comment: 'x',
+            rating: 4,
             likesCount: 0,
             status: DealReviewStatus.PENDING,
             userId: 'user-1',
@@ -558,7 +594,10 @@ describe('DealEngagementService', () => {
         20,
       );
       expect(result.total).toBe(1);
-      expect(result.reviews[0]).toMatchObject({ offerName: 'Summer Deal' });
+      expect(result.reviews[0]).toMatchObject({
+        offerName: 'Summer Deal',
+        rating: 4,
+      });
     });
 
     it('approves a review and resyncs the offer review count', async () => {

@@ -282,6 +282,23 @@ export class CatalogueOffer extends AbstractBaseEntity {
   @Column({ type: 'int', default: 0 })
   reviewsCount: number;
 
+  @ApiProperty({
+    example: 4.5,
+    description: 'Average rating from approved reviews on this deal',
+    nullable: true,
+  })
+  @Column({
+    type: 'decimal',
+    precision: 3,
+    scale: 2,
+    nullable: true,
+    transformer: {
+      to: (v: number | null) => v,
+      from: (v: string | null) => (v != null ? parseFloat(v) : null),
+    },
+  })
+  averageRating: number | null;
+
   @ManyToMany(() => CatalogueItem)
   @JoinTable({
     name: 'catalogue_offer_items',
