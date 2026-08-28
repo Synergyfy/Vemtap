@@ -388,6 +388,29 @@ export class CatalogueOfferService {
       sortOrder = 'DESC';
     }
 
+    // `popular` / `featured` order by a computed claim count, which cannot be
+    // expressed through cursor pagination — use offset pagination instead.
+    if (sortBy === 'popular' || sortBy === 'featured') {
+      const claimStatuses = [
+        CatalogueOfferClaimStatus.CLAIMED,
+        CatalogueOfferClaimStatus.REDEEMED,
+      ];
+      const claimCountSql = `(SELECT COUNT(*) FROM "catalogue_offer_claims" "claim" WHERE "claim"."offerId" = "offer"."id" AND "claim"."status" IN (:...claimStatuses))`;
+      qb.setParameter('claimStatuses', claimStatuses);
+
+      if (sortBy === 'popular') {
+        qb.orderBy(claimCountSql, 'DESC');
+      } else {
+        // Featured: rank by a weighted score of engagement (views + claims).
+        qb.orderBy(`(offer.views + ${claimCountSql} * 10)`, 'DESC');
+      }
+
+      qb.skip(skip).take(limit);
+      const [rawOffers, total] = await qb.getManyAndCount();
+      const mappedOffers = await this.mapPublicOffers(rawOffers);
+      return { data: mappedOffers, total, page, limit };
+    }
+
     const cursorStr = (query as any).cursor || (query as any).nextCursor;
 
     const paginated = await paginateWithCursor({
@@ -403,7 +426,22 @@ export class CatalogueOfferService {
     const rawOffers = paginated.data;
     const total = paginated.total;
 
-    const mappedOffers = await Promise.all(
+    const mappedOffers = await this.mapPublicOffers(rawOffers);
+
+    return {
+      data: mappedOffers,
+      total,
+      page,
+      limit,
+      cursor: paginated.cursor,
+      nextCursor: paginated.nextCursor,
+      prevCursor: paginated.prevCursor,
+      hasNextPage: paginated.hasNextPage,
+    };
+  }
+
+  private async mapPublicOffers(rawOffers: CatalogueOffer[]) {
+    return Promise.all(
       rawOffers.map(async (offer) => {
         const originalPrice = offer.items.reduce(
           (acc, it) => acc + Number(it.price || 0),
@@ -463,17 +501,6 @@ export class CatalogueOfferService {
         };
       }),
     );
-
-    return {
-      data: mappedOffers,
-      total,
-      page,
-      limit,
-      cursor: paginated.cursor,
-      nextCursor: paginated.nextCursor,
-      prevCursor: paginated.prevCursor,
-      hasNextPage: paginated.hasNextPage,
-    };
   }
 
   async findOneOffer(id: string, branchId?: string) {
