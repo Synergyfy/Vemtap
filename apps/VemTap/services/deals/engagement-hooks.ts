@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import * as engagementApi from './engagement';
-import type { CreateReviewDto } from './types';
+import type { CreateReviewDto, BusinessReviewsQueryParams } from './types';
 
 // ─── Queries ──────────────────────────────────────────────────────────────────
 
@@ -24,6 +24,54 @@ export const useReviewPreview = (offerId: string) =>
         queryFn: () => engagementApi.previewReviews(offerId),
         enabled: !!offerId,
     });
+
+// ─── Merchant Review Management ──────────────────────────────────────────────
+
+export const useBusinessReviews = (params?: BusinessReviewsQueryParams) =>
+    useQuery({
+        queryKey: ['deals', 'business-reviews', params],
+        queryFn: () => engagementApi.getBusinessReviews(params),
+    });
+
+export const useApproveReview = () => {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: (reviewId: string) => engagementApi.approveReview(reviewId),
+        onSuccess: () => {
+            qc.invalidateQueries({ queryKey: ['deals', 'business-reviews'] });
+        },
+    });
+};
+
+export const useRejectReview = () => {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: (reviewId: string) => engagementApi.rejectReview(reviewId),
+        onSuccess: () => {
+            qc.invalidateQueries({ queryKey: ['deals', 'business-reviews'] });
+        },
+    });
+};
+
+export const useDeleteReview = () => {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: (reviewId: string) => engagementApi.deleteReview(reviewId),
+        onSuccess: () => {
+            qc.invalidateQueries({ queryKey: ['deals', 'business-reviews'] });
+        },
+    });
+};
+
+export const useUpdateModerationSetting = () => {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: (requireReviewApproval: boolean) => engagementApi.updateModerationSetting(requireReviewApproval),
+        onSuccess: () => {
+            qc.invalidateQueries({ queryKey: ['business'] });
+        },
+    });
+};
 
 // ─── Mutations ────────────────────────────────────────────────────────────────
 

@@ -118,12 +118,17 @@ export interface ClaimVerifyResponse {
 
 // ─── Engagement Types ──────────────────────────────────────────────────────────
 
+export type DealReviewStatus = 'pending' | 'approved' | 'rejected';
+
 export interface DealReview {
     id: string;
+    offerId?: string;
+    offerName?: string;
     reviewerName: string;
     comment: string;
-    rating?: number;
+    rating: number | null;
     likesCount: number;
+    status?: DealReviewStatus;
     createdAt: string;
     isLiked?: boolean;
 }
@@ -138,6 +143,7 @@ export interface DealEngagementResponse {
     likesCount: number;
     dislikesCount: number;
     reviewsCount: number;
+    averageRating: number | null;
     type?: 'like' | 'dislike' | null;
     isSaved?: boolean;
 }
@@ -156,6 +162,20 @@ export interface CreateReviewDto {
     comment: string;
     name?: string;
     rating?: number;
+}
+
+export interface BusinessReviewsQueryParams {
+    status?: DealReviewStatus;
+    offerId?: string;
+    page?: number;
+    limit?: number;
+}
+
+export interface BusinessReviewsResponse {
+    reviews: DealReview[];
+    total: number;
+    page: number;
+    limit: number;
 }
 
 // ─── Public Discovery Types ────────────────────────────────────────────────────

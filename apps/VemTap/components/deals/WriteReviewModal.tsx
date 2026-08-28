@@ -2,11 +2,12 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Send, User, Loader2, CheckCircle2, Star } from 'lucide-react';
+import { X, Send, User, Loader2, CheckCircle2, Star, Clock } from 'lucide-react';
 import { useCreateReview } from '@/services/deals/engagement-hooks';
 import { useAuthStore } from '@/store/useAuthStore';
 import { ChatConnectModal } from '@/components/visitor/ChatConnectModal';
 import { toast } from 'react-hot-toast';
+import type { DealReviewStatus } from '@/services/deals/types';
 
 interface WriteReviewModalProps {
     isOpen: boolean;
@@ -21,6 +22,7 @@ export default function WriteReviewModal({ isOpen, onClose, offerId, businessNam
     const [rating, setRating] = useState(0);
     const [hoveredStar, setHoveredStar] = useState(0);
     const [submitted, setSubmitted] = useState(false);
+    const [reviewStatus, setReviewStatus] = useState<DealReviewStatus>('approved');
     const [showAuthModal, setShowAuthModal] = useState(false);
     const { isAuthenticated } = useAuthStore();
     const createReview = useCreateReview(offerId);
@@ -45,7 +47,9 @@ export default function WriteReviewModal({ isOpen, onClose, offerId, businessNam
         createReview.mutate(
             { comment: comment.trim(), name: name.trim() || undefined, rating: rating || undefined },
             {
-                onSuccess: () => {
+                onSuccess: (response: any) => {
+                    const status = response?.status || 'approved';
+                    setReviewStatus(status);
                     setSubmitted(true);
                     setName('');
                     setComment('');
@@ -77,6 +81,7 @@ export default function WriteReviewModal({ isOpen, onClose, offerId, businessNam
 
     const handleClose = () => {
         setSubmitted(false);
+        setReviewStatus('approved');
         setName('');
         setComment('');
         setRating(0);
@@ -116,13 +121,23 @@ export default function WriteReviewModal({ isOpen, onClose, offerId, businessNam
 
                             {submitted ? (
                                 <div className="text-center py-6 space-y-4">
-                                    <div className="size-16 mx-auto bg-green-50 rounded-full flex items-center justify-center">
-                                        <CheckCircle2 size={32} className="text-green-500" />
+                                    <div className={`size-16 mx-auto rounded-full flex items-center justify-center ${
+                                        reviewStatus === 'pending' ? 'bg-amber-50' : 'bg-green-50'
+                                    }`}>
+                                        {reviewStatus === 'pending' ? (
+                                            <Clock size={32} className="text-amber-500" />
+                                        ) : (
+                                            <CheckCircle2 size={32} className="text-green-500" />
+                                        )}
                                     </div>
                                     <div className="space-y-2">
-                                        <p className="text-sm font-bold text-gray-900">Review submitted!</p>
+                                        <p className="text-sm font-bold text-gray-900">
+                                            {reviewStatus === 'pending' ? 'Review submitted!' : 'Review posted!'}
+                                        </p>
                                         <p className="text-xs text-gray-500 font-medium">
-                                            Your review is awaiting moderation and will appear once approved.
+                                            {reviewStatus === 'pending'
+                                                ? 'Your review has been submitted and is pending moderation. It will appear once approved.'
+                                                : 'Your review has been posted successfully.'}
                                         </p>
                                     </div>
                                     <button
