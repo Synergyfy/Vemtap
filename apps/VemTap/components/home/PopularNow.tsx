@@ -48,7 +48,7 @@ export default function PopularNow() {
             {(useMock ? MOCK_POPULAR : offers.map((offer: any) => ({
               id: offer.id,
               title: offer.name,
-              businessName: offer.business?.name || 'Business',
+              businessName: offer.branch?.name || offer.branchName || offer.business?.name || 'Business',
               category: offer.business?.categoryName || 'Category',
               location: offer.business?.address || '',
               imageColor: '#066CF4',

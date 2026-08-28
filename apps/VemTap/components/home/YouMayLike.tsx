@@ -166,7 +166,7 @@ export default function YouMayLike() {
         originalPrice: offer.originalPrice,
         dealPrice: offer.dealPrice,
         imageColor: '#066CF4',
-        businessName: offer.business?.name || 'Business',
+        businessName: offer.branch?.name || offer.branchName || offer.business?.name || 'Business',
         businessSlug: offer.business?.slug || '',
         cta: 'View Deal',
         viewCount: offer.viewCount || 0,

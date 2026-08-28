@@ -153,7 +153,7 @@ export default function AroundYouSection() {
                 <DealCard
                   id={offer.id}
                   title={offer.name}
-                  businessName={offer.business?.name || 'Business'}
+                  businessName={offer.branch?.name || offer.branchName || offer.business?.name || 'Business'}
                   businessSlug={offer.business?.slug || ''}
                   category={offer.business?.categoryName || 'Category'}
                   location={
