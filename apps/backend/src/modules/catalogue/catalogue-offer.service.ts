@@ -116,7 +116,7 @@ export class CatalogueOfferService {
     });
 
     // Check active subscription plan to determine default isFeatured status
-    const activeSub = await this.subscriptionsService.getActiveSubscription(
+    const activeSub = await this.subscriptionsService.activeSubscription(
       businessId,
     );
     const autoFeatureDeals = Boolean(activeSub?.plan?.autoFeatureDeals);
@@ -1124,7 +1124,7 @@ export class CatalogueOfferService {
     > = {};
     for (const bId of businessIds) {
       try {
-        const sub = await this.subscriptionsService.getActiveSubscription(bId);
+        const sub = await this.subscriptionsService.activeSubscription(bId);
         if (sub && sub.plan) {
           businessPlanMap[bId] = {
             id: sub.plan.id,
@@ -1148,7 +1148,7 @@ export class CatalogueOfferService {
       }
 
       const originalPrice = (offer.items || []).reduce(
-        (sum, item) => sum + (Number(item.basePrice) || 0),
+        (sum, item) => sum + (Number(item.price) || 0),
         0,
       );
 
