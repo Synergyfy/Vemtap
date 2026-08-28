@@ -1026,6 +1026,11 @@ export class SubscriptionsService {
     else if (sub.billingPeriod === BillingPeriod.YEARLY)
       sub.endDate.setFullYear(sub.endDate.getFullYear() + 1);
 
+    // Reset renewal-reminder bookkeeping so an owner who just renewed isn't
+    // nagged by SubscriptionRemindersService about the old expiry.
+    sub.lastRenewalReminderAt = null;
+    sub.lastRenewalReminderStage = null;
+
     if (sub.businessId && sub.plan) {
       await this.creditService.allocateSubscriptionCredits(
         sub.businessId,

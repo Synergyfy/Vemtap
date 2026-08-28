@@ -25,7 +25,7 @@ const faqs = [
     { q: 'What happens on Free Plan?', a: 'On the Free Plan, you can capture up to 100 customer profiles and use standard QR codes. It’s perfect for testing the waters and seeing the initial impact.' },
     { q: 'Can I upgrade later?', a: 'Yes! You can upgrade or downgrade your plan at any time directly from your dashboard. Changes take effect immediately.' },
     { q: 'Do you charge setup fees?', a: 'Zero. We believe in getting you started fast. There are no hidden setup or activation fees for any of our standard plans.' },
-    { q: 'How does billing work?', a: 'We offer flexible monthly and annual billing. Annual plans come with a 20% discount. Payments are processed securely via our local payment gateways.' },
+    { q: 'How does billing work?', a: 'We offer flexible monthly, quarterly and annual billing. Quarterly plans come with a 10% discount and annual plans come with a 20% discount. Payments are processed securely via our local payment gateways.' },
     { q: 'Can I cancel anytime?', a: 'Absolutely. You can cancel your subscription at any time. Your access will remain active until the end of your current billing cycle.' },
 ];
 
@@ -36,7 +36,7 @@ const normalizeFeatures = (plan: PricingPlan) => {
 
 export default function PricingPage() {
     const router = useRouter();
-    const [billing, setBilling] = useState<'monthly' | 'yearly'>('monthly');
+    const [billing, setBilling] = useState<'monthly' | 'quarterly' | 'yearly'>('monthly');
     const [openFaq, setOpenFaq] = useState<number | null>(null);
 
     const { data: plans = [], isLoading } = usePricingPlans();
@@ -76,19 +76,27 @@ export default function PricingPage() {
 
                     {/* Billing Toggle */}
                     <div className="flex items-center justify-center gap-4">
-                        <span className={cn("text-xs font-bold uppercase tracking-wider transition-colors", billing === 'monthly' ? "text-gray-900" : "text-gray-400")}>Monthly</span>
-                        <button
-                            onClick={() => setBilling(billing === 'monthly' ? 'yearly' : 'monthly')}
-                            className="w-16 h-9 bg-gray-100 rounded-full p-1 relative transition-all"
-                        >
-                            <motion.div
-                                animate={{ x: billing === 'monthly' ? 0 : 28 }}
-                                className="size-7 bg-[#066CF4] rounded-full shadow-lg"
-                            />
-                        </button>
-                        <div className="flex items-center gap-2">
-                            <span className={cn("text-xs font-bold uppercase tracking-wider transition-colors", billing === 'yearly' ? "text-gray-900" : "text-gray-400")}>Yearly</span>
-                            <Badge className="bg-emerald-500 text-white border-none text-[10px] font-bold uppercase">Save 20%</Badge>
+                        <div className="bg-gray-100 p-1.5 rounded-2xl flex items-center shadow-inner">
+                            {(['monthly', 'quarterly', 'yearly'] as const).map((cycle) => (
+                                <button
+                                    key={cycle}
+                                    onClick={() => setBilling(cycle)}
+                                    className={cn(
+                                        "flex-1 flex items-center justify-center gap-1.5 px-4 sm:px-6 py-3 rounded-xl text-[10px] sm:text-xs font-bold uppercase tracking-wider transition-all",
+                                        billing === cycle
+                                            ? "bg-white text-[#066CF4] shadow-md scale-105"
+                                            : "text-gray-400 hover:text-gray-900 hover:bg-white/50"
+                                    )}
+                                >
+                                    {cycle === 'monthly' ? 'Monthly' : cycle === 'quarterly' ? 'Quarterly' : 'Yearly'}
+                                    {cycle === 'yearly' && (
+                                        <Badge className="bg-emerald-500 text-white border-none text-[9px] font-bold uppercase">-20%</Badge>
+                                    )}
+                                    {cycle === 'quarterly' && (
+                                        <Badge className="bg-[#066CF4]/10 text-[#066CF4] border-none text-[9px] font-bold uppercase">-10%</Badge>
+                                    )}
+                                </button>
+                            ))}
                         </div>
                     </div>
                 </section>
@@ -99,9 +107,16 @@ export default function PricingPage() {
                         {standardPlans.map((plan, index) => {
                             const highlight = plan.isPopular ?? false;
                             const isFree = plan.isFree;
-                            const price = billing === 'yearly'
+                            const totalPrice = billing === 'yearly'
                                 ? (plan.pricing?.yearly?.totalPrice ?? plan.yearlyPriceWithTax ?? plan.yearlyPrice)
-                                : (plan.pricing?.monthly?.totalPrice ?? plan.monthlyPriceWithTax ?? plan.monthlyPrice);
+                                : billing === 'quarterly'
+                                    ? (plan.pricing?.quarterly?.totalPrice ?? plan.quarterlyPriceWithTax ?? plan.quarterlyPrice)
+                                    : (plan.pricing?.monthly?.totalPrice ?? plan.monthlyPriceWithTax ?? plan.monthlyPrice);
+                            const perMonthPrice = billing === 'yearly'
+                                ? Math.floor(totalPrice / 12)
+                                : billing === 'quarterly'
+                                    ? Math.floor(totalPrice / 3)
+                                    : totalPrice;
                             const features = normalizeFeatures(plan);
 
                             return (
@@ -133,9 +148,14 @@ export default function PricingPage() {
                                             </div>
                                         ) : (
                                             <div className="flex items-baseline gap-1">
-                                                <span className="text-4xl font-bold">₦{price.toLocaleString()}</span>
-                                                <span className={cn("text-xs font-medium uppercase tracking-wider opacity-60")}>/{billing === 'monthly' ? 'mo' : 'yr'}</span>
+                                                <span className="text-4xl font-bold">₦{perMonthPrice.toLocaleString()}</span>
+                                                <span className={cn("text-xs font-medium uppercase tracking-wider opacity-60")}>/mo</span>
                                             </div>
+                                        )}
+                                        {!isFree && billing !== 'monthly' && (
+                                            <p className={cn("text-[11px] font-semibold mt-1", highlight ? "text-white/80" : "text-gray-500")}>
+                                                ₦{totalPrice.toLocaleString()} billed {billing === 'quarterly' ? 'quarterly' : 'annually'}
+                                            </p>
                                         )}
                                         {!isFree && plan.tax && plan.tax.isEnabled && (
                                             <p className={cn("text-[10px] font-semibold mt-1", highlight ? "text-white/60" : "text-gray-400")}>

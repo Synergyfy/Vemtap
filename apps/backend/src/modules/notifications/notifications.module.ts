@@ -3,6 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { BullModule } from '@nestjs/bullmq';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { Notification } from './entities/notification.entity';
+import { NotificationBroadcast } from './entities/notification-broadcast.entity';
 import { NotificationsService } from './notifications.service';
 import { NotificationsController } from './notifications.controller';
 import { PushNotificationService } from './push-notification.service';
@@ -15,7 +16,12 @@ import { Contact } from '../contacts/entities/contact.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Notification, User, Contact]),
+    TypeOrmModule.forFeature([
+      Notification,
+      NotificationBroadcast,
+      User,
+      Contact,
+    ]),
     // BullMQ root connection (Redis) — re-uses the same env vars as MessagingModule.
     // forRoot is idempotent; if MessagingModule already registered it in the same
     // DI scope, NestJS will reuse the existing connection.

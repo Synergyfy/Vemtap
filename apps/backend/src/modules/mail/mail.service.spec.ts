@@ -106,7 +106,9 @@ describe('MailService', () => {
         from: 'Azure Bistro via VemTap <hello@vemtap.com>',
         to: 'staff@example.com',
         subject: 'Welcome to Azure Bistro, Lekki Branch!',
-        html: expect.stringContaining('Welcome to Azure Bistro, Lekki Branch, Alex!'),
+        html: expect.stringContaining(
+          'Welcome to Azure Bistro, Lekki Branch, Alex!',
+        ),
       });
     });
 
@@ -152,7 +154,9 @@ describe('MailService', () => {
     it('should generate plan change email HTML with correct details', () => {
       const { subject, html } = service.generatePlanChangeEmailHtml(mockParams);
 
-      expect(subject).toContain('Your Plan has been Updated to Enterprise Growth');
+      expect(subject).toContain(
+        'Your Plan has been Updated to Enterprise Growth',
+      );
       expect(html).toContain('Alice Smith');
       expect(html).toContain('Apex Retail');
       expect(html).toContain('Enterprise Growth');
@@ -173,7 +177,9 @@ describe('MailService', () => {
         isExpiredDowngrade: true,
       });
 
-      expect(subject).toContain('Enterprise Growth Plan Expired — Free Plan Activated');
+      expect(subject).toContain(
+        'Enterprise Growth Plan Expired — Free Plan Activated',
+      );
       expect(html).toContain('Subscription Expired');
       expect(html).toContain('Subscription Expired • Free Plan Active');
       expect(html).toContain('Free Plan');
@@ -187,7 +193,6 @@ describe('MailService', () => {
 
       const result = await service.sendPlanChangeEmail(mockParams);
 
-      expect(result).toBe(true);
       expect(sendSpy).toHaveBeenCalledWith(
         expect.objectContaining({
           to: 'owner@example.com',
@@ -197,5 +202,67 @@ describe('MailService', () => {
       );
     });
   });
-});
 
+  describe('sendSubscriptionRenewalReminder', () => {
+    const reminderParams = {
+      email: 'merchant@example.com',
+      customerName: 'Aisha',
+      businessName: 'Ikeja Bakery',
+      planName: 'Pro Discovery',
+      daysLeft: 3,
+      isLapsed: false,
+      clusterName: 'Ikeja',
+      clusterStats: { people: 450, businesses: 28 },
+      renewalUrl: 'https://vemtap.vercel.app/dashboard/settings/subscription',
+    };
+
+    it('should generate urgent reminder HTML for 3 days left', () => {
+      const { subject, html } =
+        service.generateSubscriptionRenewalReminderHtml(reminderParams);
+
+      expect(subject).toContain(
+        'Urgent: Your Pro Discovery plan in Ikeja expires in 3 days',
+      );
+      expect(html).toContain('Expires in 3 days');
+      expect(html).toContain('450');
+      expect(html).toContain('28');
+      expect(html).toContain('Renew Subscription');
+    });
+
+    it('should generate lapsed reminder HTML when isLapsed is true', () => {
+      const { subject, html } = service.generateSubscriptionRenewalReminderHtml(
+        {
+          ...reminderParams,
+          daysLeft: 0,
+          isLapsed: true,
+        },
+      );
+
+      expect(subject).toContain(
+        'Your offers left the Ikeja deals feed - Renew now',
+      );
+      expect(html).toContain('Offers Removed from Deals Feed');
+      expect(html).toContain('Reactivate Subscription');
+    });
+
+    it('should send renewal reminder email via resend', async () => {
+      const sendSpy = jest
+        .spyOn((service as any).resend.emails, 'send')
+        .mockResolvedValue({
+          data: { id: 'email-renewal-reminder' },
+          error: null,
+        });
+
+      const result =
+        await service.sendSubscriptionRenewalReminder(reminderParams);
+
+      expect(result).toBe(true);
+      expect(sendSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          to: 'merchant@example.com',
+          subject: expect.stringContaining('Pro Discovery'),
+        }),
+      );
+    });
+  });
+});

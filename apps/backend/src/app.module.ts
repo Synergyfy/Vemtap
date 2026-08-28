@@ -80,6 +80,7 @@ import { FeedbackModule } from './modules/feedback/feedback.module';
 import { KnowledgeBaseModule } from './modules/knowledge-base/knowledge-base.module';
 import { ClustersModule } from './modules/clusters/clusters.module';
 import { RotatorModule } from './modules/rotator/rotator.module';
+import { SubscriptionRemindersModule } from './modules/subscription-reminders/subscription-reminders.module';
 
 @Module({
   imports: [
@@ -228,6 +229,7 @@ import { RotatorModule } from './modules/rotator/rotator.module';
     KnowledgeBaseModule,
     ClustersModule,
     RotatorModule,
+    SubscriptionRemindersModule,
     StatusModule,
     ScheduleModule.forRoot(),
   ],

@@ -7,6 +7,10 @@ import {
   CatalogueOfferStatus,
 } from '../catalogue/entities/catalogue-offer.entity';
 import { BusinessStatus } from '../businesses/entities/business.entity';
+import {
+  Subscription,
+  SubscriptionStatus,
+} from '../subscriptions/entities/subscription.entity';
 import { RotatorClusterOffer } from './entities/rotator-cluster-offer.entity';
 import { RotatorDealSchedule } from './entities/rotator-deal-schedule.entity';
 import {
@@ -48,6 +52,8 @@ export interface EligibilityExplanation {
   offerId: string;
   eligible: boolean;
   businessActive: boolean;
+  subscriptionActive: boolean;
+  planHasDiscovery: boolean;
   dealActive: boolean;
   clusterMatch: boolean;
   notExpired: boolean;
@@ -83,6 +89,8 @@ export class RotatorEligibilityService implements OnModuleInit {
     private readonly configRepository: Repository<RotatorConfig>,
     @InjectRepository(RotatorClusterConfig)
     private readonly clusterConfigRepository: Repository<RotatorClusterConfig>,
+    @InjectRepository(Subscription)
+    private readonly subscriptionRepository: Repository<Subscription>,
     private readonly cache: RotatorCacheService,
   ) {}
 
@@ -332,6 +340,21 @@ export class RotatorEligibilityService implements OnModuleInit {
       .andWhere('(offer.endDate IS NULL OR offer.endDate > :windowEnd)', {
         windowEnd,
       })
+      // Discovery gate: same subscription/plan filter as the cluster deals
+      // feed (see ClustersService.buildOfferQuery) so the rotator's eligible
+      // pool and the public feed agree on which businesses may be featured.
+      .andWhere(
+        `EXISTS (
+          SELECT 1
+          FROM "subscriptions" sub
+          INNER JOIN "plans" plan ON plan."id" = sub."planId"
+          WHERE sub."businessId" = business."id"
+            AND sub."deletedAt" IS NULL
+            AND sub."status" IN ('${SubscriptionStatus.ACTIVE}', '${SubscriptionStatus.TRIAL}')
+            AND (sub."endDate" IS NULL OR sub."endDate" + INTERVAL '24 hours' > NOW())
+            AND plan."discoveryEnabled" = true
+        )`,
+      )
       .leftJoin(
         (qb) =>
           qb
@@ -490,6 +513,11 @@ export class RotatorEligibilityService implements OnModuleInit {
       offer.endDate == null || offer.endDate.getTime() > windowEnd.getTime();
     const withinStart = offer.startDate == null || offer.startDate <= now;
 
+    const subscriptionActive =
+      !!offer.businessId &&
+      (await this.businessHasDiscoverySubscription(offer.businessId, now));
+    const planHasDiscovery = subscriptionActive;
+
     const schedule = await this.isScheduleActive(offerId, now);
 
     const mode = clusterConfig?.rotationMode ?? global.rotationMode;
@@ -513,6 +541,10 @@ export class RotatorEligibilityService implements OnModuleInit {
 
     const reasons: string[] = [];
     if (!businessActive) reasons.push('Business is not active');
+    if (!subscriptionActive)
+      reasons.push(
+        'Business has no active subscription with the Discovery plan',
+      );
     if (!dealActive) reasons.push('Deal is not active');
     if (!clusterMatch) reasons.push('Deal does not belong to this cluster');
     if (!withinStart) reasons.push('Deal has not started yet');
@@ -525,6 +557,8 @@ export class RotatorEligibilityService implements OnModuleInit {
 
     const eligible =
       businessActive &&
+      subscriptionActive &&
+      planHasDiscovery &&
       dealActive &&
       clusterMatch &&
       withinStart &&
@@ -546,6 +580,8 @@ export class RotatorEligibilityService implements OnModuleInit {
       offerId,
       eligible,
       businessActive,
+      subscriptionActive,
+      planHasDiscovery,
       dealActive,
       clusterMatch,
       notExpired,
@@ -599,6 +635,33 @@ export class RotatorEligibilityService implements OnModuleInit {
     if (!time || !/^\d{2}:\d{2}$/.test(time)) return null;
     const [h, m] = time.split(':').map(Number);
     return h * 60 + m;
+  }
+
+  /**
+   * Whether a business currently has a valid subscription whose plan includes
+   * the Discovery Network. Mirrors the SQL gate used by the pool query and the
+   * cluster deals feed: status active/trial, not past endDate beyond the 24h
+   * renewal grace, and plan.discoveryEnabled = true.
+   */
+  private async businessHasDiscoverySubscription(
+    businessId: string,
+    now: Date,
+  ): Promise<boolean> {
+    const sub = await this.subscriptionRepository.findOne({
+      where: {
+        businessId,
+        status: In([SubscriptionStatus.ACTIVE, SubscriptionStatus.TRIAL]),
+      },
+      relations: ['plan'],
+      order: { createdAt: 'DESC' },
+    });
+    if (!sub) return false;
+    if (sub.endDate) {
+      const grace = new Date(sub.endDate);
+      grace.setHours(grace.getHours() + 24);
+      if (grace <= now) return false;
+    }
+    return sub.plan?.discoveryEnabled === true;
   }
 
   async invalidatePool(clusterId: string): Promise<void> {
