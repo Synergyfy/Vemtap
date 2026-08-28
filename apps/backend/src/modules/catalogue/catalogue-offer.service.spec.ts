@@ -117,7 +117,7 @@ describe('CatalogueOfferService', () => {
           catalogueOffers: { enabled: true, limit: 'unlimited' },
         },
       }),
-      getActiveSubscription: jest.fn().mockResolvedValue(null),
+      activeSubscription: jest.fn().mockResolvedValue(null),
     };
 
     branchRepo = { findOne: jest.fn().mockResolvedValue(null) };
@@ -503,12 +503,12 @@ describe('CatalogueOfferService', () => {
 
   describe('Admin Deals Management', () => {
     it('auto-features deals on creation when plan has autoFeatureDeals enabled', async () => {
-      subscriptionsService.getActiveSubscription = jest.fn().mockResolvedValue({
+      subscriptionsService.activeSubscription = jest.fn().mockResolvedValue({
         plan: { autoFeatureDeals: true },
       });
       branchRepo.findOne.mockResolvedValue({ id: 'branch-1', businessId: 'biz-1' });
       itemRepo.find.mockResolvedValue([
-        { id: 'item-1', name: 'Burger', basePrice: 50, branches: [{ id: 'branch-1' }] },
+        { id: 'item-1', name: 'Burger', price: 50, branches: [{ id: 'branch-1' }] },
       ]);
       offerRepo.create = jest.fn().mockImplementation((d) => ({ ...d }));
       offerRepo.save = jest.fn().mockImplementation((d) => Promise.resolve({ id: 'offer-auto-1', ...d }));
@@ -528,12 +528,12 @@ describe('CatalogueOfferService', () => {
     });
 
     it('does not auto-feature deals on creation when plan has autoFeatureDeals disabled', async () => {
-      subscriptionsService.getActiveSubscription = jest.fn().mockResolvedValue({
+      subscriptionsService.activeSubscription = jest.fn().mockResolvedValue({
         plan: { autoFeatureDeals: false },
       });
       branchRepo.findOne.mockResolvedValue({ id: 'branch-1', businessId: 'biz-1' });
       itemRepo.find.mockResolvedValue([
-        { id: 'item-1', name: 'Burger', basePrice: 50, branches: [{ id: 'branch-1' }] },
+        { id: 'item-1', name: 'Burger', price: 50, branches: [{ id: 'branch-1' }] },
       ]);
       offerRepo.create = jest.fn().mockImplementation((d) => ({ ...d }));
       offerRepo.save = jest.fn().mockImplementation((d) => Promise.resolve({ id: 'offer-normal-1', ...d }));
@@ -578,7 +578,7 @@ describe('CatalogueOfferService', () => {
               branchId: 'branch-1',
               business: { id: 'biz-1', name: 'Azure Bistro' },
               branch: { id: 'branch-1', name: 'Lekki Branch' },
-              items: [{ basePrice: 100 }],
+              items: [{ price: 100 }],
               startDate: new Date('2026-01-01'),
               endDate: new Date('2026-12-31'),
               createdAt: new Date('2026-01-01'),
@@ -598,7 +598,7 @@ describe('CatalogueOfferService', () => {
       };
       claimRepo.createQueryBuilder = jest.fn().mockReturnValue(claimQb);
 
-      subscriptionsService.getActiveSubscription = jest.fn().mockResolvedValue({
+      subscriptionsService.activeSubscription = jest.fn().mockResolvedValue({
         plan: { id: 'plan-plat', name: 'Platinum Plan', isFree: false },
       });
 
