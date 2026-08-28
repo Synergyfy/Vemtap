@@ -8,6 +8,7 @@ import {
 } from './entities/catalogue-offer.entity';
 import { CatalogueItem } from './entities/catalogue-item.entity';
 import { Branch } from '../branches/entities/branch.entity';
+import { Business } from '../businesses/entities/business.entity';
 import {
   CatalogueOfferClaim,
   CatalogueOfferClaimStatus,
@@ -35,6 +36,7 @@ describe('CatalogueOfferService', () => {
   let mailService: any;
   let subscriptionsService: any;
   let branchRepo: any;
+  let businessRepo: any;
   let itemRepo: any;
   let aiCreditService: any;
   let openAiClient: any;
@@ -83,6 +85,8 @@ describe('CatalogueOfferService', () => {
     offerRepo = {
       findOne: jest.fn(),
       increment: jest.fn(),
+      save: jest.fn().mockImplementation((dto) => Promise.resolve({ id: 'offer-saved', ...dto })),
+      create: jest.fn().mockImplementation((dto) => dto),
     };
     claimRepo = {
       count: jest.fn(),
@@ -113,9 +117,15 @@ describe('CatalogueOfferService', () => {
           catalogueOffers: { enabled: true, limit: 'unlimited' },
         },
       }),
+      getActiveSubscription: jest.fn().mockResolvedValue(null),
     };
 
     branchRepo = { findOne: jest.fn().mockResolvedValue(null) };
+    businessRepo = {
+      createQueryBuilder: jest.fn(),
+      find: jest.fn(),
+      findOne: jest.fn(),
+    };
     itemRepo = { find: jest.fn().mockResolvedValue([]) };
     aiCreditService = { consume: jest.fn().mockResolvedValue(undefined) };
     openAiClient = {
@@ -132,6 +142,7 @@ describe('CatalogueOfferService', () => {
         { provide: getRepositoryToken(CatalogueOffer), useValue: offerRepo },
         { provide: getRepositoryToken(CatalogueItem), useValue: itemRepo },
         { provide: getRepositoryToken(Branch), useValue: branchRepo },
+        { provide: getRepositoryToken(Business), useValue: businessRepo },
         {
           provide: getRepositoryToken(CatalogueOfferClaim),
           useValue: claimRepo,
@@ -487,6 +498,185 @@ describe('CatalogueOfferService', () => {
         'DESC',
       );
       expect(result.data[0].claimedCount).toBe(2);
+    });
+  });
+
+  describe('Admin Deals Management', () => {
+    it('auto-features deals on creation when plan has autoFeatureDeals enabled', async () => {
+      subscriptionsService.getActiveSubscription = jest.fn().mockResolvedValue({
+        plan: { autoFeatureDeals: true },
+      });
+      branchRepo.findOne.mockResolvedValue({ id: 'branch-1', businessId: 'biz-1' });
+      itemRepo.find.mockResolvedValue([
+        { id: 'item-1', name: 'Burger', basePrice: 50, branches: [{ id: 'branch-1' }] },
+      ]);
+      offerRepo.create = jest.fn().mockImplementation((d) => ({ ...d }));
+      offerRepo.save = jest.fn().mockImplementation((d) => Promise.resolve({ id: 'offer-auto-1', ...d }));
+
+      const result = await service.createOffer(
+        {
+          name: 'Platinum Deal',
+          description: 'Auto-featured deal',
+          pricingType: CatalogueOfferPricingType.SUM,
+          branchId: 'branch-1',
+          itemIds: ['item-1'],
+        },
+        'biz-1',
+      );
+
+      expect(result.isFeatured).toBe(true);
+    });
+
+    it('does not auto-feature deals on creation when plan has autoFeatureDeals disabled', async () => {
+      subscriptionsService.getActiveSubscription = jest.fn().mockResolvedValue({
+        plan: { autoFeatureDeals: false },
+      });
+      branchRepo.findOne.mockResolvedValue({ id: 'branch-1', businessId: 'biz-1' });
+      itemRepo.find.mockResolvedValue([
+        { id: 'item-1', name: 'Burger', basePrice: 50, branches: [{ id: 'branch-1' }] },
+      ]);
+      offerRepo.create = jest.fn().mockImplementation((d) => ({ ...d }));
+      offerRepo.save = jest.fn().mockImplementation((d) => Promise.resolve({ id: 'offer-normal-1', ...d }));
+
+      const result = await service.createOffer(
+        {
+          name: 'Normal Deal',
+          description: 'Regular deal',
+          pricingType: CatalogueOfferPricingType.SUM,
+          branchId: 'branch-1',
+          itemIds: ['item-1'],
+        },
+        'biz-1',
+      );
+
+      expect(result.isFeatured).toBe(false);
+    });
+
+    it('returns paginated admin deals with formatted details', async () => {
+      const qb: any = {
+        leftJoinAndSelect: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        orderBy: jest.fn().mockReturnThis(),
+        addOrderBy: jest.fn().mockReturnThis(),
+        skip: jest.fn().mockReturnThis(),
+        take: jest.fn().mockReturnThis(),
+        getManyAndCount: jest.fn().mockResolvedValue([
+          [
+            {
+              id: 'offer-admin-1',
+              name: 'Admin Deal',
+              description: 'Desc',
+              mainImage: 'https://image.com/1.jpg',
+              galleryImages: [],
+              status: CatalogueOfferStatus.ACTIVE,
+              pricingType: CatalogueOfferPricingType.PERCENTAGE_DISCOUNT,
+              discountValue: 15,
+              calculatedPrice: 85,
+              views: 25,
+              isFeatured: true,
+              businessId: 'biz-1',
+              branchId: 'branch-1',
+              business: { id: 'biz-1', name: 'Azure Bistro' },
+              branch: { id: 'branch-1', name: 'Lekki Branch' },
+              items: [{ basePrice: 100 }],
+              startDate: new Date('2026-01-01'),
+              endDate: new Date('2026-12-31'),
+              createdAt: new Date('2026-01-01'),
+            },
+          ],
+          1,
+        ]),
+      };
+      offerRepo.createQueryBuilder = jest.fn().mockReturnValue(qb);
+
+      const claimQb: any = {
+        select: jest.fn().mockReturnThis(),
+        addSelect: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        groupBy: jest.fn().mockReturnThis(),
+        getRawMany: jest.fn().mockResolvedValue([{ offerId: 'offer-admin-1', count: '7' }]),
+      };
+      claimRepo.createQueryBuilder = jest.fn().mockReturnValue(claimQb);
+
+      subscriptionsService.getActiveSubscription = jest.fn().mockResolvedValue({
+        plan: { id: 'plan-plat', name: 'Platinum Plan', isFree: false },
+      });
+
+      const result = await service.getAdminDeals({ page: 1, limit: 10 });
+      expect(result.data.length).toBe(1);
+      expect(result.data[0].id).toBe('offer-admin-1');
+      expect(result.data[0].claimsCount).toBe(7);
+      expect(result.data[0].viewsCount).toBe(25);
+      expect(result.data[0].isFeatured).toBe(true);
+      expect(result.data[0].business.name).toBe('Azure Bistro');
+      expect(result.data[0].branch.name).toBe('Lekki Branch');
+      expect(result.data[0].subscriptionPlan.name).toBe('Platinum Plan');
+      expect(result.meta.total).toBe(1);
+    });
+
+    it('returns deals stats accurately', async () => {
+      offerRepo.count = jest.fn().mockImplementation((options) => {
+        if (options?.where?.isFeatured) return Promise.resolve(4);
+        return Promise.resolve(20);
+      });
+
+      const qbActive: any = {
+        where: jest.fn().mockReturnThis(),
+        getCount: jest.fn().mockResolvedValue(15),
+      };
+      const qbExpired: any = {
+        where: jest.fn().mockReturnThis(),
+        getCount: jest.fn().mockResolvedValue(3),
+      };
+
+      offerRepo.createQueryBuilder = jest
+        .fn()
+        .mockReturnValueOnce(qbActive)
+        .mockReturnValueOnce(qbExpired);
+
+      const stats = await service.getAdminDealsStats();
+      expect(stats.totalDeals).toBe(20);
+      expect(stats.activeDeals).toBe(15);
+      expect(stats.featuredDeals).toBe(4);
+      expect(stats.expiredDeals).toBe(3);
+    });
+
+    it('toggles featured status of a deal', async () => {
+      offerRepo.findOne.mockResolvedValue({
+        id: 'offer-toggle',
+        isFeatured: false,
+        branchId: 'branch-1',
+      });
+      offerRepo.save.mockImplementation((d: any) => Promise.resolve({ ...d }));
+
+      const result = await service.toggleDealFeatured('offer-toggle');
+      expect(result.id).toBe('offer-toggle');
+      expect(result.isFeatured).toBe(true);
+      expect(result.message).toContain('marked as featured');
+    });
+
+    it('throws NotFoundException when toggling non-existent deal', async () => {
+      offerRepo.findOne.mockResolvedValue(null);
+      await expect(service.toggleDealFeatured('non-existent')).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+
+    it('returns list of businesses for admin filter dropdown', async () => {
+      const qb: any = {
+        select: jest.fn().mockReturnThis(),
+        orderBy: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        getMany: jest.fn().mockResolvedValue([
+          { id: 'b-1', name: 'Alpha Cafe' },
+          { id: 'b-2', name: 'Beta Bistro' },
+        ]),
+      };
+      businessRepo.createQueryBuilder = jest.fn().mockReturnValue(qb);
+
+      const result = await service.getAdminBusinessesList({ search: 'Alpha' });
+      expect(result.length).toBe(2);
+      expect(result[0]).toEqual({ id: 'b-1', name: 'Alpha Cafe' });
     });
   });
 });

@@ -20,8 +20,13 @@ import {
   CatalogueOfferQueryDto,
   PublicCatalogueOffersQueryDto,
   GenerateOfferTermsDto,
+  AdminDealsQueryDto,
+  AdminDealsSortBy,
+  AdminDealsStatusFilter,
+  AdminBusinessesQueryDto,
 } from './dto/offer.dto';
 import { Branch } from '../branches/entities/branch.entity';
+import { Business } from '../businesses/entities/business.entity';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import {
   CatalogueOfferClaim,
@@ -47,6 +52,8 @@ export class CatalogueOfferService {
     private readonly itemRepository: Repository<CatalogueItem>,
     @InjectRepository(Branch)
     private readonly branchRepository: Repository<Branch>,
+    @InjectRepository(Business)
+    private readonly businessRepository: Repository<Business>,
     @InjectRepository(CatalogueOfferClaim)
     private readonly claimRepository: Repository<CatalogueOfferClaim>,
     @InjectRepository(Otp)
@@ -107,6 +114,14 @@ export class CatalogueOfferService {
       businessId,
       items,
     });
+
+    // Check active subscription plan to determine default isFeatured status
+    const activeSub = await this.subscriptionsService.getActiveSubscription(
+      businessId,
+    );
+    const autoFeatureDeals = Boolean(activeSub?.plan?.autoFeatureDeals);
+    offer.isFeatured =
+      dto.isFeatured !== undefined ? dto.isFeatured : autoFeatureDeals;
 
     offer.calculatedPrice = this.calculatePrice(offer, items);
 
@@ -947,5 +962,325 @@ export class CatalogueOfferService {
     } catch (error) {
       this.logger.error(`Failed to clear offers cache: ${error.message}`);
     }
+  }
+
+  // --- Admin Deals Management ---
+
+  async getAdminDeals(query: AdminDealsQueryDto) {
+    const page = Math.max(1, Number(query.page) || 1);
+    const limit = Math.min(100, Math.max(1, Number(query.limit) || 10));
+    const skip = (page - 1) * limit;
+
+    const qb = this.offerRepository
+      .createQueryBuilder('offer')
+      .leftJoinAndSelect('offer.business', 'business')
+      .leftJoinAndSelect('offer.branch', 'branch')
+      .leftJoinAndSelect('offer.items', 'items');
+
+    // Search by deal name or business name
+    if (query.search && query.search.trim()) {
+      const term = `%${query.search.trim()}%`;
+      qb.andWhere(
+        '(LOWER(offer.name) LIKE LOWER(:term) OR LOWER(business.name) LIKE LOWER(:term))',
+        { term },
+      );
+    }
+
+    // Filter by businessId
+    if (query.businessId) {
+      qb.andWhere('offer.businessId = :businessId', {
+        businessId: query.businessId,
+      });
+    }
+
+    // Filter by status (active, inactive, expired)
+    const now = new Date();
+    if (query.status === AdminDealsStatusFilter.ACTIVE) {
+      qb.andWhere(
+        'offer.status = :activeStatus AND (offer.endDate IS NULL OR offer.endDate >= :now)',
+        {
+          activeStatus: CatalogueOfferStatus.ACTIVE,
+          now,
+        },
+      );
+    } else if (query.status === AdminDealsStatusFilter.INACTIVE) {
+      qb.andWhere('offer.status = :inactiveStatus', {
+        inactiveStatus: CatalogueOfferStatus.INACTIVE,
+      });
+    } else if (query.status === AdminDealsStatusFilter.EXPIRED) {
+      qb.andWhere('offer.endDate IS NOT NULL AND offer.endDate < :now', {
+        now,
+      });
+    }
+
+    // Filter by isFeatured
+    if (query.isFeatured !== undefined) {
+      qb.andWhere('offer.isFeatured = :isFeatured', {
+        isFeatured: query.isFeatured,
+      });
+    }
+
+    // Filter by price range
+    if (query.minPrice !== undefined) {
+      qb.andWhere('offer.calculatedPrice >= :minPrice', {
+        minPrice: query.minPrice,
+      });
+    }
+    if (query.maxPrice !== undefined) {
+      qb.andWhere('offer.calculatedPrice <= :maxPrice', {
+        maxPrice: query.maxPrice,
+      });
+    }
+
+    // Filter by date range (startDate / endDate)
+    if (query.startDate) {
+      qb.andWhere(
+        '(offer.startDate >= :filterStartDate OR (offer.startDate IS NULL AND offer.createdAt >= :filterStartDate))',
+        {
+          filterStartDate: new Date(query.startDate),
+        },
+      );
+    }
+    if (query.endDate) {
+      qb.andWhere(
+        '(offer.endDate <= :filterEndDate OR (offer.endDate IS NULL AND offer.createdAt <= :filterEndDate))',
+        {
+          filterEndDate: new Date(query.endDate),
+        },
+      );
+    }
+
+    // Filter by plan name or tier
+    if (query.plan && query.plan.trim()) {
+      const planTerm = `%${query.plan.trim()}%`;
+      qb.andWhere(
+        `EXISTS (
+          SELECT 1 FROM subscriptions sub
+          JOIN plans p ON p.id = sub."planId"
+          WHERE sub."businessId" = offer."businessId"
+            AND sub.status IN ('active', 'trial')
+            AND (LOWER(p.name) LIKE LOWER(:planTerm) OR LOWER(p.id::text) = LOWER(:exactPlanTerm))
+        )`,
+        { planTerm, exactPlanTerm: query.plan.trim() },
+      );
+    }
+
+    // Sorting
+    switch (query.sortBy) {
+      case AdminDealsSortBy.MOST_POPULAR:
+        qb.orderBy('offer.views', 'DESC').addOrderBy('offer.createdAt', 'DESC');
+        break;
+      case AdminDealsSortBy.FEATURED_FIRST:
+        qb.orderBy('offer.isFeatured', 'DESC').addOrderBy(
+          'offer.createdAt',
+          'DESC',
+        );
+        break;
+      case AdminDealsSortBy.PRICE_LOW_HIGH:
+        qb.orderBy('offer.calculatedPrice', 'ASC');
+        break;
+      case AdminDealsSortBy.PRICE_HIGH_LOW:
+        qb.orderBy('offer.calculatedPrice', 'DESC');
+        break;
+      case AdminDealsSortBy.ENDING_SOON:
+        qb.orderBy('offer.endDate', 'ASC', 'NULLS LAST');
+        break;
+      case AdminDealsSortBy.NEWEST:
+      default:
+        qb.orderBy('offer.createdAt', 'DESC');
+        break;
+    }
+
+    qb.skip(skip).take(limit);
+
+    const [offers, total] = await qb.getManyAndCount();
+
+    const offerIds = offers.map((o) => o.id);
+    const businessIds = Array.from(
+      new Set(offers.map((o) => o.businessId).filter(Boolean)),
+    );
+
+    // Fetch claims count per offer
+    let claimsCountMap: Record<string, number> = {};
+    if (offerIds.length > 0) {
+      const claimsCounts = await this.claimRepository
+        .createQueryBuilder('claim')
+        .select('claim.offerId', 'offerId')
+        .addSelect('COUNT(claim.id)', 'count')
+        .where('claim.offerId IN (:...offerIds)', { offerIds })
+        .groupBy('claim.offerId')
+        .getRawMany();
+
+      claimsCountMap = claimsCounts.reduce((acc, row) => {
+        acc[row.offerId] = parseInt(row.count, 10) || 0;
+        return acc;
+      }, {});
+    }
+
+    // Fetch active subscription plan per business
+    const businessPlanMap: Record<
+      string,
+      { id: string; name: string; isFree: boolean } | null
+    > = {};
+    for (const bId of businessIds) {
+      try {
+        const sub = await this.subscriptionsService.getActiveSubscription(bId);
+        if (sub && sub.plan) {
+          businessPlanMap[bId] = {
+            id: sub.plan.id,
+            name: sub.plan.name,
+            isFree: sub.plan.isFree,
+          };
+        } else {
+          businessPlanMap[bId] = null;
+        }
+      } catch {
+        businessPlanMap[bId] = null;
+      }
+    }
+
+    const data = offers.map((offer) => {
+      let computedStatus: 'active' | 'inactive' | 'expired' = 'active';
+      if (offer.status === CatalogueOfferStatus.INACTIVE) {
+        computedStatus = 'inactive';
+      } else if (offer.endDate && new Date(offer.endDate) < now) {
+        computedStatus = 'expired';
+      }
+
+      const originalPrice = (offer.items || []).reduce(
+        (sum, item) => sum + (Number(item.basePrice) || 0),
+        0,
+      );
+
+      const dealPrice = Number(offer.calculatedPrice);
+      let discount = 0;
+      if (offer.pricingType === CatalogueOfferPricingType.PERCENTAGE_DISCOUNT) {
+        discount = Number(offer.discountValue) || 0;
+      } else if (
+        offer.pricingType === CatalogueOfferPricingType.FIXED_DISCOUNT_PRICE
+      ) {
+        discount = Math.max(0, originalPrice - dealPrice);
+      }
+
+      return {
+        id: offer.id,
+        name: offer.name,
+        description: offer.description,
+        image: offer.mainImage,
+        mainImage: offer.mainImage,
+        galleryImages: offer.galleryImages || [],
+        status: computedStatus,
+        pricing: {
+          pricingType: offer.pricingType,
+          originalPrice: originalPrice > 0 ? originalPrice : dealPrice,
+          dealPrice,
+          discount,
+          discountValue: offer.discountValue ? Number(offer.discountValue) : null,
+          fixedPrice: offer.fixedPrice ? Number(offer.fixedPrice) : null,
+        },
+        dates: {
+          startDate: offer.startDate,
+          endDate: offer.endDate,
+          createdAt: offer.createdAt,
+        },
+        claimsCount: claimsCountMap[offer.id] || 0,
+        viewsCount: offer.views || 0,
+        isFeatured: offer.isFeatured || false,
+        business: {
+          id: offer.business?.id || offer.businessId,
+          name: offer.business?.name || 'Unknown Business',
+        },
+        branch: {
+          id: offer.branch?.id || offer.branchId,
+          name: offer.branch?.name || 'Unknown Branch',
+        },
+        subscriptionPlan: businessPlanMap[offer.businessId] || {
+          id: 'free',
+          name: 'Free Plan',
+          isFree: true,
+        },
+      };
+    });
+
+    return {
+      data,
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit) || 1,
+      },
+    };
+  }
+
+  async getAdminDealsStats() {
+    const now = new Date();
+
+    const totalDeals = await this.offerRepository.count();
+
+    const activeDeals = await this.offerRepository
+      .createQueryBuilder('offer')
+      .where(
+        'offer.status = :status AND (offer.endDate IS NULL OR offer.endDate >= :now)',
+        {
+          status: CatalogueOfferStatus.ACTIVE,
+          now,
+        },
+      )
+      .getCount();
+
+    const featuredDeals = await this.offerRepository.count({
+      where: { isFeatured: true },
+    });
+
+    const expiredDeals = await this.offerRepository
+      .createQueryBuilder('offer')
+      .where('offer.endDate IS NOT NULL AND offer.endDate < :now', { now })
+      .getCount();
+
+    return {
+      totalDeals,
+      activeDeals,
+      featuredDeals,
+      expiredDeals,
+    };
+  }
+
+  async toggleDealFeatured(id: string) {
+    const offer = await this.offerRepository.findOne({ where: { id } });
+    if (!offer) {
+      throw new NotFoundException(`Deal with ID ${id} not found`);
+    }
+
+    offer.isFeatured = !offer.isFeatured;
+    const saved = await this.offerRepository.save(offer);
+
+    if (offer.branchId) {
+      await this.clearCache(offer.branchId, id);
+    }
+
+    return {
+      id: saved.id,
+      isFeatured: saved.isFeatured,
+      message: `Deal ${saved.isFeatured ? 'marked as featured' : 'unfeatured'} successfully`,
+    };
+  }
+
+  async getAdminBusinessesList(query: AdminBusinessesQueryDto) {
+    const qb = this.businessRepository
+      .createQueryBuilder('business')
+      .select(['business.id', 'business.name'])
+      .orderBy('business.name', 'ASC');
+
+    if (query.search && query.search.trim()) {
+      const term = `%${query.search.trim()}%`;
+      qb.where('LOWER(business.name) LIKE LOWER(:term)', { term });
+    }
+
+    const businesses = await qb.getMany();
+    return businesses.map((b) => ({
+      id: b.id,
+      name: b.name,
+    }));
   }
 }
