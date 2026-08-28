@@ -33,6 +33,19 @@ export class CreateDealReviewDto {
   @MinLength(2)
   @MaxLength(60)
   name?: string;
+
+  @ApiPropertyOptional({
+    description: 'Rating score from 1 to 5 (optional)',
+    example: 5,
+    minimum: 1,
+    maximum: 5,
+  })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(5)
+  rating?: number;
 }
 
 export class ListReviewsQueryDto {
@@ -57,6 +70,38 @@ export class ReviewsAdminQueryDto {
   @IsOptional()
   @IsEnum(DealReviewStatus)
   status?: DealReviewStatus;
+
+  @ApiPropertyOptional({ description: 'Page number', default: 1 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  page?: number = 1;
+
+  @ApiPropertyOptional({ description: 'Items per page', default: 20 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(50)
+  limit?: number = 20;
+}
+
+export class BusinessReviewsQueryDto {
+  @ApiPropertyOptional({
+    enum: DealReviewStatus,
+    description: 'Filter reviews by moderation status',
+  })
+  @IsOptional()
+  @IsEnum(DealReviewStatus)
+  status?: DealReviewStatus;
+
+  @ApiPropertyOptional({
+    description: 'Filter reviews by specific offer UUID',
+  })
+  @IsOptional()
+  @IsString()
+  offerId?: string;
 
   @ApiPropertyOptional({ description: 'Page number', default: 1 })
   @IsOptional()

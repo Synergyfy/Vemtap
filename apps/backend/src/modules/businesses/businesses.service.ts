@@ -3,6 +3,7 @@ import {
   NotFoundException,
   ConflictException,
   BadRequestException,
+  ForbiddenException,
   Inject,
   forwardRef,
 } from '@nestjs/common';
@@ -321,6 +322,25 @@ export class BusinessesService {
     delete (updateBusinessDto as any).businessHours;
     for (const field of socialFields) {
       delete (updateBusinessDto as any)[field];
+    }
+
+    if (updateBusinessDto.requireReviewApproval === true) {
+      const activeSub = await this.subscriptionRepository.findOne({
+        where: {
+          businessId: id,
+          status: SubscriptionStatus.ACTIVE,
+        },
+        relations: ['plan'],
+      });
+
+      const planName = activeSub?.plan?.name?.toLowerCase() || '';
+      const isPlatinum = planName.includes('platinum');
+
+      if (!isPlatinum) {
+        throw new ForbiddenException(
+          'Deal review moderation control is exclusively available on the Platinum plan. Please upgrade to enable this feature.',
+        );
+      }
     }
 
     Object.assign(business, updateBusinessDto);

@@ -150,6 +150,14 @@ export class Business extends AbstractBaseEntity {
   verifiedAt: Date | null;
 
   @ApiProperty({
+    example: false,
+    description:
+      'When true, reviews submitted for deals require owner approval before being published (Platinum feature)',
+  })
+  @Column({ default: false })
+  requireReviewApproval: boolean;
+
+  @ApiProperty({
     example: { loyaltyEnabled: true, loyaltyRedeemThreshold: 100 },
     nullable: true,
     description: 'POS-specific settings for this business',
