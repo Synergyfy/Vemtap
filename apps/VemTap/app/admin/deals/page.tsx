@@ -7,7 +7,7 @@ import {
     ExternalLink, TrendingUp, Tag, Clock, Eye, Heart, MessageCircle, X,
     SlidersHorizontal, Download, RotateCcw,
 } from 'lucide-react';
-import { adminDealsApi } from '@/lib/api/admin';
+import { adminDealsApi, AdminDealItem, AdminDealsResponse, AdminDealsStatsResponse } from '@/lib/api/admin';
 import PageHeader from '@/components/dashboard/PageHeader';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -16,48 +16,6 @@ import { Switch } from '@/components/ui/switch';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { toast } from 'react-hot-toast';
 import Link from 'next/link';
-
-// ─── Types ──────────────────────────────────────────────────────────────────
-
-interface AdminDeal {
-    id: string;
-    name: string;
-    description: string;
-    mainImage: string | null;
-    status: string;
-    pricingType: string;
-    discountValue: number | null;
-    fixedPrice: number | null;
-    calculatedPrice: number;
-    originalPrice: number;
-    dealPrice: number;
-    discountPercent: number;
-    startDate: string | null;
-    endDate: string | null;
-    claimedCount: number;
-    quantity: number | null;
-    views: number;
-    isFeatured: boolean;
-    createdAt: string;
-    business: {
-        id: string;
-        name: string;
-        slug: string;
-    };
-    branch: {
-        id: string;
-        name: string;
-        city: string;
-    };
-    subscriptionPlan: string;
-}
-
-interface DealsStats {
-    total: number;
-    active: number;
-    featured: number;
-    expired: number;
-}
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -107,11 +65,11 @@ export default function AdminDealsPage() {
     const [planFilter, setPlanFilter] = useState('');
     const [featuredFilter, setFeaturedFilter] = useState<boolean | undefined>(undefined);
     const [businessFilter, setBusinessFilter] = useState('');
-    const [priceFrom, setPriceFrom] = useState('');
-    const [priceTo, setPriceTo] = useState('');
-    const [dateFrom, setDateFrom] = useState('');
-    const [dateTo, setDateTo] = useState('');
-    const [sortBy, setSortBy] = useState('newest');
+    const [minPrice, setMinPrice] = useState('');
+    const [maxPrice, setMaxPrice] = useState('');
+    const [startDate, setStartDate] = useState('');
+    const [endDate, setEndDate] = useState('');
+    const [sortBy, setSortBy] = useState<'newest' | 'most_popular' | 'featured_first' | 'price_low_high' | 'price_high_low' | 'ending_soon'>('newest');
     const [page, setPage] = useState(1);
     const [showFilters, setShowFilters] = useState(false);
     const limit = 20;
@@ -124,21 +82,21 @@ export default function AdminDealsPage() {
     }, [search]);
 
     // Reset page on filter change
-    useEffect(() => { setPage(1); }, [debouncedSearch, statusFilter, planFilter, featuredFilter, businessFilter, priceFrom, priceTo, dateFrom, dateTo, sortBy]);
+    useEffect(() => { setPage(1); }, [debouncedSearch, statusFilter, planFilter, featuredFilter, businessFilter, minPrice, maxPrice, startDate, endDate, sortBy]);
 
     // Fetch deals
     const { data, isLoading, isError } = useQuery({
-        queryKey: ['admin-deals', debouncedSearch, statusFilter, planFilter, featuredFilter, businessFilter, priceFrom, priceTo, dateFrom, dateTo, sortBy, page],
-        queryFn: () => adminDealsApi.getAll({
+        queryKey: ['admin-deals', debouncedSearch, statusFilter, planFilter, featuredFilter, businessFilter, minPrice, maxPrice, startDate, endDate, sortBy, page],
+        queryFn: () => adminDealsApi.getDeals({
             search: debouncedSearch || undefined,
-            status: statusFilter || undefined,
+            status: (statusFilter as any) || undefined,
             plan: planFilter || undefined,
-            featured: featuredFilter,
+            isFeatured: featuredFilter,
             businessId: businessFilter || undefined,
-            priceFrom: priceFrom ? Number(priceFrom) : undefined,
-            priceTo: priceTo ? Number(priceTo) : undefined,
-            dateFrom: dateFrom || undefined,
-            dateTo: dateTo || undefined,
+            minPrice: minPrice ? Number(minPrice) : undefined,
+            maxPrice: maxPrice ? Number(maxPrice) : undefined,
+            startDate: startDate || undefined,
+            endDate: endDate || undefined,
             sortBy,
             page,
             limit,
@@ -169,36 +127,27 @@ export default function AdminDealsPage() {
     });
 
     // Extract data
-    const deals: AdminDeal[] = useMemo(() => {
+    const deals: AdminDealItem[] = useMemo(() => {
         if (!data) return [];
-        if (Array.isArray(data)) return data;
         if (data.data) return data.data;
-        if (data.deals) return data.deals;
         return [];
     }, [data]);
 
-    const totalDeals = useMemo(() => {
-        if (!data) return 0;
-        if (data.total) return data.total;
-        if (data.meta?.total) return data.meta.total;
-        return deals.length;
-    }, [data, deals]);
+    const totalDeals = data?.meta?.total ?? deals.length;
+    const totalPages = data?.meta?.totalPages ?? Math.ceil(totalDeals / limit);
 
-    const totalPages = Math.ceil(totalDeals / limit);
-
-    const dealsStats: DealsStats = useMemo(() => {
+    const dealsStats = useMemo(() => {
         if (stats) return stats;
-        return { total: totalDeals, active: 0, featured: 0, expired: 0 };
+        return { totalDeals, activeDeals: 0, featuredDeals: 0, expiredDeals: 0 };
     }, [stats, totalDeals]);
 
     const businesses = useMemo(() => {
         if (!businessesData) return [];
         if (Array.isArray(businessesData)) return businessesData;
-        if (businessesData.data) return businessesData.data;
         return [];
     }, [businessesData]);
 
-    const activeFilters = [statusFilter, planFilter, featuredFilter !== undefined, businessFilter, priceFrom, priceTo, dateFrom, dateTo].filter(Boolean).length;
+    const activeFilters = [statusFilter, planFilter, featuredFilter !== undefined, businessFilter, minPrice, maxPrice, startDate, endDate].filter(Boolean).length;
 
     const clearFilters = () => {
         setSearch('');
@@ -206,10 +155,10 @@ export default function AdminDealsPage() {
         setPlanFilter('');
         setFeaturedFilter(undefined);
         setBusinessFilter('');
-        setPriceFrom('');
-        setPriceTo('');
-        setDateFrom('');
-        setDateTo('');
+        setMinPrice('');
+        setMaxPrice('');
+        setStartDate('');
+        setEndDate('');
         setSortBy('newest');
     };
 
@@ -229,7 +178,7 @@ export default function AdminDealsPage() {
                             <Tag size={18} className="text-blue-500" />
                         </div>
                         <div>
-                            <p className="text-2xl font-black text-gray-900">{dealsStats.total}</p>
+                            <p className="text-2xl font-black text-gray-900">{dealsStats.totalDeals}</p>
                             <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Total Deals</p>
                         </div>
                     </div>
@@ -240,7 +189,7 @@ export default function AdminDealsPage() {
                             <TrendingUp size={18} className="text-green-500" />
                         </div>
                         <div>
-                            <p className="text-2xl font-black text-gray-900">{dealsStats.active}</p>
+                            <p className="text-2xl font-black text-gray-900">{dealsStats.activeDeals}</p>
                             <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Active</p>
                         </div>
                     </div>
@@ -251,7 +200,7 @@ export default function AdminDealsPage() {
                             <Star size={18} className="text-amber-500" />
                         </div>
                         <div>
-                            <p className="text-2xl font-black text-gray-900">{dealsStats.featured}</p>
+                            <p className="text-2xl font-black text-gray-900">{dealsStats.featuredDeals}</p>
                             <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Featured</p>
                         </div>
                     </div>
@@ -262,7 +211,7 @@ export default function AdminDealsPage() {
                             <Clock size={18} className="text-red-500" />
                         </div>
                         <div>
-                            <p className="text-2xl font-black text-gray-900">{dealsStats.expired}</p>
+                            <p className="text-2xl font-black text-gray-900">{dealsStats.expiredDeals}</p>
                             <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Expired</p>
                         </div>
                     </div>
@@ -318,12 +267,12 @@ export default function AdminDealsPage() {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="min-w-[160px]">
                             {[
-                                { key: 'newest', label: 'Newest' },
-                                { key: 'popular', label: 'Most Popular' },
-                                { key: 'featured', label: 'Featured First' },
-                                { key: 'price-low', label: 'Price: Low to High' },
-                                { key: 'price-high', label: 'Price: High to Low' },
-                                { key: 'ending-soon', label: 'Ending Soon' },
+                                { key: 'newest' as const, label: 'Newest' },
+                                { key: 'most_popular' as const, label: 'Most Popular' },
+                                { key: 'featured_first' as const, label: 'Featured First' },
+                                { key: 'price_low_high' as const, label: 'Price: Low to High' },
+                                { key: 'price_high_low' as const, label: 'Price: High to Low' },
+                                { key: 'ending_soon' as const, label: 'Ending Soon' },
                             ].map((opt) => (
                                 <DropdownMenuItem key={opt.key} onClick={() => setSortBy(opt.key)}>
                                     <span>{opt.label}</span>
@@ -402,8 +351,8 @@ export default function AdminDealsPage() {
                             <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5 block">Min Price (₦)</label>
                             <input
                                 type="number"
-                                value={priceFrom}
-                                onChange={(e) => setPriceFrom(e.target.value)}
+                                value={minPrice}
+                                onChange={(e) => setMinPrice(e.target.value)}
                                 placeholder="0"
                                 className="w-full h-10 px-3 rounded-xl border border-gray-200 text-sm font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary/20"
                             />
@@ -412,8 +361,8 @@ export default function AdminDealsPage() {
                             <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5 block">Max Price (₦)</label>
                             <input
                                 type="number"
-                                value={priceTo}
-                                onChange={(e) => setPriceTo(e.target.value)}
+                                value={maxPrice}
+                                onChange={(e) => setMaxPrice(e.target.value)}
                                 placeholder="Any"
                                 className="w-full h-10 px-3 rounded-xl border border-gray-200 text-sm font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary/20"
                             />
@@ -421,20 +370,20 @@ export default function AdminDealsPage() {
 
                         {/* Date Range */}
                         <div>
-                            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5 block">Created From</label>
+                            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5 block">Start Date</label>
                             <input
                                 type="date"
-                                value={dateFrom}
-                                onChange={(e) => setDateFrom(e.target.value)}
+                                value={startDate}
+                                onChange={(e) => setStartDate(e.target.value)}
                                 className="w-full h-10 px-3 rounded-xl border border-gray-200 text-sm font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary/20"
                             />
                         </div>
                         <div>
-                            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5 block">Created To</label>
+                            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5 block">End Date</label>
                             <input
                                 type="date"
-                                value={dateTo}
-                                onChange={(e) => setDateTo(e.target.value)}
+                                value={endDate}
+                                onChange={(e) => setEndDate(e.target.value)}
                                 className="w-full h-10 px-3 rounded-xl border border-gray-200 text-sm font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary/20"
                             />
                         </div>
@@ -524,7 +473,7 @@ export default function AdminDealsPage() {
                             </thead>
                             <tbody>
                                 {deals.map((deal) => {
-                                    const daysLeft = getDaysLeft(deal.endDate);
+                                    const daysLeft = getDaysLeft(deal.dates.endDate);
                                     const isExpired = daysLeft === 0 || daysLeft < 0;
                                     return (
                                         <tr key={deal.id} className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors">
@@ -541,7 +490,7 @@ export default function AdminDealsPage() {
                                                     </div>
                                                     <div className="min-w-0">
                                                         <p className="text-sm font-bold text-gray-900 truncate max-w-[200px]">{deal.name}</p>
-                                                        <p className="text-[10px] text-gray-400 font-medium">{formatDate(deal.createdAt)}</p>
+                                                        <p className="text-[10px] text-gray-400 font-medium">{formatDate(deal.dates.createdAt)}</p>
                                                     </div>
                                                 </div>
                                             </td>
@@ -550,31 +499,31 @@ export default function AdminDealsPage() {
                                                 <p className="text-[10px] text-gray-400">{deal.branch?.name || ''}</p>
                                             </td>
                                             <td className="px-5 py-3">
-                                                <p className="text-sm font-black text-primary">{formatCurrency(deal.dealPrice)}</p>
-                                                {deal.originalPrice > deal.dealPrice && (
-                                                    <p className="text-[10px] text-gray-400 line-through">{formatCurrency(deal.originalPrice)}</p>
+                                                <p className="text-sm font-black text-primary">{formatCurrency(deal.pricing.dealPrice)}</p>
+                                                {deal.pricing.originalPrice > deal.pricing.dealPrice && (
+                                                    <p className="text-[10px] text-gray-400 line-through">{formatCurrency(deal.pricing.originalPrice)}</p>
                                                 )}
                                             </td>
                                             <td className="px-5 py-3">
                                                 <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold border ${getStatusColor(isExpired ? 'expired' : deal.status)}`}>
                                                     {isExpired ? 'Expired' : deal.status}
                                                 </span>
-                                                {!isExpired && deal.endDate && (
+                                                {!isExpired && deal.dates.endDate && (
                                                     <p className="text-[10px] text-gray-400 mt-0.5">{daysLeft}d left</p>
                                                 )}
                                             </td>
                                             <td className="px-5 py-3">
-                                                <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold border ${getPlanBadgeColor(deal.subscriptionPlan)}`}>
-                                                    {deal.subscriptionPlan || 'Free'}
+                                                <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold border ${getPlanBadgeColor(deal.subscriptionPlan?.name)}`}>
+                                                    {deal.subscriptionPlan?.name || 'Free'}
                                                 </span>
                                             </td>
                                             <td className="px-5 py-3">
                                                 <div className="flex items-center justify-center gap-3 text-[10px] text-gray-500 font-bold">
                                                     <span className="flex items-center gap-1">
-                                                        <Eye size={10} /> {deal.views || 0}
+                                                        <Eye size={10} /> {deal.viewsCount || 0}
                                                     </span>
                                                     <span className="flex items-center gap-1">
-                                                        <Heart size={10} /> {deal.claimedCount || 0}
+                                                        <Heart size={10} /> {deal.claimsCount || 0}
                                                     </span>
                                                 </div>
                                             </td>
@@ -613,7 +562,7 @@ export default function AdminDealsPage() {
                     {/* Mobile Cards */}
                     <div className="lg:hidden space-y-3">
                         {deals.map((deal) => {
-                            const daysLeft = getDaysLeft(deal.endDate);
+                            const daysLeft = getDaysLeft(deal.dates.endDate);
                             const isExpired = daysLeft === 0 || daysLeft < 0;
                             return (
                                 <div key={deal.id} className="bg-white rounded-2xl border border-gray-100 p-4">
@@ -646,18 +595,18 @@ export default function AdminDealsPage() {
                                             </div>
                                             <p className="text-xs text-gray-500 mt-0.5">{deal.business?.name || '—'}</p>
                                             <div className="flex items-center gap-2 mt-2 flex-wrap">
-                                                <span className="text-sm font-black text-primary">{formatCurrency(deal.dealPrice)}</span>
+                                                <span className="text-sm font-black text-primary">{formatCurrency(deal.pricing.dealPrice)}</span>
                                                 <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold border ${getStatusColor(isExpired ? 'expired' : deal.status)}`}>
                                                     {isExpired ? 'Expired' : deal.status}
                                                 </span>
-                                                <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold border ${getPlanBadgeColor(deal.subscriptionPlan)}`}>
-                                                    {deal.subscriptionPlan || 'Free'}
+                                                <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold border ${getPlanBadgeColor(deal.subscriptionPlan?.name)}`}>
+                                                    {deal.subscriptionPlan?.name || 'Free'}
                                                 </span>
                                             </div>
                                             <div className="flex items-center justify-between mt-2">
                                                 <div className="flex items-center gap-2 text-[10px] text-gray-400 font-bold">
-                                                    <span className="flex items-center gap-0.5"><Eye size={9} /> {deal.views || 0}</span>
-                                                    <span className="flex items-center gap-0.5"><Heart size={9} /> {deal.claimedCount || 0}</span>
+                                                    <span className="flex items-center gap-0.5"><Eye size={9} /> {deal.viewsCount || 0}</span>
+                                                    <span className="flex items-center gap-0.5"><Heart size={9} /> {deal.claimsCount || 0}</span>
                                                 </div>
                                                 <Link
                                                     href={`/promotions/${deal.id}`}
