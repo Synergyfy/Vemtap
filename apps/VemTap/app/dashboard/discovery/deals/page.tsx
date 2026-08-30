@@ -114,6 +114,7 @@ function PromotionsTab({ branchId, onCreatePromo, onEditPromo }: { branchId: str
     const updateOffer = useUpdateCatalogueOffer();
     const deleteOffer = useDeleteCatalogueOffer();
     const [statusFilter, setStatusFilter] = useState<'active' | 'all' | 'expired' | 'inactive'>('active');
+    const [itemTypeFilter, setItemTypeFilter] = useState<'all' | 'product' | 'service'>('all');
 
     const isExpired = (promo: CatalogueOffer) => {
         if (!promo.endDate) return false;
@@ -122,18 +123,38 @@ function PromotionsTab({ branchId, onCreatePromo, onEditPromo }: { branchId: str
 
     const filteredPromotions = React.useMemo(() => {
         if (!promotions) return [];
+        let filtered = promotions;
+        
+        // Status filter
         switch (statusFilter) {
             case 'active':
-                return promotions.filter((p) => !isExpired(p) && p.status === 'active');
+                filtered = filtered.filter((p) => !isExpired(p) && p.status === 'active');
+                break;
             case 'expired':
-                return promotions.filter((p) => isExpired(p));
+                filtered = filtered.filter((p) => isExpired(p));
+                break;
             case 'inactive':
-                return promotions.filter((p) => p.status === 'inactive' && !isExpired(p));
+                filtered = filtered.filter((p) => p.status === 'inactive' && !isExpired(p));
+                break;
             case 'all':
             default:
-                return promotions;
+                break;
         }
-    }, [promotions, statusFilter]);
+
+        // Item type filter
+        if (itemTypeFilter !== 'all') {
+            filtered = filtered.filter((p) => {
+                const items = p.items || [];
+                if (itemTypeFilter === 'service') {
+                    return items.some((item: any) => item.itemType === 'service');
+                } else {
+                    return items.some((item: any) => (item.itemType || 'product') === 'product');
+                }
+            });
+        }
+
+        return filtered;
+    }, [promotions, statusFilter, itemTypeFilter]);
 
     const statusCounts = React.useMemo(() => {
         if (!promotions) return { active: 0, expired: 0, inactive: 0, all: 0 };
@@ -207,6 +228,28 @@ function PromotionsTab({ branchId, onCreatePromo, onEditPromo }: { branchId: str
                                     <span className="flex-1">{tab.label}</span>
                                     <span className="text-[10px] font-black text-gray-400">{tab.count}</span>
                                     {statusFilter === tab.key && <span className="text-primary">✓</span>}
+                                </DropdownMenuItem>
+                            ))}
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <button className="flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold bg-white border border-gray-200 hover:border-gray-300 transition-all">
+                                <span className="text-gray-500">Type:</span>
+                                <span className="text-gray-800">{itemTypeFilter === 'all' ? 'All' : itemTypeFilter === 'product' ? 'Products' : 'Services'}</span>
+                                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="text-gray-400"><polyline points="6 9 12 15 18 9"/></svg>
+                            </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="start" className="min-w-[140px]">
+                            {[
+                                { key: 'all' as const, label: 'All Types' },
+                                { key: 'product' as const, label: 'Has Products' },
+                                { key: 'service' as const, label: 'Has Services' },
+                            ].map((tab) => (
+                                <DropdownMenuItem key={tab.key} onClick={() => setItemTypeFilter(tab.key)}>
+                                    <span className="flex-1">{tab.label}</span>
+                                    {itemTypeFilter === tab.key && <span className="text-primary">✓</span>}
                                 </DropdownMenuItem>
                             ))}
                         </DropdownMenuContent>

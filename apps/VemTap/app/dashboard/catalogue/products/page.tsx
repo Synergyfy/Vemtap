@@ -9,6 +9,7 @@ import { useCatalogueItems, useDeleteCatalogueItem, CatalogueItem } from '@/serv
 import { useActiveBranch } from '@/hooks/useActiveBranch';
 import toast from 'react-hot-toast';
 import ProductModal from '@/components/dashboard/catalogue/ProductModal';
+import ServiceForm from '@/components/dashboard/catalogue/ServiceForm';
 import AddProductMethodModal from '@/components/dashboard/catalogue/AddProductMethodModal';
 import PageLockWrapper from '@/components/dashboard/PageLockWrapper';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -55,6 +56,9 @@ export default function ProductsPage() {
     const handleEdit = (e: React.MouseEvent, item: CatalogueItem) => {
         e.stopPropagation();
         setSelectedProduct(item);
+        if (item.itemType === 'service') {
+            setActiveTab('services');
+        }
         setIsModalOpen(true);
     };
 
@@ -382,13 +386,22 @@ export default function ProductsPage() {
                     onClose={() => setIsMethodOpen(false)}
                 />
 
-                <ProductModal
-                    isOpen={isModalOpen}
-                    onClose={() => setIsModalOpen(false)}
-                    product={selectedProduct}
-                    activeBranchId={activeBranchId || undefined}
-                    itemType={activeTab === 'services' ? 'service' : 'product'}
-                />
+                {activeTab === 'services' ? (
+                    <ServiceForm
+                        isOpen={isModalOpen}
+                        onClose={() => setIsModalOpen(false)}
+                        service={selectedProduct}
+                        activeBranchId={activeBranchId || undefined}
+                    />
+                ) : (
+                    <ProductModal
+                        isOpen={isModalOpen}
+                        onClose={() => setIsModalOpen(false)}
+                        product={selectedProduct}
+                        activeBranchId={activeBranchId || undefined}
+                        itemType="product"
+                    />
+                )}
             </div>
         </PageLockWrapper>
     );

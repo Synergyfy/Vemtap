@@ -428,7 +428,7 @@ export default function ProductModal({ isOpen, onClose, product, activeBranchId,
             const submissionData = {
                 ...restValues,
                 shortDescription: restValues.description?.slice(0, 200) || '',
-                itemType: itemType as const,
+                itemType: itemType as 'product' | 'service',
                 mainImage: mainImageUrl,
                 galleryImages: finalGalleryUrls,
                 loyaltyPoints: restValues.enableLoyaltyPoints ? (restValues.loyaltyPointsValue || 0) : 0,
