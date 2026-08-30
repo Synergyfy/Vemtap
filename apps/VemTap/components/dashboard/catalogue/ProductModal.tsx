@@ -15,7 +15,7 @@ import {
 } from '@/services/catalogue/hooks';
 
 import toast from 'react-hot-toast';
-import { Loader2, Save, Plus, Trash2, Image as ImageIcon, X, Tag, Percent, Coins, ChevronRight, ChevronLeft, Check } from 'lucide-react';
+import { Loader2, Save, Plus, Trash2, Image as ImageIcon, X, Tag, Percent, Coins, ChevronRight, ChevronLeft, Check, Flame } from 'lucide-react';
 import { uploadToCloudinary } from '@/lib/cloudinary';
 import { generateBarcodeValue, isValidBarcode } from '@/lib/barcode';
 import { cn } from '@/lib/utils';
@@ -23,6 +23,7 @@ import Cropper, { Point, Area } from 'react-easy-crop';
 import { getCroppedImg } from '@/lib/image-utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Switch } from '@/components/ui/switch';
+import MakeDealFlow from './MakeDealFlow';
 
 const CropperModal: React.FC<{
     image: string;
@@ -174,6 +175,9 @@ export default function ProductModal({ isOpen, onClose, product, activeBranchId,
     const dimUnits = ['cm', 'm', 'in', 'ft'];
     const [showWeight, setShowWeight] = useState(false);
     const [showDimensions, setShowDimensions] = useState(false);
+    const [showSuccess, setShowSuccess] = useState(false);
+    const [createdProduct, setCreatedProduct] = useState<CatalogueItem | null>(null);
+    const [showMakeDeal, setShowMakeDeal] = useState(false);
 
     const mainInputRef = useRef<HTMLInputElement>(null);
     const galleryInputRef = useRef<HTMLInputElement>(null);
@@ -440,11 +444,13 @@ export default function ProductModal({ isOpen, onClose, product, activeBranchId,
                     data: { ...submissionData, applyGlobally } as any
                 });
                 toast.success('Product updated successfully');
+                onClose();
             } else {
-                await createMutation.mutateAsync(submissionData as any);
+                const result = await createMutation.mutateAsync(submissionData as any);
                 toast.success('Product created successfully');
+                setCreatedProduct(result as CatalogueItem);
+                setShowSuccess(true);
             }
-            onClose();
         } catch (error: any) {
             if (toastId) toast.dismiss(toastId);
             toast.error(error.message || 'An error occurred');
@@ -465,8 +471,64 @@ export default function ProductModal({ isOpen, onClose, product, activeBranchId,
                 )}
             </AnimatePresence>
 
+            {/* Success Screen with Make Deal CTA */}
+            <AnimatePresence>
+                {showSuccess && createdProduct && (
+                    <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
+                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => { setShowSuccess(false); onClose(); }} className="absolute inset-0 bg-black/50" />
+                        <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="bg-white w-full max-w-md rounded-3xl overflow-hidden relative shadow-2xl z-10">
+                            <div className="p-8 text-center">
+                                <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                    <Check size={32} className="text-emerald-600" />
+                                </div>
+                                <h3 className="text-xl font-bold text-slate-900 mb-2">Product Created!</h3>
+                                <p className="text-sm text-slate-500 mb-6">{createdProduct.name} has been added to your catalogue.</p>
+                                
+                                <div className="p-4 bg-amber-50 rounded-xl border border-amber-200 mb-6 text-left">
+                                    <div className="flex items-start gap-3">
+                                        <Flame size={20} className="text-amber-600 mt-0.5" />
+                                        <div>
+                                            <p className="text-sm font-bold text-amber-800">Want to attract nearby customers?</p>
+                                            <p className="text-xs text-amber-600 mt-1">
+                                                Turn this product into a <strong>Deal</strong> — a special offer we show to people around your location.
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="flex gap-3">
+                                    <button
+                                        onClick={() => { setShowSuccess(false); onClose(); }}
+                                        className="flex-1 py-3 bg-slate-100 text-slate-600 font-semibold text-sm rounded-xl hover:bg-slate-200 transition-all"
+                                    >
+                                        Done
+                                    </button>
+                                    <button
+                                        onClick={() => { setShowSuccess(false); setShowMakeDeal(true); }}
+                                        className="flex-[2] py-3 bg-gradient-to-r from-amber-500 to-orange-500 text-white font-semibold text-sm rounded-xl shadow-lg shadow-amber-500/20 hover:shadow-xl transition-all flex items-center justify-center gap-2"
+                                    >
+                                        <Flame size={16} />
+                                        Make this a Deal
+                                    </button>
+                                </div>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
+
+            {/* Make Deal Flow */}
+            {showMakeDeal && createdProduct && (
+                <MakeDealFlow
+                    isOpen={showMakeDeal}
+                    onClose={() => { setShowMakeDeal(false); onClose(); }}
+                    product={createdProduct}
+                    activeBranchId={activeBranchId || undefined}
+                />
+            )}
+
             <Modal
-                isOpen={isOpen}
+                isOpen={isOpen && !showSuccess}
                 onClose={onClose}
                 title={product ? `Edit ${itemType === 'service' ? 'Service' : 'Product'}` : `Add ${itemType === 'service' ? 'Service' : 'Product'}`}
                 size="2xl"

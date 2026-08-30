@@ -1,16 +1,17 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import PageHeader from '@/components/dashboard/PageHeader';
 import DataTable, { Column } from '@/components/dashboard/DataTable';
 import EmptyState from '@/components/dashboard/EmptyState';
-import { Plus, Edit2, Trash2, Search, ShoppingBag, Eye, Coins, MoreVertical, ChevronLeft, ChevronRight, AlertCircle } from 'lucide-react';
-import { useCatalogueItems, useDeleteCatalogueItem, CatalogueItem } from '@/services/catalogue/hooks';
+import { Plus, Edit2, Trash2, Search, ShoppingBag, Eye, Coins, MoreVertical, ChevronLeft, ChevronRight, AlertCircle, Flame } from 'lucide-react';
+import { useCatalogueItems, useDeleteCatalogueItem, CatalogueItem, useCatalogueOffersAdmin } from '@/services/catalogue/hooks';
 import { useActiveBranch } from '@/hooks/useActiveBranch';
 import toast from 'react-hot-toast';
 import ProductModal from '@/components/dashboard/catalogue/ProductModal';
 import ServiceForm from '@/components/dashboard/catalogue/ServiceForm';
 import AddProductMethodModal from '@/components/dashboard/catalogue/AddProductMethodModal';
+import MakeDealFlow from '@/components/dashboard/catalogue/MakeDealFlow';
 import PageLockWrapper from '@/components/dashboard/PageLockWrapper';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { cn } from '@/lib/utils';
@@ -29,11 +30,34 @@ export default function ProductsPage() {
         branchId: activeBranchId || undefined 
     });
 
+    const { data: offers = [] } = useCatalogueOffersAdmin({ 
+        branchId: activeBranchId || undefined 
+    });
+
     const deleteMutation = useDeleteCatalogueItem();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isMethodOpen, setIsMethodOpen] = useState(false);
     const [selectedProduct, setSelectedProduct] = useState<CatalogueItem | null>(null);
+    const [makeDealProduct, setMakeDealProduct] = useState<CatalogueItem | null>(null);
     const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+
+    // Build a map of product ID -> active deals for deal status display
+    const productDealMap = useMemo(() => {
+        const map = new Map<string, { count: number; hasActive: boolean; deal?: any }>();
+        for (const offer of offers) {
+            if (!offer.items) continue;
+            for (const item of offer.items) {
+                const existing = map.get(item.id) || { count: 0, hasActive: false };
+                const isActive = offer.status === 'active' && (!offer.endDate || new Date(offer.endDate) > new Date());
+                map.set(item.id, {
+                    count: existing.count + 1,
+                    hasActive: existing.hasActive || isActive,
+                    deal: isActive ? offer : existing.deal,
+                });
+            }
+        }
+        return map;
+    }, [offers]);
 
     useEffect(() => {
         if (searchParams?.get('action') === 'add' || searchParams?.get('add') === 'true') {
@@ -219,6 +243,31 @@ export default function ProductsPage() {
             }
         },
         {
+            header: 'Deal',
+            accessor: (item: CatalogueItem) => {
+                const dealInfo = productDealMap.get(item.id);
+                if (!dealInfo || dealInfo.count === 0) {
+                    return <span className="text-[10px] text-slate-400 font-medium">—</span>;
+                }
+                if (dealInfo.hasActive) {
+                    return (
+                        <button
+                            onClick={(e) => { e.stopPropagation(); setMakeDealProduct(item); }}
+                            className="flex items-center gap-1 px-2 py-1 bg-amber-50 text-amber-700 rounded-lg text-[10px] font-bold uppercase tracking-wider hover:bg-amber-100 transition-colors cursor-pointer"
+                        >
+                            <Flame size={10} />
+                            Active Deal
+                        </button>
+                    );
+                }
+                return (
+                    <span className="flex items-center gap-1 px-2 py-1 bg-slate-100 text-slate-500 rounded-lg text-[10px] font-bold uppercase tracking-wider">
+                        {dealInfo.count} Paused
+                    </span>
+                );
+            }
+        },
+        {
             header: 'Status',
             accessor: (item: CatalogueItem) => getStatusBadge(item.status)
         },
@@ -250,6 +299,13 @@ export default function ProductsPage() {
                             >
                                 <Edit2 size={14} />
                                 Edit
+                            </button>
+                            <button
+                                onClick={() => { setMakeDealProduct(item); setOpenMenuId(null); }}
+                                className="w-full flex items-center gap-2.5 px-4 py-2.5 text-xs font-bold text-amber-600 hover:bg-amber-50 transition-colors text-left"
+                            >
+                                <Flame size={14} />
+                                Make Deal
                             </button>
                             <button
                                 onClick={(e) => { handleDelete(e, item); setOpenMenuId(null); }}
@@ -400,6 +456,15 @@ export default function ProductsPage() {
                         product={selectedProduct}
                         activeBranchId={activeBranchId || undefined}
                         itemType="product"
+                    />
+                )}
+
+                {makeDealProduct && (
+                    <MakeDealFlow
+                        isOpen={!!makeDealProduct}
+                        onClose={() => setMakeDealProduct(null)}
+                        product={makeDealProduct}
+                        activeBranchId={activeBranchId || undefined}
                     />
                 )}
             </div>

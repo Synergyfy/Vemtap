@@ -2,7 +2,7 @@
 
 import React, { useState, useRef } from 'react';
 import {
-    Tag, Plus, X, CheckCircle2, ArrowRight, Search, ChevronRight, Loader2, Trash2, Clock, Sparkles, Image as ImageIcon, AlertCircle, RefreshCw, Users, BadgeCheck,
+    Tag, Plus, X, CheckCircle2, ArrowRight, Search, ChevronRight, Loader2, Trash2, Clock, Sparkles, Image as ImageIcon, AlertCircle, RefreshCw, Users, BadgeCheck, ShoppingBag, Flame,
 } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
@@ -12,6 +12,7 @@ import { cn } from '@/lib/utils';
 import { useActiveBranch } from '@/hooks/useActiveBranch';
 import { useBranches } from '@/services/branches/hooks';
 import { useCatalogueOffersAdmin, useUpdateCatalogueOffer, useDeleteCatalogueOffer, useCreateCatalogueOffer, useCatalogueItems } from '@/services/catalogue/hooks';
+import type { CatalogueItem } from '@/services/catalogue/hooks';
 import { useGenerateDealTerms } from '@/services/deals/hooks';
 import { getPromoDaysLeft } from '@/lib/mock/promotions';
 import type { CatalogueOffer } from '@/services/catalogue/hooks';
@@ -19,6 +20,8 @@ import { uploadToCloudinary } from '@/lib/cloudinary';
 import PartnershipVerificationGuard from '@/components/dashboard/partnership/PartnershipVerificationGuard';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import DealEngagementBadge from '@/components/deals/DealEngagementBadge';
+import MakeDealFlow from '@/components/dashboard/catalogue/MakeDealFlow';
+import { motion } from 'framer-motion';
 
 const DeliveryRadiusMap = dynamic(() => import('@/components/dashboard/discovery/DeliveryRadiusMap'), { ssr: false });
 
@@ -68,6 +71,7 @@ function EmptyState({ icon: Icon, title, description }: { icon: React.ElementTyp
 export default function DealsPage() {
     const [isCreatingPromo, setIsCreatingPromo] = useState(false);
     const [editingPromo, setEditingPromo] = useState<CatalogueOffer | null>(null);
+    const [importProduct, setImportProduct] = useState<CatalogueItem | null>(null);
     const { activeBranchId, isAllBranches } = useActiveBranch();
 
     return (
@@ -98,23 +102,36 @@ export default function DealsPage() {
                                 branchId={activeBranchId!}
                                 onCreatePromo={() => setIsCreatingPromo(true)}
                                 onEditPromo={(promo) => { setEditingPromo(promo); setIsCreatingPromo(true); }}
+                                onImportProduct={(product) => setImportProduct(product)}
                             />
                         )}
                     </>
                 ) : (
                     <CreatePromotionFlow branchId={activeBranchId!} editPromo={editingPromo} onCancel={() => { setIsCreatingPromo(false); setEditingPromo(null); }} />
                 )}
+
+                {importProduct && (
+                    <MakeDealFlow
+                        isOpen={!!importProduct}
+                        onClose={() => setImportProduct(null)}
+                        product={importProduct}
+                        activeBranchId={activeBranchId || undefined}
+                    />
+                )}
             </div>
         </PartnershipVerificationGuard>
     );
 }
 
-function PromotionsTab({ branchId, onCreatePromo, onEditPromo }: { branchId: string; onCreatePromo: () => void; onEditPromo: (promo: CatalogueOffer) => void }) {
+function PromotionsTab({ branchId, onCreatePromo, onEditPromo, onImportProduct }: { branchId: string; onCreatePromo: () => void; onEditPromo: (promo: CatalogueOffer) => void; onImportProduct: (product: CatalogueItem) => void }) {
     const { data: promotions, isLoading, isError, error, refetch } = useCatalogueOffersAdmin({ branchId });
+    const { data: catalogueItems = [] } = useCatalogueItems({ branchId });
     const updateOffer = useUpdateCatalogueOffer();
     const deleteOffer = useDeleteCatalogueOffer();
     const [statusFilter, setStatusFilter] = useState<'active' | 'all' | 'expired' | 'inactive'>('active');
     const [itemTypeFilter, setItemTypeFilter] = useState<'all' | 'product' | 'service'>('all');
+    const [showImportModal, setShowImportModal] = useState(false);
+    const [importSearch, setImportSearch] = useState('');
 
     const isExpired = (promo: CatalogueOffer) => {
         if (!promo.endDate) return false;
@@ -202,9 +219,18 @@ function PromotionsTab({ branchId, onCreatePromo, onEditPromo }: { branchId: str
         <div className="space-y-4 md:space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div className="flex items-center justify-between">
                 <h3 className="text-lg md:text-xl font-semibold text-gray-800">My Deals</h3>
-                <Button onClick={onCreatePromo} className="rounded-full font-bold gap-1.5 md:gap-2 text-xs md:text-sm h-9 md:h-10 px-3 md:px-4">
-                    <Plus size={14} /> <span className="hidden sm:inline">Create Deal</span><span className="sm:hidden">New</span>
-                </Button>
+                <div className="flex items-center gap-2">
+                    <Button 
+                        onClick={() => setShowImportModal(true)} 
+                        variant="outline"
+                        className="rounded-full font-bold gap-1.5 md:gap-2 text-xs md:text-sm h-9 md:h-10 px-3 md:px-4 border-amber-300 text-amber-700 hover:bg-amber-50"
+                    >
+                        <Flame size={14} /> <span className="hidden sm:inline">Import Product</span><span className="sm:hidden">Import</span>
+                    </Button>
+                    <Button onClick={onCreatePromo} className="rounded-full font-bold gap-1.5 md:gap-2 text-xs md:text-sm h-9 md:h-10 px-3 md:px-4">
+                        <Plus size={14} /> <span className="hidden sm:inline">Create Deal</span><span className="sm:hidden">New</span>
+                    </Button>
+                </div>
             </div>
 
             {promotions && promotions.length > 0 && (
@@ -441,6 +467,73 @@ function PromotionsTab({ branchId, onCreatePromo, onEditPromo }: { branchId: str
                             </div>
                         );
                     })}
+                </div>
+            )}
+
+            {/* Import Product Modal */}
+            {showImportModal && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowImportModal(false)} className="absolute inset-0 bg-black/50" />
+                    <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-white w-full max-w-lg rounded-3xl overflow-hidden relative shadow-2xl z-10">
+                        <div className="p-6 border-b border-slate-100">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <h3 className="text-lg font-bold text-slate-900">Import a Product</h3>
+                                    <p className="text-xs text-slate-500 mt-1">Select a product to turn into a deal</p>
+                                </div>
+                                <button onClick={() => setShowImportModal(false)} className="p-2 hover:bg-slate-100 rounded-xl transition-all">
+                                    <X size={20} />
+                                </button>
+                            </div>
+                        </div>
+                        <div className="p-4">
+                            <div className="relative mb-4">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                                <input
+                                    type="text"
+                                    value={importSearch}
+                                    onChange={(e) => setImportSearch(e.target.value)}
+                                    placeholder="Search products..."
+                                    className="w-full h-10 pl-10 pr-4 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-primary/20 outline-none"
+                                />
+                            </div>
+                            <div className="max-h-80 overflow-y-auto space-y-2">
+                                {catalogueItems
+                                    .filter(item => (item.itemType || 'product') === 'product')
+                                    .filter(item => item.name.toLowerCase().includes(importSearch.toLowerCase()))
+                                    .map(item => (
+                                        <button
+                                            key={item.id}
+                                            type="button"
+                                            onClick={() => {
+                                                onImportProduct(item);
+                                                setShowImportModal(false);
+                                            }}
+                                            className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 transition-all text-left"
+                                        >
+                                            <div className="w-12 h-12 rounded-lg bg-slate-100 overflow-hidden flex items-center justify-center shrink-0">
+                                                {item.mainImage ? (
+                                                    <img src={item.mainImage} alt={item.name} className="w-full h-full object-cover" />
+                                                ) : (
+                                                    <ShoppingBag size={18} className="text-slate-300" />
+                                                )}
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <p className="text-sm font-bold text-slate-900 truncate">{item.name}</p>
+                                                <p className="text-xs text-slate-500">₦{Number(item.price).toLocaleString()}</p>
+                                            </div>
+                                            <Flame size={16} className="text-amber-500" />
+                                        </button>
+                                    ))}
+                                {catalogueItems.filter(item => (item.itemType || 'product') === 'product').length === 0 && (
+                                    <div className="py-8 text-center text-slate-400">
+                                        <ShoppingBag size={24} className="mx-auto mb-2" />
+                                        <p className="text-sm">No products found. Add products first.</p>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </motion.div>
                 </div>
             )}
         </div>
