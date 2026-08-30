@@ -158,17 +158,17 @@ export default function MakeDealFlow({ isOpen, onClose, product, activeBranchId 
 
             const payload = {
                 name: dealTitle,
-                description: dealDescription,
+                description: dealDescription || `${dealTitle} - Limited time offer`,
                 pricingType: getPricingType(),
                 branchId: activeBranchId || '',
                 itemIds: [product.id],
                 mainImage: finalImageUrl,
+                offerType: dealType,
                 discountValue: dealType === 'discount' || dealType === 'flash' ? discountValue : undefined,
                 fixedPrice: dealType === 'special' ? dealPrice : undefined,
                 terms,
                 startDate: startDate || undefined,
                 endDate: endDate || undefined,
-                status: 'active' as const,
                 audience: 'both',
             };
 
