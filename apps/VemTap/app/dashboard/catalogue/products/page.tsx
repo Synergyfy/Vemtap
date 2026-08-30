@@ -67,7 +67,12 @@ export default function ProductsPage() {
 
     useEffect(() => {
         if (!openMenuId) return;
-        const handler = () => setOpenMenuId(null);
+        const handler = (e: MouseEvent) => {
+            const target = e.target as HTMLElement;
+            if (!target.closest('[data-menu-dropdown]')) {
+                setOpenMenuId(null);
+            }
+        };
         document.addEventListener('mousedown', handler);
         return () => document.removeEventListener('mousedown', handler);
     }, [openMenuId]);
@@ -283,6 +288,7 @@ export default function ProductsPage() {
                     </button>
                     {openMenuId === item.id && (
                         <div
+                            data-menu-dropdown
                             className="absolute right-0 top-full mt-1 bg-white rounded-xl border border-slate-100 shadow-xl z-50 py-1 min-w-[140px] overflow-hidden"
                             onMouseDown={(e) => e.stopPropagation()}
                         >
