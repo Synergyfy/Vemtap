@@ -91,12 +91,25 @@ export class CatalogueOfferService {
     if (!branch)
       throw new BadRequestException('Branch not found or unauthorized');
 
+    const itemIds =
+      dto.itemIds && dto.itemIds.length > 0
+        ? dto.itemIds
+        : dto.sourceProductId
+          ? [dto.sourceProductId]
+          : [];
+
+    if (itemIds.length === 0) {
+      throw new BadRequestException(
+        'Please select at least one catalogue item for this offer',
+      );
+    }
+
     const items = await this.itemRepository.find({
-      where: { id: In(dto.itemIds), businessId },
+      where: { id: In(itemIds), businessId },
       relations: ['branches'],
     });
 
-    if (items.length !== dto.itemIds.length) {
+    if (items.length !== itemIds.length) {
       throw new BadRequestException('Some items not found');
     }
 
@@ -111,6 +124,8 @@ export class CatalogueOfferService {
 
     const offer = this.offerRepository.create({
       ...dto,
+      sourceProductId:
+        dto.sourceProductId || (items.length === 1 ? items[0].id : null),
       businessId,
       items,
     });
@@ -137,7 +152,7 @@ export class CatalogueOfferService {
   ) {
     const offer = await this.offerRepository.findOne({
       where: { id, businessId },
-      relations: ['items', 'items.branches'],
+      relations: ['items', 'items.branches', 'sourceProduct'],
     });
     if (!offer) throw new NotFoundException('Offer not found');
 
@@ -158,6 +173,10 @@ export class CatalogueOfferService {
         }
       }
       offer.items = items;
+    }
+
+    if (dto.sourceProductId !== undefined) {
+      offer.sourceProductId = dto.sourceProductId || null;
     }
 
     if (dto.mainImage) offer.mainImage = dto.mainImage;
@@ -237,7 +256,7 @@ export class CatalogueOfferService {
     if (branchId) where.branchId = branchId;
     const offers = await this.offerRepository.find({
       where,
-      relations: ['items', 'branch', 'reward'],
+      relations: ['items', 'branch', 'reward', 'sourceProduct'],
       order: { createdAt: 'DESC' },
     });
     // Map offers to include computed fields
@@ -534,7 +553,13 @@ export class CatalogueOfferService {
     if (branchId) where.branchId = branchId;
     const offer = await this.offerRepository.findOne({
       where,
-      relations: ['items', 'reward', 'branch', 'branch.business'],
+      relations: [
+        'items',
+        'reward',
+        'branch',
+        'branch.business',
+        'sourceProduct',
+      ],
     });
     if (!offer) throw new NotFoundException('Offer not found');
 
@@ -583,6 +608,15 @@ export class CatalogueOfferService {
       ],
       longDescription: offer.description,
       claimCodePrefix: offer.claimCodePrefix,
+      sourceProductId: offer.sourceProductId || null,
+      sourceProduct: offer.sourceProduct
+        ? {
+            id: offer.sourceProduct.id,
+            name: offer.sourceProduct.name,
+            itemType: offer.sourceProduct.itemType,
+            price: offer.sourceProduct.price,
+          }
+        : null,
     };
 
     try {
@@ -603,18 +637,41 @@ export class CatalogueOfferService {
     });
   }
 
-  private calculatePrice(offer: CatalogueOffer, items: CatalogueItem[]) {
-    const sum = items.reduce((acc, item) => acc + Number(item.price), 0);
+  private calculatePrice(
+    offer: CatalogueOffer,
+    items: CatalogueItem[] = [],
+  ): number {
+    const sum = items.reduce((acc, item) => acc + Number(item.price || 0), 0);
     switch (offer.pricingType) {
       case CatalogueOfferPricingType.SUM:
-        return sum;
-      case CatalogueOfferPricingType.PERCENTAGE_DISCOUNT:
+        return Math.max(0, sum);
+      case CatalogueOfferPricingType.PERCENTAGE_DISCOUNT: {
         const discountValue = Number(offer.discountValue || 0);
-        return sum * (1 - discountValue / 100);
-      case CatalogueOfferPricingType.FIXED_DISCOUNT_PRICE:
-        return Number(offer.fixedPrice || sum);
+        if (discountValue > 100) {
+          // Defensive fallback: flat Naira amount sent instead of percentage
+          return Math.max(0, sum - discountValue);
+        }
+        return Math.max(0, sum * (1 - discountValue / 100));
+      }
+      case CatalogueOfferPricingType.FIXED_DISCOUNT_AMOUNT: {
+        const discountValue = Number(offer.discountValue || 0);
+        return Math.max(0, sum - discountValue);
+      }
+      case CatalogueOfferPricingType.FIXED_DISCOUNT_PRICE: {
+        if (offer.fixedPrice !== null && offer.fixedPrice !== undefined) {
+          return Math.max(0, Number(offer.fixedPrice));
+        }
+        if (
+          offer.discountValue !== null &&
+          offer.discountValue !== undefined &&
+          Number(offer.discountValue) > 0
+        ) {
+          return Math.max(0, sum - Number(offer.discountValue));
+        }
+        return Math.max(0, sum);
+      }
       default:
-        return sum;
+        return Math.max(0, sum);
     }
   }
 
@@ -975,7 +1032,8 @@ export class CatalogueOfferService {
       .createQueryBuilder('offer')
       .leftJoinAndSelect('offer.business', 'business')
       .leftJoinAndSelect('offer.branch', 'branch')
-      .leftJoinAndSelect('offer.items', 'items');
+      .leftJoinAndSelect('offer.items', 'items')
+      .leftJoinAndSelect('offer.sourceProduct', 'sourceProduct');
 
     // Search by deal name or business name
     if (query.search && query.search.trim()) {
@@ -1160,6 +1218,11 @@ export class CatalogueOfferService {
         offer.pricingType === CatalogueOfferPricingType.FIXED_DISCOUNT_PRICE
       ) {
         discount = Math.max(0, originalPrice - dealPrice);
+      } else if (
+        offer.pricingType === CatalogueOfferPricingType.FIXED_DISCOUNT_AMOUNT
+      ) {
+        discount =
+          Number(offer.discountValue) || Math.max(0, originalPrice - dealPrice);
       }
 
       return {
@@ -1170,6 +1233,15 @@ export class CatalogueOfferService {
         mainImage: offer.mainImage,
         galleryImages: offer.galleryImages || [],
         status: computedStatus,
+        sourceProductId: offer.sourceProductId || null,
+        sourceProduct: offer.sourceProduct
+          ? {
+              id: offer.sourceProduct.id,
+              name: offer.sourceProduct.name,
+              itemType: offer.sourceProduct.itemType,
+              price: offer.sourceProduct.price,
+            }
+          : null,
         pricing: {
           pricingType: offer.pricingType,
           originalPrice: originalPrice > 0 ? originalPrice : dealPrice,

@@ -53,9 +53,9 @@ export class CustomerMessagingController {
   })
   async getThreads(
     @Request() req: { user: User },
-    @Query() filter: BranchFilterDto,
+    @Query() filter?: BranchFilterDto,
   ) {
-    if (filter.branchId) {
+    if (filter?.branchId) {
       await this.inboxService.findOrCreateCustomerThread(req.user.id, filter.branchId);
     }
     return this.inboxService.getCustomerThreads(req.user.id);

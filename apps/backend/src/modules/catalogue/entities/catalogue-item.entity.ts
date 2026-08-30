@@ -27,6 +27,27 @@ export enum CatalogueItemType {
   SERVICE = 'service',
 }
 
+export enum ServicePriceType {
+  FIXED = 'fixed',
+  STARTING_FROM = 'starting_from',
+  RANGE = 'range',
+  CONTACT = 'contact',
+}
+
+export enum ServiceMode {
+  LOCATION = 'location',
+  CUSTOMER = 'customer',
+  ONLINE = 'online',
+  FLEXIBLE = 'flexible',
+}
+
+export enum ServiceBookingMethod {
+  VEMTAP = 'vemtap',
+  CALL = 'call',
+  WHATSAPP = 'whatsapp',
+  EXTERNAL = 'external',
+}
+
 export enum DiscountType {
   PERCENTAGE = 'percentage',
   FIXED = 'fixed',
@@ -206,6 +227,81 @@ export class CatalogueItem extends AbstractBaseEntity {
   @ApiProperty({ example: 'Policy violation', nullable: true })
   @Column({ type: 'text', nullable: true })
   suspensionNote: string | null;
+
+  @ApiProperty({
+    enum: ServicePriceType,
+    example: ServicePriceType.FIXED,
+  })
+  @Column({
+    type: 'enum',
+    enum: ServicePriceType,
+    default: ServicePriceType.FIXED,
+  })
+  priceType: ServicePriceType;
+
+  @ApiProperty({ example: 5000, nullable: true })
+  @Column({
+    type: 'decimal',
+    precision: 12,
+    scale: 2,
+    nullable: true,
+    transformer: {
+      to: (v: number | null) => v,
+      from: (v: string | null) => (v != null ? parseFloat(v) : null),
+    },
+  })
+  priceRangeMin: number | null;
+
+  @ApiProperty({ example: 15000, nullable: true })
+  @Column({
+    type: 'decimal',
+    precision: 12,
+    scale: 2,
+    nullable: true,
+    transformer: {
+      to: (v: number | null) => v,
+      from: (v: string | null) => (v != null ? parseFloat(v) : null),
+    },
+  })
+  priceRangeMax: number | null;
+
+  @ApiProperty({ example: '45 mins', nullable: true })
+  @Column({ type: 'varchar', length: 50, nullable: true })
+  duration: string | null;
+
+  @ApiProperty({
+    enum: ServiceMode,
+    example: ServiceMode.LOCATION,
+  })
+  @Column({
+    type: 'enum',
+    enum: ServiceMode,
+    default: ServiceMode.LOCATION,
+  })
+  serviceMode: ServiceMode;
+
+  @ApiProperty({ example: false })
+  @Column({ default: false })
+  isBookable: boolean;
+
+  @ApiProperty({
+    enum: ServiceBookingMethod,
+    example: ServiceBookingMethod.VEMTAP,
+    nullable: true,
+  })
+  @Column({
+    type: 'enum',
+    enum: ServiceBookingMethod,
+    nullable: true,
+  })
+  bookingMethod: ServiceBookingMethod | null;
+
+  @ApiProperty({
+    example: 'https://calendly.com/my-booking',
+    nullable: true,
+  })
+  @Column({ type: 'varchar', length: 500, nullable: true })
+  externalBookingLink: string | null;
 
   @ManyToMany(() => Branch, { cascade: true })
   @JoinTable({

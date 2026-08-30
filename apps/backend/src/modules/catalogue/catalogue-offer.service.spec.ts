@@ -206,6 +206,112 @@ describe('CatalogueOfferService', () => {
       ]);
     });
 
+    it('should create an offer from sourceProductId without requiring explicit itemIds', async () => {
+      const createDto = {
+        name: 'Product Deal',
+        description: '',
+        sourceProductId: 'prod-123',
+        pricingType: CatalogueOfferPricingType.FIXED_DISCOUNT_AMOUNT,
+        discountValue: 500,
+        branchId: 'branch-1',
+      };
+
+      branchRepo.findOne.mockResolvedValue({
+        id: 'branch-1',
+        businessId: 'biz-1',
+      });
+      itemRepo.find.mockResolvedValue([
+        { id: 'prod-123', name: 'Nike Shoes', branches: [{ id: 'branch-1' }], price: 2000 },
+      ]);
+      offerRepo.create = jest.fn().mockImplementation((dto) => dto);
+      offerRepo.save = jest.fn().mockImplementation((dto) => Promise.resolve({ id: 'deal-created', ...dto }));
+
+      const result = await service.createOffer(createDto as any, 'biz-1');
+      expect(result.sourceProductId).toBe('prod-123');
+      expect(result.calculatedPrice).toBe(1500);
+      expect(result.description).toBe('');
+    });
+
+    it('should calculate correct price for FIXED_DISCOUNT_PRICE when fixedPrice is provided', async () => {
+      const createDto = {
+        name: 'Fixed Price Deal',
+        pricingType: CatalogueOfferPricingType.FIXED_DISCOUNT_PRICE,
+        fixedPrice: 1200,
+        branchId: 'branch-1',
+        itemIds: ['item-1'],
+      };
+
+      branchRepo.findOne.mockResolvedValue({
+        id: 'branch-1',
+        businessId: 'biz-1',
+      });
+      itemRepo.find.mockResolvedValue([
+        { id: 'item-1', name: 'Meal', branches: [{ id: 'branch-1' }], price: 2000 },
+      ]);
+      offerRepo.create = jest.fn().mockImplementation((dto) => dto);
+      offerRepo.save = jest.fn().mockImplementation((dto) => Promise.resolve({ id: 'deal-created', ...dto }));
+
+      const result = await service.createOffer(createDto as any, 'biz-1');
+      expect(result.calculatedPrice).toBe(1200);
+    });
+
+    it('should calculate correct price for FIXED_DISCOUNT_PRICE when fixedPrice is omitted but discountValue is provided', async () => {
+      const createDto = {
+        name: 'Fixed Discount Deal',
+        pricingType: CatalogueOfferPricingType.FIXED_DISCOUNT_PRICE,
+        discountValue: 400,
+        branchId: 'branch-1',
+        itemIds: ['item-1'],
+      };
+
+      branchRepo.findOne.mockResolvedValue({
+        id: 'branch-1',
+        businessId: 'biz-1',
+      });
+      itemRepo.find.mockResolvedValue([
+        { id: 'item-1', name: 'Meal', branches: [{ id: 'branch-1' }], price: 2000 },
+      ]);
+      offerRepo.create = jest.fn().mockImplementation((dto) => dto);
+      offerRepo.save = jest.fn().mockImplementation((dto) => Promise.resolve({ id: 'deal-created', ...dto }));
+
+      const result = await service.createOffer(createDto as any, 'biz-1');
+      expect(result.calculatedPrice).toBe(1600);
+    });
+
+    it('should handle percentage discount and defensively handle flat amount > 100 sent as discountValue without negative numbers', async () => {
+      const normalPercentDto = {
+        name: '20% Deal',
+        pricingType: CatalogueOfferPricingType.PERCENTAGE_DISCOUNT,
+        discountValue: 20,
+        branchId: 'branch-1',
+        itemIds: ['item-1'],
+      };
+
+      branchRepo.findOne.mockResolvedValue({
+        id: 'branch-1',
+        businessId: 'biz-1',
+      });
+      itemRepo.find.mockResolvedValue([
+        { id: 'item-1', name: 'Item', branches: [{ id: 'branch-1' }], price: 2000 },
+      ]);
+      offerRepo.create = jest.fn().mockImplementation((dto) => dto);
+      offerRepo.save = jest.fn().mockImplementation((dto) => Promise.resolve({ id: 'deal-created', ...dto }));
+
+      const resultNormal = await service.createOffer(normalPercentDto as any, 'biz-1');
+      expect(resultNormal.calculatedPrice).toBe(1600);
+
+      // Defensively test flat Naira amount (e.g. ₦500) mistakenly sent under percentage_discount
+      const flatAmountMistakeDto = {
+        name: 'Mistake Naira Deal',
+        pricingType: CatalogueOfferPricingType.PERCENTAGE_DISCOUNT,
+        discountValue: 500,
+        branchId: 'branch-1',
+        itemIds: ['item-1'],
+      };
+      const resultFlat = await service.createOffer(flatAmountMistakeDto as any, 'biz-1');
+      expect(resultFlat.calculatedPrice).toBe(1500); // 2000 - 500, never -8000
+    });
+
     it('should throw ForbiddenException if catalogue disabled', async () => {
       subscriptionsService.getCapabilities = jest.fn().mockResolvedValue({
         capabilities: { catalogueOffers: { enabled: false } },
