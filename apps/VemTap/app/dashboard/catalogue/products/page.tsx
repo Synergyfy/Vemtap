@@ -21,6 +21,7 @@ export default function ProductsPage() {
     const [searchQuery, setSearchQuery] = useState('');
     const [activeCategory, setActiveCategory] = useState<string>('all');
     const [page, setPage] = useState(1);
+    const [activeTab, setActiveTab] = useState<'products' | 'services'>('products');
     const perPage = 10;
     
     const { data: items = [], isLoading } = useCatalogueItems({ 
@@ -73,7 +74,12 @@ export default function ProductsPage() {
     };
 
     const handleAdd = () => {
-        setIsMethodOpen(true);
+        if (activeTab === 'services') {
+            setSelectedProduct(null);
+            setIsModalOpen(true);
+        } else {
+            setIsMethodOpen(true);
+        }
     };
 
     const handleSelectMethod = (method: 'manual' | 'bulk' | 'barcode') => {
@@ -102,10 +108,13 @@ export default function ProductsPage() {
     };
 
     const filteredItems = items.filter(item => {
+        const matchesType = activeTab === 'products' 
+            ? (item.itemType || 'product') === 'product'
+            : item.itemType === 'service';
         const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
             (item.sku && item.sku.toLowerCase().includes(searchQuery.toLowerCase()));
         const matchesCategory = activeCategory === 'all' || item.categoryId === activeCategory;
-        return matchesSearch && matchesCategory;
+        return matchesType && matchesSearch && matchesCategory;
     });
 
     const totalPages = Math.max(1, Math.ceil(filteredItems.length / perPage));
@@ -252,12 +261,15 @@ export default function ProductsPage() {
         }
     ];
 
+    const productCount = items.filter(i => (i.itemType || 'product') === 'product').length;
+    const serviceCount = items.filter(i => i.itemType === 'service').length;
+
     return (
         <PageLockWrapper feature="catalogue" featureName="Catalogue">
             <div className="p-4 md:p-8 space-y-6">
                 <PageHeader
-                    title="Products & Services"
-                    description="Configure your active menu and services"
+                    title="Catalogue"
+                    description="Manage your products and services"
                     isSticky={false}
                     actions={
                         <button 
@@ -265,17 +277,39 @@ export default function ProductsPage() {
                             className="flex items-center gap-2 h-10 px-5 bg-primary text-white font-semibold text-xs uppercase tracking-wider rounded-xl hover:bg-primary-hover transition-all shadow-sm shadow-primary/20 cursor-pointer"
                         >
                             <Plus size={16} />
-                            Add Product
+                            Add {activeTab === 'services' ? 'Service' : 'Product'}
                         </button>
                     }
                 />
+
+                {/* Tab Switcher */}
+                <div className="flex items-center gap-1 p-1 bg-slate-100 rounded-xl w-fit">
+                    <button
+                        onClick={() => { setActiveTab('products'); setPage(1); }}
+                        className={cn(
+                            "px-5 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all",
+                            activeTab === 'products' ? 'bg-white text-primary shadow-sm' : 'text-slate-500 hover:text-slate-700'
+                        )}
+                    >
+                        Products ({productCount})
+                    </button>
+                    <button
+                        onClick={() => { setActiveTab('services'); setPage(1); }}
+                        className={cn(
+                            "px-5 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all",
+                            activeTab === 'services' ? 'bg-white text-primary shadow-sm' : 'text-slate-500 hover:text-slate-700'
+                        )}
+                    >
+                        Services ({serviceCount})
+                    </button>
+                </div>
 
                 <div className="bg-white rounded-2xl p-6 border border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div className="relative max-w-md flex-1">
                         <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                         <input
                             type="text"
-                            placeholder="Search products by name or SKU..."
+                            placeholder={`Search ${activeTab === 'services' ? 'services' : 'products'} by name...`}
                             className="w-full h-12 bg-slate-50 border border-slate-100 rounded-xl pl-12 pr-5 font-medium outline-none focus:ring-2 focus:ring-primary/20 focus:bg-white transition-all text-sm text-slate-900"
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
@@ -301,8 +335,10 @@ export default function ProductsPage() {
                     emptyState={
                         <EmptyState
                             icon="shopping-bag"
-                            title="Your catalogue is ready for its first product"
-                            description="List your products so customers can discover what you offer."
+                            title={activeTab === 'services' ? 'No services yet' : 'Your catalogue is ready for its first product'}
+                            description={activeTab === 'services' 
+                                ? 'Add the services your business provides so customers can discover and engage with them.'
+                                : 'List your products so customers can discover what you offer.'}
                         />
                     }
                 />
@@ -351,6 +387,7 @@ export default function ProductsPage() {
                     onClose={() => setIsModalOpen(false)}
                     product={selectedProduct}
                     activeBranchId={activeBranchId || undefined}
+                    itemType={activeTab === 'services' ? 'service' : 'product'}
                 />
             </div>
         </PageLockWrapper>

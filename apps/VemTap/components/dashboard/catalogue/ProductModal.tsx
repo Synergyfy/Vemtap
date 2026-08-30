@@ -61,7 +61,7 @@ const CropperModal: React.FC<{
             >
                 <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
                     <div>
-                        <h3 className="text-lg font-semibold text-slate-900">Crop Product Image</h3>
+                        <h3 className="text-lg font-semibold text-slate-900">Crop Image</h3>
                         <p className="text-xs text-slate-500 font-medium">Position your image for the best view</p>
                     </div>
                     <button onClick={onClose} className="p-2 hover:bg-white rounded-xl transition-all"><X size={20} /></button>
@@ -131,15 +131,23 @@ interface ProductModalProps {
     onClose: () => void;
     product?: CatalogueItem | null;
     activeBranchId?: string;
+    itemType?: 'product' | 'service';
 }
 
 const STEPS = [
-    { title: 'Details', description: 'Basic product information' },
-    { title: 'Pricing', description: 'Price, stock & logistics' },
-    { title: 'Images', description: 'Product photos' },
+    { title: 'Details', description: 'Basic information' },
+    { title: 'Pricing', description: 'Price & stock' },
+    { title: 'Images', description: 'Photos' },
 ] as const;
 
-export default function ProductModal({ isOpen, onClose, product, activeBranchId }: ProductModalProps) {
+const SERVICE_STEPS = [
+    { title: 'Details', description: 'Basic service information' },
+    { title: 'Pricing', description: 'Price & pricing type' },
+    { title: 'Service Info', description: 'Duration, mode & booking' },
+    { title: 'Images', description: 'Service photos' },
+] as const;
+
+export default function ProductModal({ isOpen, onClose, product, activeBranchId, itemType = 'product' }: ProductModalProps) {
     const createMutation = useCreateCatalogueItem();
     const updateMutation = useUpdateCatalogueItem();
     const createCategoryMutation = useCreateCatalogueCategory();
@@ -420,7 +428,7 @@ export default function ProductModal({ isOpen, onClose, product, activeBranchId 
             const submissionData = {
                 ...restValues,
                 shortDescription: restValues.description?.slice(0, 200) || '',
-                itemType: 'product' as const,
+                itemType: itemType as const,
                 mainImage: mainImageUrl,
                 galleryImages: finalGalleryUrls,
                 loyaltyPoints: restValues.enableLoyaltyPoints ? (restValues.loyaltyPointsValue || 0) : 0,
@@ -460,13 +468,13 @@ export default function ProductModal({ isOpen, onClose, product, activeBranchId 
             <Modal
                 isOpen={isOpen}
                 onClose={onClose}
-                title={product ? 'Edit Product' : 'Add Product'}
+                title={product ? `Edit ${itemType === 'service' ? 'Service' : 'Product'}` : `Add ${itemType === 'service' ? 'Service' : 'Product'}`}
                 size="2xl"
             >
                 <form onSubmit={handleSubmit(onSubmit)}>
                     {/* Step Indicator */}
                     <div className="flex items-center justify-between mb-6">
-                        {STEPS.map((step, idx) => (
+                        {(itemType === 'service' ? SERVICE_STEPS : STEPS).map((step, idx) => (
                             <React.Fragment key={idx}>
                                 <div className="flex items-center gap-2 sm:gap-3">
                                     <div className={cn(
@@ -865,7 +873,7 @@ export default function ProductModal({ isOpen, onClose, product, activeBranchId 
                                 className="flex items-center justify-center gap-2 h-11 px-6 bg-[#066CF4] text-white font-semibold text-sm rounded-xl shadow-lg shadow-blue-500/20 hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-60 cursor-pointer"
                             >
                                 {isUploading ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
-                                {product ? 'Update Changes' : 'Create Product'}
+                                {product ? 'Update Changes' : `Create ${itemType === 'service' ? 'Service' : 'Product'}`}
                             </button>
                         )}
                     </div>
