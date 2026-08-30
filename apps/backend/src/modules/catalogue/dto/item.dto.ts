@@ -16,6 +16,9 @@ import {
   CatalogueItemStatus,
   CatalogueItemType,
   DiscountType,
+  ServicePriceType,
+  ServiceMode,
+  ServiceBookingMethod,
 } from '../entities/catalogue-item.entity';
 
 export class CreateCatalogueItemDto {
@@ -24,17 +27,17 @@ export class CreateCatalogueItemDto {
   @IsString()
   name: string;
 
-  @ApiProperty({ example: 15.99 })
-  @IsNotEmpty()
+  @ApiPropertyOptional({ example: 15.99, default: 0 })
+  @IsOptional()
   @IsNumber()
   @Type(() => Number)
   @Min(0)
-  price: number;
+  price?: number = 0;
 
-  @ApiProperty({ example: 'Delicious cheeseburger' })
-  @IsNotEmpty()
+  @ApiPropertyOptional({ example: 'Delicious cheeseburger' })
+  @IsOptional()
   @IsString()
-  shortDescription: string;
+  shortDescription?: string;
 
   @ApiProperty({ example: 'Full description...' })
   @IsNotEmpty()
@@ -156,6 +159,56 @@ export class CreateCatalogueItemDto {
   @Type(() => Number)
   @Min(0)
   loyaltyPointsValue?: number;
+
+  @ApiPropertyOptional({
+    enum: ServicePriceType,
+    default: ServicePriceType.FIXED,
+  })
+  @IsOptional()
+  @IsEnum(ServicePriceType)
+  priceType?: ServicePriceType = ServicePriceType.FIXED;
+
+  @ApiPropertyOptional({ example: 5000 })
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  @Min(0)
+  priceRangeMin?: number;
+
+  @ApiPropertyOptional({ example: 15000 })
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  @Min(0)
+  priceRangeMax?: number;
+
+  @ApiPropertyOptional({ example: '45 mins' })
+  @IsOptional()
+  @IsString()
+  duration?: string;
+
+  @ApiPropertyOptional({
+    enum: ServiceMode,
+    default: ServiceMode.LOCATION,
+  })
+  @IsOptional()
+  @IsEnum(ServiceMode)
+  serviceMode?: ServiceMode = ServiceMode.LOCATION;
+
+  @ApiPropertyOptional({ example: false, default: false })
+  @IsOptional()
+  @IsBoolean()
+  isBookable?: boolean = false;
+
+  @ApiPropertyOptional({ enum: ServiceBookingMethod })
+  @IsOptional()
+  @IsEnum(ServiceBookingMethod)
+  bookingMethod?: ServiceBookingMethod;
+
+  @ApiPropertyOptional({ example: 'https://calendly.com/my-booking' })
+  @IsOptional()
+  @IsString()
+  externalBookingLink?: string;
 
   @ApiProperty({ example: 'uuid-of-branch' })
   @IsNotEmpty()
@@ -303,6 +356,50 @@ export class UpdateCatalogueItemDto {
   @Type(() => Number)
   @Min(0)
   loyaltyPointsValue?: number;
+
+  @ApiPropertyOptional({ enum: ServicePriceType })
+  @IsOptional()
+  @IsEnum(ServicePriceType)
+  priceType?: ServicePriceType;
+
+  @ApiPropertyOptional({ example: 5000 })
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  @Min(0)
+  priceRangeMin?: number;
+
+  @ApiPropertyOptional({ example: 15000 })
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  @Min(0)
+  priceRangeMax?: number;
+
+  @ApiPropertyOptional({ example: '45 mins' })
+  @IsOptional()
+  @IsString()
+  duration?: string;
+
+  @ApiPropertyOptional({ enum: ServiceMode })
+  @IsOptional()
+  @IsEnum(ServiceMode)
+  serviceMode?: ServiceMode;
+
+  @ApiPropertyOptional({ example: false })
+  @IsOptional()
+  @IsBoolean()
+  isBookable?: boolean;
+
+  @ApiPropertyOptional({ enum: ServiceBookingMethod })
+  @IsOptional()
+  @IsEnum(ServiceBookingMethod)
+  bookingMethod?: ServiceBookingMethod;
+
+  @ApiPropertyOptional({ example: 'https://calendly.com/my-booking' })
+  @IsOptional()
+  @IsString()
+  externalBookingLink?: string;
 
   @ApiPropertyOptional({
     description: 'If provided, the edit will be isolated to this branch',

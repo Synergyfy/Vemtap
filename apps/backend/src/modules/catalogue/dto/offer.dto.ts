@@ -22,10 +22,22 @@ export class CreateCatalogueOfferDto {
   @IsString()
   name: string;
 
-  @ApiProperty({ example: 'Get 2 burgers and a drink for less!' })
-  @IsNotEmpty()
+  @ApiPropertyOptional({ example: 'Get 2 burgers and a drink for less!', default: '' })
+  @IsOptional()
   @IsString()
-  description: string;
+  @Transform(({ value }) => (typeof value === 'string' ? value : ''))
+  description?: string = '';
+
+  @ApiPropertyOptional({
+    example: 'uuid-of-source-item',
+    description: 'Source catalogue item ID if created from a product/service',
+  })
+  @IsOptional()
+  @Transform(({ value }) =>
+    typeof value === 'string' && value.trim() === '' ? undefined : value?.trim(),
+  )
+  @IsUUID('4', { message: 'sourceProductId must be a valid UUID v4' })
+  sourceProductId?: string;
 
   @ApiPropertyOptional({ example: 'https://image.com/offer.jpg' })
   @IsOptional()
@@ -84,11 +96,11 @@ export class CreateCatalogueOfferDto {
   @IsUUID()
   branchId: string;
 
-  @ApiProperty({ example: ['uuid-of-item-1', 'uuid-of-item-2'] })
-  @IsNotEmpty()
+  @ApiPropertyOptional({ example: ['uuid-of-item-1', 'uuid-of-item-2'] })
+  @IsOptional()
   @IsArray()
   @IsUUID(undefined, { each: true })
-  itemIds: string[];
+  itemIds?: string[];
 
   @ApiPropertyOptional({ example: '2026-06-01T00:00:00.000Z' })
   @IsOptional()
@@ -190,6 +202,17 @@ export class UpdateCatalogueOfferDto {
   @IsOptional()
   @IsBoolean()
   isFeatured?: boolean;
+
+  @ApiPropertyOptional({
+    example: 'uuid-of-source-item',
+    description: 'Source catalogue item ID if created from a product/service',
+  })
+  @IsOptional()
+  @Transform(({ value }) =>
+    typeof value === 'string' && value.trim() === '' ? undefined : value?.trim(),
+  )
+  @IsUUID('4', { message: 'sourceProductId must be a valid UUID v4' })
+  sourceProductId?: string;
 
   @ApiPropertyOptional()
   @IsOptional()
