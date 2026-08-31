@@ -266,6 +266,7 @@ export class PlansService {
       'qrCodesLimit',
       'aiCopilotEnabled',
       'aiCredits',
+      'autoFeatureDeals',
       'permissionsConfiguredAt',
     ];
     const result: Partial<Plan> = { id: plan.id };

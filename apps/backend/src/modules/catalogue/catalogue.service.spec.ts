@@ -5,6 +5,10 @@ import { CatalogueCategory } from './entities/catalogue-category.entity';
 import {
   CatalogueItem,
   CatalogueItemStatus,
+  CatalogueItemType,
+  ServicePriceType,
+  ServiceMode,
+  ServiceBookingMethod,
 } from './entities/catalogue-item.entity';
 import { Branch } from '../branches/entities/branch.entity';
 import { Business } from '../businesses/entities/business.entity';
@@ -331,6 +335,69 @@ describe('CatalogueService', () => {
       });
       expect(result.results[1].success).toBe(false);
       expect(result.results[1].row).toBe(3);
+    });
+
+    it('should create a service item with all service-specific fields', async () => {
+      const serviceDto = {
+        name: 'Full Body Massage',
+        price: 15000,
+        shortDescription: '1 hour therapeutic massage',
+        description: 'Deep tissue full body massage with aromatherapy oils',
+        itemType: CatalogueItemType.SERVICE,
+        priceType: ServicePriceType.STARTING_FROM,
+        priceRangeMin: 15000,
+        priceRangeMax: 25000,
+        duration: '1 hour',
+        serviceMode: ServiceMode.LOCATION,
+        isBookable: true,
+        bookingMethod: ServiceBookingMethod.WHATSAPP,
+        externalBookingLink: 'https://wa.me/2348012345678',
+        branchId: 'br-1',
+      };
+
+      mockBranchRepo.findOne.mockResolvedValue({
+        id: 'br-1',
+        businessId: 'bus-1',
+      });
+
+      const result = await service.createItem(serviceDto, 'bus-1');
+      expect(result.name).toBe('Full Body Massage');
+      expect(result.itemType).toBe(CatalogueItemType.SERVICE);
+      expect(result.priceType).toBe(ServicePriceType.STARTING_FROM);
+      expect(result.duration).toBe('1 hour');
+      expect(result.serviceMode).toBe(ServiceMode.LOCATION);
+      expect(result.isBookable).toBe(true);
+      expect(result.bookingMethod).toBe(ServiceBookingMethod.WHATSAPP);
+      expect(result.externalBookingLink).toBe('https://wa.me/2348012345678');
+      expect(mockItemRepo.save).toHaveBeenCalled();
+    });
+
+    it('should update service details correctly', async () => {
+      const existingService = {
+        id: 'service-1',
+        name: 'Haircut',
+        itemType: CatalogueItemType.SERVICE,
+        priceType: ServicePriceType.FIXED,
+        duration: '30 mins',
+        serviceMode: ServiceMode.LOCATION,
+        isBookable: false,
+        branches: [{ id: 'br-1' }],
+        businessId: 'bus-1',
+      };
+      mockItemRepo.findOne.mockResolvedValue(existingService);
+
+      const updateDto = {
+        duration: '45 mins',
+        isBookable: true,
+        bookingMethod: ServiceBookingMethod.VEMTAP,
+        serviceMode: ServiceMode.FLEXIBLE,
+      };
+
+      const result = await service.updateItem('service-1', updateDto, 'bus-1');
+      expect(result.duration).toBe('45 mins');
+      expect(result.isBookable).toBe(true);
+      expect(result.bookingMethod).toBe(ServiceBookingMethod.VEMTAP);
+      expect(result.serviceMode).toBe(ServiceMode.FLEXIBLE);
     });
   });
 });

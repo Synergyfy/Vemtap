@@ -17,6 +17,7 @@ export enum CatalogueOfferPricingType {
   SUM = 'sum',
   PERCENTAGE_DISCOUNT = 'percentage_discount',
   FIXED_DISCOUNT_PRICE = 'fixed_discount_price',
+  FIXED_DISCOUNT_AMOUNT = 'fixed_discount_amount',
 }
 
 export enum CatalogueOfferStatus {
@@ -31,7 +32,7 @@ export class CatalogueOffer extends AbstractBaseEntity {
   name: string;
 
   @ApiProperty({ example: 'Get 2 burgers and a drink for less!' })
-  @Column({ type: 'text' })
+  @Column({ type: 'text', default: '' })
   description: string;
 
   @ApiProperty({ example: 'https://image.com/offer.jpg' })
@@ -298,6 +299,25 @@ export class CatalogueOffer extends AbstractBaseEntity {
     },
   })
   averageRating: number | null;
+
+  @ApiProperty({
+    example: false,
+    description: 'Whether the deal is featured',
+  })
+  @Column({ default: false })
+  isFeatured: boolean;
+
+  @ApiProperty({
+    example: 'uuid-of-source-item',
+    description: 'Source product or service ID from catalogue',
+    nullable: true,
+  })
+  @ManyToOne(() => CatalogueItem, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'sourceProductId' })
+  sourceProduct: CatalogueItem | null;
+
+  @Column({ type: 'uuid', nullable: true })
+  sourceProductId: string | null;
 
   @ManyToMany(() => CatalogueItem)
   @JoinTable({

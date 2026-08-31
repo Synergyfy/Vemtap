@@ -9,6 +9,7 @@ import { CatalogueOffer } from './entities/catalogue-offer.entity';
 import { Branch } from '../branches/entities/branch.entity';
 import { CatalogueOfferService } from './catalogue-offer.service';
 import { CatalogueOfferController } from './catalogue-offer.controller';
+import { AdminDealsController } from './admin-deals.controller';
 import { SubscriptionsModule } from '../subscriptions/subscriptions.module';
 import { CatalogueOfferClaim } from './entities/catalogue-offer-claim.entity';
 import { Otp } from '../auth/entities/otp.entity';
@@ -37,6 +38,7 @@ import { ClustersModule } from '../clusters/clusters.module';
     AdminCatalogueController,
     PublicCatalogueController,
     CatalogueOfferController,
+    AdminDealsController,
   ],
   providers: [CatalogueService, CatalogueOfferService],
   exports: [CatalogueService, CatalogueOfferService],
