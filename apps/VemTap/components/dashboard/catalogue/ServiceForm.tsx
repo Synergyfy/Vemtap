@@ -223,6 +223,8 @@ export default function ServiceForm({ isOpen, onClose, service, activeBranchId }
     };
 
     const onSubmit = async (values: ServiceFormValues) => {
+        // Guard: only allow submit on last step (Images)
+        if (currentStep !== STEPS.length - 1) return;
         try {
             setIsUploading(true);
             let mainImageUrl = mainImagePreview;
@@ -262,9 +264,20 @@ export default function ServiceForm({ isOpen, onClose, service, activeBranchId }
     };
 
     const nextStep = async () => {
-        let fieldsToValidate: string[] = [];
+        let fieldsToValidate: (keyof ServiceFormValues)[] = [];
         if (currentStep === 0) fieldsToValidate = ['name', 'description', 'categoryId', 'branchId'];
-        if (currentStep === 1) fieldsToValidate = ['price', 'priceType'];
+        if (currentStep === 1) {
+            const pt = watch('priceType');
+            if (pt === 'range') fieldsToValidate = ['priceRangeMin', 'priceRangeMax'];
+            else if (pt === 'starting_from') fieldsToValidate = ['priceRangeMin'];
+            else if (pt === 'contact') fieldsToValidate = [];
+            else fieldsToValidate = ['price'];
+        }
+        // Step 2 (Service Info) has no required fields — just advance
+        if (fieldsToValidate.length === 0) {
+            setCurrentStep(s => Math.min(s + 1, STEPS.length - 1));
+            return;
+        }
         const valid = await trigger(fieldsToValidate as any);
         if (valid) setCurrentStep(s => Math.min(s + 1, STEPS.length - 1));
     };
@@ -280,7 +293,7 @@ export default function ServiceForm({ isOpen, onClose, service, activeBranchId }
             </AnimatePresence>
 
             <Modal isOpen={isOpen} onClose={onClose} title={service ? 'Edit Service' : 'Add Service'} size="2xl">
-                <form onSubmit={handleSubmit(onSubmit)}>
+                <form onSubmit={handleSubmit(onSubmit)} onKeyDown={(e) => { if (e.key === 'Enter' && currentStep < STEPS.length - 1) e.preventDefault(); }}>
                     {/* Step Indicator */}
                     <div className="flex items-center justify-between mb-6">
                         {STEPS.map((step, idx) => (

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import PageHeader from '@/components/dashboard/PageHeader';
 import DataTable, { Column } from '@/components/dashboard/DataTable';
 import EmptyState from '@/components/dashboard/EmptyState';
@@ -40,6 +41,7 @@ export default function ProductsPage() {
     const [selectedProduct, setSelectedProduct] = useState<CatalogueItem | null>(null);
     const [makeDealProduct, setMakeDealProduct] = useState<CatalogueItem | null>(null);
     const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+    const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null);
 
     // Build a map of product ID -> active deals for deal status display
     const productDealMap = useMemo(() => {
@@ -69,17 +71,30 @@ export default function ProductsPage() {
         if (!openMenuId) return;
         const handler = (e: MouseEvent) => {
             const target = e.target as HTMLElement;
-            if (!target.closest('[data-menu-dropdown]')) {
+            if (!target.closest('[data-menu-dropdown]') && !target.closest('[data-menu-trigger]')) {
                 setOpenMenuId(null);
+                setMenuPos(null);
             }
         };
+        const scrollHandler = () => { setOpenMenuId(null); setMenuPos(null); };
         document.addEventListener('mousedown', handler);
-        return () => document.removeEventListener('mousedown', handler);
+        window.addEventListener('scroll', scrollHandler, true);
+        return () => {
+            document.removeEventListener('mousedown', handler);
+            window.removeEventListener('scroll', scrollHandler, true);
+        };
     }, [openMenuId]);
 
     const toggleMenu = (id: string, e: React.MouseEvent) => {
         e.stopPropagation();
-        setOpenMenuId(prev => (prev === id ? null : id));
+        if (openMenuId === id) {
+            setOpenMenuId(null);
+            setMenuPos(null);
+            return;
+        }
+        const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+        setMenuPos({ top: rect.bottom + 8, left: Math.max(8, rect.right - 160) });
+        setOpenMenuId(id);
     };
 
     const handleEdit = (e: React.MouseEvent, item: CatalogueItem) => {
@@ -191,6 +206,28 @@ export default function ProductsPage() {
         {
             header: 'Price',
             accessor: (item: CatalogueItem) => {
+                // Handle service pricing types
+                if (item.itemType === 'service' && item.priceType) {
+                    switch (item.priceType) {
+                        case 'contact':
+                            return <span className="text-xs font-bold text-slate-500 italic">Contact for price</span>;
+                        case 'range':
+                            return (
+                                <div className="flex flex-col">
+                                    <span className="font-bold text-primary text-sm">₦{Number(item.priceRangeMin || 0).toLocaleString()} - ₦{Number(item.priceRangeMax || 0).toLocaleString()}</span>
+                                </div>
+                            );
+                        case 'starting_from':
+                            return (
+                                <div className="flex flex-col">
+                                    <span className="text-[9px] text-slate-400 font-medium">From</span>
+                                    <span className="font-bold text-primary text-sm">₦{Number(item.priceRangeMin || item.price).toLocaleString()}</span>
+                                </div>
+                            );
+                        default: // fixed
+                            break;
+                    }
+                }
                 const hasDiscount = item.discountType && item.discountType !== 'none' && item.discountValue;
                 const finalPrice = hasDiscount
                     ? (item.discountType === 'percentage'
@@ -230,13 +267,16 @@ export default function ProductsPage() {
         {
             header: 'Total Value',
             accessor: (item: CatalogueItem) => {
+                if (item.itemType === 'service') {
+                    return <span className="text-[10px] text-slate-400 font-medium">—</span>;
+                }
                 const hasDiscount = item.discountType && item.discountType !== 'none' && item.discountValue;
                 const finalPrice = hasDiscount
                     ? (item.discountType === 'percentage'
                         ? Number(item.price) - (Number(item.price) * (Number(item.discountValue) / 100))
                         : Number(item.price) - Number(item.discountValue))
                     : Number(item.price);
-                const qty = item.itemType === 'service' ? 0 : (item.stockQuantity ?? 0);
+                const qty = item.stockQuantity ?? 0;
                 return (
                     <div className="flex flex-col">
                         <span className="font-bold text-text-main text-sm">₦{(finalPrice * qty).toLocaleString()}</span>
@@ -279,50 +319,13 @@ export default function ProductsPage() {
         {
             header: 'Actions',
             accessor: (item: CatalogueItem) => (
-                <div className="relative">
-                    <button
-                        onClick={(e) => toggleMenu(item.id, e)}
-                        className="p-2 text-text-secondary hover:text-primary hover:bg-primary/5 rounded-lg transition-all cursor-pointer"
-                    >
-                        <MoreVertical size={15} />
-                    </button>
-                    {openMenuId === item.id && (
-                        <div
-                            data-menu-dropdown
-                            className="absolute right-0 top-full mt-1 bg-white rounded-xl border border-slate-100 shadow-xl z-50 py-1 min-w-[140px] overflow-hidden"
-                            onMouseDown={(e) => e.stopPropagation()}
-                        >
-                            <button
-                                onClick={() => { router.push(`/dashboard/catalogue/products/${item.id}`); setOpenMenuId(null); }}
-                                className="w-full flex items-center gap-2.5 px-4 py-2.5 text-xs font-bold text-text-secondary hover:bg-slate-50 hover:text-primary transition-colors text-left"
-                            >
-                                <Eye size={14} />
-                                View Details
-                            </button>
-                            <button
-                                onClick={(e) => { handleEdit(e, item); setOpenMenuId(null); }}
-                                className="w-full flex items-center gap-2.5 px-4 py-2.5 text-xs font-bold text-text-secondary hover:bg-slate-50 hover:text-primary transition-colors text-left"
-                            >
-                                <Edit2 size={14} />
-                                Edit
-                            </button>
-                            <button
-                                onClick={() => { setMakeDealProduct(item); setOpenMenuId(null); }}
-                                className="w-full flex items-center gap-2.5 px-4 py-2.5 text-xs font-bold text-amber-600 hover:bg-amber-50 transition-colors text-left"
-                            >
-                                <Flame size={14} />
-                                Make Deal
-                            </button>
-                            <button
-                                onClick={(e) => { handleDelete(e, item); setOpenMenuId(null); }}
-                                className="w-full flex items-center gap-2.5 px-4 py-2.5 text-xs font-bold text-text-secondary hover:bg-red-50 hover:text-red-500 transition-colors text-left"
-                            >
-                                <Trash2 size={14} />
-                                Delete
-                            </button>
-                        </div>
-                    )}
-                </div>
+                <button
+                    data-menu-trigger
+                    onClick={(e) => toggleMenu(item.id, e)}
+                    className="p-2 text-text-secondary hover:text-primary hover:bg-primary/5 rounded-lg transition-all cursor-pointer"
+                >
+                    <MoreVertical size={15} />
+                </button>
             )
         }
     ];
@@ -408,6 +411,52 @@ export default function ProductsPage() {
                         />
                     }
                 />
+
+                {/* Portaled action menu — floats above scroll container */}
+                {openMenuId && menuPos && typeof window !== 'undefined' && createPortal(
+                    (() => {
+                        const item = items.find(i => i.id === openMenuId);
+                        if (!item) return null;
+                        return (
+                            <div
+                                data-menu-dropdown
+                                className="fixed bg-white rounded-xl border border-slate-100 shadow-2xl py-1 min-w-[160px] overflow-hidden z-[9999]"
+                                style={{ top: menuPos.top, left: menuPos.left }}
+                                onMouseDown={(e) => e.stopPropagation()}
+                            >
+                                <button
+                                    onClick={() => { router.push(`/dashboard/catalogue/products/${item.id}`); setOpenMenuId(null); setMenuPos(null); }}
+                                    className="w-full flex items-center gap-2.5 px-4 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-50 hover:text-primary transition-colors text-left"
+                                >
+                                    <Eye size={14} />
+                                    View Details
+                                </button>
+                                <button
+                                    onClick={(e) => { handleEdit(e as any, item); setOpenMenuId(null); setMenuPos(null); }}
+                                    className="w-full flex items-center gap-2.5 px-4 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-50 hover:text-primary transition-colors text-left"
+                                >
+                                    <Edit2 size={14} />
+                                    Edit
+                                </button>
+                                <button
+                                    onClick={() => { setMakeDealProduct(item); setOpenMenuId(null); setMenuPos(null); }}
+                                    className="w-full flex items-center gap-2.5 px-4 py-2.5 text-xs font-bold text-amber-600 hover:bg-amber-50 transition-colors text-left"
+                                >
+                                    <Flame size={14} />
+                                    Make Deal
+                                </button>
+                                <button
+                                    onClick={(e) => { handleDelete(e as any, item); setOpenMenuId(null); setMenuPos(null); }}
+                                    className="w-full flex items-center gap-2.5 px-4 py-2.5 text-xs font-bold text-slate-600 hover:bg-red-50 hover:text-red-500 transition-colors text-left"
+                                >
+                                    <Trash2 size={14} />
+                                    Delete
+                                </button>
+                            </div>
+                        );
+                    })(),
+                    document.body
+                )}
 
                 {filteredItems.length > 0 && (
                     <div className="flex items-center justify-center gap-4 bg-white rounded-xl border border-slate-100 px-4 py-3">
