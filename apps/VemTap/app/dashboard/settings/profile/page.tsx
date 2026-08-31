@@ -8,7 +8,7 @@ import DynamicQRCode from '@/components/shared/DynamicQRCode';
 import { useCustomerFlowStore } from '@/store/useCustomerFlowStore';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useSudoStore } from '@/store/useSudoStore';
-import { useSubscriptionStore } from '@/store/useSubscriptionStore';
+import { useSubscriptionStore } from '@/store/subscriptionStore';
 import { useActiveBranch } from '@/hooks/useActiveBranch';
 import { BusinessHours } from '@/services/businesses/types';
 import { uploadToCloudinary } from '@/lib/cloudinary';
