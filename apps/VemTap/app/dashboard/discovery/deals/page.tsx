@@ -155,8 +155,6 @@ export default function DealsPage() {
                     <CreatePromotionFlow branchId={activeBranchId!} editPromo={editingPromo} onCancel={() => { setIsCreatingPromo(false); setEditingPromo(null); }} />
                 )}
 
-                )}
-
                 {importProduct && (
                     <MakeDealFlow
                         isOpen={!!importProduct}
