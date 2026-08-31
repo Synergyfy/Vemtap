@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { Menu, X, ChevronRight, ShieldCheck, HelpCircle } from 'lucide-react';
 import Logo from '@/components/brand/Logo';
 import { Button } from '@/components/ui/button';
@@ -12,15 +13,16 @@ import { useMyBusiness } from '@/services/businesses/hooks';
 
 const navLinks = [
     { label: 'Home', href: '/' },
-    { label: 'Features', href: '/features' },
     { label: 'Nearby Deals', href: '/deals' },
-    { label: 'Pricing', href: '/pricing' },
     { label: 'How It Works', href: '/how-it-works' },
+    { label: 'Pricing', href: '/pricing' },
+    { label: 'For Businesses', href: '/business-landing' },
 ];
 
 export default function Navbar() {
     const [isOpen, setIsOpen] = useState(false);
     const [scrolled, setScrolled] = useState(false);
+    const pathname = usePathname();
     
     const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
     const user = useAuthStore((state) => state.user);
@@ -49,19 +51,33 @@ export default function Navbar() {
 
                 {/* Desktop Navigation */}
                 <div className="hidden lg:flex items-center gap-8">
-                    {navLinks.map((link) => (
-                        <Link 
-                            key={link.label} 
-                            href={link.href}
-                            className="text-sm font-bold text-gray-600 hover:text-[#066CF4] transition-colors"
-                        >
-                            {link.label}
-                        </Link>
-                    ))}
+                    {navLinks.map((link) => {
+                        const isActive = link.href !== '/' && pathname === link.href;
+                        return (
+                            <Link 
+                                key={link.label} 
+                                href={link.href}
+                                className={cn(
+                                    "text-sm font-bold transition-colors relative py-1",
+                                    isActive
+                                        ? "text-[#066CF4] after:absolute after:bottom-0 after:left-0 after:right-0 after:h-[2px] after:bg-[#066CF4] after:rounded-full"
+                                        : "text-gray-600 hover:text-[#066CF4]"
+                                )}
+                            >
+                                {link.label}
+                            </Link>
+                        );
+                    })}
                 </div>
 
                 {/* Desktop CTAs */}
                 <div className="hidden lg:flex items-center gap-4">
+                    <Link
+                        href="/for-businesses"
+                        className="text-sm font-bold text-gray-600 hover:text-[#066CF4] transition-colors"
+                    >
+                        For Businesses
+                    </Link>
                     {isAuthenticated ? (
                         <Link href={dashboardHref}>
                             <Button className="h-12 px-8 rounded-xl bg-[#066CF4] text-xs font-black uppercase tracking-widest text-white shadow-lg shadow-blue-500/20 active:scale-95 transition-all">
@@ -137,6 +153,18 @@ export default function Navbar() {
                         <hr className="border-gray-100 my-7" />
 
                         <div className="flex flex-col gap-3">
+                            <Link
+                                href="/for-businesses"
+                                onClick={() => setIsOpen(false)}
+                                className="flex items-center justify-between rounded-2xl border border-gray-100 bg-white px-5 py-4 group hover:border-primary/25 hover:bg-primary/[0.02] active:scale-[0.99] transition-all"
+                            >
+                                <span className="text-[15px] font-bold text-text-main group-hover:text-[#066CF4] transition-colors">
+                                    For Businesses
+                                </span>
+                                <span className="flex items-center justify-center size-8 rounded-full bg-gray-50 group-hover:bg-primary/10 group-hover:text-[#066CF4] transition-colors">
+                                    <ChevronRight size={16} className="text-gray-400 group-hover:text-[#066CF4]" />
+                                </span>
+                            </Link>
                             {isAuthenticated ? (
                                 <Link href={dashboardHref} onClick={() => setIsOpen(false)}>
                                     <Button className="w-full h-14 rounded-xl bg-[#066CF4] text-sm font-black uppercase tracking-[0.18em] text-white shadow-lg shadow-blue-500/20 hover:bg-blue-600 active:scale-[0.99] transition-all">

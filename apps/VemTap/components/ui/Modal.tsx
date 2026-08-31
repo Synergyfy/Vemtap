@@ -11,6 +11,8 @@ interface ModalProps {
     children: React.ReactNode;
     size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl' | '2xl' | 'full';
     showClose?: boolean;
+    closeOnOverlayClick?: boolean;
+    mobileSheet?: boolean;
 }
 
 const sizes = {
@@ -30,7 +32,9 @@ export default function Modal({
     description,
     children,
     size = 'md',
-    showClose = true
+    showClose = true,
+    closeOnOverlayClick = true,
+    mobileSheet = false,
 }: ModalProps) {
     const [mounted, setMounted] = useState(false);
 
@@ -55,23 +59,23 @@ export default function Modal({
     const modalContent = (
         <AnimatePresence>
             {isOpen && (
-                <div className="fixed inset-0 z-[500] flex items-center justify-center p-4">
+                <div className={`fixed inset-0 z-[500] flex justify-center ${mobileSheet ? 'items-end sm:items-center p-0 sm:p-4' : 'items-center p-4'}`}>
                     {/* Backdrop */}
                     <motion.div
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        onClick={onClose}
+                        onClick={closeOnOverlayClick ? onClose : undefined}
                         className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm z-0"
                     />
 
                     {/* Modal Content */}
                     <motion.div
-                        initial={{ opacity: 0, scale: 0.95, y: 20 }}
-                        animate={{ opacity: 1, scale: 1, y: 0 }}
-                        exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                        transition={{ type: 'spring', duration: 0.5, bounce: 0.3 }}
-                        className={`relative w-full ${sizes[size]} bg-white rounded-3xl shadow-2xl overflow-hidden border border-slate-100 flex flex-col max-h-[90vh] z-10`}
+                        initial={mobileSheet ? { y: '100%' } : { opacity: 0, scale: 0.95, y: 20 }}
+                        animate={mobileSheet ? { y: 0 } : { opacity: 1, scale: 1, y: 0 }}
+                        exit={mobileSheet ? { y: '100%' } : { opacity: 0, scale: 0.95, y: 20 }}
+                        transition={mobileSheet ? { type: 'spring', damping: 30, stiffness: 300 } : { type: 'spring', duration: 0.5, bounce: 0.3 }}
+                        className={`relative w-full ${sizes[size]} bg-white shadow-2xl overflow-hidden border border-slate-100 flex flex-col z-10 ${mobileSheet ? 'rounded-t-[28px] sm:rounded-3xl rounded-b-none sm:rounded-b-3xl max-h-[96dvh] sm:max-h-[90vh] h-[96dvh] sm:h-auto' : 'rounded-3xl max-h-[90vh]'}`}
                     >
                         {/* Header */}
                         {(title || showClose) && (

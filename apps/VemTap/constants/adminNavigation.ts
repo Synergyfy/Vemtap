@@ -118,6 +118,14 @@ export const ADMIN_MENU_ITEMS: MenuItem[] = [
         keywords: ['discovery', 'network', 'referrals', 'attribution', 'partnerships', 'nearby']
     },
     {
+        id: 'deals',
+        label: 'Deals',
+        icon: Tag,
+        href: '/admin/deals',
+        permission: 'admin:all',
+        keywords: ['deals', 'offers', 'promotions', 'featured', 'discounts', 'coupons']
+    },
+    {
         id: 'clusters',
         label: 'Cluster Management',
         icon: MapPin,

@@ -38,10 +38,11 @@ export const verifyClaimOtp = async (data: ClaimVerifyDto): Promise<ClaimVerifyR
     return api.post('/catalogue/offers/claim/verify', data);
 };
 
-export const usePublicOffers = (params: DealsQueryParams = {}) => {
+export const usePublicOffers = (params: DealsQueryParams = {}, options?: { enabled?: boolean }) => {
     return useQuery<PaginatedOffersResponse>({
         queryKey: ['deals', 'public', params],
         queryFn: () => getPublicOffers(params),
+        enabled: options?.enabled ?? true,
     });
 };
 

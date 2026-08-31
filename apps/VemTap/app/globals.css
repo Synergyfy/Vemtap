@@ -86,6 +86,8 @@
     --spacing-container-margin: 20px;
     --spacing-gutter: 16px;
     --spacing-touch-target-min: 48px;
+
+    --color-home-brand: #066CF4;
 }
 
 @layer utilities {
@@ -481,6 +483,22 @@ body {
     font-variant-numeric: tabular-nums;
 }
 
+/* ─── Homepage Utilities ─── */
+.snap-x-mandatory {
+    scroll-snap-type: x mandatory;
+}
+.snap-start {
+    scroll-snap-align: start;
+}
+.snap-center {
+    scroll-snap-align: center;
+}
+@media (prefers-reduced-motion: reduce) {
+    .snap-x-mandatory {
+        scroll-snap-type: none;
+    }
+}
+
 /* Preserve icon font for Material Icons and Symbols inside dashboard */
 .dashboard-typography-override .material-icons-round,
 .dashboard-typography-override .material-icons {
@@ -491,4 +509,9 @@ body {
     font-family: 'Material Symbols Outlined' !important;
 }
 
+@media (prefers-reduced-motion: reduce) {
+    .animate-ping {
+        animation: none !important;
+    }
+}
 

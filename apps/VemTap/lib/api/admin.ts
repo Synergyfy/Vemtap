@@ -408,3 +408,128 @@ export const adminBannersApi = {
     delete: (id: string) => api.delete(`/admin/banners/${id}`),
     reorder: (orderedIds: string[]) => api.patch('/admin/banners/reorder', { orderedIds }),
 };
+
+// =====================
+// DEALS (Admin)
+// =====================
+
+export interface AdminDealPricing {
+    pricingType: 'sum' | 'percentage_discount' | 'fixed_discount_price';
+    originalPrice: number;
+    dealPrice: number;
+    discount: number;
+    discountValue: number | null;
+    fixedPrice: number | null;
+}
+
+export interface AdminDealDates {
+    startDate: string | null;
+    endDate: string | null;
+    createdAt: string;
+}
+
+export interface AdminDealBusiness {
+    id: string;
+    name: string;
+}
+
+export interface AdminDealBranch {
+    id: string;
+    name: string;
+}
+
+export interface AdminDealPlan {
+    id: string;
+    name: string;
+    isFree: boolean;
+}
+
+export interface AdminDealItem {
+    id: string;
+    name: string;
+    description: string;
+    image: string | null;
+    mainImage: string | null;
+    galleryImages: string[];
+    status: 'active' | 'inactive' | 'expired';
+    pricing: AdminDealPricing;
+    dates: AdminDealDates;
+    claimsCount: number;
+    viewsCount: number;
+    isFeatured: boolean;
+    business: AdminDealBusiness;
+    branch: AdminDealBranch;
+    subscriptionPlan: AdminDealPlan;
+}
+
+export interface AdminDealsResponse {
+    data: AdminDealItem[];
+    meta: {
+        total: number;
+        page: number;
+        limit: number;
+        totalPages: number;
+    };
+}
+
+export interface AdminDealsStatsResponse {
+    totalDeals: number;
+    activeDeals: number;
+    featuredDeals: number;
+    expiredDeals: number;
+}
+
+export interface AdminBusinessOption {
+    id: string;
+    name: string;
+}
+
+export interface AdminDealsQueryParams {
+    page?: number;
+    limit?: number;
+    search?: string;
+    businessId?: string;
+    plan?: string;
+    status?: 'active' | 'inactive' | 'expired';
+    isFeatured?: boolean;
+    minPrice?: number;
+    maxPrice?: number;
+    startDate?: string;
+    endDate?: string;
+    sortBy?: 'newest' | 'most_popular' | 'featured_first' | 'price_low_high' | 'price_high_low' | 'ending_soon';
+}
+
+export const adminDealsApi = {
+    getDeals: (params?: AdminDealsQueryParams): Promise<AdminDealsResponse> => {
+        const q = new URLSearchParams();
+        if (params?.page) q.set('page', String(params.page));
+        if (params?.limit) q.set('limit', String(params.limit));
+        if (params?.search) q.set('search', params.search);
+        if (params?.businessId) q.set('businessId', params.businessId);
+        if (params?.plan) q.set('plan', params.plan);
+        if (params?.status) q.set('status', params.status);
+        if (params?.isFeatured !== undefined) q.set('isFeatured', String(params.isFeatured));
+        if (params?.minPrice !== undefined) q.set('minPrice', String(params.minPrice));
+        if (params?.maxPrice !== undefined) q.set('maxPrice', String(params.maxPrice));
+        if (params?.startDate) q.set('startDate', params.startDate);
+        if (params?.endDate) q.set('endDate', params.endDate);
+        if (params?.sortBy) q.set('sortBy', params.sortBy);
+        const queryStr = q.toString();
+        return api.get(`/admin/deals${queryStr ? `?${queryStr}` : ''}`);
+    },
+
+    getStats: (): Promise<AdminDealsStatsResponse> => {
+        return api.get('/admin/deals/stats');
+    },
+
+    toggleFeatured: (id: string): Promise<{ id: string; isFeatured: boolean; message: string }> => {
+        return api.patch(`/admin/deals/${id}/featured`, {});
+    },
+
+    getBusinesses: (search?: string): Promise<AdminBusinessOption[]> => {
+        const q = new URLSearchParams();
+        if (search) q.set('search', search);
+        const queryStr = q.toString();
+        return api.get(`/admin/deals/businesses${queryStr ? `?${queryStr}` : ''}`);
+    },
+};

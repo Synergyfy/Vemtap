@@ -5,14 +5,16 @@ test.describe('Landing Page', () => {
     await page.goto('/', { waitUntil: 'domcontentloaded' });
 
     await expect(
-      page.getByRole('heading', { name: /collect customer details/i })
+      page.getByRole('heading', { name: /discover what's near you/i })
     ).toBeVisible();
-    await expect(page.getByRole('link', { name: /get started/i }).first()).toBeVisible();
+    await expect(
+      page.getByRole('button', { name: /find what's near me/i }).first()
+    ).toBeVisible();
   });
 
-  test('navigates to get started from CTA', async ({ page }) => {
+  test('navigates to deals from explore CTA', async ({ page }) => {
     await page.goto('/', { waitUntil: 'domcontentloaded' });
-    await page.getByRole('link', { name: /get started/i }).first().click();
-    await expect(page).toHaveURL(/\/get-started$/);
+    await page.getByRole('link', { name: /explore vemtap/i }).first().click();
+    await expect(page).toHaveURL(/\/deals/);
   });
 });

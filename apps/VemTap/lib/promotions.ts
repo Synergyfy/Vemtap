@@ -70,6 +70,7 @@ export interface Promotion {
     audience?: string;
     maxClaimsPerCustomer?: number;
     claimCodePrefix?: string;
+    viewCount?: number;
 }
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
@@ -83,14 +84,19 @@ export function formatDealPrice(price: number): string {
 }
 
 export function formatDealDate(dateStr: string): string {
-    return new Date(dateStr).toLocaleDateString('en-NG', {
+    if (!dateStr) return 'Ongoing';
+    const date = new Date(dateStr);
+    if (isNaN(date.getTime())) return 'Ongoing';
+    return date.toLocaleDateString('en-NG', {
         month: 'short',
         day: 'numeric',
     });
 }
 
 export function getDaysLeft(endDate: string): number {
+    if (!endDate) return -1;
     const end = new Date(endDate);
+    if (isNaN(end.getTime())) return -1;
     const now = new Date();
     const diff = end.getTime() - now.getTime();
     return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
@@ -98,6 +104,7 @@ export function getDaysLeft(endDate: string): number {
 
 export function getUrgencyText(endDate: string): string {
     const days = getDaysLeft(endDate);
+    if (days === -1) return 'No end date';
     if (days === 0) return 'Ends today';
     if (days === 1) return 'Ends tomorrow';
     if (days <= 7) return `${days} days left`;

@@ -8,6 +8,7 @@ import DynamicQRCode from '@/components/shared/DynamicQRCode';
 import { useCustomerFlowStore } from '@/store/useCustomerFlowStore';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useSudoStore } from '@/store/useSudoStore';
+import { useSubscriptionStore } from '@/store/subscriptionStore';
 import { useActiveBranch } from '@/hooks/useActiveBranch';
 import { BusinessHours } from '@/services/businesses/types';
 import { uploadToCloudinary } from '@/lib/cloudinary';
@@ -78,6 +79,9 @@ export default function BusinessProfilePage() {
     const { storeName, logoUrl, updateCustomSettings, setRedirect } = useCustomerFlowStore();
     const user = useAuthStore((state) => state.user);
     const { activeBranchId, isAllBranches: rawIsAllBranches } = useActiveBranch();
+    const getPlan = useSubscriptionStore(state => state.getPlan);
+    const currentPlan = getPlan(user?.planId);
+    const isPlatinum = currentPlan?.badge === 'platinum';
 
     const { data: profile, isLoading: profileLoading } = useUserProfile();
     const { data: branches = [], isLoading: branchesLoading } = useBranches();
@@ -173,6 +177,7 @@ export default function BusinessProfilePage() {
     const [showSocial, setShowSocial] = useState(true);
     const [showFeedback, setShowFeedback] = useState(true);
     const [showRewards, setShowRewards] = useState(true);
+    const [reviewModeration, setReviewModeration] = useState(false);
     const [activeTab, setActiveTab] = useState('general');
 
     // Password Update States
@@ -631,6 +636,7 @@ export default function BusinessProfilePage() {
             setShowSocial(branch.showSocial ?? true);
             setShowFeedback(branch.showFeedback ?? true);
             setShowRewards(branch.showRewards ?? true);
+            setReviewModeration(branch.reviewModeration ?? false);
             setIdentityNumber(branch.identityNumber || '');
             setUtilityBill(branch.utilityBill || '');
 
@@ -827,6 +833,7 @@ export default function BusinessProfilePage() {
                 if (hasChanged(showReview, branch.showReview)) branchUpdates.showReview = showReview;
                 if (hasChanged(showSocial, branch.showSocial)) branchUpdates.showSocial = showSocial;
                 if (hasChanged(showFeedback, branch.showFeedback)) branchUpdates.showFeedback = showFeedback;
+                if (isPlatinum && hasChanged(reviewModeration, branch.reviewModeration)) branchUpdates.reviewModeration = reviewModeration;
 
                 // Handle socials via engagement field in branch
                 const currentEngagement = branch.engagement || {};
@@ -1631,6 +1638,27 @@ export default function BusinessProfilePage() {
                                     </button>
                                 </div>
                             )}
+                            {/* Review Moderation Toggle (Platinum Only) */}
+                            <div className="flex items-center gap-3 bg-white px-4 py-2 rounded-xl border border-gray-100 shadow-sm">
+                                <div className="flex flex-col items-end">
+                                    <span className="text-xs font-medium text-text-main">Review Moderation</span>
+                                    <span className="text-[9px] text-text-secondary">
+                                        {isPlatinum ? 'Approve/reject reviews before they go live' : 'Platinum feature'}
+                                    </span>
+                                </div>
+                                {isPlatinum ? (
+                                    <button
+                                        onClick={() => setReviewModeration(!reviewModeration)}
+                                        className={`w-12 h-6 rounded-full transition-all relative ${reviewModeration ? 'bg-primary' : 'bg-gray-200'}`}
+                                    >
+                                        <div className={`absolute top-1 left-1 size-4 bg-white rounded-full transition-transform ${reviewModeration ? 'translate-x-6' : 'translate-x-0'}`} />
+                                    </button>
+                                ) : (
+                                    <div className="px-3 py-1 rounded-full bg-gradient-to-r from-purple-500 to-indigo-500 text-white text-[10px] font-bold shadow-sm">
+                                        PLATINUM
+                                    </div>
+                                )}
+                            </div>
                         </div>
                         <div className="p-8 space-y-8">
                             <div className="space-y-6">
