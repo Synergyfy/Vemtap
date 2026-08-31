@@ -136,7 +136,7 @@ export default function MakeDealFlow({ isOpen, onClose, product, activeBranchId 
     };
 
     const getPricingType = (): CatalogueOfferPricingType => {
-        if (dealType === 'discount' || dealType === 'flash') return 'percentage_discount';
+        if (dealType === 'discount' || dealType === 'flash') return 'fixed_discount_amount';
         if (dealType === 'special') return 'fixed_discount_price';
         return 'sum';
     };
@@ -161,6 +161,7 @@ export default function MakeDealFlow({ isOpen, onClose, product, activeBranchId 
                 description: dealDescription || `${dealTitle} - Limited time offer`,
                 pricingType: getPricingType(),
                 branchId: activeBranchId || '',
+                sourceProductId: product.id,
                 itemIds: [product.id],
                 mainImage: finalImageUrl,
                 offerType: dealType,

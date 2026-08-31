@@ -4,12 +4,15 @@ import { Reward } from '../loyalty/types';
 
 // --- Types ---
 
-export type CatalogueItemStatus = 'active' | 'inactive' | 'out_of_stock' | 'suspended';
+export type CatalogueItemStatus = 'active' | 'inactive' | 'out_of_stock' | 'suspended' | 'low_stock' | 'archived';
 export type CatalogueItemType = 'product' | 'service';
 export type OrderStatus = 'new' | 'processing' | 'completed' | 'cancelled' | 'rejected' | 'refunded' | 'partial_refund';
 export type DiscountType = 'percentage' | 'fixed' | 'none';
-export type CatalogueOfferPricingType = 'sum' | 'percentage_discount' | 'fixed_discount_price';
+export type CatalogueOfferPricingType = 'sum' | 'percentage_discount' | 'fixed_discount_price' | 'fixed_discount_amount';
 export type CatalogueOfferStatus = 'active' | 'inactive';
+export type ServicePriceType = 'fixed' | 'starting_from' | 'range' | 'contact';
+export type ServiceMode = 'location' | 'customer' | 'online' | 'flexible';
+export type ServiceBookingMethod = 'vemtap' | 'call' | 'whatsapp' | 'external';
 
 export interface Category {
     id: string;
@@ -48,6 +51,14 @@ export interface CatalogueItem {
     loyaltyPoints?: number | null;
     enableLoyaltyPoints?: boolean;
     loyaltyPointsValue?: number;
+    priceType?: ServicePriceType;
+    priceRangeMin?: number | null;
+    priceRangeMax?: number | null;
+    duration?: string | null;
+    serviceMode?: ServiceMode;
+    isBookable?: boolean;
+    bookingMethod?: ServiceBookingMethod | null;
+    externalBookingLink?: string | null;
     createdAt?: string;
     updatedAt?: string;
 }
@@ -70,6 +81,8 @@ export interface CatalogueOffer {
     branchId: string;
     status: CatalogueOfferStatus;
     items: CatalogueItem[];
+    sourceProductId?: string | null;
+    sourceProduct?: CatalogueItem | null;
     reward?: Reward;
     views?: number;
     visits?: number;
@@ -174,7 +187,7 @@ export interface UpdateItemDto extends Partial<CreateItemDto> {
 
 export interface CreateCatalogueOfferDto {
     name: string;
-    description: string;
+    description?: string;
     terms?: string[];
     mainImage?: string;
     galleryImages?: string[];
@@ -185,7 +198,8 @@ export interface CreateCatalogueOfferDto {
     loyaltyPoints?: number;
     rewardId?: string;
     branchId: string;
-    itemIds: string[];
+    sourceProductId?: string;
+    itemIds?: string[];
     startDate?: string;
     endDate?: string;
     offerType?: string;
