@@ -114,10 +114,15 @@ export default function MakeDealFlow({ isOpen, onClose, product, activeBranchId 
     }, [product]);
 
     const handleCropComplete = async (croppedBlob: Blob) => {
-        setDealImage(URL.createObjectURL(croppedBlob));
-        setLocalMainFile(croppedBlob as any);
-        setUseProductImage(false);
-        setCroppingImage(null);
+        const file = new File([croppedBlob], 'deal-image.jpg', { type: 'image/jpeg' });
+        const reader = new FileReader();
+        reader.onloadend = () => {
+            setDealImage(reader.result as string);
+            setLocalMainFile(file as any);
+            setUseProductImage(false);
+            setCroppingImage(null);
+        };
+        reader.readAsDataURL(croppedBlob);
     };
 
     const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {

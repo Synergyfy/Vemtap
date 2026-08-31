@@ -191,14 +191,20 @@ export default function ServiceForm({ isOpen, onClose, service, activeBranchId }
     }, [service, activeBranchId, reset]);
 
     const handleCropComplete = async (croppedBlob: Blob) => {
-        if (croppingImage?.isGallery) {
-            setGalleryPreviews(prev => [...prev, URL.createObjectURL(croppedBlob)]);
-            setLocalGalleryFiles(prev => [...prev, croppedBlob as any]);
-        } else {
-            setMainImagePreview(URL.createObjectURL(croppedBlob));
-            setLocalMainFile(croppedBlob as any);
-        }
-        setCroppingImage(null);
+        const file = new File([croppedBlob], 'service-image.jpg', { type: 'image/jpeg' });
+        const reader = new FileReader();
+        reader.onloadend = () => {
+            const result = reader.result as string;
+            if (croppingImage?.isGallery) {
+                setLocalGalleryFiles(prev => [...prev, file]);
+                setGalleryPreviews(prev => [...prev, result]);
+            } else {
+                setLocalMainFile(file);
+                setMainImagePreview(result);
+            }
+            setCroppingImage(null);
+        };
+        reader.readAsDataURL(croppedBlob);
     };
 
     const handleMainImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -228,7 +234,7 @@ export default function ServiceForm({ isOpen, onClose, service, activeBranchId }
         try {
             setIsUploading(true);
             let mainImageUrl = mainImagePreview;
-            let finalGalleryUrls = [...galleryPreviews.filter(url => url.startsWith('http'))];
+            let finalGalleryUrls = [...galleryPreviews.filter(url => !url.startsWith('data:'))];
 
             if (localMainFile || localGalleryFiles.length > 0) {
                 const toastId = toast.loading('Uploading images...');

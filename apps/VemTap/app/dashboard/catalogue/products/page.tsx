@@ -182,8 +182,8 @@ export default function ProductsPage() {
             accessor: (item: CatalogueItem) => (
                 <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-lg bg-slate-50 border border-slate-100 overflow-hidden flex items-center justify-center shrink-0">
-                        {item.mainImage ? (
-                            <img src={item.mainImage} alt={item.name} className="w-full h-full object-cover" />
+                        {item.mainImage && (item.mainImage.startsWith('http') || item.mainImage.startsWith('data:') || item.mainImage.startsWith('blob:')) ? (
+                            <img src={item.mainImage} alt={item.name} className="w-full h-full object-cover" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} />
                         ) : (
                             <ShoppingBag className="text-slate-300" size={18} />
                         )}
