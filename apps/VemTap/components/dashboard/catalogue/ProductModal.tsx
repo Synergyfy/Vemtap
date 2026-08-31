@@ -532,6 +532,8 @@ export default function ProductModal({ isOpen, onClose, product, activeBranchId,
                 onClose={onClose}
                 title={product ? `Edit ${itemType === 'service' ? 'Service' : 'Product'}` : `Add ${itemType === 'service' ? 'Service' : 'Product'}`}
                 size="2xl"
+                closeOnOverlayClick={false}
+                mobileSheet
             >
                 <form onSubmit={handleSubmit(onSubmit)}>
                     {/* Step Indicator */}

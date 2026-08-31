@@ -10,9 +10,10 @@ import {
     useCreateCatalogueItem,
     useUpdateCatalogueItem,
     useCatalogueCategories,
+    useCreateCatalogueCategory,
 } from '@/services/catalogue/hooks';
 import toast from 'react-hot-toast';
-import { Loader2, Save, X, Clock, MapPin, Globe, Phone, ChevronRight, ChevronLeft } from 'lucide-react';
+import { Loader2, Save, X, Clock, MapPin, Globe, Phone, ChevronRight, ChevronLeft, Plus } from 'lucide-react';
 import { uploadToCloudinary } from '@/lib/cloudinary';
 import { cn } from '@/lib/utils';
 import Cropper, { Point, Area } from 'react-easy-crop';
@@ -124,7 +125,10 @@ export default function ServiceForm({ isOpen, onClose, service, activeBranchId }
     const createMutation = useCreateCatalogueItem();
     const updateMutation = useUpdateCatalogueItem();
     const { data: categories = [] } = useCatalogueCategories();
+    const createCategoryMutation = useCreateCatalogueCategory();
     const [currentStep, setCurrentStep] = useState(0);
+    const [isCreatingCategory, setIsCreatingCategory] = useState(false);
+    const [newCategoryName, setNewCategoryName] = useState('');
     const [isUploading, setIsUploading] = useState(false);
     const [localMainFile, setLocalMainFile] = useState<File | null>(null);
     const [localGalleryFiles, setLocalGalleryFiles] = useState<File[]>([]);
@@ -228,6 +232,19 @@ export default function ServiceForm({ isOpen, onClose, service, activeBranchId }
         setLocalGalleryFiles(prev => prev.filter((_, i) => i !== index));
     };
 
+    const handleCreateCategory = async () => {
+        if (!newCategoryName.trim()) return;
+        try {
+            const newCat: any = await createCategoryMutation.mutateAsync({ name: newCategoryName.trim() });
+            toast.success('Category created');
+            setValue('categoryId', newCat.id);
+            setNewCategoryName('');
+            setIsCreatingCategory(false);
+        } catch (error: any) {
+            toast.error(error.message || 'Failed to create category');
+        }
+    };
+
     const onSubmit = async (values: ServiceFormValues) => {
         // Guard: only allow submit on last step (Images) and after ghost-click debounce
         if (currentStep !== STEPS.length - 1 || !canSubmit) return;
@@ -311,7 +328,7 @@ export default function ServiceForm({ isOpen, onClose, service, activeBranchId }
                 )}
             </AnimatePresence>
 
-            <Modal isOpen={isOpen} onClose={onClose} title={service ? 'Edit Service' : 'Add Service'} size="2xl">
+            <Modal isOpen={isOpen} onClose={onClose} title={service ? 'Edit Service' : 'Add Service'} size="2xl" closeOnOverlayClick={false} mobileSheet>
                 <form onSubmit={handleSubmit(onSubmit)} onKeyDown={(e) => { if (e.key === 'Enter' && currentStep < STEPS.length - 1) e.preventDefault(); }}>
                     {/* Step Indicator */}
                     <div className="flex items-center justify-between mb-6">
@@ -339,12 +356,25 @@ export default function ServiceForm({ isOpen, onClose, service, activeBranchId }
                                 <input {...register('name')} className="w-full h-11 px-4 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-primary/20 outline-none" placeholder="e.g. Haircut, Massage, Consultation" />
                                 {errors.name && <p className="text-xs text-red-500 mt-1">{errors.name.message}</p>}
                             </div>
-                            <div>
-                                <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1.5">Category *</label>
-                                <select {...register('categoryId')} className="w-full h-11 px-4 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-primary/20 outline-none">
-                                    <option value="">Select category</option>
-                                    {categories.map((cat: any) => <option key={cat.id} value={cat.id}>{cat.name}</option>)}
-                                </select>
+                            <div className="space-y-1.5">
+                                <div className="flex items-center justify-between">
+                                    <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500">Category *</label>
+                                    <button type="button" onClick={() => setIsCreatingCategory(!isCreatingCategory)} className="text-[10px] text-primary font-semibold hover:underline flex items-center gap-1">
+                                        <Plus size={10} /> {isCreatingCategory ? 'Cancel' : 'New Category'}
+                                    </button>
+                                </div>
+                                <p className="text-[10px] text-slate-500 font-medium">Group this service under a category for easier browsing.</p>
+                                {isCreatingCategory ? (
+                                    <div className="flex gap-2">
+                                        <input value={newCategoryName} onChange={e => setNewCategoryName(e.target.value)} className="flex-1 h-11 px-4 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium outline-none" placeholder="Category Name" />
+                                        <button type="button" onClick={handleCreateCategory} disabled={!newCategoryName || createCategoryMutation.isPending} className="h-11 px-4 bg-primary text-white rounded-xl font-semibold text-xs disabled:opacity-50">Add</button>
+                                    </div>
+                                ) : (
+                                    <select {...register('categoryId')} className="w-full h-11 px-4 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-primary/20 outline-none">
+                                        <option value="">Select category</option>
+                                        {categories.map((cat: any) => <option key={cat.id} value={cat.id}>{cat.name}</option>)}
+                                    </select>
+                                )}
                                 {errors.categoryId && <p className="text-xs text-red-500 mt-1">{errors.categoryId.message}</p>}
                             </div>
                             <div>
