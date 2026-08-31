@@ -10,9 +10,9 @@ import PopularNow from '@/components/home/PopularNow';
 import CategoryRail from '@/components/home/CategoryRail';
 import AroundYouSection from '@/components/home/AroundYouSection';
 import HowItWorksSimple from '@/components/home/HowItWorksSimple';
-import QRNetworkSection from '@/components/home/QRNetworkSection';
-import BusinessCTA from '@/components/home/BusinessCTA';
-import ConsumerCTA from '@/components/home/ConsumerCTA';
+import QRNetworkSection from '@/components/home/QrNetworkSection';
+import BusinessCTA from '@/components/home/BusinessCta';
+import ConsumerCTA from '@/components/home/ConsumerCta';
 
 export default function Homepage() {
   return (

@@ -68,7 +68,7 @@ export default function ReviewCard({ review, offerId }: ReviewCardProps) {
                             key={star}
                             size={14}
                             className={`${
-                                star <= review.rating
+                                star <= (review.rating ?? 0)
                                     ? 'text-amber-400 fill-amber-400'
                                     : 'text-gray-200'
                             }`}

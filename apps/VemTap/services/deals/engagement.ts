@@ -25,7 +25,7 @@ export const toggleReviewLike = (
     offerId: string,
     reviewId: string
 ): Promise<{ liked: boolean; likesCount: number }> =>
-    api.post(`/deals/${offerId}/reviews/${reviewId}/like`);
+    api.post(`/deals/${offerId}/reviews/${reviewId}/like`, {});
 
 // ─── Reactions (like / dislike) ───────────────────────────────────────────────
 
@@ -41,7 +41,7 @@ export const getReactionStatus = (offerId: string): Promise<DealReactionResponse
 // ─── Saves (bookmarks) ────────────────────────────────────────────────────────
 
 export const toggleSave = (offerId: string): Promise<DealSaveResponse> =>
-    api.post(`/deals/${offerId}/save`);
+    api.post(`/deals/${offerId}/save`, {});
 
 export const getSaveStatus = (offerId: string): Promise<{ isSaved: boolean }> =>
     api.get(`/deals/${offerId}/save-status`);
@@ -63,10 +63,10 @@ export const getBusinessReviews = (params?: BusinessReviewsQueryParams): Promise
 };
 
 export const approveReview = (reviewId: string): Promise<{ id: string; status: 'approved' }> =>
-    api.post(`/deals/business/reviews/${reviewId}/approve`);
+    api.post(`/deals/business/reviews/${reviewId}/approve`, {});
 
 export const rejectReview = (reviewId: string): Promise<{ id: string; status: 'rejected' }> =>
-    api.post(`/deals/business/reviews/${reviewId}/reject`);
+    api.post(`/deals/business/reviews/${reviewId}/reject`, {});
 
 export const deleteReview = (reviewId: string): Promise<void> =>
     api.delete(`/deals/business/reviews/${reviewId}`);

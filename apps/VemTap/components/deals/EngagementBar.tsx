@@ -14,6 +14,7 @@ interface EngagementBarProps {
     dealUrl: string;
     onCommentClick?: () => void;
     businessName?: string;
+    reviewCount?: number;
 }
 
 export default function EngagementBar({

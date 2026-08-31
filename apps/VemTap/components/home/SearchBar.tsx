@@ -8,14 +8,15 @@ interface SearchBarProps {
   locationLabel?: string | null;
   onLocationClick?: () => void;
   compact?: boolean;
+  className?: string;
 }
 
-export default function SearchBar({ locationLabel, onLocationClick, compact }: SearchBarProps) {
+export default function SearchBar({ locationLabel, onLocationClick, compact, className }: SearchBarProps) {
   const [searchOpen, setSearchOpen] = useState(false);
 
   return (
     <>
-      <div className={`w-full ${compact ? '' : 'max-w-xl mx-auto'}`}>
+      <div className={`w-full ${compact ? '' : 'max-w-xl mx-auto'} ${className ?? ''}`}>
         <button
           onClick={() => setSearchOpen(true)}
           className={`w-full flex items-center gap-2.5 bg-white border border-gray-200 hover:border-primary/30 hover:shadow-md transition-all group cursor-text ${

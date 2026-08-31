@@ -53,7 +53,7 @@ export default function NewOnVemtap() {
           animate={{ opacity: 1 }}
           className="flex gap-4 overflow-x-auto scrollbar-hide -mx-4 px-4 md:mx-0 md:px-0 pb-4"
         >
-          {businesses.map((biz, i) => (
+          {businesses.map((biz: any, i: number) => (
             <motion.div
               key={biz.id}
               initial={{ opacity: 0, x: 20 }}
