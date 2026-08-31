@@ -107,11 +107,16 @@ export default function PricingPage() {
                         {standardPlans.map((plan, index) => {
                             const highlight = plan.isPopular ?? false;
                             const isFree = plan.isFree;
-                            const price = billing === 'yearly'
+                            const totalPrice = billing === 'yearly'
                                 ? (plan.pricing?.yearly?.totalPrice ?? plan.yearlyPriceWithTax ?? plan.yearlyPrice)
                                 : billing === 'quarterly'
                                     ? (plan.pricing?.quarterly?.totalPrice ?? plan.quarterlyPriceWithTax ?? plan.quarterlyPrice)
                                     : (plan.pricing?.monthly?.totalPrice ?? plan.monthlyPriceWithTax ?? plan.monthlyPrice);
+                            const perMonthPrice = billing === 'yearly'
+                                ? Math.floor(totalPrice / 12)
+                                : billing === 'quarterly'
+                                    ? Math.floor(totalPrice / 3)
+                                    : totalPrice;
                             const features = normalizeFeatures(plan);
 
                             return (
@@ -143,18 +148,18 @@ export default function PricingPage() {
                                             </div>
                                         ) : (
                                             <div className="flex items-baseline gap-1">
-                                                <span className="text-4xl font-bold">₦{price.toLocaleString()}</span>
-                                                <span className={cn("text-xs font-medium uppercase tracking-wider opacity-60")}>/{billing === 'monthly' ? 'mo' : billing === 'quarterly' ? 'qtr' : 'yr'}</span>
+                                                <span className="text-4xl font-bold">₦{perMonthPrice.toLocaleString()}</span>
+                                                <span className={cn("text-xs font-medium uppercase tracking-wider opacity-60")}>/mo</span>
                                             </div>
+                                        )}
+                                        {!isFree && billing !== 'monthly' && (
+                                            <p className={cn("text-[11px] font-semibold mt-1", highlight ? "text-white/80" : "text-gray-500")}>
+                                                ₦{totalPrice.toLocaleString()} billed {billing === 'quarterly' ? 'quarterly' : 'annually'}
+                                            </p>
                                         )}
                                         {!isFree && plan.tax && plan.tax.isEnabled && (
                                             <p className={cn("text-[10px] font-semibold mt-1", highlight ? "text-white/60" : "text-gray-400")}>
                                                 Tax inclusive · {plan.tax.name}{plan.tax.taxType === 'percentage' ? ` ${plan.tax.rate}%` : ''}
-                                            </p>
-                                        )}
-                                        {!isFree && billing !== 'monthly' && (
-                                            <p className={cn("text-[11px] font-semibold mt-1", highlight ? "text-white/60" : "text-gray-400")}>
-                                                ₦{price.toLocaleString()} billed {billing === 'quarterly' ? 'quarterly' : 'annually'}
                                             </p>
                                         )}
                                     </div>

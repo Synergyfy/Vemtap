@@ -132,6 +132,7 @@ export default function OfferModal({ isOpen, onClose, offer, activeBranchId }: O
 
     const [termsInput, setTermsInput] = useState('');
     const [generatingTerms, setGeneratingTerms] = useState(false);
+    const [itemFilter, setItemFilter] = useState<'all' | 'product' | 'service'>('all');
 
     const [isUploading, setIsUploading] = useState(false);
     const [localMainFile, setLocalMainFile] = useState<File | null>(null);
@@ -769,8 +770,29 @@ export default function OfferModal({ isOpen, onClose, offer, activeBranchId }: O
                                         </span>
                                     </div>
                                     <p className="text-[10px] text-text-secondary font-medium mb-3 ml-1 italic">Select at least one product or service to include in this bundle.</p>
+                                    
+                                    {/* Item Type Filter */}
+                                    <div className="flex items-center gap-1 mb-3 p-1 bg-slate-100 rounded-lg w-fit">
+                                        {(['all', 'product', 'service'] as const).map(filter => (
+                                            <button
+                                                key={filter}
+                                                type="button"
+                                                onClick={() => setItemFilter(filter)}
+                                                className={cn(
+                                                    "px-3 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider transition-all",
+                                                    itemFilter === filter ? 'bg-white text-primary shadow-sm' : 'text-slate-500 hover:text-slate-700'
+                                                )}
+                                            >
+                                                {filter === 'all' ? 'All' : filter === 'product' ? 'Products' : 'Services'}
+                                            </button>
+                                        ))}
+                                    </div>
+
                                     <div className="max-h-64 overflow-y-auto border border-gray-200 rounded-2xl p-2 space-y-1 custom-scrollbar">
-                                        {allItems.map((item: CatalogueItem) => (
+                                        {allItems.filter(item => {
+                                            if (itemFilter === 'all') return true;
+                                            return (item.itemType || 'product') === itemFilter;
+                                        }).map((item: CatalogueItem) => (
                                             <button
                                                 key={item.id}
                                                 type="button"
@@ -791,7 +813,12 @@ export default function OfferModal({ isOpen, onClose, offer, activeBranchId }: O
                                                     )}
                                                 </div>
                                                 <div className="flex-1 text-left">
-                                                    <p className="text-xs font-bold text-text-main truncate">{item.name}</p>
+                                                    <div className="flex items-center gap-1.5">
+                                                        <p className="text-xs font-bold text-text-main truncate">{item.name}</p>
+                                                        {item.itemType === 'service' && (
+                                                            <span className="px-1.5 py-0.5 bg-purple-100 text-purple-700 rounded text-[8px] font-bold uppercase">Service</span>
+                                                        )}
+                                                    </div>
                                                     <p className="text-[10px] text-text-secondary font-black">₦{Number(item.price).toLocaleString()}</p>
                                                 </div>
                                                 {formData.itemIds.includes(item.id) && (

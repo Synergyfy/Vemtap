@@ -81,7 +81,7 @@ export default function ProductDetailsPage() {
     };
 
     return (
-        <div className="p-4 md:p-8">
+        <div className="p-4 md:p-8 pb-28 md:pb-8">
             <button 
                 onClick={() => router.back()}
                 className="flex items-center gap-2 text-text-secondary hover:text-primary transition-colors mb-6 font-bold text-sm"
@@ -93,6 +93,7 @@ export default function ProductDetailsPage() {
             <PageHeader
                 title={item.name}
                 description={item.shortDescription}
+                isSticky={false}
                 actions={
                     <div className="flex items-center gap-3">
                         <button 

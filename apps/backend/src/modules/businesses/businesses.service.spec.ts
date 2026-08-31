@@ -105,6 +105,10 @@ describe('BusinessesService', () => {
     subscribeToFreePlan: jest.fn().mockResolvedValue({}),
   };
 
+  const mockSubscriptionRepository = {
+    findOne: jest.fn().mockResolvedValue(null),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -143,7 +147,7 @@ describe('BusinessesService', () => {
         },
         {
           provide: getRepositoryToken(Subscription),
-          useValue: mockRepository,
+          useValue: mockSubscriptionRepository,
         },
         {
           provide: getRepositoryToken(Plan),
@@ -169,6 +173,7 @@ describe('BusinessesService', () => {
     repository = module.get(getRepositoryToken(Business));
     usersRepository = module.get(getRepositoryToken(User));
     rotatorInvalidation = module.get(RotatorInvalidationService);
+    mockRepository.findOne.mockResolvedValue(mockBusiness);
   });
 
   it('should be defined', () => {
@@ -223,6 +228,33 @@ describe('BusinessesService', () => {
       expect(result.name).toBe(updateDto.name);
       expect(result.logoUrl).toBe(updateDto.logoUrl);
       expect(repository.save).toHaveBeenCalled();
+    });
+
+    it('should allow enabling requireReviewApproval on Platinum plan', async () => {
+      mockSubscriptionRepository.findOne.mockResolvedValueOnce({
+        id: 'sub-1',
+        plan: { name: 'Platinum Plan' },
+      });
+      const updateDto = {
+        requireReviewApproval: true,
+      };
+
+      const result = await service.update('biz-1', updateDto);
+      expect(result.requireReviewApproval).toBe(true);
+    });
+
+    it('should forbid enabling requireReviewApproval on non-Platinum plan', async () => {
+      mockSubscriptionRepository.findOne.mockResolvedValueOnce({
+        id: 'sub-1',
+        plan: { name: 'Starter Plan' },
+      });
+      const updateDto = {
+        requireReviewApproval: true,
+      };
+
+      await expect(service.update('biz-1', updateDto)).rejects.toThrow(
+        'Deal review moderation control is exclusively available on the Platinum plan',
+      );
     });
 
     it('should throw NotFoundException if business not found', async () => {

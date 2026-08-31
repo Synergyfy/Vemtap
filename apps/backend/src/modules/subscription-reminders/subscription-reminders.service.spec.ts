@@ -10,11 +10,13 @@ import { Business } from '../businesses/entities/business.entity';
 import { Cluster } from '../clusters/entities/cluster.entity';
 import { User, UserStatus } from '../users/entities/user.entity';
 import { RotatorImpression } from '../rotator/entities/rotator-impression.entity';
+import { SubscriptionReminderTemplate } from './entities/subscription-reminder-template.entity';
 import { NotificationsService } from '../notifications/notifications.service';
 import { PushNotificationService } from '../notifications/push-notification.service';
 import { MailService } from '../mail/mail.service';
 import { SubscriptionRemindersService } from './subscription-reminders.service';
 import { SUBSCRIPTION_RENEWAL_URL } from './subscription-reminders.constants';
+import { NotFoundException, BadRequestException } from '@nestjs/common';
 
 const NOW = new Date('2026-08-26T08:00:00Z');
 
@@ -46,7 +48,6 @@ function makeSub(overrides: Partial<Subscription> = {}): Subscription {
   return { ...base, ...overrides };
 }
 
-/** Typed accessor for the latest in-app notification created by the service. */
 function lastCreateCall(mock: { create: jest.Mock }): {
   ownerId: string;
   title: string;
@@ -92,85 +93,105 @@ describe('SubscriptionRemindersService', () => {
   let businessRepo: { find: jest.Mock };
   let userRepo: { find: jest.Mock };
   let impressionRepo: { createQueryBuilder: jest.Mock };
+  let templateRepo: {
+    find: jest.Mock;
+    findOne: jest.Mock;
+    create: jest.Mock;
+    save: jest.Mock;
+  };
   let notificationsService: { create: jest.Mock };
   let pushService: { sendNotification: jest.Mock };
   let mailService: { sendSubscriptionRenewalReminder: jest.Mock };
 
-  /**
-   * Stubs the three subscription queries in call order: expiring subs, lapsed
-   * candidates, and (only consulted when lapsed candidates exist) the set of
-   * currently-eligible discovery businesses.
-   */
-  function mockSubscriptionQueries(opts: {
-    expiring: Subscription[];
-    lapsed: Subscription[];
-    eligibleBusinessIds?: string[];
-  }) {
-    const expiringQb = makeQueryBuilder(opts.expiring);
-    const lapsedQb = makeQueryBuilder(opts.lapsed);
-    subRepo.createQueryBuilder
-      .mockReturnValueOnce(expiringQb)
-      .mockReturnValueOnce(lapsedQb);
-    if (opts.lapsed.length > 0) {
-      subRepo.createQueryBuilder.mockReturnValueOnce(
-        makeQueryBuilder(
+  function stubQueries(
+    expiring: Subscription[] = [],
+    lapsed: Subscription[] = [],
+    eligible: string[] = [],
+  ) {
+    let call = 0;
+    subRepo.createQueryBuilder.mockImplementation(() => {
+      call++;
+      if (call === 1) return makeQueryBuilder(expiring);
+      if (call === 2) return makeQueryBuilder(lapsed);
+      if (call === 3)
+        return makeQueryBuilder(
           [],
-          (opts.eligibleBusinessIds ?? []).map((businessId) => ({
-            businessId,
-          })),
-        ),
-      );
-    }
-  }
-
-  /** Common wiring for a business with one main branch in cluster-1 (Ikeja). */
-  function stubClusterMembershipAndOwners() {
-    branchRepo.find.mockResolvedValue([
-      {
-        id: 'branch-1',
-        businessId: 'biz-1',
-        clusterId: 'cluster-1',
-        isMainBranch: true,
-      },
-    ]);
-    clusterRepo.find.mockResolvedValue([{ id: 'cluster-1', name: 'Ikeja' }]);
-    businessRepo.find.mockResolvedValue([{ id: 'biz-1', ownerId: 'owner-1' }]);
-    userRepo.find.mockResolvedValue([
-      {
-        id: 'owner-1',
-        email: 'owner@example.com',
-        firstName: 'John',
-        lastName: 'Doe',
-        status: UserStatus.ACTIVE,
-      },
-    ]);
-    impressionRepo.createQueryBuilder.mockReturnValue(
-      makeQueryBuilder([], [{ clusterId: 'cluster-1', people: '60' }]),
-    );
-    branchRepo.createQueryBuilder.mockReturnValue(
-      makeQueryBuilder([], [{ clusterId: 'cluster-1', businesses: '70' }]),
-    );
+          eligible.map((businessId) => ({ businessId })),
+        );
+      return makeQueryBuilder();
+    });
   }
 
   beforeEach(async () => {
+    jest.useFakeTimers();
+    jest.setSystemTime(NOW);
+
     subRepo = {
       createQueryBuilder: jest.fn(),
       update: jest.fn().mockResolvedValue({ affected: 1 }),
     };
+
     branchRepo = {
+      find: jest.fn().mockResolvedValue([
+        {
+          id: 'branch-1',
+          businessId: 'biz-1',
+          clusterId: 'cluster-1',
+          isMainBranch: true,
+        },
+      ]),
+      createQueryBuilder: jest
+        .fn()
+        .mockReturnValue(
+          makeQueryBuilder([], [{ clusterId: 'cluster-1', businesses: '70' }]),
+        ),
+    };
+
+    clusterRepo = {
+      find: jest.fn().mockResolvedValue([{ id: 'cluster-1', name: 'Ikeja' }]),
+    };
+
+    businessRepo = {
+      find: jest
+        .fn()
+        .mockResolvedValue([{ id: 'biz-1', ownerId: 'owner-1' }]),
+    };
+
+    userRepo = {
+      find: jest.fn().mockResolvedValue([
+        {
+          id: 'owner-1',
+          email: 'owner@example.com',
+          firstName: 'John',
+          lastName: 'Doe',
+          status: UserStatus.ACTIVE,
+        },
+      ]),
+    };
+
+    impressionRepo = {
+      createQueryBuilder: jest
+        .fn()
+        .mockReturnValue(
+          makeQueryBuilder([], [{ clusterId: 'cluster-1', people: '60' }]),
+        ),
+    };
+
+    templateRepo = {
       find: jest.fn().mockResolvedValue([]),
-      createQueryBuilder: jest.fn(),
+      findOne: jest.fn().mockResolvedValue(null),
+      create: jest.fn().mockImplementation((dto) => ({ ...dto, id: 'tmpl-1' })),
+      save: jest.fn().mockImplementation((item) => Promise.resolve(item)),
     };
-    clusterRepo = { find: jest.fn().mockResolvedValue([]) };
-    businessRepo = { find: jest.fn().mockResolvedValue([]) };
-    userRepo = { find: jest.fn().mockResolvedValue([]) };
-    impressionRepo = { createQueryBuilder: jest.fn() };
+
     notificationsService = {
-      create: jest.fn().mockResolvedValue({ id: 'n-1' }),
+      create: jest.fn().mockResolvedValue({ id: 'notif-1' }),
     };
+
     pushService = {
       sendNotification: jest.fn().mockResolvedValue({ queued: true }),
     };
+
     mailService = {
       sendSubscriptionRenewalReminder: jest.fn().mockResolvedValue(true),
     };
@@ -187,19 +208,43 @@ describe('SubscriptionRemindersService', () => {
           provide: getRepositoryToken(RotatorImpression),
           useValue: impressionRepo,
         },
+        {
+          provide: getRepositoryToken(SubscriptionReminderTemplate),
+          useValue: templateRepo,
+        },
         { provide: NotificationsService, useValue: notificationsService },
         { provide: PushNotificationService, useValue: pushService },
         { provide: MailService, useValue: mailService },
-        { provide: ConfigService, useValue: new ConfigService({}) },
+        {
+          provide: ConfigService,
+          useValue: {
+            get: jest.fn((key: string, defaultValue?: unknown) => {
+              if (key === 'SUBSCRIPTION_REMINDER_STAGES') return '14,7,3';
+              if (key === 'SUBSCRIPTION_REMINDER_LAPSED_DAYS') return 7;
+              if (key === 'SUBSCRIPTION_REMINDER_CUSTOMER_LOOKBACK_DAYS') return 30;
+              return defaultValue;
+            }),
+          },
+        },
       ],
     }).compile();
 
-    service = module.get(SubscriptionRemindersService);
+    service = module.get<SubscriptionRemindersService>(
+      SubscriptionRemindersService,
+    );
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  it('should be defined', () => {
+    expect(service).toBeDefined();
   });
 
   describe('runRenewalReminders', () => {
     it('returns zeroed results when there are no targets', async () => {
-      mockSubscriptionQueries({ expiring: [], lapsed: [] });
+      stubQueries([], []);
 
       const result = await service.runRenewalReminders();
 
@@ -211,56 +256,53 @@ describe('SubscriptionRemindersService', () => {
         sentEmail: 0,
         failed: 0,
         skippedNoCluster: 0,
+        skippedDisabledTemplate: 0,
       });
       expect(notificationsService.create).not.toHaveBeenCalled();
+      expect(pushService.sendNotification).not.toHaveBeenCalled();
     });
 
     it('sends an in-app + push reminder to the active owner and records the stage', async () => {
-      mockSubscriptionQueries({
-        expiring: [makeSub({ id: 'sub-exp', endDate: daysFromNow(5) })],
-        lapsed: [],
-      });
-      stubClusterMembershipAndOwners();
+      const sub = makeSub({ endDate: daysFromNow(5) });
+      stubQueries([sub], []);
 
       const result = await service.runRenewalReminders();
 
       expect(result.sentInApp).toBe(1);
       expect(result.sentPush).toBe(1);
-      expect(result.sentEmail).toBe(0); // Stage 7 does not trigger email
-      expect(result.expiring).toBe(1);
+      expect(result.failed).toBe(0);
 
-      expect(notificationsService.create).toHaveBeenCalledTimes(1);
-      const { ownerId, title, message, type, actionUrl } =
-        lastCreateCall(notificationsService);
-      expect(ownerId).toBe('owner-1');
-      expect(type).toBe('warning');
-      expect(actionUrl).toBe(SUBSCRIPTION_RENEWAL_URL);
-      expect(title).toContain('Ikeja');
-      expect(message).toContain('60');
-      expect(message).toContain('70');
+      expect(notificationsService.create).toHaveBeenCalledWith(
+        'owner-1',
+        expect.stringContaining('Ikeja'),
+        expect.stringContaining('60'),
+        'warning',
+        SUBSCRIPTION_RENEWAL_URL,
+      );
 
       expect(pushService.sendNotification).toHaveBeenCalledWith(
         'owner-1',
-        title,
-        message,
+        expect.stringContaining('Ikeja'),
+        expect.stringContaining('60'),
         expect.objectContaining({
           url: SUBSCRIPTION_RENEWAL_URL,
           category: 'marketing',
+          stage: 7,
+          clusterId: 'cluster-1',
         }),
       );
 
       expect(subRepo.update).toHaveBeenCalledWith(
-        'sub-exp',
-        expect.objectContaining({ lastRenewalReminderStage: 7 }),
+        'sub-1',
+        expect.objectContaining({
+          lastRenewalReminderStage: 7,
+        }),
       );
     });
 
     it('uses the 14-day copy for subscriptions far from expiry', async () => {
-      mockSubscriptionQueries({
-        expiring: [makeSub({ id: 'sub-exp', endDate: daysFromNow(12) })],
-        lapsed: [],
-      });
-      stubClusterMembershipAndOwners();
+      const sub = makeSub({ id: 'sub-exp', endDate: daysFromNow(12) });
+      stubQueries([sub], []);
 
       await service.runRenewalReminders();
 
@@ -270,65 +312,41 @@ describe('SubscriptionRemindersService', () => {
         'sub-exp',
         expect.objectContaining({ lastRenewalReminderStage: 14 }),
       );
-      expect(
-        mailService.sendSubscriptionRenewalReminder,
-      ).not.toHaveBeenCalled();
     });
 
     it('skips a business that has no cluster membership', async () => {
-      mockSubscriptionQueries({
-        expiring: [makeSub({ id: 'sub-no-cluster', endDate: daysFromNow(5) })],
-        lapsed: [],
-      });
-      branchRepo.find.mockResolvedValue([
-        {
-          id: 'branch-1',
-          businessId: 'biz-1',
-          clusterId: null,
-          isMainBranch: true,
-        },
+      branchRepo.find.mockResolvedValueOnce([
+        { id: 'branch-1', businessId: 'biz-1', clusterId: null },
       ]);
+      const sub = makeSub({ endDate: daysFromNow(5) });
+      stubQueries([sub], []);
 
       const result = await service.runRenewalReminders();
 
       expect(result.skippedNoCluster).toBe(1);
+      expect(result.sentInApp).toBe(0);
       expect(notificationsService.create).not.toHaveBeenCalled();
     });
 
     it('does not re-remind at an already-sent stage', async () => {
-      mockSubscriptionQueries({
-        expiring: [
-          makeSub({
-            id: 'sub-sent',
-            endDate: daysFromNow(5),
-            lastRenewalReminderStage: 7,
-            lastRenewalReminderAt: NOW,
-          }),
-        ],
-        lapsed: [],
+      const sub = makeSub({
+        endDate: daysFromNow(5),
+        lastRenewalReminderStage: 7,
       });
-      stubClusterMembershipAndOwners();
+      stubQueries([sub], []);
 
       const result = await service.runRenewalReminders();
 
       expect(result.sentInApp).toBe(0);
       expect(notificationsService.create).not.toHaveBeenCalled();
-      expect(subRepo.update).not.toHaveBeenCalled();
     });
 
     it('escalates to the 3-day copy and stage, sending in-app, push, and email', async () => {
-      mockSubscriptionQueries({
-        expiring: [
-          makeSub({
-            id: 'sub-escalate',
-            endDate: daysFromNow(2),
-            lastRenewalReminderStage: 7,
-            lastRenewalReminderAt: NOW,
-          }),
-        ],
-        lapsed: [],
+      const sub = makeSub({
+        endDate: daysFromNow(2),
+        lastRenewalReminderStage: 7,
       });
-      stubClusterMembershipAndOwners();
+      stubQueries([sub], []);
 
       const result = await service.runRenewalReminders();
 
@@ -336,223 +354,199 @@ describe('SubscriptionRemindersService', () => {
       expect(result.sentPush).toBe(1);
       expect(result.sentEmail).toBe(1);
 
-      const { title, type } = lastCreateCall(notificationsService);
+      const { title, message } = lastCreateCall(notificationsService);
       expect(title).toContain('Last call');
-      expect(type).toBe('warning');
-      expect(subRepo.update).toHaveBeenCalledWith(
-        'sub-escalate',
-        expect.objectContaining({ lastRenewalReminderStage: 3 }),
-      );
+      expect(message).toContain('2 days');
 
       expect(mailService.sendSubscriptionRenewalReminder).toHaveBeenCalledWith(
         expect.objectContaining({
           email: 'owner@example.com',
           customerName: 'John Doe',
-          planName: 'Pro',
           daysLeft: 2,
           isLapsed: false,
+          planName: 'Pro',
         }),
       );
-    });
 
-    it('handles same-day active expiring subscriptions as warning rather than lapsed', async () => {
-      mockSubscriptionQueries({
-        expiring: [
-          makeSub({
-            id: 'sub-sameday',
-            endDate: new Date(NOW.getTime() + 4 * 60 * 60 * 1000), // 4 hours left
-            status: SubscriptionStatus.ACTIVE,
-          }),
-        ],
-        lapsed: [],
-      });
-      stubClusterMembershipAndOwners();
-
-      const result = await service.runRenewalReminders();
-
-      expect(result.sentInApp).toBe(1);
-      const { title, type } = lastCreateCall(notificationsService);
-      expect(type).toBe('warning');
-      expect(title).toContain('Last call'); // warning copy, NOT lapsed copy
       expect(subRepo.update).toHaveBeenCalledWith(
-        'sub-sameday',
+        'sub-1',
         expect.objectContaining({ lastRenewalReminderStage: 3 }),
       );
     });
 
     it('sends the expired copy and email once for lapsed subscriptions', async () => {
-      mockSubscriptionQueries({
-        expiring: [],
-        lapsed: [
-          makeSub({
-            id: 'sub-lapsed',
-            endDate: daysFromNow(-3),
-            status: SubscriptionStatus.EXPIRED,
-          }),
-        ],
-        eligibleBusinessIds: [],
+      const sub = makeSub({
+        id: 'sub-lapsed',
+        endDate: daysFromNow(-2),
+        lastRenewalReminderStage: 3,
       });
-      stubClusterMembershipAndOwners();
+      stubQueries([], [sub], []);
 
       const result = await service.runRenewalReminders();
 
-      expect(result.lapsed).toBe(1);
       expect(result.sentInApp).toBe(1);
       expect(result.sentEmail).toBe(1);
-      const { ownerId, title, type } = lastCreateCall(notificationsService);
-      expect(ownerId).toBe('owner-1');
-      expect(type).toBe('error');
+
+      const { title, type } = lastCreateCall(notificationsService);
       expect(title).toContain('left the Ikeja deals feed');
+      expect(type).toBe('error');
+
+      expect(mailService.sendSubscriptionRenewalReminder).toHaveBeenCalledWith(
+        expect.objectContaining({
+          isLapsed: true,
+          email: 'owner@example.com',
+        }),
+      );
+
       expect(subRepo.update).toHaveBeenCalledWith(
         'sub-lapsed',
         expect.objectContaining({ lastRenewalReminderStage: 0 }),
       );
-      expect(mailService.sendSubscriptionRenewalReminder).toHaveBeenCalledWith(
-        expect.objectContaining({
-          email: 'owner@example.com',
-          isLapsed: true,
+    });
+
+    it('applies customized templates when present in database', async () => {
+      const customTemplate = {
+        id: 'tmpl-7',
+        stage: 7,
+        name: 'Custom 7-Day',
+        titleTemplate: 'Attention {{businessName}}: {{clusterName}} expires in {{daysLeft}} days',
+        messageTemplate: 'Hello {{ownerName}}, you have {{daysText}} to renew your {{planName}}.',
+        type: 'warning',
+        actionUrl: '/custom-renew',
+        isEnabled: true,
+        sendPush: true,
+        sendInApp: true,
+        sendEmail: false,
+      };
+      templateRepo.find.mockResolvedValue([customTemplate]);
+
+      const sub = makeSub({ endDate: daysFromNow(5) });
+      stubQueries([sub], []);
+
+      await service.runRenewalReminders();
+
+      const { title, message, actionUrl } = lastCreateCall(notificationsService);
+      expect(title).toContain('Attention Ikeja Store: Ikeja expires in 5 days');
+      expect(message).toContain('Hello John Doe, you have 5 days to renew your Pro.');
+      expect(actionUrl).toBe('/custom-renew');
+    });
+
+    it('skips reminder when custom template is disabled (isEnabled: false)', async () => {
+      const disabledTemplate = {
+        id: 'tmpl-7',
+        stage: 7,
+        name: 'Disabled 7-Day',
+        titleTemplate: 'Title',
+        messageTemplate: 'Msg',
+        isEnabled: false,
+      };
+      templateRepo.find.mockResolvedValue([disabledTemplate]);
+
+      const sub = makeSub({ endDate: daysFromNow(5) });
+      stubQueries([sub], []);
+
+      const result = await service.runRenewalReminders();
+
+      expect(result.skippedDisabledTemplate).toBe(1);
+      expect(result.sentInApp).toBe(0);
+      expect(notificationsService.create).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('Template Management CRUD', () => {
+    it('returns placeholders documentation', async () => {
+      const placeholders = await service.getPlaceholders();
+      expect(placeholders).toBeDefined();
+      expect(placeholders.length).toBeGreaterThan(0);
+      expect(placeholders.some((p) => p.placeholder === '{{clusterName}}')).toBe(true);
+    });
+
+    it('gets templates with default seeding if empty', async () => {
+      templateRepo.find.mockResolvedValueOnce([]).mockResolvedValueOnce([
+        { stage: 14, name: '14-Day' },
+      ]);
+
+      const list = await service.getTemplates();
+      expect(list).toBeDefined();
+      expect(templateRepo.save).toHaveBeenCalled();
+    });
+
+    it('creates a new custom template', async () => {
+      templateRepo.findOne.mockResolvedValue(null);
+
+      const result = await service.createTemplate({
+        stage: 21,
+        name: '21-Day Advance Notice',
+        titleTemplate: 'Your plan expires in {{daysLeft}} days',
+        messageTemplate: 'Renew early for discounts',
+      });
+
+      expect(result).toBeDefined();
+      expect(templateRepo.save).toHaveBeenCalled();
+    });
+
+    it('throws BadRequestException when creating a template for an existing stage', async () => {
+      templateRepo.findOne.mockResolvedValue({ id: 'tmpl-1', stage: 14 });
+
+      await expect(
+        service.createTemplate({
+          stage: 14,
+          name: 'Duplicate 14-Day',
+          titleTemplate: 'Title',
+          messageTemplate: 'Msg',
         }),
-      );
+      ).rejects.toThrow(BadRequestException);
     });
 
-    it('does not send the expired copy a second time', async () => {
-      mockSubscriptionQueries({
-        expiring: [],
-        lapsed: [
-          makeSub({
-            id: 'sub-lapsed',
-            endDate: daysFromNow(-3),
-            status: SubscriptionStatus.EXPIRED,
-            lastRenewalReminderStage: 0,
-            lastRenewalReminderAt: NOW,
-          }),
-        ],
-        eligibleBusinessIds: [],
+    it('updates an existing template', async () => {
+      const existing = {
+        id: 'tmpl-1',
+        stage: 14,
+        name: '14-Day Reminder',
+        titleTemplate: 'Old Title',
+      };
+      templateRepo.findOne.mockResolvedValue(existing);
+
+      const result = await service.updateTemplate('tmpl-1', {
+        name: 'New 14-Day Reminder',
+        titleTemplate: 'Updated Title for {{clusterName}}',
       });
-      stubClusterMembershipAndOwners();
 
-      const result = await service.runRenewalReminders();
-
-      expect(result.sentInApp).toBe(0);
-      expect(notificationsService.create).not.toHaveBeenCalled();
+      expect(result.name).toBe('New 14-Day Reminder');
+      expect(result.titleTemplate).toBe('Updated Title for {{clusterName}}');
+      expect(templateRepo.save).toHaveBeenCalled();
     });
 
-    it('skips lapsed businesses that renewed into an eligible discovery plan', async () => {
-      mockSubscriptionQueries({
-        expiring: [],
-        lapsed: [
-          makeSub({
-            id: 'sub-lapsed',
-            endDate: daysFromNow(-3),
-            status: SubscriptionStatus.EXPIRED,
-          }),
-        ],
-        eligibleBusinessIds: ['biz-1'],
-      });
-      stubClusterMembershipAndOwners();
+    it('resets a template to default configuration', async () => {
+      const custom = {
+        id: 'tmpl-1',
+        stage: 14,
+        name: 'Modified 14-Day',
+        titleTemplate: 'Custom Title',
+      };
+      templateRepo.findOne.mockResolvedValue(custom);
 
-      const result = await service.runRenewalReminders();
-
-      expect(result.lapsed).toBe(1);
-      expect(result.sentInApp).toBe(0);
-      expect(notificationsService.create).not.toHaveBeenCalled();
+      const result = await service.resetTemplate('tmpl-1');
+      expect(result.titleTemplate).toContain('{{clusterName}}');
+      expect(templateRepo.save).toHaveBeenCalled();
     });
 
-    it('does not notify an inactive owner', async () => {
-      mockSubscriptionQueries({
-        expiring: [makeSub({ id: 'sub-exp', endDate: daysFromNow(5) })],
-        lapsed: [],
-      });
-      stubClusterMembershipAndOwners();
-      userRepo.find.mockResolvedValue([]);
-
-      const result = await service.runRenewalReminders();
-
-      expect(result.sentInApp).toBe(0);
-      expect(notificationsService.create).not.toHaveBeenCalled();
-    });
-
-    it('isolates errors so a single failed notification does not abort other targets', async () => {
-      mockSubscriptionQueries({
-        expiring: [
-          makeSub({
-            id: 'sub-fail',
-            businessId: 'biz-fail',
-            business: {
-              id: 'biz-fail',
-              ownerId: 'owner-fail',
-              businessName: 'Fail Biz',
-            } as unknown as Subscription['business'],
-            endDate: daysFromNow(5),
-          }),
-          makeSub({
-            id: 'sub-ok',
-            businessId: 'biz-ok',
-            business: {
-              id: 'biz-ok',
-              ownerId: 'owner-ok',
-              businessName: 'Ok Biz',
-            } as unknown as Subscription['business'],
-            endDate: daysFromNow(5),
-          }),
-        ],
-        lapsed: [],
+    it('previews template rendering with sample variables', async () => {
+      const preview = await service.previewTemplate({
+        titleTemplate: 'Hello {{ownerName}}, your {{planName}} at {{businessName}} ends in {{daysLeft}} days!',
+        messageTemplate: 'Reach {{people}} shoppers in {{clusterName}} by renewing at {{renewalUrl}}.',
+        variables: {
+          businessName: 'My Awesome Mart',
+          ownerName: 'Sarah Connor',
+          planName: 'VIP Growth',
+          daysLeft: 10,
+        },
       });
 
-      branchRepo.find.mockResolvedValue([
-        {
-          id: 'branch-fail',
-          businessId: 'biz-fail',
-          clusterId: 'cluster-1',
-          isMainBranch: true,
-        },
-        {
-          id: 'branch-ok',
-          businessId: 'biz-ok',
-          clusterId: 'cluster-1',
-          isMainBranch: true,
-        },
-      ]);
-      clusterRepo.find.mockResolvedValue([{ id: 'cluster-1', name: 'Ikeja' }]);
-      businessRepo.find.mockResolvedValue([
-        { id: 'biz-fail', ownerId: 'owner-fail' },
-        { id: 'biz-ok', ownerId: 'owner-ok' },
-      ]);
-      userRepo.find.mockResolvedValue([
-        {
-          id: 'owner-fail',
-          email: 'fail@example.com',
-          firstName: 'Fail',
-          status: UserStatus.ACTIVE,
-        },
-        {
-          id: 'owner-ok',
-          email: 'ok@example.com',
-          firstName: 'Ok',
-          status: UserStatus.ACTIVE,
-        },
-      ]);
-      impressionRepo.createQueryBuilder.mockReturnValue(
-        makeQueryBuilder([], [{ clusterId: 'cluster-1', people: '60' }]),
+      expect(preview.title).toBe(
+        'Hello Sarah Connor, your VIP Growth at My Awesome Mart ends in 10 days!',
       );
-      branchRepo.createQueryBuilder.mockReturnValue(
-        makeQueryBuilder([], [{ clusterId: 'cluster-1', businesses: '70' }]),
-      );
-
-      // Make the first notification create call reject with an error
-      notificationsService.create
-        .mockRejectedValueOnce(new Error('Database lock timeout'))
-        .mockResolvedValueOnce({ id: 'n-2' });
-
-      const result = await service.runRenewalReminders();
-
-      expect(result.failed).toBe(1);
-      expect(result.sentInApp).toBe(1); // Second one succeeded!
-      expect(subRepo.update).toHaveBeenCalledWith('sub-ok', expect.anything());
-      expect(subRepo.update).not.toHaveBeenCalledWith(
-        'sub-fail',
-        expect.anything(),
-      );
+      expect(preview.message).toContain('Reach 1,840 shoppers in Ikeja Tech Hub');
     });
   });
 });

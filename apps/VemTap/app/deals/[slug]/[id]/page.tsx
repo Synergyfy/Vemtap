@@ -20,7 +20,9 @@ import { cn } from '@/lib/utils';
 import { toast } from 'react-hot-toast';
 
 function getDaysLeft(endDate: string): number {
+    if (!endDate) return -1;
     const end = new Date(endDate);
+    if (isNaN(end.getTime())) return -1;
     const now = new Date();
     const diff = end.getTime() - now.getTime();
     return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
@@ -31,7 +33,10 @@ function getClaimPercent(claimed: number, max: number): number {
 }
 
 function formatDealDate(dateStr: string): string {
-    return new Date(dateStr).toLocaleDateString('en-NG', {
+    if (!dateStr) return 'Ongoing';
+    const date = new Date(dateStr);
+    if (isNaN(date.getTime())) return 'Ongoing';
+    return date.toLocaleDateString('en-NG', {
         month: 'short',
         day: 'numeric',
     });
@@ -39,6 +44,7 @@ function formatDealDate(dateStr: string): string {
 
 function getUrgencyText(endDate: string): string {
     const days = getDaysLeft(endDate);
+    if (days === -1) return 'No end date';
     if (days === 0) return 'Ends today';
     if (days === 1) return 'Ends tomorrow';
     if (days <= 7) return `${days} days left`;
@@ -284,7 +290,7 @@ export default function PromotionDetailPage() {
                                     </div>
                                     <div className="flex items-center gap-1.5 text-gray-500">
                                         <Clock size={14} />
-                                        <span className="text-xs font-bold">{daysLeft > 0 ? `${daysLeft} days left` : 'Ending today'}</span>
+                                        <span className="text-xs font-bold">{daysLeft === -1 ? 'No end date' : daysLeft > 0 ? `${daysLeft} days left` : 'Ending today'}</span>
                                     </div>
                                 </div>
 

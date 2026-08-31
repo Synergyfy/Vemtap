@@ -45,6 +45,7 @@ export interface Branch {
     showSocial: boolean;
     showFeedback: boolean;
     showRewards?: boolean;
+    reviewModeration?: boolean;
     identityNumber?: string;
     utilityBill?: string;
     createdAt?: string;
@@ -115,6 +116,7 @@ export interface UpdateBranchRequest {
     showSocial?: boolean;
     showFeedback?: boolean;
     showRewards?: boolean;
+    reviewModeration?: boolean;
     identityNumber?: string;
     utilityBill?: string;
     engagement?: Record<string, any> & { ublSequence?: string[] };

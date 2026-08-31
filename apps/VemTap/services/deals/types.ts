@@ -115,3 +115,99 @@ export interface ClaimVerifyResponse {
         status: string;
     };
 }
+
+// ─── Engagement Types ──────────────────────────────────────────────────────────
+
+export type DealReviewStatus = 'pending' | 'approved' | 'rejected';
+
+export interface DealReview {
+    id: string;
+    offerId?: string;
+    offerName?: string;
+    reviewerName: string;
+    comment: string;
+    rating: number | null;
+    likesCount: number;
+    status?: DealReviewStatus;
+    createdAt: string;
+    isLiked?: boolean;
+}
+
+export interface DealReviewsResponse {
+    reviews: DealReview[];
+    total: number;
+    page: number;
+}
+
+export interface DealEngagementResponse {
+    likesCount: number;
+    dislikesCount: number;
+    reviewsCount: number;
+    averageRating: number | null;
+    type?: 'like' | 'dislike' | null;
+    isSaved?: boolean;
+}
+
+export interface DealReactionResponse {
+    type: 'like' | 'dislike' | null;
+    likesCount: number;
+    dislikesCount: number;
+}
+
+export interface DealSaveResponse {
+    saved: boolean;
+}
+
+export interface CreateReviewDto {
+    comment: string;
+    name?: string;
+    rating?: number;
+}
+
+export interface BusinessReviewsQueryParams {
+    status?: DealReviewStatus;
+    offerId?: string;
+    page?: number;
+    limit?: number;
+}
+
+export interface BusinessReviewsResponse {
+    reviews: DealReview[];
+    total: number;
+    page: number;
+    limit: number;
+}
+
+// ─── Public Discovery Types ────────────────────────────────────────────────────
+
+export interface PublicBusiness {
+    id: string;
+    name: string;
+    logoUrl?: string;
+    description?: string;
+    address?: string;
+    state?: string;
+    city?: string;
+    categoryId?: string;
+    categoryName?: string;
+    isVerified?: boolean;
+    slug: string;
+    branchCode?: string;
+}
+
+export interface PublicBusinessesResponse {
+    businesses: PublicBusiness[];
+}
+
+export interface PublicSearchResponse {
+    deals: DealOffer[];
+    businesses: PublicBusiness[];
+    categories: { id: string; name: string; description?: string }[];
+}
+
+export interface PublicStatsResponse {
+    totalBusinesses: number;
+    totalActiveDeals: number;
+    totalClaims: number;
+    totalBranches: number;
+}

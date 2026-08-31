@@ -200,4 +200,13 @@ export class UpdateBusinessDto {
   @IsOptional()
   @IsString()
   referralCode?: string;
+
+  @ApiPropertyOptional({
+    example: false,
+    description:
+      'When true, reviews submitted for deals require owner approval before being published (Platinum feature)',
+  })
+  @IsOptional()
+  @IsBoolean()
+  requireReviewApproval?: boolean;
 }
