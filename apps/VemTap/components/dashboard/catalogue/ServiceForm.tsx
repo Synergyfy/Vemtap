@@ -223,8 +223,8 @@ export default function ServiceForm({ isOpen, onClose, service, activeBranchId }
     };
 
     const onSubmit = async (values: ServiceFormValues) => {
-        // Guard: only allow submit on last step (Images)
-        if (currentStep !== STEPS.length - 1) return;
+        // Guard: only allow submit on last step (Images) and after ghost-click debounce
+        if (currentStep !== STEPS.length - 1 || !canSubmit) return;
         try {
             setIsUploading(true);
             let mainImageUrl = mainImagePreview;
@@ -283,6 +283,19 @@ export default function ServiceForm({ isOpen, onClose, service, activeBranchId }
     };
 
     const prevStep = () => setCurrentStep(s => Math.max(0, s - 1));
+
+    // Prevent ghost-click: when Next -> Create Service swaps under the cursor,
+    // the mouseup can fire on the new button and auto-submit. Disable Create briefly.
+    const [canSubmit, setCanSubmit] = useState(false);
+    useEffect(() => {
+        if (currentStep === STEPS.length - 1) {
+            setCanSubmit(false);
+            const t = setTimeout(() => setCanSubmit(true), 500);
+            return () => clearTimeout(t);
+        } else {
+            setCanSubmit(false);
+        }
+    }, [currentStep]);
 
     return (
         <>
@@ -494,7 +507,7 @@ export default function ServiceForm({ isOpen, onClose, service, activeBranchId }
                                 Next <ChevronRight size={14} />
                             </button>
                         ) : (
-                            <button type="submit" disabled={isUploading} className="flex items-center gap-2 h-10 px-6 bg-primary text-white font-semibold text-xs uppercase tracking-wider rounded-xl hover:bg-primary-hover transition-all disabled:opacity-60">
+                            <button type="submit" disabled={isUploading || !canSubmit} className="flex items-center gap-2 h-10 px-6 bg-primary text-white font-semibold text-xs uppercase tracking-wider rounded-xl hover:bg-primary-hover transition-all disabled:opacity-40 disabled:cursor-not-allowed">
                                 {isUploading ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
                                 {service ? 'Update Service' : 'Create Service'}
                             </button>
