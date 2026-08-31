@@ -488,8 +488,30 @@ export default function ServiceForm({ isOpen, onClose, service, activeBranchId }
                                         ))}
                                     </div>
                                 )}
-                                {isBookable && watch('bookingMethod') === 'external' && (
-                                    <input {...register('externalBookingLink')} placeholder="https://..." className="w-full h-10 px-4 mt-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-primary/20 outline-none" />
+                                {isBookable && watch('bookingMethod') && watch('bookingMethod') !== 'vemtap' && (
+                                    <div className="mt-3">
+                                        <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1.5">
+                                            {watch('bookingMethod') === 'whatsapp' ? 'WhatsApp Number / Link *' : watch('bookingMethod') === 'call' ? 'Phone Number *' : 'Booking Link *'}
+                                        </label>
+                                        <input
+                                            {...register('externalBookingLink')}
+                                            placeholder={
+                                                watch('bookingMethod') === 'whatsapp'
+                                                    ? 'e.g. https://wa.me/2348012345678 or +2348012345678'
+                                                    : watch('bookingMethod') === 'call'
+                                                    ? 'e.g. +2348012345678'
+                                                    : 'https://calendly.com/your-link'
+                                            }
+                                            className="w-full h-10 px-4 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-primary/20 outline-none"
+                                        />
+                                        <p className="text-[10px] text-slate-400 mt-1">
+                                            {watch('bookingMethod') === 'whatsapp'
+                                                ? 'Customers will be redirected to WhatsApp to book.'
+                                                : watch('bookingMethod') === 'call'
+                                                ? 'Customers will see a Call button with this number.'
+                                                : 'Customers will be redirected to this external link.'}
+                                        </p>
+                                    </div>
                                 )}
                             </div>
                         </div>
