@@ -401,6 +401,39 @@ export default function ProductsPage() {
                     columns={columns}
                     data={paginatedItems}
                     isLoading={isLoading}
+                    onRowClick={(item) => router.push(`/dashboard/catalogue/products/${(item as CatalogueItem).id}`)}
+                    renderMobileRow={(item: any) => {
+                        const ci = item as CatalogueItem;
+                        const isValidImg = ci.mainImage && (ci.mainImage.startsWith('http') || ci.mainImage.startsWith('data:') || ci.mainImage.startsWith('blob:'));
+                        let priceLabel = '';
+                        if (ci.itemType === 'service' && ci.priceType) {
+                            if (ci.priceType === 'contact') priceLabel = 'Contact for price';
+                            else if (ci.priceType === 'range') priceLabel = `₦${Number(ci.priceRangeMin || 0).toLocaleString()} - ₦${Number(ci.priceRangeMax || 0).toLocaleString()}`;
+                            else if (ci.priceType === 'starting_from') priceLabel = `From ₦${Number(ci.priceRangeMin || ci.price).toLocaleString()}`;
+                            else priceLabel = `₦${Number(ci.price).toLocaleString()}`;
+                        } else {
+                            priceLabel = `₦${Number(ci.price).toLocaleString()}`;
+                        }
+                        return (
+                            <div className="flex items-center gap-3 p-3 bg-white rounded-2xl border border-slate-100 active:scale-[0.98] transition-all">
+                                <div className="w-14 h-14 rounded-xl bg-slate-50 border border-slate-100 overflow-hidden flex items-center justify-center shrink-0">
+                                    {isValidImg ? (
+                                        <img src={ci.mainImage} alt={ci.name} className="w-full h-full object-cover" />
+                                    ) : (
+                                        <ShoppingBag className="text-slate-300" size={20} />
+                                    )}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <p className="font-bold text-sm text-slate-900 truncate">{ci.name}</p>
+                                    <p className="text-[11px] text-slate-500 truncate">{ci.shortDescription || ci.category?.name || ''}</p>
+                                    <p className="text-xs font-bold text-primary mt-0.5 truncate">{priceLabel}</p>
+                                </div>
+                                <div className="w-9 h-9 rounded-full bg-slate-50 border border-slate-100 flex items-center justify-center shrink-0">
+                                    <ChevronRight size={16} className="text-slate-400" />
+                                </div>
+                            </div>
+                        );
+                    }}
                     emptyState={
                         <EmptyState
                             icon="shopping-bag"
