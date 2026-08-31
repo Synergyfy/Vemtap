@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, Suspense } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, MapPin, X, SlidersHorizontal, ArrowUpDown, Flame, Clock, TrendingUp, Star, Sparkles, Check, ChevronDown } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
@@ -118,7 +118,7 @@ function toMockPromotion(p: Promotion): MockPromotion {
     };
 }
 
-export default function PromotionsPage() {
+function PromotionsPageInner() {
     const searchParams = useSearchParams();
     const initialSort = (searchParams.get('sortBy') as 'popular' | 'newest' | 'trending' | 'featured' | 'price-low' | 'price-high') || 'popular';
     const [search, setSearch] = useState('');
@@ -1145,5 +1145,13 @@ export default function PromotionsPage() {
 
             <Footer />
         </div>
+    );
+}
+
+export default function PromotionsPage() {
+    return (
+        <Suspense fallback={<div className="min-h-screen bg-[#f4f5f6]" />}>
+            <PromotionsPageInner />
+        </Suspense>
     );
 }
