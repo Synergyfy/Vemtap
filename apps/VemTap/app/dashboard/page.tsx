@@ -142,58 +142,80 @@ export default function DashboardPage() {
             <CreateDealPromptModal isOpen={showDealPrompt} onClose={handleDealPromptClose} />
             <main className="p-4 sm:p-6 max-w-7xl mx-auto">
                 <div className="space-y-6">
-                        {/* 1. TOP SECTION: Greeting & Branding */}
-                        <section className="space-y-1">
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-2.5 sm:gap-3">
-                                    <h1 className="text-2xl md:text-3xl font-bold text-text-main tracking-tight mr-1">
-                                        Good {new Date().getHours() < 12 ? 'Morning' : new Date().getHours() < 17 ? 'Afternoon' : 'Evening'}, {user?.firstName || 'Owner'}
-                                    </h1>
-                                    <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+                        {/* 1. NATIVE APP HEADER SECTION */}
+                        <section className="relative bg-[#066CF4] -mx-4 -mt-4 sm:-mx-6 sm:-mt-6 px-4 sm:px-6 pt-6 pb-20 rounded-b-[2.5rem] shadow-lg mb-8">
+                            <div className="absolute top-0 right-0 p-8 opacity-10 pointer-events-none">
+                                <Sparkles size={120} />
+                            </div>
+                            
+                            <div className="relative z-10 space-y-6">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex flex-col">
+                                        <p className="text-blue-100 text-[10px] font-bold uppercase tracking-wider mb-1">
+                                            Good {new Date().getHours() < 12 ? 'Morning' : new Date().getHours() < 17 ? 'Afternoon' : 'Evening'}
+                                        </p>
+                                        <div className="flex items-center gap-2.5">
+                                            <h1 className="text-xl md:text-2xl font-bold text-white tracking-tight">
+                                                {user?.firstName || 'Owner'}
+                                            </h1>
+                                            {isAnalyticsLoading && (
+                                                <div className="size-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                            )}
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-2 shrink-0 bg-white/10 backdrop-blur-md p-1.5 rounded-2xl border border-white/20">
                                         <PageGuideButton />
                                         <AICopilotButton />
                                         <InstallAppButton iconOnly />
                                     </div>
                                 </div>
-                                {isAnalyticsLoading && (
-                                    <div className="size-5 border-2 border-primary/20 border-t-primary rounded-full animate-spin" />
-                                )}
+                                
+                                {/* Main Highlight (e.g. Sales) in the header */}
+                                <div className="pt-2 pb-4">
+                                    <p className="text-blue-100 text-xs font-semibold mb-1 flex items-center gap-1.5">
+                                        <ShoppingBag size={14} /> Today's Sales
+                                    </p>
+                                    <h2 className="text-4xl md:text-5xl font-black text-white tracking-tight">
+                                        {kpis[2]?.value || '₦0'}
+                                    </h2>
+                                </div>
+                            </div>
+
+                            {/* Overlapping Snapshot Cards */}
+                            <div className="absolute left-0 right-0 -bottom-16 px-4 sm:px-6">
+                                <div className="grid grid-cols-3 gap-2 md:gap-3 pb-4">
+                                    {[kpis[0], kpis[1], kpis[3]].map((kpi, i) => (
+                                        <div 
+                                            key={i}
+                                            className="w-full bg-white rounded-2xl md:rounded-3xl p-2.5 sm:p-4 shadow-[0_8px_30px_rgb(0,0,0,0.08)] flex flex-col justify-between h-[90px] sm:h-[110px] border border-gray-100 relative overflow-hidden"
+                                        >
+                                            <div className="absolute -right-2 -bottom-2 opacity-5 pointer-events-none">
+                                                <kpi.icon size={64} />
+                                            </div>
+                                            <div className="flex flex-col gap-0.5 sm:gap-1 z-10">
+                                                <p className="text-[8px] sm:text-[10px] font-bold text-gray-400 leading-tight truncate">{kpi.label}</p>
+                                                <p className="text-base sm:text-xl font-black text-gray-900 tracking-tight truncate">{kpi.value}</p>
+                                            </div>
+                                            <div className={`size-6 sm:size-8 rounded-full ${kpi.color} text-white flex items-center justify-center shadow-md z-10 shrink-0`}>
+                                                <kpi.icon size={12} className="sm:w-3.5 sm:h-3.5" />
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
                             </div>
                         </section>
 
-                        <DashboardBannerWrapper onAnalyzeDashboard={handleRefreshAnalysis} />
-
-                        <OnboardingChecklist />
-
-                        {/* 2. BUSINESS SNAPSHOT (Horizontal swipeable cards) */}
-                        <section>
-                            <div className="flex items-center justify-between mb-4 px-1">
-                                <h2 className="text-[10px] font-bold uppercase tracking-[0.16em] text-gray-400">Snapshot</h2>
-                            </div>
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
-                                {kpis.map((kpi, i) => (
-                                    <div 
-                                        key={i}
-                                        className="w-full bg-white rounded-2xl p-4 md:p-5 border border-gray-100 shadow-sm flex flex-col justify-between h-28 md:h-32 group hover:border-primary/20 transition-all hover:shadow-md"
-                                    >
-                                        <div className={`size-8 md:size-9 rounded-lg ${kpi.color} text-white flex items-center justify-center transition-transform group-hover:scale-110 shadow-lg shadow-current/10`}>
-                                            <kpi.icon size={16} className="md:w-[18px] md:h-[18px]" />
-                                        </div>
-                                        <div>
-                                            <p className="text-2xl md:text-[28px] font-bold text-text-main mb-0.5 leading-none tracking-tight">{kpi.value}</p>
-                                            <p className="text-[9px] md:text-[10px] font-bold uppercase tracking-wider text-gray-400 leading-none truncate">{kpi.label}</p>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </section>
+                        {/* Adjust spacing for content below the overlapping cards */}
+                        <div className="pt-8 space-y-6">
+                            <DashboardBannerWrapper onAnalyzeDashboard={handleRefreshAnalysis} />
+                            <OnboardingChecklist />
 
                         {/* 3. QUICK ACTIONS (Visually Prominent Grid) */}
                         <section>
                             <div className="flex items-center justify-between mb-2.5">
                                 <h2 className="text-[10px] font-bold uppercase tracking-[0.16em] text-gray-400">Quick Actions</h2>
                             </div>
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3">
+                            <div className="flex overflow-x-auto snap-x snap-mandatory gap-2 md:gap-3 pb-4 -mx-4 px-4 md:mx-0 md:px-0 md:grid md:grid-cols-4 md:pb-0 md:overflow-visible hide-scrollbar" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
                                 {useMemo(() => {
                                     const role = (user?.role as string)?.toLowerCase() || 'owner';
                                     if (role === 'cashier') {
@@ -237,7 +259,7 @@ export default function DashboardPage() {
                                     <button 
                                         key={i}
                                         onClick={() => router.push(getLinkWithBranch(action.route))}
-                                        className={`bg-white border border-gray-100 rounded-xl px-3 py-3 flex items-center gap-3 active:scale-[0.98] transition-all shadow-sm group hover:border-primary/20 hover:shadow-md`}
+                                        className={`w-[160px] sm:w-[180px] md:w-full shrink-0 snap-center bg-white border border-gray-100 rounded-xl px-3 py-3 flex items-center gap-3 active:scale-[0.98] transition-all shadow-sm group hover:border-primary/20 hover:shadow-md`}
                                     >
                                         <div className={`size-9 md:size-10 rounded-lg ${action.color} border shrink-0 flex items-center justify-center transition-transform group-hover:scale-110`}>
                                             <action.icon size={18} className="md:w-[20px] md:h-[20px]" />
@@ -431,7 +453,7 @@ export default function DashboardPage() {
                         {/* 6. MANAGE YOUR BUSINESS (Main Modules) */}
                         <section className="space-y-3">
                             <h2 className="text-[10px] font-bold uppercase tracking-[0.16em] text-gray-400">Manage Your Business</h2>
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3">
+                            <div className="flex overflow-x-auto snap-x snap-mandatory gap-2 md:gap-3 pb-4 -mx-4 px-4 md:mx-0 md:px-0 md:grid md:grid-cols-4 md:pb-0 md:overflow-visible hide-scrollbar" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
                                 {[
                                     { 
                                         title: 'Customers', 
@@ -493,7 +515,7 @@ export default function DashboardPage() {
                                     <button 
                                         key={i}
                                         onClick={() => router.push(module.route)}
-                                        className="bg-white border border-gray-100 px-3 py-3.5 rounded-xl flex flex-col items-start gap-2 shadow-sm active:scale-[0.98] transition-all text-left group hover:border-primary/20 hover:shadow-md"
+                                        className="w-[140px] sm:w-[160px] md:w-full shrink-0 snap-center bg-white border border-gray-100 px-3 py-3.5 rounded-xl flex flex-col items-start gap-2 shadow-sm active:scale-[0.98] transition-all text-left group hover:border-primary/20 hover:shadow-md"
                                     >
                                         <div className={`size-9 md:size-10 rounded-lg ${module.color} flex items-center justify-center transition-transform group-hover:scale-110`}>
                                             <module.icon size={18} className="md:w-5 md:h-5" />
@@ -506,6 +528,7 @@ export default function DashboardPage() {
                                 ))}
                             </div>
                         </section>
+                    </div>
                     </div>
             </main>
         </div>

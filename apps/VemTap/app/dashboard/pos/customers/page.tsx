@@ -41,110 +41,106 @@ export default function CustomersDirectory() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto h-full flex flex-col pt-4 px-4 md:px-0 pb-24">
-      <POSPageHeader
-        title="POS Purchase History"
-        subtitle={customers.length > 0 ? `${customers.length} customers with transactions` : 'View customers who have made POS purchases'}
-      />
+    <div className="max-w-7xl mx-auto h-full flex flex-col pb-24">
+      {/* NATIVE APP HEADER SECTION */}
+      <section className="relative bg-[#066CF4] -mx-4 -mt-4 sm:-mx-6 sm:-mt-6 px-5 sm:px-8 pt-10 pb-20 rounded-b-[2.5rem] shadow-lg mb-6">
+        <div className="absolute top-0 right-0 p-8 opacity-10 pointer-events-none">
+          <Users size={120} />
+        </div>
+        
+        <div className="relative z-10 space-y-6">
+          <div className="flex items-center justify-between">
+            <div className="flex flex-col">
+              <p className="text-blue-100 text-[10px] font-bold uppercase tracking-wider mb-1">
+                Directory
+              </p>
+              <h1 className="text-xl md:text-2xl font-bold text-white tracking-tight">
+                Customers
+              </h1>
+            </div>
+          </div>
+          
+          <div className="pt-2 pb-4">
+            <p className="text-blue-100 text-xs font-semibold mb-1 flex items-center gap-1.5">
+              <Users size={14} /> Total Customers
+            </p>
+            <h2 className="text-4xl md:text-5xl font-black text-white tracking-tight">
+              {customers.length}
+            </h2>
+          </div>
+        </div>
 
-      {/* Search */}
-      <div className="relative mb-6">
-        <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
-        <input
-          type="text"
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          placeholder="Search customers by name, email or phone..."
-          className="w-full h-12 pl-11 pr-4 rounded-2xl bg-white border border-gray-200 text-sm font-bold outline-none focus:border-blue-300 focus:ring-2 focus:ring-blue-100 transition-all"
-        />
-      </div>
+        {/* Search Bar - Overlapping the Header */}
+        <div className="absolute left-0 right-0 -bottom-6 px-5 sm:px-8">
+          <div className="relative shadow-lg shadow-black/5 rounded-2xl overflow-hidden">
+            <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input
+              type="text"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Search by name, phone or email..."
+              className="w-full h-14 pl-12 pr-4 bg-white border-0 text-sm font-bold outline-none text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-blue-100 transition-all"
+            />
+          </div>
+        </div>
+      </section>
 
-      <div className="bg-white rounded-[32px] border border-gray-100 shadow-sm overflow-hidden flex-1 flex flex-col">
+      <div className="px-5 sm:px-8 pt-12 flex-1">
         {customers.length > 0 ? (
-          <div className="flex-1 overflow-x-auto">
-            <table className="w-full text-left">
-              <thead className="sticky top-0 bg-gray-50/90 backdrop-blur border-b border-gray-100 z-10">
-                <tr>
-                  <th className="p-4 text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Customer</th>
-                  <th className="p-4 text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 hidden md:table-cell">Contact</th>
-                  <th className="p-4 text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 text-right">Total Spent</th>
-                  <th className="p-4 text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 text-center hidden sm:table-cell">Visits</th>
-                  <th className="p-4 text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 hidden lg:table-cell">Last Visit</th>
-                  <th className="p-4"></th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {filtered.map((customer, i) => (
-                  <motion.tr
-                    key={customer.id}
-                    initial={{ opacity: 0, y: 8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: i * 0.03 }}
-                    onClick={() => router.push(`/dashboard/pos/customers/${customer.id}`)}
-                    className="hover:bg-blue-50/50 cursor-pointer transition-colors"
-                  >
-                    <td className="p-4">
-                      <div className="flex items-center gap-4">
-                        <div className="size-10 rounded-[12px] bg-gradient-to-br from-blue-500 to-blue-600 text-white font-black flex items-center justify-center shrink-0 shadow-sm">
-                          {(customer.firstName?.[0] || '?').toUpperCase()}
-                        </div>
-                        <div>
-                          <p className="text-sm font-black text-gray-900">{customer.firstName} {customer.lastName}</p>
-                          <p className="text-[10px] font-bold text-gray-400">Customer since {new Date(customer.createdAt).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="p-4 hidden md:table-cell">
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2 text-xs font-bold text-gray-600">
-                          <Mail size={12} className="text-gray-400" />
-                          {customer.email}
-                        </div>
-                        <div className="flex items-center gap-2 text-xs font-bold text-gray-600">
-                          <Phone size={12} className="text-gray-400" />
-                          {customer.phone}
-                        </div>
-                      </div>
-                    </td>
-                    <td className="p-4 text-right">
-                      <span className="text-sm font-black text-gray-900">₦{customer.totalSpent.toLocaleString()}</span>
-                    </td>
-                    <td className="p-4 text-center hidden sm:table-cell">
-                      <span className="inline-flex items-center justify-center size-8 rounded-xl bg-gray-100 text-gray-600 text-xs font-black">
-                        {customer.totalVisits}
+          <div className="space-y-3 pb-8">
+            {filtered.map((customer, i) => (
+              <motion.button
+                key={customer.id}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.03 }}
+                onClick={() => router.push(`/dashboard/pos/customers/${customer.id}`)}
+                className="w-full bg-white rounded-2xl p-4 shadow-sm border border-gray-100 flex items-center gap-4 text-left active:scale-[0.98] transition-transform"
+              >
+                <div className="size-12 rounded-[14px] bg-[#066CF4] text-white font-black text-lg flex items-center justify-center shrink-0 shadow-md shadow-blue-500/20">
+                  {(customer.firstName?.[0] || '?').toUpperCase()}
+                </div>
+                
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-base font-black text-gray-900 truncate mb-0.5">
+                    {customer.firstName} {customer.lastName}
+                  </h3>
+                  <div className="flex items-center gap-3 text-xs font-bold text-gray-400 truncate">
+                    {customer.phone && (
+                      <span className="flex items-center gap-1 text-gray-500">
+                        <Phone size={10} /> {customer.phone}
                       </span>
-                    </td>
-                    <td className="p-4 hidden lg:table-cell">
-                      <div className="flex items-center gap-2 text-xs font-bold text-gray-500">
-                        <Calendar size={12} className="text-gray-400" />
-                        {customer.lastVisitAt ? new Date(customer.lastVisitAt).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}
-                      </div>
-                    </td>
-                    <td className="p-4 text-right">
-                      <ArrowUpRight size={16} className="text-gray-300 group-hover:text-blue-500 transition-colors" />
-                    </td>
-                  </motion.tr>
-                ))}
-              </tbody>
-            </table>
-            {filtered.length === 0 && customers.length > 0 && (
-              <div className="p-12 text-center">
-                <p className="text-sm font-bold text-gray-400">Couldn't find that customer. Try a different name or phone number.</p>
+                    )}
+                    <span>{customer.totalVisits} visits</span>
+                  </div>
+                </div>
+
+                <div className="text-right shrink-0">
+                  <span className="text-sm font-black text-gray-900 block mb-0.5">
+                    ₦{customer.totalSpent.toLocaleString()}
+                  </span>
+                  <span className="text-[9px] font-bold uppercase tracking-wider text-gray-400">
+                    Spent
+                  </span>
+                </div>
+              </motion.button>
+            ))}
+            
+            {filtered.length === 0 && (
+              <div className="p-8 text-center bg-gray-50 rounded-2xl">
+                <p className="text-sm font-bold text-gray-400">Couldn't find any customers matching your search.</p>
               </div>
             )}
           </div>
         ) : (
           <div className="flex-1 flex flex-col items-center justify-center text-center p-12">
-            <div className="size-24 rounded-[28px] bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-100 flex items-center justify-center mb-6">
-              <Users size={40} className="text-blue-400" />
+            <div className="size-20 rounded-[24px] bg-blue-50 border border-blue-100 flex items-center justify-center mb-6">
+              <Users size={32} className="text-blue-400" />
             </div>
             <h3 className="text-xl font-black text-gray-900 mb-2">Customer Directory</h3>
-            <p className="text-sm font-medium text-gray-500 max-w-sm leading-relaxed">
-              Customers added at checkout will appear here. You&apos;ll be able to view their purchase history, contact info, and loyalty activity.
+            <p className="text-[11px] font-bold text-gray-500 max-w-[200px] leading-relaxed uppercase tracking-wider mx-auto">
+              Customers added at checkout will appear here
             </p>
-            <div className="mt-6 flex items-center gap-2 px-3 py-1.5 rounded-full bg-gray-100 text-gray-500 text-xs font-semibold">
-              <span>No customers registered yet</span>
-            </div>
           </div>
         )}
       </div>
