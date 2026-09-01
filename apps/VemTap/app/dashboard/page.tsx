@@ -211,8 +211,8 @@ export default function DashboardPage() {
                                             <div className="absolute -right-2 -bottom-2 opacity-[0.04] pointer-events-none">
                                                 <kpi.icon size={64} />
                                             </div>
-                                            <div className={`size-7 sm:size-8 rounded-full ${kpi.color} text-white flex items-center justify-center shadow-sm z-10 shrink-0`}>
-                                                <kpi.icon size={14} className="sm:w-3.5 sm:h-3.5" />
+                                            <div className={`size-6 sm:size-7 rounded-full ${kpi.color} text-white flex items-center justify-center shadow-sm z-10 shrink-0`}>
+                                                <kpi.icon size={12} className="sm:w-3 sm:h-3" />
                                             </div>
                                             <div className="flex flex-col gap-0.5 z-10">
                                                 <p className="text-sm sm:text-base font-black text-gray-900 tracking-tight truncate leading-none">{kpi.value}</p>
