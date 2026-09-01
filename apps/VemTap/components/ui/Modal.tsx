@@ -34,7 +34,7 @@ export default function Modal({
     size = 'md',
     showClose = true,
     closeOnOverlayClick = true,
-    mobileSheet = false,
+    mobileSheet = true,
 }: ModalProps) {
     const [mounted, setMounted] = useState(false);
 
@@ -75,7 +75,7 @@ export default function Modal({
                         animate={mobileSheet ? { y: 0 } : { opacity: 1, scale: 1, y: 0 }}
                         exit={mobileSheet ? { y: '100%' } : { opacity: 0, scale: 0.95, y: 20 }}
                         transition={mobileSheet ? { type: 'spring', damping: 30, stiffness: 300 } : { type: 'spring', duration: 0.5, bounce: 0.3 }}
-                        className={`relative w-full ${sizes[size]} bg-white shadow-2xl overflow-hidden border border-slate-100 flex flex-col z-10 ${mobileSheet ? 'rounded-t-[28px] sm:rounded-3xl rounded-b-none sm:rounded-b-3xl max-h-[96dvh] sm:max-h-[90vh] h-[96dvh] sm:h-auto' : 'rounded-3xl max-h-[90vh]'}`}
+                        className={`relative w-full ${sizes[size]} bg-white shadow-2xl overflow-hidden border border-slate-100 flex flex-col z-10 ${mobileSheet ? 'rounded-t-[28px] sm:rounded-3xl rounded-b-none sm:rounded-b-3xl max-h-[92dvh] sm:max-h-[90vh]' : 'rounded-3xl max-h-[90vh]'}`}
                     >
                         {/* Header */}
                         {(title || showClose) && (
