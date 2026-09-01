@@ -201,11 +201,11 @@ export default function DashboardPage() {
 
                             {/* Overlapping Snapshot Cards */}
                             <div className="absolute left-0 right-0 -bottom-10 px-4 sm:px-6">
-                                <div className="grid grid-cols-3 gap-3 md:gap-4">
+                                <div className="grid grid-cols-3 gap-4 md:gap-5">
                                     {[kpis[0], kpis[1], kpis[3]].map((kpi, i) => (
                                         <div 
                                             key={i}
-                                            className="w-full bg-white rounded-lg sm:rounded-xl p-3 sm:p-4 shadow-[0_8px_30px_rgb(0,0,0,0.08)] flex flex-col gap-2 sm:gap-3 h-[88px] sm:h-[100px] border border-gray-100 relative overflow-hidden backdrop-blur-sm"
+                                            className="w-full bg-white rounded-xl sm:rounded-2xl p-3 sm:p-4 shadow-[0_8px_30px_rgb(0,0,0,0.08)] flex flex-col gap-2 sm:gap-3 h-[88px] sm:h-[100px] border border-gray-100 relative overflow-hidden backdrop-blur-sm"
                                         >
                                             <div className="absolute inset-0 bg-gradient-to-br from-white via-white to-blue-50/30 pointer-events-none" />
                                             <div className="absolute -right-2 -bottom-2 opacity-[0.04] pointer-events-none">
