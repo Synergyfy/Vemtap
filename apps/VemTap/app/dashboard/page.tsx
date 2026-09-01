@@ -15,7 +15,7 @@ import {
 import { useAuthStore } from '@/store/useAuthStore';
 import { useDashboardAnalytics } from '@/services/analytics/hooks';
 import { useBusinessLoyaltyStats } from '@/services/loyalty/hooks';
-import { ResponsiveContainer, AreaChart, Area } from 'recharts';
+import { ResponsiveContainer, AreaChart, Area, CartesianGrid, XAxis, YAxis, Tooltip } from 'recharts';
 import { useActiveBranch } from '@/hooks/useActiveBranch';
 import { useMyBusiness } from '@/services/businesses/hooks';
 import { useBranches } from '@/services/branches/hooks';
@@ -312,40 +312,52 @@ export default function DashboardPage() {
                                     { label: 'Customer Growth', value: 75, color: 'bg-blue-500', trend: '+12%' },
                                     { label: 'QR Scan Activity', value: 90, color: 'bg-emerald-500', trend: '+28%' },
                                 ];
-                                const renderItem = (item: any) => {
-                                    const colorMap: Record<string,string> = { 'bg-blue-500': '#3b82f6', 'bg-emerald-500': '#10b981' };
-                                    const stroke = colorMap[item.color] || '#3b82f6';
-                                    const data = [
-                                        {v: Math.max(10, item.value - 30)},
-                                        {v: Math.max(15, item.value - 18)},
-                                        {v: Math.max(20, item.value - 10)},
-                                        {v: Math.max(25, item.value - 4)},
-                                        {v: item.value},
-                                    ];
-                                    return (
-                                    <div key={item.label} className="space-y-2">
-                                        <div className="flex items-center justify-between">
-                                            <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-600">{item.label}</span>
-                                            <div className="flex items-center gap-1">
-                                                <TrendingUp size={10} className="text-emerald-500" />
-                                                <span className="text-[10px] font-bold text-emerald-500">{item.trend}</span>
-                                            </div>
-                                        </div>
-                                        <div className="h-[48px] w-full">
-                                            <ResponsiveContainer width="100%" height="100%">
-                                                <AreaChart data={data}>
-                                                    <Area type="monotone" dataKey="v" stroke={stroke} fill={`${stroke}18`} strokeWidth={2} dot={false} />
-                                                </AreaChart>
-                                            </ResponsiveContainer>
-                                        </div>
-                                    </div>
-                                    );
-                                };
+                                // Single chart with two lines — POS Orders style
+                                const chartData = [
+                                    { name: 'Mon', growth: Math.max(10, healthMetrics[0].value - 35), scans: Math.max(15, (healthMetrics[1]?.value || 90) - 40) },
+                                    { name: 'Tue', growth: Math.max(15, healthMetrics[0].value - 25), scans: Math.max(20, (healthMetrics[1]?.value || 90) - 28) },
+                                    { name: 'Wed', growth: Math.max(20, healthMetrics[0].value - 16), scans: Math.max(30, (healthMetrics[1]?.value || 90) - 18) },
+                                    { name: 'Thu', growth: Math.max(25, healthMetrics[0].value - 8), scans: Math.max(40, (healthMetrics[1]?.value || 90) - 8) },
+                                    { name: 'Fri', growth: healthMetrics[0].value, scans: healthMetrics[1]?.value || 90 },
+                                ];
                                 
                                 return (
                                     <>
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                            {healthMetrics.slice(0, 1).map(renderItem)}
+                                        <div className="flex items-center gap-4 mb-4">
+                                            <div className="flex items-center gap-1.5">
+                                                <span className="size-2.5 rounded-full bg-[#3b82f6]" />
+                                                <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">{healthMetrics[0].label}</span>
+                                                <span className="text-[10px] font-bold text-emerald-500 ml-1">{healthMetrics[0].trend}</span>
+                                            </div>
+                                            {healthMetrics[1] && (
+                                                <div className="flex items-center gap-1.5">
+                                                    <span className="size-2.5 rounded-full bg-[#10b981]" />
+                                                    <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">{healthMetrics[1].label}</span>
+                                                    <span className="text-[10px] font-bold text-emerald-500 ml-1">{healthMetrics[1].trend}</span>
+                                                </div>
+                                            )}
+                                        </div>
+                                        <div className="h-[160px] w-full">
+                                            <ResponsiveContainer width="100%" height="100%">
+                                                <AreaChart data={chartData}>
+                                                    <defs>
+                                                        <linearGradient id="growthGradient" x1="0" y1="0" x2="0" y2="1">
+                                                            <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.2} />
+                                                            <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                                                        </linearGradient>
+                                                        <linearGradient id="scansGradient" x1="0" y1="0" x2="0" y2="1">
+                                                            <stop offset="5%" stopColor="#10b981" stopOpacity={0.2} />
+                                                            <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                                                        </linearGradient>
+                                                    </defs>
+                                                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                                                    <XAxis dataKey="name" tick={{ fontSize: 10, fontWeight: 700, fill: '#9CA3AF' }} axisLine={false} tickLine={false} />
+                                                    <YAxis tick={{ fontSize: 10, fontWeight: 700, fill: '#9CA3AF' }} axisLine={false} tickLine={false} allowDecimals={false} />
+                                                    <Tooltip contentStyle={{ borderRadius: 12, border: '1px solid #e5e7eb', fontSize: 12, fontWeight: 700 }} />
+                                                    <Area type="monotone" dataKey="growth" stroke="#3b82f6" fill="url(#growthGradient)" strokeWidth={2} name={healthMetrics[0].label} />
+                                                    {healthMetrics[1] && <Area type="monotone" dataKey="scans" stroke="#10b981" fill="url(#scansGradient)" strokeWidth={2} strokeDasharray="4 4" name={healthMetrics[1].label} />}
+                                                </AreaChart>
+                                            </ResponsiveContainer>
                                         </div>
                                         <AnimatePresence>
                                             {isHealthExpanded && (
@@ -353,10 +365,16 @@ export default function DashboardPage() {
                                                     initial={{ height: 0, opacity: 0 }} 
                                                     animate={{ height: 'auto', opacity: 1 }} 
                                                     exit={{ height: 0, opacity: 0 }}
-                                                    className="overflow-hidden mt-8"
+                                                    className="overflow-hidden mt-4"
                                                 >
-                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                                        {healthMetrics.slice(1).map(renderItem)}
+                                                    <div className="grid grid-cols-2 gap-4 pt-4 border-t border-gray-50">
+                                                        {healthMetrics.map((m:any) => (
+                                                            <div key={m.label} className="text-center">
+                                                                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{m.label}</p>
+                                                                <p className="text-lg font-black text-gray-900">{m.value}%</p>
+                                                                <p className="text-[10px] font-bold text-emerald-500">{m.trend} vs last week</p>
+                                                            </div>
+                                                        ))}
                                                     </div>
                                                 </motion.div>
                                             )}
