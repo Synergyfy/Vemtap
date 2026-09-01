@@ -306,7 +306,7 @@ export default function OrdersDashboard() {
               <p className="text-blue-100 text-[10px] font-bold uppercase tracking-wider mb-1">
                 Management
               </p>
-              <h1 className="text-lg md:text-2xl font-bold text-white tracking-tight">
+              <h1 className="text-base md:text-xl font-semibold text-white/85 tracking-tight">
                 Orders & Claims
               </h1>
             </div>
