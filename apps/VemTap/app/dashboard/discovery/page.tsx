@@ -238,34 +238,34 @@ function OverviewTab({ branchId, onNavigate }: { branchId: string; onNavigate: (
                     { label: 'Offers Redeemed', value: formatCompactNumber(stats.offersRedeemed), icon: Tag, color: 'text-orange-600', bg: 'bg-orange-50' },
                     { label: 'Revenue Generated', value: formatCurrency(stats.revenueGenerated), icon: TrendingUp, color: 'text-purple-600', bg: 'bg-purple-50' }
                 ].map((kpi, i) => (
-                    <div key={i} className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
-                        <div className={cn("size-10 rounded-2xl flex items-center justify-center mb-4", kpi.bg, kpi.color)}>
-                            <kpi.icon size={20} />
+                    <div key={i} className="bg-white p-4 sm:p-6 rounded-2xl sm:rounded-3xl border border-gray-100 shadow-sm">
+                        <div className={cn("size-8 sm:size-10 rounded-xl sm:rounded-2xl flex items-center justify-center mb-3 sm:mb-4", kpi.bg, kpi.color)}>
+                            <kpi.icon size={16} className="sm:w-5 sm:h-5" />
                         </div>
-                        <div className="text-[13px] font-bold text-gray-400 uppercase tracking-wider mb-1">{kpi.label}</div>
-                        <div className="text-3xl font-semibold text-gray-800">{kpi.value}</div>
+                        <div className="text-[10px] sm:text-[13px] font-bold text-gray-400 uppercase tracking-wider mb-1 leading-tight">{kpi.label}</div>
+                        <div className="text-xl sm:text-3xl font-semibold text-gray-800">{kpi.value}</div>
                     </div>
                 ))}
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <Button onClick={() => router.push('/dashboard/discovery/deals')} className="h-auto p-6 flex flex-col items-center justify-center gap-3 rounded-3xl bg-primary hover:bg-primary/90 text-white border-0">
-                    <div className="size-12 rounded-full bg-white/20 flex items-center justify-center">
-                        <Plus size={24} />
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
+                <Button onClick={() => router.push('/dashboard/discovery/deals')} className="h-auto p-4 sm:p-6 flex flex-col items-center justify-center gap-2 sm:gap-3 rounded-2xl sm:rounded-3xl bg-primary hover:bg-primary/90 text-white border-0">
+                    <div className="size-10 sm:size-12 rounded-full bg-white/20 flex items-center justify-center">
+                        <Plus size={20} className="sm:w-6 sm:h-6" />
                     </div>
-                    <span className="font-bold text-lg">Create Deal</span>
+                    <span className="font-bold text-sm sm:text-lg">Create Deal</span>
                 </Button>
-                <Button onClick={() => onNavigate('partners')} variant="outline" className="h-auto p-6 flex flex-col items-center justify-center gap-3 rounded-3xl border-gray-200 hover:bg-gray-50">
-                    <div className="size-12 rounded-full bg-gray-100 flex items-center justify-center text-gray-800">
-                        <Handshake size={24} />
+                <Button onClick={() => onNavigate('partners')} variant="outline" className="h-auto p-4 sm:p-6 flex flex-col items-center justify-center gap-2 sm:gap-3 rounded-2xl sm:rounded-3xl border-gray-200 hover:bg-gray-50">
+                    <div className="size-10 sm:size-12 rounded-full bg-gray-100 flex items-center justify-center text-gray-800">
+                        <Handshake size={20} className="sm:w-6 sm:h-6" />
                     </div>
-                    <span className="font-bold text-lg text-gray-800">Find Partners</span>
+                    <span className="font-bold text-sm sm:text-lg text-gray-800">Find Partners</span>
                 </Button>
-                <Button onClick={() => onNavigate('results')} variant="outline" className="h-auto p-6 flex flex-col items-center justify-center gap-3 rounded-3xl border-gray-200 hover:bg-gray-50">
-                    <div className="size-12 rounded-full bg-gray-100 flex items-center justify-center text-gray-800">
-                        <Activity size={24} />
+                <Button onClick={() => onNavigate('results')} variant="outline" className="h-auto p-4 sm:p-6 flex flex-col items-center justify-center gap-2 sm:gap-3 rounded-2xl sm:rounded-3xl border-gray-200 hover:bg-gray-50">
+                    <div className="size-10 sm:size-12 rounded-full bg-gray-100 flex items-center justify-center text-gray-800">
+                        <Activity size={20} className="sm:w-6 sm:h-6" />
                     </div>
-                    <span className="font-bold text-lg text-gray-800">View Results</span>
+                    <span className="font-bold text-sm sm:text-lg text-gray-800">View Results</span>
                 </Button>
             </div>
 
