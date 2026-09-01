@@ -234,7 +234,7 @@ export default function DashboardPage() {
                             <div className="flex items-center justify-between mb-2.5">
                                 <h2 className="text-[10px] font-bold uppercase tracking-[0.16em] text-gray-400">Quick Actions</h2>
                             </div>
-                            <div className="flex overflow-x-auto snap-x snap-mandatory gap-2 md:gap-3 pb-4 -mx-4 px-4 md:mx-0 md:px-0 md:grid md:grid-cols-4 md:pb-0 md:overflow-visible hide-scrollbar" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+                            <div className="grid grid-cols-4 gap-2 md:gap-3">
                                 {useMemo(() => {
                                     const role = (user?.role as string)?.toLowerCase() || 'owner';
                                     if (role === 'cashier') {
@@ -278,12 +278,12 @@ export default function DashboardPage() {
                                     <button 
                                         key={i}
                                         onClick={() => router.push(getLinkWithBranch(action.route))}
-                                        className={`w-[110px] sm:w-[120px] md:w-full shrink-0 snap-center bg-white border border-gray-100 rounded-xl px-2 py-3 sm:px-3 sm:py-4 flex flex-col items-center gap-2 active:scale-[0.98] transition-all shadow-sm group hover:border-primary/20 hover:shadow-md`}
+                                        className={`w-full bg-white border border-gray-100 rounded-xl px-1.5 py-3 sm:px-3 sm:py-4 flex flex-col items-center gap-1.5 sm:gap-2 active:scale-[0.98] transition-all shadow-sm group hover:border-primary/20 hover:shadow-md`}
                                     >
-                                        <div className={`size-10 md:size-10 rounded-xl ${action.color} border shrink-0 flex items-center justify-center transition-transform group-hover:scale-110`}>
-                                            <action.icon size={18} className="md:w-[20px] md:h-[20px]" />
+                                        <div className={`size-9 sm:size-10 rounded-xl ${action.color} border shrink-0 flex items-center justify-center transition-transform group-hover:scale-110`}>
+                                            <action.icon size={16} className="sm:w-[18px] sm:h-[18px]" />
                                         </div>
-                                        <span className="text-[10px] md:text-xs font-semibold text-gray-700 leading-tight text-center line-clamp-2">{action.label}</span>
+                                        <span className="text-[9px] sm:text-[10px] md:text-xs font-semibold text-gray-700 leading-tight text-center line-clamp-2">{action.label}</span>
                                     </button>
                                 ))}
                             </div>
