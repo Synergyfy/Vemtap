@@ -47,9 +47,9 @@ export default function ProductsDashboard() {
   const lowStockProducts = activeProducts.filter((p: any) => p.stockQuantity > 0 && p.stockQuantity <= (p.minStock || 5));
 
   return (
-    <div className="max-w-7xl mx-auto flex flex-col pb-28">
+    <div className="p-4 sm:p-6 max-w-7xl mx-auto flex flex-col pb-28">
       {/* NATIVE APP HEADER SECTION */}
-      <section className="relative bg-[#066CF4] -mx-4 -mt-4 sm:-mx-6 sm:-mt-6 px-5 sm:px-8 pt-10 pb-20 rounded-b-[2.5rem] shadow-lg mb-6">
+      <section className="relative bg-[#066CF4] -mx-4 -mt-4 sm:-mx-6 sm:-mt-6 px-4 sm:px-6 pt-5 pb-14 rounded-b-[2rem] shadow-lg mb-6">
         <div className="absolute top-0 right-0 p-8 opacity-10 pointer-events-none">
           <Package size={120} />
         </div>
@@ -60,7 +60,7 @@ export default function ProductsDashboard() {
               <p className="text-blue-100 text-[10px] font-bold uppercase tracking-wider mb-1">
                 Catalogue
               </p>
-              <h1 className="text-xl md:text-2xl font-bold text-white tracking-tight">
+              <h1 className="text-lg md:text-2xl font-bold text-white tracking-tight">
                 Products
               </h1>
             </div>
@@ -72,18 +72,18 @@ export default function ProductsDashboard() {
             </button>
           </div>
           
-          <div className="pt-2 pb-4">
-            <p className="text-blue-100 text-xs font-semibold mb-1 flex items-center gap-1.5">
-              <Package size={14} /> Active Products
+          <div className="pt-1 pb-2">
+            <p className="text-blue-100 text-[11px] font-semibold mb-1 flex items-center gap-1.5">
+              <Package size={12} /> Active Products
             </p>
-            <h2 className="text-4xl md:text-5xl font-black text-white tracking-tight">
+            <h2 className="text-3xl md:text-5xl font-black text-white tracking-tight">
               {totalProducts}
             </h2>
           </div>
         </div>
 
         {/* Search Bar - Overlapping the Header */}
-        <div className="absolute left-0 right-0 -bottom-6 px-5 sm:px-8">
+        <div className="absolute left-0 right-0 -bottom-10 px-4 sm:px-6">
           <div className="relative shadow-lg shadow-black/5 rounded-2xl overflow-hidden">
             <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
             <input
@@ -95,7 +95,7 @@ export default function ProductsDashboard() {
         </div>
       </section>
 
-      <div className="px-5 sm:px-8 pt-12">
+      <div className="pt-8">
         {/* Stat Cards Row */}
         <div className="grid grid-cols-3 gap-2 mb-6">
           <div className="p-3 bg-emerald-50 rounded-2xl border border-emerald-100 shadow-sm flex flex-col justify-between h-[85px]">

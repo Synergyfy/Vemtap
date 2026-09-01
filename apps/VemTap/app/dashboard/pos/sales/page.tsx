@@ -30,7 +30,7 @@ export default function SalesDashboard() {
   return (
     <div className="max-w-7xl mx-auto flex flex-col pb-24">
       {/* NATIVE APP HEADER SECTION */}
-      <section className="relative bg-[#066CF4] -mx-4 -mt-4 sm:-mx-6 sm:-mt-6 px-5 sm:px-8 pt-10 pb-20 rounded-b-[2.5rem] shadow-lg mb-6">
+      <section className="relative bg-[#066CF4] -mx-4 -mt-4 sm:-mx-6 sm:-mt-6 px-4 sm:px-6 pt-5 pb-14 rounded-b-[2rem] shadow-lg mb-6">
         <div className="absolute top-0 right-0 p-8 opacity-10 pointer-events-none">
           <Banknote size={120} />
         </div>
@@ -41,17 +41,17 @@ export default function SalesDashboard() {
               <p className="text-blue-100 text-[10px] font-bold uppercase tracking-wider mb-1">
                 History
               </p>
-              <h1 className="text-xl md:text-2xl font-bold text-white tracking-tight">
+              <h1 className="text-lg md:text-2xl font-bold text-white tracking-tight">
                 Sales & Transactions
               </h1>
             </div>
           </div>
           
-          <div className="pt-2 pb-4">
-            <p className="text-blue-100 text-xs font-semibold mb-1 flex items-center gap-1.5">
-              <Banknote size={14} /> Total Revenue
+          <div className="pt-1 pb-2">
+            <p className="text-blue-100 text-[11px] font-semibold mb-1 flex items-center gap-1.5">
+              <Banknote size={12} /> Total Revenue
             </p>
-            <h2 className="text-4xl md:text-5xl font-black text-white tracking-tight">
+            <h2 className="text-3xl md:text-5xl font-black text-white tracking-tight">
               ₦{revenue.toLocaleString()}
             </h2>
           </div>
@@ -77,7 +77,7 @@ export default function SalesDashboard() {
         </div>
       </section>
 
-      <div className="px-5 sm:px-8 pt-12">
+      <div className="pt-8">
         {/* Quick Stats Grid */}
         <div className="grid grid-cols-2 gap-3 mb-6">
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-white border border-gray-100 rounded-[20px] p-4 shadow-sm flex flex-col justify-center h-24">

@@ -75,21 +75,21 @@ export default function DealsPage() {
 
     return (
         <PartnershipVerificationGuard>
-            <div className="max-w-7xl mx-auto flex flex-col pb-28 font-sans">
+            <div className="p-4 sm:p-6 max-w-7xl mx-auto flex flex-col pb-28 font-sans">
                 {/* NATIVE APP HEADER SECTION */}
                 {!isCreatingPromo && (
-                    <section className="relative bg-[#066CF4] -mx-4 -mt-4 sm:-mx-6 sm:-mt-6 px-5 sm:px-8 pt-10 pb-20 rounded-b-[2.5rem] shadow-lg mb-6">
+                    <section className="relative bg-[#066CF4] -mx-4 -mt-4 sm:-mx-6 sm:-mt-6 px-4 sm:px-6 pt-5 pb-14 rounded-b-[2rem] shadow-lg mb-6">
                         <div className="absolute top-0 right-0 p-8 opacity-10 pointer-events-none">
                             <Tag size={120} />
                         </div>
                         
-                        <div className="relative z-10 space-y-6">
+                        <div className="relative z-10 space-y-4">
                             <div className="flex items-center justify-between">
                                 <div className="flex flex-col">
                                     <p className="text-blue-100 text-[10px] font-bold uppercase tracking-wider mb-1">
                                         Marketplace
                                     </p>
-                                    <h1 className="text-xl md:text-2xl font-bold text-white tracking-tight">
+                                    <h1 className="text-lg md:text-2xl font-bold text-white tracking-tight">
                                         Deals
                                     </h1>
                                 </div>
@@ -101,11 +101,11 @@ export default function DealsPage() {
                                 </button>
                             </div>
                             
-                            <div className="pt-2 pb-4">
-                                <p className="text-blue-100 text-xs font-semibold mb-1 flex items-center gap-1.5">
-                                    <Flame size={14} /> Attract Customers
+                            <div className="pt-1 pb-2">
+                                <p className="text-blue-100 text-[11px] font-semibold mb-1 flex items-center gap-1.5">
+                                    <Flame size={12} /> Attract Customers
                                 </p>
-                                <h2 className="text-xl md:text-2xl font-black text-white tracking-tight leading-tight">
+                                <h2 className="text-lg md:text-2xl font-black text-white tracking-tight leading-tight">
                                     Create and manage deals.
                                 </h2>
                             </div>

@@ -41,9 +41,9 @@ export default function CustomersDirectory() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto h-full flex flex-col pb-24">
+    <div className="p-4 sm:p-6 max-w-7xl mx-auto h-full flex flex-col pb-24">
       {/* NATIVE APP HEADER SECTION */}
-      <section className="relative bg-[#066CF4] -mx-4 -mt-4 sm:-mx-6 sm:-mt-6 px-5 sm:px-8 pt-10 pb-20 rounded-b-[2.5rem] shadow-lg mb-6">
+      <section className="relative bg-[#066CF4] -mx-4 -mt-4 sm:-mx-6 sm:-mt-6 px-4 sm:px-6 pt-5 pb-14 rounded-b-[2rem] shadow-lg mb-6">
         <div className="absolute top-0 right-0 p-8 opacity-10 pointer-events-none">
           <Users size={120} />
         </div>
@@ -54,17 +54,17 @@ export default function CustomersDirectory() {
               <p className="text-blue-100 text-[10px] font-bold uppercase tracking-wider mb-1">
                 Directory
               </p>
-              <h1 className="text-xl md:text-2xl font-bold text-white tracking-tight">
+              <h1 className="text-lg md:text-2xl font-bold text-white tracking-tight">
                 Customers
               </h1>
             </div>
           </div>
           
-          <div className="pt-2 pb-4">
-            <p className="text-blue-100 text-xs font-semibold mb-1 flex items-center gap-1.5">
-              <Users size={14} /> Total Customers
+          <div className="pt-1 pb-2">
+            <p className="text-blue-100 text-[11px] font-semibold mb-1 flex items-center gap-1.5">
+              <Users size={12} /> Total Customers
             </p>
-            <h2 className="text-4xl md:text-5xl font-black text-white tracking-tight">
+            <h2 className="text-3xl md:text-5xl font-black text-white tracking-tight">
               {customers.length}
             </h2>
           </div>
@@ -85,7 +85,7 @@ export default function CustomersDirectory() {
         </div>
       </section>
 
-      <div className="px-5 sm:px-8 pt-12 flex-1">
+      <div className="pt-8 flex-1">
         {customers.length > 0 ? (
           <div className="space-y-3 pb-8">
             {filtered.map((customer, i) => (
