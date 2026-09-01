@@ -145,7 +145,7 @@ export default function DashboardPage() {
             <main className="p-4 sm:p-6 max-w-7xl mx-auto">
                 <div className="space-y-6">
                         {/* 1. NATIVE APP HEADER SECTION */}
-                        <section className="relative bg-[#066CF4] -mx-4 -mt-4 sm:-mx-6 sm:-mt-6 px-4 sm:px-6 pt-5 pb-14 rounded-b-[1.25rem] shadow-lg mb-6">
+                        <section className="relative bg-[#066CF4] -mx-4 -mt-4 sm:-mx-6 sm:-mt-6 px-4 sm:px-6 pt-5 pb-14 rounded-b-xl shadow-lg mb-6">
                             <div className="absolute top-0 right-0 p-8 opacity-10 pointer-events-none">
                                 <Sparkles size={120} />
                             </div>
@@ -205,9 +205,10 @@ export default function DashboardPage() {
                                     {[kpis[0], kpis[1], kpis[3]].map((kpi, i) => (
                                         <div 
                                             key={i}
-                                            className="w-full bg-white rounded-xl sm:rounded-2xl p-3 sm:p-4 shadow-[0_8px_30px_rgb(0,0,0,0.08)] flex flex-col gap-2 sm:gap-3 h-[88px] sm:h-[100px] border border-gray-100 relative overflow-hidden"
+                                            className="w-full bg-white rounded-lg sm:rounded-xl p-3 sm:p-4 shadow-[0_8px_30px_rgb(0,0,0,0.08)] flex flex-col gap-2 sm:gap-3 h-[88px] sm:h-[100px] border border-gray-100 relative overflow-hidden backdrop-blur-sm"
                                         >
-                                            <div className="absolute -right-2 -bottom-2 opacity-5 pointer-events-none">
+                                            <div className="absolute inset-0 bg-gradient-to-br from-white via-white to-blue-50/30 pointer-events-none" />
+                                            <div className="absolute -right-2 -bottom-2 opacity-[0.04] pointer-events-none">
                                                 <kpi.icon size={64} />
                                             </div>
                                             <div className={`size-7 sm:size-8 rounded-full ${kpi.color} text-white flex items-center justify-center shadow-sm z-10 shrink-0`}>

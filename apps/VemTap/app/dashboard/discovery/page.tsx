@@ -118,7 +118,7 @@ export default function DiscoveryPage() {
         <PartnershipVerificationGuard>
             <div className="p-4 sm:p-6 max-w-7xl mx-auto flex flex-col pb-28 font-sans">
                 {/* NATIVE APP HEADER SECTION */}
-                <section className="relative bg-[#066CF4] -mx-4 -mt-4 sm:-mx-6 sm:-mt-6 px-4 sm:px-6 pt-5 pb-14 rounded-b-[1.25rem] shadow-lg mb-6">
+                <section className="relative bg-[#066CF4] -mx-4 -mt-4 sm:-mx-6 sm:-mt-6 px-4 sm:px-6 pt-5 pb-14 rounded-b-xl shadow-lg mb-6">
                     <div className="absolute top-0 right-0 p-8 opacity-10 pointer-events-none">
                         <MapPin size={120} />
                     </div>
