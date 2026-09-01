@@ -10,11 +10,12 @@ import {
     BarChart3, Settings as SettingsIcon,
     Activity, Sparkles, FileText, Package,
     ChevronDown, ChevronUp,
-    Tag, Handshake, Globe2
+    Tag, Handshake, Globe2, MoreHorizontal
 } from 'lucide-react';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useDashboardAnalytics } from '@/services/analytics/hooks';
 import { useBusinessLoyaltyStats } from '@/services/loyalty/hooks';
+import { ResponsiveContainer, AreaChart, Area } from 'recharts';
 import { useActiveBranch } from '@/hooks/useActiveBranch';
 import { useMyBusiness } from '@/services/businesses/hooks';
 import { useBranches } from '@/services/branches/hooks';
@@ -36,6 +37,7 @@ export default function DashboardPage() {
     const [isHealthExpanded, setIsHealthExpanded] = useState(false);
     const [isActivityExpanded, setIsActivityExpanded] = useState(false);
     const [showDealPrompt, setShowDealPrompt] = useState(false);
+    const [showBannerMenu, setShowBannerMenu] = useState(false);
     const user = useAuthStore((state) => state.user);
     const { activeBranchId, getLinkWithBranch } = useActiveBranch();
     const { data: myBusiness } = useMyBusiness();
@@ -143,39 +145,55 @@ export default function DashboardPage() {
             <main className="p-4 sm:p-6 max-w-7xl mx-auto">
                 <div className="space-y-6">
                         {/* 1. NATIVE APP HEADER SECTION */}
-                        <section className="relative bg-[#066CF4] -mx-4 -mt-4 sm:-mx-6 sm:-mt-6 px-4 sm:px-6 pt-5 pb-14 rounded-b-[2rem] shadow-lg mb-6">
+                        <section className="relative bg-[#066CF4] -mx-4 -mt-4 sm:-mx-6 sm:-mt-6 px-4 sm:px-6 pt-5 pb-14 rounded-b-[1.25rem] shadow-lg mb-6">
                             <div className="absolute top-0 right-0 p-8 opacity-10 pointer-events-none">
                                 <Sparkles size={120} />
                             </div>
                             
-                            <div className="relative z-10 space-y-6">
+                            <div className="relative z-10 space-y-4">
                                 <div className="flex items-center justify-between">
                                     <div className="flex flex-col">
-                                        <p className="text-blue-100 text-[10px] font-bold uppercase tracking-wider mb-1">
+                                        <p className="text-blue-100/70 text-[9px] font-semibold uppercase tracking-widest mb-0.5">
                                             Good {new Date().getHours() < 12 ? 'Morning' : new Date().getHours() < 17 ? 'Afternoon' : 'Evening'}
                                         </p>
-                                        <div className="flex items-center gap-2.5">
-                                            <h1 className="text-xl md:text-2xl font-bold text-white tracking-tight">
+                                        <div className="flex items-center gap-2">
+                                            <h1 className="text-base md:text-lg font-semibold text-white/90 tracking-tight">
                                                 {user?.firstName || 'Owner'}
                                             </h1>
                                             {isAnalyticsLoading && (
-                                                <div className="size-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                                <div className="size-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                                             )}
                                         </div>
                                     </div>
-                                    <div className="flex items-center gap-2 shrink-0 bg-white/10 backdrop-blur-md p-1.5 rounded-2xl border border-white/20">
-                                        <PageGuideButton />
-                                        <AICopilotButton />
-                                        <InstallAppButton iconOnly />
+                                    <div className="relative shrink-0">
+                                        <button onClick={() => setShowBannerMenu(!showBannerMenu)} className="size-9 rounded-xl bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center text-white hover:bg-white/20 transition-colors">
+                                            <MoreHorizontal size={18} />
+                                        </button>
+                                        {showBannerMenu && (
+                                            <div className="absolute right-0 top-full mt-2 bg-white rounded-2xl shadow-xl border border-gray-100 p-1.5 flex flex-col gap-1 z-20 min-w-[180px]">
+                                                <div onClick={() => setShowBannerMenu(false)} className="flex items-center gap-2 px-2 py-1">
+                                                    <PageGuideButton />
+                                                    <span className="text-xs font-semibold text-gray-700">Guide</span>
+                                                </div>
+                                                <div onClick={() => setShowBannerMenu(false)} className="flex items-center gap-2 px-2 py-1">
+                                                    <AICopilotButton />
+                                                    <span className="text-xs font-semibold text-gray-700">AI Copilot</span>
+                                                </div>
+                                                <div onClick={() => setShowBannerMenu(false)} className="flex items-center gap-2 px-2 py-1">
+                                                    <InstallAppButton iconOnly />
+                                                    <span className="text-xs font-semibold text-gray-700">Install App</span>
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                                 
-                                {/* Main Highlight (e.g. Sales) in the header */}
-                                <div className="pt-1 pb-2">
-                                    <p className="text-blue-100 text-xs font-semibold mb-1 flex items-center gap-1.5">
-                                        <ShoppingBag size={14} /> Today's Sales
+                                {/* Main Highlight — money is hero */}
+                                <div className="pt-1 pb-1">
+                                    <p className="text-blue-100/60 text-[10px] font-medium tracking-wider mb-1 flex items-center gap-1.5">
+                                        <ShoppingBag size={12} /> Today's Sales
                                     </p>
-                                    <h2 className="text-4xl md:text-5xl font-black text-white tracking-tight">
+                                    <h2 className="text-[32px] md:text-5xl font-black text-white tracking-tight leading-none">
                                         {kpis[2]?.value || '₦0'}
                                     </h2>
                                 </div>
@@ -187,17 +205,17 @@ export default function DashboardPage() {
                                     {[kpis[0], kpis[1], kpis[3]].map((kpi, i) => (
                                         <div 
                                             key={i}
-                                            className="w-full bg-white rounded-2xl md:rounded-3xl p-2.5 sm:p-4 shadow-[0_8px_30px_rgb(0,0,0,0.08)] flex flex-col justify-between h-[82px] sm:h-[100px] border border-gray-100 relative overflow-hidden"
+                                            className="w-full bg-white rounded-xl sm:rounded-2xl p-3 sm:p-4 shadow-[0_8px_30px_rgb(0,0,0,0.08)] flex flex-col gap-2 sm:gap-3 h-[88px] sm:h-[100px] border border-gray-100 relative overflow-hidden"
                                         >
                                             <div className="absolute -right-2 -bottom-2 opacity-5 pointer-events-none">
                                                 <kpi.icon size={64} />
                                             </div>
-                                            <div className="flex flex-col gap-0.5 sm:gap-1 z-10">
-                                                <p className="text-[8px] sm:text-[10px] font-bold text-gray-400 leading-tight truncate">{kpi.label}</p>
-                                                <p className="text-base sm:text-xl font-black text-gray-900 tracking-tight truncate">{kpi.value}</p>
+                                            <div className={`size-7 sm:size-8 rounded-full ${kpi.color} text-white flex items-center justify-center shadow-sm z-10 shrink-0`}>
+                                                <kpi.icon size={14} className="sm:w-3.5 sm:h-3.5" />
                                             </div>
-                                            <div className={`size-6 sm:size-8 rounded-full ${kpi.color} text-white flex items-center justify-center shadow-md z-10 shrink-0`}>
-                                                <kpi.icon size={12} className="sm:w-3.5 sm:h-3.5" />
+                                            <div className="flex flex-col gap-0.5 z-10">
+                                                <p className="text-sm sm:text-base font-black text-gray-900 tracking-tight truncate leading-none">{kpi.value}</p>
+                                                <p className="text-[7px] sm:text-[8px] font-bold text-gray-400 leading-tight truncate uppercase tracking-wider">{kpi.label}</p>
                                             </div>
                                         </div>
                                     ))}
@@ -259,12 +277,12 @@ export default function DashboardPage() {
                                     <button 
                                         key={i}
                                         onClick={() => router.push(getLinkWithBranch(action.route))}
-                                        className={`w-[160px] sm:w-[180px] md:w-full shrink-0 snap-center bg-white border border-gray-100 rounded-xl px-3 py-3 flex items-center gap-3 active:scale-[0.98] transition-all shadow-sm group hover:border-primary/20 hover:shadow-md`}
+                                        className={`w-[110px] sm:w-[120px] md:w-full shrink-0 snap-center bg-white border border-gray-100 rounded-xl px-2 py-3 sm:px-3 sm:py-4 flex flex-col items-center gap-2 active:scale-[0.98] transition-all shadow-sm group hover:border-primary/20 hover:shadow-md`}
                                     >
-                                        <div className={`size-9 md:size-10 rounded-lg ${action.color} border shrink-0 flex items-center justify-center transition-transform group-hover:scale-110`}>
+                                        <div className={`size-10 md:size-10 rounded-xl ${action.color} border shrink-0 flex items-center justify-center transition-transform group-hover:scale-110`}>
                                             <action.icon size={18} className="md:w-[20px] md:h-[20px]" />
                                         </div>
-                                        <span className="text-[11px] md:text-xs font-semibold text-gray-700 leading-tight text-left">{action.label}</span>
+                                        <span className="text-[10px] md:text-xs font-semibold text-gray-700 leading-tight text-center line-clamp-2">{action.label}</span>
                                     </button>
                                 ))}
                             </div>
@@ -293,8 +311,18 @@ export default function DashboardPage() {
                                     { label: 'Customer Growth', value: 75, color: 'bg-blue-500', trend: '+12%' },
                                     { label: 'QR Scan Activity', value: 90, color: 'bg-emerald-500', trend: '+28%' },
                                 ];
-                                const renderItem = (item: any) => (
-                                    <div key={item.label} className="space-y-3">
+                                const renderItem = (item: any) => {
+                                    const colorMap: Record<string,string> = { 'bg-blue-500': '#3b82f6', 'bg-emerald-500': '#10b981' };
+                                    const stroke = colorMap[item.color] || '#3b82f6';
+                                    const data = [
+                                        {v: Math.max(10, item.value - 30)},
+                                        {v: Math.max(15, item.value - 18)},
+                                        {v: Math.max(20, item.value - 10)},
+                                        {v: Math.max(25, item.value - 4)},
+                                        {v: item.value},
+                                    ];
+                                    return (
+                                    <div key={item.label} className="space-y-2">
                                         <div className="flex items-center justify-between">
                                             <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-600">{item.label}</span>
                                             <div className="flex items-center gap-1">
@@ -302,16 +330,16 @@ export default function DashboardPage() {
                                                 <span className="text-[10px] font-bold text-emerald-500">{item.trend}</span>
                                             </div>
                                         </div>
-                                        <div className="h-2.5 w-full bg-gray-50 rounded-full overflow-hidden border border-gray-100/50">
-                                            <motion.div 
-                                                initial={{ width: 0 }}
-                                                animate={{ width: `${item.value}%` }}
-                                                transition={{ duration: 1.5, ease: "easeOut" }}
-                                                className={`h-full ${item.color} rounded-full shadow-[0_0_8px_rgba(0,0,0,0.1)]`} 
-                                            />
+                                        <div className="h-[48px] w-full">
+                                            <ResponsiveContainer width="100%" height="100%">
+                                                <AreaChart data={data}>
+                                                    <Area type="monotone" dataKey="v" stroke={stroke} fill={`${stroke}18`} strokeWidth={2} dot={false} />
+                                                </AreaChart>
+                                            </ResponsiveContainer>
                                         </div>
                                     </div>
-                                );
+                                    );
+                                };
                                 
                                 return (
                                     <>

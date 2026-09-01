@@ -23,7 +23,7 @@ export default function SalesDashboard() {
   return (
     <div className="p-4 sm:p-6 max-w-7xl mx-auto space-y-8">
       {/* NATIVE APP HEADER SECTION */}
-      <section className="relative bg-[#066CF4] -mx-4 -mt-4 sm:-mx-6 sm:-mt-6 px-6 sm:px-6 pt-5 pb-14 rounded-b-[2rem] shadow-lg mb-6">
+      <section className="relative bg-[#066CF4] -mx-4 -mt-4 sm:-mx-6 sm:-mt-6 px-6 sm:px-6 pt-5 pb-14 rounded-b-[1.25rem] shadow-lg mb-6">
         <div className="absolute top-0 right-0 p-8 opacity-10 pointer-events-none">
           <TrendingUp size={120} />
         </div>
@@ -54,7 +54,7 @@ export default function SalesDashboard() {
         {/* Overlapping Summary Cards */}
         <div className="absolute left-0 right-0 -bottom-10 px-4 sm:px-6">
           <div className="grid grid-cols-3 gap-2 md:gap-3">
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="w-full bg-white rounded-2xl md:rounded-3xl p-2.5 sm:p-4 shadow-[0_8px_30px_rgb(0,0,0,0.08)] flex flex-col justify-between h-[82px] sm:h-[100px] border border-gray-100 relative overflow-hidden">
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="w-full bg-white rounded-xl sm:rounded-2xl p-2.5 sm:p-4 shadow-[0_8px_30px_rgb(0,0,0,0.08)] flex flex-col justify-between h-[82px] sm:h-[100px] border border-gray-100 relative overflow-hidden">
               <div className="absolute -right-2 -bottom-2 opacity-5 pointer-events-none">
                 <ShoppingCart size={64} />
               </div>
@@ -67,7 +67,7 @@ export default function SalesDashboard() {
               </div>
             </motion.div>
 
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="w-full bg-white rounded-2xl md:rounded-3xl p-2.5 sm:p-4 shadow-[0_8px_30px_rgb(0,0,0,0.08)] flex flex-col justify-between h-[82px] sm:h-[100px] border border-gray-100 relative overflow-hidden">
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="w-full bg-white rounded-xl sm:rounded-2xl p-2.5 sm:p-4 shadow-[0_8px_30px_rgb(0,0,0,0.08)] flex flex-col justify-between h-[82px] sm:h-[100px] border border-gray-100 relative overflow-hidden">
               <div className="absolute -right-2 -bottom-2 opacity-5 pointer-events-none">
                 <Activity size={64} />
               </div>
@@ -80,7 +80,7 @@ export default function SalesDashboard() {
               </div>
             </motion.div>
 
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="w-full bg-white rounded-2xl md:rounded-3xl p-2.5 sm:p-4 shadow-[0_8px_30px_rgb(0,0,0,0.08)] flex flex-col justify-between h-[82px] sm:h-[100px] border border-gray-100 relative overflow-hidden">
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="w-full bg-white rounded-xl sm:rounded-2xl p-2.5 sm:p-4 shadow-[0_8px_30px_rgb(0,0,0,0.08)] flex flex-col justify-between h-[82px] sm:h-[100px] border border-gray-100 relative overflow-hidden">
               <div className="absolute -right-2 -bottom-2 opacity-5 pointer-events-none">
                 <TrendingUp size={64} />
               </div>
