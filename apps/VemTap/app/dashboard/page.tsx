@@ -500,7 +500,7 @@ export default function DashboardPage() {
                         {/* 6. MANAGE YOUR BUSINESS (Main Modules) */}
                         <section className="space-y-3">
                             <h2 className="text-[10px] font-bold uppercase tracking-[0.16em] text-gray-400">Manage Your Business</h2>
-                            <div className="flex overflow-x-auto snap-x snap-mandatory gap-2 md:gap-3 pb-4 -mx-4 px-4 md:mx-0 md:px-0 md:grid md:grid-cols-4 md:pb-0 md:overflow-visible hide-scrollbar" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+                            <div className="grid grid-cols-4 gap-2 md:gap-3">
                                 {[
                                     { 
                                         title: 'Customers', 
@@ -562,14 +562,14 @@ export default function DashboardPage() {
                                     <button 
                                         key={i}
                                         onClick={() => router.push(module.route)}
-                                        className="w-[140px] sm:w-[160px] md:w-full shrink-0 snap-center bg-white border border-gray-100 px-3 py-3.5 rounded-xl flex flex-col items-start gap-2 shadow-sm active:scale-[0.98] transition-all text-left group hover:border-primary/20 hover:shadow-md"
+                                        className="w-full bg-white border border-gray-100 px-2 py-3 sm:px-3 sm:py-3.5 rounded-xl flex flex-col items-center gap-2 shadow-sm active:scale-[0.98] transition-all text-center group hover:border-primary/20 hover:shadow-md"
                                     >
-                                        <div className={`size-9 md:size-10 rounded-lg ${module.color} flex items-center justify-center transition-transform group-hover:scale-110`}>
-                                            <module.icon size={18} className="md:w-5 md:h-5" />
+                                        <div className={`size-9 sm:size-10 rounded-xl ${module.color} flex items-center justify-center transition-transform group-hover:scale-110`}>
+                                            <module.icon size={16} className="sm:w-[18px] sm:h-[18px]" />
                                         </div>
                                         <div className="min-w-0">
-                                            <h3 className="text-[11px] md:text-xs font-bold text-text-main leading-tight truncate">{module.title}</h3>
-                                            <p className="text-[9px] md:text-[10px] font-medium text-gray-400 leading-tight truncate md:whitespace-normal">{module.desc}</p>
+                                            <h3 className="text-[10px] sm:text-xs font-bold text-text-main leading-tight line-clamp-1">{module.title}</h3>
+                                            <p className="text-[8px] sm:text-[9px] font-medium text-gray-400 leading-tight line-clamp-2 hidden sm:block">{module.desc}</p>
                                         </div>
                                     </button>
                                 ))}
