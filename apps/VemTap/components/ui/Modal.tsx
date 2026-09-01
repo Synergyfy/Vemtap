@@ -33,7 +33,7 @@ export default function Modal({
     children,
     size = 'md',
     showClose = true,
-    closeOnOverlayClick = true,
+    closeOnOverlayClick = false,
     mobileSheet = true,
 }: ModalProps) {
     const [mounted, setMounted] = useState(false);
