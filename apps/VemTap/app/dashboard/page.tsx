@@ -201,7 +201,7 @@ export default function DashboardPage() {
 
                             {/* Overlapping Snapshot Cards */}
                             <div className="absolute left-0 right-0 -bottom-10 px-4 sm:px-6">
-                                <div className="grid grid-cols-3 gap-2 md:gap-3">
+                                <div className="grid grid-cols-3 gap-3 md:gap-4">
                                     {[kpis[0], kpis[1], kpis[3]].map((kpi, i) => (
                                         <div 
                                             key={i}
