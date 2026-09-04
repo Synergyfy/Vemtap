@@ -58,7 +58,7 @@ function HowItWorksScreen({ isDesktop }: { isDesktop: boolean }) {
       <div className="absolute inset-0 bg-white flex">
         {/* Left: image */}
         <div className="w-1/2 relative overflow-hidden">
-          <img src="/assets/Screen-3.png" alt="How it works" className="w-full h-full object-cover" />
+          <img src="https://images.unsplash.com/photo-1533929736458-ca588d08c8be?w=800&h=1000&fit=crop" alt="How it works" className="w-full h-full object-cover" />
           <div className="absolute inset-0 bg-gradient-to-r from-black/20 to-white/40" />
         </div>
         {/* Right: steps */}
