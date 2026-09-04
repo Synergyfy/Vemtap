@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MapPin, ArrowRight, Search, Handshake, ChevronLeft } from 'lucide-react';
 import Link from 'next/link';
@@ -46,20 +46,51 @@ function WelcomeScreen({ isDesktop }: { isDesktop: boolean }) {
   );
 }
 
+const CLUSTER_IMAGES = [
+  '/cluster/9865517c-8e4a-4af1-9c18-d412510b1cc7.png',
+  '/cluster/5ed4650f-75f8-49a3-a835-3fa823ac7a99.png',
+  '/cluster/c3a3ed27-234a-417c-82cf-292225f92c01.png',
+];
+
 function HowItWorksScreen({ isDesktop }: { isDesktop: boolean }) {
+  const [activeImage, setActiveImage] = useState(0);
   const steps = [
     { num: '01', icon: MapPin, title: 'DISCOVER', desc: 'Find businesses and deals near you.', color: 'bg-[#066CF4]', glow: 'bg-[#066CF4]/10' },
     { num: '02', icon: Search, title: 'EXPLORE', desc: 'Browse offers, products, and services.', color: 'bg-emerald-600', glow: 'bg-emerald-500/10' },
     { num: '03', icon: Handshake, title: 'CONNECT', desc: 'Interact with businesses directly.', color: 'bg-amber-600', glow: 'bg-amber-500/10' },
   ];
 
+  useEffect(() => {
+    if (!isDesktop) return;
+    const timer = setInterval(() => {
+      setActiveImage((prev) => (prev + 1) % CLUSTER_IMAGES.length);
+    }, 4000);
+    return () => clearInterval(timer);
+  }, [isDesktop]);
+
   if (isDesktop) {
     return (
       <div className="absolute inset-0 bg-white flex">
-        {/* Left: image */}
+        {/* Left: image carousel */}
         <div className="w-1/2 relative overflow-hidden">
-          <img src="https://images.unsplash.com/photo-1441984904996-e0b6ba687e04?w=800&h=1000&fit=crop" alt="How it works" className="w-full h-full object-cover" />
+          {CLUSTER_IMAGES.map((src, i) => (
+            <img
+              key={src}
+              src={src}
+              alt="How it works"
+              className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ${i === activeImage ? 'opacity-100' : 'opacity-0'}`}
+            />
+          ))}
           <div className="absolute inset-0 bg-gradient-to-r from-black/20 to-white/40" />
+          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2 z-10">
+            {CLUSTER_IMAGES.map((_, i) => (
+              <button
+                key={i}
+                onClick={() => setActiveImage(i)}
+                className={`h-1.5 rounded-full transition-all duration-300 cursor-pointer ${i === activeImage ? 'w-6 bg-white' : 'w-1.5 bg-white/50'}`}
+              />
+            ))}
+          </div>
         </div>
         {/* Right: steps */}
         <div className="w-1/2 flex flex-col justify-center px-12 lg:px-16 pt-8 pb-32 overflow-y-auto">
