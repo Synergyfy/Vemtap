@@ -188,6 +188,7 @@ export default function BusinessProductsPage() {
                         </div>
                     )}
                 </div>
+                </div>
             </main>
         </div>
     );

@@ -229,6 +229,7 @@ export default function BusinessHoursPage() {
                         })}
                     </ul>
                 </section>
+                </div>
             </main>
         </div>
     );

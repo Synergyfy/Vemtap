@@ -191,6 +191,7 @@ export default function BusinessServicesPage() {
                         </div>
                     )}
                 </div>
+                </div>
             </main>
         </div>
     );

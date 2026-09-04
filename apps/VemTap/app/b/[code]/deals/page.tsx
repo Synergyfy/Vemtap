@@ -226,6 +226,7 @@ export default function BusinessDealsPage() {
                         </div>
                     )}
                 </section>
+                </div>
             </main>
         </div>
     );
