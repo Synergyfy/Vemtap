@@ -8,6 +8,33 @@ import { usePublicOffers } from '@/services/deals/hooks';
 
 const SUGGESTED_LOCATIONS = ['Wuse 2', 'Garki', 'Maitama', 'Apo', 'Gwarinpa', 'Jabi', 'Katampe', 'Life Camp'];
 
+const SECTOR_COVERS: Record<string, string> = {
+  food: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=400&h=300&fit=crop',
+  restaurant: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=400&h=300&fit=crop',
+  dining: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=400&h=300&fit=crop',
+  cafe: 'https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?w=400&h=300&fit=crop',
+  bar: 'https://images.unsplash.com/photo-1470337458703-46ad1756a187?w=400&h=300&fit=crop',
+  beauty: 'https://images.unsplash.com/photo-1560066984-138dadb4c035?w=400&h=300&fit=crop',
+  spa: 'https://images.unsplash.com/photo-1540555700478-4be289fbec6d?w=400&h=300&fit=crop',
+  salon: 'https://images.unsplash.com/photo-1562322140-8baeececf3df?w=400&h=300&fit=crop',
+  fashion: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=400&h=300&fit=crop',
+  retail: 'https://images.unsplash.com/photo-1604719312566-8912e9227c6a?w=400&h=300&fit=crop',
+  tech: 'https://images.unsplash.com/photo-1518770660439-4636190af475?w=400&h=300&fit=crop',
+  electronics: 'https://images.unsplash.com/photo-1468495244123-6c6c332eeece?w=400&h=300&fit=crop',
+  fitness: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=400&h=300&fit=crop',
+  gym: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=400&h=300&fit=crop',
+  health: 'https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?w=400&h=300&fit=crop',
+  home: 'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=400&h=300&fit=crop',
+  automotive: 'https://images.unsplash.com/photo-1494976388531-d1058494cdd8?w=400&h=300&fit=crop',
+  default: 'https://images.unsplash.com/photo-1497366216548-37526070297c?w=400&h=300&fit=crop',
+};
+
+function getSectorImage(category?: string) {
+  const slug = (category || '').toLowerCase();
+  const match = Object.keys(SECTOR_COVERS).find((k) => k !== 'default' && slug.includes(k));
+  return match ? SECTOR_COVERS[match] : SECTOR_COVERS.default;
+}
+
 interface LocationOnboardingFlowProps {
   onComplete: () => void;
 }
@@ -265,11 +292,13 @@ function LocationConfirmedScreen({ location, onStartExploring, onChangeLocation,
           <div className="flex-1 overflow-y-auto p-8">
             <div className="grid grid-cols-2 gap-4">
               {(deals.length > 0 ? deals.slice(0, 4) : [
-                { id: '1', name: 'Urban Grind Cafe', business: { categoryName: 'Cafe & Bakery' }, dealPrice: 4500, originalPrice: 5600, discountPercent: 20, photos: null },
-                { id: '2', name: 'Oasis Spa & Wellness', business: { categoryName: 'Health & Beauty' }, dealPrice: 12750, originalPrice: 15000, discountPercent: 15, photos: null },
-                { id: '3', name: 'Fresh Bites Kitchen', business: { categoryName: 'Food & Dining' }, dealPrice: 3200, originalPrice: 4000, discountPercent: 20, photos: null },
-                { id: '4', name: 'Style Hub Salon', business: { categoryName: 'Beauty & Spa' }, dealPrice: 8500, originalPrice: 10000, discountPercent: 15, photos: null },
-              ]).map((deal: any, i: number) => (
+                { id: '1', name: 'Urban Grind Cafe', business: { categoryName: 'Cafe & Bakery' }, dealPrice: 4500, originalPrice: 5600, discountPercent: 20 },
+                { id: '2', name: 'Oasis Spa & Wellness', business: { categoryName: 'Health & Beauty' }, dealPrice: 12750, originalPrice: 15000, discountPercent: 15 },
+                { id: '3', name: 'Fresh Bites Kitchen', business: { categoryName: 'Food & Dining' }, dealPrice: 3200, originalPrice: 4000, discountPercent: 20 },
+                { id: '4', name: 'Style Hub Salon', business: { categoryName: 'Beauty & Spa' }, dealPrice: 8500, originalPrice: 10000, discountPercent: 15 },
+              ]).map((deal: any, i: number) => {
+                const dealImage = deal.business?.photos?.[0] || deal.mainImage || deal.image || getSectorImage(deal.business?.categoryName || deal.categoryName);
+                return (
                 <motion.div
                   key={deal.id}
                   initial={{ opacity: 0, y: 16 }}
@@ -277,31 +306,31 @@ function LocationConfirmedScreen({ location, onStartExploring, onChangeLocation,
                   transition={{ delay: i * 0.08 }}
                   className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow"
                 >
-                  <div className="h-28 w-full bg-gradient-to-br from-blue-50 to-blue-100/60 relative flex items-center justify-center">
-                    {deal.business?.photos?.[0] ? (
-                      <img src={deal.business.photos[0]} alt={deal.name} className="w-full h-full object-cover" />
-                    ) : (
-                      <Store size={28} className="text-[#066CF4]/30" />
-                    )}
+                  <div className="h-36 w-full relative overflow-hidden">
+                    <img src={dealImage} alt={deal.name} className="w-full h-full object-cover" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
                     {deal.discountPercent && (
-                      <div className="absolute top-2 right-2 bg-rose-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">-{deal.discountPercent}%</div>
+                      <div className="absolute top-2.5 right-2.5 bg-rose-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm">-{deal.discountPercent}%</div>
                     )}
+                    <div className="absolute bottom-2.5 left-3 right-3">
+                      <h4 className="text-[14px] font-bold text-white truncate drop-shadow-md">{deal.name}</h4>
+                    </div>
                   </div>
                   <div className="p-3">
-                    <div className="flex justify-between items-start mb-0.5">
-                      <h4 className="text-[13px] font-bold text-gray-900 truncate pr-1">{deal.name}</h4>
-                      <div className="flex items-center text-[10px] font-bold text-amber-600 shrink-0">
-                        <Star size={10} className="mr-0.5" fill="currentColor" />{(4.5 + Math.random() * 0.4).toFixed(1)}
+                    <p className="text-[11px] text-gray-400 mb-1.5">{deal.business?.categoryName || 'Business'}</p>
+                    <div className="flex items-baseline justify-between">
+                      <div className="flex items-baseline gap-1.5">
+                        <span className="text-[14px] font-bold text-gray-900">{deal.dealPrice ? `₦${Number(deal.dealPrice).toLocaleString()}` : 'View Deal'}</span>
+                        {deal.originalPrice && <span className="text-[10px] text-gray-400 line-through">₦{Number(deal.originalPrice).toLocaleString()}</span>}
                       </div>
-                    </div>
-                    <p className="text-[11px] text-gray-400 mb-2">{deal.business?.categoryName || 'Business'}</p>
-                    <div className="flex items-baseline gap-1.5">
-                      <span className="text-[13px] font-bold text-gray-900">{deal.dealPrice ? `₦${Number(deal.dealPrice).toLocaleString()}` : 'View Deal'}</span>
-                      {deal.originalPrice && <span className="text-[10px] text-gray-400 line-through">₦{Number(deal.originalPrice).toLocaleString()}</span>}
+                      <div className="flex items-center text-[10px] font-bold text-amber-600">
+                        <Star size={10} className="mr-0.5" fill="currentColor" />4.{8 - i}
+                      </div>
                     </div>
                   </div>
                 </motion.div>
-              ))}
+                );
+              })}
             </div>
           </div>
         </div>
