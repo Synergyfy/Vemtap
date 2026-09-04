@@ -230,7 +230,7 @@ export default function Homepage() {
             <HamburgerMenu />
             <div className="h-6 w-px" style={{ background: C.outlineVariant }} />
             <Link href="/" className="flex items-center gap-2">
-              <img src="/VEMTAP_PNG.png" alt="VemTap" className="h-9 w-auto" />
+              <img src="/VEMTAP_PNG.png" alt="VemTap" className="h-10 w-auto" />
             </Link>
           </div>
           <form onSubmit={handleSearchSubmit} className="flex-1 max-w-[600px] flex">
@@ -265,7 +265,7 @@ export default function Homepage() {
         </div>
         <div className="md:hidden flex items-center justify-between px-3 py-2">
           <Link href="/" className="flex items-center gap-1.5 shrink-0">
-            <img src="/VEMTAP_PNG.png" alt="VemTap" className="h-7 w-auto" />
+            <img src="/VEMTAP_PNG.png" alt="VemTap" className="h-8 w-auto" />
           </Link>
           <div className="flex items-center gap-1.5 min-w-0 flex-1 mx-2">
             <span className="material-symbols-outlined shrink-0" style={{ color: C.onSurfaceVariant, fontSize: 18 }}>location_on</span>
