@@ -62,7 +62,7 @@ function HowItWorksScreen({ isDesktop }: { isDesktop: boolean }) {
           <div className="absolute inset-0 bg-gradient-to-r from-black/20 to-white/40" />
         </div>
         {/* Right: steps */}
-        <div className="w-1/2 flex flex-col justify-center px-12 lg:px-16">
+        <div className="w-1/2 flex flex-col justify-center px-12 lg:px-16 pt-8 pb-32 overflow-y-auto">
           <div className="mb-10">
             <h1 className="text-[36px] font-black text-gray-900 tracking-tight mb-3">How VEMTAP Works</h1>
             <p className="text-[15px] text-gray-500 leading-relaxed">Three simple steps to connect with the best local businesses and offers.</p>
