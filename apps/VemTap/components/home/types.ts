@@ -12,6 +12,7 @@ export interface HomeDealCard {
   discountPercent?: number;
   discountAmount?: number;
   discountLabel?: string;
+  endDate?: string;
   href: string;
 }
 

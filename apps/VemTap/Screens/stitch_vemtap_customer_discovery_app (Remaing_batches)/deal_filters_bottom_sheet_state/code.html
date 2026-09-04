@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Deal Filters</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-secondary-fixed": "#0b1c30",
+                        "surface-container-highest": "#e0e3e5",
+                        "secondary-fixed": "#d3e4fe",
+                        "on-surface-variant": "#424655",
+                        "inverse-surface": "#2d3133",
+                        "on-primary-fixed": "#001945",
+                        "on-error-container": "#93000a",
+                        "secondary-container": "#d0e1fb",
+                        "on-primary-fixed-variant": "#00429b",
+                        "surface-dim": "#d8dadc",
+                        "surface-container-lowest": "#ffffff",
+                        "secondary": "#505f76",
+                        "tertiary": "#535a71",
+                        "tertiary-container": "#6b738a",
+                        "background": "#f7f9fb",
+                        "on-tertiary-fixed": "#131b2e",
+                        "primary": "#0055c4",
+                        "on-error": "#ffffff",
+                        "on-secondary-fixed-variant": "#38485d",
+                        "error": "#ba1a1a",
+                        "on-background": "#191c1e",
+                        "primary-container": "#066cf4",
+                        "surface-tint": "#0058cb",
+                        "inverse-on-surface": "#eff1f3",
+                        "on-tertiary-fixed-variant": "#3f465c",
+                        "tertiary-fixed": "#dae2fd",
+                        "surface-bright": "#f7f9fb",
+                        "surface-container": "#eceef0",
+                        "secondary-fixed-dim": "#b7c8e1",
+                        "outline": "#727786",
+                        "on-surface": "#191c1e",
+                        "error-container": "#ffdad6",
+                        "surface": "#f7f9fb",
+                        "tertiary-fixed-dim": "#bec6e0",
+                        "on-secondary-container": "#54647a",
+                        "on-secondary": "#ffffff",
+                        "on-tertiary-container": "#fcfaff",
+                        "outline-variant": "#c2c6d7",
+                        "surface-container-high": "#e6e8ea",
+                        "primary-fixed": "#d9e2ff",
+                        "on-primary-container": "#fcfaff",
+                        "inverse-primary": "#b0c6ff",
+                        "on-primary": "#ffffff",
+                        "on-tertiary": "#ffffff",
+                        "surface-container-low": "#f2f4f6",
+                        "primary-fixed-dim": "#b0c6ff",
+                        "surface-variant": "#e0e3e5"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "touch-target-min": "44px",
+                        "margin-main": "1.25rem",
+                        "stack-sm": "0.5rem",
+                        "gutter-grid": "1rem",
+                        "stack-lg": "1.5rem",
+                        "stack-md": "1rem"
+                    },
+                    "fontFamily": {
+                        "label-lg": ["Inter"],
+                        "headline-sm": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "display-lg": ["Inter"],
+                        "label-sm": ["Inter"],
+                        "currency-display": ["Inter"],
+                        "body-md": ["Inter"]
+                    },
+                    "fontSize": {
+                        "label-lg": ["14px", { "lineHeight": "20px", "letterSpacing": "0.01em", "fontWeight": "600" }],
+                        "headline-sm": ["20px", { "lineHeight": "28px", "fontWeight": "600" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                        "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "display-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "label-sm": ["12px", { "lineHeight": "16px", "fontWeight": "500" }],
+                        "currency-display": ["20px", { "lineHeight": "24px", "fontWeight": "700" }],
+                        "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .material-symbols-outlined[data-weight="fill"] {
+            font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-surface-container-high h-screen w-full relative overflow-hidden font-body-md text-on-surface">
+<!-- Top Navigation Anchor for Context (Hidden on md for bottom nav logic, but present as semantic shell) -->
+<header class="fixed top-0 w-full bg-surface text-primary font-headline-sm text-headline-sm border-b border-outline-variant flat no shadows flex items-center justify-between px-margin-main h-touch-target-min z-40 hidden md:flex">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">location_on</span>
+<span class="font-display-lg text-display-lg text-primary">Wuse 2, Abuja</span>
+</div>
+<span class="material-symbols-outlined text-primary hover:bg-surface-container-low transition-colors active:scale-95 duration-100 p-2 rounded-full cursor-pointer">search</span>
+</header>
+<!-- Simulated Background Canvas (Search Results) -->
+<main class="w-full h-full pt-touch-target-min pb-20 overflow-y-auto px-margin-main relative">
+<div class="grid grid-cols-1 md:grid-cols-2 gap-gutter-grid mt-stack-md opacity-40 blur-sm pointer-events-none">
+<!-- Dummy Card 1 -->
+<div class="bg-surface-container-lowest rounded-lg border border-outline-variant p-4 flex gap-4">
+<div class="w-24 h-24 bg-surface-container-high rounded-md flex-shrink-0"></div>
+<div class="flex flex-col flex-grow">
+<div class="w-3/4 h-5 bg-surface-container-high rounded mb-2"></div>
+<div class="w-1/2 h-4 bg-surface-container-high rounded mb-auto"></div>
+<div class="w-full h-8 bg-surface-container-high rounded mt-2"></div>
+</div>
+</div>
+<!-- Dummy Card 2 -->
+<div class="bg-surface-container-lowest rounded-lg border border-outline-variant p-4 flex gap-4">
+<div class="w-24 h-24 bg-surface-container-high rounded-md flex-shrink-0"></div>
+<div class="flex flex-col flex-grow">
+<div class="w-3/4 h-5 bg-surface-container-high rounded mb-2"></div>
+<div class="w-1/2 h-4 bg-surface-container-high rounded mb-auto"></div>
+<div class="w-full h-8 bg-surface-container-high rounded mt-2"></div>
+</div>
+</div>
+</div>
+</main>
+<!-- Overlay Scrim -->
+<div class="absolute inset-0 bg-on-surface/40 z-50 transition-opacity duration-300"></div>
+<!-- Bottom Sheet (Filters) -->
+<div class="absolute bottom-0 left-0 w-full bg-surface-container-lowest rounded-t-xl z-50 transform transition-transform duration-300 translate-y-0 flex flex-col max-h-[795px] shadow-[0_-4px_16px_rgba(0,0,0,0.04)]">
+<!-- Handle Bar -->
+<div class="w-full flex justify-center py-3 shrink-0">
+<div class="w-10 h-1 bg-outline-variant rounded-full"></div>
+</div>
+<!-- Header -->
+<div class="flex items-center justify-between px-margin-main pb-stack-md border-b border-outline-variant shrink-0">
+<h2 class="font-headline-sm text-headline-sm text-on-surface">Deal Filters</h2>
+<button class="text-on-surface-variant hover:bg-surface-container-low p-2 rounded-full transition-colors">
+<span class="material-symbols-outlined" data-icon="close">close</span>
+</button>
+</div>
+<!-- Scrollable Content -->
+<div class="flex-grow overflow-y-auto px-margin-main py-stack-md flex flex-col gap-stack-lg">
+<!-- Category Section -->
+<section>
+<h3 class="font-label-lg text-label-lg text-on-surface-variant mb-stack-sm uppercase tracking-wider">Category</h3>
+<div class="flex flex-wrap gap-2">
+<button class="px-4 py-2 rounded-full border border-primary bg-primary-container text-on-primary-container font-label-sm text-label-sm min-h-touch-target-min flex items-center justify-center">All</button>
+<button class="px-4 py-2 rounded-full border border-outline-variant bg-surface text-on-surface-variant font-label-sm text-label-sm min-h-touch-target-min flex items-center justify-center hover:bg-surface-container-low transition-colors">Food &amp; Drinks</button>
+<button class="px-4 py-2 rounded-full border border-outline-variant bg-surface text-on-surface-variant font-label-sm text-label-sm min-h-touch-target-min flex items-center justify-center hover:bg-surface-container-low transition-colors">Fashion</button>
+<button class="px-4 py-2 rounded-full border border-outline-variant bg-surface text-on-surface-variant font-label-sm text-label-sm min-h-touch-target-min flex items-center justify-center hover:bg-surface-container-low transition-colors">Electronics</button>
+<button class="px-4 py-2 rounded-full border border-outline-variant bg-surface text-on-surface-variant font-label-sm text-label-sm min-h-touch-target-min flex items-center justify-center hover:bg-surface-container-low transition-colors">Beauty</button>
+</div>
+</section>
+<!-- Price Range Section -->
+<section>
+<h3 class="font-label-lg text-label-lg text-on-surface-variant mb-stack-sm uppercase tracking-wider">Price Range</h3>
+<div class="flex items-center gap-gutter-grid">
+<div class="flex-1 relative">
+<span class="absolute left-3 top-1/2 -translate-y-1/2 font-body-md text-on-surface-variant">₦</span>
+<input class="w-full pl-8 pr-3 py-3 rounded-lg border border-outline-variant bg-surface focus:border-primary focus:ring-1 focus:ring-primary outline-none font-body-md text-on-surface placeholder:text-on-surface-variant min-h-touch-target-min" placeholder="From" type="number"/>
+</div>
+<span class="text-on-surface-variant">-</span>
+<div class="flex-1 relative">
+<span class="absolute left-3 top-1/2 -translate-y-1/2 font-body-md text-on-surface-variant">₦</span>
+<input class="w-full pl-8 pr-3 py-3 rounded-lg border border-outline-variant bg-surface focus:border-primary focus:ring-1 focus:ring-primary outline-none font-body-md text-on-surface placeholder:text-on-surface-variant min-h-touch-target-min" placeholder="To" type="number"/>
+</div>
+</div>
+</section>
+<!-- Free Deals Toggle -->
+<section class="flex items-center justify-between py-stack-sm">
+<div>
+<h3 class="font-body-lg text-body-lg text-on-surface">Free Deals Only</h3>
+<p class="font-body-md text-body-md text-on-surface-variant">Show items with 100% discount</p>
+</div>
+<label class="relative inline-flex items-center cursor-pointer min-h-touch-target-min min-w-[44px] justify-center">
+<input class="sr-only peer" type="checkbox" value=""/>
+<div class="w-11 h-6 bg-surface-container-highest peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[12px] after:left-[4px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+</label>
+</section>
+<!-- Distance Section -->
+<section>
+<h3 class="font-label-lg text-label-lg text-on-surface-variant mb-stack-sm uppercase tracking-wider">Distance</h3>
+<div class="grid grid-cols-2 gap-gutter-grid">
+<label class="relative flex items-center justify-center p-3 border border-primary bg-primary-container/10 rounded-lg cursor-pointer min-h-touch-target-min">
+<input checked="" class="sr-only" name="distance" type="radio"/>
+<span class="font-label-lg text-label-lg text-primary">0–1 km</span>
+<span class="absolute top-2 right-2 material-symbols-outlined text-primary text-[18px]" data-icon="check_circle" data-weight="fill">check_circle</span>
+</label>
+<label class="relative flex items-center justify-center p-3 border border-outline-variant bg-surface rounded-lg cursor-pointer min-h-touch-target-min hover:bg-surface-container-low transition-colors">
+<input class="sr-only" name="distance" type="radio"/>
+<span class="font-label-lg text-label-lg text-on-surface">0–5 km</span>
+</label>
+<label class="relative flex items-center justify-center p-3 border border-outline-variant bg-surface rounded-lg cursor-pointer min-h-touch-target-min hover:bg-surface-container-low transition-colors">
+<input class="sr-only" name="distance" type="radio"/>
+<span class="font-label-lg text-label-lg text-on-surface">0–10 km</span>
+</label>
+<label class="relative flex items-center justify-center p-3 border border-outline-variant bg-surface rounded-lg cursor-pointer min-h-touch-target-min hover:bg-surface-container-low transition-colors">
+<input class="sr-only" name="distance" type="radio"/>
+<span class="font-label-lg text-label-lg text-on-surface">0–50 km</span>
+</label>
+</div>
+</section>
+</div>
+<!-- Sticky Footer Buttons -->
+<div class="p-margin-main bg-surface-container-lowest border-t border-outline-variant flex gap-gutter-grid shrink-0">
+<button class="flex-1 py-3 px-4 rounded-lg border border-outline-variant bg-surface text-on-surface font-label-lg text-label-lg min-h-touch-target-min hover:bg-surface-container-low transition-colors text-center">Reset</button>
+<button class="flex-1 py-3 px-4 rounded-lg bg-primary text-on-primary font-label-lg text-label-lg min-h-touch-target-min hover:bg-primary-container transition-colors text-center shadow-sm">Apply Filters</button>
+</div>
+</div>
+<!-- Bottom Navigation Shell (Destination logic active for main search page underneath) -->
+<nav class="fixed bottom-0 left-0 w-full z-40 flex justify-around items-center h-16 px-gutter-grid bg-surface border-t border-outline-variant shadow-sm md:hidden rounded-t-xl hidden">
+<!-- Hidden because the Bottom Sheet covers it/is currently active over the canvas, but structurally documented -->
+</nav>
+</body></html>

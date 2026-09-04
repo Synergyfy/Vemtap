@@ -1,1157 +1,856 @@
 'use client';
 
 import React, { useState, useMemo, useEffect, Suspense } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Search, MapPin, X, SlidersHorizontal, ArrowUpDown, Flame, Clock, TrendingUp, Star, Sparkles, Check, ChevronDown } from 'lucide-react';
+import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { cn } from '@/lib/utils';
-import Navbar from '@/components/layout/Navbar';
-import Footer from '@/components/layout/Footer';
-import CategoryDropdown from '@/components/promotions/CategoryStep';
-import PromotionCard from '@/components/promotions/PromotionCard';
-import LocationModal from '@/components/promotions/LocationModal';
+import { useQuery } from '@tanstack/react-query';
+import { useLocation } from '@/hooks/useLocation';
 import { usePublicOffers } from '@/services/deals/hooks';
-import type { DealOffer } from '@/services/deals/types';
-import type { Promotion, PromotionBusiness } from '@/lib/promotions';
-import type { MockPromotion } from '@/lib/mock/promotions';
-import { reverseGeocode, type GeolocationCoordinates } from '@/lib/geolocation';
+import { publicApi } from '@/lib/api';
+import { offerToHomeDeal, formatNaira } from '@/components/home/mappers';
+import LocationPrompt from '@/components/home/LocationPrompt';
+import SearchModal from '@/components/home/SearchModal';
+import DealEngagementBar from '@/components/deals/DealEngagementBar';
+import PublicBottomNav from '@/components/public/PublicBottomNav';
+import type { HomeDealCard } from '@/components/home/types';
 
-function toPromotionBusiness(offer: DealOffer): PromotionBusiness {
-    const branch = offer.branch;
-    if (branch) {
-        return {
-            id: branch.id,
-            name: branch.name,
-            slug: branch.username || branch.uniqueCode || '',
-            logo: branch.logoUrl || '',
-            photos: [],
-            categoryId: '',
-            categoryName: '',
-            address: branch.address || '',
-            hours: [],
-            rating: 0,
-            totalReviews: 0,
-        };
+/* ─── Stitch colour tokens ─── */
+const C = {
+  bg: '#f7f9fb',
+  surface: '#f7f9fb',
+  primary: '#0055c4',
+  onSurface: '#191c1e',
+  onSurfaceVariant: '#424655',
+  outline: '#727786',
+  outlineVariant: '#c2c6d7',
+  error: '#ba1a1a',
+  primaryContainer: '#066cf4',
+  onPrimaryContainer: '#fcfaff',
+  secondaryContainer: '#d0e1fb',
+  onSecondaryContainer: '#191c1e',
+  tertiaryContainer: '#6b738a',
+  onTertiaryContainer: '#fcfaff',
+  surfaceContainerLow: '#f2f4f6',
+} as const;
+
+/* ─── Sort options ─── */
+const SORT_OPTIONS = [
+  { id: 'trending', label: 'Trending', icon: 'trending_up' },
+  { id: 'newest', label: 'Newest', icon: 'schedule' },
+  { id: 'price_asc', label: 'Price: Low → High', icon: 'arrow_upward' },
+  { id: 'price_desc', label: 'Price: High → Low', icon: 'arrow_downward' },
+  { id: 'discount', label: 'Biggest Discount', icon: 'local_offer' },
+] as const;
+
+/* ─── Quick filter options ─── */
+const QUICK_FILTER_OPTIONS = [
+  { id: 'flash_sales', label: 'Flash Sales', icon: 'bolt' },
+  { id: 'free', label: 'Free Deals', icon: 'redeem' },
+  { id: 'ending_soon', label: 'Ending Soon', icon: 'timer' },
+  { id: 'new_arrivals', label: 'New Arrivals', icon: 'fiber_new' },
+] as const;
+
+/* ─── Badge helper ─── */
+function getBadge(offer: HomeDealCard): { label: string; color: string } | null {
+  if (offer.discountPercent && offer.discountPercent >= 40) return { label: 'FLASH SALE', color: C.error };
+  if (offer.discountLabel === 'FREE') return { label: 'FREE', color: '#16a34a' };
+  if (offer.discountPercent && offer.discountPercent >= 20) return { label: `${offer.discountPercent}% OFF`, color: C.error };
+  if (offer.discountLabel) return { label: offer.discountLabel, color: C.primaryContainer };
+  return null;
+}
+
+/* ─── Unsplash fallback images for featured cards ─── */
+const FALLBACK_IMAGES = [
+  'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=600&h=400&fit=crop',
+  'https://images.unsplash.com/photo-1544148103-0773bf10d330?w=600&h=400&fit=crop',
+  'https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=600&h=400&fit=crop',
+];
+
+function DealsPageInner() {
+  const searchParams = useSearchParams();
+  const { label: userLocationLabel, requestLocation } = useLocation();
+  const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
+  const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showFilterModal, setShowFilterModal] = useState(false);
+  const [sortBy, setSortBy] = useState<string>('trending');
+  const [quickFilter, setQuickFilter] = useState<string | null>(null);
+  const [priceRange, setPriceRange] = useState<{ min: string; max: string }>({ min: '', max: '' });
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [bannerIndex, setBannerIndex] = useState(0);
+
+  const bannerSlides = [
+    {
+      image: 'https://images.unsplash.com/photo-1607082349566-187342175e2f?w=1400&q=80',
+      tag: 'Hot Deals',
+      tagIcon: 'local_fire_department',
+      heading: <>Up to <span className="text-yellow-300">70% Off</span></>,
+      sub: 'Discover the best deals from businesses around you. Updated daily.',
+      cta: 'Shop Now',
+      gradient: 'linear-gradient(90deg, rgba(0,29,107,0.92) 0%, rgba(0,29,107,0.5) 50%, rgba(0,0,0,0) 100%)',
+    },
+    {
+      image: 'https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=1400&q=80',
+      tag: 'New Arrivals',
+      tagIcon: 'fiber_new',
+      heading: <>Fresh Finds <span className="text-emerald-300">Every Week</span></>,
+      sub: 'Be the first to grab new products and services from top businesses.',
+      cta: 'Explore',
+      gradient: 'linear-gradient(90deg, rgba(16,50,30,0.92) 0%, rgba(16,50,30,0.5) 50%, rgba(0,0,0,0) 100%)',
+    },
+    {
+      image: 'https://images.unsplash.com/photo-1556742393-d75f468bfcb0?w=1400&q=80',
+      tag: 'Free Deals',
+      tagIcon: 'redeem',
+      heading: <>Grab <span className="text-orange-300">Freebies</span> Near You</>,
+      sub: 'No cost, all benefit. Find free deals from local businesses today.',
+      cta: 'View Free Deals',
+      gradient: 'linear-gradient(90deg, rgba(80,20,0,0.92) 0%, rgba(80,20,0,0.5) 50%, rgba(0,0,0,0) 100%)',
+    },
+  ];
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setBannerIndex((prev) => (prev + 1) % bannerSlides.length);
+    }, 5000);
+    return () => clearInterval(timer);
+  }, [bannerSlides.length]);
+
+  const activeLocation = userLocationLabel || 'Wuse 2, Abuja';
+
+  // Seed search from URL
+  useEffect(() => {
+    const q = searchParams.get('q') || searchParams.get('search') || '';
+    if (q) setSearchQuery(q);
+    const cat = searchParams.get('category');
+    if (cat) setSelectedCategory(cat);
+    const sort = searchParams.get('sortBy');
+    if (sort) setSortBy(sort);
+  }, [searchParams]);
+
+  // Fetch live deals
+  const { data: dealsData, isLoading, isError, refetch } = usePublicOffers({ limit: 20, sortBy: 'trending' });
+
+  // Fetch public categories
+  const { data: categoriesData } = useQuery({
+    queryKey: ['public-categories'],
+    queryFn: () => publicApi.get('/categories'),
+    staleTime: 10 * 60 * 1000,
+  });
+
+  const categoriesList = useMemo(() => {
+    const raw = categoriesData?.items ?? categoriesData?.data ?? categoriesData?.categories ?? categoriesData;
+    if (Array.isArray(raw) && raw.length > 0) {
+      return raw
+        .filter((c: any) => c.name && !c.name.toLowerCase().includes('frank'))
+        .map((c: any) => ({
+          id: c.id || c._id || c.slug,
+          label: c.name || c.label || c.title || 'Category',
+          slug: c.slug || c.name?.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, ''),
+        }));
     }
-    return {
-        id: offer.branchId || '',
-        name: offer.branchName || offer.business?.name || 'Unknown Business',
-        slug: '',
-        logo: offer.business?.logo || '',
-        photos: [],
-        categoryId: '',
-        categoryName: '',
-        address: offer.business?.address || '',
-        hours: [],
-        rating: 0,
-        totalReviews: 0,
-    };
-}
+    return [];
+  }, [categoriesData]);
 
-function toPromotion(offer: DealOffer): Promotion {
-    const discountPercent = offer.pricingType === 'percentage_discount' && offer.discountValue
-        ? Number(offer.discountValue) : undefined;
-    const discountAmount = offer.pricingType === 'fixed_discount_price' && offer.discountValue
-        ? Number(offer.discountValue) : undefined;
-    const calcPrice = Number(offer.calculatedPrice);
-    const originalPrice = discountPercent
-        ? Math.round(calcPrice / (1 - discountPercent / 100))
-        : discountAmount
-            ? calcPrice + discountAmount
-            : calcPrice;
+  const dealsList = useMemo(() => {
+    const fromApi = (dealsData?.data ?? []).map(offerToHomeDeal);
+    if (fromApi.length > 0) {
+      return fromApi.map((d: HomeDealCard, idx: number) => ({
+        ...d,
+        image: d.image || FALLBACK_IMAGES[idx % FALLBACK_IMAGES.length],
+      }));
+    }
+    return [];
+  }, [dealsData]);
 
-    // Fallback: use first item's image if mainImage is missing
-    const image = offer.mainImage || offer.items?.[0]?.mainImage || '';
-    const galleryImages = offer.galleryImages || offer.items?.flatMap(i => i.galleryImages || []) || [];
+  // Text + filter + category combined
+  const filteredDeals = useMemo(() => {
+    let result = dealsList;
 
-    return {
-        id: offer.id,
-        business: toPromotionBusiness(offer),
-        title: offer.name,
-        description: offer.description,
-        longDescription: offer.longDescription || offer.description,
-        terms: offer.terms || [],
-        discountPercent: discountPercent || offer.discountPercent || undefined,
-        discountAmount,
-        originalPrice: offer.originalPrice || originalPrice,
-        dealPrice: Number(offer.dealPrice || offer.calculatedPrice),
-        image,
-        galleryImages,
-        startDate: offer.startDate || '',
-        endDate: offer.endDate || '',
-        claimedCount: offer.claimedCount,
-        maxClaims: offer.maxClaims,
-        isTrending: offer.isTrending || false,
-        audience: offer.audience,
-        maxClaimsPerCustomer: offer.maxClaimsPerCustomer,
-        claimCodePrefix: offer.claimCodePrefix,
-        viewCount: offer.views,
-    };
-}
+    // Text search filter
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      result = result.filter(d =>
+        d.title?.toLowerCase().includes(q) ||
+        d.businessName?.toLowerCase().includes(q) ||
+        d.description?.toLowerCase().includes(q)
+      );
+    }
 
-function toMockPromotion(p: Promotion): MockPromotion {
-    return {
-        id: p.id,
-        name: p.title,
-        description: p.description,
-        longDescription: p.longDescription,
-        terms: p.terms,
-        businessName: p.business.name,
-        businessSlug: p.business.slug,
-        businessLogo: p.business.logo,
-        category: p.business.categoryName as MockPromotion['category'],
-        discountPercent: p.discountPercent,
-        discountAmount: p.discountAmount,
-        originalPrice: p.originalPrice,
-        dealPrice: p.dealPrice,
-        image: p.image,
-        galleryImages: p.galleryImages || [],
-        startDate: p.startDate,
-        endDate: p.endDate,
-        audience: p.audience || '',
-        location: p.business.address,
-        claimedCount: p.claimedCount,
-        maxClaims: p.maxClaims,
-        maxClaimsPerCustomer: p.maxClaimsPerCustomer,
-        claimCodePrefix: p.claimCodePrefix,
-        viewCount: p.viewCount,
-    };
-}
+    // Category filter
+    if (selectedCategory) {
+      result = result.filter(d => {
+        const dealCat = (d.category || '').toLowerCase().replace(/\s+/g, '-');
+        const dealTitle = (d.title || '').toLowerCase();
+        const dealDesc = (d.description || '').toLowerCase();
+        return dealCat.includes(selectedCategory.toLowerCase()) ||
+               dealTitle.includes(selectedCategory.toLowerCase()) ||
+               dealDesc.includes(selectedCategory.toLowerCase());
+      });
+    }
 
-function PromotionsPageInner() {
-    const searchParams = useSearchParams();
-    const initialSort = (searchParams.get('sortBy') as 'popular' | 'newest' | 'trending' | 'featured' | 'price-low' | 'price-high') || 'popular';
-    const [search, setSearch] = useState('');
-    const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-    const [location, setLocation] = useState<GeolocationCoordinates | null>(null);
-    const [locationLabel, setLocationLabel] = useState('');
-    const [showLocationModal, setShowLocationModal] = useState(false);
-    const [searchOpen, setSearchOpen] = useState(false);
+    // Price range filter
+    const minPrice = priceRange.min ? Number(priceRange.min) : null;
+    const maxPrice = priceRange.max ? Number(priceRange.max) : null;
+    if (minPrice !== null || maxPrice !== null) {
+      result = result.filter(d => {
+        const price = d.dealPrice != null ? Number(d.dealPrice) : null;
+        if (price === null) return true;
+        if (minPrice !== null && price < minPrice) return false;
+        if (maxPrice !== null && price > maxPrice) return false;
+        return true;
+      });
+    }
 
-    // Filter states
-    const [showFilters, setShowFilters] = useState(false);
-    const [freeOnly, setFreeOnly] = useState(false);
-    const [priceFrom, setPriceFrom] = useState('');
-    const [priceTo, setPriceTo] = useState('');
-    const [sortBy, setSortBy] = useState<'popular' | 'newest' | 'trending' | 'featured' | 'price-low' | 'price-high'>(initialSort);
-    const [locationRange, setLocationRange] = useState<number>(50);
+    // Quick filter logic
+    switch (quickFilter) {
+      case 'flash_sales':
+        result = result.filter(d => d.discountPercent && d.discountPercent >= 40);
+        break;
+      case 'new_arrivals':
+        result = [...result].sort((a, b) => {
+          const dateA = (a as any).createdAt ? new Date((a as any).createdAt).getTime() : 0;
+          const dateB = (b as any).createdAt ? new Date((b as any).createdAt).getTime() : 0;
+          return dateB - dateA;
+        });
+        break;
+      case 'free':
+        result = result.filter(d => d.dealPrice != null && Number(d.dealPrice) === 0);
+        break;
+      case 'ending_soon':
+        result = [...result].sort((a, b) => {
+          const endA = a.endDate ? new Date(a.endDate).getTime() : Infinity;
+          const endB = b.endDate ? new Date(b.endDate).getTime() : Infinity;
+          return endA - endB;
+        });
+        break;
+    }
 
-    // Hero carousel
-    const [heroSlide, setHeroSlide] = useState(0);
-    const [heroPaused, setHeroPaused] = useState(false);
+    // Sort logic
+    switch (sortBy) {
+      case 'newest':
+        result = [...result].sort((a, b) => {
+          const dateA = (a as any).createdAt ? new Date((a as any).createdAt).getTime() : 0;
+          const dateB = (b as any).createdAt ? new Date((b as any).createdAt).getTime() : 0;
+          return dateB - dateA;
+        });
+        break;
+      case 'price_asc':
+        result = [...result].sort((a, b) => {
+          const priceA = a.dealPrice != null ? Number(a.dealPrice) : Infinity;
+          const priceB = b.dealPrice != null ? Number(b.dealPrice) : Infinity;
+          return priceA - priceB;
+        });
+        break;
+      case 'price_desc':
+        result = [...result].sort((a, b) => {
+          const priceA = a.dealPrice != null ? Number(a.dealPrice) : -Infinity;
+          const priceB = b.dealPrice != null ? Number(b.dealPrice) : -Infinity;
+          return priceB - priceA;
+        });
+        break;
+      case 'discount':
+        result = [...result].sort((a, b) => (b.discountPercent || 0) - (a.discountPercent || 0));
+        break;
+      case 'trending':
+      default:
+        break;
+    }
 
-    // Hero carousel auto-advance
-    useEffect(() => {
-        const params = new URLSearchParams(window.location.search);
-        const q = params.get('q') || params.get('search') || '';
-        if (q) setSearch(q);
-    }, []);
+    return result;
+  }, [dealsList, searchQuery, selectedCategory, priceRange, quickFilter, sortBy]);
 
-    useEffect(() => {
-        if (heroPaused) return;
-        const t = setTimeout(() => setHeroSlide(s => (s + 1) % 3), 5000);
-        return () => clearTimeout(t);
-    }, [heroSlide, heroPaused]);
+  const allDeals = filteredDeals;
 
-    const apiSortBy = useMemo(() => {
-        switch (sortBy) {
-            case 'price-low': return 'price_asc';
-            case 'price-high': return 'price_desc';
-            case 'trending': return 'trending';
-            case 'newest': return 'newest';
-            case 'popular': return 'popular';
-            case 'featured': return 'featured';
-            default: return undefined;
-        }
-    }, [sortBy]);
+  const handleSearchSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (searchQuery.trim()) {
+      setIsSearchModalOpen(true);
+    }
+  };
 
-    const queryParams = useMemo(() => ({
-        search: search || undefined,
-        categoryId: selectedCategory || undefined,
-        lat: location?.lat,
-        lng: location?.lng,
-        sortBy: apiSortBy,
-    }), [search, selectedCategory, location, apiSortBy]);
-
-    const { data: offersData, isLoading, isError, refetch } = usePublicOffers(queryParams);
-
-    useEffect(() => {
-        const saved = localStorage.getItem('vemtap_user_location');
-        const savedLabel = localStorage.getItem('vemtap_user_location_label');
-        if (saved) {
-            try {
-                setLocation(JSON.parse(saved));
-                setLocationLabel(savedLabel || '');
-            } catch {
-                setShowLocationModal(true);
-            }
-        } else {
-            setShowLocationModal(true);
-        }
-    }, []);
-
-    useEffect(() => {
-        if (!location || locationLabel) return;
-        let cancelled = false;
-        reverseGeocode(location)
-            .then((label) => {
-                if (cancelled) return;
-                setLocationLabel(label);
-                localStorage.setItem('vemtap_user_location_label', label);
-            })
-            .catch((err) => {
-                if (cancelled) return;
-                console.warn('Reverse geocoding failed:', err);
-            });
-        return () => { cancelled = true; };
-    }, [location, locationLabel]);
-
-    const handleLocationSet = (coords: GeolocationCoordinates, label?: string) => {
-        setLocation(coords);
-        setLocationLabel(label || '');
-        localStorage.setItem('vemtap_user_location', JSON.stringify(coords));
-        if (label) localStorage.setItem('vemtap_user_location_label', label);
-    };
-
-    const handleClearLocation = () => {
-        setLocation(null);
-        setLocationLabel('');
-        localStorage.removeItem('vemtap_user_location');
-        localStorage.removeItem('vemtap_user_location_label');
-    };
-
-    const promotions = useMemo(() => {
-        if (!offersData?.data) return [];
-        const now = new Date();
-        return offersData.data
-            .filter((offer): offer is DealOffer => {
-                if (!offer || !offer.id || (!offer.branch && !offer.branchId)) return false;
-                if (offer.endDate && new Date(offer.endDate) < now) return false;
-                if (offer.startDate && new Date(offer.startDate) > now) return false;
-                return true;
-            })
-            .map(toPromotion);
-    }, [offersData]);
-
-    const filteredPromotions = useMemo(() => {
-        if (!promotions.length) return [];
-        let result = promotions;
-
-        // Text search
-        if (search.trim()) {
-            const q = search.toLowerCase();
-            result = result.filter(p =>
-                p.title.toLowerCase().includes(q) ||
-                p.business.name.toLowerCase().includes(q) ||
-                p.business.address.toLowerCase().includes(q) ||
-                p.description.toLowerCase().includes(q)
-            );
-        }
-
-        // Free only
-        if (freeOnly) {
-            result = result.filter(p => Number(p.dealPrice) === 0);
-        }
-
-        // Price range
-        const minPrice = priceFrom ? Number(priceFrom) : undefined;
-        const maxPrice = priceTo ? Number(priceTo) : undefined;
-        if (minPrice !== undefined) {
-            result = result.filter(p => Number(p.dealPrice) >= minPrice);
-        }
-        if (maxPrice !== undefined) {
-            result = result.filter(p => Number(p.dealPrice) <= maxPrice);
-        }
-
-        // Sort
-        switch (sortBy) {
-            case 'newest':
-                result = [...result].sort((a, b) => {
-                    const dateA = a.startDate ? new Date(a.startDate).getTime() : 0;
-                    const dateB = b.startDate ? new Date(b.startDate).getTime() : 0;
-                    return dateB - dateA;
-                });
-                break;
-            case 'trending':
-                result = [...result].sort((a, b) => b.claimedCount - a.claimedCount);
-                break;
-            case 'featured':
-                result = [...result].sort((a, b) => (b.isTrending ? 1 : 0) - (a.isTrending ? 1 : 0));
-                break;
-            case 'price-low':
-                result = [...result].sort((a, b) => Number(a.dealPrice) - Number(b.dealPrice));
-                break;
-            case 'price-high':
-                result = [...result].sort((a, b) => Number(b.dealPrice) - Number(a.dealPrice));
-                break;
-            case 'popular':
-            default:
-                result = [...result].sort((a, b) => b.claimedCount - a.claimedCount);
-                break;
-        }
-
-        return result;
-    }, [promotions, search, freeOnly, priceFrom, priceTo, sortBy]);
-
-    return (
-        <div className="min-h-screen bg-[#f4f5f6] font-body text-text-main">
-            <Navbar />
-
-            {/* Hero Banner — Jumia-style carousel */}
-            <section
-                className="relative bg-white pt-20 sm:pt-24 md:pt-28"
-                onMouseEnter={() => setHeroPaused(true)}
-                onMouseLeave={() => setHeroPaused(false)}
-            >
-                <div className="max-w-7xl mx-auto px-4 md:px-8">
-                    <div className="relative rounded-2xl overflow-hidden min-h-[220px] sm:min-h-[280px] md:min-h-[340px]">
-                        {/* Slide 1 — Daily Deals */}
-                        <div className={cn(
-                            "absolute inset-0 transition-all duration-700 ease-in-out",
-                            heroSlide === 0 ? "opacity-100 translate-x-0" : "opacity-0 -translate-x-8 pointer-events-none"
-                        )}>
-                            <div className="absolute inset-0 bg-gradient-to-br from-amber-50 via-orange-50 to-rose-50" />
-                            <div className="relative h-full flex items-center">
-                                <div className="flex-1 px-6 sm:px-10 md:px-14 py-8 sm:py-12">
-                                    <div className="inline-block bg-amber-400 text-white text-[10px] sm:text-xs font-black px-3 py-1 rounded-full mb-3 sm:mb-4 uppercase tracking-wider">
-                                        Daily Deals
-                                    </div>
-                                    <h2 className="text-2xl sm:text-3xl md:text-5xl font-black text-gray-900 leading-[1.1] mb-2 sm:mb-3">
-                                        Fresh Deals<br />
-                                        <span className="text-primary">Every Day</span>
-                                    </h2>
-                                    <p className="text-xs sm:text-sm text-gray-500 mb-4 sm:mb-6 max-w-xs">
-                                        Up to 70% off from businesses near you. Grab before they&apos;re gone.
-                                    </p>
-                                    <button className="bg-primary text-white text-xs sm:text-sm font-bold px-5 sm:px-7 py-2.5 sm:py-3 rounded-full hover:bg-primary/90 active:scale-95 transition-all shadow-lg shadow-primary/20">
-                                        Shop Now →
-                                    </button>
-                                </div>
-                                <div className="hidden sm:flex flex-1 items-center justify-center gap-3 pr-6 md:pr-10">
-                                    {[
-                                        { bg: 'from-rose-400 to-pink-500', discount: '50%', rotate: '-rotate-3' },
-                                        { bg: 'from-blue-400 to-cyan-500', discount: '30%', rotate: 'rotate-2' },
-                                        { bg: 'from-emerald-400 to-green-500', discount: 'FREE', rotate: '-rotate-1' },
-                                    ].map((card, i) => (
-                                        <div key={i} className={cn("w-[100px] lg:w-[120px] bg-white rounded-2xl shadow-xl overflow-hidden", card.rotate)}>
-                                            <div className={cn("h-24 lg:h-32 bg-gradient-to-br", card.bg)} />
-                                            <div className="p-2.5">
-                                                <div className="h-1.5 bg-gray-100 rounded w-full mb-1" />
-                                                <div className="h-1.5 bg-gray-100 rounded w-2/3 mb-1.5" />
-                                                <span className="inline-block bg-primary/10 text-primary text-[9px] font-black px-2 py-0.5 rounded">
-                                                    {card.discount} OFF
-                                                </span>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Slide 2 — Flash Sale */}
-                        <div className={cn(
-                            "absolute inset-0 transition-all duration-700 ease-in-out",
-                            heroSlide === 1 ? "opacity-100 translate-x-0" : "opacity-0 translate-x-8 pointer-events-none"
-                        )}>
-                            <div className="absolute inset-0 bg-gradient-to-br from-rose-50 via-pink-50 to-fuchsia-50" />
-                            <div className="relative h-full flex items-center">
-                                <div className="flex-1 px-6 sm:px-10 md:px-14 py-8 sm:py-12">
-                                    <div className="inline-block bg-rose-500 text-white text-[10px] sm:text-xs font-black px-3 py-1 rounded-full mb-3 sm:mb-4 uppercase tracking-wider animate-pulse">
-                                        ⚡ Flash Sale
-                                    </div>
-                                    <h2 className="text-2xl sm:text-3xl md:text-5xl font-black text-gray-900 leading-[1.1] mb-2 sm:mb-3">
-                                        Up to<br />
-                                        <span className="bg-gradient-to-r from-rose-500 to-fuchsia-500 bg-clip-text text-transparent">80% OFF</span>
-                                    </h2>
-                                    <p className="text-xs sm:text-sm text-gray-500 mb-4 sm:mb-6 max-w-xs">
-                                        Limited time only. Electronics, fashion, home & more.
-                                    </p>
-                                    <button className="bg-rose-500 text-white text-xs sm:text-sm font-bold px-5 sm:px-7 py-2.5 sm:py-3 rounded-full hover:bg-rose-600 active:scale-95 transition-all shadow-lg shadow-rose-500/20">
-                                        Claim Deals →
-                                    </button>
-                                </div>
-                                <div className="hidden sm:flex flex-1 items-center justify-center gap-3 pr-6 md:pr-10">
-                                    <div className="relative">
-                                        <div className="bg-white rounded-3xl shadow-2xl px-8 py-6 text-center">
-                                            <div className="text-5xl lg:text-6xl font-black text-rose-500 leading-none">80%</div>
-                                            <div className="text-sm font-black text-gray-900 mt-1">OFF</div>
-                                        </div>
-                                        <div className="absolute -top-3 -right-3 bg-amber-400 text-white text-[9px] font-black px-2 py-1 rounded-lg rotate-6 shadow">
-                                            LIMITED
-                                        </div>
-                                        <div className="absolute -bottom-2 -left-4 bg-emerald-500 text-white text-[9px] font-black px-2 py-1 rounded-lg -rotate-6 shadow">
-                                            ₦2,500
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Slide 3 — New Arrivals */}
-                        <div className={cn(
-                            "absolute inset-0 transition-all duration-700 ease-in-out",
-                            heroSlide === 2 ? "opacity-100 translate-x-0" : "opacity-0 translate-x-8 pointer-events-none"
-                        )}>
-                            <div className="absolute inset-0 bg-gradient-to-br from-emerald-50 via-teal-50 to-cyan-50" />
-                            <div className="relative h-full flex items-center">
-                                <div className="flex-1 px-6 sm:px-10 md:px-14 py-8 sm:py-12">
-                                    <div className="inline-block bg-emerald-500 text-white text-[10px] sm:text-xs font-black px-3 py-1 rounded-full mb-3 sm:mb-4 uppercase tracking-wider">
-                                        🆕 New Arrivals
-                                    </div>
-                                    <h2 className="text-2xl sm:text-3xl md:text-5xl font-black text-gray-900 leading-[1.1] mb-2 sm:mb-3">
-                                        Just Dropped<br />
-                                        <span className="text-emerald-600">Check Them Out</span>
-                                    </h2>
-                                    <p className="text-xs sm:text-sm text-gray-500 mb-4 sm:mb-6 max-w-xs">
-                                        Be the first to discover new businesses and exclusive launch deals.
-                                    </p>
-                                    <button className="bg-emerald-500 text-white text-xs sm:text-sm font-bold px-5 sm:px-7 py-2.5 sm:py-3 rounded-full hover:bg-emerald-600 active:scale-95 transition-all shadow-lg shadow-emerald-500/20">
-                                        Explore Now →
-                                    </button>
-                                </div>
-                                <div className="hidden sm:flex flex-1 items-center justify-center gap-3 pr-6 md:pr-10">
-                                    {[
-                                        { bg: 'from-violet-400 to-purple-500', tag: 'NEW', rotate: 'rotate-2' },
-                                        { bg: 'from-sky-400 to-blue-500', tag: 'HOT', rotate: '-rotate-2' },
-                                        { bg: 'from-amber-400 to-orange-500', tag: 'TRENDING', rotate: 'rotate-1' },
-                                    ].map((card, i) => (
-                                        <div key={i} className={cn("w-[100px] lg:w-[120px] bg-white rounded-2xl shadow-xl overflow-hidden", card.rotate)}>
-                                            <div className={cn("h-24 lg:h-32 bg-gradient-to-br", card.bg)} />
-                                            <div className="p-2.5">
-                                                <div className="h-1.5 bg-gray-100 rounded w-full mb-1" />
-                                                <div className="h-1.5 bg-gray-100 rounded w-2/3 mb-1.5" />
-                                                <span className="inline-block bg-emerald-50 text-emerald-600 text-[9px] font-black px-2 py-0.5 rounded">
-                                                    {card.tag}
-                                                </span>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Pagination dots */}
-                    <div className="flex justify-center gap-2 py-3">
-                        {[0, 1, 2].map((i) => (
-                            <button
-                                key={i}
-                                onClick={() => setHeroSlide(i)}
-                                className={cn(
-                                    "rounded-full transition-all duration-300",
-                                    heroSlide === i
-                                        ? "w-6 h-2 bg-primary"
-                                        : "w-2 h-2 bg-gray-300 hover:bg-gray-400"
-                                )}
-                            />
-                        ))}
-                    </div>
-                </div>
-            </section>
-
-            {/* Category Quick Links — Jumia-style */}
-            <section className="bg-white border-b border-gray-100">
-                <div className="max-w-7xl mx-auto px-4 md:px-8 py-4">
-                    <div className="flex gap-3 overflow-x-auto scrollbar-hide -mx-4 px-4 md:mx-0 md:px-0 pb-1">
-                        {[
-                            { label: 'Nearby Deals', emoji: '📍', bg: 'from-rose-50 to-pink-50', border: 'border-rose-100' },
-                            { label: 'Flash Sales', emoji: '⚡', bg: 'from-amber-50 to-yellow-50', border: 'border-amber-100' },
-                            { label: 'New Arrivals', emoji: '🆕', bg: 'from-emerald-50 to-green-50', border: 'border-emerald-100' },
-                            { label: 'Free Deals', emoji: '🎁', bg: 'from-violet-50 to-purple-50', border: 'border-violet-100' },
-                            { label: 'Top Rated', emoji: '⭐', bg: 'from-blue-50 to-sky-50', border: 'border-blue-100' },
-                            { label: 'Food & Drinks', emoji: '🍔', bg: 'from-orange-50 to-amber-50', border: 'border-orange-100' },
-                            { label: 'Fashion', emoji: '👗', bg: 'from-fuchsia-50 to-pink-50', border: 'border-fuchsia-100' },
-                            { label: 'Electronics', emoji: '📱', bg: 'from-cyan-50 to-blue-50', border: 'border-cyan-100' },
-                        ].map((item) => (
-                            <button
-                                key={item.label}
-                                className={cn(
-                                    "shrink-0 flex items-center gap-2.5 px-4 py-2.5 rounded-xl border bg-gradient-to-br transition-all hover:shadow-md hover:-translate-y-0.5 active:scale-95",
-                                    item.bg, item.border
-                                )}
-                            >
-                                <span className="text-lg">{item.emoji}</span>
-                                <span className="text-xs font-bold text-gray-700 whitespace-nowrap">{item.label}</span>
-                            </button>
-                        ))}
-                    </div>
-                </div>
-            </section>
-
-            {/* Search Bar — filter button + search */}
-            <section className="bg-white border-b border-gray-100">
-                <div className="max-w-7xl mx-auto px-4 md:px-8 py-3">
-                    <div className="flex items-center gap-2">
-                        {/* Filter toggle */}
-                        <button
-                            onClick={() => setShowFilters(!showFilters)}
-                            className={cn(
-                                "h-10 sm:h-11 px-3 sm:px-4 rounded-full border text-xs sm:text-sm font-bold flex items-center gap-1.5 transition-all shrink-0",
-                                showFilters
-                                    ? "bg-primary text-white border-primary"
-                                    : "bg-white text-gray-700 border-gray-200 hover:border-primary/30"
-                            )}
-                        >
-                            <SlidersHorizontal size={13} />
-                            <span className="hidden sm:inline">Filters</span>
-                        </button>
-
-                        {/* Mobile: search icon */}
-                        <button
-                            onClick={() => setSearchOpen(!searchOpen)}
-                            className="sm:hidden w-10 h-10 rounded-full bg-white border border-gray-200 flex items-center justify-center text-gray-500 hover:border-primary/30 transition-all shrink-0"
-                        >
-                            <Search size={16} />
-                        </button>
-
-                        {/* Desktop: search input */}
-                        <div className="hidden sm:block relative flex-1">
-                            <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
-                            <input
-                                type="text"
-                                value={search}
-                                onChange={(e) => setSearch(e.target.value)}
-                                placeholder="Search deals..."
-                                className="w-full h-11 pl-10 pr-4 bg-white border border-gray-200 rounded-full text-sm font-bold text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary/30 shadow-sm transition-all"
-                            />
-                        </div>
-
-                        {/* Mobile: expanded search overlay */}
-                        <AnimatePresence>
-                            {searchOpen && (
-                                <motion.div
-                                    initial={{ opacity: 0, scale: 0.95, y: -4 }}
-                                    animate={{ opacity: 1, scale: 1, y: 0 }}
-                                    exit={{ opacity: 0, scale: 0.95, y: -4 }}
-                                    className="sm:hidden fixed inset-x-0 top-0 z-50 p-4 bg-white/95 backdrop-blur-xl border-b border-gray-100"
-                                >
-                                    <div className="relative bg-white rounded-full border border-gray-200 shadow-lg flex items-center">
-                                        <Search size={14} className="absolute left-3.5 text-gray-400" />
-                                        <input
-                                            type="text"
-                                            value={search}
-                                            onChange={(e) => setSearch(e.target.value)}
-                                            placeholder="Search deals..."
-                                            autoFocus
-                                            className="w-full h-10 pl-10 pr-9 bg-transparent rounded-full text-xs font-bold text-gray-800 placeholder:text-gray-400 focus:outline-none"
-                                        />
-                                        <button
-                                            onClick={() => { setSearchOpen(false); setSearch(''); }}
-                                            className="absolute right-2 w-6 h-6 rounded-full bg-gray-100 flex items-center justify-center text-gray-400"
-                                        >
-                                            <X size={12} />
-                                        </button>
-                                    </div>
-                                </motion.div>
-                            )}
-                        </AnimatePresence>
-                    </div>
-                </div>
-            </section>
-
-            {/* Main Content — sidebar filters + deals grid */}
-            <section className="max-w-7xl mx-auto px-4 md:px-8 py-6 pb-20">
-                <div className="flex gap-6">
-
-                    {/* Desktop Sidebar Filters — collapsible */}
-                    {showFilters && (
-                    <aside className="hidden lg:block w-72 shrink-0">
-                        <div className="sticky top-24 bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-                            {/* Header */}
-                            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-                                <div className="flex items-center gap-2">
-                                    <h3 className="text-sm font-black text-gray-900">Filters</h3>
-                                    {(freeOnly || sortBy !== 'popular' || priceFrom || priceTo || locationRange < 50 || selectedCategory) && (
-                                        <span className="size-5 rounded-full bg-primary text-white text-[10px] font-bold flex items-center justify-center">
-                                            {[freeOnly, sortBy !== 'popular', priceFrom, priceTo, locationRange < 50, selectedCategory].filter(Boolean).length}
-                                        </span>
-                                    )}
-                                </div>
-                                <div className="flex items-center gap-3">
-                                    {(freeOnly || sortBy !== 'popular' || priceFrom || priceTo || locationRange < 50 || selectedCategory) && (
-                                        <button
-                                            onClick={() => {
-                                                setFreeOnly(false);
-                                                setSortBy('popular');
-                                                setPriceFrom('');
-                                                setPriceTo('');
-                                                setLocationRange(50);
-                                                setSelectedCategory(null);
-                                            }}
-                                            className="text-xs font-bold text-primary hover:text-primary/80 transition-colors"
-                                        >
-                                            Clear all
-                                        </button>
-                                    )}
-                                    <button
-                                        onClick={() => setShowFilters(false)}
-                                        className="text-gray-400 hover:text-gray-600"
-                                    >
-                                        <X size={16} />
-                                    </button>
-                                </div>
-                            </div>
-
-                            {/* Active filter chips */}
-                            {(freeOnly || sortBy !== 'popular' || priceFrom || priceTo || locationRange < 50 || selectedCategory) && (
-                                <div className="px-5 py-3 flex flex-wrap gap-2 border-b border-gray-100">
-                                    {selectedCategory && (
-                                        <span className="inline-flex items-center gap-1 bg-primary/5 text-primary border border-primary/10 text-[10px] font-bold px-2.5 py-1 rounded-lg">
-                                            {selectedCategory}
-                                            <button onClick={() => setSelectedCategory(null)} className="hover:text-primary/70"><X size={10} /></button>
-                                        </span>
-                                    )}
-                                    {freeOnly && (
-                                        <span className="inline-flex items-center gap-1 bg-emerald-50 text-emerald-600 border border-emerald-100 text-[10px] font-bold px-2.5 py-1 rounded-lg">
-                                            Free only
-                                            <button onClick={() => setFreeOnly(false)} className="hover:text-emerald-700"><X size={10} /></button>
-                                        </span>
-                                    )}
-                                    {sortBy !== 'popular' && (
-                                        <span className="inline-flex items-center gap-1 bg-primary/5 text-primary border border-primary/10 text-[10px] font-bold px-2.5 py-1 rounded-lg">
-                                            {sortBy === 'newest' ? 'Newest' : sortBy === 'trending' ? 'Trending' : sortBy === 'featured' ? 'Featured' : sortBy === 'price-low' ? 'Price ↑' : 'Price ↓'}
-                                            <button onClick={() => setSortBy('popular')} className="hover:text-primary/70"><X size={10} /></button>
-                                        </span>
-                                    )}
-                                    {priceFrom && (
-                                        <span className="inline-flex items-center gap-1 bg-primary/5 text-primary border border-primary/10 text-[10px] font-bold px-2.5 py-1 rounded-lg">
-                                            From ₦{Number(priceFrom).toLocaleString()}
-                                            <button onClick={() => setPriceFrom('')} className="hover:text-primary/70"><X size={10} /></button>
-                                        </span>
-                                    )}
-                                    {priceTo && (
-                                        <span className="inline-flex items-center gap-1 bg-primary/5 text-primary border border-primary/10 text-[10px] font-bold px-2.5 py-1 rounded-lg">
-                                            To ₦{Number(priceTo).toLocaleString()}
-                                            <button onClick={() => setPriceTo('')} className="hover:text-primary/70"><X size={10} /></button>
-                                        </span>
-                                    )}
-                                    {locationRange < 50 && (
-                                        <span className="inline-flex items-center gap-1 bg-primary/5 text-primary border border-primary/10 text-[10px] font-bold px-2.5 py-1 rounded-lg">
-                                            Within {locationRange} km
-                                            <button onClick={() => setLocationRange(50)} className="hover:text-primary/70"><X size={10} /></button>
-                                        </span>
-                                    )}
-                                </div>
-                            )}
-
-                            <div className="divide-y divide-gray-100">
-                                {/* Categories */}
-                                <div className="px-5 py-4">
-                                    <h4 className="text-xs font-black text-gray-900 mb-3">Category</h4>
-                                    <CategoryDropdown
-                                        selected={selectedCategory}
-                                        onSelect={setSelectedCategory}
-                                    />
-                                </div>
-
-                                {/* Price Range + Free toggle */}
-                                <div className="px-5 py-4">
-                                    <div className="flex items-center justify-between mb-3">
-                                        <h4 className="text-xs font-black text-gray-900">Price Range</h4>
-                                        <div className="flex items-center gap-2">
-                                            <span className="text-[10px] font-bold text-gray-400">Free only</span>
-                                            <button
-                                                onClick={() => setFreeOnly(!freeOnly)}
-                                                className={cn(
-                                                    "relative w-9 h-5 rounded-full transition-all",
-                                                    freeOnly ? "bg-emerald-500" : "bg-gray-200"
-                                                )}
-                                            >
-                                                <span className={cn(
-                                                    "absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform",
-                                                    freeOnly && "translate-x-4"
-                                                )} />
-                                            </button>
-                                        </div>
-                                    </div>
-                                    <div className="space-y-2.5">
-                                        <div>
-                                            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1 block">From</label>
-                                            <div className="flex gap-2">
-                                                <div className="relative flex-1">
-                                                    <select
-                                                        value={priceFrom}
-                                                        onChange={(e) => setPriceFrom(e.target.value)}
-                                                        className="w-full h-10 px-3 bg-white border border-gray-200 rounded-xl text-xs font-bold text-gray-800 focus:outline-none focus:ring-2 focus:ring-primary/10 appearance-none cursor-pointer"
-                                                    >
-                                                        <option value="">Any</option>
-                                                        <option value="0">₦0</option>
-                                                        <option value="1000">₦1,000</option>
-                                                        <option value="5000">₦5,000</option>
-                                                        <option value="10000">₦10,000</option>
-                                                        <option value="20000">₦20,000</option>
-                                                        <option value="50000">₦50,000</option>
-                                                        <option value="100000">₦100,000</option>
-                                                    </select>
-                                                    <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-                                                </div>
-                                                <input
-                                                    type="number"
-                                                    value={priceFrom}
-                                                    onChange={(e) => setPriceFrom(e.target.value)}
-                                                    placeholder="₦ Min"
-                                                    className="w-24 h-10 px-3 bg-white border border-gray-200 rounded-xl text-xs font-bold text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/10 focus:border-primary/30"
-                                                />
-                                            </div>
-                                        </div>
-                                        <div>
-                                            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1 block">To</label>
-                                            <div className="flex gap-2">
-                                                <div className="relative flex-1">
-                                                    <select
-                                                        value={priceTo}
-                                                        onChange={(e) => setPriceTo(e.target.value)}
-                                                        className="w-full h-10 px-3 bg-white border border-gray-200 rounded-xl text-xs font-bold text-gray-800 focus:outline-none focus:ring-2 focus:ring-primary/10 appearance-none cursor-pointer"
-                                                    >
-                                                        <option value="">Any</option>
-                                                        <option value="5000">₦5,000</option>
-                                                        <option value="10000">₦10,000</option>
-                                                        <option value="20000">₦20,000</option>
-                                                        <option value="50000">₦50,000</option>
-                                                        <option value="100000">₦100,000</option>
-                                                        <option value="200000">₦200,000</option>
-                                                        <option value="500000">₦500,000+</option>
-                                                    </select>
-                                                    <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-                                                </div>
-                                                <input
-                                                    type="number"
-                                                    value={priceTo}
-                                                    onChange={(e) => setPriceTo(e.target.value)}
-                                                    placeholder="₦ Max"
-                                                    className="w-24 h-10 px-3 bg-white border border-gray-200 rounded-xl text-xs font-bold text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/10 focus:border-primary/30"
-                                                />
-                                            </div>
-                                        </div>
-                                        {/* Price sort */}
-                                        <div className="flex gap-2 pt-1">
-                                            <button
-                                                onClick={() => setSortBy(sortBy === 'price-low' ? 'popular' : 'price-low')}
-                                                className={cn(
-                                                    "flex-1 h-9 rounded-xl text-[11px] font-bold border transition-all flex items-center justify-center gap-1",
-                                                    sortBy === 'price-low'
-                                                        ? "bg-primary/10 text-primary border-primary/20"
-                                                        : "bg-white text-gray-500 border-gray-200 hover:border-primary/20"
-                                                )}
-                                            >
-                                                <ArrowUpDown size={11} /> Low → High
-                                            </button>
-                                            <button
-                                                onClick={() => setSortBy(sortBy === 'price-high' ? 'popular' : 'price-high')}
-                                                className={cn(
-                                                    "flex-1 h-9 rounded-xl text-[11px] font-bold border transition-all flex items-center justify-center gap-1",
-                                                    sortBy === 'price-high'
-                                                        ? "bg-primary/10 text-primary border-primary/20"
-                                                        : "bg-white text-gray-500 border-gray-200 hover:border-primary/20"
-                                                )}
-                                            >
-                                                <ArrowUpDown size={11} /> High → Low
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Distance */}
-                                <div className="px-5 py-4">
-                                    <h4 className="text-xs font-black text-gray-900 mb-3">Distance</h4>
-                                    <div className="flex items-center gap-3 mb-2">
-                                        <span className="text-[10px] text-gray-400 font-bold">0 km</span>
-                                        <input
-                                            type="range"
-                                            min={0}
-                                            max={50}
-                                            step={1}
-                                            value={locationRange}
-                                            onChange={(e) => setLocationRange(Number(e.target.value))}
-                                            className="flex-1 h-1.5 bg-gray-200 rounded-full appearance-none cursor-pointer accent-primary [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-primary [&::-webkit-slider-thumb]:shadow-md [&::-webkit-slider-thumb]:cursor-pointer"
-                                        />
-                                        <span className="text-[10px] text-gray-400 font-bold">50 km</span>
-                                    </div>
-                                    <p className="text-[10px] font-bold text-gray-500 text-center">
-                                        {locationRange < 50 ? `Within ${locationRange} km` : 'Any distance'}
-                                    </p>
-                                </div>
-
-                                {/* Sort By */}
-                                <div className="px-5 py-4">
-                                    <h4 className="text-xs font-black text-gray-900 mb-3">Sort by</h4>
-                                    <div className="space-y-1">
-                                        {[
-                                            { key: 'popular' as const, label: 'Popular', icon: Flame },
-                                            { key: 'newest' as const, label: 'Newest', icon: Clock },
-                                            { key: 'trending' as const, label: 'Trending', icon: TrendingUp },
-                                            { key: 'featured' as const, label: 'Featured', icon: Star },
-                                        ].map(({ key, label, icon: Icon }) => (
-                                            <button
-                                                key={key}
-                                                onClick={() => setSortBy(key)}
-                                                className={cn(
-                                                    "w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-left text-xs font-bold transition-all",
-                                                    sortBy === key
-                                                        ? "bg-primary/5 text-primary"
-                                                        : "text-gray-500 hover:bg-gray-50"
-                                                )}
-                                            >
-                                                <Icon size={13} />
-                                                {label}
-                                                {sortBy === key && <Check size={13} className="ml-auto" />}
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </aside>
-                    )}
-
-                    {/* Deals Content */}
-                    <div className="flex-1 min-w-0">
-                        {/* Mobile filter panel */}
-                        <AnimatePresence>
-                            {showFilters && (
-                                <motion.div
-                                    initial={{ height: 0, opacity: 0 }}
-                                    animate={{ height: 'auto', opacity: 1 }}
-                                    exit={{ height: 0, opacity: 0 }}
-                                    transition={{ duration: 0.2 }}
-                                    className="lg:hidden overflow-hidden mb-4"
-                                >
-                                    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 space-y-4">
-                                        <div className="flex items-center justify-between">
-                                            <h3 className="text-sm font-black text-gray-900">Filters</h3>
-                                            <div className="flex items-center gap-3">
-                                                {(freeOnly || sortBy !== 'popular' || priceFrom || priceTo || locationRange < 50 || selectedCategory) && (
-                                                    <button
-                                                        onClick={() => {
-                                                            setFreeOnly(false);
-                                                            setSortBy('popular');
-                                                            setPriceFrom('');
-                                                            setPriceTo('');
-                                                            setLocationRange(50);
-                                                            setSelectedCategory(null);
-                                                        }}
-                                                        className="text-xs font-bold text-primary"
-                                                    >
-                                                        Clear all
-                                                    </button>
-                                                )}
-                                                <button onClick={() => setShowFilters(false)} className="text-gray-400 hover:text-gray-600">
-                                                    <X size={18} />
-                                                </button>
-                                            </div>
-                                        </div>
-
-                                        {/* Categories */}
-                                        <div>
-                                            <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1.5 block">Category</label>
-                                            <CategoryDropdown
-                                                selected={selectedCategory}
-                                                onSelect={setSelectedCategory}
-                                            />
-                                        </div>
-
-                                        {/* Price Range + Free toggle */}
-                                        <div>
-                                            <div className="flex items-center justify-between mb-1.5">
-                                                <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Price Range</label>
-                                                <div className="flex items-center gap-2">
-                                                    <span className="text-[10px] font-bold text-gray-400">Free only</span>
-                                                    <button
-                                                        onClick={() => setFreeOnly(!freeOnly)}
-                                                        className={cn(
-                                                            "relative w-9 h-5 rounded-full transition-all",
-                                                            freeOnly ? "bg-emerald-500" : "bg-gray-200"
-                                                        )}
-                                                    >
-                                                        <span className={cn(
-                                                            "absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform",
-                                                            freeOnly && "translate-x-4"
-                                                        )} />
-                                                    </button>
-                                                </div>
-                                            </div>
-                                            <div className="space-y-2">
-                                                <div className="flex gap-2">
-                                                    <div className="relative flex-1">
-                                                        <select
-                                                            value={priceFrom}
-                                                            onChange={(e) => setPriceFrom(e.target.value)}
-                                                            className="w-full h-10 px-3 bg-white border border-gray-200 rounded-xl text-xs font-bold text-gray-800 focus:outline-none focus:ring-2 focus:ring-primary/10 appearance-none cursor-pointer"
-                                                        >
-                                                            <option value="">Any</option>
-                                                            <option value="0">₦0</option>
-                                                            <option value="1000">₦1,000</option>
-                                                            <option value="5000">₦5,000</option>
-                                                            <option value="10000">₦10,000</option>
-                                                            <option value="20000">₦20,000</option>
-                                                            <option value="50000">₦50,000</option>
-                                                            <option value="100000">₦100,000</option>
-                                                        </select>
-                                                        <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-                                                    </div>
-                                                    <input
-                                                        type="number"
-                                                        value={priceFrom}
-                                                        onChange={(e) => setPriceFrom(e.target.value)}
-                                                        placeholder="₦ Min"
-                                                        className="w-24 h-10 px-3 bg-white border border-gray-200 rounded-xl text-xs font-bold text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/10"
-                                                    />
-                                                </div>
-                                                <div className="flex gap-2">
-                                                    <div className="relative flex-1">
-                                                        <select
-                                                            value={priceTo}
-                                                            onChange={(e) => setPriceTo(e.target.value)}
-                                                            className="w-full h-10 px-3 bg-white border border-gray-200 rounded-xl text-xs font-bold text-gray-800 focus:outline-none focus:ring-2 focus:ring-primary/10 appearance-none cursor-pointer"
-                                                        >
-                                                            <option value="">Any</option>
-                                                            <option value="5000">₦5,000</option>
-                                                            <option value="10000">₦10,000</option>
-                                                            <option value="20000">₦20,000</option>
-                                                            <option value="50000">₦50,000</option>
-                                                            <option value="100000">₦100,000</option>
-                                                            <option value="200000">₦200,000</option>
-                                                            <option value="500000">₦500,000+</option>
-                                                        </select>
-                                                        <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-                                                    </div>
-                                                    <input
-                                                        type="number"
-                                                        value={priceTo}
-                                                        onChange={(e) => setPriceTo(e.target.value)}
-                                                        placeholder="₦ Max"
-                                                        className="w-24 h-10 px-3 bg-white border border-gray-200 rounded-xl text-xs font-bold text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/10"
-                                                    />
-                                                </div>
-                                                <div className="flex gap-2">
-                                                    <button
-                                                        onClick={() => setSortBy(sortBy === 'price-low' ? 'popular' : 'price-low')}
-                                                        className={cn(
-                                                            "flex-1 h-9 rounded-xl text-[11px] font-bold border transition-all flex items-center justify-center gap-1",
-                                                            sortBy === 'price-low'
-                                                                ? "bg-primary/10 text-primary border-primary/20"
-                                                                : "bg-white text-gray-500 border-gray-200"
-                                                        )}
-                                                    >
-                                                        <ArrowUpDown size={11} /> Low → High
-                                                    </button>
-                                                    <button
-                                                        onClick={() => setSortBy(sortBy === 'price-high' ? 'popular' : 'price-high')}
-                                                        className={cn(
-                                                            "flex-1 h-9 rounded-xl text-[11px] font-bold border transition-all flex items-center justify-center gap-1",
-                                                            sortBy === 'price-high'
-                                                                ? "bg-primary/10 text-primary border-primary/20"
-                                                                : "bg-white text-gray-500 border-gray-200"
-                                                        )}
-                                                    >
-                                                        <ArrowUpDown size={11} /> High → Low
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        {/* Distance */}
-                                        <div>
-                                            <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1.5 block">
-                                                Distance: {locationRange < 50 ? `Within ${locationRange} km` : 'Any'}
-                                            </label>
-                                            <div className="flex items-center gap-3">
-                                                <span className="text-[10px] text-gray-400 font-bold">0</span>
-                                                <input
-                                                    type="range"
-                                                    min={0}
-                                                    max={50}
-                                                    step={1}
-                                                    value={locationRange}
-                                                    onChange={(e) => setLocationRange(Number(e.target.value))}
-                                                    className="flex-1 h-1.5 bg-gray-200 rounded-full appearance-none cursor-pointer accent-primary [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-primary [&::-webkit-slider-thumb]:shadow-md"
-                                                />
-                                                <span className="text-[10px] text-gray-400 font-bold">50km</span>
-                                            </div>
-                                        </div>
-
-                                        {/* Sort */}
-                                        <div>
-                                            <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1.5 block">Sort by</label>
-                                            <div className="flex flex-wrap gap-1.5">
-                                                {[
-                                                    { key: 'popular' as const, label: 'Popular' },
-                                                    { key: 'newest' as const, label: 'Newest' },
-                                                    { key: 'trending' as const, label: 'Trending' },
-                                                    { key: 'featured' as const, label: 'Featured' },
-                                                ].map(({ key, label }) => (
-                                                    <button
-                                                        key={key}
-                                                        onClick={() => setSortBy(key)}
-                                                        className={cn(
-                                                            "px-3 py-1.5 rounded-full text-[11px] font-bold border transition-all",
-                                                            sortBy === key
-                                                                ? "bg-primary/10 text-primary border-primary/20"
-                                                                : "bg-white text-gray-500 border-gray-200"
-                                                        )}
-                                                    >
-                                                        {label}
-                                                    </button>
-                                                ))}
-                                            </div>
-                                        </div>
-
-                                        {/* Reset */}
-                                        {(freeOnly || sortBy !== 'popular' || priceFrom || priceTo || locationRange < 50 || selectedCategory || search) && (
-                                            <button
-                                                onClick={() => {
-                                                    setFreeOnly(false);
-                                                    setSortBy('popular');
-                                                    setPriceFrom('');
-                                                    setPriceTo('');
-                                                    setLocationRange(50);
-                                                    setSelectedCategory(null);
-                                                    setSearch('');
-                                                }}
-                                                className="w-full text-center text-xs font-bold text-primary py-2 rounded-xl bg-primary/5 hover:bg-primary/10 transition-colors"
-                                            >
-                                                Reset all filters
-                                            </button>
-                                        )}
-                                    </div>
-                                </motion.div>
-                            )}
-                        </AnimatePresence>
-
-                        {/* Location chip */}
-                        {location && (
-                            <div className="flex items-center gap-2 mb-4">
-                                <div className="inline-flex items-center gap-2 bg-primary/5 border border-primary/10 rounded-full pl-3 pr-1 py-1.5 max-w-xs sm:max-w-md">
-                                    <MapPin size={12} className="text-primary shrink-0" />
-                                    <span
-                                        className="text-[10px] font-bold text-primary truncate"
-                                        title={locationLabel || `${location.lat.toFixed(4)}, ${location.lng.toFixed(4)}`}
-                                    >
-                                        {locationLabel || `${location.lat.toFixed(4)}, ${location.lng.toFixed(4)}`}
-                                    </span>
-                                    <button
-                                        onClick={handleClearLocation}
-                                        className="p-1 hover:bg-primary/10 rounded-full transition-colors shrink-0"
-                                        aria-label="Clear location"
-                                    >
-                                        <X size={10} className="text-primary" />
-                                    </button>
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Loading */}
-                        {isLoading && (
-                            <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-5">
-                                {Array.from({ length: 8 }).map((_, i) => (
-                                    <div key={i} className="rounded-[1.15rem] bg-white ring-1 ring-black/[0.04] overflow-hidden animate-pulse">
-                                        <div className="aspect-square bg-gradient-to-br from-slate-50 to-slate-100" />
-                                        <div className="p-3 space-y-2.5">
-                                            <div className="h-2.5 bg-slate-100 rounded w-1/3" />
-                                            <div className="h-3.5 bg-slate-100 rounded w-3/4" />
-                                            <div className="h-5 bg-slate-100 rounded w-1/2" />
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-
-                        {/* Error */}
-                        {isError && (
-                            <div className="flex flex-col items-center justify-center py-24 space-y-4">
-                                <div className="relative">
-                                    <div className="absolute inset-0 bg-amber-400/10 rounded-3xl rotate-6" />
-                                    <div className="relative size-16 bg-white rounded-3xl shadow-xl shadow-black/5 ring-1 ring-black/5 flex items-center justify-center text-3xl">
-                                        🫥
-                                    </div>
-                                </div>
-                                <p className="text-sm font-black text-gray-600">Deals took a break</p>
-                                <p className="text-xs text-gray-400 font-medium">Couldn&apos;t reach the deal shelf. Give it another shot.</p>
-                                <button
-                                    onClick={() => refetch()}
-                                    className="text-xs font-black text-primary hover:underline"
-                                >
-                                    Try again
-                                </button>
-                            </div>
-                        )}
-
-                        {/* Data loaded */}
-                        {!isLoading && !isError && (
-                            <>
-                                {/* Results header */}
-                                <div className="flex items-center justify-between mb-4">
-                                    <div className="flex items-center gap-2">
-                                        <span className="size-7 rounded-lg bg-gradient-to-br from-amber-400 to-orange-500 text-white flex items-center justify-center shadow-md shadow-orange-500/20">
-                                            <Sparkles size={13} />
-                                        </span>
-                                        <span className="text-xs font-black text-gray-700 uppercase tracking-wider">
-                                            {filteredPromotions.length} {filteredPromotions.length === 1 ? 'deal' : 'deals'}
-                                        </span>
-                                    </div>
-                                    {sortBy !== 'popular' && (
-                                        <span className="text-[10px] font-bold text-gray-400">
-                                            Sorted by {sortBy === 'newest' ? 'newest' : sortBy === 'trending' ? 'trending' : sortBy === 'featured' ? 'featured' : sortBy === 'price-low' ? 'price: low to high' : 'price: high to low'}
-                                        </span>
-                                    )}
-                                </div>
-
-                                {/* Grid */}
-                                {filteredPromotions.length > 0 ? (
-                                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
-                                        {filteredPromotions.map((promo, i) => (
-                                            <PromotionCard key={promo.id} promotion={toMockPromotion(promo)} index={i} />
-                                        ))}
-                                    </div>
-                                ) : (
-                                    <div className="py-20 text-center space-y-4">
-                                        <div className="relative mx-auto size-20">
-                                            <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-rose-500/10 rounded-3xl -rotate-6" />
-                                            <div className="relative size-20 bg-white rounded-3xl shadow-xl shadow-black/5 ring-1 ring-black/5 flex items-center justify-center text-3xl">
-                                                🛍️
-                                            </div>
-                                        </div>
-                                        <p className="text-gray-600 font-black text-sm">No deals found</p>
-                                        <p className="text-xs text-gray-400 font-medium">
-                                            Try a different search or category — new deals drop daily.
-                                        </p>
-                                        <button
-                                            onClick={() => {
-                                                setSelectedCategory(null);
-                                                setSearch('');
-                                                setFreeOnly(false);
-                                                setSortBy('popular');
-                                                setPriceFrom('');
-                                                setPriceTo('');
-                                                setLocationRange(50);
-                                            }}
-                                            className="inline-flex items-center gap-1.5 text-xs font-black text-white bg-gradient-to-r from-primary to-blue-500 rounded-full px-5 py-2.5 shadow-md shadow-primary/25 hover:shadow-lg hover:-translate-y-0.5 transition-all"
-                                        >
-                                            <Sparkles size={12} /> Clear all filters
-                                        </button>
-                                    </div>
-                                )}
-                            </>
-                        )}
-                    </div>
-                </div>
-            </section>
-
-            <LocationModal
-                isOpen={showLocationModal}
-                onClose={() => setShowLocationModal(false)}
-                onLocationSet={handleLocationSet}
+  return (
+    <div className="min-h-screen font-sans" style={{ background: C.bg, color: C.onSurface }}>
+      {/* ─── TopAppBar ─── */}
+      <header
+        className="sticky top-0 z-40 w-full transition-colors duration-200"
+        style={{
+          background: '#ffffff',
+          borderBottom: `1px solid ${C.outlineVariant}`,
+        }}
+      >
+        {/* Desktop: Top nav bar */}
+        <div className="hidden md:flex items-center justify-between px-6 h-[64px] max-w-[1400px] mx-auto gap-6">
+          <div className="flex items-center gap-6 shrink-0">
+            <Link href="/" className="flex items-center gap-2">
+              <img src="/VEMTAP_PNG.png" alt="VemTap" className="h-10 w-auto" />
+            </Link>
+            <nav className="flex items-center gap-1">
+              {[
+                { label: 'Home', href: '/' },
+                { label: 'Deals', href: '/deals' },
+                { label: 'Business', href: '/business-landing' },
+                { label: 'Pricing', href: '/pricing' },
+              ].map((item) => (
+                <Link key={item.label} href={item.href}
+                  className="px-3 py-2 rounded-lg text-[13px] font-semibold hover:bg-gray-50 transition-colors"
+                  style={{ color: C.onSurface }}>
+                  {item.label}
+                </Link>
+              ))}
+            </nav>
+          </div>
+          <form onSubmit={handleSearchSubmit} className="flex-1 max-w-[500px] flex">
+            <input
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="flex-1 h-11 px-4 rounded-l-xl text-[14px] focus:outline-none border"
+              style={{ border: `1px solid ${C.outlineVariant}`, borderRight: 'none', color: C.onSurface, background: '#ffffff' }}
+              placeholder="Search deals, businesses..."
+              type="text"
             />
-
-            <Footer />
+            <button type="submit" className="h-11 px-6 rounded-r-xl text-white font-bold text-[13px] uppercase tracking-wider" style={{ background: C.primary }}>
+              Search
+            </button>
+          </form>
+          <div className="flex items-center gap-2 shrink-0">
+            <Link href="/auth/onboarding" className="h-10 px-5 rounded-xl bg-[#066CF4] text-white text-[13px] font-bold flex items-center justify-center hover:bg-[#0557b3] transition-colors">
+              Login
+            </Link>
+            <button onClick={() => setIsLocationModalOpen(true)} className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-[13px] font-medium transition-colors hover:bg-gray-50" style={{ color: C.onSurfaceVariant }}>
+              <span className="material-symbols-outlined" style={{ fontSize: 16 }}>location_on</span>
+              <span className="truncate max-w-[140px]">{activeLocation}</span>
+            </button>
+          </div>
         </div>
-    );
+        {/* Desktop: Category rail */}
+        <div className="hidden md:block border-t" style={{ borderColor: C.outlineVariant }}>
+          <div className="max-w-[1400px] mx-auto px-6 flex items-center gap-1 h-[44px] overflow-x-auto no-scrollbar">
+            {[
+              { label: 'All Deals', icon: 'local_offer', query: '' },
+              { label: 'Food & Dining', icon: 'restaurant', query: 'food' },
+              { label: 'Beauty & Spa', icon: 'spa', query: 'beauty' },
+              { label: 'Fashion', icon: 'checkroom', query: 'fashion' },
+              { label: 'Electronics', icon: 'devices', query: 'tech' },
+              { label: 'Fitness', icon: 'fitness_center', query: 'fitness' },
+              { label: 'Home & Office', icon: 'chair', query: 'home' },
+              { label: 'Automotive', icon: 'directions_car', query: 'automotive' },
+            ].map((cat) => (
+              <button
+                key={cat.label}
+                onClick={() => setSelectedCategory(cat.query || null)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-semibold whitespace-nowrap transition-all shrink-0"
+                style={{
+                  background: selectedCategory === cat.query ? C.primary : 'transparent',
+                  color: selectedCategory === cat.query ? '#ffffff' : C.onSurfaceVariant,
+                }}
+              >
+                <span className="material-symbols-outlined" style={{ fontSize: 16 }}>{cat.icon}</span>
+                {cat.label}
+              </button>
+            ))}
+          </div>
+        </div>
+        {/* Mobile header */}
+        <div className="md:hidden flex items-center justify-between px-3 py-2">
+          <Link href="/" className="flex items-center gap-1.5 shrink-0">
+            <img src="/VEMTAP_PNG.png" alt="VemTap" className="h-8 w-auto" />
+          </Link>
+          <div className="flex items-center gap-1.5 min-w-0 flex-1 mx-2">
+            <span className="material-symbols-outlined shrink-0" style={{ color: C.onSurfaceVariant, fontSize: 18 }}>location_on</span>
+            <h1 className="text-[13px] font-semibold tracking-tight truncate" style={{ color: C.primary }}>{activeLocation}</h1>
+          </div>
+          <div className="flex items-center gap-1">
+            <button onClick={() => setShowFilterModal(true)} className="w-11 h-11 flex items-center justify-center rounded-full relative" style={{ color: C.onSurfaceVariant }}>
+              <span className="material-symbols-outlined" style={{ fontSize: 24 }}>tune</span>
+              {(quickFilter || selectedCategory || priceRange.min || priceRange.max || sortBy !== 'trending') && (
+                <div className="absolute top-1.5 right-1.5 w-2.5 h-2.5 rounded-full" style={{ background: C.primary }} />
+              )}
+            </button>
+            <button onClick={() => setIsSearchModalOpen(true)} className="w-11 h-11 flex items-center justify-center rounded-full" style={{ color: C.onSurfaceVariant }}>
+              <span className="material-symbols-outlined" style={{ fontSize: 24 }}>search</span>
+            </button>
+          </div>
+        </div>
+      </header>
+
+      {/* ─── Main Content ─── */}
+      <div className="max-w-[1400px] mx-auto flex">
+        {/* ─── Desktop Sidebar Filters (Collapsible) ─── */}
+        <aside className="hidden md:block shrink-0 sticky top-[108px] h-[calc(100vh-108px)] border-r transition-all duration-300" style={{ borderColor: C.outlineVariant, background: '#ffffff', width: sidebarOpen ? 280 : 48 }}>
+          <button
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            className="w-full flex items-center gap-2 px-4 h-12 text-[13px] font-bold uppercase tracking-wider border-b transition-colors hover:bg-gray-50"
+            style={{ borderColor: C.outlineVariant, color: C.onSurface }}
+          >
+            <span className="material-symbols-outlined" style={{ fontSize: 20, transition: 'transform 0.3s', transform: sidebarOpen ? 'rotate(0)' : 'rotate(180deg)' }}>filter_list</span>
+            {sidebarOpen && <span>Filters</span>}
+          </button>
+          {sidebarOpen && (
+            <div className="p-5 space-y-5 overflow-y-auto h-[calc(100vh-152px)]">
+              {/* Sort By */}
+              <div>
+                <h4 className="text-[10px] font-bold uppercase tracking-[0.15em] mb-2.5" style={{ color: '#727786' }}>Sort By</h4>
+                <div className="flex flex-col gap-1.5">
+                  {[
+                    { key: 'trending', label: 'Trending', icon: 'trending_up' },
+                    { key: 'newest', label: 'Newest', icon: 'schedule' },
+                    { key: 'price_asc', label: 'Price: Low → High', icon: 'arrow_upward' },
+                    { key: 'price_desc', label: 'Price: High → Low', icon: 'arrow_downward' },
+                    { key: 'discount', label: 'Biggest Discount', icon: 'local_offer' },
+                  ].map((opt) => (
+                    <button key={opt.key} onClick={() => setSortBy(opt.key)} className="flex items-center gap-2 px-3 py-2 rounded-lg text-[12px] font-medium transition-all text-left" style={{ background: sortBy === opt.key ? `${C.primary}10` : 'transparent', color: sortBy === opt.key ? C.primary : C.onSurfaceVariant }}>
+                      <span className="material-symbols-outlined" style={{ fontSize: 16 }}>{opt.icon}</span>
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="h-px" style={{ background: C.outlineVariant }} />
+
+              {/* Quick Filters */}
+              <div>
+                <h4 className="text-[10px] font-bold uppercase tracking-[0.15em] mb-2.5" style={{ color: '#727786' }}>Quick Filters</h4>
+                <div className="flex flex-col gap-1.5">
+                  {[
+                    { key: 'flash_sales', label: 'Flash Sales', icon: 'bolt' },
+                    { key: 'free_deals', label: 'Free Deals', icon: 'redeem' },
+                    { key: 'ending_soon', label: 'Ending Soon', icon: 'timer' },
+                    { key: 'new_arrivals', label: 'New Arrivals', icon: 'fiber_new' },
+                  ].map((f) => (
+                    <button key={f.key} onClick={() => setQuickFilter(quickFilter === f.key ? null : f.key)} className="flex items-center gap-2 px-3 py-2 rounded-lg text-[12px] font-medium transition-all text-left" style={{ background: quickFilter === f.key ? `${C.primary}10` : 'transparent', color: quickFilter === f.key ? C.primary : C.onSurfaceVariant }}>
+                      <span className="material-symbols-outlined" style={{ fontSize: 16 }}>{f.icon}</span>
+                      {f.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="h-px" style={{ background: C.outlineVariant }} />
+
+              {/* Category */}
+              <div>
+                <h4 className="text-[10px] font-bold uppercase tracking-[0.15em] mb-2.5" style={{ color: '#727786' }}>Category</h4>
+                <div className="relative">
+                  <button onClick={() => setShowCategoryDropdown(!showCategoryDropdown)} className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-[13px] font-medium transition-colors" style={{ border: `1px solid ${C.outlineVariant}`, background: '#ffffff', color: C.onSurface }}>
+                    <span>{selectedCategory ? categoriesList.find(c => c.slug === selectedCategory)?.label || 'Category' : 'All Categories'}</span>
+                    <span className="material-symbols-outlined" style={{ fontSize: 18, transition: 'transform 0.2s', transform: showCategoryDropdown ? 'rotate(180deg)' : 'none' }}>expand_more</span>
+                  </button>
+                  {showCategoryDropdown && (
+                    <div className="absolute top-full left-0 right-0 mt-1 rounded-lg shadow-lg z-20 max-h-48 overflow-y-auto" style={{ background: '#ffffff', border: `1px solid ${C.outlineVariant}` }}>
+                      <button onClick={() => { setSelectedCategory(null); setShowCategoryDropdown(false); }} className="w-full flex items-center gap-2 px-3 py-2.5 text-[13px] font-medium text-left" style={{ background: !selectedCategory ? `${C.primary}10` : '#ffffff', color: !selectedCategory ? C.primary : C.onSurface }}>
+                        All Categories
+                      </button>
+                      {categoriesList.map((cat) => (
+                        <button key={cat.id} onClick={() => { setSelectedCategory(cat.slug); setShowCategoryDropdown(false); }} className="w-full flex items-center gap-2 px-3 py-2.5 text-[13px] font-medium text-left" style={{ background: selectedCategory === cat.slug ? `${C.primary}10` : '#ffffff', color: selectedCategory === cat.slug ? C.primary : C.onSurface }}>
+                          {cat.label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="h-px" style={{ background: C.outlineVariant }} />
+
+              {/* Price Range */}
+              <div>
+                <h4 className="text-[10px] font-bold uppercase tracking-[0.15em] mb-2.5" style={{ color: '#727786' }}>Price Range</h4>
+                <div className="flex items-center gap-2">
+                  <div className="flex-1 relative">
+                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[13px]" style={{ color: '#727786' }}>₦</span>
+                    <input type="number" value={priceRange.min} onChange={(e) => setPriceRange({ ...priceRange, min: e.target.value })} placeholder="Min" className="w-full h-9 pl-7 pr-2 rounded-lg text-[13px] focus:outline-none focus:ring-1" style={{ border: `1px solid ${C.outlineVariant}`, color: '#191c1e' }} />
+                  </div>
+                  <span className="text-[12px]" style={{ color: '#727786' }}>—</span>
+                  <div className="flex-1 relative">
+                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[13px]" style={{ color: '#727786' }}>₦</span>
+                    <input type="number" value={priceRange.max} onChange={(e) => setPriceRange({ ...priceRange, max: e.target.value })} placeholder="Max" className="w-full h-9 pl-7 pr-2 rounded-lg text-[13px] focus:outline-none focus:ring-1" style={{ border: `1px solid ${C.outlineVariant}`, color: '#191c1e' }} />
+                  </div>
+                </div>
+              </div>
+
+              {/* Clear + count */}
+              <div className="pt-2 space-y-2">
+                {(quickFilter || selectedCategory || priceRange.min || priceRange.max || sortBy !== 'trending') && (
+                  <button onClick={() => { setQuickFilter(null); setSelectedCategory(null); setPriceRange({ min: '', max: '' }); setSortBy('trending'); }} className="w-full py-2 rounded-lg text-[12px] font-semibold border transition-colors" style={{ borderColor: C.outlineVariant, color: C.onSurfaceVariant }}>Clear all filters</button>
+                )}
+                <p className="text-[12px] font-medium text-center" style={{ color: C.onSurfaceVariant }}>
+                  {allDeals.length} {allDeals.length === 1 ? 'deal' : 'deals'} found
+                </p>
+              </div>
+            </div>
+          )}
+        </aside>
+
+        {/* ─── Right Content ─── */}
+        <main className="flex-1 min-w-0">
+          {/* Desktop Banner Slider */}
+          <div className="hidden md:block px-6 pt-5">
+            <div className="relative rounded-2xl overflow-hidden group" style={{ minHeight: 220 }}>
+              {bannerSlides.map((slide, i) => (
+                <div
+                  key={i}
+                  className="absolute inset-0 transition-opacity duration-700"
+                  style={{ opacity: i === bannerIndex ? 1 : 0, zIndex: i === bannerIndex ? 1 : 0 }}
+                >
+                  <img src={slide.image} alt={slide.tag} className="w-full h-full object-cover" style={{ minHeight: 220 }} />
+                  <div className="absolute inset-0" style={{ background: slide.gradient }} />
+                </div>
+              ))}
+              <div className="relative z-10 flex items-center p-8 lg:p-10" style={{ minHeight: 220 }}>
+                <div className="flex-1 max-w-lg">
+                  <span className="inline-flex items-center gap-1.5 bg-white/15 backdrop-blur-sm text-white px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider mb-4">
+                    <span className="material-symbols-outlined text-[14px]" style={{ fontVariationSettings: "'FILL' 1" }}>{bannerSlides[bannerIndex].tagIcon}</span>
+                    {bannerSlides[bannerIndex].tag}
+                  </span>
+                  <h2 className="text-[28px] lg:text-[34px] font-black text-white leading-tight mb-2">{bannerSlides[bannerIndex].heading}</h2>
+                  <p className="text-[14px] text-white/70 mb-5">{bannerSlides[bannerIndex].sub}</p>
+                  <button className="px-6 py-2.5 rounded-full bg-white font-bold text-[12px] uppercase tracking-wider" style={{ color: C.primary }}>{bannerSlides[bannerIndex].cta}</button>
+                </div>
+              </div>
+              {/* Left Arrow */}
+              <button
+                onClick={() => setBannerIndex((prev) => (prev - 1 + bannerSlides.length) % bannerSlides.length)}
+                className="absolute left-3 top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 hover:scale-110"
+                style={{ background: 'rgba(255,255,255,0.9)', color: C.onSurface, boxShadow: '0 2px 8px rgba(0,0,0,0.15)' }}
+              >
+                <span className="material-symbols-outlined" style={{ fontSize: 22 }}>chevron_left</span>
+              </button>
+              {/* Right Arrow */}
+              <button
+                onClick={() => setBannerIndex((prev) => (prev + 1) % bannerSlides.length)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 hover:scale-110"
+                style={{ background: 'rgba(255,255,255,0.9)', color: C.onSurface, boxShadow: '0 2px 8px rgba(0,0,0,0.15)' }}
+              >
+                <span className="material-symbols-outlined" style={{ fontSize: 22 }}>chevron_right</span>
+              </button>
+              {/* Dots */}
+              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2">
+                {bannerSlides.map((_, i) => (
+                  <button
+                    key={i}
+                    onClick={() => setBannerIndex(i)}
+                    className="transition-all duration-300 rounded-full"
+                    style={{
+                      width: i === bannerIndex ? 24 : 8,
+                      height: 8,
+                      background: i === bannerIndex ? '#ffffff' : 'rgba(255,255,255,0.4)',
+                    }}
+                  />
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Deals Grid */}
+          <div className="p-6">
+            {isLoading ? (
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                {Array.from({ length: 8 }).map((_, i) => (
+                  <div key={i} className="rounded-xl overflow-hidden animate-pulse" style={{ background: C.surface, border: `1px solid ${C.outlineVariant}` }}>
+                    <div className="h-32 lg:h-40 w-full" style={{ background: C.outlineVariant }} />
+                    <div className="p-3 space-y-2">
+                      <div className="h-4 rounded w-3/4" style={{ background: C.outlineVariant }} />
+                      <div className="h-3 rounded w-1/2" style={{ background: C.outlineVariant }} />
+                      <div className="h-5 rounded w-1/3" style={{ background: C.outlineVariant }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : allDeals.length > 0 ? (
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                {allDeals.map((deal, i) => {
+                  const badge = getBadge(deal);
+                  return (
+                    <Link key={deal.id} href={deal.href} className="rounded-xl overflow-hidden shadow-sm relative group cursor-pointer transition-all hover:shadow-lg hover:-translate-y-0.5" style={{ background: C.surface, border: `1px solid ${C.outlineVariant}` }}>
+                      <div className="h-32 lg:h-40 relative w-full overflow-hidden" style={{ background: C.outlineVariant }}>
+                        <img src={deal.image} alt={deal.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                        {badge && (
+                          <div className="absolute top-2 left-2 px-2 py-0.5 rounded-md font-bold" style={{ background: badge.color, color: '#ffffff', fontSize: 10, lineHeight: '14px' }}>
+                            {badge.label}
+                          </div>
+                        )}
+                      </div>
+                      <div className="p-3 flex flex-col gap-1.5">
+                        <div className="min-w-0">
+                          <h3 className="text-[13px] lg:text-[14px] font-semibold leading-[18px] line-clamp-1" style={{ color: C.onSurface }}>{deal.title}</h3>
+                          <p className="text-[11px] leading-[14px] line-clamp-1 mt-0.5" style={{ color: C.onSurfaceVariant }}>{deal.businessName}</p>
+                        </div>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          {deal.dealPrice != null && (
+                            <span className="text-[15px] lg:text-[16px] font-bold" style={{ color: C.primary }}>
+                              {Number(deal.dealPrice) === 0 ? 'FREE' : formatNaira(deal.dealPrice)}
+                            </span>
+                          )}
+                          {deal.originalPrice && deal.dealPrice && Number(deal.originalPrice) > Number(deal.dealPrice) && (
+                            <span className="text-[11px] line-through" style={{ color: C.outline }}>{formatNaira(deal.originalPrice)}</span>
+                          )}
+                        </div>
+                        <DealEngagementBar offerId={deal.id} offerTitle={deal.title} offerDescription={deal.description || ''} dealUrl={deal.href} businessName={deal.businessName} compact />
+                      </div>
+                    </Link>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="text-center py-20">
+                <div className="relative mx-auto size-16 mb-4">
+                  <div className="absolute inset-0 rounded-2xl -rotate-6" style={{ background: `${C.primary}15` }} />
+                  <div className="relative size-16 rounded-2xl flex items-center justify-center text-2xl" style={{ background: '#fff', border: `1px solid ${C.outlineVariant}` }}>🛍️</div>
+                </div>
+                <p className="font-bold text-sm" style={{ color: C.onSurface }}>No deals found</p>
+                <p className="text-xs mt-1" style={{ color: C.outline }}>Try a different search or filter — new deals drop daily.</p>
+              </div>
+            )}
+          </div>
+        </main>
+      </div>
+
+      <PublicBottomNav />
+
+      {/* ─── Location Modal ─── */}
+      {isLocationModalOpen && (
+        <LocationPrompt
+          isOpen={isLocationModalOpen}
+          onClose={() => setIsLocationModalOpen(false)}
+          onAllowLocation={() => {
+            requestLocation();
+            setIsLocationModalOpen(false);
+          }}
+        />
+      )}
+
+      {/* ─── Search Modal ─── */}
+      {isSearchModalOpen && (
+        <SearchModal
+          isOpen={isSearchModalOpen}
+          onClose={() => setIsSearchModalOpen(false)}
+        />
+      )}
+
+      {/* ─── Advanced Filter Modal ─── */}
+      {showFilterModal && (
+        <div
+          className="fixed inset-0 z-[60] flex items-end justify-center"
+          style={{ background: 'rgba(0,0,0,0.4)' }}
+          onClick={() => setShowFilterModal(false)}
+        >
+          <div
+            className="w-full max-w-lg rounded-t-2xl overflow-hidden max-h-[85vh] overflow-y-auto"
+            style={{ background: '#ffffff' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Handle */}
+            <div className="flex justify-center pt-3 pb-2 sticky top-0" style={{ background: '#ffffff' }}>
+              <div className="w-10 h-1 rounded-full" style={{ background: '#c2c6d7' }} />
+            </div>
+
+            {/* Title */}
+            <div className="px-5 pb-4 flex items-center justify-between sticky top-3" style={{ background: '#ffffff' }}>
+              <h3 className="text-[18px] font-semibold" style={{ color: '#191c1e' }}>
+                Filter Deals
+              </h3>
+              <button
+                onClick={() => { setQuickFilter(null); setSelectedCategory(null); setPriceRange({ min: '', max: '' }); setSortBy('trending'); setShowCategoryDropdown(false); }}
+                className="text-[13px] font-semibold"
+                style={{ color: '#0055c4' }}
+              >
+                Reset all
+              </button>
+            </div>
+
+            <div className="px-5 pb-6 space-y-6">
+              {/* Sort By */}
+              <div>
+                <h4 className="text-[11px] font-bold uppercase tracking-widest mb-3" style={{ color: '#727786' }}>
+                  Sort By
+                </h4>
+                <div className="flex flex-wrap gap-2">
+                  {SORT_OPTIONS.map((opt) => (
+                    <button
+                      key={opt.id}
+                      onClick={() => setSortBy(opt.id)}
+                      className="flex items-center gap-1.5 px-4 py-2 rounded-full text-[13px] font-semibold transition-all"
+                      style={{
+                        border: `1px solid ${sortBy === opt.id ? '#0055c4' : '#c2c6d7'}`,
+                        background: sortBy === opt.id ? '#0055c4' : '#ffffff',
+                        color: sortBy === opt.id ? '#ffffff' : '#191c1e',
+                      }}
+                    >
+                      <span className="material-symbols-outlined" style={{ fontSize: 16 }}>{opt.icon}</span>
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Quick Filters */}
+              <div>
+                <h4 className="text-[11px] font-bold uppercase tracking-widest mb-3" style={{ color: '#727786' }}>
+                  Quick Filters
+                </h4>
+                <div className="flex flex-wrap gap-2">
+                  {QUICK_FILTER_OPTIONS.map((opt) => (
+                    <button
+                      key={opt.id}
+                      onClick={() => setQuickFilter(quickFilter === opt.id ? null : opt.id)}
+                      className="flex items-center gap-1.5 px-4 py-2 rounded-full text-[13px] font-semibold transition-all"
+                      style={{
+                        border: `1px solid ${quickFilter === opt.id ? '#0055c4' : '#c2c6d7'}`,
+                        background: quickFilter === opt.id ? '#0055c4' : '#ffffff',
+                        color: quickFilter === opt.id ? '#ffffff' : '#191c1e',
+                      }}
+                    >
+                      <span className="material-symbols-outlined" style={{ fontSize: 16 }}>{opt.icon}</span>
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Category */}
+              <div>
+                <h4 className="text-[11px] font-bold uppercase tracking-widest mb-3" style={{ color: '#727786' }}>
+                  Category
+                </h4>
+                <button
+                  onClick={() => setShowCategoryDropdown(!showCategoryDropdown)}
+                  className="w-full flex items-center justify-between px-4 py-3 rounded-xl text-[14px] font-medium transition-all"
+                  style={{
+                    border: `1px solid ${selectedCategory ? '#0055c4' : '#c2c6d7'}`,
+                    background: selectedCategory ? 'rgba(0, 85, 196, 0.05)' : '#ffffff',
+                    color: '#191c1e',
+                  }}
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="material-symbols-outlined" style={{ fontSize: 20, color: selectedCategory ? '#0055c4' : '#727786' }}>
+                      category
+                    </span>
+                    {selectedCategory
+                      ? categoriesList.find(c => c.slug === selectedCategory)?.label || selectedCategory
+                      : 'All Categories'
+                    }
+                  </div>
+                  <span
+                    className="material-symbols-outlined transition-transform"
+                    style={{
+                      fontSize: 20,
+                      color: '#727786',
+                      transform: showCategoryDropdown ? 'rotate(180deg)' : 'rotate(0deg)',
+                    }}
+                  >
+                    expand_more
+                  </span>
+                </button>
+
+                {/* Scrollable dropdown */}
+                {showCategoryDropdown && (
+                  <div
+                    className="mt-2 rounded-xl overflow-hidden max-h-[240px] overflow-y-auto"
+                    style={{ border: '1px solid #c2c6d7' }}
+                  >
+                    <button
+                      onClick={() => { setSelectedCategory(null); setShowCategoryDropdown(false); }}
+                      className="w-full flex items-center gap-3 px-4 py-3 text-[14px] font-medium transition-colors text-left"
+                      style={{
+                        background: !selectedCategory ? 'rgba(0, 85, 196, 0.08)' : '#ffffff',
+                        color: !selectedCategory ? '#0055c4' : '#191c1e',
+                        borderBottom: '1px solid #e6e8ea',
+                      }}
+                    >
+                      <span className="material-symbols-outlined" style={{ fontSize: 20 }}>
+                        apps
+                      </span>
+                      All Categories
+                      {!selectedCategory && (
+                        <span className="material-symbols-outlined ml-auto" style={{ fontSize: 20, color: '#0055c4' }}>check</span>
+                      )}
+                    </button>
+                    {categoriesList.map((cat) => (
+                      <button
+                        key={cat.id}
+                        onClick={() => { setSelectedCategory(cat.slug); setShowCategoryDropdown(false); }}
+                        className="w-full flex items-center gap-3 px-4 py-3 text-[14px] font-medium transition-colors text-left"
+                        style={{
+                          background: selectedCategory === cat.slug ? 'rgba(0, 85, 196, 0.08)' : '#ffffff',
+                          color: selectedCategory === cat.slug ? '#0055c4' : '#191c1e',
+                          borderBottom: '1px solid #e6e8ea',
+                        }}
+                      >
+                        <span className="material-symbols-outlined" style={{ fontSize: 20 }}>
+                          label
+                        </span>
+                        {cat.label}
+                        {selectedCategory === cat.slug && (
+                          <span className="material-symbols-outlined ml-auto" style={{ fontSize: 20, color: '#0055c4' }}>check</span>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Price Range */}
+              <div>
+                <h4 className="text-[11px] font-bold uppercase tracking-widest mb-3" style={{ color: '#727786' }}>
+                  Price Range
+                </h4>
+                <div className="flex items-center gap-3">
+                  <div className="flex-1 relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[14px]" style={{ color: '#727786' }}>₦</span>
+                    <input
+                      type="number"
+                      value={priceRange.min}
+                      onChange={(e) => setPriceRange({ ...priceRange, min: e.target.value })}
+                      placeholder="Min"
+                      className="w-full h-11 pl-8 pr-3 rounded-xl text-[14px] focus:outline-none focus:ring-2"
+                      style={{
+                        border: '1px solid #c2c6d7',
+                        color: '#191c1e',
+                      }}
+                    />
+                  </div>
+                  <span className="text-[14px]" style={{ color: '#727786' }}>—</span>
+                  <div className="flex-1 relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[14px]" style={{ color: '#727786' }}>₦</span>
+                    <input
+                      type="number"
+                      value={priceRange.max}
+                      onChange={(e) => setPriceRange({ ...priceRange, max: e.target.value })}
+                      placeholder="Max"
+                      className="w-full h-11 pl-8 pr-3 rounded-xl text-[14px] focus:outline-none focus:ring-2"
+                      style={{
+                        border: '1px solid #c2c6d7',
+                        color: '#191c1e',
+                      }}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Apply Button */}
+              <button
+                onClick={() => setShowFilterModal(false)}
+                className="w-full h-12 rounded-full text-[14px] font-semibold active:scale-[0.98] transition-transform"
+                style={{ background: '#0055c4', color: '#ffffff' }}
+              >
+                Show {filteredDeals.length} {filteredDeals.length === 1 ? 'deal' : 'deals'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
 
-export default function PromotionsPage() {
-    return (
-        <Suspense fallback={<div className="min-h-screen bg-[#f4f5f6]" />}>
-            <PromotionsPageInner />
-        </Suspense>
-    );
+export default function DealsPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen" style={{ background: C.bg }} />}>
+      <DealsPageInner />
+    </Suspense>
+  );
 }

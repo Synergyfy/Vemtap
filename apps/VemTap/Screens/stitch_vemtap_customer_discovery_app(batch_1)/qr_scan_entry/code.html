@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+
+<html class="h-full" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Scan QR Code - VEMTAP</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "inverse-primary": "#b0c6ff",
+                    "surface-bright": "#f7f9fb",
+                    "tertiary-fixed": "#dae2fd",
+                    "on-tertiary-fixed": "#131b2e",
+                    "surface-container-highest": "#e0e3e5",
+                    "primary-fixed": "#d9e2ff",
+                    "surface-container-high": "#e6e8ea",
+                    "on-primary": "#ffffff",
+                    "primary-fixed-dim": "#b0c6ff",
+                    "tertiary-fixed-dim": "#bec6e0",
+                    "background": "#f7f9fb",
+                    "outline": "#727786",
+                    "primary": "#0055c4",
+                    "inverse-on-surface": "#eff1f3",
+                    "surface-dim": "#d8dadc",
+                    "on-surface-variant": "#424655",
+                    "error": "#ba1a1a",
+                    "secondary-fixed": "#d3e4fe",
+                    "secondary-fixed-dim": "#b7c8e1",
+                    "on-primary-fixed-variant": "#00429b",
+                    "surface-variant": "#e0e3e5",
+                    "on-secondary-fixed-variant": "#38485d",
+                    "on-secondary-container": "#54647a",
+                    "surface-container": "#eceef0",
+                    "on-primary-container": "#fcfaff",
+                    "surface-container-low": "#f2f4f6",
+                    "on-secondary": "#ffffff",
+                    "tertiary-container": "#6b738a",
+                    "on-error-container": "#93000a",
+                    "outline-variant": "#c2c6d7",
+                    "error-container": "#ffdad6",
+                    "surface": "#f7f9fb",
+                    "on-secondary-fixed": "#0b1c30",
+                    "on-error": "#ffffff",
+                    "tertiary": "#535a71",
+                    "secondary": "#505f76",
+                    "primary-container": "#066cf4",
+                    "on-tertiary-container": "#fcfaff",
+                    "on-primary-fixed": "#001945",
+                    "inverse-surface": "#2d3133",
+                    "on-tertiary": "#ffffff",
+                    "on-surface": "#191c1e",
+                    "surface-container-lowest": "#ffffff",
+                    "surface-tint": "#0058cb",
+                    "on-tertiary-fixed-variant": "#3f465c",
+                    "on-background": "#191c1e",
+                    "secondary-container": "#d0e1fb"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "stack-md": "1rem",
+                    "touch-target-min": "44px",
+                    "stack-sm": "0.5rem",
+                    "stack-lg": "1.5rem",
+                    "margin-main": "1.25rem",
+                    "gutter-grid": "1rem"
+            },
+            "fontFamily": {
+                    "headline-md": ["Inter"],
+                    "display-lg": ["Inter"],
+                    "label-sm": ["Inter"],
+                    "body-lg": ["Inter"],
+                    "body-md": ["Inter"],
+                    "headline-sm": ["Inter"],
+                    "label-lg": ["Inter"],
+                    "currency-display": ["Inter"]
+            },
+            "fontSize": {
+                    "headline-md": ["24px", {"lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                    "display-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "label-sm": ["12px", {"lineHeight": "16px", "fontWeight": "500"}],
+                    "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                    "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                    "headline-sm": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                    "label-lg": ["14px", {"lineHeight": "20px", "letterSpacing": "0.01em", "fontWeight": "600"}],
+                    "currency-display": ["20px", {"lineHeight": "24px", "fontWeight": "700"}]
+            }
+          }
+        }
+      }
+    </script>
+<style>
+        .scanner-frame {
+            position: relative;
+            width: 250px;
+            height: 250px;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.5);
+            margin: 0 auto;
+        }
+
+        .scanner-corner {
+            position: absolute;
+            width: 40px;
+            height: 40px;
+            border-color: #0055c4; /* VEMTAP Blue */
+            border-style: solid;
+            border-width: 0;
+            border-radius: 12px;
+        }
+
+        .corner-tl { top: 0; left: 0; border-top-width: 4px; border-left-width: 4px; border-top-left-radius: 20px; }
+        .corner-tr { top: 0; right: 0; border-top-width: 4px; border-right-width: 4px; border-top-right-radius: 20px; }
+        .corner-bl { bottom: 0; left: 0; border-bottom-width: 4px; border-left-width: 4px; border-bottom-left-radius: 20px; }
+        .corner-br { bottom: 0; right: 0; border-bottom-width: 4px; border-right-width: 4px; border-bottom-right-radius: 20px; }
+
+        .scan-line {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background: #0055c4;
+            box-shadow: 0 0 8px #0055c4;
+            animation: scan 2.5s infinite linear;
+        }
+
+        @keyframes scan {
+            0% { top: 0; opacity: 0; }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { top: 100%; opacity: 0; }
+        }
+        
+        .camera-feed {
+            background-color: #191c1e; /* Dark background to simulate camera inactive */
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-surface text-on-surface h-full flex flex-col antialiased font-sans">
+<!-- Top Navigation (Task Focused - No Bottom Nav) -->
+<header class="w-full px-margin-main py-stack-sm flex justify-between items-center bg-transparent absolute top-0 left-0 right-0 z-50">
+<!-- Close/Back Action -->
+<button class="w-10 h-10 flex items-center justify-center rounded-full bg-surface-container-highest/50 backdrop-blur-sm text-on-surface hover:bg-surface-container-high transition-colors">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">close</span>
+</button>
+<!-- Header Text -->
+<h1 class="text-headline-sm font-headline-sm text-on-surface drop-shadow-md">Scan</h1>
+<!-- Flash Toggle Placeholder -->
+<button class="w-10 h-10 flex items-center justify-center rounded-full bg-surface-container-highest/50 backdrop-blur-sm text-on-surface hover:bg-surface-container-high transition-colors">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">flashlight_on</span>
+</button>
+</header>
+<!-- Main Content Area -->
+<main class="flex-1 flex flex-col relative w-full h-full">
+<!-- Simulated Camera Background -->
+<div class="absolute inset-0 z-0 camera-feed w-full h-full">
+<div class="bg-cover bg-center w-full h-full opacity-60" data-alt="A slightly blurred view through a mobile phone camera lens in a modern urban environment. The scene is brightly lit with a light-mode aesthetic, showcasing a clean street scene in Nigeria with modern architecture. Soft lighting and depth of field create a realistic viewfinder effect." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuDqeEPKxxccFbQDMHmt6gpKitLPqksriGD0oUD97XLVTSWSqqz1zQTF-g8PeSdXgPFVz8r7oDgcfZfCEmXltHjuRY9txKDS-WYxB7RvM6X1Ag5gE6vNvTccjeX1Lv5S9oX8_bfyJHU4fW0H011VRpuKEimhGnrz_zQwBnLxlbvriKQDyewa1EDTn7Jar4IqOUlmtfFkQo0M_PpiehTlHwFugCVkWQ-EP-7w7vI5WQp1Opruj0MTNe2woQ')"></div>
+</div>
+<!-- Scanner UI Overlay -->
+<div class="relative z-10 flex flex-col flex-1 mt-24 px-margin-main items-center justify-center">
+<!-- Viewfinder Frame -->
+<div class="scanner-frame relative z-20 mb-8">
+<div class="scanner-corner corner-tl"></div>
+<div class="scanner-corner corner-tr"></div>
+<div class="scanner-corner corner-bl"></div>
+<div class="scanner-corner corner-br"></div>
+<div class="scan-line"></div>
+</div>
+<!-- Instructional Text -->
+<div class="text-center z-20 mb-10 max-w-sm px-4">
+<h2 class="text-headline-md font-headline-md text-on-primary mb-2 drop-shadow-lg">Scan a VEMTAP QR code</h2>
+<p class="text-body-md font-body-md text-surface-container-highest drop-shadow-md">Discover the business, deal or experience connected to this code.</p>
+</div>
+<!-- Manual Input Alternative (Bottom Sheet style docked to bottom) -->
+<div class="absolute bottom-0 left-0 right-0 bg-surface w-full rounded-t-xl px-margin-main py-6 pb-10 shadow-[0_-8px_24px_rgba(0,0,0,0.12)]">
+<!-- Drag Handle (Visual only) -->
+<div class="w-10 h-1 bg-outline-variant rounded-full mx-auto mb-6"></div>
+<div class="flex flex-col gap-4">
+<label class="text-label-lg font-label-lg text-on-surface font-semibold text-center w-full block" for="manual-link">Or enter a VEMTAP link</label>
+<div class="relative flex items-center">
+<span class="material-symbols-outlined absolute left-4 text-outline" style="font-variation-settings: 'FILL' 0;">link</span>
+<input class="w-full h-14 pl-12 pr-4 rounded-lg border border-outline-variant bg-surface text-body-lg font-body-lg text-on-surface focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none transition-all placeholder:text-outline-variant" id="manual-link" placeholder="vemtap.com/..." type="text"/>
+<button class="absolute right-2 w-10 h-10 flex items-center justify-center bg-primary text-on-primary rounded-md hover:bg-primary-container transition-colors">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">arrow_forward</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+</main>
+</body></html>
