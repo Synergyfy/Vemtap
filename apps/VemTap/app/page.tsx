@@ -230,10 +230,7 @@ export default function Homepage() {
             <HamburgerMenu />
             <div className="h-6 w-px" style={{ background: C.outlineVariant }} />
             <Link href="/" className="flex items-center gap-2">
-              <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ background: C.primary }}>
-                <span className="text-white font-bold text-[14px]">V</span>
-              </div>
-              <span className="font-extrabold text-[18px] tracking-tight" style={{ color: C.onSurface }}>VemTap</span>
+              <img src="/VEMTAP_PNG.png" alt="VemTap" className="h-9 w-auto" />
             </Link>
           </div>
           <form onSubmit={handleSearchSubmit} className="flex-1 max-w-[600px] flex">
@@ -267,7 +264,10 @@ export default function Homepage() {
           </div>
         </div>
         <div className="md:hidden flex items-center justify-between px-3 py-2">
-          <div className="flex items-center gap-1.5 min-w-0 flex-1">
+          <Link href="/" className="flex items-center gap-1.5 shrink-0">
+            <img src="/VEMTAP_PNG.png" alt="VemTap" className="h-7 w-auto" />
+          </Link>
+          <div className="flex items-center gap-1.5 min-w-0 flex-1 mx-2">
             <span className="material-symbols-outlined shrink-0" style={{ color: C.onSurfaceVariant, fontSize: 18 }}>location_on</span>
             <h1 className="text-[13px] font-semibold tracking-tight truncate" style={{ color: C.primary }}>{activeLocation}</h1>
           </div>
