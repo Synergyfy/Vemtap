@@ -33,6 +33,7 @@ export default function BusinessProductsPage() {
     const mainBranch = useMemo(() => branches.find((item: any) => item.isMainBranch) || branches[0] || null, [branches]);
     const resolvedBranch = branch || mainBranch;
     const branchId = resolvedBranch?.id;
+    const profileName = business?.name || businessSummary?.name || 'Business';
 
     const { data: productsData, isLoading: productsLoading } = useCatalogueItemsPublic(
         branchId || '',

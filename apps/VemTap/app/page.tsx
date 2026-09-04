@@ -174,8 +174,8 @@ export default function Homepage() {
 
   const popularBusinesses = useMemo(() => {
     const businesses: DealPublicBusiness[] =
-      businessesData?.businesses || businessesData?.data?.businesses ||
-      (Array.isArray(businessesData?.data) ? businessesData.data : []) || [];
+      businessesData?.businesses || (businessesData as any)?.data?.businesses ||
+      (Array.isArray((businessesData as any)?.data) ? (businessesData as any).data : []) || [];
     if (businesses.length > 0) {
       const categoryIcons: Record<string, string> = {
         food: 'restaurant', restaurant: 'restaurant', dining: 'restaurant',
@@ -351,7 +351,7 @@ export default function Homepage() {
         <section className="px-4 md:px-6 pt-6 pb-4">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-[16px] md:text-[20px] font-bold uppercase tracking-wider" style={{ color: C.onSurface }}>Popular Businesses</h2>
-            {businessesData?.businesses?.length > 0 && (
+            {businessesData?.businesses && businessesData.businesses.length > 0 && (
               <Link href="/deals" className="text-[13px] font-semibold" style={{ color: C.primary }}>View all</Link>
             )}
           </div>
@@ -381,7 +381,7 @@ export default function Homepage() {
                     <h3 className="text-[24px] sm:text-[28px] font-bold text-white tracking-tight truncate">{popularBusinesses.featured.name}</h3>
                   </div>
                   <p className="text-[14px] text-[#f7f9fb] flex items-center gap-1 font-normal opacity-95">
-                    <span className="material-symbols-outlined text-[16px]">{popularBusinesses.featured.icon || 'store'}</span>
+                    <span className="material-symbols-outlined text-[16px]">{(popularBusinesses.featured as any).icon || 'store'}</span>
                     {popularBusinesses.featured.category}
                   </p>
                 </div>

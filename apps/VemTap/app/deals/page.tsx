@@ -182,7 +182,7 @@ function DealsPageInner() {
     // Category filter
     if (selectedCategory) {
       result = result.filter(d => {
-        const dealCat = (d.categoryName || d.category || '').toLowerCase().replace(/\s+/g, '-');
+        const dealCat = (d.category || '').toLowerCase().replace(/\s+/g, '-');
         const dealTitle = (d.title || '').toLowerCase();
         const dealDesc = (d.description || '').toLowerCase();
         return dealCat.includes(selectedCategory.toLowerCase()) ||
@@ -211,8 +211,8 @@ function DealsPageInner() {
         break;
       case 'new_arrivals':
         result = [...result].sort((a, b) => {
-          const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-          const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+          const dateA = (a as any).createdAt ? new Date((a as any).createdAt).getTime() : 0;
+          const dateB = (b as any).createdAt ? new Date((b as any).createdAt).getTime() : 0;
           return dateB - dateA;
         });
         break;
@@ -232,8 +232,8 @@ function DealsPageInner() {
     switch (sortBy) {
       case 'newest':
         result = [...result].sort((a, b) => {
-          const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-          const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+          const dateA = (a as any).createdAt ? new Date((a as any).createdAt).getTime() : 0;
+          const dateB = (b as any).createdAt ? new Date((b as any).createdAt).getTime() : 0;
           return dateB - dateA;
         });
         break;
@@ -810,7 +810,6 @@ function DealsPageInner() {
                       style={{
                         border: '1px solid #c2c6d7',
                         color: '#191c1e',
-                        focusRing: '#0055c4',
                       }}
                     />
                   </div>
@@ -826,7 +825,6 @@ function DealsPageInner() {
                       style={{
                         border: '1px solid #c2c6d7',
                         color: '#191c1e',
-                        focusRing: '#0055c4',
                       }}
                     />
                   </div>
