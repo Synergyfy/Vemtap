@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Filter Services - VEMTAP</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "primary-fixed-dim": "#b0c6ff",
+                      "surface-container-lowest": "#ffffff",
+                      "background": "#f7f9fb",
+                      "on-background": "#191c1e",
+                      "error": "#ba1a1a",
+                      "on-secondary": "#ffffff",
+                      "on-error": "#ffffff",
+                      "secondary": "#505f76",
+                      "on-primary-container": "#fcfaff",
+                      "tertiary": "#535a71",
+                      "secondary-container": "#d0e1fb",
+                      "on-primary-fixed": "#001945",
+                      "on-tertiary-container": "#fcfaff",
+                      "on-primary": "#ffffff",
+                      "on-tertiary": "#ffffff",
+                      "on-tertiary-fixed-variant": "#3f465c",
+                      "primary": "#0055c4",
+                      "outline": "#727786",
+                      "inverse-primary": "#b0c6ff",
+                      "secondary-fixed-dim": "#b7c8e1",
+                      "surface-container-low": "#f2f4f6",
+                      "surface-container-high": "#e6e8ea",
+                      "inverse-on-surface": "#eff1f3",
+                      "on-primary-fixed-variant": "#00429b",
+                      "on-tertiary-fixed": "#131b2e",
+                      "surface-tint": "#0058cb",
+                      "tertiary-fixed-dim": "#bec6e0",
+                      "primary-container": "#066cf4",
+                      "on-surface": "#191c1e",
+                      "on-surface-variant": "#424655",
+                      "error-container": "#ffdad6",
+                      "surface-bright": "#f7f9fb",
+                      "tertiary-fixed": "#dae2fd",
+                      "surface-dim": "#d8dadc",
+                      "on-secondary-fixed-variant": "#38485d",
+                      "on-error-container": "#93000a",
+                      "tertiary-container": "#6b738a",
+                      "inverse-surface": "#2d3133",
+                      "primary-fixed": "#d9e2ff",
+                      "on-secondary-container": "#54647a",
+                      "surface-variant": "#e0e3e5",
+                      "surface-container": "#eceef0",
+                      "on-secondary-fixed": "#0b1c30",
+                      "secondary-fixed": "#d3e4fe",
+                      "outline-variant": "#c2c6d7",
+                      "surface": "#f7f9fb",
+                      "surface-container-highest": "#e0e3e5"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "stack-md": "1rem",
+                      "stack-lg": "1.5rem",
+                      "stack-sm": "0.5rem",
+                      "touch-target-min": "44px",
+                      "margin-main": "1.25rem",
+                      "gutter-grid": "1rem"
+              },
+              "fontFamily": {
+                      "headline-sm": [
+                              "Inter"
+                      ],
+                      "label-sm": [
+                              "Inter"
+                      ],
+                      "body-lg": [
+                              "Inter"
+                      ],
+                      "body-md": [
+                              "Inter"
+                      ],
+                      "currency-display": [
+                              "Inter"
+                      ],
+                      "display-lg": [
+                              "Inter"
+                      ],
+                      "label-lg": [
+                              "Inter"
+                      ],
+                      "headline-md": [
+                              "Inter"
+                      ]
+              },
+              "fontSize": {
+                      "headline-sm": [
+                              "20px",
+                              {
+                                      "lineHeight": "28px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "label-sm": [
+                              "12px",
+                              {
+                                      "lineHeight": "16px",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "body-lg": [
+                              "16px",
+                              {
+                                      "lineHeight": "24px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "body-md": [
+                              "14px",
+                              {
+                                      "lineHeight": "20px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "currency-display": [
+                              "20px",
+                              {
+                                      "lineHeight": "24px",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "display-lg": [
+                              "32px",
+                              {
+                                      "lineHeight": "40px",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "label-lg": [
+                              "14px",
+                              {
+                                      "lineHeight": "20px",
+                                      "letterSpacing": "0.01em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "headline-md": [
+                              "24px",
+                              {
+                                      "lineHeight": "32px",
+                                      "letterSpacing": "-0.01em",
+                                      "fontWeight": "600"
+                              }
+                      ]
+              }
+      },
+          },
+        }
+      </script>
+<style>/* Base styles to handle the overlay */
+body {
+    background-color: #f7f9fb;
+    /* surface */
+    margin: 0;
+    padding: 0;
+    font-family: "Inter", sans-serif;
+    overflow: hidden;
+    /* Prevent background scrolling when sheet is open */
+    }
+/* Simulating the background page content behind the bottom sheet */
+.mock-background {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-image: url(https://lh3.googleusercontent.com/aida-public/AB6AXuAt6gzdPEVeFstQcvkKCRMXR-ZHdamTyxCeiHndTEaJ4JOzRpRANJdU3JC90AFXhlQjRzrPy_XNzNKsyvnsGd49bpTaQpoEgpcGE9lYlkfaqVEfNXJCg2G7v2OdU-6Z7y9HsOL3W0S_--crEij6hjZ6c8VEAZLt_12qBqWa_VmDc64I6_zYL1JX95aP0G6feS6bSLm2gN1TP2DWpJ2psYco_60EWUKuMSGc19QG4UYz98z1SeiMcstLfA);
+    background-size: cover;
+    background-position: center;
+    opacity: 0.3;
+    z-index: 0
+    }
+/* Scrim / Overlay background */
+.scrim {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(25, 28, 30, 0.4);
+    /* on-background with opacity */
+    z-index: 10;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center
+    }
+/* Animation for sliding up */
+@keyframes slideUp {
+    from {
+        transform: translateY(100%);
+        } to {
+        transform: translateY(0);
+        }
+    }
+.bottom-sheet {
+    animation: slideUp 0.3s cubic-bezier(0.2, 0, 0, 1) forwards
+    }
+/* Hide scrollbar for cleaner look in the filter area */
+.no-scrollbar::-webkit-scrollbar {
+    display: none
+    }
+.no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none
+    }</style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-surface text-on-surface">
+<!-- Mock Background for Context -->
+<div class="mock-background" data-alt="A blurred view of a modern Nigerian city street scene, showcasing professional corporate discovery app aesthetics. Clean, well-lit light mode interface style, subtle depth of field. High quality professional photography, corporate modern design system colors." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuBBuDfnyVLG9shkF7Y7pfhevXqnXtMS-tbM6zH4dTyosiRs1GQyBYBSKPuYhkx4Lt6uY2mKb53OuTKJ87oWymbBXoiXNwg3ZK3CXm7dyUHU1hM3lVpCgWjqfiPYprOqcDdk1fZ9lAOATsD8j_u2RuesnVApHz1VvwxxdlSd3ZQ1xFET_Xws3xYkMydxX_bwIEdbeD-hqTAvJiqCWoiwdaMVXmHxAnnVFj_ZHLudjq5adX5EGaxfMFaOIg')"></div>
+<!-- The Scrim / Overlay -->
+<div class="scrim">
+<!-- Bottom Sheet Container -->
+<div class="bottom-sheet w-full max-w-md bg-surface-container-lowest rounded-t-[24px] shadow-lg flex flex-col z-20 max-h-[751px]">
+<!-- Handle / Drag Pill -->
+<div class="w-full flex justify-center pt-4 pb-2">
+<div class="w-10 h-1 rounded-full bg-outline-variant"></div>
+</div>
+<!-- Header -->
+<div class="flex items-center justify-between px-margin-main pb-4 border-b border-surface-variant">
+<h2 class="font-headline-sm text-headline-sm text-on-surface">Filter Services</h2>
+<button class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-surface-container-low transition-colors text-on-surface-variant">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">close</span>
+</button>
+</div>
+<!-- Scrollable Content -->
+<div class="flex-1 overflow-y-auto px-margin-main py-stack-lg no-scrollbar flex flex-col gap-stack-lg">
+<!-- Category Section -->
+<div>
+<h3 class="font-label-lg text-label-lg text-on-surface mb-stack-md">Categories</h3>
+<div class="flex flex-wrap gap-stack-sm">
+<!-- Category: Beauty -->
+<label class="cursor-pointer relative">
+<input class="peer sr-only" type="checkbox"/>
+<div class="px-4 py-2 rounded-full border border-outline-variant bg-surface-container-lowest text-on-surface-variant font-label-lg text-label-lg transition-all peer-checked:bg-secondary-container peer-checked:border-secondary-container peer-checked:text-on-secondary-container hover:bg-surface-container-low flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px]" style="font-variation-settings: 'FILL' 0;">face</span>
+                                Beauty
+                            </div>
+</label>
+<!-- Category: Business -->
+<label class="cursor-pointer relative">
+<input checked="" class="peer sr-only" type="checkbox"/>
+<div class="px-4 py-2 rounded-full border border-outline-variant bg-surface-container-lowest text-on-surface-variant font-label-lg text-label-lg transition-all peer-checked:bg-secondary-container peer-checked:border-secondary-container peer-checked:text-on-secondary-container hover:bg-surface-container-low flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px]" style="font-variation-settings: 'FILL' 1;">work</span>
+                                Business
+                            </div>
+</label>
+<!-- Category: Tech Support -->
+<label class="cursor-pointer relative">
+<input class="peer sr-only" type="checkbox"/>
+<div class="px-4 py-2 rounded-full border border-outline-variant bg-surface-container-lowest text-on-surface-variant font-label-lg text-label-lg transition-all peer-checked:bg-secondary-container peer-checked:border-secondary-container peer-checked:text-on-secondary-container hover:bg-surface-container-low flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px]" style="font-variation-settings: 'FILL' 0;">computer</span>
+                                Tech Support
+                            </div>
+</label>
+</div>
+</div>
+<!-- Service Type Section -->
+<div>
+<h3 class="font-label-lg text-label-lg text-on-surface mb-stack-md">Service Type</h3>
+<div class="grid grid-cols-2 gap-gutter-grid">
+<!-- Type: In-Person -->
+<label class="cursor-pointer relative">
+<input checked="" class="peer sr-only" name="service_type" type="radio"/>
+<div class="h-full p-4 rounded-xl border border-outline-variant bg-surface-container-lowest flex flex-col items-center justify-center gap-2 transition-all peer-checked:border-primary peer-checked:bg-primary-fixed peer-checked:text-on-primary-fixed hover:bg-surface-container-low">
+<span class="material-symbols-outlined text-[24px]" style="font-variation-settings: 'FILL' 0;">storefront</span>
+<span class="font-label-lg text-label-lg text-center">In-Person</span>
+</div>
+</label>
+<!-- Type: Remote -->
+<label class="cursor-pointer relative">
+<input class="peer sr-only" name="service_type" type="radio"/>
+<div class="h-full p-4 rounded-xl border border-outline-variant bg-surface-container-lowest flex flex-col items-center justify-center gap-2 transition-all peer-checked:border-primary peer-checked:bg-primary-fixed peer-checked:text-on-primary-fixed hover:bg-surface-container-low text-on-surface-variant">
+<span class="material-symbols-outlined text-[24px]" style="font-variation-settings: 'FILL' 0;">public</span>
+<span class="font-label-lg text-label-lg text-center">Remote</span>
+</div>
+</label>
+</div>
+</div>
+<!-- Booking Availability Section -->
+<div>
+<h3 class="font-label-lg text-label-lg text-on-surface mb-stack-md">Booking Availability</h3>
+<div class="flex flex-col gap-3">
+<label class="flex items-center gap-3 p-3 rounded-lg border border-outline-variant bg-surface-container-lowest cursor-pointer hover:bg-surface-container-low transition-colors">
+<div class="relative flex items-center">
+<input class="peer h-5 w-5 appearance-none rounded-sm border-2 border-outline-variant checked:border-primary checked:bg-primary transition-all" type="checkbox"/>
+<span class="material-symbols-outlined absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-on-primary text-[16px] opacity-0 peer-checked:opacity-100 pointer-events-none" style="font-variation-settings: 'FILL' 1;">check</span>
+</div>
+<span class="font-body-md text-body-md text-on-surface">Available Today</span>
+</label>
+<label class="flex items-center gap-3 p-3 rounded-lg border border-outline-variant bg-surface-container-lowest cursor-pointer hover:bg-surface-container-low transition-colors">
+<div class="relative flex items-center">
+<input class="peer h-5 w-5 appearance-none rounded-sm border-2 border-outline-variant checked:border-primary checked:bg-primary transition-all" type="checkbox"/>
+<span class="material-symbols-outlined absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-on-primary text-[16px] opacity-0 peer-checked:opacity-100 pointer-events-none" style="font-variation-settings: 'FILL' 1;">check</span>
+</div>
+<span class="font-body-md text-body-md text-on-surface">Weekends Only</span>
+</label>
+<label class="flex items-center gap-3 p-3 rounded-lg border border-outline-variant bg-surface-container-lowest cursor-pointer hover:bg-surface-container-low transition-colors">
+<div class="relative flex items-center">
+<input class="peer h-5 w-5 appearance-none rounded-sm border-2 border-outline-variant checked:border-primary checked:bg-primary transition-all" type="checkbox"/>
+<span class="material-symbols-outlined absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-on-primary text-[16px] opacity-0 peer-checked:opacity-100 pointer-events-none" style="font-variation-settings: 'FILL' 1;">check</span>
+</div>
+<span class="font-body-md text-body-md text-on-surface">Instantly Bookable</span>
+</label>
+</div>
+</div>
+<!-- Price Range (Bonus for discovery context) -->
+<div class="pb-stack-md">
+<h3 class="font-label-lg text-label-lg text-on-surface mb-stack-md">Price Range</h3>
+<div class="px-2">
+<div class="h-1 w-full bg-surface-variant rounded-full relative mb-6 mt-4">
+<div class="absolute h-1 bg-primary left-1/4 right-1/4 rounded-full"></div>
+<div class="absolute w-5 h-5 bg-primary rounded-full top-1/2 -translate-y-1/2 -translate-x-1/2 left-1/4 shadow-sm border-2 border-surface-container-lowest"></div>
+<div class="absolute w-5 h-5 bg-primary rounded-full top-1/2 -translate-y-1/2 translate-x-1/2 right-1/4 shadow-sm border-2 border-surface-container-lowest"></div>
+</div>
+<div class="flex justify-between items-center text-on-surface-variant font-body-md text-body-md">
+<span>$10</span>
+<span>$500+</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Sticky Footer Actions -->
+<div class="p-margin-main border-t border-surface-variant bg-surface-container-lowest pb-8 md:pb-margin-main flex gap-gutter-grid">
+<button class="flex-1 min-h-[48px] rounded-full border border-primary text-primary font-label-lg text-label-lg hover:bg-surface-container-low transition-colors flex items-center justify-center">
+                    Reset
+                </button>
+<button class="flex-[2] min-h-[48px] rounded-full bg-primary text-on-primary font-label-lg text-label-lg shadow-sm hover:bg-on-primary-fixed-variant transition-colors flex items-center justify-center">
+                    Apply Filters
+                </button>
+</div>
+</div>
+</div>
+</body></html>

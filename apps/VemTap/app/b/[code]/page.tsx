@@ -1,65 +1,79 @@
 'use client';
 
-import Script from 'next/script';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { useParams } from 'next/navigation';
-import {
-    MapPin,
-    Phone,
-    Globe,
-    Mail,
-    Facebook,
-    Instagram,
-    Share2,
-    Linkedin,
-    Twitter,
-    Youtube,
-    Music2,
-    Gift,
-    ChevronRight,
-    CheckCircle2,
-    Building2,
-    MessageCircle,
-    Tag,
-    Briefcase,
-    Clock,
-    Zap,
-    ArrowLeft,
-    Check,
-    X,
-    ExternalLink,
-} from 'lucide-react';
+import { useParams, useRouter } from 'next/navigation';
+import Link from 'next/link';
+import Script from 'next/script';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
-import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/useAuthStore';
-
 import { usePublicBusiness, usePublicBranch } from '@/services/public/hooks';
 import { useCatalogueItemsPublic } from '@/services/catalogue/hooks';
-import { BusinessHours } from '@/services/public/types';
 import { normalizeDayHours } from '@/lib/businessHours';
 import { ChatConnectModal } from '@/components/visitor/ChatConnectModal';
-
-const displayText = (value?: string | null) => (value && value.trim().length > 0 ? value : 'Not provided');
+import ClaimDealModal from '@/components/storefront/ClaimDealModal';
+import QuickActionsSheet from '@/components/storefront/QuickActionsSheet';
+import ShareSheet from '@/components/storefront/ShareSheet';
+import PublicBottomNav from '@/components/public/PublicBottomNav';
+import HamburgerMenu from '@/components/public/HamburgerMenu';
 
 const formatLocation = (address?: string | null, city?: string | null, state?: string | null) => {
     const parts = [address, city, state].filter((part) => part && String(part).trim().length > 0);
     return parts.length > 0 ? parts.join(', ') : 'Location not provided';
 };
 
-const formatHours = (hours?: BusinessHours) => {
-    const norm = normalizeDayHours(hours);
-    if (!norm || norm.isClosed) return 'Closed';
-    if (!norm.from || !norm.to) return 'Closed';
-    return `${norm.from} - ${norm.to}`;
+const formatNaira = (value: number | string | null | undefined) => {
+    const num = Number(value);
+    if (!Number.isFinite(num)) return '₦0';
+    return `₦${num.toLocaleString('en-NG')}`;
 };
 
 const DAY_NAMES = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'] as const;
-const DAY_ORDER = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'] as const;
-const DAY_DISPLAY: Record<string, string> = {
-    monday: 'Monday', tuesday: 'Tuesday', wednesday: 'Wednesday',
-    thursday: 'Thursday', friday: 'Friday', saturday: 'Saturday', sunday: 'Sunday',
+
+const FALLBACK_COVERS = [
+    'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800&h=400&fit=crop',
+    'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=800&h=400&fit=crop',
+];
+
+const SECTOR_COVERS: Record<string, string> = {
+    food: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800&h=400&fit=crop',
+    restaurant: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800&h=400&fit=crop',
+    dining: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=800&h=400&fit=crop',
+    cafe: 'https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?w=800&h=400&fit=crop',
+    bar: 'https://images.unsplash.com/photo-1470337458703-46ad1756a187?w=800&h=400&fit=crop',
+    beauty: 'https://images.unsplash.com/photo-1560066984-138dadb4c035?w=800&h=400&fit=crop',
+    spa: 'https://images.unsplash.com/photo-1540555700478-4be289fbec6d?w=800&h=400&fit=crop',
+    salon: 'https://images.unsplash.com/photo-1562322140-8baeececf3df?w=800&h=400&fit=crop',
+    fashion: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=800&h=400&fit=crop',
+    clothing: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=800&h=400&fit=crop',
+    retail: 'https://images.unsplash.com/photo-1604719312566-8912e9227c6a?w=800&h=400&fit=crop',
+    tech: 'https://images.unsplash.com/photo-1518770660439-4636190af475?w=800&h=400&fit=crop',
+    electronics: 'https://images.unsplash.com/photo-1468495244123-6c6c332eeece?w=800&h=400&fit=crop',
+    fitness: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=800&h=400&fit=crop',
+    gym: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=800&h=400&fit=crop',
+    health: 'https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?w=800&h=400&fit=crop',
+    medical: 'https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?w=800&h=400&fit=crop',
+    home: 'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=800&h=400&fit=crop',
+    furniture: 'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=800&h=400&fit=crop',
+    automotive: 'https://images.unsplash.com/photo-1494976388531-d1058494cdd8?w=800&h=400&fit=crop',
+    education: 'https://images.unsplash.com/photo-1523050854058-8df90110c8f1?w=800&h=400&fit=crop',
+    events: 'https://images.unsplash.com/photo-1501281668745-f7f57925c3b4?w=800&h=400&fit=crop',
+    photography: 'https://images.unsplash.com/photo-1452587925148-ce544e77e70d?w=800&h=400&fit=crop',
+    travel: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800&h=400&fit=crop',
+    real_estate: 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=800&h=400&fit=crop',
+    default: 'https://images.unsplash.com/photo-1497366216548-37526070297c?w=800&h=400&fit=crop',
 };
+
+const FALLBACK_PRODUCTS = [
+    { name: 'Signature Dish', price: 5000, image: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=300&h=240&fit=crop' },
+    { name: 'Special Combo', price: 8500, image: 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=300&h=240&fit=crop' },
+    { name: 'Premium Platter', price: 12000, image: 'https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?w=300&h=240&fit=crop' },
+];
+
+const FALLBACK_DEALS = [
+    { title: 'Special Offer', description: 'Limited time deal for our valued customers.', badge: '20% OFF', badgeColor: '#ffdad6' },
+    { title: 'Combo Deal', description: 'Get a free drink with any two items.', badge: 'FREE DRINK', badgeColor: '#066cf4' },
+];
 
 export default function PublicBusinessProfilePage() {
     const params = useParams();
@@ -95,14 +109,13 @@ export default function PublicBusinessProfilePage() {
     );
 
     const resolvedBranch = branch || mainBranch;
-
     const branchId = resolvedBranch?.id;
     const businessId = useMemo(
         () => business?.id || branch?.businessId || branchData?.business?.id,
         [branch?.businessId, branchData?.business?.id, business?.id]
     );
 
-    // ─── NEW: INTEGRATED LIVE OFFERS ENDPOINT ───
+    // ─── OFFERS ───
     const { data: offersData, isLoading: offersLoading } = useQuery<any[]>({
         queryKey: ['public', 'offers', branchId],
         queryFn: async () => {
@@ -121,7 +134,7 @@ export default function PublicBusinessProfilePage() {
         enabled: !!branchId,
     });
 
-    // ─── NEW: INTEGRATED LIVE SERVICES ENDPOINT ───
+    // ─── SERVICES ───
     const { data: servicesData, isLoading: servicesLoading } = useCatalogueItemsPublic(
         branchId || '',
         { itemType: 'service' as any }
@@ -131,20 +144,20 @@ export default function PublicBusinessProfilePage() {
         return items;
     }, [servicesData]);
 
-    // ─── LOCAL STATE ───
-    const [logoFailed, setLogoFailed] = useState(false);
-    const [logoLoaded, setLogoLoaded] = useState(false);
-    const [mapCoords, setMapCoords] = useState<{ lat: number; lon: number } | null>(null);
-    const [leafletReady, setLeafletReady] = useState(false);
-    const mapRef = useRef<HTMLDivElement | null>(null);
-    const mapInstanceRef = useRef<any>(null);
-    const markerRef = useRef<any>(null);
+    // ─── PRODUCTS ───
+    const { data: productsData, isLoading: productsLoading } = useCatalogueItemsPublic(
+        branchId || '',
+        { itemType: 'product' as any }
+    );
+    const products = useMemo(() => {
+        const items = (productsData as any)?.data || (Array.isArray(productsData) ? productsData : []);
+        return items;
+    }, [productsData]);
 
-    // Chat Auth Modal State
+    // ─── LOCAL STATE ───
+    const [mapCoords, setMapCoords] = useState<{ lat: number; lon: number } | null>(null);
     const [showChatModal, setShowChatModal] = useState(false);
     const [isRecordingVisit, setIsRecordingVisit] = useState(false);
-
-    // OTP Claiming Modal States
     const [selectedOffer, setSelectedOffer] = useState<any | null>(null);
     const [claimStep, setClaimStep] = useState<'details' | 'otp' | 'success'>('details');
     const [claimForm, setClaimForm] = useState({ firstName: '', lastName: '', email: '', phone: '' });
@@ -152,49 +165,23 @@ export default function PublicBusinessProfilePage() {
     const [claimingError, setClaimingError] = useState<string | null>(null);
     const [isSubmittingClaim, setIsSubmittingClaim] = useState(false);
     const [successPayload, setSuccessPayload] = useState<any | null>(null);
+    const [showShareSheet, setShowShareSheet] = useState(false);
+    const [showActionsSheet, setShowActionsSheet] = useState(false);
+    const [showActionSheet, setShowActionSheet] = useState(false);
 
-    // ─── GEOCODE EFFECT ───
-    useEffect(() => {
-        let isMounted = true;
-        const address = formatLocation(
-            resolvedBranch?.address || business?.address,
-            resolvedBranch?.city || business?.city,
-            resolvedBranch?.state || business?.state
-        );
-        if (!address || address === 'Location not provided') {
-            setMapCoords(null);
-            return;
-        }
-        const lookup = async () => {
-            try {
-                const response = await fetch(
-                    `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&limit=1`,
-                    { headers: { 'Accept-Language': 'en' } }
-                );
-                if (!response.ok) return;
-                const data = await response.json();
-                if (Array.isArray(data) && data[0] && isMounted) {
-                    setMapCoords({ lat: Number(data[0].lat), lon: Number(data[0].lon) });
-                }
-            } catch {
-                if (isMounted) setMapCoords(null);
-            }
-        };
-        lookup();
-        return () => { isMounted = false; };
-    }, [
-        business?.address, business?.city, business?.state,
-        resolvedBranch?.address, resolvedBranch?.city, resolvedBranch?.state,
-    ]);
+    // ─── LEAFLET MAP ───
+    const [leafletReady, setLeafletReady] = useState(false);
+    const mapRef = useRef<HTMLDivElement | null>(null);
+    const mapInstanceRef = useRef<any>(null);
+    const markerRef = useRef<any>(null);
 
-    // ─── LEAFLET MAP EFFECT ───
     useEffect(() => {
         const initMap = () => {
             if (!mapRef.current || !mapCoords || !leafletReady) return;
             const leaflet = (window as typeof window & { L?: any }).L;
             if (!leaflet) return;
             if (!mapInstanceRef.current) {
-                mapInstanceRef.current = leaflet.map(mapRef.current).setView([mapCoords.lat, mapCoords.lon], 14);
+                mapInstanceRef.current = leaflet.map(mapRef.current).setView([mapCoords.lat, mapCoords.lon], 15);
                 leaflet
                     .tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
                         attribution: '&copy; OpenStreetMap contributors',
@@ -202,7 +189,7 @@ export default function PublicBusinessProfilePage() {
                     .addTo(mapInstanceRef.current);
                 markerRef.current = leaflet.marker([mapCoords.lat, mapCoords.lon]).addTo(mapInstanceRef.current);
             } else {
-                mapInstanceRef.current.setView([mapCoords.lat, mapCoords.lon], 14);
+                mapInstanceRef.current.setView([mapCoords.lat, mapCoords.lon], 15);
                 if (markerRef.current) {
                     markerRef.current.setLatLng([mapCoords.lat, mapCoords.lon]);
                 }
@@ -218,21 +205,76 @@ export default function PublicBusinessProfilePage() {
         };
     }, [mapCoords, leafletReady]);
 
-    // ─── LEAFLET CSS ───
+    // ─── GEOCODE EFFECT ───
     useEffect(() => {
-        const id = 'leaflet-css';
-        if (!document.getElementById(id)) {
-            const link = document.createElement('link');
-            link.id = id;
-            link.rel = 'stylesheet';
-            link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
-            document.head.appendChild(link);
+        let isMounted = true;
+        const rawAddress = formatLocation(
+            resolvedBranch?.address || business?.address,
+            resolvedBranch?.city || business?.city,
+            resolvedBranch?.state || business?.state
+        );
+        if (!rawAddress || rawAddress === 'Location not provided') {
+            // Default to Abuja center if no address
+            if (isMounted) setMapCoords({ lat: 9.0579, lon: 7.4951 });
+            return;
         }
-    }, []);
+        // Clean duplicate parts (e.g. "Asokoro, Asokoro, Asokoro" → "Asokoro")
+        const cleanAddress = rawAddress
+            .split(',')
+            .map(s => s.trim())
+            .filter((v, i, arr) => arr.indexOf(v) === i)
+            .join(', ');
+
+        const lookup = async (query: string) => {
+            try {
+                const response = await fetch(
+                    `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1&countrycodes=ng`,
+                    { headers: { 'Accept-Language': 'en' } }
+                );
+                if (!response.ok) return false;
+                const data = await response.json();
+                if (Array.isArray(data) && data[0] && isMounted) {
+                    setMapCoords({ lat: Number(data[0].lat), lon: Number(data[0].lon) });
+                    return true;
+                }
+                return false;
+            } catch {
+                return false;
+            }
+        };
+
+        const run = async () => {
+            // Try cleaned full address first
+            let found = await lookup(cleanAddress);
+            // If failed, try just city + state
+            if (!found) {
+                const city = resolvedBranch?.city || business?.city || '';
+                const state = resolvedBranch?.state || business?.state || '';
+                if (city || state) {
+                    found = await lookup(`${city}${city && state ? ', ' : ''}${state}, Nigeria`);
+                }
+            }
+            // If still failed, try just state + Nigeria
+            if (!found) {
+                const state = resolvedBranch?.state || business?.state || '';
+                if (state) {
+                    found = await lookup(`${state}, Nigeria`);
+                }
+            }
+            // Last resort: default to Abuja
+            if (!found && isMounted) {
+                setMapCoords({ lat: 9.0579, lon: 7.4951 });
+            }
+        };
+        run();
+        return () => { isMounted = false; };
+    }, [
+        business?.address, business?.city, business?.state,
+        resolvedBranch?.address, resolvedBranch?.city, resolvedBranch?.state,
+    ]);
 
     // ─── DERIVED STATE ───
     const isLoading = branchLoading || businessByCodeLoading || (businessByBranchLoading || false);
-    const activeShowRewards = resolvedBranch?.showRewards ?? business?.showRewards ?? true;
 
     const locationAddress = formatLocation(
         resolvedBranch?.address || business?.address,
@@ -251,35 +293,44 @@ export default function PublicBusinessProfilePage() {
         return business?.logoUrl || businessSummary?.logoUrl || resolvedBranch?.logoUrl || '';
     }, [business, businessSummary, resolvedBranch?.logoUrl]);
 
-    useEffect(() => {
-        setLogoFailed(false);
-        setLogoLoaded(false);
-    }, [profileLogo]);
+    const profileCover = useMemo(() => {
+        const branchAny = resolvedBranch as any;
+        const businessAny = business as any;
+        return (
+            branchAny?.coverImage ||
+            businessAny?.coverImage ||
+            businessAny?.photos?.[0] ||
+            branchAny?.photos?.[0] ||
+            ''
+        );
+    }, [business, resolvedBranch]);
+
+    const profileCategory = useMemo(() => {
+        const businessAny = business as any;
+        const cat = businessAny?.category;
+        if (typeof cat === 'string') return cat.toLowerCase();
+        if (cat?.name) return cat.name.toLowerCase();
+        if (cat?.slug) return cat.slug.toLowerCase();
+        return '';
+    }, [business]);
+
+    const sectorCover = useMemo(() => {
+        if (!profileCategory) return SECTOR_COVERS.default;
+        const match = Object.keys(SECTOR_COVERS).find(
+            (key) => key !== 'default' && profileCategory.includes(key)
+        );
+        return match ? SECTOR_COVERS[match] : SECTOR_COVERS.default;
+    }, [profileCategory]);
+
+    const profileWhatsapp = useMemo(() => {
+        return resolvedBranch?.whatsappNumber || (business as any)?.whatsappNumber || null;
+    }, [business, resolvedBranch]);
 
     const profileEmail = resolvedBranch?.officialEmail || business?.officialEmail || (business as any)?.email || (business as any)?.owner?.email;
     const profilePhone = resolvedBranch?.phone || business?.phone || (business as any)?.owner?.phone;
-    const profileWebsite = resolvedBranch?.website || business?.website;
     const profileAbout = resolvedBranch?.about || business?.about || business?.goal || (business as any)?.description;
-    const profileWelcome = resolvedBranch?.welcomeMessage || business?.welcomeMessage || business?.welcomeTitle;
+
     const profileHours = resolvedBranch?.businessHours || business?.openingHours;
-
-    const profileSocials = {
-        facebookUrl: resolvedBranch?.facebookUrl || business?.facebookUrl,
-        instagramUrl: resolvedBranch?.instagramUrl || business?.instagramUrl,
-        xUrl: resolvedBranch?.xUrl || business?.xUrl,
-        linkedinUrl: resolvedBranch?.linkedinUrl || business?.linkedinUrl,
-        tiktokUrl: resolvedBranch?.tiktokUrl || business?.tiktokUrl,
-        youtubeUrl: resolvedBranch?.youtubeUrl || business?.youtubeUrl,
-    };
-
-    const socialItems = [
-        { key: 'facebook', label: 'Facebook', icon: Facebook, url: profileSocials.facebookUrl },
-        { key: 'instagram', label: 'Instagram', icon: Instagram, url: profileSocials.instagramUrl },
-        { key: 'x', label: 'X (Twitter)', icon: Twitter, url: profileSocials.xUrl },
-        { key: 'linkedin', label: 'LinkedIn', icon: Linkedin, url: profileSocials.linkedinUrl },
-        { key: 'tiktok', label: 'TikTok', icon: Music2, url: profileSocials.tiktokUrl },
-        { key: 'youtube', label: 'YouTube', icon: Youtube, url: profileSocials.youtubeUrl },
-    ];
 
     const todayIndex = new Date().getDay();
     const todayName = DAY_NAMES[todayIndex];
@@ -298,19 +349,23 @@ export default function PublicBusinessProfilePage() {
         return currentMinutes >= openMinutes && currentMinutes < closeMinutes;
     }, [profileHours, todayName]);
 
-    const handleShare = async () => {
-        const url = window.location.href;
-        if (navigator.share) {
-            try { await navigator.share({ title: profileName, url }); } catch { /* cancelled */ }
-        } else {
-            try { await navigator.clipboard.writeText(url); } catch { /* fallback */ }
-        }
+    const directionsUrl = mapCoords
+        ? `https://www.google.com/maps/dir/?api=1&destination=${mapCoords.lat},${mapCoords.lon}`
+        : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(resolvedLocationDisplay || '')}`;
+
+    const activeShowRewards = resolvedBranch?.showRewards ?? business?.showRewards ?? true;
+    const activeOffers = useMemo(() => (offersData || []).slice(0, 6), [offersData]);
+    const activeProducts = useMemo(() => (products || []).slice(0, 8), [products]);
+
+    // ─── HANDLERS ───
+    const handleShare = () => {
+        setShowActionsSheet(false);
+        setShowShareSheet(true);
     };
 
     const handleChatClick = () => {
         if (isAuthenticated) {
-            const chatUrl = `/customer/messaging/chat?businessId=${businessId || ''}`;
-            router.push(chatUrl);
+            router.push(`/customer/messaging/chat?businessId=${businessId || ''}`);
         } else {
             setShowChatModal(true);
         }
@@ -319,48 +374,24 @@ export default function PublicBusinessProfilePage() {
     const handleChatModalSuccess = async () => {
         setShowChatModal(false);
         setIsRecordingVisit(true);
-
         try {
-            // Small delay to ensure Zustand persist middleware writes token to localStorage
             await new Promise((r) => setTimeout(r, 300));
-
-            // Use the resolved branch's uniqueCode (not URL code which could be a business code)
             const branchCode = resolvedBranch?.uniqueCode;
-            console.log('[CHAT] Branch uniqueCode:', branchCode, '| resolvedBranch id:', resolvedBranch?.id);
-
             if (branchCode) {
-                console.log('[CHAT] Getting device context for branchCode:', branchCode);
                 const deviceContext = await api.get(`/tap/context/${branchCode}`);
-                console.log('[CHAT] Device context response:', JSON.stringify(deviceContext));
                 const deviceCode = deviceContext?.device?.code;
-                console.log('[CHAT] Resolved deviceCode:', deviceCode);
-
                 if (deviceCode) {
-                    console.log('[CHAT] Recording portal visit with deviceCode:', deviceCode);
-                    const visitResult = await api.post('/visitors/portal-visit', { deviceCode });
-                    console.log('[CHAT] Portal visit result:', JSON.stringify(visitResult));
-                } else {
-                    console.warn('[CHAT] No deviceCode found for branch');
+                    await api.post('/visitors/portal-visit', { deviceCode });
                 }
-            } else {
-                console.warn('[CHAT] No branchCode available');
             }
-        } catch (err: any) {
-            console.error('[CHAT] Failed to record visit:', err?.message || err);
-            // Continue to chat even if visit recording fails
+        } catch {
+            // Continue even if visit recording fails
         } finally {
             setIsRecordingVisit(false);
-            const chatUrl = `/customer/messaging/chat?businessId=${businessId || ''}`;
-            console.log('[CHAT] Navigating to:', chatUrl);
-            router.push(chatUrl);
+            router.push(`/customer/messaging/chat?businessId=${businessId || ''}`);
         }
     };
 
-    const directionsUrl = mapCoords
-        ? `https://www.google.com/maps/dir/?api=1&destination=${mapCoords.lat},${mapCoords.lon}`
-        : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(resolvedLocationDisplay || '')}`;
-
-    // ─── HANDLERS FOR CLAIMING PROMOTIONS ───
     const handleClaimClick = (offer: any) => {
         setSelectedOffer(offer);
         setClaimStep('details');
@@ -410,14 +441,28 @@ export default function PublicBusinessProfilePage() {
         }
     };
 
+    // ─── OFFER BADGE HELPER ───
+    function getOfferBadge(offer: any): { label: string; bg: string } | null {
+        const pct = offer?.discountPercent ||
+            (offer?.calculatedPrice && offer?.fixedPrice
+                ? Math.round((1 - Number(offer.calculatedPrice) / Number(offer.fixedPrice)) * 100)
+                : null);
+        if (pct && pct >= 40) return { label: `${pct}% OFF`, bg: '#ffdad6' };
+        if (pct && pct >= 20) return { label: `${pct}% OFF`, bg: '#ffdad6' };
+        if (offer?.discountLabel === 'FREE') return { label: 'FREE', bg: '#d1fae5' };
+        if (offer?.discountLabel) return { label: offer.discountLabel, bg: '#066cf4' };
+        if (pct) return { label: `${pct}% OFF`, bg: '#ffdad6' };
+        return { label: 'DEAL', bg: '#066cf4' };
+    }
+
     // ═══════════════════════════════════════════
     //  LOADING STATE
     // ═══════════════════════════════════════════
     if (isLoading) {
         return (
-            <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50">
-                <div className="w-12 h-12 rounded-full border-[3px] border-slate-200 border-t-blue-600 animate-spin" />
-                <span className="mt-4 text-xs font-bold text-slate-400 uppercase tracking-[0.25em] animate-pulse">
+            <div className="min-h-screen flex flex-col items-center justify-center" style={{ background: '#f7f9fb' }}>
+                <div className="w-12 h-12 rounded-full border-[3px] border-[#c2c6d7] border-t-[#0055c4] animate-spin" />
+                <span className="mt-4 text-xs font-bold text-[#727786] uppercase tracking-[0.25em] animate-pulse">
                     Loading Business Profile...
                 </span>
             </div>
@@ -429,18 +474,19 @@ export default function PublicBusinessProfilePage() {
     // ═══════════════════════════════════════════
     if (!business && !branch && !isLoading && (branchError || businessByCodeError || businessByBranchError)) {
         return (
-            <div className="min-h-screen flex flex-col items-center justify-center bg-white px-6 text-center">
-                <div className="w-20 h-20 bg-red-50 rounded-full flex items-center justify-center mb-5">
-                    <MapPin className="w-8 h-8 text-red-500" />
+            <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center" style={{ background: '#f7f9fb' }}>
+                <div className="w-20 h-20 rounded-full flex items-center justify-center mb-5" style={{ background: '#ffdad6' }}>
+                    <span className="material-symbols-outlined text-[32px]" style={{ color: '#ba1a1a' }}>location_off</span>
                 </div>
-                <h1 className="text-2xl font-extrabold text-slate-900 mb-2">Business Profile Not Found</h1>
-                <p className="text-sm text-slate-500 max-w-sm mb-8 leading-relaxed">
+                <h1 className="text-[24px] font-bold mb-2" style={{ color: '#191c1e' }}>Business Profile Not Found</h1>
+                <p className="text-[14px] max-w-sm mb-8 leading-relaxed" style={{ color: '#424655' }}>
                     We couldn&apos;t find a business or branch profile matching code{' '}
-                    <span className="font-bold text-slate-800">{code}</span>. It may have been deactivated or the URL is invalid.
+                    <span className="font-bold" style={{ color: '#191c1e' }}>{code}</span>. It may have been deactivated or the URL is invalid.
                 </p>
                 <a
                     href="/"
-                    className="bg-blue-600 text-white font-bold text-sm px-8 py-3.5 rounded-xl shadow-lg shadow-blue-600/20 hover:bg-blue-700 active:scale-95 transition-all"
+                    className="text-[14px] font-semibold px-8 py-3.5 rounded-full shadow-lg transition-all active:scale-95"
+                    style={{ background: '#0055c4', color: '#ffffff' }}
                 >
                     Return to Homepage
                 </a>
@@ -449,669 +495,394 @@ export default function PublicBusinessProfilePage() {
     }
 
     // ═══════════════════════════════════════════
-    //  MAIN RESPONSIVE LAYOUT
+    //  MAIN LAYOUT (Stitch pixel-perfect)
     // ═══════════════════════════════════════════
-    return (
-        <div className="min-h-screen bg-slate-50/50 font-sans antialiased text-slate-800 pb-16">
-            <Script
-                src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-                strategy="afterInteractive"
-                onLoad={() => setLeafletReady(true)}
-            />
+    const coverSrc = profileCover || sectorCover;
 
-            {/* Sticky Navigation */}
-            <nav className="sticky top-0 z-40 bg-white/80 backdrop-blur-xl border-b border-slate-100/80 px-4 sm:px-6 lg:px-8">
-                <div className="max-w-6xl mx-auto flex items-center justify-between py-3.5">
-                    <a href="/" className="flex items-center gap-2.5 text-slate-900 hover:text-blue-600 transition-colors">
-                        <ArrowLeft size={18} strokeWidth={2.5} />
-                        <span className="text-lg font-bold tracking-tight font-display">Vemtap</span>
-                    </a>
-                    <div className="flex items-center gap-3">
-                        <button
-                            onClick={handleShare}
-                            className="w-10 h-10 rounded-full bg-slate-50 hover:bg-slate-100/80 active:scale-90 flex items-center justify-center text-slate-600 transition-all border border-slate-100"
-                            aria-label="Share business profile"
+    return (
+        <div className="min-h-screen" style={{ background: '#f7f9fb', color: '#191c1e', fontFamily: 'Inter, sans-serif' }}>
+            {/* ─── TopAppBar ─── */}
+            <header
+                className="fixed top-0 w-full z-50 flex items-center justify-between"
+                style={{
+                    background: '#f7f9fb',
+                    borderBottom: '1px solid #c2c6d7',
+                    padding: '0 20px',
+                    height: 56,
+                }}
+            >
+                <button
+                    onClick={() => router.back()}
+                    className="flex items-center justify-center w-8 h-8 rounded-full transition-colors active:scale-95"
+                    style={{ color: '#0055c4' }}
+                    aria-label="Go back"
+                >
+                    <span className="material-symbols-outlined">arrow_back</span>
+                </button>
+                <h1 className="text-[20px] font-bold truncate mx-4" style={{ color: '#0055c4' }}>
+                    Business Profile
+                </h1>
+                <button
+                    onClick={handleShare}
+                    className="flex items-center justify-center w-8 h-8 rounded-full transition-colors active:scale-95"
+                    style={{ color: '#0055c4' }}
+                    aria-label="Share"
+                >
+                    <span className="material-symbols-outlined">share</span>
+                </button>
+            </header>
+
+            {/* ─── Main Content ─── */}
+            <main style={{ paddingTop: 56, paddingBottom: 80 }}>
+                {/* Hero Section */}
+                <div className="relative w-full" style={{ height: 240, background: '#e6e8ea' }}>
+                    <img
+                        alt={`${profileName} Cover`}
+                        className="w-full h-full object-cover"
+                        src={coverSrc}
+                    />
+                    {/* Logo Overlay */}
+                    <div
+                        className="absolute rounded-full shadow-sm"
+                        style={{
+                            bottom: -40,
+                            left: 20,
+                            width: 96,
+                            height: 96,
+                            background: '#ffffff',
+                            padding: 4,
+                            border: '1px solid #c2c6d7',
+                        }}
+                    >
+                        {profileLogo ? (
+                            <img
+                                alt={`${profileName} Logo`}
+                                className="w-full h-full rounded-full object-cover"
+                                src={profileLogo}
+                            />
+                        ) : (
+                            <div
+                                className="w-full h-full rounded-full flex items-center justify-center"
+                                style={{ background: '#eceef0' }}
+                            >
+                                <span className="material-symbols-outlined text-[32px]" style={{ color: '#727786' }}>
+                                    store
+                                </span>
+                            </div>
+                        )}
+                    </div>
+                    {/* Status Badge */}
+                    <div
+                        className="absolute flex items-center gap-1 rounded-full shadow-sm"
+                        style={{
+                            bottom: 16,
+                            right: 20,
+                            background: '#ffffff',
+                            padding: '4px 12px',
+                        }}
+                    >
+                        <div
+                            className="w-2 h-2 rounded-full"
+                            style={{ background: isOpenNow ? '#10B981' : '#ba1a1a' }}
+                        />
+                        <span
+                            className="text-[12px] font-medium"
+                            style={{ color: isOpenNow ? '#10B981' : '#ba1a1a' }}
                         >
-                            <Share2 size={16} />
+                            {isOpenNow === null ? 'Hours N/A' : isOpenNow ? 'Open Now' : 'Closed'}
+                        </span>
+                    </div>
+                </div>
+
+                {/* Business Info */}
+                <div style={{ padding: '52px 20px 24px', borderBottom: '1px solid #c2c6d7' }}>
+                    <div className="flex justify-between items-start mb-2">
+                        <div className="min-w-0 flex-1 mr-3">
+                            <h2 className="text-[24px] font-semibold leading-[32px] tracking-tight mb-1" style={{ color: '#191c1e' }}>
+                                {profileName}
+                            </h2>
+                            <p className="text-[14px] leading-[20px] flex items-center gap-1" style={{ color: '#424655' }}>
+                                <span className="material-symbols-outlined" style={{ fontSize: 16 }}>location_on</span>
+                                {resolvedLocationDisplay}
+                            </p>
+                        </div>
+                        <button
+                            className="w-10 h-10 rounded-full flex items-center justify-center transition-colors active:scale-95 shrink-0"
+                            style={{ border: '1px solid #c2c6d7', color: '#0055c4' }}
+                            aria-label="Save business"
+                        >
+                            <span className="material-symbols-outlined" style={{ fontSize: 22 }}>favorite_border</span>
+                        </button>
+                    </div>
+
+                    {profileAbout && (
+                        <p className="text-[14px] leading-[20px] mb-6 line-clamp-2" style={{ color: '#191c1e' }}>
+                            {profileAbout}
+                        </p>
+                    )}
+
+                    {/* Quick Actions */}
+                    <div className="flex gap-3">
+                        <a
+                            href={directionsUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex-1 text-[14px] font-semibold rounded-full flex items-center justify-center gap-2 active:scale-95 transition-transform"
+                            style={{
+                                background: '#0055c4',
+                                color: '#ffffff',
+                                height: 48,
+                            }}
+                        >
+                            <span className="material-symbols-outlined" style={{ fontSize: 20 }}>directions</span>
+                            Directions
+                        </a>
+                        <button
+                            onClick={handleChatClick}
+                            className="flex-1 text-[14px] font-semibold rounded-full flex items-center justify-center gap-2 active:scale-95 transition-transform"
+                            style={{
+                                border: '1px solid #0055c4',
+                                color: '#0055c4',
+                                height: 48,
+                                background: 'transparent',
+                            }}
+                        >
+                            <span className="material-symbols-outlined" style={{ fontSize: 20 }}>call</span>
+                            Contact
                         </button>
                     </div>
                 </div>
-            </nav>
 
-            {/* Hero / Cover Banner */}
-            <div className="w-full h-48 sm:h-64 md:h-80 bg-gradient-to-br from-slate-900 via-slate-800 to-blue-900 relative overflow-hidden">
-                <div
-                    className="absolute inset-0 opacity-[0.07]"
-                    style={{
-                        backgroundImage: 'radial-gradient(circle at 1px 1px, white 1px, transparent 0)',
-                        backgroundSize: '24px 24px',
-                    }}
-                />
-                <div className="absolute top-1/2 left-1/4 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl -translate-y-1/2" />
-                <div className="absolute top-1/3 right-1/4 w-80 h-80 bg-indigo-500/10 rounded-full blur-3xl" />
-            </div>
-
-            {/* Profile Info Header Container */}
-            <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 -mt-20 sm:-mt-24">
-                <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-slate-100">
-                    <div className="flex flex-col sm:flex-row items-center sm:items-start text-center sm:text-left gap-5 sm:gap-6">
-                        {/* Logo */}
-                        <div className="w-28 h-28 sm:w-32 sm:h-32 rounded-3xl border-4 border-white bg-white shadow-md overflow-hidden flex items-center justify-center shrink-0">
-                            {profileLogo && !logoFailed ? (
-                                <img
-                                    alt={profileName}
-                                    className={`w-full h-full object-contain p-2.5 transition-opacity duration-300 ${logoLoaded ? 'opacity-100' : 'opacity-0'}`}
-                                    src={profileLogo}
-                                    onLoad={() => setLogoLoaded(true)}
-                                    onError={() => setLogoFailed(true)}
-                                />
-                            ) : (
-                                <div className="w-full h-full bg-gradient-to-br from-blue-600 to-indigo-700 flex items-center justify-center text-white text-5xl font-black italic">
-                                    {profileName.charAt(0).toUpperCase()}
-                                </div>
-                            )}
-                        </div>
-
-                        {/* Title & Reviews */}
-                        <div className="flex-1 min-w-0 pt-1">
-                            <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-                                <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight leading-tight">
-                                    {profileName}
-                                </h1>
-                                <div className="inline-flex items-center gap-1 bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full text-xs font-bold w-fit mx-auto sm:mx-0">
-                                    <CheckCircle2 size={13} strokeWidth={2.5} />
-                                    <span>Verified</span>
-                                </div>
-                            </div>
-
-                            <div className="flex flex-wrap items-center justify-center sm:justify-start gap-x-4 gap-y-1.5 mt-2.5 text-sm">
-                                <div className="flex items-center gap-1 text-slate-500">
-                                    <MapPin size={14} className="shrink-0" />
-                                    <span className="truncate">{resolvedLocationDisplay}</span>
-                                </div>
-                            </div>
-
-                            {isOpenNow !== null && (
-                                <div className="mt-3.5">
-                                    <span
-                                        className={`inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-xs font-bold ${
-                                            isOpenNow
-                                                ? 'bg-emerald-50 text-emerald-600 border border-emerald-100'
-                                                : 'bg-red-50 text-red-500 border border-red-100'
-                                        }`}
-                                    >
-                                        <span className={`w-1.5 h-1.5 rounded-full ${isOpenNow ? 'bg-emerald-500 animate-pulse' : 'bg-red-500'}`} />
-                                        {isOpenNow ? 'Open Now' : 'Closed'}
-                                    </span>
-                                </div>
-                            )}
-                        </div>
-
-                        {/* Directions Action */}
-                        <div className="shrink-0 mt-2 sm:mt-0 w-full sm:w-auto">
-                            <a
-                                href={directionsUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="inline-flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-bold text-sm px-6 py-3 rounded-xl shadow-md shadow-blue-600/10 transition-all w-full sm:w-auto"
-                            >
-                                <MapPin size={16} strokeWidth={2.5} />
-                                Get Directions
-                            </a>
-                        </div>
-                    </div>
-
-                    {/* Quick Button Controls */}
-                    <div className="grid grid-cols-4 sm:flex sm:justify-start gap-4 sm:gap-8 border-t border-slate-100 mt-6 pt-5 bg-slate-50/20 rounded-2xl p-4">
-                        {[
-                            { icon: MessageCircle, label: 'Chat', action: handleChatClick },
-                            { icon: Tag, label: 'Offers', href: '#offers-section' },
-                            ...(services && services.length > 0 ? [{ icon: Briefcase, label: 'Services', href: '#services-section' }] : []),
-                            { icon: Phone, label: 'Call', href: profilePhone ? `tel:${profilePhone}` : undefined },
-                        ].map((item) => (
-                            item.action ? (
-                                <button
-                                    key={item.label}
-                                    onClick={item.action}
-                                    className="flex flex-col items-center gap-1.5 group sm:min-w-[64px]"
-                                >
-                                    <div className="w-11 h-11 rounded-xl bg-slate-50 group-hover:bg-blue-50 group-hover:text-blue-600 active:scale-90 flex items-center justify-center text-slate-600 transition-all border border-slate-100/50">
-                                        <item.icon size={18} strokeWidth={2} />
-                                    </div>
-                                    <span className="text-[11px] font-semibold text-slate-600 group-hover:text-blue-600 transition-colors">
-                                        {item.label}
-                                    </span>
-                                </button>
-                            ) : (
-                                <a
-                                    key={item.label}
-                                    href={item.href || '#'}
-                                    className="flex flex-col items-center gap-1.5 group sm:min-w-[64px]"
-                                >
-                                    <div className="w-11 h-11 rounded-xl bg-slate-50 group-hover:bg-blue-50 group-hover:text-blue-600 active:scale-90 flex items-center justify-center text-slate-600 transition-all border border-slate-100/50">
-                                        <item.icon size={18} strokeWidth={2} />
-                                    </div>
-                                    <span className="text-[11px] font-semibold text-slate-600 group-hover:text-blue-600 transition-colors">
-                                        {item.label}
-                                    </span>
-                                </a>
-                            )
-                        ))}
-                    </div>
-                </div>
-
-                {/* ─── TWO-COLUMN RESPONSIVE LAYOUT ─── */}
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 mt-8 items-start">
-
-                    {/* LEFT COLUMN: ABOUT, OFFERS, SERVICES */}
-                    <div className="lg:col-span-8 space-y-8">
-
-                        {/* ACTIVE OFFERS & PROMOTIONS */}
-                        {activeShowRewards && (
-                            <section id="offers-section" className="bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-slate-100">
-                                <div className="flex items-center justify-between mb-5">
-                                    <h3 className="text-lg font-bold text-slate-900">Active Offers &amp; Promotions</h3>
-                                    <span className="text-xs font-bold text-blue-600 bg-blue-50 px-2.5 py-0.5 rounded-full">
-                                        {offersData?.length || 0} Total
-                                    </span>
-                                </div>
-
-                                {offersLoading ? (
-                                    <div className="flex justify-center py-6">
-                                        <div className="w-6 h-6 rounded-full border-2 border-slate-200 border-t-blue-600 animate-spin" />
-                                    </div>
-                                ) : offersData && offersData.length > 0 ? (
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                        {offersData.map((offer: any) => (
-                                            <div
-                                                key={offer.id}
-                                                className="group border border-slate-100 hover:border-blue-100 bg-slate-50/50 hover:bg-white rounded-2xl p-5 flex flex-col justify-between transition-all hover:shadow-sm"
-                                            >
-                                                <div>
-                                                    <div className="flex items-start justify-between gap-3">
-                                                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-50 text-amber-700 border border-amber-100">
-                                                            Promo Deal
-                                                        </span>
-                                                        {offer.calculatedPrice !== undefined && (
-                                                            <div className="text-right">
-                                                                <span className="text-xs text-slate-400 line-through">
-                                                                    ₦{offer.fixedPrice || offer.calculatedPrice * 1.2}
-                                                                </span>
-                                                                <div className="text-sm font-extrabold text-blue-600">
-                                                                    ₦{offer.calculatedPrice}
-                                                                </div>
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                    <h4 className="font-extrabold text-slate-900 group-hover:text-blue-600 transition-colors mt-3">
-                                                        {offer.name}
-                                                    </h4>
-                                                    <p className="text-xs text-slate-400 mt-1 line-clamp-2">
-                                                        {offer.description || 'Limited time promotional code claimable at store branch.'}
-                                                    </p>
-                                                </div>
-
-                                                <div className="flex items-center justify-between border-t border-slate-100 mt-4 pt-3">
-                                                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                                                        Code OTP Claims
-                                                    </span>
-                                                    <button
-                                                        onClick={() => handleClaimClick(offer)}
-                                                        className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs px-4 py-2 rounded-xl transition-all active:scale-95 shadow-sm shadow-blue-600/10"
-                                                    >
-                                                        Claim Offer
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                ) : (
-                                    <div className="text-center py-8 bg-slate-50/50 rounded-2xl border border-slate-100 border-dashed">
-                                        <Gift className="w-8 h-8 text-slate-300 mx-auto mb-2.5" />
-                                        <p className="text-sm font-bold text-slate-600">No active promotions</p>
-                                        <p className="text-xs text-slate-400 mt-1">Check back later for exclusive deals.</p>
-                                    </div>
-                                )}
-                            </section>
-                        )}
-
-                        {/* OUR SERVICES — hidden when no services */}
-                        {(servicesLoading || (services && services.length > 0)) && (
-                            <section id="services-section" className="bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-slate-100">
-                                <div className="flex items-center justify-between mb-5">
-                                    <h3 className="text-lg font-bold text-slate-900 font-display">Our Services</h3>
-                                    <span className="text-xs font-bold text-blue-600 bg-blue-50 px-2.5 py-0.5 rounded-full">
-                                        {services?.length || 0} Services
-                                    </span>
-                                </div>
-
-                                {servicesLoading ? (
-                                    <div className="flex justify-center py-6">
-                                        <div className="w-6 h-6 rounded-full border-2 border-slate-200 border-t-blue-600 animate-spin" />
-                                    </div>
-                                ) : services && services.length > 0 ? (
-                                    <div className="space-y-3.5">
-                                        {services.map((item: any) => (
-                                            <div
-                                                key={item.id}
-                                                className="flex flex-col sm:flex-row sm:items-center justify-between p-4 sm:p-5 rounded-2xl border border-slate-100 bg-slate-50/50 hover:bg-white hover:border-blue-100 transition-all gap-4"
-                                            >
-                                                <div className="flex items-start gap-4">
-                                                    <div className="w-14 h-14 rounded-xl bg-blue-50 border border-blue-100/30 flex items-center justify-center text-blue-600 shrink-0 text-2xl font-semibold">
-                                                        ✂️
-                                                    </div>
-                                                    <div>
-                                                        <h4 className="font-bold text-slate-900 text-[15px]">
-                                                            {item.name}
-                                                        </h4>
-                                                        <p className="text-xs text-slate-400 mt-1 leading-relaxed max-w-md">
-                                                            {item.shortDescription || item.description || 'Full professional standard service execution.'}
-                                                        </p>
-                                                        {item.price !== undefined && (
-                                                            <div className="text-xs font-bold text-slate-800 mt-1">
-                                                                Price: ₦{item.price}
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                </div>
-
-                                                <div className="flex items-center gap-3 self-end sm:self-center shrink-0">
-                                                    <a
-                                                        href={profilePhone ? `tel:${profilePhone}` : `mailto:${profileEmail || ''}`}
-                                                        className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs px-4 py-2 rounded-xl transition-all shadow-sm active:scale-95"
-                                                    >
-                                                        Book Now
-                                                    </a>
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                ) : null}
-                            </section>
-                        )}
-
-                        {/* ABOUT US — only show if there's actual content */}
-                        {profileAbout && (
-                            <section className="bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-slate-100">
-                                <h3 className="text-lg font-bold text-slate-900 mb-3.5">About Us</h3>
-                                <p className="text-sm text-slate-500 leading-relaxed font-medium">
-                                    {profileAbout}
-                                </p>
-                                {profileWelcome && (
-                                    <div className="mt-5 p-4.5 bg-blue-50/40 rounded-2xl border border-blue-100/30 italic text-slate-600 text-sm">
-                                        &ldquo;{profileWelcome}&rdquo;
-                                    </div>
-                                )}
-                            </section>
-                        )}
-                    </div>
-
-                    {/* RIGHT COLUMN: SIDEBAR */}
-                    <div className="lg:col-span-4 space-y-6">
-
-                        {/* OPENING HOURS */}
-                        <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100">
-                            <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4">
-                                OPENING HOURS
+                {/* ─── Active Deals (Horizontal Rail) ─── */}
+                {activeShowRewards && (activeOffers.length > 0 || offersLoading) && (
+                    <section style={{ padding: '24px 0', borderBottom: '1px solid #c2c6d7' }}>
+                        <div className="flex justify-between items-center mb-4" style={{ padding: '0 20px' }}>
+                            <h3 className="text-[20px] font-semibold tracking-tight" style={{ color: '#191c1e' }}>
+                                Active Deals
                             </h3>
-                            <div className="space-y-2.5">
-                                {DAY_ORDER.map((day) => {
-                                    const dayHours = (profileHours as any)?.[day] as BusinessHours | undefined;
-                                    const isToday = day === todayName;
-                                    const isClosed = !dayHours || (typeof dayHours.isClosed === 'boolean' ? dayHours.isClosed : !!dayHours.closed);
+                            <Link href="/deals" className="text-[14px] font-semibold" style={{ color: '#0055c4' }}>
+                                See All
+                            </Link>
+                        </div>
+                        <div
+                            className="flex overflow-x-auto gap-4 pb-2"
+                            style={{ scrollbarWidth: 'none', paddingLeft: 20, paddingRight: 20 }}
+                        >
+                            {offersLoading ? (
+                                Array.from({ length: 3 }).map((_, i) => (
+                                    <div
+                                        key={i}
+                                        className="shrink-0 rounded-xl p-4 animate-pulse"
+                                        style={{
+                                            minWidth: 280,
+                                            background: '#ffffff',
+                                            border: '1px solid #c2c6d7',
+                                        }}
+                                    >
+                                        <div className="h-5 rounded w-16 mb-3" style={{ background: '#eceef0' }} />
+                                        <div className="h-4 rounded w-3/4 mb-2" style={{ background: '#eceef0' }} />
+                                        <div className="h-3 rounded w-full mb-4" style={{ background: '#eceef0' }} />
+                                        <div className="h-4 rounded w-24" style={{ background: '#eceef0' }} />
+                                    </div>
+                                ))
+                            ) : activeOffers.length > 0 ? (
+                                activeOffers.map((offer: any) => {
+                                    const badge = getOfferBadge(offer);
                                     return (
                                         <div
-                                            key={day}
-                                            className={`flex items-center justify-between text-xs py-2 px-2.5 rounded-xl ${
-                                                isToday ? 'bg-blue-50/60' : ''
-                                            }`}
+                                            key={offer.id}
+                                            className="shrink-0 rounded-xl p-4 flex flex-col justify-between"
+                                            style={{
+                                                minWidth: 280,
+                                                background: '#ffffff',
+                                                border: '1px solid #c2c6d7',
+                                            }}
                                         >
-                                            <div className="flex items-center gap-1.5">
-                                                <span className={`font-bold ${isToday ? 'text-slate-900' : 'text-slate-600'}`}>
-                                                    {DAY_DISPLAY[day] || day}
-                                                </span>
-                                                {isToday && (
-                                                    <span className="text-[8px] font-bold text-emerald-600 bg-emerald-50 px-1 rounded border border-emerald-100">
-                                                        Today
-                                                    </span>
+                                            <div>
+                                                {badge && (
+                                                    <div
+                                                        className="text-[12px] font-medium px-2 py-1 rounded-md inline-block mb-2"
+                                                        style={{ background: badge.bg, color: badge.bg === '#ffdad6' ? '#93000a' : badge.bg === '#d1fae5' ? '#065f46' : '#fcfaff' }}
+                                                    >
+                                                        {badge.label}
+                                                    </div>
                                                 )}
-                                            </div>
-                                            <span className={`font-semibold ${isClosed ? 'text-slate-400' : 'text-slate-800'}`}>
-                                                {formatHours(dayHours)}
-                                            </span>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        </div>
-
-                        {/* CONTACT INFO */}
-                        {(profilePhone || profileEmail || profileWebsite) && (
-                            <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100">
-                                <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4">
-                                    CONTACT DETAILS
-                                </h3>
-                                <div className="space-y-3.5">
-                                    {profilePhone && (
-                                        <a href={`tel:${profilePhone}`} className="flex items-center gap-3 group text-xs">
-                                            <div className="w-8.5 h-8.5 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600 shrink-0">
-                                                <Phone size={15} />
-                                            </div>
-                                            <span className="font-semibold text-slate-600 group-hover:text-blue-600 transition-colors">
-                                                {profilePhone}
-                                            </span>
-                                        </a>
-                                    )}
-                                    {profileEmail && (
-                                        <a href={`mailto:${profileEmail}`} className="flex items-center gap-3 group text-xs">
-                                            <div className="w-8.5 h-8.5 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600 shrink-0">
-                                                <Mail size={15} />
-                                            </div>
-                                            <span className="font-semibold text-slate-600 group-hover:text-blue-600 transition-colors break-all">
-                                                {profileEmail}
-                                            </span>
-                                        </a>
-                                    )}
-                                    {profileWebsite && (
-                                        <a
-                                            href={profileWebsite.startsWith('http') ? profileWebsite : `https://${profileWebsite}`}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="flex items-center gap-3 group text-xs"
-                                        >
-                                            <div className="w-8.5 h-8.5 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600 shrink-0">
-                                                <Globe size={15} />
-                                            </div>
-                                            <span className="font-semibold text-slate-600 group-hover:text-blue-600 transition-colors inline-flex items-center gap-1">
-                                                {profileWebsite}
-                                                <ExternalLink size={11} className="text-slate-400" />
-                                            </span>
-                                        </a>
-                                    )}
-                                </div>
-                            </div>
-                        )}
-
-                        {/* MAP & ADDRESS */}
-                        <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100">
-                            <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4">
-                                LOCATION FINDER
-                            </h3>
-                            {mapCoords && (
-                                <div
-                                    ref={mapRef}
-                                    className="w-full h-40 rounded-2xl overflow-hidden border border-slate-150 mb-3.5"
-                                />
-                            )}
-                            <div className="flex items-start gap-2.5 mb-4 text-xs leading-relaxed text-slate-500">
-                                <MapPin className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
-                                <p>{resolvedLocationDisplay}</p>
-                            </div>
-                            <a
-                                href={directionsUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="flex items-center justify-center gap-2 w-full bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs py-3 rounded-xl transition-all shadow-md shadow-blue-600/10"
-                            >
-                                <MapPin size={14} strokeWidth={2.5} />
-                                Get Navigation Path
-                            </a>
-                        </div>
-
-                        {/* OTHER BRANCHES */}
-                        {branches.length > 1 && (
-                            <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100">
-                                <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4">
-                                    OTHER BRANCHES
-                                </h3>
-                                <div className="space-y-2">
-                                    {branches.filter((b: any) => b.id !== branchId).map((b: any) => (
-                                        <div
-                                            key={b.id}
-                                            className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100 group cursor-pointer hover:bg-slate-100/55 transition-colors"
-                                        >
-                                            <div className="min-w-0">
-                                                <h4 className="text-xs font-bold text-slate-900 truncate">
-                                                    {b.name || 'Secondary Branch'}
+                                                <h4 className="text-[14px] font-semibold mb-1" style={{ color: '#191c1e' }}>
+                                                    {offer.title || offer.name || 'Deal'}
                                                 </h4>
-                                                <p className="text-[10px] text-slate-400 mt-0.5 truncate">
-                                                    {formatLocation(b.address, b.city, b.state)}
+                                                <p className="text-[14px] line-clamp-2 mb-3" style={{ color: '#424655' }}>
+                                                    {offer.description || offer.shortDescription || 'Limited time offer.'}
                                                 </p>
                                             </div>
-                                            <ChevronRight className="w-3.5 h-3.5 text-slate-300 group-hover:text-slate-400 transition-colors shrink-0" />
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-
-                        {/* SOCIAL FOOTER INSIDE SIDEBAR OR CONTENT */}
-                        {socialItems.some((s) => s.url) && (
-                            <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 text-center">
-                                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3.5">
-                                    FOLLOW SOCIALS
-                                </h3>
-                                <div className="flex justify-center gap-2.5">
-                                    {socialItems
-                                        .filter((s) => s.url)
-                                        .map((social) => (
-                                            <a
-                                                key={social.key}
-                                                href={social.url || '#'}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                className="w-9 h-9 rounded-full bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-500 hover:bg-blue-50 hover:text-blue-600 transition-all"
-                                                title={social.label}
+                                            <button
+                                                onClick={() => handleClaimClick(offer)}
+                                                className="text-[14px] font-semibold flex items-center gap-1 w-fit active:scale-95 transition-transform"
+                                                style={{ color: '#0055c4' }}
                                             >
-                                                {React.createElement(social.icon, { size: 16 })}
-                                            </a>
-                                        ))}
-                                </div>
-                            </div>
-                        )}
-                    </div>
-                </div>
-
-                {/* Footer Branding */}
-                <div className="text-center mt-12 pt-6 border-t border-slate-200/50">
-                    <p className="text-[11px] text-slate-300 font-bold uppercase tracking-[0.2em]">
-                        Powered by VemTap
-                    </p>
-                </div>
-            </div>
-
-            {/* ─── NEW: OTP PROMOTION CLAIM MODAL ─── */}
-            {selectedOffer && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fadeIn">
-                    <div className="bg-white w-full max-w-md rounded-3xl shadow-2xl border border-slate-100 overflow-hidden flex flex-col relative">
-
-                        {/* Close button */}
-                        <button
-                            onClick={() => setSelectedOffer(null)}
-                            className="absolute top-4 right-4 w-8 h-8 rounded-full bg-slate-50 hover:bg-slate-100 flex items-center justify-center text-slate-400 hover:text-slate-600 transition-all border border-slate-100"
-                        >
-                            <X size={15} />
-                        </button>
-
-                        <div className="p-6">
-                            {/* Modal Header */}
-                            <div className="flex items-center gap-3 pb-4 border-b border-slate-100 mb-5">
-                                <div className="w-10 h-10 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center text-xl font-bold shrink-0">
-                                    🎁
-                                </div>
-                                <div className="min-w-0">
-                                    <h3 className="font-extrabold text-slate-900 text-sm truncate">
-                                        Claim: {selectedOffer.name}
-                                    </h3>
-                                    <p className="text-[10px] text-slate-400 font-semibold mt-0.5">
-                                        OTP Verification Promotion Claim
-                                    </p>
-                                </div>
-                            </div>
-
-                            {claimingError && (
-                                <div className="bg-red-50 text-red-600 text-xs px-3.5 py-2.5 rounded-xl border border-red-100 mb-4 font-semibold">
-                                    {claimingError}
-                                </div>
-                            )}
-
-                            {/* STEP 1: Enter details */}
-                            {claimStep === 'details' && (
-                                <form onSubmit={handleRequestOtpSubmit} className="space-y-3.5">
-                                    <div className="flex flex-col gap-1">
-                                        <label className="text-[10px] font-bold text-slate-400 uppercase">First Name</label>
-                                        <input
-                                            type="text"
-                                            required
-                                            className="border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-blue-600"
-                                            value={claimForm.firstName}
-                                            onChange={(e) => setClaimForm({ ...claimForm, firstName: e.target.value })}
-                                        />
-                                    </div>
-                                    <div className="flex flex-col gap-1">
-                                        <label className="text-[10px] font-bold text-slate-400 uppercase">Last Name</label>
-                                        <input
-                                            type="text"
-                                            className="border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-blue-600"
-                                            value={claimForm.lastName}
-                                            onChange={(e) => setClaimForm({ ...claimForm, lastName: e.target.value })}
-                                        />
-                                    </div>
-                                    <div className="flex flex-col gap-1">
-                                        <label className="text-[10px] font-bold text-slate-400 uppercase">Email Address</label>
-                                        <input
-                                            type="email"
-                                            required
-                                            className="border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-blue-600"
-                                            value={claimForm.email}
-                                            onChange={(e) => setClaimForm({ ...claimForm, email: e.target.value })}
-                                        />
-                                    </div>
-                                    <div className="flex flex-col gap-1">
-                                        <label className="text-[10px] font-bold text-slate-400 uppercase">Phone Number</label>
-                                        <input
-                                            type="tel"
-                                            required
-                                            className="border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-blue-600"
-                                            value={claimForm.phone}
-                                            onChange={(e) => setClaimForm({ ...claimForm, phone: e.target.value })}
-                                            placeholder="+234..."
-                                        />
-                                    </div>
-                                    <button
-                                        type="submit"
-                                        disabled={isSubmittingClaim}
-                                        className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-bold text-xs py-3 rounded-xl transition-all shadow-md shadow-blue-600/10 mt-2"
-                                    >
-                                        {isSubmittingClaim ? 'Sending code...' : 'Send Verification OTP'}
-                                    </button>
-                                </form>
-                            )}
-
-                            {/* STEP 2: Verify OTP */}
-                            {claimStep === 'otp' && (
-                                <form onSubmit={handleVerifyOtpSubmit} className="space-y-4">
-                                    <p className="text-xs text-slate-500 leading-relaxed text-center">
-                                        We sent a verification code to <span className="font-semibold text-slate-700">{claimForm.email}</span>.
-                                        Please enter the code below to complete the claim.
-                                    </p>
-                                    <div className="flex flex-col gap-1">
-                                        <label className="text-[10px] font-bold text-slate-400 uppercase text-center">OTP Code</label>
-                                        <input
-                                            type="text"
-                                            required
-                                            className="border border-slate-200 rounded-xl px-3 py-2.5 text-center text-sm font-bold tracking-widest focus:outline-none focus:border-blue-600 max-w-[160px] mx-auto w-full"
-                                            maxLength={6}
-                                            value={otpCode}
-                                            onChange={(e) => setOtpCode(e.target.value)}
-                                            placeholder="------"
-                                        />
-                                    </div>
-                                    <button
-                                        type="submit"
-                                        disabled={isSubmittingClaim}
-                                        className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-bold text-xs py-3 rounded-xl transition-all shadow-md shadow-blue-600/10"
-                                    >
-                                        {isSubmittingClaim ? 'Verifying OTP...' : 'Verify & Claim Offer'}
-                                    </button>
-                                    <div className="text-center">
-                                        <button
-                                            type="button"
-                                            onClick={() => setClaimStep('details')}
-                                            className="text-xs text-slate-400 hover:text-slate-600 underline font-semibold"
-                                        >
-                                            Go Back / Edit Details
-                                        </button>
-                                    </div>
-                                </form>
-                            )}
-
-                            {/* STEP 3: Success Screen */}
-                            {claimStep === 'success' && (
-                                <div className="text-center py-4 space-y-4">
-                                    <div className="w-14 h-14 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center mx-auto shadow-inner border border-emerald-100">
-                                        <Check size={28} strokeWidth={3} />
-                                    </div>
-                                    <div>
-                                        <h4 className="font-extrabold text-slate-900 text-base">Claim Successful!</h4>
-                                        <p className="text-xs text-slate-400 mt-1 leading-relaxed px-4">
-                                            Your promotional offer has been secured. Save your unique verification details below to redeem this at the counter.
-                                        </p>
-                                    </div>
-
-                                    {successPayload && (
-                                        <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4.5 max-w-xs mx-auto text-center space-y-1">
-                                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-                                                Claim Code
-                                            </span>
-                                            <div className="text-lg font-black text-slate-800 tracking-wider">
-                                                {successPayload.code || successPayload.data?.code || 'CLAIMED'}
-                                            </div>
+                                                Claim Deal
+                                                <span className="material-symbols-outlined" style={{ fontSize: 16 }}>arrow_forward</span>
+                                            </button>
                                         </div>
-                                    )}
-
-                                    <button
-                                        onClick={() => setSelectedOffer(null)}
-                                        className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs py-3 rounded-xl transition-all"
+                                    );
+                                })
+                            ) : (
+                                FALLBACK_DEALS.map((deal, i) => (
+                                    <div
+                                        key={i}
+                                        className="shrink-0 rounded-xl p-4 flex flex-col justify-between"
+                                        style={{
+                                            minWidth: 280,
+                                            background: '#ffffff',
+                                            border: '1px solid #c2c6d7',
+                                        }}
                                     >
-                                        Close Window
-                                    </button>
-                                </div>
+                                        <div>
+                                            <div
+                                                className="text-[12px] font-medium px-2 py-1 rounded-md inline-block mb-2"
+                                                style={{ background: deal.badgeColor, color: deal.badgeColor === '#ffdad6' ? '#93000a' : '#fcfaff' }}
+                                            >
+                                                {deal.badge}
+                                            </div>
+                                            <h4 className="text-[14px] font-semibold mb-1" style={{ color: '#191c1e' }}>
+                                                {deal.title}
+                                            </h4>
+                                            <p className="text-[14px] line-clamp-2 mb-3" style={{ color: '#424655' }}>
+                                                {deal.description}
+                                            </p>
+                                        </div>
+                                        <span className="text-[14px] font-semibold flex items-center gap-1 w-fit" style={{ color: '#0055c4' }}>
+                                            Claim Deal
+                                            <span className="material-symbols-outlined" style={{ fontSize: 16 }}>arrow_forward</span>
+                                        </span>
+                                    </div>
+                                ))
                             )}
                         </div>
-                    </div>
-                </div>
+                    </section>
+                )}
+
+                {/* ─── Popular Products (Horizontal Rail) ─── */}
+                {(productsLoading || activeProducts.length > 0) && (
+                    <section style={{ padding: '24px 0', borderBottom: '1px solid #c2c6d7' }}>
+                        <div className="flex justify-between items-center mb-4" style={{ padding: '0 20px' }}>
+                            <h3 className="text-[20px] font-semibold tracking-tight" style={{ color: '#191c1e' }}>
+                                Popular Menu Items
+                            </h3>
+                        </div>
+                        <div
+                            className="flex overflow-x-auto gap-4 pb-2"
+                            style={{ scrollbarWidth: 'none', paddingLeft: 20, paddingRight: 20 }}
+                        >
+                            {productsLoading ? (
+                                Array.from({ length: 4 }).map((_, i) => (
+                                    <div key={i} className="shrink-0 animate-pulse" style={{ minWidth: 160, maxWidth: 160 }}>
+                                        <div className="w-full rounded-lg mb-2" style={{ height: 120, background: '#eceef0' }} />
+                                        <div className="h-4 rounded w-3/4 mb-1" style={{ background: '#eceef0' }} />
+                                        <div className="h-5 rounded w-1/2" style={{ background: '#eceef0' }} />
+                                    </div>
+                                ))
+                            ) : activeProducts.length > 0 ? (
+                                activeProducts.map((product: any, idx: number) => (
+                                    <div key={product.id || idx} className="shrink-0" style={{ minWidth: 160, maxWidth: 160 }}>
+                                        <div
+                                            className="w-full rounded-lg overflow-hidden mb-2"
+                                            style={{ height: 120, background: '#eceef0' }}
+                                        >
+                                            {(product.mainImage || product.image || product.galleryImages?.[0]) ? (
+                                                <img
+                                                    alt={product.name || 'Product'}
+                                                    className="w-full h-full object-cover"
+                                                    src={product.mainImage || product.image || product.galleryImages?.[0]}
+                                                />
+                                            ) : (
+                                                <div className="w-full h-full flex items-center justify-center">
+                                                    <span className="material-symbols-outlined text-[32px]" style={{ color: '#727786' }}>
+                                                        image
+                                                    </span>
+                                                </div>
+                                            )}
+                                        </div>
+                                        <h4 className="text-[14px] font-semibold truncate" style={{ color: '#191c1e' }}>
+                                            {product.name || 'Product'}
+                                        </h4>
+                                        <p className="text-[20px] font-bold mt-1" style={{ color: '#0055c4' }}>
+                                            {product.calculatedPrice != null
+                                                ? formatNaira(product.calculatedPrice)
+                                                : product.fixedPrice != null
+                                                    ? formatNaira(product.fixedPrice)
+                                                    : 'View Price'}
+                                        </p>
+                                    </div>
+                                ))
+                            ) : (
+                                FALLBACK_PRODUCTS.map((product, idx) => (
+                                    <div key={idx} className="shrink-0" style={{ minWidth: 160, maxWidth: 160 }}>
+                                        <div
+                                            className="w-full rounded-lg overflow-hidden mb-2"
+                                            style={{ height: 120, background: '#eceef0' }}
+                                        >
+                                            <img
+                                                alt={product.name}
+                                                className="w-full h-full object-cover"
+                                                src={product.image}
+                                            />
+                                        </div>
+                                        <h4 className="text-[14px] font-semibold truncate" style={{ color: '#191c1e' }}>
+                                            {product.name}
+                                        </h4>
+                                        <p className="text-[20px] font-bold mt-1" style={{ color: '#0055c4' }}>
+                                            {formatNaira(product.price)}
+                                        </p>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                    </section>
+                )}
+
+                {/* ─── Location Map (Leaflet) ─── */}
+                <Script
+                    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+                    strategy="afterInteractive"
+                    onLoad={() => setLeafletReady(true)}
+                />
+                <section style={{ padding: '24px 20px' }}>
+                    <h3 className="text-[20px] font-semibold tracking-tight mb-4" style={{ color: '#191c1e' }}>
+                        Location
+                    </h3>
+                    <div
+                        ref={mapRef}
+                        className="w-full rounded-xl overflow-hidden"
+                        style={{ height: 160, border: '1px solid #c2c6d7' }}
+                    />
+                    <p className="text-[14px] leading-[20px] mt-2" style={{ color: '#424655' }}>
+                        {resolvedLocationDisplay}
+                    </p>
+                </section>
+            </main>
+
+            <PublicBottomNav />
+
+            {/* ─── OTP CLAIM MODAL ─── */}
+            {selectedOffer && (
+                <ClaimDealModal
+                    offer={selectedOffer}
+                    step={claimStep}
+                    form={claimForm}
+                    otpCode={otpCode}
+                    error={claimingError}
+                    isSubmitting={isSubmittingClaim}
+                    successPayload={successPayload}
+                    onClose={() => setSelectedOffer(null)}
+                    onFormChange={(field, value) => setClaimForm({ ...claimForm, [field]: value })}
+                    onOtpChange={setOtpCode}
+                    onRequestOtp={handleRequestOtpSubmit}
+                    onVerifyOtp={handleVerifyOtpSubmit}
+                    onBackToDetails={() => setClaimStep('details')}
+                />
             )}
 
-            {/* Leaflet Refined CSS overrides */}
-            <style jsx global>{`
-                .leaflet-container {
-                    font-family: inherit;
-                    cursor: default !important;
-                    filter: contrast(1.05);
-                }
-                .leaflet-bar {
-                    border: none !important;
-                    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08) !important;
-                    margin: 12px !important;
-                }
-                .leaflet-bar a {
-                    background-color: white !important;
-                    color: #0f172a !important;
-                    border: 1px solid #f1f5f9 !important;
-                    border-radius: 8px !important;
-                    margin-bottom: 4px;
-                }
-                @keyframes fadeIn {
-                    from { opacity: 0; transform: scale(0.96); }
-                    to { opacity: 1; transform: scale(1); }
-                }
-                .animate-fadeIn {
-                    animation: fadeIn 0.18s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-                }
-            `}</style>
-
-            {/* Chat Auth Modal */}
+            {/* ─── Chat Auth Modal ─── */}
             <ChatConnectModal
                 isOpen={showChatModal}
                 onClose={() => setShowChatModal(false)}
@@ -1119,6 +890,137 @@ export default function PublicBusinessProfilePage() {
                 storeName={profileName}
                 logoUrl={profileLogo}
             />
+
+            {/* ─── Storefront Sheets ─── */}
+            <QuickActionsSheet
+                isOpen={showActionsSheet}
+                onClose={() => setShowActionsSheet(false)}
+                businessCode={code}
+                businessName={profileName}
+                businessLogo={profileLogo}
+                phone={profilePhone}
+                whatsapp={profileWhatsapp}
+                onShare={handleShare}
+            />
+            <ShareSheet
+                isOpen={showShareSheet}
+                onClose={() => setShowShareSheet(false)}
+                businessName={profileName}
+                businessLogo={profileLogo}
+                pageUrl={typeof window !== 'undefined' ? window.location.href : ''}
+            />
+
+            {/* ─── Floating Action Button ─── */}
+            <button
+                onClick={() => setShowActionSheet(true)}
+                className="fixed z-50 flex items-center justify-center rounded-full shadow-lg active:scale-95 transition-all"
+                style={{
+                    bottom: 80,
+                    right: 20,
+                    width: 56,
+                    height: 56,
+                    background: 'linear-gradient(135deg, #0055c4, #0041a8)',
+                    color: '#ffffff',
+                    boxShadow: '0 4px 20px rgba(0, 85, 196, 0.4)',
+                }}
+                aria-label="Quick actions"
+            >
+                <span className="material-symbols-outlined" style={{ fontSize: 28, fontVariationSettings: "'FILL' 1" }}>
+                    apps
+                </span>
+            </button>
+
+            {/* ─── Action Sheet Overlay ─── */}
+            {showActionSheet && (
+                <div
+                    className="fixed inset-0 z-[60] flex items-end justify-center"
+                    style={{ background: 'rgba(0,0,0,0.4)' }}
+                    onClick={() => setShowActionSheet(false)}
+                >
+                    <div
+                        className="w-full max-w-lg rounded-t-2xl overflow-hidden"
+                        style={{ background: '#ffffff' }}
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        {/* Handle */}
+                        <div className="flex justify-center pt-3 pb-2">
+                            <div className="w-10 h-1 rounded-full" style={{ background: '#c2c6d7' }} />
+                        </div>
+
+                        {/* Title */}
+                        <div className="px-5 pb-4">
+                            <h3 className="text-[18px] font-semibold" style={{ color: '#191c1e' }}>
+                                Quick Actions
+                            </h3>
+                            <p className="text-[13px] mt-0.5" style={{ color: '#424655' }}>
+                                {profileName}
+                            </p>
+                        </div>
+
+                        {/* Action Items */}
+                        <div className="px-5 pb-6 grid grid-cols-2 gap-3">
+                            {[
+                                {
+                                    icon: 'local_offer',
+                                    label: 'Business Deals',
+                                    desc: 'View active offers',
+                                    href: `/b/${code}/deals`,
+                                    bg: '#066cf4',
+                                },
+                                {
+                                    icon: 'schedule',
+                                    label: 'Opening Hours',
+                                    desc: 'See when we\'re open',
+                                    href: `/b/${code}/hours`,
+                                    bg: '#10B981',
+                                },
+                                {
+                                    icon: 'home_repair_service',
+                                    label: 'Services',
+                                    desc: 'Browse our services',
+                                    href: `/b/${code}/services`,
+                                    bg: '#8B5CF6',
+                                },
+                                {
+                                    icon: 'inventory_2',
+                                    label: 'Products',
+                                    desc: 'Shop our products',
+                                    href: `/b/${code}/products`,
+                                    bg: '#F59E0B',
+                                },
+                            ].map((item) => (
+                                <Link
+                                    key={item.label}
+                                    href={item.href}
+                                    className="flex flex-col items-center gap-2 p-4 rounded-xl transition-all active:scale-95"
+                                    style={{
+                                        background: '#f7f9fb',
+                                        border: '1px solid #e6e8ea',
+                                    }}
+                                    onClick={() => setShowActionSheet(false)}
+                                >
+                                    <div
+                                        className="w-12 h-12 rounded-full flex items-center justify-center"
+                                        style={{ background: `${item.bg}15` }}
+                                    >
+                                        <span className="material-symbols-outlined" style={{ fontSize: 24, color: item.bg }}>
+                                            {item.icon}
+                                        </span>
+                                    </div>
+                                    <div className="text-center">
+                                        <span className="text-[13px] font-semibold block" style={{ color: '#191c1e' }}>
+                                            {item.label}
+                                        </span>
+                                        <span className="text-[11px]" style={{ color: '#727786' }}>
+                                            {item.desc}
+                                        </span>
+                                    </div>
+                                </Link>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

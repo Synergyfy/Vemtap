@@ -6,10 +6,12 @@ import { useCatalogueItem, useDeleteCatalogueItem, CatalogueItem } from '@/servi
 import PageHeader from '@/components/dashboard/PageHeader';
 import { 
     ChevronLeft, Edit2, Trash2, Package, Tag, 
-    Layers, ShoppingBag, Info, CheckCircle2, XCircle, Clock, Percent, Box, Cog, Coins
+    Layers, ShoppingBag, Info, CheckCircle2, XCircle, Clock, Percent, Box, Cog, Coins, Flame
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import ProductModal from '@/components/dashboard/catalogue/ProductModal';
+import ServiceForm from '@/components/dashboard/catalogue/ServiceForm';
+import MakeDealFlow from '@/components/dashboard/catalogue/MakeDealFlow';
 import toast from 'react-hot-toast';
 import { useActiveBranch } from '@/hooks/useActiveBranch';
 
@@ -20,6 +22,7 @@ export default function ProductDetailsPage() {
     const { data: item, isLoading } = useCatalogueItem(id as string, activeBranchId || undefined);
     const deleteMutation = useDeleteCatalogueItem();
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    const [isMakeDealOpen, setIsMakeDealOpen] = useState(false);
 
     if (isLoading) {
         return (
@@ -95,19 +98,26 @@ export default function ProductDetailsPage() {
                 description={item.shortDescription}
                 isSticky={false}
                 actions={
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2 flex-wrap">
                         <button 
                             onClick={() => setIsEditModalOpen(true)}
-                            className="flex items-center gap-2 px-5 py-2.5 bg-white border border-gray-200 text-text-main font-bold rounded-xl hover:bg-gray-50 transition-all text-sm shadow-sm cursor-pointer"
+                            className="flex items-center gap-2 px-4 py-2.5 bg-white border border-gray-200 text-text-main font-bold rounded-xl hover:bg-gray-50 transition-all text-sm shadow-sm cursor-pointer"
                         >
-                            <Edit2 size={18} />
-                            Edit Product
+                            <Edit2 size={16} />
+                            Edit {item.itemType === 'service' ? 'Service' : 'Product'}
+                        </button>
+                        <button 
+                            onClick={() => setIsMakeDealOpen(true)}
+                            className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold rounded-xl hover:from-amber-600 hover:to-orange-600 transition-all text-sm shadow-sm shadow-amber-500/20 cursor-pointer"
+                        >
+                            <Flame size={16} />
+                            Make Deal
                         </button>
                         <button 
                             onClick={handleDelete}
-                            className="flex items-center gap-2 px-5 py-2.5 bg-white border border-red-100 text-red-600 font-bold rounded-xl hover:bg-red-50 transition-all text-sm shadow-sm cursor-pointer"
+                            className="flex items-center gap-2 px-4 py-2.5 bg-white border border-red-100 text-red-600 font-bold rounded-xl hover:bg-red-50 transition-all text-sm shadow-sm cursor-pointer"
                         >
-                            <Trash2 size={18} />
+                            <Trash2 size={16} />
                             Delete
                         </button>
                     </div>
@@ -250,9 +260,25 @@ export default function ProductDetailsPage() {
                 </div>
             </div>
 
-            <ProductModal
-                isOpen={isEditModalOpen}
-                onClose={() => setIsEditModalOpen(false)}
+            {item.itemType === 'service' ? (
+                <ServiceForm
+                    isOpen={isEditModalOpen}
+                    onClose={() => setIsEditModalOpen(false)}
+                    service={item as any}
+                    activeBranchId={activeBranchId || undefined}
+                />
+            ) : (
+                <ProductModal
+                    isOpen={isEditModalOpen}
+                    onClose={() => setIsEditModalOpen(false)}
+                    product={item as any}
+                    activeBranchId={activeBranchId || undefined}
+                />
+            )}
+
+            <MakeDealFlow
+                isOpen={isMakeDealOpen}
+                onClose={() => setIsMakeDealOpen(false)}
                 product={item as any}
                 activeBranchId={activeBranchId || undefined}
             />

@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport"/>
+<title>Business Profile - Royal Spice Restaurant</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-primary-fixed": "#001945",
+                        "surface-bright": "#f7f9fb",
+                        "surface-variant": "#e0e3e5",
+                        "on-tertiary-fixed-variant": "#3f465c",
+                        "surface-container": "#eceef0",
+                        "surface-container-highest": "#e0e3e5",
+                        "primary-container": "#066cf4",
+                        "on-tertiary-fixed": "#131b2e",
+                        "secondary-fixed": "#d3e4fe",
+                        "error": "#ba1a1a",
+                        "on-secondary": "#ffffff",
+                        "on-secondary-fixed-variant": "#38485d",
+                        "on-surface-variant": "#424655",
+                        "outline-variant": "#c2c6d7",
+                        "on-background": "#191c1e",
+                        "tertiary-container": "#6b738a",
+                        "tertiary-fixed": "#dae2fd",
+                        "on-surface": "#191c1e",
+                        "inverse-primary": "#b0c6ff",
+                        "on-primary": "#ffffff",
+                        "inverse-surface": "#2d3133",
+                        "surface-dim": "#d8dadc",
+                        "tertiary-fixed-dim": "#bec6e0",
+                        "secondary-fixed-dim": "#b7c8e1",
+                        "primary-fixed-dim": "#b0c6ff",
+                        "inverse-on-surface": "#eff1f3",
+                        "surface-tint": "#0058cb",
+                        "primary": "#0055c4",
+                        "outline": "#727786",
+                        "on-tertiary": "#ffffff",
+                        "on-secondary-fixed": "#0b1c30",
+                        "on-error-container": "#93000a",
+                        "on-secondary-container": "#54647a",
+                        "on-primary-fixed-variant": "#00429b",
+                        "tertiary": "#535a71",
+                        "on-primary-container": "#fcfaff",
+                        "secondary-container": "#d0e1fb",
+                        "primary-fixed": "#d9e2ff",
+                        "surface-container-lowest": "#ffffff",
+                        "surface": "#f7f9fb",
+                        "surface-container-low": "#f2f4f6",
+                        "secondary": "#505f76",
+                        "error-container": "#ffdad6",
+                        "on-tertiary-container": "#fcfaff",
+                        "surface-container-high": "#e6e8ea",
+                        "background": "#f7f9fb",
+                        "on-error": "#ffffff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "margin-main": "1.25rem",
+                        "stack-lg": "1.5rem",
+                        "stack-md": "1rem",
+                        "gutter-grid": "1rem",
+                        "touch-target-min": "44px",
+                        "stack-sm": "0.5rem"
+                    },
+                    "fontFamily": {
+                        "body-md": ["Inter"],
+                        "label-lg": ["Inter"],
+                        "currency-display": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "headline-sm": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "display-lg": ["Inter"],
+                        "label-sm": ["Inter"]
+                    },
+                    "fontSize": {
+                        "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "label-lg": ["14px", { "lineHeight": "20px", "letterSpacing": "0.01em", "fontWeight": "600" }],
+                        "currency-display": ["20px", { "lineHeight": "24px", "fontWeight": "700" }],
+                        "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "headline-sm": ["20px", { "lineHeight": "28px", "fontWeight": "600" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                        "display-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "label-sm": ["12px", { "lineHeight": "16px", "fontWeight": "500" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        .pb-safe { padding-bottom: env(safe-area-inset-bottom, 20px); }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-surface antialiased">
+<!-- TopAppBar -->
+<header class="bg-surface border-b border-outline-variant fixed top-0 w-full z-50 flex items-center justify-between px-margin-main h-touch-target-min max-w-full">
+<button aria-label="Go back" class="flex items-center justify-center w-8 h-8 rounded-full hover:bg-surface-container-low transition-colors active:scale-95 duration-200">
+<span class="material-symbols-outlined text-primary" data-icon="arrow_back">arrow_back</span>
+</button>
+<h1 class="font-headline-sm text-headline-sm font-bold text-primary truncate mx-4">Business Profile</h1>
+<button aria-label="Share" class="flex items-center justify-center w-8 h-8 rounded-full hover:bg-surface-container-low transition-colors active:scale-95 duration-200">
+<span class="material-symbols-outlined text-primary" data-icon="share">share</span>
+</button>
+</header>
+<!-- Main Content -->
+<main class="pt-touch-target-min pb-[80px]">
+<!-- Hero Section -->
+<div class="relative w-full h-[240px] bg-surface-container-high">
+<img alt="Royal Spice Restaurant Cover" class="w-full h-full object-cover" data-alt="High quality professional photography of an elegant Indian restaurant interior, featuring rich warm lighting, set tables, modern corporate sophisticated aesthetic, soft bright lighting for light mode UI." src="https://lh3.googleusercontent.com/aida-public/AB6AXuA3T3DgFnYSyOnjiJN4lp5_8bXcuxJc67SiLPsZ94sefoCN3HMotnuhcfmq-vk3k0cNbIS1417NeUtruj82Cb88kwykbzFR7AyoHT6eFZLYfCEZc8_GXbiOoW15BoiaAAmhEouCkon6AjwzmXVsaCzw-pyqSyDyc9-OAZY4hi3zegXkwPE2sFzuvCVVAMgcg1TnAKb64SPioCNZBrFHFfCdBo2xSw6b0gVXAKn6D9ATztNf6SxxtV9yNg"/>
+<!-- Logo Overlay -->
+<div class="absolute -bottom-10 left-margin-main w-24 h-24 bg-surface rounded-full p-1 shadow-sm border border-outline-variant">
+<img alt="Royal Spice Logo" class="w-full h-full object-cover rounded-full" data-alt="A clean, minimalist vector logo for a high-end restaurant named Royal Spice, featuring subtle corporate blue and warm gold accents on a pure white background, suitable for a mobile UI." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBfmzBvjW1EDD0b1OuekjSmmQKPP1OhfZ3FZ_8BwSyxG7nYlsBEiF8XYB1s01orKEryNwZyJIP5wMbr_Zml0CqUYM81QAhkOkW5tv72waT4bDsFSRpPnz0VY-kZqwdKvOUz4b3AqKVejEABACzEy6gnUmwEZSYkcH2hruf6G13ZGg2hgGMgkEyXdIjQbCZixcP0XxiaTkto-QSQqK2IDpqeuQ-4gaQGpQdubFoVh4gGriq37aIZYbGFng"/>
+</div>
+<!-- Status Badge -->
+<div class="absolute bottom-4 right-margin-main bg-surface px-3 py-1 rounded-full shadow-sm flex items-center gap-1">
+<div class="w-2 h-2 rounded-full bg-[#10B981]"></div>
+<span class="font-label-sm text-label-sm text-[#10B981]">Open Now</span>
+</div>
+</div>
+<!-- Business Info -->
+<div class="px-margin-main pt-12 pb-6 border-b border-outline-variant">
+<div class="flex justify-between items-start mb-2">
+<div>
+<h2 class="font-headline-md text-headline-md text-on-surface mb-1">Royal Spice Restaurant</h2>
+<p class="font-body-md text-body-md text-on-surface-variant flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]">location_on</span>
+                        Wuse 2, Abuja
+                    </p>
+</div>
+<button class="w-10 h-10 rounded-full border border-outline-variant flex items-center justify-center hover:bg-surface-container-low transition-colors active:scale-95">
+<span class="material-symbols-outlined text-primary" data-icon="favorite_border">favorite_border</span>
+</button>
+</div>
+<!-- Rating -->
+<div class="flex items-center gap-2 mb-4">
+<div class="flex text-[#F59E0B]">
+<span class="material-symbols-outlined text-[18px]" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-[18px]" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-[18px]" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-[18px]" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-[18px]">star_half</span>
+</div>
+<span class="font-label-lg text-label-lg text-on-surface">4.8</span>
+<span class="font-body-md text-body-md text-on-surface-variant">(324 reviews)</span>
+</div>
+<p class="font-body-md text-body-md text-on-surface mb-6 line-clamp-2">Authentic Indian and Continental cuisine in the heart of Wuse 2. Experience fine dining with premium service.</p>
+<!-- Quick Actions -->
+<div class="flex gap-3">
+<button class="flex-1 bg-primary text-on-primary font-label-lg text-label-lg h-touch-target-min rounded-full flex items-center justify-center gap-2 active:scale-95 transition-transform duration-150">
+<span class="material-symbols-outlined text-[20px]">directions</span>
+                    Directions
+                </button>
+<button class="flex-1 border border-primary text-primary font-label-lg text-label-lg h-touch-target-min rounded-full flex items-center justify-center gap-2 hover:bg-surface-container-low active:scale-95 transition-transform duration-150">
+<span class="material-symbols-outlined text-[20px]">call</span>
+                    Contact
+                </button>
+</div>
+</div>
+<!-- Horizontal Rails -->
+<!-- Active Deals -->
+<section class="py-6 border-b border-outline-variant">
+<div class="px-margin-main flex justify-between items-center mb-4">
+<h3 class="font-headline-sm text-headline-sm text-on-surface">Active Deals</h3>
+<button class="font-label-lg text-label-lg text-primary">See All</button>
+</div>
+<div class="flex overflow-x-auto hide-scrollbar pl-margin-main pr-margin-main gap-4 pb-2">
+<!-- Deal Card 1 -->
+<div class="min-w-[280px] bg-surface rounded-xl border border-outline-variant p-4 shadow-sm flex flex-col justify-between">
+<div>
+<div class="bg-error-container text-on-error-container font-label-sm text-label-sm px-2 py-1 rounded-md inline-block mb-2">20% OFF</div>
+<h4 class="font-label-lg text-label-lg text-on-surface mb-1">Lunch Buffet Special</h4>
+<p class="font-body-md text-body-md text-on-surface-variant line-clamp-2 mb-3">Enjoy our extensive lunch buffet with over 30 items.</p>
+</div>
+<button class="text-primary font-label-lg text-label-lg flex items-center gap-1 active:scale-95 transition-transform w-fit">
+                        Claim Deal <span class="material-symbols-outlined text-[16px]">arrow_forward</span>
+</button>
+</div>
+<!-- Deal Card 2 -->
+<div class="min-w-[280px] bg-surface rounded-xl border border-outline-variant p-4 shadow-sm flex flex-col justify-between">
+<div>
+<div class="bg-primary-container text-on-primary-container font-label-sm text-label-sm px-2 py-1 rounded-md inline-block mb-2">FREE DRINK</div>
+<h4 class="font-label-lg text-label-lg text-on-surface mb-1">Dinner for Two</h4>
+<p class="font-body-md text-body-md text-on-surface-variant line-clamp-2 mb-3">Complimentary mocktail pitcher with any two mains.</p>
+</div>
+<button class="text-primary font-label-lg text-label-lg flex items-center gap-1 active:scale-95 transition-transform w-fit">
+                        Claim Deal <span class="material-symbols-outlined text-[16px]">arrow_forward</span>
+</button>
+</div>
+</div>
+</section>
+<!-- Popular Products -->
+<section class="py-6 border-b border-outline-variant">
+<div class="px-margin-main flex justify-between items-center mb-4">
+<h3 class="font-headline-sm text-headline-sm text-on-surface">Popular Menu Items</h3>
+</div>
+<div class="flex overflow-x-auto hide-scrollbar pl-margin-main pr-margin-main gap-4 pb-2">
+<!-- Product 1 -->
+<div class="min-w-[160px] max-w-[160px]">
+<div class="w-full h-[120px] rounded-lg overflow-hidden mb-2 bg-surface-container">
+<img alt="Butter Chicken" class="w-full h-full object-cover" data-alt="Close up food photography of authentic Butter Chicken dish, rich creamy orange sauce, garnished with cilantro, corporate modern high quality light mode UI style." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCWkdHS_-b0lmaIumhMvrn2Rt6We-SMHYBmYF5OhWH4FwrIRB7MaRZ0vW8FkqghMpRqJQfqUm0imgzcrVqXy4BInL-caDp_pP74HWwhLjTgyAkQTT-n8WoWrgX9eV0WbYdoJMy8yJs_N_RrQQ6HbNg_sKRFuLZh5CDqG7T23D8IbOeFAHeBsch46juK9-qBRv2zy2RTDLe3dj5UqdK2Lb0tjKDsm-G-tJerCU_B3g-qY9oNJ3Af3SOBGA"/>
+</div>
+<h4 class="font-label-lg text-label-lg text-on-surface truncate">Butter Chicken</h4>
+<p class="font-currency-display text-currency-display text-primary mt-1">₦8,500</p>
+</div>
+<!-- Product 2 -->
+<div class="min-w-[160px] max-w-[160px]">
+<div class="w-full h-[120px] rounded-lg overflow-hidden mb-2 bg-surface-container">
+<img alt="Garlic Naan" class="w-full h-full object-cover" data-alt="Close up food photography of Garlic Naan bread, slightly charred, glistening with butter, professional studio lighting, light mode modern aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuB9Vxe1MPJVbq0WuOCJiF8IspyQnwoykL_yqmsJQ0cHOmPO0oAvl1F06UMlL7TejPBXHgW1nSt6cksij75Tqz1KcIYRdPSMQg1zbzCU4yhe7Dn5Mzzfz1vCxwVaFfn8GG8syRQAgQXyhMMQ54pF-qIP81LJnWesl_1lkmugWXd_WCyDjDtXelskne8gcqYJ1LhmvJlwIWFXKXaWqAgSRR_2NEPApnws_b_SJilN99iIUrGM_CRlr3u4yQ"/>
+</div>
+<h4 class="font-label-lg text-label-lg text-on-surface truncate">Garlic Naan</h4>
+<p class="font-currency-display text-currency-display text-primary mt-1">₦2,000</p>
+</div>
+<!-- Product 3 -->
+<div class="min-w-[160px] max-w-[160px]">
+<div class="w-full h-[120px] rounded-lg overflow-hidden mb-2 bg-surface-container">
+<img alt="Lamb Biryani" class="w-full h-full object-cover" data-alt="Close up food photography of Lamb Biryani, aromatic rice with tender meat chunks, garnished with fried onions, bright clean modern light mode UI style." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCJfn9zL0GDb7kt0TZroLGXKaquRo-OVCpKuqhvsv57-TrsdAJN4cL38iaEAOvZm4EdV2ShnaNbqoLuCifjCDYKgrHDk_wGzHmJzj6ziLhJks4vWGAbE_MKIN9-XRwEiw1PS8PE6uyL7S8ak3l19fnKAPcQo7gixFHY5DKd-_fDSE_W-IuuErOqbVf0_wYIrOYgDnY-u9233Cb18HTRj-JkgEjEfC3vuU7NOdVaQOp10XwQ9ZjqG-rqng"/>
+</div>
+<h4 class="font-label-lg text-label-lg text-on-surface truncate">Lamb Biryani</h4>
+<p class="font-currency-display text-currency-display text-primary mt-1">₦10,500</p>
+</div>
+</div>
+</section>
+<!-- Location Map Placeholder -->
+<section class="py-6 px-margin-main">
+<h3 class="font-headline-sm text-headline-sm text-on-surface mb-4">Location</h3>
+<div class="w-full h-40 bg-surface-container-high rounded-xl border border-outline-variant overflow-hidden relative">
+<img alt="Map view of Wuse 2" class="w-full h-full object-cover opacity-70" data-location="Abuja" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDr-b59HwghEUSeG3N1G_tTQCcteI3OtKqbyIZnX9Aw3JnYEVj6rh2Njb4Vre3FYX-QLQEVoLh401Qmr8Dx9NGwXYVgFO3IrT9OlsLZKx-Obf9OnaVR9lqrG-9B0ZnURcMEVnSB-eF5T06UZIkS1vbOHBlcO67wv4xPQr-ppT2O2I-lY6V44ER_ZMjnMvmIUFaJ_jJo1VrxIdgwIfip9rmYrCPjGXenNkgRQePjI3hOMatVHhDA3Z_h-Q"/>
+<div class="absolute inset-0 flex items-center justify-center">
+<div class="w-10 h-10 bg-primary/20 rounded-full flex items-center justify-center">
+<span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">location_on</span>
+</div>
+</div>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant mt-2">14 Aminu Kano Crescent, Wuse 2, Abuja, Nigeria</p>
+</section>
+</main>
+<!-- BottomNavBar -->
+<nav class="bg-surface border-t border-outline-variant fixed bottom-0 w-full z-50 rounded-t-xl shadow-lg flex justify-around items-center h-16 pb-safe px-gutter-grid md:hidden">
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-secondary-container rounded-lg p-2 active:scale-95 transition-transform duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="home">home</span>
+<span class="font-label-sm text-label-sm mt-1">Home</span>
+</a>
+<a class="flex flex-col items-center justify-center text-primary font-bold hover:bg-secondary-container rounded-lg p-2 active:scale-95 transition-transform duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="explore" style="font-variation-settings: 'FILL' 1;">explore</span>
+<span class="font-label-sm text-label-sm mt-1">Discover</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-secondary-container rounded-lg p-2 active:scale-95 transition-transform duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="local_offer">local_offer</span>
+<span class="font-label-sm text-label-sm mt-1">Deals</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-secondary-container rounded-lg p-2 active:scale-95 transition-transform duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="bookmark">bookmark</span>
+<span class="font-label-sm text-label-sm mt-1">Saved</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-secondary-container rounded-lg p-2 active:scale-95 transition-transform duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="person">person</span>
+<span class="font-label-sm text-label-sm mt-1">Account</span>
+</a>
+</nav>
+</body></html>

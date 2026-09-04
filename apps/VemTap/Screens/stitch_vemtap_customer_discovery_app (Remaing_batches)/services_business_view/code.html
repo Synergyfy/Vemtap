@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Services - Maya Beauty Studio</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "primary-fixed-dim": "#b0c6ff",
+                        "surface-container-lowest": "#ffffff",
+                        "background": "#f7f9fb",
+                        "on-background": "#191c1e",
+                        "error": "#ba1a1a",
+                        "on-secondary": "#ffffff",
+                        "on-error": "#ffffff",
+                        "secondary": "#505f76",
+                        "on-primary-container": "#fcfaff",
+                        "tertiary": "#535a71",
+                        "secondary-container": "#d0e1fb",
+                        "on-primary-fixed": "#001945",
+                        "on-tertiary-container": "#fcfaff",
+                        "on-primary": "#ffffff",
+                        "on-tertiary": "#ffffff",
+                        "on-tertiary-fixed-variant": "#3f465c",
+                        "primary": "#0055c4",
+                        "outline": "#727786",
+                        "inverse-primary": "#b0c6ff",
+                        "secondary-fixed-dim": "#b7c8e1",
+                        "surface-container-low": "#f2f4f6",
+                        "surface-container-high": "#e6e8ea",
+                        "inverse-on-surface": "#eff1f3",
+                        "on-primary-fixed-variant": "#00429b",
+                        "on-tertiary-fixed": "#131b2e",
+                        "surface-tint": "#0058cb",
+                        "tertiary-fixed-dim": "#bec6e0",
+                        "primary-container": "#066cf4",
+                        "on-surface": "#191c1e",
+                        "on-surface-variant": "#424655",
+                        "error-container": "#ffdad6",
+                        "surface-bright": "#f7f9fb",
+                        "tertiary-fixed": "#dae2fd",
+                        "surface-dim": "#d8dadc",
+                        "on-secondary-fixed-variant": "#38485d",
+                        "on-error-container": "#93000a",
+                        "tertiary-container": "#6b738a",
+                        "inverse-surface": "#2d3133",
+                        "primary-fixed": "#d9e2ff",
+                        "on-secondary-container": "#54647a",
+                        "surface-variant": "#e0e3e5",
+                        "surface-container": "#eceef0",
+                        "on-secondary-fixed": "#0b1c30",
+                        "secondary-fixed": "#d3e4fe",
+                        "outline-variant": "#c2c6d7",
+                        "surface": "#f7f9fb",
+                        "surface-container-highest": "#e0e3e5"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "stack-md": "1rem",
+                        "stack-lg": "1.5rem",
+                        "stack-sm": "0.5rem",
+                        "touch-target-min": "44px",
+                        "margin-main": "1.25rem",
+                        "gutter-grid": "1rem"
+                    },
+                    "fontFamily": {
+                        "headline-sm": ["Inter"],
+                        "label-sm": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "body-md": ["Inter"],
+                        "currency-display": ["Inter"],
+                        "display-lg": ["Inter"],
+                        "label-lg": ["Inter"],
+                        "headline-md": ["Inter"]
+                    },
+                    "fontSize": {
+                        "headline-sm": ["20px", { "lineHeight": "28px", "fontWeight": "600" }],
+                        "label-sm": ["12px", { "lineHeight": "16px", "fontWeight": "500" }],
+                        "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "currency-display": ["20px", { "lineHeight": "24px", "fontWeight": "700" }],
+                        "display-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "label-lg": ["14px", { "lineHeight": "20px", "letterSpacing": "0.01em", "fontWeight": "600" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        /* Hide scrollbar for category chips but allow scrolling */
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background font-body-md antialiased selection:bg-primary-container selection:text-on-primary-container min-h-screen flex flex-col">
+<!-- Sub-page Navigation Header (Task-Focused: Suppress global nav elements) -->
+<header class="sticky top-0 z-50 bg-surface border-b border-outline-variant px-margin-main h-touch-target-min flex items-center justify-between">
+<button aria-label="Go back" class="w-10 h-10 flex items-center justify-start text-on-surface-variant hover:text-primary transition-colors focus:outline-none focus:ring-2 focus:ring-primary rounded-full -ml-2">
+<span class="material-symbols-outlined text-[24px]">arrow_back</span>
+</button>
+<h1 class="font-headline-sm text-headline-sm text-on-surface flex-1 text-center pr-8">Services</h1>
+</header>
+<!-- Search Section -->
+<div class="px-margin-main py-stack-md bg-surface z-40 sticky top-[44px]">
+<div class="relative group">
+<span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant group-focus-within:text-primary transition-colors">search</span>
+<input class="w-full pl-12 pr-4 py-3 bg-surface-container-low border border-outline-variant rounded-xl focus:border-primary focus:bg-surface focus:ring-1 focus:ring-primary outline-none transition-all font-body-lg text-body-lg text-on-surface placeholder-on-surface-variant shadow-sm" placeholder="Search services..." type="text"/>
+</div>
+</div>
+<!-- Category Chips (Horizontal Scroll) -->
+<div class="px-margin-main pb-stack-md bg-surface overflow-x-auto whitespace-nowrap hide-scrollbar flex gap-2 border-b border-outline-variant shadow-sm z-30 sticky top-[120px]">
+<button class="px-5 py-2 rounded-full bg-primary text-on-primary font-label-lg text-label-lg transition-transform active:scale-95 shadow-sm">All</button>
+<button class="px-5 py-2 rounded-full bg-surface-container-lowest border border-outline-variant text-on-surface-variant font-label-lg text-label-lg hover:bg-surface-container-high transition-colors active:scale-95">Beauty</button>
+<button class="px-5 py-2 rounded-full bg-surface-container-lowest border border-outline-variant text-on-surface-variant font-label-lg text-label-lg hover:bg-surface-container-high transition-colors active:scale-95">Consulting</button>
+<button class="px-5 py-2 rounded-full bg-surface-container-lowest border border-outline-variant text-on-surface-variant font-label-lg text-label-lg hover:bg-surface-container-high transition-colors active:scale-95">Maintenance</button>
+<button class="px-5 py-2 rounded-full bg-surface-container-lowest border border-outline-variant text-on-surface-variant font-label-lg text-label-lg hover:bg-surface-container-high transition-colors active:scale-95">Wellness</button>
+</div>
+<!-- Service List Content -->
+<main class="flex-1 px-margin-main py-stack-md flex flex-col gap-stack-md bg-surface-bright pb-24">
+<p class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider mb-1">Available Services at Maya Beauty Studio</p>
+<!-- Service Item: Hair Styling -->
+<article class="bg-surface rounded-xl border border-outline-variant p-stack-md flex gap-4 items-start shadow-sm hover:shadow-md transition-all cursor-pointer group hover:border-primary-fixed-dim">
+<div class="w-[72px] h-[72px] rounded-lg bg-surface-container-highest flex-shrink-0 overflow-hidden relative border border-outline-variant/30">
+<img alt="Hair Styling Service Image" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" data-alt="A close-up shot of a modern, well-lit hair salon station with premium styling tools and high-end products neatly arranged on a clean, light-wood countertop. The setting exudes a sophisticated, professional beauty studio aesthetic in light mode. Soft, natural daylight streams in, creating a clean, welcoming environment with subtle blue branding accents hinting at the corporate modern design language." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBEDdwxcMPQXgNWzDikY2tPkuTElzofy6k8p-ItqMXHA2UVQepSN0nmqJdFRwuYexz24aIcEk2JxqnlSmuiD3AwzcmpP8L6SivO17V6iDOVnB6fHV83Sxj2p0TgANaOwC_HQQmpgg1YxzjuSbWCq3fYX4EmouWopXRJWND-fRsqdRopEuOJdDXcFfVqDpexgfj64wKTQMgpYCozmIwEUAA7sfVksTNs_9tcFv5xjRQGVukf8bGTevTO-Q"/>
+</div>
+<div class="flex-1 min-w-0">
+<div class="flex justify-between items-start mb-1 gap-2">
+<h3 class="font-label-lg text-[16px] text-on-surface truncate group-hover:text-primary transition-colors">Hair Styling</h3>
+<span class="inline-flex items-center gap-1 bg-secondary-container/50 text-on-secondary-container px-2 py-0.5 rounded-full font-label-sm text-label-sm shrink-0 border border-secondary-fixed-dim">
+<span class="material-symbols-outlined text-[14px]">check_circle</span> Bookable
+                    </span>
+</div>
+<p class="font-body-sm text-[13px] text-on-surface-variant line-clamp-1 mb-2">Complete wash, treatment, and professional styling.</p>
+<div class="flex flex-wrap gap-x-4 gap-y-1 font-body-md">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[16px] text-primary">payments</span>
+<span class="font-label-lg text-[14px] text-on-surface">From ₦15,000</span>
+</div>
+<div class="flex items-center gap-1.5 text-on-surface-variant">
+<span class="material-symbols-outlined text-[16px]">schedule</span>
+<span class="text-[13px]">60 min</span>
+</div>
+</div>
+</div>
+<div class="self-center flex-shrink-0 text-outline group-hover:text-primary transition-colors pl-2">
+<span class="material-symbols-outlined">chevron_right</span>
+</div>
+</article>
+<!-- Service Item: Business Consultation -->
+<article class="bg-surface rounded-xl border border-outline-variant p-stack-md flex gap-4 items-start shadow-sm hover:shadow-md transition-all cursor-pointer group hover:border-primary-fixed-dim">
+<div class="w-[72px] h-[72px] rounded-lg bg-surface-container-highest flex-shrink-0 overflow-hidden relative border border-outline-variant/30">
+<img alt="Business Consultation Image" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" data-alt="A bright, contemporary corporate meeting space featuring a sleek glass table and ergonomic chairs. The room is bathed in natural white light, emphasizing a professional, trustworthy atmosphere suitable for high-level business consulting. The aesthetic is pristine and modern, utilizing a color palette of crisp whites, soft grays, and minimal blue accents that align with a premium light-mode digital interface design." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAx8_PgCfkHNQrnHK1vtjzXUDslKEaX8lT45ZurLs-JG0ztpNIYLQTg-KMO8IilFdGg_qy8aFjGUKi3isAKXUV4enGtRE_6kpq5No1yAlLcoOVkrh6HNw7SEMh0_4jT9WhG911jKymXqcvPIBZDGAHPBq5GSr6oh2mKJe4LoWZwn3HFC4CWUT0OAcR266v-eSV9E5c3a6QoqzRTjVw1F-rQ4J0eYJ_WiRAERDrdJU9NIPiU6QoDRFoXLQ"/>
+</div>
+<div class="flex-1 min-w-0">
+<div class="flex justify-between items-start mb-1 gap-2">
+<h3 class="font-label-lg text-[16px] text-on-surface truncate group-hover:text-primary transition-colors">Business Consultation</h3>
+<span class="inline-flex items-center gap-1 bg-secondary-container/50 text-on-secondary-container px-2 py-0.5 rounded-full font-label-sm text-label-sm shrink-0 border border-secondary-fixed-dim">
+<span class="material-symbols-outlined text-[14px]">check_circle</span> Bookable
+                    </span>
+</div>
+<p class="font-body-sm text-[13px] text-on-surface-variant line-clamp-1 mb-2">Strategic planning and operational guidance sessions.</p>
+<div class="flex flex-wrap gap-x-4 gap-y-1 font-body-md">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[16px] text-primary">payments</span>
+<span class="font-label-lg text-[14px] text-on-surface">From ₦45,000</span>
+</div>
+<div class="flex items-center gap-1.5 text-on-surface-variant">
+<span class="material-symbols-outlined text-[16px]">schedule</span>
+<span class="text-[13px]">90 min</span>
+</div>
+</div>
+</div>
+<div class="self-center flex-shrink-0 text-outline group-hover:text-primary transition-colors pl-2">
+<span class="material-symbols-outlined">chevron_right</span>
+</div>
+</article>
+<!-- Service Item: AC Installation -->
+<article class="bg-surface rounded-xl border border-outline-variant p-stack-md flex gap-4 items-start shadow-sm hover:shadow-md transition-all cursor-pointer group hover:border-primary-fixed-dim">
+<div class="w-[72px] h-[72px] rounded-lg bg-surface-container-highest flex-shrink-0 overflow-hidden relative border border-outline-variant/30">
+<img alt="AC Installation Image" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" data-alt="A professional HVAC technician in a clean, branded blue uniform performing maintenance on a sleek, modern air conditioning unit. The environment is a brightly lit, pristine residential or commercial space with crisp white walls. The photography style is high-quality and trustworthy, reflecting a modern service-oriented platform with a clean, light-mode aesthetic and emphasizing safety and reliability." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCLjtRJyMg4oObgqusYinWO8ojjdXyFKV5IPce5EjxC5dN7DpM6cAXNcPM0dOY8UwMs8ivfAqS92Wo6KcrZ8FpdNNPMKtGsj6yukc3FzQ1N-3JA8Yajk88jjvhsc9d5BN9iU1qhln2pcCNIPyPDCCnxd3iXTMrRseABAsgNpZqw0IG5ln7kTTF6F88oQZq4BSBsmH6zhreTHFxqRXawFgrOt5vGwz3UY1PaM1RMXF9LycGWBAA9FC0sVg"/>
+</div>
+<div class="flex-1 min-w-0">
+<div class="flex justify-between items-start mb-1 gap-2">
+<h3 class="font-label-lg text-[16px] text-on-surface truncate group-hover:text-primary transition-colors">AC Installation</h3>
+<span class="inline-flex items-center gap-1 bg-secondary-container/50 text-on-secondary-container px-2 py-0.5 rounded-full font-label-sm text-label-sm shrink-0 border border-secondary-fixed-dim">
+<span class="material-symbols-outlined text-[14px]">check_circle</span> Bookable
+                    </span>
+</div>
+<p class="font-body-sm text-[13px] text-on-surface-variant line-clamp-1 mb-2">Professional mounting and setup of split or window units.</p>
+<div class="flex flex-wrap gap-x-4 gap-y-1 font-body-md">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[16px] text-primary">payments</span>
+<span class="font-label-lg text-[14px] text-on-surface">From ₦25,000</span>
+</div>
+<div class="flex items-center gap-1.5 text-on-surface-variant">
+<span class="material-symbols-outlined text-[16px]">schedule</span>
+<span class="text-[13px]">120 min</span>
+</div>
+</div>
+</div>
+<div class="self-center flex-shrink-0 text-outline group-hover:text-primary transition-colors pl-2">
+<span class="material-symbols-outlined">chevron_right</span>
+</div>
+</article>
+</main>
+</body></html>

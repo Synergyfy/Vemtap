@@ -20,10 +20,11 @@ interface LocationPromptProps {
   onAllowLocation?: () => void;
   onSearchLocation?: (query: string) => void;
   isLoading?: boolean;
+  error?: string | null;
 }
 
 export default function LocationPrompt(props: LocationPromptProps & LegacyLocationProps) {
-  const { isOpen, onClose, onAllowLocation, onSearchLocation, isLoading, location, onLocationSet, variant, label, className } = props;
+  const { isOpen, onClose, onAllowLocation, onSearchLocation, isLoading, error, location, onLocationSet, variant, label, className } = props;
   const [mode, setMode] = useState<'pick' | 'search'>('pick');
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -124,6 +125,12 @@ export default function LocationPrompt(props: LocationPromptProps & LegacyLocati
                   <p className="text-sm text-gray-600 leading-relaxed">
                     Allow VEMTAP to use your location to show relevant businesses and deals around you.
                   </p>
+
+                  {error && (
+                    <p className="text-xs font-semibold text-red-600 bg-red-50 border border-red-100 rounded-xl px-4 py-3 text-center">
+                      {error}
+                    </p>
+                  )}
 
                   <Button
                     onClick={_onAllowLocation}

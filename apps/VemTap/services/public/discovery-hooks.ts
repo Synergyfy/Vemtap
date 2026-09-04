@@ -1,15 +1,16 @@
 import { useQuery } from '@tanstack/react-query';
-import { api } from '@/lib/api';
+import { api, publicApi } from '@/lib/api';
 import type {
+    PublicBusiness,
     PublicBusinessesResponse,
     PublicSearchResponse,
     PublicStatsResponse,
 } from '../deals/types';
 
 export const usePublicBusinesses = (params: { sortBy?: string; limit?: number } = {}) =>
-    useQuery({
+    useQuery<{ businesses: PublicBusiness[] }>({
         queryKey: ['public', 'businesses', params],
-        queryFn: () => api.get('/public/businesses', { params }),
+        queryFn: () => publicApi.get('/public/businesses', params),
     });
 
 export const usePublicSearch = (q: string, limit = 8) =>

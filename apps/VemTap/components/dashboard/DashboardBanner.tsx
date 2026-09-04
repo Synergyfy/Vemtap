@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronLeft, ChevronRight, Sparkles, Megaphone, Zap, ArrowRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export interface BannerSlide {
@@ -25,11 +25,13 @@ export interface BannerSlide {
 interface DashboardBannerProps {
     slides: BannerSlide[];
     autoPlayInterval?: number;
+    className?: string;
 }
 
-export default function DashboardBanner({ slides, autoPlayInterval = 5000 }: DashboardBannerProps) {
+export default function DashboardBanner({ slides, autoPlayInterval = 5000, className }: DashboardBannerProps) {
     const [currentIndex, setCurrentIndex] = useState(0);
     const [isHovered, setIsHovered] = useState(false);
+    const router = useRouter();
 
     const nextSlide = useCallback(() => {
         setCurrentIndex((prev) => (prev + 1) % slides.length);
@@ -44,135 +46,90 @@ export default function DashboardBanner({ slides, autoPlayInterval = 5000 }: Das
     if (!slides.length) return null;
 
     const currentSlide = slides[currentIndex];
-    const isLight = currentSlide.isLight;
-    const hasCustomContent = !!currentSlide.children;
+    const Icon = currentSlide.icon;
+
+    const handleSlideClick = () => {
+        if (currentSlide.onAction) {
+            currentSlide.onAction();
+        } else if (currentSlide.actionUrl) {
+            if (currentSlide.actionUrl.startsWith('/')) {
+                router.push(currentSlide.actionUrl);
+            } else {
+                window.location.href = currentSlide.actionUrl;
+            }
+        }
+    };
 
     return (
         <div 
-            className="relative w-full overflow-hidden group"
+            className={cn("relative w-full overflow-hidden group select-none", className)}
             onMouseEnter={() => setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}
         >
             <AnimatePresence mode="wait">
                 <motion.div
                     key={currentSlide.id}
-                    initial={{ opacity: 0, y: -10 }}
+                    initial={{ opacity: 0, y: -6 }}
                     animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: 10 }}
+                    exit={{ opacity: 0, y: 6 }}
+                    transition={{ duration: 0.25 }}
+                    onClick={handleSlideClick}
                     className={cn(
-                        "rounded-2xl border-none shadow-sm transition-all duration-500 overflow-hidden",
-                        hasCustomContent
-                            ? "p-0"
-                            : "px-4 md:px-6 py-4 md:py-5 h-[160px] md:h-[180px] flex flex-col md:flex-row md:items-center justify-between gap-2 md:gap-5",
-                        currentSlide.color || "bg-gradient-to-r from-[#066CF4] to-[#4293FF]"
+                        "rounded-xl p-2.5 sm:p-3 transition-all duration-300 cursor-pointer shadow-sm border border-blue-100/80 bg-gradient-to-r from-blue-50/80 via-indigo-50/40 to-blue-50/80 hover:border-blue-200 flex items-center justify-between gap-2.5 sm:gap-3",
+                        currentSlide.color && !currentSlide.color.includes('bg-white') ? currentSlide.color : ""
                     )}
                 >
-                    {hasCustomContent ? (
-                        <>
-                            <div className="relative w-full">
-                                {currentSlide.children}
-                            </div>
-                            {slides.length > 1 && (
-                                <div className="absolute bottom-3 right-4 flex gap-1.5 z-10">
-                                    {slides.map((_, i) => (
-                                        <div 
-                                            key={i} 
-                                            className={cn(
-                                                "h-1 rounded-full transition-all duration-300",
-                                                currentIndex === i 
-                                                    ? "w-6 bg-white" 
-                                                    : "w-1.5 bg-white/40"
-                                            )} 
-                                        />
-                                    ))}
-                                </div>
-                            )}
-                        </>
-                    ) : (
-                    <>
-                    <div className="flex items-start gap-3 md:gap-4 flex-1 min-w-0">
-                        {(currentSlide.icon || currentSlide.image) && (
-                            <div className={cn(
-                                "size-9 md:size-11 rounded-xl flex items-center justify-center shrink-0 shadow-sm overflow-hidden",
-                                isLight ? "bg-[#066CF4]/5 text-[#066CF4]" : "bg-white/20 text-white"
-                            )}>
+                    <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 flex-1">
+                        {(Icon || currentSlide.image) && (
+                            <div className="size-8 sm:size-9 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0 shadow-sm overflow-hidden">
                                 {currentSlide.image ? (
                                     <img src={currentSlide.image} alt={currentSlide.title} className="w-full h-full object-cover" />
                                 ) : (
-                                    <>
-                                        <currentSlide.icon size={18} className="md:hidden" />
-                                        <currentSlide.icon size={22} className="hidden md:block" />
-                                    </>
+                                    <Icon size={18} className="text-primary" />
                                 )}
                             </div>
                         )}
-                        <div className="min-w-0 flex-1">
-                            <h2 className={cn(
-                                "text-[15px] md:text-lg font-bold leading-tight flex items-center gap-2 mb-1",
-                                isLight ? "text-gray-900" : "text-white"
-                            )}>
+                        <div className="min-w-0 flex-1 leading-tight">
+                            <div className="flex items-center gap-1.5 flex-wrap truncate">
                                 {currentSlide.tag && (
-                                    <span className={cn(
-                                        "text-[8px] md:text-[9px] font-bold px-2 py-0.5 rounded-full shrink-0 shadow-sm",
-                                        currentSlide.tag === 'SETUP' ? "text-emerald-600 bg-emerald-50" : "text-[#066CF4] bg-white"
-                                    )}>
+                                    <span className="text-[8px] sm:text-[9px] font-extrabold px-1.5 py-0.5 bg-primary text-white rounded-md uppercase tracking-wider shrink-0">
                                         {currentSlide.tag}
                                     </span>
                                 )}
-                                <span className="truncate min-w-0">{currentSlide.title}</span>
-                            </h2>
-                            <p className={cn(
-                                "text-xs md:text-sm font-normal leading-snug md:leading-relaxed max-w-[460px] line-clamp-2 opacity-90",
-                                isLight ? "text-gray-400" : "text-white/80"
-                            )}>
-                                {currentSlide.description}
+                                <span className="font-bold text-xs sm:text-sm text-gray-900 truncate">
+                                    {currentSlide.title}
+                                </span>
+                            </div>
+                            <p className="text-[10px] sm:text-[11px] font-medium text-gray-600 truncate mt-0.5 flex items-center gap-1">
+                                <span className="truncate">{currentSlide.description}</span>
+                                {currentSlide.actionLabel && (
+                                    <span className="font-bold text-primary underline decoration-primary/40 hover:decoration-primary inline-flex items-center gap-0.5 shrink-0 ml-1">
+                                        {currentSlide.actionLabel} &rarr;
+                                    </span>
+                                )}
                             </p>
                         </div>
                     </div>
-                    
-                    <div className="flex items-center shrink-0">
-                        {currentSlide.actionLabel && (
-                            <button 
-                                onClick={() => {
-                                    if (currentSlide.onAction) {
-                                        currentSlide.onAction();
-                                    } else if (currentSlide.actionUrl) {
-                                        window.location.href = currentSlide.actionUrl;
-                                    }
-                                }}
-                                className={cn(
-                                    "h-9 md:h-10 px-4 md:px-5 rounded-lg font-bold text-[10px] md:text-[11px] shadow-sm active:scale-95 transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap",
-                                    isLight ? "bg-[#066CF4] text-white shadow-blue-500/20" : "bg-white text-[#066CF4]"
-                                )}
-                            >
-                                {currentSlide.actionLabel}
-                                <ArrowRight size={14} className="md:hidden" />
-                                <ArrowRight size={15} className="hidden md:block" />
-                            </button>
-                        )}
 
-                        {slides.length > 1 && (
-                            <div className="flex gap-1.5 ml-2 md:ml-3 items-center">
-                                {slides.map((_, i) => (
-                                    <div 
-                                        key={i} 
-                                        className={cn(
-                                            "h-1 rounded-full transition-all duration-300",
-                                            currentIndex === i 
-                                                ? (isLight ? "w-5 bg-[#066CF4]" : "w-5 bg-white") 
-                                                : (isLight ? "w-1.5 bg-gray-300" : "w-1.5 bg-white/40")
-                                        )} 
-                                    />
-                                ))}
-                            </div>
-                        )}
-                    </div>
-
-                    {/* Decorative background element for Light mode */}
-                    {isLight && (
-                        <div className="absolute -right-12 -top-12 size-48 bg-[#066CF4]/5 rounded-full blur-3xl pointer-events-none" />
-                    )}
-                    </>
+                    {slides.length > 1 && (
+                        <div className="flex gap-1 shrink-0 items-center pl-1" onClick={(e) => e.stopPropagation()}>
+                            {slides.map((_, i) => (
+                                <button
+                                    key={i}
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        setCurrentIndex(i);
+                                    }}
+                                    className={cn(
+                                        "h-1.5 rounded-full transition-all duration-300 cursor-pointer border-none p-0 focus:outline-none",
+                                        currentIndex === i 
+                                            ? "w-4 bg-primary" 
+                                            : "w-1.5 bg-primary/20 hover:bg-primary/40"
+                                    )}
+                                    aria-label={`Go to slide ${i + 1}`}
+                                />
+                            ))}
+                        </div>
                     )}
                 </motion.div>
             </AnimatePresence>

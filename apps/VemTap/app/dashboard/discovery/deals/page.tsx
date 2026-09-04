@@ -6,7 +6,6 @@ import {
 } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
-import PageHeader from '@/components/dashboard/PageHeader';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useActiveBranch } from '@/hooks/useActiveBranch';
@@ -76,13 +75,59 @@ export default function DealsPage() {
 
     return (
         <PartnershipVerificationGuard>
-            <div className="relative p-3 md:p-8 pb-32 max-w-7xl mx-auto font-sans">
-                <PageHeader
-                    title="Deals"
-                    description="Create and manage deals that attract new customers."
-                    isSticky={false}
-                />
+            <div className="p-4 sm:p-6 max-w-7xl mx-auto flex flex-col pb-28 font-sans">
+                {/* NATIVE APP HEADER SECTION */}
+                {!isCreatingPromo && (
+                    <section className="relative bg-[#066CF4] -mx-4 -mt-4 sm:-mx-6 sm:-mt-6 px-4 sm:px-6 pt-5 pb-14 rounded-b-[2rem] shadow-lg mb-6">
+                        <div className="absolute top-0 right-0 p-8 opacity-10 pointer-events-none">
+                            <Tag size={120} />
+                        </div>
+                        
+                        <div className="relative z-10 space-y-4">
+                            <div className="flex items-center justify-between">
+                                <div className="flex flex-col">
+                                    <p className="text-blue-100 text-[10px] font-bold uppercase tracking-wider mb-1">
+                                        Marketplace
+                                    </p>
+                                    <h1 className="text-lg md:text-2xl font-bold text-white tracking-tight">
+                                        Deals
+                                    </h1>
+                                </div>
+                                <button
+                                    onClick={() => setIsCreatingPromo(true)}
+                                    className="size-12 rounded-2xl bg-white/20 backdrop-blur-sm text-white flex items-center justify-center active:scale-95 transition-all"
+                                >
+                                    <Plus size={22} />
+                                </button>
+                            </div>
+                            
+                            <div className="pt-1 pb-2">
+                                <p className="text-blue-100 text-[11px] font-semibold mb-1 flex items-center gap-1.5">
+                                    <Flame size={12} /> Attract Customers
+                                </p>
+                                <h2 className="text-lg md:text-2xl font-black text-white tracking-tight leading-tight">
+                                    Create and manage deals.
+                                </h2>
+                            </div>
+                        </div>
 
+                        {/* Search Bar - Overlapping the Header */}
+                        <div className="absolute left-0 right-0 -bottom-6 px-5 sm:px-8">
+                            <div className="relative shadow-lg shadow-black/5 rounded-2xl overflow-hidden flex bg-white">
+                                <div className="flex-1 relative">
+                                    <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+                                    <input
+                                        type="text"
+                                        placeholder="Search deals..."
+                                        className="w-full h-14 pl-12 pr-4 bg-transparent border-0 text-sm font-bold outline-none text-gray-900 placeholder:text-gray-400"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+                )}
+
+                <div className={cn("px-5 sm:px-8", !isCreatingPromo && "pt-12")}>
                 {!isCreatingPromo ? (
                     <>
                         {isAllBranches && (
@@ -118,6 +163,7 @@ export default function DealsPage() {
                         activeBranchId={activeBranchId || undefined}
                     />
                 )}
+                </div>
             </div>
         </PartnershipVerificationGuard>
     );

@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Royal Spice Restaurant - Reviews</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-primary-fixed": "#001945",
+                        "surface-bright": "#f7f9fb",
+                        "surface-variant": "#e0e3e5",
+                        "on-tertiary-fixed-variant": "#3f465c",
+                        "surface-container": "#eceef0",
+                        "surface-container-highest": "#e0e3e5",
+                        "primary-container": "#066cf4",
+                        "on-tertiary-fixed": "#131b2e",
+                        "secondary-fixed": "#d3e4fe",
+                        "error": "#ba1a1a",
+                        "on-secondary": "#ffffff",
+                        "on-secondary-fixed-variant": "#38485d",
+                        "on-surface-variant": "#424655",
+                        "outline-variant": "#c2c6d7",
+                        "on-background": "#191c1e",
+                        "tertiary-container": "#6b738a",
+                        "tertiary-fixed": "#dae2fd",
+                        "on-surface": "#191c1e",
+                        "inverse-primary": "#b0c6ff",
+                        "on-primary": "#ffffff",
+                        "inverse-surface": "#2d3133",
+                        "surface-dim": "#d8dadc",
+                        "tertiary-fixed-dim": "#bec6e0",
+                        "secondary-fixed-dim": "#b7c8e1",
+                        "primary-fixed-dim": "#b0c6ff",
+                        "inverse-on-surface": "#eff1f3",
+                        "surface-tint": "#0058cb",
+                        "primary": "#0055c4",
+                        "outline": "#727786",
+                        "on-tertiary": "#ffffff",
+                        "on-secondary-fixed": "#0b1c30",
+                        "on-error-container": "#93000a",
+                        "on-secondary-container": "#54647a",
+                        "on-primary-fixed-variant": "#00429b",
+                        "tertiary": "#535a71",
+                        "on-primary-container": "#fcfaff",
+                        "secondary-container": "#d0e1fb",
+                        "primary-fixed": "#d9e2ff",
+                        "surface-container-lowest": "#ffffff",
+                        "surface": "#f7f9fb",
+                        "surface-container-low": "#f2f4f6",
+                        "secondary": "#505f76",
+                        "error-container": "#ffdad6",
+                        "on-tertiary-container": "#fcfaff",
+                        "surface-container-high": "#e6e8ea",
+                        "background": "#f7f9fb",
+                        "on-error": "#ffffff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "margin-main": "1.25rem",
+                        "stack-lg": "1.5rem",
+                        "stack-md": "1rem",
+                        "gutter-grid": "1rem",
+                        "touch-target-min": "44px",
+                        "stack-sm": "0.5rem",
+                        "safe": "env(safe-area-inset-bottom)"
+                    },
+                    "fontFamily": {
+                        "body-md": ["Inter"],
+                        "label-lg": ["Inter"],
+                        "currency-display": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "headline-sm": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "display-lg": ["Inter"],
+                        "label-sm": ["Inter"]
+                    },
+                    "fontSize": {
+                        "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "label-lg": ["14px", { "lineHeight": "20px", "letterSpacing": "0.01em", "fontWeight": "600" }],
+                        "currency-display": ["20px", { "lineHeight": "24px", "fontWeight": "700" }],
+                        "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "headline-sm": ["20px", { "lineHeight": "28px", "fontWeight": "600" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                        "display-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "label-sm": ["12px", { "lineHeight": "16px", "fontWeight": "500" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
+        .h-touch-target-min { height: 44px; }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-surface text-on-surface antialiased min-h-screen flex flex-col pt-touch-target-min pb-[calc(64px+env(safe-area-inset-bottom))]">
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full z-50 border-b border-outline-variant dark:border-outline bg-surface dark:bg-surface-dim flat no shadows flex items-center justify-between px-margin-main h-touch-target-min w-full max-w-full">
+<button aria-label="Go back" class="w-touch-target-min h-touch-target-min flex items-center justify-center -ml-2 text-primary dark:text-primary-fixed-dim hover:bg-surface-container-low dark:hover:bg-surface-container-highest transition-colors active:scale-95 transition-transform duration-200 rounded-full">
+<span class="material-symbols-outlined text-[24px]">arrow_back</span>
+</button>
+<h1 class="font-headline-sm text-headline-sm font-bold text-primary dark:text-primary-fixed-dim truncate">Business Profile</h1>
+<button aria-label="Share" class="w-touch-target-min h-touch-target-min flex items-center justify-center -mr-2 text-primary dark:text-primary-fixed-dim hover:bg-surface-container-low dark:hover:bg-surface-container-highest transition-colors active:scale-95 transition-transform duration-200 rounded-full">
+<span class="material-symbols-outlined text-[24px]">share</span>
+</button>
+</header>
+<!-- Main Content -->
+<main class="flex-grow w-full max-w-3xl mx-auto px-margin-main py-stack-md flex flex-col gap-stack-lg">
+<!-- Header Info -->
+<section class="flex flex-col items-center text-center gap-stack-sm pt-stack-md">
+<h2 class="font-headline-md text-headline-md text-on-surface">Royal Spice Restaurant</h2>
+<p class="font-body-md text-body-md text-on-surface-variant flex items-center justify-center gap-1">
+<span class="material-symbols-outlined text-[16px]">location_on</span>
+                Victoria Island, Lagos
+            </p>
+</section>
+<!-- Rating Summary -->
+<section class="bg-surface-container-lowest rounded-xl border border-outline-variant p-stack-md flex flex-col md:flex-row gap-stack-md shadow-sm">
+<!-- Overall Score -->
+<div class="flex flex-col items-center justify-center border-b md:border-b-0 md:border-r border-outline-variant pb-stack-md md:pb-0 md:pr-stack-md md:w-1/3">
+<span class="font-display-lg text-display-lg text-on-surface">4.8</span>
+<div class="flex text-[#FFB400] my-1">
+<span class="material-symbols-outlined text-[20px]" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-[20px]" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-[20px]" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-[20px]" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-[20px]" style="font-variation-settings: 'FILL' 1;">star_half</span>
+</div>
+<span class="font-body-md text-body-md text-on-surface-variant">324 reviews</span>
+</div>
+<!-- Distribution Bars -->
+<div class="flex-grow flex flex-col justify-center gap-2">
+<div class="flex items-center gap-2">
+<span class="font-label-sm text-label-sm w-4 text-right">5</span>
+<div class="flex-grow h-2 bg-surface-container-highest rounded-full overflow-hidden">
+<div class="h-full bg-primary w-[85%] rounded-full"></div>
+</div>
+</div>
+<div class="flex items-center gap-2">
+<span class="font-label-sm text-label-sm w-4 text-right">4</span>
+<div class="flex-grow h-2 bg-surface-container-highest rounded-full overflow-hidden">
+<div class="h-full bg-primary w-[10%] rounded-full"></div>
+</div>
+</div>
+<div class="flex items-center gap-2">
+<span class="font-label-sm text-label-sm w-4 text-right">3</span>
+<div class="flex-grow h-2 bg-surface-container-highest rounded-full overflow-hidden">
+<div class="h-full bg-primary w-[3%] rounded-full"></div>
+</div>
+</div>
+<div class="flex items-center gap-2">
+<span class="font-label-sm text-label-sm w-4 text-right">2</span>
+<div class="flex-grow h-2 bg-surface-container-highest rounded-full overflow-hidden">
+<div class="h-full bg-primary w-[1%] rounded-full"></div>
+</div>
+</div>
+<div class="flex items-center gap-2">
+<span class="font-label-sm text-label-sm w-4 text-right">1</span>
+<div class="flex-grow h-2 bg-surface-container-highest rounded-full overflow-hidden">
+<div class="h-full bg-primary w-[1%] rounded-full"></div>
+</div>
+</div>
+</div>
+</section>
+<!-- Action Button -->
+<button class="w-full h-12 bg-primary text-on-primary font-label-lg text-label-lg rounded-full flex items-center justify-center gap-2 shadow-sm hover:bg-on-primary-fixed-variant transition-colors active:scale-[0.98]">
+<span class="material-symbols-outlined text-[20px]">edit</span>
+            Write a Review
+        </button>
+<!-- Reviews List -->
+<section class="flex flex-col gap-stack-md pt-stack-sm pb-[100px]">
+<h3 class="font-headline-sm text-headline-sm text-on-surface mb-2">Recent Reviews</h3>
+<!-- Review Card 1 -->
+<div class="bg-surface-container-lowest p-stack-md rounded-xl border border-outline-variant shadow-sm flex flex-col gap-stack-sm">
+<div class="flex justify-between items-start">
+<div class="flex items-center gap-3">
+<img class="w-10 h-10 rounded-full object-cover bg-surface-container-highest" data-alt="Close-up portrait of a smiling young Nigerian woman with braided hair, natural makeup, professional lighting, corporate modern aesthetic, solid light blue background, conveying trust and happiness." src="https://lh3.googleusercontent.com/aida-public/AB6AXuD7cECtnv-OMNKXq6eOJYFyVVemXQ3BHTyPt9Dftzndv0Rz_iIQj1e_9ALA3cBsXIX8vDS5bw37Te34rHc_ZIUSXQjBPJOQ-hoX4litr_8JrmJ0jeInC0SOeGwbw-tZbibKynxj6g3A6auvszSeXELTsLGNgbGRtN9c_raYGknUcAbbP6pOIjffMLUwq2breZKZp0rTAdfEeKr9Xt2YMrki_K3ZcU7uDoH89S9Ifx80IdzRd6TsU0yh0A"/>
+<div>
+<h4 class="font-label-lg text-label-lg text-on-surface">Sarah Ahmed</h4>
+<div class="flex text-[#FFB400] text-[14px]">
+<span class="material-symbols-outlined text-[14px]" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-[14px]" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-[14px]" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-[14px]" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-[14px]" style="font-variation-settings: 'FILL' 1;">star</span>
+</div>
+</div>
+</div>
+<span class="font-label-sm text-label-sm text-on-surface-variant">2 days ago</span>
+</div>
+<p class="font-body-md text-body-md text-on-surface">Absolutely fantastic experience! The Jollof rice was perfectly smoky and the service was top-notch. Highly recommend for family dinners.</p>
+</div>
+<!-- Review Card 2 -->
+<div class="bg-surface-container-lowest p-stack-md rounded-xl border border-outline-variant shadow-sm flex flex-col gap-stack-sm">
+<div class="flex justify-between items-start">
+<div class="flex items-center gap-3">
+<img class="w-10 h-10 rounded-full object-cover bg-surface-container-highest" data-alt="Portrait of a young Nigerian man with short dreadlocks, wearing a casual stylish shirt, warm professional lighting, modern clean aesthetic, conveying approachability and confidence." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCQPtCqw-P30PuTXccyTAqML_TMWPqIgTckqr7Z_px0ZtA2VmCnUtPB63xItWe_gr9cHc1vf5m231JSsNzySRUi-lYf98dcXBwsTgnddkbtElKC2ZD_NIUo72Nc_AIfyip67XfKhIn2g6kBNAwer5Nx458IYxpSkSpTXUwSiXdt7RWk685PxkgspdwF0o2xq6VI_o-rcmDKMDnkbs0dluD032gGdG635nEd0FsxJejyAc9m9XhrMXzyrA"/>
+<div>
+<h4 class="font-label-lg text-label-lg text-on-surface">Chuka Obi</h4>
+<div class="flex text-[#FFB400] text-[14px]">
+<span class="material-symbols-outlined text-[14px]" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-[14px]" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-[14px]" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-[14px]" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-[14px]">star</span>
+</div>
+</div>
+</div>
+<span class="font-label-sm text-label-sm text-on-surface-variant">1 week ago</span>
+</div>
+<p class="font-body-md text-body-md text-on-surface">Great ambiance and good music. The food was slightly delayed, but it was worth the wait. The spicy goat meat pepper soup is a must-try.</p>
+</div>
+</section>
+</main>
+<!-- BottomNavBar -->
+<!-- Suppressed based on instructions: "Automatic Suppression: You MUST exclude the navigation shell if the page intent is: ... Task-Focused: Any sub-page featuring a 'Close' or 'Back' action that implies a temporary departure from the main navigation flow." 
+         The top app bar has a "Back" button, making this a detail/sub-page, so no bottom nav. -->
+</body></html>

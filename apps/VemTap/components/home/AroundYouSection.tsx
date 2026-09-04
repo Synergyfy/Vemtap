@@ -5,9 +5,11 @@ import { motion } from 'framer-motion';
 import { MapPin, Navigation, ArrowRight, Compass } from 'lucide-react';
 import { useLocation } from '@/hooks/useLocation';
 import { usePublicOffers } from '@/services/deals/hooks';
-import DealCard from './DealCard';
+import { offerToHomeDeal } from './mappers';
+import DealCard from './cards/DealCard';
 import { DealCardSkeleton } from './Skeletons';
 import Link from 'next/link';
+import type { DealOffer } from '@/services/deals/types';
 
 function haversineDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
   const R = 6371;
@@ -73,46 +75,52 @@ export default function AroundYouSection() {
     ...(lat != null && lng != null ? { lat, lng } : {}),
   });
 
-  const sortedDeals = useMemo(() => {
-    if (!dealsData?.data || !lat || !lng) return [];
+  const deals = useMemo(() => {
+    if (!dealsData?.data || lat == null || lng == null) return [];
     const now = new Date();
     const withDistance = dealsData.data
-      .filter((offer: any) => {
+      .filter((offer: DealOffer) => {
         if (!offer || !offer.id) return false;
         if (offer.endDate && new Date(offer.endDate) < now) return false;
         if (offer.startDate && new Date(offer.startDate) > now) return false;
         return true;
       })
-      .map((offer: any) => {
-        const branchLat = offer.branch?.latitude || offer.business?.latitude;
-        const branchLng = offer.branch?.longitude || offer.business?.longitude;
+      .map((offer: DealOffer) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const branchLat = (offer.branch as any)?.latitude ?? (offer.business as any)?.latitude;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const branchLng = (offer.branch as any)?.longitude ?? (offer.business as any)?.longitude;
         let distance = Infinity;
         if (branchLat && branchLng) {
           distance = haversineDistance(lat, lng, Number(branchLat), Number(branchLng));
         }
-        return { ...offer, distance };
+        return { offer, distance };
       });
 
-    withDistance.sort((a: any, b: any) => {
+    withDistance.sort((a, b) => {
       if (a.distance !== b.distance) return a.distance - b.distance;
-      return (b.claimedCount || 0) - (a.claimedCount || 0);
+      return (b.offer.claimedCount || 0) - (a.offer.claimedCount || 0);
     });
 
-    return withDistance.slice(0, 10);
+    return withDistance.slice(0, 10).map(({ offer, distance }) => ({
+      card: offerToHomeDeal(offer),
+      distance,
+    }));
   }, [dealsData, lat, lng]);
 
   if (!hasLocation) {
     return (
       <section className="py-8 md:py-12 px-4 sm:px-6 lg:px-8 bg-gray-50/50">
         <div className="max-w-7xl mx-auto">
-          <div className="mb-5">
-            <h2 className="text-xl md:text-2xl font-bold text-gray-900 tracking-tight flex items-center gap-2">
-              <MapPin size={20} className="text-primary" />
+          <div className="flex items-center justify-between mb-5">
+            <h2 className="text-base md:text-lg font-black text-gray-900 tracking-wide uppercase">
               Around You
             </h2>
-            <p className="text-sm text-gray-500 mt-1">Deals closest to your location</p>
+            <Link href="/deals" className="text-xs font-bold text-[#066CF4] hover:underline shrink-0">
+              See all
+            </Link>
           </div>
-          <LocationPrompt onEnable={requestLocation} />
+          <LocationPrompt onEnable={() => { void requestLocation(); }} />
         </div>
       </section>
     );
@@ -122,15 +130,11 @@ export default function AroundYouSection() {
     <section className="py-8 md:py-12 px-4 sm:px-6 lg:px-8 bg-gray-50/50">
       <div className="max-w-7xl mx-auto">
         <div className="flex items-center justify-between mb-5">
-          <div>
-            <h2 className="text-xl md:text-2xl font-bold text-gray-900 tracking-tight flex items-center gap-2">
-              <MapPin size={20} className="text-primary" />
-              Around {label || 'You'}
-            </h2>
-            <p className="text-sm text-gray-500 mt-1">Deals sorted by distance from you</p>
-          </div>
-          <Link href="/deals" className="text-sm font-semibold text-primary hover:text-primary/80 transition-colors flex items-center gap-1 shrink-0">
-            View All <ArrowRight size={14} />
+          <h2 className="text-base md:text-lg font-black text-gray-900 tracking-wide uppercase">
+            {label ? `Around ${label.split(',')[0]}` : 'Around You'}
+          </h2>
+          <Link href="/deals" className="text-xs font-bold text-[#066CF4] hover:underline shrink-0">
+            See all
           </Link>
         </div>
 
@@ -140,33 +144,17 @@ export default function AroundYouSection() {
               <DealCardSkeleton key={i} />
             ))}
           </div>
-        ) : sortedDeals.length > 0 ? (
+        ) : deals.length > 0 ? (
           <div className="flex gap-4 overflow-x-auto snap-x snap-mandatory scrollbar-hide -mx-4 px-4 md:mx-0 md:px-0 pb-4">
-            {sortedDeals.map((offer: any, i: number) => (
+            {deals.map(({ card }, i) => (
               <motion.div
-                key={offer.id}
+                key={card.id}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.05 }}
                 className="snap-start"
               >
-                <DealCard
-                  id={offer.id}
-                  title={offer.name}
-                  businessName={offer.branch?.name || offer.branchName || offer.business?.name || 'Business'}
-                  businessSlug={offer.business?.slug || ''}
-                  category={offer.business?.categoryName || 'Category'}
-                  location={
-                    offer.distance !== Infinity
-                      ? `${offer.distance < 1 ? '<1' : offer.distance.toFixed(1)} km away`
-                      : offer.business?.address || ''
-                  }
-                  discountPercent={offer.discountPercent}
-                  originalPrice={offer.originalPrice}
-                  dealPrice={offer.dealPrice}
-                  imageColor="#066CF4"
-                  viewCount={offer.viewCount}
-                />
+                <DealCard deal={card} />
               </motion.div>
             ))}
           </div>

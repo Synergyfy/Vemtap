@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Share Business - Royal Spice Restaurant</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-primary-fixed": "#001945",
+                        "surface-bright": "#f7f9fb",
+                        "surface-variant": "#e0e3e5",
+                        "on-tertiary-fixed-variant": "#3f465c",
+                        "surface-container": "#eceef0",
+                        "surface-container-highest": "#e0e3e5",
+                        "primary-container": "#066cf4",
+                        "on-tertiary-fixed": "#131b2e",
+                        "secondary-fixed": "#d3e4fe",
+                        "error": "#ba1a1a",
+                        "on-secondary": "#ffffff",
+                        "on-secondary-fixed-variant": "#38485d",
+                        "on-surface-variant": "#424655",
+                        "outline-variant": "#c2c6d7",
+                        "on-background": "#191c1e",
+                        "tertiary-container": "#6b738a",
+                        "tertiary-fixed": "#dae2fd",
+                        "on-surface": "#191c1e",
+                        "inverse-primary": "#b0c6ff",
+                        "on-primary": "#ffffff",
+                        "inverse-surface": "#2d3133",
+                        "surface-dim": "#d8dadc",
+                        "tertiary-fixed-dim": "#bec6e0",
+                        "secondary-fixed-dim": "#b7c8e1",
+                        "primary-fixed-dim": "#b0c6ff",
+                        "inverse-on-surface": "#eff1f3",
+                        "surface-tint": "#0058cb",
+                        "primary": "#0055c4",
+                        "outline": "#727786",
+                        "on-tertiary": "#ffffff",
+                        "on-secondary-fixed": "#0b1c30",
+                        "on-error-container": "#93000a",
+                        "on-secondary-container": "#54647a",
+                        "on-primary-fixed-variant": "#00429b",
+                        "tertiary": "#535a71",
+                        "on-primary-container": "#fcfaff",
+                        "secondary-container": "#d0e1fb",
+                        "primary-fixed": "#d9e2ff",
+                        "surface-container-lowest": "#ffffff",
+                        "surface": "#f7f9fb",
+                        "surface-container-low": "#f2f4f6",
+                        "secondary": "#505f76",
+                        "error-container": "#ffdad6",
+                        "on-tertiary-container": "#fcfaff",
+                        "surface-container-high": "#e6e8ea",
+                        "background": "#f7f9fb",
+                        "on-error": "#ffffff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "margin-main": "1.25rem",
+                        "stack-lg": "1.5rem",
+                        "stack-md": "1rem",
+                        "gutter-grid": "1rem",
+                        "touch-target-min": "44px",
+                        "stack-sm": "0.5rem"
+                    },
+                    "fontFamily": {
+                        "body-md": ["Inter"],
+                        "label-lg": ["Inter"],
+                        "currency-display": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "headline-sm": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "display-lg": ["Inter"],
+                        "label-sm": ["Inter"]
+                    },
+                    "fontSize": {
+                        "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "label-lg": ["14px", { "lineHeight": "20px", "letterSpacing": "0.01em", "fontWeight": "600" }],
+                        "currency-display": ["20px", { "lineHeight": "24px", "fontWeight": "700" }],
+                        "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "headline-sm": ["20px", { "lineHeight": "28px", "fontWeight": "600" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                        "display-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "label-sm": ["12px", { "lineHeight": "16px", "fontWeight": "500" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .bottom-sheet {
+            transform: translateY(100%);
+            transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+        }
+        .bottom-sheet.open {
+            transform: translateY(0);
+        }
+        .backdrop {
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+        .backdrop.open {
+            opacity: 1;
+            pointer-events: auto;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background font-body-md min-h-screen relative overflow-hidden">
+<!-- Background Content (Mockup of Profile Screen) -->
+<div class="fixed top-0 w-full z-10 bg-surface border-b border-outline-variant flex items-center justify-between px-margin-main h-touch-target-min">
+<button class="h-touch-target-min w-touch-target-min flex items-center justify-center text-primary active:scale-95 transition-transform duration-200">
+<span class="material-symbols-outlined" data-icon="arrow_back">arrow_back</span>
+</button>
+<h1 class="font-headline-sm text-headline-sm font-bold text-primary">Business Profile</h1>
+<button class="h-touch-target-min w-touch-target-min flex items-center justify-center text-primary hover:bg-surface-container-low transition-colors active:scale-95 transition-transform duration-200" onclick="toggleSheet()">
+<span class="material-symbols-outlined" data-icon="share">share</span>
+</button>
+</div>
+<main class="pt-[60px] pb-24 px-margin-main h-full overflow-y-auto filter blur-sm transition-all duration-300" id="main-content">
+<div class="w-full h-64 rounded-xl overflow-hidden mt-stack-md relative shadow-sm">
+<img class="w-full h-full object-cover" data-alt="A high-quality photo of a modern Nigerian restaurant interior. The restaurant has warm lighting, comfortable seating with a mix of contemporary and traditional African decor elements. Tables are neatly set. The color palette emphasizes warm oranges, earthy browns, and crisp whites. Shot with a slight depth of field." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAaiPV6j0TpBQdq3GoBgqz6BwIJ34r2eKEHizj7cIETok6a24eW_19Vp9l74KJOJlms1J5yxWIAYWVdQ0NxOtVdtLqunl6EkTJTGkgdL4Cvh7CD39MWeZWpykDQnGqJuTbPsj8ENQnKpUMAq_rXOUl0UVR6SOb9G89BgdMg_SyP39XUgX9bQXhfcWK7CTiFKzJP7qzFUJ2wHU_4hbPXuNOBKQI8odX510b8U-EogJttkgrcM9Rmi2tSuA"/>
+</div>
+<div class="mt-stack-md flex justify-between items-start">
+<div>
+<h2 class="font-headline-md text-headline-md text-on-surface">Royal Spice Restaurant</h2>
+<p class="font-body-md text-body-md text-on-surface-variant flex items-center mt-1">
+<span class="material-symbols-outlined text-[16px] mr-1 text-primary" data-icon="star" data-weight="fill">star</span>
+<span class="font-label-lg text-label-lg text-on-surface">4.8</span>
+<span class="mx-1">•</span>
+                    Victoria Island, Lagos
+                </p>
+</div>
+<span class="material-symbols-outlined text-primary bg-primary-fixed p-2 rounded-full" data-icon="verified">verified</span>
+</div>
+<div class="mt-stack-lg space-y-stack-md">
+<p class="font-body-lg text-body-lg text-on-surface-variant leading-relaxed">
+                Experience authentic Nigerian cuisine elevated with modern culinary techniques. Royal Spice offers a premium dining experience perfect for business lunches and family dinners alike.
+            </p>
+</div>
+</main>
+<!-- Bottom Sheet Backdrop -->
+<div class="backdrop fixed inset-0 bg-inverse-surface/40 z-40" id="backdrop" onclick="toggleSheet()"></div>
+<!-- Bottom Sheet -->
+<div class="bottom-sheet fixed bottom-0 left-0 right-0 w-full bg-surface-container-lowest z-50 rounded-t-[24px] shadow-[0_-8px_24px_rgba(0,0,0,0.12)]" id="shareSheet">
+<!-- Handle -->
+<div class="w-full flex justify-center pt-4 pb-2" onclick="toggleSheet()">
+<div class="w-10 h-1 bg-outline-variant rounded-full"></div>
+</div>
+<div class="px-margin-main pb-8 pt-2">
+<h3 class="font-headline-sm text-headline-sm text-on-surface mb-stack-lg text-center">Share this business</h3>
+<!-- Business Preview Card -->
+<div class="flex items-center p-4 bg-surface-container-low rounded-xl border border-outline-variant/30 mb-stack-lg">
+<div class="w-16 h-16 rounded-lg overflow-hidden shrink-0 mr-4">
+<img class="w-full h-full object-cover" data-alt="A close up, appetizing shot of a beautifully plated Nigerian dish, like Jollof rice with grilled chicken and plantain, served in a modern restaurant setting. The colors are vibrant red, golden brown, and fresh green garnish. Soft, natural lighting." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCvHfy7ErgyPaHo74z5ge2xsocx1_hEb32TpmvF2mHzTeh-ofzPoMxpYHqrWWNBwcgxNpbtgLumOQdhiaa54tSe46buQC2ZhNooP5iA73DB4I2BewY-FMire-wyNqVyULDapFOPButLLQ8mKTAMcasAy9ICevxWalDPA9lR2_vaxurvmJsJ__ArzOsb3e9NlcbVyT-MX3oxEqSjS8UUjqGt2Rth8-W77yoB86AZyrcZf9QZ3rZJC0e3kQ"/>
+</div>
+<div class="flex-1 min-w-0">
+<h4 class="font-label-lg text-label-lg text-on-surface truncate">Royal Spice Restaurant</h4>
+<div class="flex items-center mt-1 space-x-2 text-on-surface-variant font-label-sm text-label-sm">
+<span class="flex items-center text-primary"><span class="material-symbols-outlined text-[14px] mr-0.5" data-icon="star" data-weight="fill">star</span>4.8</span>
+<span>•</span>
+<span class="truncate">Victoria Island, Lagos</span>
+</div>
+</div>
+</div>
+<!-- Sharing Options Grid -->
+<div class="grid grid-cols-4 gap-4 mb-stack-lg">
+<!-- WhatsApp -->
+<button class="flex flex-col items-center justify-center space-y-2 group">
+<div class="w-[56px] h-[56px] rounded-full bg-[#25D366]/10 text-[#25D366] flex items-center justify-center group-active:scale-95 transition-transform duration-200">
+<span class="material-symbols-outlined text-[28px]" data-icon="chat">chat</span>
+</div>
+<span class="font-label-sm text-label-sm text-on-surface-variant group-hover:text-on-surface transition-colors">WhatsApp</span>
+</button>
+<!-- Copy Link -->
+<button class="flex flex-col items-center justify-center space-y-2 group">
+<div class="w-[56px] h-[56px] rounded-full bg-surface-container-high text-on-surface flex items-center justify-center group-active:scale-95 transition-transform duration-200">
+<span class="material-symbols-outlined text-[28px]" data-icon="content_copy">content_copy</span>
+</div>
+<span class="font-label-sm text-label-sm text-on-surface-variant group-hover:text-on-surface transition-colors">Copy Link</span>
+</button>
+<!-- SMS -->
+<button class="flex flex-col items-center justify-center space-y-2 group">
+<div class="w-[56px] h-[56px] rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center group-active:scale-95 transition-transform duration-200">
+<span class="material-symbols-outlined text-[28px]" data-icon="sms">sms</span>
+</div>
+<span class="font-label-sm text-label-sm text-on-surface-variant group-hover:text-on-surface transition-colors">SMS</span>
+</button>
+<!-- More -->
+<button class="flex flex-col items-center justify-center space-y-2 group">
+<div class="w-[56px] h-[56px] rounded-full bg-surface-container text-on-surface flex items-center justify-center group-active:scale-95 transition-transform duration-200">
+<span class="material-symbols-outlined text-[28px]" data-icon="more_horiz">more_horiz</span>
+</div>
+<span class="font-label-sm text-label-sm text-on-surface-variant group-hover:text-on-surface transition-colors">More</span>
+</button>
+</div>
+<button class="w-full h-12 flex items-center justify-center rounded-lg bg-surface-container-high text-on-surface font-label-lg text-label-lg active:scale-[0.98] transition-transform" onclick="toggleSheet()">
+                Cancel
+            </button>
+</div>
+</div>
+<script>
+        // Open sheet on load for demonstration
+        window.onload = () => {
+            setTimeout(() => {
+                toggleSheet();
+            }, 300);
+        };
+
+        function toggleSheet() {
+            const sheet = document.getElementById('shareSheet');
+            const backdrop = document.getElementById('backdrop');
+            const mainContent = document.getElementById('main-content');
+            
+            sheet.classList.toggle('open');
+            backdrop.classList.toggle('open');
+            
+            if (sheet.classList.contains('open')) {
+                mainContent.classList.add('blur-sm');
+                mainContent.classList.add('scale-[0.98]');
+            } else {
+                mainContent.classList.remove('blur-sm');
+                mainContent.classList.remove('scale-[0.98]');
+            }
+        }
+    </script>
+</body></html>
