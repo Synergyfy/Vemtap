@@ -251,12 +251,9 @@ export default function Homepage() {
               placeholder="Search deals, businesses..." type="text" />
             <button type="submit" className="h-11 px-6 rounded-r-xl text-white font-bold text-[13px] uppercase tracking-wider" style={{ background: C.primary }}>Search</button>
           </form>
-          <div className="flex items-center gap-1 shrink-0">
-            <Link href="/auth/onboarding" className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-[13px] font-semibold hover:bg-gray-50" style={{ color: C.onSurface }}>
-              <span className="material-symbols-outlined" style={{ fontSize: 20 }}>person</span>Account
-            </Link>
-            <Link href="#" className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-[13px] font-semibold hover:bg-gray-50" style={{ color: C.onSurface }}>
-              <span className="material-symbols-outlined" style={{ fontSize: 20 }}>help</span>Help
+          <div className="flex items-center gap-2 shrink-0">
+            <Link href="/auth/onboarding" className="h-10 px-5 rounded-xl bg-[#066CF4] text-white text-[13px] font-bold flex items-center justify-center hover:bg-[#0557b3] transition-colors">
+              Login
             </Link>
           </div>
         </div>

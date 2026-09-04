@@ -315,14 +315,9 @@ function DealsPageInner() {
               Search
             </button>
           </form>
-          <div className="flex items-center gap-1 shrink-0">
-            <Link href="/auth/onboarding" className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-[13px] font-semibold transition-colors hover:bg-gray-50" style={{ color: C.onSurface }}>
-              <span className="material-symbols-outlined" style={{ fontSize: 20 }}>person</span>
-              Account
-            </Link>
-            <Link href="#" className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-[13px] font-semibold transition-colors hover:bg-gray-50" style={{ color: C.onSurface }}>
-              <span className="material-symbols-outlined" style={{ fontSize: 20 }}>help</span>
-              Help
+          <div className="flex items-center gap-2 shrink-0">
+            <Link href="/auth/onboarding" className="h-10 px-5 rounded-xl bg-[#066CF4] text-white text-[13px] font-bold flex items-center justify-center hover:bg-[#0557b3] transition-colors">
+              Login
             </Link>
             <button onClick={() => setIsLocationModalOpen(true)} className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-[13px] font-medium transition-colors hover:bg-gray-50" style={{ color: C.onSurfaceVariant }}>
               <span className="material-symbols-outlined" style={{ fontSize: 16 }}>location_on</span>

@@ -2,6 +2,7 @@
 
 import React, { useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { usePublicBusiness, usePublicBranch } from '@/services/public/hooks';
@@ -110,13 +111,45 @@ export default function BusinessDealsPage() {
         );
     }
 
+    const STORE_NAV_ITEMS = [
+        { icon: 'storefront', label: 'Overview', href: `/b/${code}` },
+        { icon: 'local_offer', label: 'Deals', href: `/b/${code}/deals` },
+        { icon: 'schedule', label: 'Hours', href: `/b/${code}/hours` },
+        { icon: 'home_repair_service', label: 'Services', href: `/b/${code}/services` },
+        { icon: 'inventory_2', label: 'Products', href: `/b/${code}/products` },
+    ];
+
     return (
         <div className="min-h-screen" style={{ background: '#f7f9fb', color: '#191c1e', fontFamily: 'Inter, sans-serif' }}>
-            {/* TopAppBar */}
-            <header
-                className="fixed top-0 w-full z-50 flex items-center justify-between"
-                style={{ background: '#f7f9fb', borderBottom: '1px solid #c2c6d7', padding: '0 20px', height: 56 }}
-            >
+            {/* Desktop Header */}
+            <header className="hidden md:flex fixed top-0 w-full z-50 flex-col" style={{ background: '#ffffff', borderBottom: '1px solid #e6e8ea' }}>
+                <div className="flex items-center justify-between px-6 h-[60px] max-w-[1200px] mx-auto w-full">
+                    <div className="flex items-center gap-4">
+                        <button onClick={() => router.back()} className="flex items-center justify-center w-9 h-9 rounded-lg hover:bg-gray-100 transition-colors" style={{ color: '#0055c4' }}>
+                            <span className="material-symbols-outlined">arrow_back</span>
+                        </button>
+                        <Link href="/" className="flex items-center gap-2"><img src="/VEMTAP_PNG.png" alt="VemTap" className="h-8 w-auto" /></Link>
+                        <div className="h-6 w-px bg-gray-200" />
+                        <span className="text-[15px] font-bold text-gray-900">{profileName}</span>
+                    </div>
+                </div>
+                <div className="border-t border-gray-100">
+                    <nav className="max-w-[1200px] mx-auto px-6 flex items-center gap-1 h-[44px] overflow-x-auto no-scrollbar">
+                        {STORE_NAV_ITEMS.map((item) => {
+                            const isActive = item.href.includes('/deals');
+                            return (
+                                <Link key={item.label} href={item.href}
+                                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[13px] font-medium whitespace-nowrap transition-all ${isActive ? 'bg-[#0055c4]/10 text-[#0055c4]' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-700'}`}>
+                                    <span className="material-symbols-outlined" style={{ fontSize: 16 }}>{item.icon}</span>{item.label}
+                                </Link>
+                            );
+                        })}
+                    </nav>
+                </div>
+            </header>
+
+            {/* Mobile Header */}
+            <header className="md:hidden fixed top-0 w-full z-50 flex items-center justify-between" style={{ background: '#f7f9fb', borderBottom: '1px solid #c2c6d7', padding: '0 20px', height: 56 }}>
                 <button onClick={() => router.back()} className="flex items-center justify-center w-8 h-8 rounded-full active:scale-95" style={{ color: '#0055c4' }}>
                     <span className="material-symbols-outlined">arrow_back</span>
                 </button>
@@ -125,15 +158,16 @@ export default function BusinessDealsPage() {
             </header>
 
             {/* Main Content */}
-            <main style={{ paddingTop: 56, paddingBottom: 80 }} className="max-w-3xl mx-auto">
-                {/* Header Info */}
-                <section className="text-center py-6 px-5">
-                    <h2 className="text-[24px] font-semibold tracking-tight mb-1" style={{ color: '#191c1e' }}>Active Deals</h2>
-                    <p className="text-[14px]" style={{ color: '#424655' }}>{profileName}</p>
-                </section>
+            <main className="md:pt-[104px]" style={{ paddingTop: 56, paddingBottom: 80 }}>
+                <div className="max-w-[1200px] mx-auto md:px-6">
+                    {/* Header Info */}
+                    <section className="text-center py-6 px-5 md:text-left md:bg-white md:rounded-2xl md:shadow-sm md:border md:border-gray-100 md:p-6 md:mt-4">
+                        <h2 className="text-[24px] md:text-[28px] font-semibold tracking-tight mb-1" style={{ color: '#191c1e' }}>Active Deals</h2>
+                        <p className="text-[14px]" style={{ color: '#424655' }}>{profileName}</p>
+                    </section>
 
-                {/* Deals Grid */}
-                <section className="px-5 grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Deals Grid */}
+                    <section className="px-5 md:px-0 grid grid-cols-1 md:grid-cols-3 gap-4 md:mt-6">
                     {activeOffers.length > 0 ? (
                         activeOffers.map((offer: any, idx: number) => {
                             const badge = getOfferBadge(offer);

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import Script from 'next/script';
 import { useQuery } from '@tanstack/react-query';
@@ -77,6 +77,7 @@ const FALLBACK_DEALS = [
 export default function PublicBusinessProfilePage() {
     const params = useParams();
     const router = useRouter();
+    const pathname = usePathname();
     const authUser = useAuthStore((s) => s.user);
     const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
     const codeParam = params?.code;
@@ -498,175 +499,150 @@ export default function PublicBusinessProfilePage() {
     // ═══════════════════════════════════════════
     const coverSrc = profileCover || sectorCover;
 
+    const STORE_NAV_ITEMS = [
+        { icon: 'storefront', label: 'Overview', href: `/b/${code}` },
+        { icon: 'local_offer', label: 'Deals', href: `/b/${code}/deals` },
+        { icon: 'schedule', label: 'Hours', href: `/b/${code}/hours` },
+        { icon: 'home_repair_service', label: 'Services', href: `/b/${code}/services` },
+        { icon: 'inventory_2', label: 'Products', href: `/b/${code}/products` },
+    ];
+
     return (
         <div className="min-h-screen" style={{ background: '#f7f9fb', color: '#191c1e', fontFamily: 'Inter, sans-serif' }}>
-            {/* ─── TopAppBar ─── */}
-            <header
-                className="fixed top-0 w-full z-50 flex items-center justify-between"
-                style={{
-                    background: '#f7f9fb',
-                    borderBottom: '1px solid #c2c6d7',
-                    padding: '0 20px',
-                    height: 56,
-                }}
-            >
-                <button
-                    onClick={() => router.back()}
-                    className="flex items-center justify-center w-8 h-8 rounded-full transition-colors active:scale-95"
-                    style={{ color: '#0055c4' }}
-                    aria-label="Go back"
-                >
+            {/* ─── Desktop Header ─── */}
+            <header className="hidden md:flex fixed top-0 w-full z-50 flex-col" style={{ background: '#ffffff', borderBottom: '1px solid #e6e8ea' }}>
+                <div className="flex items-center justify-between px-6 h-[60px] max-w-[1200px] mx-auto w-full">
+                    <div className="flex items-center gap-4">
+                        <button onClick={() => router.back()} className="flex items-center justify-center w-9 h-9 rounded-lg hover:bg-gray-100 transition-colors" style={{ color: '#0055c4' }}>
+                            <span className="material-symbols-outlined">arrow_back</span>
+                        </button>
+                        <Link href="/" className="flex items-center gap-2">
+                            <img src="/VEMTAP_PNG.png" alt="VemTap" className="h-8 w-auto" />
+                        </Link>
+                        <div className="h-6 w-px bg-gray-200" />
+                        <div className="flex items-center gap-3">
+                            {profileLogo ? (
+                                <img src={profileLogo} alt={profileName} className="w-8 h-8 rounded-lg object-cover" />
+                            ) : (
+                                <div className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center">
+                                    <span className="material-symbols-outlined text-gray-400" style={{ fontSize: 18 }}>store</span>
+                                </div>
+                            )}
+                            <span className="text-[15px] font-bold text-gray-900 truncate max-w-[200px]">{profileName}</span>
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <button onClick={handleShare} className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-[13px] font-medium hover:bg-gray-50 transition-colors text-gray-600">
+                            <span className="material-symbols-outlined" style={{ fontSize: 18 }}>share</span>Share
+                        </button>
+                        <a href={directionsUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-[13px] font-semibold bg-[#0055c4] text-white hover:bg-[#0041a8] transition-colors">
+                            <span className="material-symbols-outlined" style={{ fontSize: 16 }}>directions</span>Directions
+                        </a>
+                    </div>
+                </div>
+                <div className="border-t border-gray-100">
+                    <nav className="max-w-[1200px] mx-auto px-6 flex items-center gap-1 h-[44px] overflow-x-auto no-scrollbar">
+                        {STORE_NAV_ITEMS.map((item) => {
+                            const isActive = pathname === item.href || (item.href === `/b/${code}` && pathname === `/b/${code}`);
+                            return (
+                                <Link key={item.label} href={item.href}
+                                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[13px] font-medium whitespace-nowrap transition-all ${isActive ? 'bg-[#0055c4]/10 text-[#0055c4]' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-700'}`}>
+                                    <span className="material-symbols-outlined" style={{ fontSize: 16 }}>{item.icon}</span>
+                                    {item.label}
+                                </Link>
+                            );
+                        })}
+                    </nav>
+                </div>
+            </header>
+
+            {/* ─── Mobile Header ─── */}
+            <header className="md:hidden fixed top-0 w-full z-50 flex items-center justify-between" style={{ background: '#f7f9fb', borderBottom: '1px solid #c2c6d7', padding: '0 20px', height: 56 }}>
+                <button onClick={() => router.back()} className="flex items-center justify-center w-8 h-8 rounded-full transition-colors active:scale-95" style={{ color: '#0055c4' }}>
                     <span className="material-symbols-outlined">arrow_back</span>
                 </button>
-                <h1 className="text-[20px] font-bold truncate mx-4" style={{ color: '#0055c4' }}>
-                    Business Profile
-                </h1>
-                <button
-                    onClick={handleShare}
-                    className="flex items-center justify-center w-8 h-8 rounded-full transition-colors active:scale-95"
-                    style={{ color: '#0055c4' }}
-                    aria-label="Share"
-                >
+                <h1 className="text-[20px] font-bold truncate mx-4" style={{ color: '#0055c4' }}>Business Profile</h1>
+                <button onClick={handleShare} className="flex items-center justify-center w-8 h-8 rounded-full transition-colors active:scale-95" style={{ color: '#0055c4' }}>
                     <span className="material-symbols-outlined">share</span>
                 </button>
             </header>
 
             {/* ─── Main Content ─── */}
-            <main style={{ paddingTop: 56, paddingBottom: 80 }}>
-                {/* Hero Section */}
-                <div className="relative w-full" style={{ height: 240, background: '#e6e8ea' }}>
-                    <img
-                        alt={`${profileName} Cover`}
-                        className="w-full h-full object-cover"
-                        src={coverSrc}
-                    />
-                    {/* Logo Overlay */}
-                    <div
-                        className="absolute rounded-full shadow-sm"
-                        style={{
-                            bottom: -40,
-                            left: 20,
-                            width: 96,
-                            height: 96,
-                            background: '#ffffff',
-                            padding: 4,
-                            border: '1px solid #c2c6d7',
-                        }}
-                    >
-                        {profileLogo ? (
-                            <img
-                                alt={`${profileName} Logo`}
-                                className="w-full h-full rounded-full object-cover"
-                                src={profileLogo}
-                            />
-                        ) : (
-                            <div
-                                className="w-full h-full rounded-full flex items-center justify-center"
-                                style={{ background: '#eceef0' }}
-                            >
-                                <span className="material-symbols-outlined text-[32px]" style={{ color: '#727786' }}>
-                                    store
-                                </span>
+            <main className="md:pt-[104px]" style={{ paddingTop: 56, paddingBottom: 80 }}>
+                <div className="max-w-[1200px] mx-auto md:px-6">
+                    {/* Hero Section */}
+                    <div className="relative w-full md:rounded-2xl md:overflow-hidden md:mt-4" style={{ height: 240, background: '#e6e8ea' }}>
+                        <img alt={`${profileName} Cover`} className="w-full h-full object-cover" src={coverSrc} />
+                        {/* Logo Overlay - Mobile */}
+                        <div className="md:hidden absolute rounded-full shadow-sm" style={{ bottom: -40, left: 20, width: 96, height: 96, background: '#ffffff', padding: 4, border: '1px solid #c2c6d7' }}>
+                            {profileLogo ? (
+                                <img alt={`${profileName} Logo`} className="w-full h-full rounded-full object-cover" src={profileLogo} />
+                            ) : (
+                                <div className="w-full h-full rounded-full flex items-center justify-center" style={{ background: '#eceef0' }}>
+                                    <span className="material-symbols-outlined text-[32px]" style={{ color: '#727786' }}>store</span>
+                                </div>
+                            )}
+                        </div>
+                        {/* Logo Overlay - Desktop */}
+                        <div className="hidden md:flex absolute bottom-4 left-4 items-center gap-3 bg-white/90 backdrop-blur-sm rounded-xl px-4 py-2.5 shadow-lg">
+                            {profileLogo ? (
+                                <img alt={`${profileName} Logo`} className="w-10 h-10 rounded-lg object-cover" src={profileLogo} />
+                            ) : (
+                                <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ background: '#eceef0' }}>
+                                    <span className="material-symbols-outlined" style={{ color: '#727786' }}>store</span>
+                                </div>
+                            )}
+                            <div>
+                                <span className="text-[14px] font-bold text-gray-900 block">{profileName}</span>
+                                <span className="text-[12px] text-gray-500">{resolvedLocationDisplay}</span>
                             </div>
-                        )}
-                    </div>
-                    {/* Status Badge */}
-                    <div
-                        className="absolute flex items-center gap-1 rounded-full shadow-sm"
-                        style={{
-                            bottom: 16,
-                            right: 20,
-                            background: '#ffffff',
-                            padding: '4px 12px',
-                        }}
-                    >
-                        <div
-                            className="w-2 h-2 rounded-full"
-                            style={{ background: isOpenNow ? '#10B981' : '#ba1a1a' }}
-                        />
-                        <span
-                            className="text-[12px] font-medium"
-                            style={{ color: isOpenNow ? '#10B981' : '#ba1a1a' }}
-                        >
-                            {isOpenNow === null ? 'Hours N/A' : isOpenNow ? 'Open Now' : 'Closed'}
-                        </span>
-                    </div>
-                </div>
-
-                {/* Business Info */}
-                <div style={{ padding: '52px 20px 24px', borderBottom: '1px solid #c2c6d7' }}>
-                    <div className="flex justify-between items-start mb-2">
-                        <div className="min-w-0 flex-1 mr-3">
-                            <h2 className="text-[24px] font-semibold leading-[32px] tracking-tight mb-1" style={{ color: '#191c1e' }}>
-                                {profileName}
-                            </h2>
-                            <p className="text-[14px] leading-[20px] flex items-center gap-1" style={{ color: '#424655' }}>
-                                <span className="material-symbols-outlined" style={{ fontSize: 16 }}>location_on</span>
-                                {resolvedLocationDisplay}
-                            </p>
                         </div>
-                        <button
-                            className="w-10 h-10 rounded-full flex items-center justify-center transition-colors active:scale-95 shrink-0"
-                            style={{ border: '1px solid #c2c6d7', color: '#0055c4' }}
-                            aria-label="Save business"
-                        >
-                            <span className="material-symbols-outlined" style={{ fontSize: 22 }}>favorite_border</span>
-                        </button>
+                        {/* Status Badge */}
+                        <div className="absolute flex items-center gap-1 rounded-full shadow-sm" style={{ bottom: 16, right: 20, background: '#ffffff', padding: '4px 12px' }}>
+                            <div className="w-2 h-2 rounded-full" style={{ background: isOpenNow ? '#10B981' : '#ba1a1a' }} />
+                            <span className="text-[12px] font-medium" style={{ color: isOpenNow ? '#10B981' : '#ba1a1a' }}>
+                                {isOpenNow === null ? 'Hours N/A' : isOpenNow ? 'Open Now' : 'Closed'}
+                            </span>
+                        </div>
                     </div>
 
-                    {profileAbout && (
-                        <p className="text-[14px] leading-[20px] mb-6 line-clamp-2" style={{ color: '#191c1e' }}>
-                            {profileAbout}
+                    {/* Business Info */}
+                    <div className="md:bg-white md:rounded-2xl md:shadow-sm md:border md:border-gray-100 md:p-6 md:mt-6" style={{ padding: '52px 20px 24px', borderBottom: '1px solid #c2c6d7' }}>
+                        <div className="md:hidden flex justify-between items-start mb-2">
+                            <div className="min-w-0 flex-1 mr-3">
+                                <h2 className="text-[24px] font-semibold leading-[32px] tracking-tight mb-1" style={{ color: '#191c1e' }}>{profileName}</h2>
+                                <p className="text-[14px] leading-[20px] flex items-center gap-1" style={{ color: '#424655' }}>
+                                    <span className="material-symbols-outlined" style={{ fontSize: 16 }}>location_on</span>{resolvedLocationDisplay}
+                                </p>
+                            </div>
+                            <button className="w-10 h-10 rounded-full flex items-center justify-center transition-colors active:scale-95 shrink-0" style={{ border: '1px solid #c2c6d7', color: '#0055c4' }}>
+                                <span className="material-symbols-outlined" style={{ fontSize: 22 }}>favorite_border</span>
+                            </button>
+                        </div>
+                        <h2 className="hidden md:block text-[28px] font-bold tracking-tight mb-1" style={{ color: '#191c1e' }}>{profileName}</h2>
+                        <p className="hidden md:flex text-[14px] items-center gap-1 mb-3" style={{ color: '#424655' }}>
+                            <span className="material-symbols-outlined" style={{ fontSize: 16 }}>location_on</span>{resolvedLocationDisplay}
                         </p>
-                    )}
-
-                    {/* Quick Actions */}
-                    <div className="flex gap-3">
-                        <a
-                            href={directionsUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex-1 text-[14px] font-semibold rounded-full flex items-center justify-center gap-2 active:scale-95 transition-transform"
-                            style={{
-                                background: '#0055c4',
-                                color: '#ffffff',
-                                height: 48,
-                            }}
-                        >
-                            <span className="material-symbols-outlined" style={{ fontSize: 20 }}>directions</span>
-                            Directions
-                        </a>
-                        <button
-                            onClick={handleChatClick}
-                            className="flex-1 text-[14px] font-semibold rounded-full flex items-center justify-center gap-2 active:scale-95 transition-transform"
-                            style={{
-                                border: '1px solid #0055c4',
-                                color: '#0055c4',
-                                height: 48,
-                                background: 'transparent',
-                            }}
-                        >
-                            <span className="material-symbols-outlined" style={{ fontSize: 20 }}>call</span>
-                            Contact
-                        </button>
-                    </div>
-                </div>
-
-                {/* ─── Active Deals (Horizontal Rail) ─── */}
-                {activeShowRewards && (activeOffers.length > 0 || offersLoading) && (
-                    <section style={{ padding: '24px 0', borderBottom: '1px solid #c2c6d7' }}>
-                        <div className="flex justify-between items-center mb-4" style={{ padding: '0 20px' }}>
-                            <h3 className="text-[20px] font-semibold tracking-tight" style={{ color: '#191c1e' }}>
-                                Active Deals
-                            </h3>
-                            <Link href="/deals" className="text-[14px] font-semibold" style={{ color: '#0055c4' }}>
-                                See All
-                            </Link>
+                        {profileAbout && <p className="text-[14px] leading-[20px] mb-6 line-clamp-2" style={{ color: '#191c1e' }}>{profileAbout}</p>}
+                        {/* Quick Actions */}
+                        <div className="flex gap-3">
+                            <a href={directionsUrl} target="_blank" rel="noopener noreferrer" className="flex-1 text-[14px] font-semibold rounded-full flex items-center justify-center gap-2 active:scale-95 transition-transform md:flex-none md:px-6" style={{ background: '#0055c4', color: '#ffffff', height: 48 }}>
+                                <span className="material-symbols-outlined" style={{ fontSize: 20 }}>directions</span>Directions
+                            </a>
+                            <button onClick={handleChatClick} className="flex-1 text-[14px] font-semibold rounded-full flex items-center justify-center gap-2 active:scale-95 transition-transform md:flex-none md:px-6" style={{ border: '1px solid #0055c4', color: '#0055c4', height: 48, background: 'transparent' }}>
+                                <span className="material-symbols-outlined" style={{ fontSize: 20 }}>call</span>Contact
+                            </button>
                         </div>
-                        <div
-                            className="flex overflow-x-auto gap-4 pb-2"
-                            style={{ scrollbarWidth: 'none', paddingLeft: 20, paddingRight: 20 }}
-                        >
+                    </div>
+
+                {/* ─── Active Deals ─── */}
+                {activeShowRewards && (activeOffers.length > 0 || offersLoading) && (
+                    <section className="md:bg-white md:rounded-2xl md:shadow-sm md:border md:border-gray-100 md:p-6 md:mt-6" style={{ padding: '24px 0', borderBottom: '1px solid #c2c6d7' }}>
+                        <div className="flex justify-between items-center mb-4 md:mb-5" style={{ padding: '0 20px' }}>
+                            <h3 className="text-[20px] font-semibold tracking-tight" style={{ color: '#191c1e' }}>Active Deals</h3>
+                            <Link href={`/b/${code}/deals`} className="text-[14px] font-semibold" style={{ color: '#0055c4' }}>See All</Link>
+                        </div>
+                        <div className="md:grid md:grid-cols-3 md:gap-4 flex overflow-x-auto gap-4 pb-2 md:pb-0" style={{ scrollbarWidth: 'none', paddingLeft: 20, paddingRight: 20 }}>
                             {offersLoading ? (
                                 Array.from({ length: 3 }).map((_, i) => (
                                     <div
@@ -760,18 +736,14 @@ export default function PublicBusinessProfilePage() {
                     </section>
                 )}
 
-                {/* ─── Popular Products (Horizontal Rail) ─── */}
+                {/* ─── Popular Products ─── */}
                 {(productsLoading || activeProducts.length > 0) && (
-                    <section style={{ padding: '24px 0', borderBottom: '1px solid #c2c6d7' }}>
-                        <div className="flex justify-between items-center mb-4" style={{ padding: '0 20px' }}>
-                            <h3 className="text-[20px] font-semibold tracking-tight" style={{ color: '#191c1e' }}>
-                                Popular Menu Items
-                            </h3>
+                    <section className="md:bg-white md:rounded-2xl md:shadow-sm md:border md:border-gray-100 md:p-6 md:mt-6" style={{ padding: '24px 0', borderBottom: '1px solid #c2c6d7' }}>
+                        <div className="flex justify-between items-center mb-4 md:mb-5" style={{ padding: '0 20px' }}>
+                            <h3 className="text-[20px] font-semibold tracking-tight" style={{ color: '#191c1e' }}>Popular Menu Items</h3>
+                            <Link href={`/b/${code}/products`} className="text-[14px] font-semibold" style={{ color: '#0055c4' }}>See All</Link>
                         </div>
-                        <div
-                            className="flex overflow-x-auto gap-4 pb-2"
-                            style={{ scrollbarWidth: 'none', paddingLeft: 20, paddingRight: 20 }}
-                        >
+                        <div className="md:grid md:grid-cols-4 md:gap-4 flex overflow-x-auto gap-4 pb-2 md:pb-0" style={{ scrollbarWidth: 'none', paddingLeft: 20, paddingRight: 20 }}>
                             {productsLoading ? (
                                 Array.from({ length: 4 }).map((_, i) => (
                                     <div key={i} className="shrink-0 animate-pulse" style={{ minWidth: 160, maxWidth: 160 }}>
@@ -840,27 +812,17 @@ export default function PublicBusinessProfilePage() {
                 )}
 
                 {/* ─── Location Map (Leaflet) ─── */}
-                <Script
-                    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-                    strategy="afterInteractive"
-                    onLoad={() => setLeafletReady(true)}
-                />
-                <section style={{ padding: '24px 20px' }}>
-                    <h3 className="text-[20px] font-semibold tracking-tight mb-4" style={{ color: '#191c1e' }}>
-                        Location
-                    </h3>
-                    <div
-                        ref={mapRef}
-                        className="w-full rounded-xl overflow-hidden"
-                        style={{ height: 160, border: '1px solid #c2c6d7' }}
-                    />
-                    <p className="text-[14px] leading-[20px] mt-2" style={{ color: '#424655' }}>
-                        {resolvedLocationDisplay}
-                    </p>
+                <Script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" strategy="afterInteractive" onLoad={() => setLeafletReady(true)} />
+                <section className="md:bg-white md:rounded-2xl md:shadow-sm md:border md:border-gray-100 md:p-6 md:mt-6" style={{ padding: '24px 20px' }}>
+                    <h3 className="text-[20px] font-semibold tracking-tight mb-4" style={{ color: '#191c1e' }}>Location</h3>
+                    <div ref={mapRef} className="w-full rounded-xl overflow-hidden md:rounded-lg" style={{ height: 160, border: '1px solid #c2c6d7' }} />
+                    <p className="text-[14px] leading-[20px] mt-2" style={{ color: '#424655' }}>{resolvedLocationDisplay}</p>
                 </section>
+                </div>
             </main>
 
-            <PublicBottomNav />
+            {/* Mobile Bottom Nav */}
+            <div className="md:hidden"><PublicBottomNav /></div>
 
             {/* ─── OTP CLAIM MODAL ─── */}
             {selectedOffer && (
@@ -909,10 +871,10 @@ export default function PublicBusinessProfilePage() {
                 pageUrl={typeof window !== 'undefined' ? window.location.href : ''}
             />
 
-            {/* ─── Floating Action Button ─── */}
+            {/* ─── Floating Action Button (Mobile Only) ─── */}
             <button
                 onClick={() => setShowActionSheet(true)}
-                className="fixed z-50 flex items-center justify-center rounded-full shadow-lg active:scale-95 transition-all"
+                className="md:hidden fixed z-50 flex items-center justify-center rounded-full shadow-lg active:scale-95 transition-all"
                 style={{
                     bottom: 80,
                     right: 20,
