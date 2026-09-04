@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Image Viewer - VEMTAP</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "primary-fixed-dim": "#b0c6ff",
+                      "surface-container-lowest": "#ffffff",
+                      "background": "#f7f9fb",
+                      "on-background": "#191c1e",
+                      "error": "#ba1a1a",
+                      "on-secondary": "#ffffff",
+                      "on-error": "#ffffff",
+                      "secondary": "#505f76",
+                      "on-primary-container": "#fcfaff",
+                      "tertiary": "#535a71",
+                      "secondary-container": "#d0e1fb",
+                      "on-primary-fixed": "#001945",
+                      "on-tertiary-container": "#fcfaff",
+                      "on-primary": "#ffffff",
+                      "on-tertiary": "#ffffff",
+                      "on-tertiary-fixed-variant": "#3f465c",
+                      "primary": "#0055c4",
+                      "outline": "#727786",
+                      "inverse-primary": "#b0c6ff",
+                      "secondary-fixed-dim": "#b7c8e1",
+                      "surface-container-low": "#f2f4f6",
+                      "surface-container-high": "#e6e8ea",
+                      "inverse-on-surface": "#eff1f3",
+                      "on-primary-fixed-variant": "#00429b",
+                      "on-tertiary-fixed": "#131b2e",
+                      "surface-tint": "#0058cb",
+                      "tertiary-fixed-dim": "#bec6e0",
+                      "primary-container": "#066cf4",
+                      "on-surface": "#191c1e",
+                      "on-surface-variant": "#424655",
+                      "error-container": "#ffdad6",
+                      "surface-bright": "#f7f9fb",
+                      "tertiary-fixed": "#dae2fd",
+                      "surface-dim": "#d8dadc",
+                      "on-secondary-fixed-variant": "#38485d",
+                      "on-error-container": "#93000a",
+                      "tertiary-container": "#6b738a",
+                      "inverse-surface": "#2d3133",
+                      "primary-fixed": "#d9e2ff",
+                      "on-secondary-container": "#54647a",
+                      "surface-variant": "#e0e3e5",
+                      "surface-container": "#eceef0",
+                      "on-secondary-fixed": "#0b1c30",
+                      "secondary-fixed": "#d3e4fe",
+                      "outline-variant": "#c2c6d7",
+                      "surface": "#f7f9fb",
+                      "surface-container-highest": "#e0e3e5"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "stack-md": "1rem",
+                      "stack-lg": "1.5rem",
+                      "stack-sm": "0.5rem",
+                      "touch-target-min": "44px",
+                      "margin-main": "1.25rem",
+                      "gutter-grid": "1rem"
+              },
+              "fontFamily": {
+                      "headline-sm": [
+                              "Inter"
+                      ],
+                      "label-sm": [
+                              "Inter"
+                      ],
+                      "body-lg": [
+                              "Inter"
+                      ],
+                      "body-md": [
+                              "Inter"
+                      ],
+                      "currency-display": [
+                              "Inter"
+                      ],
+                      "display-lg": [
+                              "Inter"
+                      ],
+                      "label-lg": [
+                              "Inter"
+                      ],
+                      "headline-md": [
+                              "Inter"
+                      ]
+              },
+              "fontSize": {
+                      "headline-sm": [
+                              "20px",
+                              {
+                                      "lineHeight": "28px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "label-sm": [
+                              "12px",
+                              {
+                                      "lineHeight": "16px",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "body-lg": [
+                              "16px",
+                              {
+                                      "lineHeight": "24px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "body-md": [
+                              "14px",
+                              {
+                                      "lineHeight": "20px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "currency-display": [
+                              "20px",
+                              {
+                                      "lineHeight": "24px",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "display-lg": [
+                              "32px",
+                              {
+                                      "lineHeight": "40px",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "label-lg": [
+                              "14px",
+                              {
+                                      "lineHeight": "20px",
+                                      "letterSpacing": "0.01em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "headline-md": [
+                              "24px",
+                              {
+                                      "lineHeight": "32px",
+                                      "letterSpacing": "-0.01em",
+                                      "fontWeight": "600"
+                              }
+                      ]
+              }
+      },
+          },
+        }
+      </script>
+<style>
+        /* Hide scrollbar for thumbnail strip */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;  /* IE and Edge */
+            scrollbar-width: none;  /* Firefox */
+        }
+      </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-black text-white h-screen w-screen overflow-hidden flex flex-col font-body-md select-none">
+<!-- Top Action Bar -->
+<header class="w-full flex justify-between items-center px-margin-main h-touch-target-min fixed top-0 z-50 bg-gradient-to-b from-black/80 to-transparent">
+<div class="font-headline-sm text-headline-sm text-white drop-shadow-md">
+            1 of 5
+        </div>
+<button aria-label="Close viewer" class="h-touch-target-min w-touch-target-min flex items-center justify-center rounded-full bg-black/40 hover:bg-black/60 transition-colors backdrop-blur-sm border border-white/10">
+<span class="material-symbols-outlined text-white" style="font-size: 28px;">close</span>
+</button>
+</header>
+<!-- Main Image Canvas -->
+<main class="flex-1 w-full relative flex items-center justify-center overflow-hidden touch-pan-x touch-pan-y" id="main-image-container">
+<!-- The main image is injected via background to allow cover/contain logic easily, or img tag for pinch zoom. Using img for semantic correctness and better gesture support later -->
+<img alt="Jollof Rice Detail" class="w-full h-full object-contain object-center scale-100 transition-transform duration-300 ease-out cursor-zoom-in" data-alt="A high-resolution, extreme close-up food photography shot of authentic Nigerian Jollof Rice. The vibrant orange-red grains are perfectly cooked, glistening slightly with a rich, savory glaze. Garnished with fresh, bright green parsley and surrounded by succulent, dark brown grilled chicken pieces. The lighting is cinematic and dramatic, emphasizing texture and steam rising gently in a dark, moody environment. The aesthetic is premium culinary discovery, aligning with a sophisticated local services app. Shot in crisp, modern corporate style." id="main-hero-image" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCfsxJO1QBTaSF7fhRA6hxj4IxAx5yKn8gIcujI7Ar0Hj8nWnaTJcd9AeNOnOinw0ZNX9gIATNBMcxWB5tQf628Dwnr_-ABIoEJkgDOZtqtHbcEoChr6ymOPmJM0-h7potCaWFx-w1WNZZrh0fObC4Tiiopa94wTtgf6to_qbJ008GaJoe-cqjbmPn-Ppz6vDyLqO7qP929zPkESQptFPB1omOBAkegRxd5adDrqKfhgiLUcPzlLuuUsw"/>
+<!-- Navigation Chevrons (Desktop primarily, but useful for tap targets) -->
+<button class="absolute left-4 top-1/2 -translate-y-1/2 h-12 w-12 rounded-full bg-black/50 backdrop-blur-md flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity md:opacity-50 text-white z-10 border border-white/20">
+<span class="material-symbols-outlined">chevron_left</span>
+</button>
+<button class="absolute right-4 top-1/2 -translate-y-1/2 h-12 w-12 rounded-full bg-black/50 backdrop-blur-md flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity md:opacity-50 text-white z-10 border border-white/20">
+<span class="material-symbols-outlined">chevron_right</span>
+</button>
+</main>
+<!-- Bottom Thumbnail Strip -->
+<footer class="w-full bg-gradient-to-t from-black via-black/90 to-transparent pb-stack-lg pt-stack-md px-margin-main z-40 fixed bottom-0">
+<div class="flex items-center gap-stack-sm overflow-x-auto no-scrollbar snap-x snap-mandatory">
+<!-- Active Thumbnail -->
+<button class="shrink-0 snap-center rounded-lg overflow-hidden border-2 border-primary w-20 h-20 opacity-100 transition-all shadow-lg relative">
+<img alt="Thumbnail 1" class="w-full h-full object-cover" data-alt="Thumbnail view of authentic Nigerian Jollof Rice, a close-up food photography shot highlighting vibrant orange-red grains. Premium culinary aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBjjPGdo_SuuiuyiN7lkCi5WHXAAlmdUSO91ZHgUjrlAOKbsun8Uh3vzh3SBcRqtz6cRQv1WP1EYxeqNrm0MsBQDQr7kRLe8LtSYEz0OovTGDuKeufImkQO_Z5-9aYa4mHZ2VzlxMTpCRnjkGOu3vLh5m-rafFRx3NXEjvjlKeXQsQ74o7DDmoekJim9a2SPU71K9kvD0u4-wI1q5Mn4U_cjRhtCrOCdXdpAC-Uxua3seKtFEYX996Pxw"/>
+<!-- Active overlay subtle tint -->
+<div class="absolute inset-0 bg-primary/20 pointer-events-none"></div>
+</button>
+<!-- Inactive Thumbnails -->
+<button class="shrink-0 snap-center rounded-lg overflow-hidden border-2 border-transparent w-20 h-20 opacity-50 hover:opacity-100 transition-all hover:border-white/50">
+<img alt="Thumbnail 2" class="w-full h-full object-cover" data-alt="Thumbnail view of a different angle of authentic Nigerian Jollof Rice with grilled plantains on the side. Dark, moody, premium food photography." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCVgv95ocbsffw4AJyj--1PR0AaRNh96_HF_yM-ERX1GEi9TCaytUYvuQ-ijOiox7JfABO8DuD7bisJVcJ9RJTWpDNiHXmm1gwg_zM0OMZjpIH3fkzYAk30pL-Rewtp6lM974BwqG_3trX8owDxj04A2_9QWNidLeUpP5ts-OaqFuL_a17UqjUQ-1HG55WR0wUsbbmkmDwRIofCX12NAl9JTemkWDZBC39I1Ivj13eLiBKWo_4OzkKYRg"/>
+</button>
+<button class="shrink-0 snap-center rounded-lg overflow-hidden border-2 border-transparent w-20 h-20 opacity-50 hover:opacity-100 transition-all hover:border-white/50">
+<img alt="Thumbnail 3" class="w-full h-full object-cover" data-alt="Thumbnail view focusing on succulent grilled chicken pieces served alongside Jollof rice. Rich textures, cinematic lighting." src="https://lh3.googleusercontent.com/aida-public/AB6AXuD1SMZgTaKJ9hMzn7i0csWqXfHrWfsQ8XpCiC_sy8vzpGr8uE3bYI2nkwRdrV0sdXpGOc9JaaXudHbvQVj7qL5alYoldTu8coIQk9tDI0QxCOmB4jsOYZumAbLba_4LofqWrIbIOtjCC_5axPHmoAFHyz7mWF8DvGm1GOxJtF5cZTWRU_sDhjvI6n0dfRbmiI5q8BpF2GX2I7p8snRtVNpIYyN8hWwOPEyr0Y2w43Zw6wy7WR-A6U_MBw"/>
+</button>
+<button class="shrink-0 snap-center rounded-lg overflow-hidden border-2 border-transparent w-20 h-20 opacity-50 hover:opacity-100 transition-all hover:border-white/50">
+<img alt="Thumbnail 4" class="w-full h-full object-cover" data-alt="Thumbnail view showing a wide shot of a neatly arranged plate of Jollof rice, coleslaw, and chicken on a dark rustic table. High-end dining aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAju_5K5dqtn_443SsGeC9ShJF8BtkHCYwjrndXuWCVvKjskeSp8dc6JMkVPM6FrC9TQRcBuPHEXH5LzYkuKzDq7YOpJrEC5GHNPv7UXXCxbAySzvpP0hH-Le3K2fLOAEW8V_YdLmE1Vg6tfrLv0tsadkTA89p_CQCLmiw9cBCoaD9OMIL4h_XVAF_7GhvW41vMPUB2zWm1ATqOm3zxNrQ3oRTCwv0o7s_9DPp0o3FrKYon5G7Cu9C-Ww"/>
+</button>
+<button class="shrink-0 snap-center rounded-lg overflow-hidden border-2 border-transparent w-20 h-20 opacity-50 hover:opacity-100 transition-all hover:border-white/50">
+<img alt="Thumbnail 5" class="w-full h-full object-cover" data-alt="Thumbnail view showing the restaurant ambiance behind the Jollof rice dish. Soft bokeh background, moody lighting, premium local discovery." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDCE9iQ2FnaI0m7h_1M1HLfo7sGludGDfkWG7mtQgbKIFwxg_ug5_neow-AIwNGeNbLGoJzauz047QZa5OPjif8jl57SgQaR2zHyzGA9FcG8NLDmjoH-75tLoKdNT9zv-r9rbPdOES2TUysLCO53yYm_ohbz6VotrpwPaiOemIetRBWiwXrmsXbG3F6i8BXMNAyHQYPxZ_4oWEL1tzYd-OHiNmidmEPy6S03d-ii55CZPghGbN1Zz-NMg"/>
+</button>
+</div>
+</footer>
+<script>
+        // Simple double tap to zoom interaction for demonstration
+        const img = document.getElementById('main-hero-image');
+        let isZoomed = false;
+
+        img.addEventListener('dblclick', () => {
+            isZoomed = !isZoomed;
+            if(isZoomed) {
+                img.classList.remove('scale-100', 'object-contain', 'cursor-zoom-in');
+                img.classList.add('scale-[2]', 'object-cover', 'cursor-zoom-out');
+            } else {
+                img.classList.add('scale-100', 'object-contain', 'cursor-zoom-in');
+                img.classList.remove('scale-[2]', 'object-cover', 'cursor-zoom-out');
+                // Reset transform if dragged
+                img.style.transform = '';
+            }
+        });
+    </script>
+</body></html>

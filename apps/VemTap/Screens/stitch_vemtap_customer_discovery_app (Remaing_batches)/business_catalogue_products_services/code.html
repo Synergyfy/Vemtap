@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Royal Spice Restaurant - Catalogue</title>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Google Fonts: Inter -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind Configuration -->
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "primary-fixed-dim": "#b0c6ff",
+                    "surface-container-lowest": "#ffffff",
+                    "background": "#f7f9fb",
+                    "on-background": "#191c1e",
+                    "error": "#ba1a1a",
+                    "on-secondary": "#ffffff",
+                    "on-error": "#ffffff",
+                    "secondary": "#505f76",
+                    "on-primary-container": "#fcfaff",
+                    "tertiary": "#535a71",
+                    "secondary-container": "#d0e1fb",
+                    "on-primary-fixed": "#001945",
+                    "on-tertiary-container": "#fcfaff",
+                    "on-primary": "#ffffff",
+                    "on-tertiary": "#ffffff",
+                    "on-tertiary-fixed-variant": "#3f465c",
+                    "primary": "#0055c4",
+                    "outline": "#727786",
+                    "inverse-primary": "#b0c6ff",
+                    "secondary-fixed-dim": "#b7c8e1",
+                    "surface-container-low": "#f2f4f6",
+                    "surface-container-high": "#e6e8ea",
+                    "inverse-on-surface": "#eff1f3",
+                    "on-primary-fixed-variant": "#00429b",
+                    "on-tertiary-fixed": "#131b2e",
+                    "surface-tint": "#0058cb",
+                    "tertiary-fixed-dim": "#bec6e0",
+                    "primary-container": "#066cf4",
+                    "on-surface": "#191c1e",
+                    "on-surface-variant": "#424655",
+                    "error-container": "#ffdad6",
+                    "surface-bright": "#f7f9fb",
+                    "tertiary-fixed": "#dae2fd",
+                    "surface-dim": "#d8dadc",
+                    "on-secondary-fixed-variant": "#38485d",
+                    "on-error-container": "#93000a",
+                    "tertiary-container": "#6b738a",
+                    "inverse-surface": "#2d3133",
+                    "primary-fixed": "#d9e2ff",
+                    "on-secondary-container": "#54647a",
+                    "surface-variant": "#e0e3e5",
+                    "surface-container": "#eceef0",
+                    "on-secondary-fixed": "#0b1c30",
+                    "secondary-fixed": "#d3e4fe",
+                    "outline-variant": "#c2c6d7",
+                    "surface": "#f7f9fb",
+                    "surface-container-highest": "#e0e3e5"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "stack-md": "1rem",
+                    "stack-lg": "1.5rem",
+                    "stack-sm": "0.5rem",
+                    "touch-target-min": "44px",
+                    "margin-main": "1.25rem",
+                    "gutter-grid": "1rem"
+            },
+            "fontFamily": {
+                    "headline-sm": ["Inter"],
+                    "label-sm": ["Inter"],
+                    "body-lg": ["Inter"],
+                    "body-md": ["Inter"],
+                    "currency-display": ["Inter"],
+                    "display-lg": ["Inter"],
+                    "label-lg": ["Inter"],
+                    "headline-md": ["Inter"]
+            },
+            "fontSize": {
+                    "headline-sm": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                    "label-sm": ["12px", {"lineHeight": "16px", "fontWeight": "500"}],
+                    "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                    "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                    "currency-display": ["20px", {"lineHeight": "24px", "fontWeight": "700"}],
+                    "display-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "label-lg": ["14px", {"lineHeight": "20px", "letterSpacing": "0.01em", "fontWeight": "600"}],
+                    "headline-md": ["24px", {"lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+          font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        
+        /* Hide scrollbar for clean horizontal scrolling */
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background font-body-md min-h-screen pb-24">
+<!-- TopAppBar -->
+<header class="bg-surface dark:bg-on-background font-headline-sm text-headline-sm fixed top-0 w-full z-50 border-b border-outline-variant dark:border-on-surface-variant flex justify-between items-center px-margin-main h-touch-target-min">
+<button aria-label="Back" class="w-touch-target-min h-touch-target-min flex items-center justify-center text-on-surface-variant dark:text-outline hover:bg-surface-container-low dark:hover:bg-surface-variant transition-colors duration-200 ease-in-out rounded-full -ml-2">
+<span class="material-symbols-outlined" data-icon="arrow_back">arrow_back</span>
+</button>
+<h1 class="font-headline-md text-headline-md text-on-surface">Catalogue</h1>
+<div class="w-touch-target-min h-touch-target-min"></div> <!-- Placeholder for balancing flex layout -->
+</header>
+<main class="pt-[calc(44px+1rem)] px-margin-main max-w-7xl mx-auto space-y-stack-lg">
+<!-- Search Bar -->
+<div class="relative w-full shadow-sm">
+<div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+<span class="material-symbols-outlined text-outline">search</span>
+</div>
+<input class="w-full h-12 pl-10 pr-4 bg-surface-container-lowest border border-outline-variant rounded-lg font-body-lg text-on-surface placeholder:text-outline focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all" placeholder="Search products or services..." type="text"/>
+</div>
+<!-- Segmented Control (Tabs) -->
+<div aria-orientation="horizontal" class="flex p-1 bg-surface-container-low rounded-lg shadow-sm" role="tablist">
+<button aria-selected="true" class="flex-1 py-2 text-center rounded-md font-label-lg text-on-primary bg-primary shadow transition-all" id="tab-products" role="tab">
+                Products
+            </button>
+<button aria-selected="false" class="flex-1 py-2 text-center rounded-md font-label-lg text-on-surface-variant hover:text-on-surface transition-all" id="tab-services" role="tab">
+                Services
+            </button>
+</div>
+<!-- Content Area -->
+<div class="mt-stack-md" id="content-area">
+<!-- Bento Grid Layout for Products -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-gutter-grid">
+<!-- Card 1: Jollof Rice -->
+<article class="bg-surface-container-lowest border border-surface-container-high rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow flex flex-col group">
+<div class="relative w-full h-48 overflow-hidden bg-surface-variant">
+<img class="object-cover w-full h-full group-hover:scale-105 transition-transform duration-500" data-alt="A beautifully plated portion of steaming hot Jollof rice, served in a modern white ceramic bowl on a wooden dining table. The vibrant red-orange color of the rice is highlighted by soft, natural daylight streaming in from a nearby window. Accompanied by crispy golden fried plantains on the side. High-end food photography, rich textures, warm and inviting atmosphere, Corporate Modern Nigerian aesthetic, sharp focus." src="https://lh3.googleusercontent.com/aida-public/AB6AXuB2tLVhQoCT1xS8LvsSGjNlWpn3DUX8MffIAcdvsux7Qd0qg9T_U6KxroanBt5JaUDT8FsAtZz3TB2Q1nc-n_Cg1XfUMWZVidFUimAhjldhHdWHGgNqSqBFT0x0P948D883wnWOaN7iX5kVOKhrNATJfW6-9yrQSPpQuDl3xgsvfwKoijLWjDRkWQrjo3e08BsSg2ip-xFwH1Sl1q4EM1MKgldkjwOpcGxE-GC7MaZ8N7qmVxcyFieJtA"/>
+<div class="absolute top-2 right-2 bg-surface-container-lowest/90 backdrop-blur-sm px-2 py-1 rounded-full flex items-center gap-1">
+<span class="material-symbols-outlined text-primary text-sm" data-weight="fill" style="font-variation-settings: 'FILL' 1;">verified</span>
+<span class="font-label-sm text-on-surface">Popular</span>
+</div>
+</div>
+<div class="p-stack-md flex-1 flex flex-col justify-between">
+<div>
+<div class="flex justify-between items-start mb-1">
+<h3 class="font-headline-sm text-headline-sm text-on-surface line-clamp-1">Classic Jollof Rice</h3>
+<span class="font-currency-display text-currency-display text-primary">₦4,500</span>
+</div>
+<p class="font-body-md text-on-surface-variant line-clamp-2 mt-stack-sm">Authentic smoky Nigerian Jollof rice served with grilled chicken, fried plantain, and coleslaw. A signature dish.</p>
+</div>
+<button class="mt-stack-md w-full h-touch-target-min bg-surface-container-low hover:bg-primary-container hover:text-on-primary text-primary font-label-lg rounded-lg flex items-center justify-center gap-2 transition-colors border border-primary/20 hover:border-transparent">
+<span class="material-symbols-outlined">add_shopping_cart</span>
+                            Add to Cart
+                        </button>
+</div>
+</article>
+<!-- Card 2: Chicken & Chips -->
+<article class="bg-surface-container-lowest border border-surface-container-high rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow flex flex-col group">
+<div class="relative w-full h-48 overflow-hidden bg-surface-variant">
+<img class="object-cover w-full h-full group-hover:scale-105 transition-transform duration-500" data-alt="A serving of crispy golden potato chips alongside perfectly grilled, glazed chicken quarters on a rustic slate plate. The setting is a brightly lit, modern dining environment with a clean, professional aesthetic. Small bowls of dipping sauces are placed adjacently. The lighting emphasizes the glistening glaze on the chicken and the crisp texture of the fries. Corporate Modern style, appetizing, high-resolution food imagery." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCwzm3QC3uecvGP0kN3JQSDB_8e37MkyanPBCXxoEh22QpD_NMbyIzmfK5pOyeySWLdSeDJt9yvU92Rx3YX8e_wOro12mzD2x6imO583laCGeW_qVi5lijbdBi403P4GUdCldNjx7Ocv-zoGu8WM2iwE9E6rj4yICPvHanJNP2nDRY-XueO65jfrGayURBckEt-pt8CSg1eQo-DEapJfnWValX6JOQxNY9w_p8Zon-Sd73gi3wjm6Ur_Q"/>
+</div>
+<div class="p-stack-md flex-1 flex flex-col justify-between">
+<div>
+<div class="flex justify-between items-start mb-1">
+<h3 class="font-headline-sm text-headline-sm text-on-surface line-clamp-1">Grilled Chicken &amp; Chips</h3>
+<span class="font-currency-display text-currency-display text-primary">₦6,000</span>
+</div>
+<p class="font-body-md text-on-surface-variant line-clamp-2 mt-stack-sm">Tender, marinated grilled chicken quarters served with freshly cut, crispy potato chips and signature dipping sauce.</p>
+</div>
+<button class="mt-stack-md w-full h-touch-target-min bg-surface-container-low hover:bg-primary-container hover:text-on-primary text-primary font-label-lg rounded-lg flex items-center justify-center gap-2 transition-colors border border-primary/20 hover:border-transparent">
+<span class="material-symbols-outlined">add_shopping_cart</span>
+                            Add to Cart
+                        </button>
+</div>
+</article>
+<!-- Card 3: Seafood Fried Rice -->
+<article class="bg-surface-container-lowest border border-surface-container-high rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow flex flex-col group">
+<div class="relative w-full h-48 overflow-hidden bg-surface-variant">
+<img class="object-cover w-full h-full group-hover:scale-105 transition-transform duration-500" data-alt="A deep bowl filled with rich seafood fried rice, brimming with large prawns, diced vegetables, and subtle spices. The scene is captured with bright, professional lighting highlighting the freshness of the ingredients. Set on a clean, light-colored table to match a premium, Corporate Modern design language. Steam is gently rising from the hot dish, creating an inviting, premium culinary experience." src="https://lh3.googleusercontent.com/aida-public/AB6AXuD0Jb2RXPymrmBc3Lch2qgUyjynkNFL_8cyD0NxjT6Pi8d7ku2Vm4SZ-PA4Jo6MScRxeebvGdBHV94H8loCLQ4M_LhZK8t0n4U3g7I__KokntLBQ61NPGKmw04hXAGh4qn7YMkUU77Yx-RFtceAPwSyWtUsyvaxC1P-2xzoHDb8oHaiEEhR3PCakWhz4NlXLrDKSVOOWTlzhlRbue3VkDrEz94qhNisS_3lUSGfCO-hpNpyyc5o5blo3A"/>
+</div>
+<div class="p-stack-md flex-1 flex flex-col justify-between">
+<div>
+<div class="flex justify-between items-start mb-1">
+<h3 class="font-headline-sm text-headline-sm text-on-surface line-clamp-1">Seafood Fried Rice</h3>
+<span class="font-currency-display text-currency-display text-primary">₦8,500</span>
+</div>
+<p class="font-body-md text-on-surface-variant line-clamp-2 mt-stack-sm">Premium fried rice tossed with fresh tiger prawns, calamari rings, mixed vegetables and secret spices.</p>
+</div>
+<button class="mt-stack-md w-full h-touch-target-min bg-surface-container-low hover:bg-primary-container hover:text-on-primary text-primary font-label-lg rounded-lg flex items-center justify-center gap-2 transition-colors border border-primary/20 hover:border-transparent">
+<span class="material-symbols-outlined">add_shopping_cart</span>
+                            Add to Cart
+                        </button>
+</div>
+</article>
+</div>
+</div>
+</main>
+<!-- BottomNavBar -->
+<nav class="bg-surface-container-lowest dark:bg-inverse-surface font-label-sm text-label-sm fixed bottom-0 w-full z-50 rounded-t-xl border-t border-outline-variant dark:border-on-surface-variant shadow-lg flex justify-around items-center h-16 px-gutter-grid md:hidden">
+<a class="flex flex-col items-center justify-center text-on-surface-variant dark:text-outline-variant hover:opacity-80 scale-95 active:scale-90 transition-transform" href="#">
+<span class="material-symbols-outlined mb-1">explore</span>
+<span>Discover</span>
+</a>
+<a class="flex flex-col items-center justify-center text-primary dark:text-primary-fixed-dim bg-secondary-container dark:bg-on-secondary-fixed-variant rounded-full px-4 py-1 hover:opacity-80 scale-95 active:scale-90 transition-transform" href="#">
+<span class="material-symbols-outlined mb-1" data-weight="fill" style="font-variation-settings: 'FILL' 1;">shopping_bag</span>
+<span>Orders</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant dark:text-outline-variant hover:opacity-80 scale-95 active:scale-90 transition-transform" href="#">
+<span class="material-symbols-outlined mb-1">bookmark</span>
+<span>Saved</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant dark:text-outline-variant hover:opacity-80 scale-95 active:scale-90 transition-transform" href="#">
+<span class="material-symbols-outlined mb-1">person</span>
+<span>Profile</span>
+</a>
+</nav>
+</body></html>

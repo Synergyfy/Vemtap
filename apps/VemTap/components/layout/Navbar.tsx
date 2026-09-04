@@ -40,8 +40,7 @@ export default function Navbar() {
     return (
         <>
         <header className={cn(
-            "fixed top-0 left-0 right-0 z-[100] transition-all duration-300",
-            scrolled || isOpen ? "bg-white/80 backdrop-blur-xl border-b border-gray-100 py-3" : "bg-transparent py-5"
+            "fixed top-0 left-0 right-0 z-[100] transition-all duration-300 bg-white border-b border-gray-100 py-3"
         )}>
             <nav className="container mx-auto px-6 flex items-center justify-between">
                 {/* Logo */}

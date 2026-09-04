@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Business Profile - Royal Spice Restaurant</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "on-primary-fixed": "#001945",
+                      "surface-bright": "#f7f9fb",
+                      "surface-variant": "#e0e3e5",
+                      "on-tertiary-fixed-variant": "#3f465c",
+                      "surface-container": "#eceef0",
+                      "surface-container-highest": "#e0e3e5",
+                      "primary-container": "#066cf4",
+                      "on-tertiary-fixed": "#131b2e",
+                      "secondary-fixed": "#d3e4fe",
+                      "error": "#ba1a1a",
+                      "on-secondary": "#ffffff",
+                      "on-secondary-fixed-variant": "#38485d",
+                      "on-surface-variant": "#424655",
+                      "outline-variant": "#c2c6d7",
+                      "on-background": "#191c1e",
+                      "tertiary-container": "#6b738a",
+                      "tertiary-fixed": "#dae2fd",
+                      "on-surface": "#191c1e",
+                      "inverse-primary": "#b0c6ff",
+                      "on-primary": "#ffffff",
+                      "inverse-surface": "#2d3133",
+                      "surface-dim": "#d8dadc",
+                      "tertiary-fixed-dim": "#bec6e0",
+                      "secondary-fixed-dim": "#b7c8e1",
+                      "primary-fixed-dim": "#b0c6ff",
+                      "inverse-on-surface": "#eff1f3",
+                      "surface-tint": "#0058cb",
+                      "primary": "#0055c4",
+                      "outline": "#727786",
+                      "on-tertiary": "#ffffff",
+                      "on-secondary-fixed": "#0b1c30",
+                      "on-error-container": "#93000a",
+                      "on-secondary-container": "#54647a",
+                      "on-primary-fixed-variant": "#00429b",
+                      "tertiary": "#535a71",
+                      "on-primary-container": "#fcfaff",
+                      "secondary-container": "#d0e1fb",
+                      "primary-fixed": "#d9e2ff",
+                      "surface-container-lowest": "#ffffff",
+                      "surface": "#f7f9fb",
+                      "surface-container-low": "#f2f4f6",
+                      "secondary": "#505f76",
+                      "error-container": "#ffdad6",
+                      "on-tertiary-container": "#fcfaff",
+                      "surface-container-high": "#e6e8ea",
+                      "background": "#f7f9fb",
+                      "on-error": "#ffffff"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "margin-main": "1.25rem",
+                      "stack-lg": "1.5rem",
+                      "stack-md": "1rem",
+                      "gutter-grid": "1rem",
+                      "touch-target-min": "44px",
+                      "stack-sm": "0.5rem"
+              },
+              "fontFamily": {
+                      "body-md": [
+                              "Inter"
+                      ],
+                      "label-lg": [
+                              "Inter"
+                      ],
+                      "currency-display": [
+                              "Inter"
+                      ],
+                      "body-lg": [
+                              "Inter"
+                      ],
+                      "headline-sm": [
+                              "Inter"
+                      ],
+                      "headline-md": [
+                              "Inter"
+                      ],
+                      "display-lg": [
+                              "Inter"
+                      ],
+                      "label-sm": [
+                              "Inter"
+                      ]
+              },
+              "fontSize": {
+                      "body-md": [
+                              "14px",
+                              {
+                                      "lineHeight": "20px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "label-lg": [
+                              "14px",
+                              {
+                                      "lineHeight": "20px",
+                                      "letterSpacing": "0.01em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "currency-display": [
+                              "20px",
+                              {
+                                      "lineHeight": "24px",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "body-lg": [
+                              "16px",
+                              {
+                                      "lineHeight": "24px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "headline-sm": [
+                              "20px",
+                              {
+                                      "lineHeight": "28px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "headline-md": [
+                              "24px",
+                              {
+                                      "lineHeight": "32px",
+                                      "letterSpacing": "-0.01em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "display-lg": [
+                              "32px",
+                              {
+                                      "lineHeight": "40px",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "label-sm": [
+                              "12px",
+                              {
+                                      "lineHeight": "16px",
+                                      "fontWeight": "500"
+                              }
+                      ]
+              }
+            },
+          }
+        }
+    </script>
+<style>
+        /* Hide scrollbar for horizontal rails */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-surface text-on-surface font-body-md antialiased pb-24 md:pb-0">
+<!-- TopAppBar -->
+<header class="bg-surface dark:bg-surface-dim border-b border-outline-variant dark:border-outline fixed top-0 w-full z-50 flat no shadows flex items-center justify-between px-margin-main h-touch-target-min w-full max-w-full hidden md:flex">
+<button class="text-on-surface-variant dark:text-on-surface-variant hover:bg-surface-container-low dark:hover:bg-surface-container-highest transition-colors active:scale-95 transition-transform duration-200 w-touch-target-min h-touch-target-min flex items-center justify-center rounded-full">
+<span class="material-symbols-outlined" data-icon="arrow_back">arrow_back</span>
+</button>
+<h1 class="font-headline-sm text-headline-sm font-bold text-primary dark:text-primary-fixed-dim">Business Profile</h1>
+<button class="text-on-surface-variant dark:text-on-surface-variant hover:bg-surface-container-low dark:hover:bg-surface-container-highest transition-colors active:scale-95 transition-transform duration-200 w-touch-target-min h-touch-target-min flex items-center justify-center rounded-full">
+<span class="material-symbols-outlined" data-icon="share">share</span>
+</button>
+</header>
+<!-- Mobile Header -->
+<header class="md:hidden fixed top-0 w-full z-50 bg-surface/80 backdrop-blur-md flex items-center justify-between px-margin-main h-16 border-b border-outline-variant">
+<button class="text-on-surface-variant w-10 h-10 flex items-center justify-center rounded-full bg-surface-container">
+<span class="material-symbols-outlined" data-icon="arrow_back">arrow_back</span>
+</button>
+<button class="text-on-surface-variant w-10 h-10 flex items-center justify-center rounded-full bg-surface-container">
+<span class="material-symbols-outlined" data-icon="share">share</span>
+</button>
+</header>
+<main class="md:pt-20 pt-0">
+<!-- Hero Section -->
+<section class="relative h-64 md:h-80 w-full">
+<img class="w-full h-full object-cover" data-alt="A wide angle, high quality photograph of the interior of an upscale Nigerian restaurant named Royal Spice. Warm, inviting lighting illuminates elegant wooden tables, plush seating, and modern African decor accents. The atmosphere is vibrant yet sophisticated, capturing a premium dining experience in a bright, modern setting." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDQ5slQTn1J8JZUK5m7KjRS7DZvtP78_5iWoNUafkuiLfP9sJdw5JMxJox3N39h26OzqEux5WM-FmO23OEF_oOOHJJKKFRKCQGyu7akKxXNwWh8Z9-iy8P1-kqFs9p6GZ_RD-vBpnRm5LbGW8o_KSYuymZ_naROw3-hZCpWzSaYoJmzuk3yuFBpYKkWnPYUVcO3wSNjG90ubYugzfZVBRdZ3iGqSVqs7VAltqW654flSxvqex00q8sj9Q"/>
+<div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent"></div>
+<div class="absolute bottom-0 left-0 w-full px-margin-main pb-stack-md flex items-end justify-between">
+<div class="flex items-end gap-stack-md">
+<div class="w-20 h-20 md:w-24 md:h-24 rounded-full border-4 border-surface bg-surface overflow-hidden shadow-lg flex-shrink-0">
+<img class="w-full h-full object-cover" data-alt="A clean, professional logo for Royal Spice Restaurant featuring a stylized golden pepper or crown motif against a deep blue background. The aesthetic is corporate modern and premium." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDzWB0VMyHVTk3D6vBMz7vAccZ1PV1T2byyhrGdw8jDAcgOLWTrWKgN743eLJCbH2Sz4fppOL5NghOp63A75ByhpcW9WH-rw34X-Z60MAs7uJL7g_t1qschm1dm0NVZ1zthRGAzoBiUJEx8OUBzDFuF4QmsUYCxL9e9ZqflbUd62v31Rch7xykFC9KO1D_n-OmHwzDe8XR9gV6xX273EYxsvNbvOQuvCqUckKx1JR_gPTCait73Oa0FiQ"/>
+</div>
+<div class="text-white mb-2">
+<h2 class="font-display-lg text-display-lg mb-1">Royal Spice Restaurant</h2>
+<div class="flex items-center gap-2 font-label-lg text-label-lg">
+<span class="flex items-center text-[#FBBF24]">
+<span class="material-symbols-outlined" data-icon="star" data-weight="fill" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="ml-1">4.8</span>
+</span>
+<span class="text-white/80">(245 Reviews)</span>
+<span class="w-1 h-1 rounded-full bg-white/50"></span>
+<span class="text-emerald-400">Open Now</span>
+</div>
+</div>
+</div>
+</div>
+</section>
+<div class="px-margin-main py-stack-md md:grid md:grid-cols-12 md:gap-8 max-w-7xl mx-auto">
+<!-- Left Column: Primary Content -->
+<div class="md:col-span-8 space-y-stack-lg">
+<!-- Quick Actions -->
+<div class="flex gap-4">
+<button class="flex-1 bg-primary text-on-primary font-label-lg text-label-lg h-12 rounded-lg flex items-center justify-center gap-2 hover:bg-primary-fixed-variant transition-colors">
+<span class="material-symbols-outlined" data-icon="call">call</span>
+                        Call Now
+                    </button>
+<button class="flex-1 border border-primary text-primary font-label-lg text-label-lg h-12 rounded-lg flex items-center justify-center gap-2 hover:bg-secondary-fixed transition-colors">
+<span class="material-symbols-outlined" data-icon="directions">directions</span>
+                        Directions
+                    </button>
+</div>
+<!-- About -->
+<section class="bg-surface-container-lowest p-stack-md rounded-xl border border-outline-variant shadow-sm">
+<h3 class="font-headline-sm text-headline-sm text-on-surface mb-2">About Us</h3>
+<p class="font-body-md text-body-md text-on-surface-variant">
+                        Experience the authentic taste of Nigeria at Royal Spice Restaurant. We blend traditional recipes with modern culinary techniques to bring you an unforgettable dining experience. From our signature Jollof Rice to rich Egusi soup, every dish is prepared with passion and the finest local ingredients.
+                    </p>
+</section>
+<!-- Deals Rail -->
+<section>
+<div class="flex justify-between items-end mb-4">
+<h3 class="font-headline-sm text-headline-sm text-on-surface">Active Deals</h3>
+<button class="text-primary font-label-sm text-label-sm hover:underline">View All</button>
+</div>
+<div class="flex overflow-x-auto gap-4 pb-4 no-scrollbar -mx-margin-main px-margin-main md:mx-0 md:px-0">
+<!-- Deal Card 1 -->
+<div class="min-w-[280px] w-[280px] bg-secondary-fixed p-4 rounded-xl border border-secondary-fixed-dim flex-shrink-0">
+<div class="flex justify-between items-start mb-2">
+<span class="bg-primary text-on-primary font-label-sm text-label-sm px-2 py-1 rounded">20% OFF</span>
+<span class="material-symbols-outlined text-primary" data-icon="local_offer">local_offer</span>
+</div>
+<h4 class="font-headline-sm text-headline-sm text-on-primary-fixed mb-1">Lunch Special</h4>
+<p class="font-body-md text-body-md text-on-secondary-fixed-variant mb-4">Get 20% off all rice dishes between 12 PM - 3 PM.</p>
+<button class="w-full bg-surface text-primary font-label-lg text-label-lg h-10 rounded-lg border border-outline-variant">Claim Deal</button>
+</div>
+<!-- Deal Card 2 -->
+<div class="min-w-[280px] w-[280px] bg-tertiary-fixed p-4 rounded-xl border border-tertiary-fixed-dim flex-shrink-0">
+<div class="flex justify-between items-start mb-2">
+<span class="bg-primary text-on-primary font-label-sm text-label-sm px-2 py-1 rounded">FREE DRINK</span>
+<span class="material-symbols-outlined text-tertiary" data-icon="redeem">redeem</span>
+</div>
+<h4 class="font-headline-sm text-headline-sm text-on-tertiary-fixed mb-1">Weekend Combo</h4>
+<p class="font-body-md text-body-md text-on-tertiary-fixed-variant mb-4">Free chilled beverage with any family platter order.</p>
+<button class="w-full bg-surface text-tertiary font-label-lg text-label-lg h-10 rounded-lg border border-outline-variant">Claim Deal</button>
+</div>
+</div>
+</section>
+<!-- Products/Menu Rail -->
+<section>
+<div class="flex justify-between items-end mb-4">
+<h3 class="font-headline-sm text-headline-sm text-on-surface">Popular Menu Items</h3>
+</div>
+<div class="flex overflow-x-auto gap-4 pb-4 no-scrollbar -mx-margin-main px-margin-main md:mx-0 md:px-0">
+<!-- Product 1 -->
+<div class="min-w-[200px] w-[200px] bg-surface-container-lowest rounded-xl border border-outline-variant overflow-hidden flex-shrink-0 shadow-sm">
+<img class="w-full h-32 object-cover" data-alt="A mouth-watering, high-resolution photograph of a classic Nigerian Smoky Party Jollof Rice, served with grilled chicken and fried plantains on a pristine white ceramic plate. The lighting is bright and appetizing, emphasizing the rich red and orange hues of the dish." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDMgu9L1SHD8VhHMEzlpi1_-Q3md_E6ypzCqrT9O5eE4AKVRCOoHhKdOI6ediMrK2tX07J2Tg5PrF54gVa_oHhHolZD6PIyrKk434W18yv9Rpi5S7sN5To8HFigVPlueorN1w71oPT7OzIXW9UafWeaxpghO3ylBNjRQqnHeTVHjToNFFk81hpHofoLBK40ObFjdjqMC9m7-Cvpe351rVJinTpZHmPO7HpaUABR4oh3bz-Q3X2BpRHgBA"/>
+<div class="p-3">
+<h4 class="font-label-lg text-label-lg text-on-surface mb-1 truncate">Smoky Party Jollof</h4>
+<p class="font-currency-display text-currency-display text-primary">₦4,500</p>
+</div>
+</div>
+<!-- Product 2 -->
+<div class="min-w-[200px] w-[200px] bg-surface-container-lowest rounded-xl border border-outline-variant overflow-hidden flex-shrink-0 shadow-sm">
+<img class="w-full h-32 object-cover" data-alt="A delicious, high-quality image of traditional Nigerian Egusi soup with assorted meats, served alongside a smooth mound of Pounded Yam. The composition is clean and modern, highlighting the rich textures and vibrant colors of the soup." src="https://lh3.googleusercontent.com/aida-public/AB6AXuD7Dhyd1xxpjAQ9YOz2qxmp8nFLZmvp9PCnVUxLO_UGIXdz74MscZ5VOxngcIF9lMj41zMcCEvChKnTrX-Ejy7gwmJODGxJY1tToLJDkrSNe3NUnvTDaCbNzMRTf6sFpE8ji146Srog9Dq8wo3zV0QbfFvRK0TP9llPuJZG1NW0uZk7JsroXPJUiyM6NUle-1-dIOFv5EnRcB0K18qWhSVy07Vyn1mVnET9F0o1TrFw6UcH5QfTC4ctSw"/>
+<div class="p-3">
+<h4 class="font-label-lg text-label-lg text-on-surface mb-1 truncate">Egusi &amp; Pounded Yam</h4>
+<p class="font-currency-display text-currency-display text-primary">₦5,200</p>
+</div>
+</div>
+<!-- Product 3 -->
+<div class="min-w-[200px] w-[200px] bg-surface-container-lowest rounded-xl border border-outline-variant overflow-hidden flex-shrink-0 shadow-sm">
+<img class="w-full h-32 object-cover" data-alt="A perfectly grilled, whole croaker fish garnished with fresh sliced peppers and onions, served on a stylish dark slate platter. The lighting is bright and professional, highlighting the crispy skin and juicy flesh of the fish." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDNwxXkWBNrVxCZLO3jhd8Q0jPzRMt50cDYgQ8UQw5OXPSEpxIJVr_3iyfzG7oK4fCjPn0JUKPEx4NAHgSK0J3e2gkA__NvuTWZUiFy3b4TbyZlGCHWoUdSq0eANJU5mEPQHLxYi7NnLAVMrAKHCuPUz9Ja1Jo-hxJCN5dtqrtomJ_vfQG6UqX4P5_xf69gv-eS_gsN6fl0DjXwG5IWZw9sPuvRvelwyOnCqfuDHCDJgR8LQEp_-jhIDg"/>
+<div class="p-3">
+<h4 class="font-label-lg text-label-lg text-on-surface mb-1 truncate">Grilled Croaker Fish</h4>
+<p class="font-currency-display text-currency-display text-primary">₦8,000</p>
+</div>
+</div>
+</div>
+</section>
+<!-- Latest Review -->
+<section class="bg-surface-container-low p-stack-md rounded-xl border border-outline-variant">
+<div class="flex justify-between items-center mb-4">
+<h3 class="font-headline-sm text-headline-sm text-on-surface">Latest Review</h3>
+<div class="flex text-[#FBBF24]">
+<span class="material-symbols-outlined" data-icon="star" data-weight="fill" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined" data-icon="star" data-weight="fill" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined" data-icon="star" data-weight="fill" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined" data-icon="star" data-weight="fill" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined" data-icon="star" data-weight="fill" style="font-variation-settings: 'FILL' 1;">star</span>
+</div>
+</div>
+<div class="flex gap-3 mb-3">
+<div class="w-10 h-10 rounded-full bg-secondary-container flex items-center justify-center text-on-secondary-container font-label-lg text-label-lg">
+                            OA
+                        </div>
+<div>
+<p class="font-label-lg text-label-lg text-on-surface">Oluwaseun A.</p>
+<p class="font-label-sm text-label-sm text-on-surface-variant">2 days ago</p>
+</div>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant italic">
+                        "Absolutely fantastic! The ambiance is top-notch and the Jollof rice tasted exactly like a classic party jollof. The staff were very attentive. Highly recommend for family dinners."
+                    </p>
+</section>
+</div>
+<!-- Right Column: Info & Details -->
+<div class="md:col-span-4 mt-stack-lg md:mt-0 space-y-stack-lg">
+<!-- Info Card -->
+<div class="bg-surface-container-lowest rounded-xl border border-outline-variant shadow-sm overflow-hidden">
+<!-- Map Placeholder -->
+<div class="w-full h-40 bg-surface-container flex items-center justify-center">
+<img class="w-full h-full object-cover" data-alt="A simple, stylized map graphic centered on Lagos, Nigeria, showing a location pin for Royal Spice Restaurant. The map aesthetic is clean, light, and modern." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCWORuJRkRAWsGkndDh8BwGutvIelM0nXUNMqbUUCOArL18sfw6AG4LcADSAD2cN4ax_Z82JooY3jwxuKgWWxLwJqLbF0GUyo-plsLs6SfWcYnCI3pSLMFqxSeZFjoQk_yQOg_s1b83dOK7KmhWUiU7gAX1zs8RBRQ8uaXNlk1LO9ecstdayzD9Pb4OJrMxLlCTCabDv1DvTSWHStqZj-9wAvPIpEWmy_3sai4rhPxAF7a1Dlv_AWsdWA"/>
+</div>
+<div class="p-4 space-y-4">
+<div class="flex items-start gap-3">
+<span class="material-symbols-outlined text-primary mt-0.5" data-icon="location_on">location_on</span>
+<div>
+<p class="font-label-lg text-label-lg text-on-surface">123 Victoria Island Way</p>
+<p class="font-body-md text-body-md text-on-surface-variant">Lagos, Nigeria</p>
+</div>
+</div>
+<hr class="border-outline-variant"/>
+<div class="flex items-start gap-3">
+<span class="material-symbols-outlined text-primary mt-0.5" data-icon="schedule">schedule</span>
+<div class="w-full">
+<div class="flex justify-between font-label-lg text-label-lg text-on-surface mb-1">
+<span>Today</span>
+<span class="text-emerald-500">10:00 AM - 11:00 PM</span>
+</div>
+<div class="space-y-1 mt-2">
+<div class="flex justify-between font-body-md text-body-md text-on-surface-variant">
+<span>Mon - Thu</span>
+<span>10:00 AM - 10:00 PM</span>
+</div>
+<div class="flex justify-between font-body-md text-body-md text-on-surface-variant">
+<span>Fri - Sat</span>
+<span>10:00 AM - 11:30 PM</span>
+</div>
+<div class="flex justify-between font-body-md text-body-md text-on-surface-variant">
+<span>Sunday</span>
+<span>12:00 PM - 9:00 PM</span>
+</div>
+</div>
+</div>
+</div>
+<hr class="border-outline-variant"/>
+<div class="flex items-start gap-3">
+<span class="material-symbols-outlined text-primary mt-0.5" data-icon="language">language</span>
+<a class="font-label-lg text-label-lg text-primary hover:underline" href="#">www.royalspice.ng</a>
+</div>
+</div>
+</div>
+<!-- Badges/Features -->
+<div class="grid grid-cols-2 gap-3">
+<div class="bg-surface-container-low p-3 rounded-lg border border-outline-variant flex flex-col items-center justify-center text-center">
+<span class="material-symbols-outlined text-primary mb-1" data-icon="verified">verified</span>
+<span class="font-label-sm text-label-sm text-on-surface">Verified Business</span>
+</div>
+<div class="bg-surface-container-low p-3 rounded-lg border border-outline-variant flex flex-col items-center justify-center text-center">
+<span class="material-symbols-outlined text-on-surface-variant mb-1" data-icon="wifi">wifi</span>
+<span class="font-label-sm text-label-sm text-on-surface">Free Wi-Fi</span>
+</div>
+<div class="bg-surface-container-low p-3 rounded-lg border border-outline-variant flex flex-col items-center justify-center text-center">
+<span class="material-symbols-outlined text-on-surface-variant mb-1" data-icon="local_parking">local_parking</span>
+<span class="font-label-sm text-label-sm text-on-surface">Parking Available</span>
+</div>
+<div class="bg-surface-container-low p-3 rounded-lg border border-outline-variant flex flex-col items-center justify-center text-center">
+<span class="material-symbols-outlined text-on-surface-variant mb-1" data-icon="event_seat">event_seat</span>
+<span class="font-label-sm text-label-sm text-on-surface">Dine-in &amp; Takeaway</span>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- BottomNavBar -->
+<nav class="md:hidden bg-surface dark:bg-surface-dim border-t border-outline-variant shadow-lg fixed bottom-0 w-full z-50 rounded-t-xl flex justify-around items-center w-full h-16 pb-safe px-gutter-grid">
+<button class="flex flex-col items-center justify-center text-on-surface-variant dark:text-on-surface-variant hover:bg-secondary-container dark:hover:bg-secondary-container-highest active:scale-95 transition-transform duration-150 p-2 rounded-lg">
+<span class="material-symbols-outlined" data-icon="home">home</span>
+<span class="font-label-sm text-label-sm">Home</span>
+</button>
+<button class="flex flex-col items-center justify-center text-primary dark:text-primary-fixed-dim font-bold hover:bg-secondary-container dark:hover:bg-secondary-container-highest active:scale-95 transition-transform duration-150 p-2 rounded-lg">
+<span class="material-symbols-outlined" data-icon="explore">explore</span>
+<span class="font-label-sm text-label-sm">Discover</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant dark:text-on-surface-variant hover:bg-secondary-container dark:hover:bg-secondary-container-highest active:scale-95 transition-transform duration-150 p-2 rounded-lg">
+<span class="material-symbols-outlined" data-icon="local_offer">local_offer</span>
+<span class="font-label-sm text-label-sm">Deals</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant dark:text-on-surface-variant hover:bg-secondary-container dark:hover:bg-secondary-container-highest active:scale-95 transition-transform duration-150 p-2 rounded-lg">
+<span class="material-symbols-outlined" data-icon="bookmark">bookmark</span>
+<span class="font-label-sm text-label-sm">Saved</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant dark:text-on-surface-variant hover:bg-secondary-container dark:hover:bg-secondary-container-highest active:scale-95 transition-transform duration-150 p-2 rounded-lg">
+<span class="material-symbols-outlined" data-icon="person">person</span>
+<span class="font-label-sm text-label-sm">Account</span>
+</button>
+</nav>
+</body></html>

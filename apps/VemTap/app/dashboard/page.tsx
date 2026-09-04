@@ -145,28 +145,28 @@ export default function DashboardPage() {
             <main className="p-4 sm:p-6 max-w-7xl mx-auto">
                 <div className="space-y-6">
                         {/* 1. NATIVE APP HEADER SECTION */}
-                        <section className="relative bg-[#066CF4] -mx-4 -mt-4 sm:-mx-6 sm:-mt-6 px-4 sm:px-6 pt-5 pb-14 rounded-b-xl shadow-lg mb-6">
-                            <div className="absolute top-0 right-0 p-8 opacity-10 pointer-events-none">
+                        <section className="relative bg-white border-b border-gray-100 -mx-4 -mt-4 sm:-mx-6 sm:-mt-6 px-4 sm:px-6 pt-5 pb-20 rounded-b-2xl shadow-sm mb-6">
+                            <div className="absolute top-0 right-0 p-8 text-blue-500/5 pointer-events-none">
                                 <Sparkles size={120} />
                             </div>
                             
-                            <div className="relative z-10 space-y-4">
+                            <div className="relative z-10 space-y-3">
                                 <div className="flex items-center justify-between">
                                     <div className="flex flex-col">
-                                        <p className="text-blue-100/70 text-[9px] font-semibold uppercase tracking-widest mb-0.5">
+                                        <p className="text-gray-400 text-[9px] font-bold uppercase tracking-widest mb-0.5">
                                             Good {new Date().getHours() < 12 ? 'Morning' : new Date().getHours() < 17 ? 'Afternoon' : 'Evening'}
                                         </p>
                                         <div className="flex items-center gap-2">
-                                            <h1 className="text-base md:text-lg font-semibold text-white/90 tracking-tight">
+                                            <h1 className="text-base md:text-lg font-bold text-gray-900 tracking-tight">
                                                 {user?.firstName || 'Owner'}
                                             </h1>
                                             {isAnalyticsLoading && (
-                                                <div className="size-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                                <div className="size-3.5 border-2 border-gray-200 border-t-primary rounded-full animate-spin" />
                                             )}
                                         </div>
                                     </div>
                                     <div className="relative shrink-0">
-                                        <button onClick={() => setShowBannerMenu(!showBannerMenu)} className="size-9 rounded-xl bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center text-white hover:bg-white/20 transition-colors">
+                                        <button onClick={() => setShowBannerMenu(!showBannerMenu)} className="size-9 rounded-xl bg-gray-50 border border-gray-200 flex items-center justify-center text-gray-600 hover:bg-gray-100 transition-colors">
                                             <MoreHorizontal size={18} />
                                         </button>
                                         {showBannerMenu && (
@@ -189,13 +189,18 @@ export default function DashboardPage() {
                                 </div>
                                 
                                 {/* Main Highlight — money is hero */}
-                                <div className="pt-1 pb-1">
-                                    <p className="text-blue-100/60 text-[10px] font-medium tracking-wider mb-1 flex items-center gap-1.5">
-                                        <ShoppingBag size={12} /> Today's Sales
+                                <div className="pt-1 pb-0.5">
+                                    <p className="text-gray-400 text-[10px] font-bold uppercase tracking-wider mb-1 flex items-center gap-1.5">
+                                        <ShoppingBag size={12} className="text-primary" /> Today's Sales
                                     </p>
-                                    <h2 className="text-[32px] md:text-5xl font-black text-white tracking-tight leading-none">
+                                    <h2 className="text-[32px] md:text-5xl font-black text-gray-900 tracking-tight leading-none">
                                         {kpis[2]?.value || '₦0'}
                                     </h2>
+                                </div>
+
+                                {/* Slider Banner embedded inside header banner */}
+                                <div className="pt-0.5">
+                                    <DashboardBannerWrapper onAnalyzeDashboard={handleRefreshAnalysis} />
                                 </div>
                             </div>
 
@@ -226,7 +231,6 @@ export default function DashboardPage() {
 
                         {/* Adjust spacing for content below the overlapping cards */}
                         <div className="pt-6 space-y-6">
-                            <DashboardBannerWrapper onAnalyzeDashboard={handleRefreshAnalysis} />
                             <OnboardingChecklist />
 
                         {/* 3. QUICK ACTIONS (Visually Prominent Grid) */}

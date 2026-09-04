@@ -41,7 +41,7 @@ export default function OnboardingChecklist() {
                         <CheckCircle2 size={15} />
                     </div>
                     <div className="text-left">
-                        <h4 className="text-[10px] font-bold uppercase tracking-wider text-text-main">Activation Progress</h4>
+                        <h4 className="text-[10px] font-bold uppercase tracking-wider text-text-main">Todo List</h4>
                         <div className="flex items-center gap-2 mt-1">
                             <div className="h-1.5 w-24 bg-gray-100 rounded-full overflow-hidden">
                                 <div className="h-full bg-primary rounded-full" style={{ width: `${percentage}%` }} />
@@ -60,7 +60,7 @@ export default function OnboardingChecklist() {
             <div className="flex items-center justify-between px-4 md:px-6 py-4 border-b border-gray-100">
                 <div className="flex items-center gap-2">
                     <CheckCircle2 size={16} className="text-primary" />
-                    <h4 className="text-[10px] font-bold uppercase tracking-[0.16em] text-gray-400">Activation Checklist</h4>
+                    <h4 className="text-[10px] font-bold uppercase tracking-[0.16em] text-gray-400">Todo List</h4>
                 </div>
                 <button 
                     onClick={toggleMinimize}

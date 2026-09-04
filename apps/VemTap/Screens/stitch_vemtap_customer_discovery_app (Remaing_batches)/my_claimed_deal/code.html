@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>My Claimed Deal - VEMTAP</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "on-secondary-fixed": "#0b1c30",
+                      "surface-container-highest": "#e0e3e5",
+                      "secondary-fixed": "#d3e4fe",
+                      "on-surface-variant": "#424655",
+                      "inverse-surface": "#2d3133",
+                      "on-primary-fixed": "#001945",
+                      "on-error-container": "#93000a",
+                      "secondary-container": "#d0e1fb",
+                      "on-primary-fixed-variant": "#00429b",
+                      "surface-dim": "#d8dadc",
+                      "surface-container-lowest": "#ffffff",
+                      "secondary": "#505f76",
+                      "tertiary": "#535a71",
+                      "tertiary-container": "#6b738a",
+                      "background": "#f7f9fb",
+                      "on-tertiary-fixed": "#131b2e",
+                      "primary": "#0055c4",
+                      "on-error": "#ffffff",
+                      "on-secondary-fixed-variant": "#38485d",
+                      "error": "#ba1a1a",
+                      "on-background": "#191c1e",
+                      "primary-container": "#066cf4",
+                      "surface-tint": "#0058cb",
+                      "inverse-on-surface": "#eff1f3",
+                      "on-tertiary-fixed-variant": "#3f465c",
+                      "tertiary-fixed": "#dae2fd",
+                      "surface-bright": "#f7f9fb",
+                      "surface-container": "#eceef0",
+                      "secondary-fixed-dim": "#b7c8e1",
+                      "outline": "#727786",
+                      "on-surface": "#191c1e",
+                      "error-container": "#ffdad6",
+                      "surface": "#f7f9fb",
+                      "tertiary-fixed-dim": "#bec6e0",
+                      "on-secondary-container": "#54647a",
+                      "on-secondary": "#ffffff",
+                      "on-tertiary-container": "#fcfaff",
+                      "outline-variant": "#c2c6d7",
+                      "surface-container-high": "#e6e8ea",
+                      "primary-fixed": "#d9e2ff",
+                      "on-primary-container": "#fcfaff",
+                      "inverse-primary": "#b0c6ff",
+                      "on-primary": "#ffffff",
+                      "on-tertiary": "#ffffff",
+                      "surface-container-low": "#f2f4f6",
+                      "primary-fixed-dim": "#b0c6ff",
+                      "surface-variant": "#e0e3e5"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "touch-target-min": "44px",
+                      "margin-main": "1.25rem",
+                      "stack-sm": "0.5rem",
+                      "gutter-grid": "1rem",
+                      "stack-lg": "1.5rem",
+                      "stack-md": "1rem"
+              },
+              "fontFamily": {
+                      "label-lg": [
+                              "Inter"
+                      ],
+                      "headline-sm": [
+                              "Inter"
+                      ],
+                      "headline-md": [
+                              "Inter"
+                      ],
+                      "body-lg": [
+                              "Inter"
+                      ],
+                      "display-lg": [
+                              "Inter"
+                      ],
+                      "label-sm": [
+                              "Inter"
+                      ],
+                      "currency-display": [
+                              "Inter"
+                      ],
+                      "body-md": [
+                              "Inter"
+                      ]
+              },
+              "fontSize": {
+                      "label-lg": [
+                              "14px",
+                              {
+                                      "lineHeight": "20px",
+                                      "letterSpacing": "0.01em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "headline-sm": [
+                              "20px",
+                              {
+                                      "lineHeight": "28px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "headline-md": [
+                              "24px",
+                              {
+                                      "lineHeight": "32px",
+                                      "letterSpacing": "-0.01em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "body-lg": [
+                              "16px",
+                              {
+                                      "lineHeight": "24px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "display-lg": [
+                              "32px",
+                              {
+                                      "lineHeight": "40px",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "label-sm": [
+                              "12px",
+                              {
+                                      "lineHeight": "16px",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "currency-display": [
+                              "20px",
+                              {
+                                      "lineHeight": "24px",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "body-md": [
+                              "14px",
+                              {
+                                      "lineHeight": "20px",
+                                      "fontWeight": "400"
+                              }
+                      ]
+              }
+      },
+          },
+        }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background min-h-screen flex flex-col relative pb-24">
+<!-- Top App Bar -->
+<header class="fixed top-0 w-full bg-surface text-primary font-headline-sm text-headline-sm border-b border-outline-variant flat no shadows flex items-center justify-between px-margin-main h-touch-target-min w-full z-50">
+<button class="h-touch-target-min w-touch-target-min flex items-center justify-center text-primary active:scale-95 duration-100 rounded-full hover:bg-surface-container-low transition-colors">
+<span class="material-symbols-outlined" data-icon="arrow_back">arrow_back</span>
+</button>
+<span class="font-display-lg text-display-lg text-primary flex-1 text-center font-bold tracking-tight">My Deal</span>
+<div class="h-touch-target-min w-touch-target-min"></div> <!-- Spacer for balance -->
+</header>
+<!-- Main Content Canvas -->
+<main class="flex-1 mt-16 px-margin-main py-stack-md flex flex-col gap-stack-lg max-w-2xl mx-auto w-full">
+<!-- Deal Image & Primary Info -->
+<section class="bg-surface-container-lowest rounded-xl overflow-hidden border border-outline-variant shadow-sm flex flex-col">
+<div class="relative w-full aspect-[16/9] bg-surface-container-high">
+<img class="w-full h-full object-cover" data-alt="A professional, high-quality photograph of a luxurious spa treatment room in Nigeria. The lighting is soft and ambient, creating a relaxing atmosphere. Fresh towels and essential oils are neatly arranged on a wooden table. The scene emphasizes cleanliness, premium service, and trustworthiness, aligning perfectly with a modern corporate aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCtX_HMc2mbhk_JAazdPi64glj8fCQMTvYRZ5lnN02PKDUNpPH67GSgjz7FYt6k2x9Nq2KmUfFaYEDdWGoSTLuHZjO9tVWoUs848hLuxgGR-sg9a13MFr-Qr_knjEz5YY6BzwyvEZ8YoAMnkCqhIqYp5FZy4yYYR79ar4TP0vjtLJ_0_JKeHlMA0KnET8RUQdtNV8fmsFlHVXsoktAlsTzsoCaguig0NDsCdWrTunJ7gLxPykT_5xWbFQ"/>
+<div class="absolute top-4 right-4 bg-surface-container-lowest text-primary font-label-sm text-label-sm px-3 py-1 rounded-full shadow-sm flex items-center gap-1 font-bold">
+<span class="material-symbols-outlined text-[16px]" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+                    Claimed
+                </div>
+</div>
+<div class="p-stack-md flex flex-col gap-stack-sm">
+<div class="flex items-start justify-between gap-4">
+<div class="flex flex-col">
+<h1 class="font-headline-md text-headline-md text-on-surface">50% Off Premium Spa Package</h1>
+<p class="font-body-md text-body-md text-on-surface-variant flex items-center gap-1 mt-1">
+<span class="material-symbols-outlined text-[16px]" data-icon="storefront">storefront</span>
+                            Serenity Wellness Spa
+                        </p>
+</div>
+</div>
+<div class="mt-2 pt-stack-sm border-t border-surface-variant flex flex-col">
+<span class="font-label-sm text-label-sm text-outline uppercase tracking-wider mb-1">Redemption Code</span>
+<span class="font-display-lg text-currency-display text-on-surface font-mono tracking-widest bg-surface-container px-4 py-2 rounded-lg text-center w-full">VEM-SPA-50</span>
+</div>
+</div>
+</section>
+<!-- Instructions Bento Card -->
+<section class="bg-primary-fixed rounded-xl p-stack-md flex flex-col gap-stack-sm border border-primary-fixed-dim">
+<h2 class="font-headline-sm text-headline-sm text-on-primary-fixed flex items-center gap-2">
+<span class="material-symbols-outlined" data-icon="info">info</span>
+                HOW TO USE
+            </h2>
+<p class="font-body-lg text-body-lg text-on-primary-fixed-variant">
+                Show this claim at the business when redeeming your Deal.
+            </p>
+</section>
+</main>
+<!-- Bottom Action Area (Thumb Zone) -->
+<div class="fixed bottom-0 left-0 w-full p-margin-main bg-surface-container-lowest border-t border-outline-variant shadow-[0_-4px_16px_rgba(0,0,0,0.04)] z-40 pb-[calc(4rem+1.25rem)] md:pb-margin-main">
+<button class="w-full h-12 bg-primary text-on-primary font-label-lg text-label-lg rounded-lg flex items-center justify-center gap-2 active:scale-95 transition-transform">
+<span class="material-symbols-outlined" data-icon="redeem">redeem</span>
+            Redeem / Use Deal
+        </button>
+</div>
+<!-- Hidden nav shell on transactional screen based on "The UX Goal: If the user is in a focused journey... hide the shell" -->
+<!-- However, prompt says "Navigation tab 'Saved' or 'Account' context.", but this is a specific deal view ("My Claimed Deal screen... with back button"). According to Semantic Shell Mandate: "Task-Focused: Any sub-page featuring a 'Close' or 'Back' action that implies a temporary departure from the main navigation flow MUST exclude the navigation shell."
+    Therefore, BottomNavBar is intentionally omitted to prioritize the canvas. -->
+</body></html>

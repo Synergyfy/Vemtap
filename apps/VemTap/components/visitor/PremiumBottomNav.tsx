@@ -44,7 +44,7 @@ export const PremiumBottomNav = () => {
     });
 
     return (
-        <nav className="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-2 pb-3 pt-1.5 bg-surface/80 backdrop-blur-xl rounded-t-3xl border-t border-slate-200 shadow-[0_-15px_30px_rgba(0,74,198,0.05)]">
+        <nav className="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-2 pb-3 pt-1.5 bg-white backdrop-blur-xl rounded-t-3xl border-t border-slate-200 shadow-[0_-15px_30px_rgba(0,74,198,0.05)]">
             {navItems.map((item) => {
                 const isActive = pathname === item.path || pathname?.startsWith(item.path + '/');
                 const isBadged = item.id === 'cart' && cartCount > 0;

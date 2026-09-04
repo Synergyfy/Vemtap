@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Customer Home / Discovery Home</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "inverse-primary": "#b0c6ff",
+                        "surface-bright": "#f7f9fb",
+                        "tertiary-fixed": "#dae2fd",
+                        "on-tertiary-fixed": "#131b2e",
+                        "surface-container-highest": "#e0e3e5",
+                        "primary-fixed": "#d9e2ff",
+                        "surface-container-high": "#e6e8ea",
+                        "on-primary": "#ffffff",
+                        "primary-fixed-dim": "#b0c6ff",
+                        "tertiary-fixed-dim": "#bec6e0",
+                        "background": "#f7f9fb",
+                        "outline": "#727786",
+                        "primary": "#0055c4",
+                        "inverse-on-surface": "#eff1f3",
+                        "surface-dim": "#d8dadc",
+                        "on-surface-variant": "#424655",
+                        "error": "#ba1a1a",
+                        "secondary-fixed": "#d3e4fe",
+                        "secondary-fixed-dim": "#b7c8e1",
+                        "on-primary-fixed-variant": "#00429b",
+                        "surface-variant": "#e0e3e5",
+                        "on-secondary-fixed-variant": "#38485d",
+                        "on-secondary-container": "#54647a",
+                        "surface-container": "#eceef0",
+                        "on-primary-container": "#fcfaff",
+                        "surface-container-low": "#f2f4f6",
+                        "on-secondary": "#ffffff",
+                        "tertiary-container": "#6b738a",
+                        "on-error-container": "#93000a",
+                        "outline-variant": "#c2c6d7",
+                        "error-container": "#ffdad6",
+                        "surface": "#f7f9fb",
+                        "on-secondary-fixed": "#0b1c30",
+                        "on-error": "#ffffff",
+                        "tertiary": "#535a71",
+                        "secondary": "#505f76",
+                        "primary-container": "#066cf4",
+                        "on-tertiary-container": "#fcfaff",
+                        "on-primary-fixed": "#001945",
+                        "inverse-surface": "#2d3133",
+                        "on-tertiary": "#ffffff",
+                        "on-surface": "#191c1e",
+                        "surface-container-lowest": "#ffffff",
+                        "surface-tint": "#0058cb",
+                        "on-tertiary-fixed-variant": "#3f465c",
+                        "on-background": "#191c1e",
+                        "secondary-container": "#d0e1fb"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "stack-md": "1rem",
+                        "touch-target-min": "44px",
+                        "stack-sm": "0.5rem",
+                        "stack-lg": "1.5rem",
+                        "margin-main": "1.25rem",
+                        "gutter-grid": "1rem"
+                    },
+                    "fontFamily": {
+                        "headline-md": ["Inter"],
+                        "display-lg": ["Inter"],
+                        "label-sm": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "body-md": ["Inter"],
+                        "headline-sm": ["Inter"],
+                        "label-lg": ["Inter"],
+                        "currency-display": ["Inter"]
+                    },
+                    "fontSize": {
+                        "headline-md": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                        "display-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "label-sm": ["12px", { "lineHeight": "16px", "fontWeight": "500" }],
+                        "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "headline-sm": ["20px", { "lineHeight": "28px", "fontWeight": "600" }],
+                        "label-lg": ["14px", { "lineHeight": "20px", "letterSpacing": "0.01em", "fontWeight": "600" }],
+                        "currency-display": ["20px", { "lineHeight": "24px", "fontWeight": "700" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background font-body-md min-h-screen pb-24 md:pb-0">
+<!-- TopAppBar -->
+<header class="bg-surface dark:bg-on-background text-primary dark:text-inverse-primary w-full top-0 z-40 sticky shadow-sm">
+<div class="flex justify-between items-center w-full px-margin-main py-stack-sm h-[64px]">
+<div class="flex items-center gap-2 cursor-pointer hover:bg-surface-container-low dark:hover:bg-surface-variant transition-colors duration-200 rounded-full px-2 py-1">
+<span class="material-symbols-outlined text-primary dark:text-inverse-primary" style="font-variation-settings: 'FILL' 1;">location_on</span>
+<h1 class="text-headline-sm font-headline-sm font-bold text-primary dark:text-inverse-primary whitespace-nowrap overflow-hidden text-ellipsis">📍 Wuse 2, Abuja</h1>
+</div>
+<div class="flex items-center">
+<!-- Search bar for desktop -->
+<div class="hidden md:flex relative w-64 mr-4">
+<span class="material-symbols-outlined absolute left-3 top-1/2 transform -translate-y-1/2 text-outline">search</span>
+<input class="w-full pl-10 pr-4 py-2 bg-surface-container rounded-full border-none focus:ring-2 focus:ring-primary text-body-md font-body-md outline-none" placeholder="What are you looking for?" type="text"/>
+</div>
+<button class="md:hidden w-touch-target-min h-touch-target-min flex items-center justify-center rounded-full hover:bg-surface-container-low dark:hover:bg-surface-variant transition-colors duration-200">
+<span class="material-symbols-outlined text-primary dark:text-inverse-primary">search</span>
+</button>
+</div>
+</div>
+<!-- Mobile Search Bar (Expanded state simulation) -->
+<div class="md:hidden px-margin-main pb-stack-sm">
+<div class="relative w-full">
+<span class="material-symbols-outlined absolute left-3 top-1/2 transform -translate-y-1/2 text-outline">search</span>
+<input class="w-full pl-10 pr-4 py-3 bg-surface-container rounded-full border-none focus:ring-2 focus:ring-primary text-body-md font-body-md outline-none shadow-inner" placeholder="What are you looking for?" type="text"/>
+</div>
+</div>
+</header>
+<main class="w-full max-w-7xl mx-auto md:px-margin-main pb-24 md:pb-8">
+<!-- DEALS NEAR YOU (Horizontal Rail) -->
+<section class="mt-stack-lg pl-margin-main md:pl-0">
+<div class="flex justify-between items-end pr-margin-main mb-stack-sm">
+<h2 class="text-headline-sm font-headline-sm text-on-surface">DEALS NEAR YOU</h2>
+<a class="text-label-lg font-label-lg text-primary hover:underline" href="#">See all</a>
+</div>
+<div class="flex overflow-x-auto no-scrollbar gap-stack-md pb-stack-sm pr-margin-main snap-x snap-mandatory">
+<!-- Deal Card 1 -->
+<div class="min-w-[280px] w-[280px] bg-surface-lowest rounded-xl overflow-hidden border border-surface-variant shadow-sm snap-start shrink-0 flex flex-col group cursor-pointer hover:shadow-md transition-shadow">
+<div class="h-[140px] relative bg-surface-container w-full overflow-hidden">
+<div class="bg-cover bg-center w-full h-full group-hover:scale-105 transition-transform duration-300" data-alt="A modern, brightly lit cafe interior featuring a large, colorful display of fresh pastries and artisanal breads behind a glass counter. The setting feels premium and inviting, with warm sunlight streaming through large windows, highlighting the vibrant textures of the food. Corporate modern style, soft lighting." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuBxnsrIpqC37T82FlvhpIh_KysvcjbjxBCGWZAF4sfqN4YU7Lp4UzM7lW_6tJImng6jZl0030ZfgL4o-K9RHQ9qs_SKIIk4i7ADHWtEAKL2ABxL-2ObXM5PA14iV49_t358cioj9fuYHeqeZJhQPPORf6U_UHVUKrWnzxGPwVam_Ylz6ck7RvaXhiNIRh_GlL5NqqfNWkyjdhIFqPiGpJW8bl9QbE_5OwYVUpcLhU3bZvDCsaOxtnb4eg')"></div>
+<div class="absolute top-2 left-2 bg-error text-on-error px-2 py-1 rounded-md text-label-sm font-label-sm font-bold flex items-center gap-1 shadow-sm">
+<span class="material-symbols-outlined text-[14px]">local_offer</span>
+                            30% OFF
+                        </div>
+</div>
+<div class="p-stack-md flex-grow flex flex-col justify-between">
+<div>
+<h3 class="text-label-lg font-label-lg text-on-surface line-clamp-1">Urban Grind Coffee</h3>
+<p class="text-body-md font-body-md text-outline mt-1 line-clamp-1">All Pastries &amp; Breads</p>
+</div>
+<div class="mt-stack-sm flex items-center justify-between">
+<div class="flex items-center gap-1 text-label-sm font-label-sm text-on-surface-variant">
+<span class="material-symbols-outlined text-[16px] text-tertiary">schedule</span>
+                                Ends in 2h
+                            </div>
+<span class="text-currency-display font-currency-display text-primary">₦2,500</span>
+</div>
+</div>
+</div>
+<!-- Deal Card 2 -->
+<div class="min-w-[280px] w-[280px] bg-surface-lowest rounded-xl overflow-hidden border border-surface-variant shadow-sm snap-start shrink-0 flex flex-col group cursor-pointer hover:shadow-md transition-shadow">
+<div class="h-[140px] relative bg-surface-container w-full overflow-hidden">
+<div class="bg-cover bg-center w-full h-full group-hover:scale-105 transition-transform duration-300" data-alt="A luxurious modern spa interior with glowing ambient lights, clean white towels rolled neatly on a massage table, and small minimalist planters. The aesthetic is incredibly calm, sophisticated, and clean. Corporate modern photography, cool tones." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuBFQoSeRkEoZNR7AWvmyuABH-ePHI1Kqm4EkaoMVn9IMCC-mHYtoRYVSR_FYaFYEnkS_qscSRRNwKpzpGP4LP7eTB64XH-aulFee49ZGORM7g6JvKntDFKvxF-XRfwHcBs9-p2CVaNh5drUQdFCoAd6NWljIUtHUWpVoIhEKJUciQaACEBQWRV14B2ZsWQ66AEPg7ROz-ZQoR1eDIAEMj6YovGUT-lyKU75Ba65DvwMiFm4kskEI2zM9A')"></div>
+<div class="absolute top-2 left-2 bg-error text-on-error px-2 py-1 rounded-md text-label-sm font-label-sm font-bold flex items-center gap-1 shadow-sm">
+<span class="material-symbols-outlined text-[14px]">local_offer</span>
+                            BUY 1 GET 1
+                        </div>
+</div>
+<div class="p-stack-md flex-grow flex flex-col justify-between">
+<div>
+<h3 class="text-label-lg font-label-lg text-on-surface line-clamp-1">Serenity Spa Oasis</h3>
+<p class="text-body-md font-body-md text-outline mt-1 line-clamp-1">Deep Tissue Massage</p>
+</div>
+<div class="mt-stack-sm flex items-center justify-between">
+<div class="flex items-center gap-1 text-label-sm font-label-sm text-on-surface-variant">
+<span class="material-symbols-outlined text-[16px] text-tertiary">schedule</span>
+                                Today Only
+                            </div>
+<span class="text-currency-display font-currency-display text-primary">₦15,000</span>
+</div>
+</div>
+</div>
+<!-- Deal Card 3 -->
+<div class="min-w-[280px] w-[280px] bg-surface-lowest rounded-xl overflow-hidden border border-surface-variant shadow-sm snap-start shrink-0 flex flex-col group cursor-pointer hover:shadow-md transition-shadow">
+<div class="h-[140px] relative bg-surface-container w-full overflow-hidden">
+<div class="bg-cover bg-center w-full h-full group-hover:scale-105 transition-transform duration-300" data-alt="A sleek, modern tech store showcasing the latest smartphones on a brightly lit, minimalist wooden table. The environment is crisp, professional, and high-end, utilizing clean white backgrounds and sharp lighting typical of corporate retail design." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuDQ8FjdRb3FONFSA57iCjDbuClrAKv6Gss4H8qH9jjTjlQUW_zDH2VD6oCoDaSWPMNaRGnLvfrrxIpZeOiSbaDaMzGyc5DqJf1k0zLmI13mg-5rXC_qVI5mnwVahKodakbRE-rlHx4l6f7z66T_Ra1KFvVoDZ74zXBJ9g_MvvO2pzLDgVVcc2tDNVZ3n2eRZIekzmoZTcifPgCL7e-J5Ytei5wMaCnoS3hbDlu4S-usZYOZIsR5n20gzQ')"></div>
+<div class="absolute top-2 left-2 bg-error text-on-error px-2 py-1 rounded-md text-label-sm font-label-sm font-bold flex items-center gap-1 shadow-sm">
+<span class="material-symbols-outlined text-[14px]">local_offer</span>
+                            ₦5K OFF
+                        </div>
+</div>
+<div class="p-stack-md flex-grow flex flex-col justify-between">
+<div>
+<h3 class="text-label-lg font-label-lg text-on-surface line-clamp-1">Gadget Hub Wuse</h3>
+<p class="text-body-md font-body-md text-outline mt-1 line-clamp-1">Accessories Purchase &gt; ₦20k</p>
+</div>
+<div class="mt-stack-sm flex items-center justify-between">
+<div class="flex items-center gap-1 text-label-sm font-label-sm text-on-surface-variant">
+<span class="material-symbols-outlined text-[16px] text-tertiary">schedule</span>
+                                3 Days Left
+                            </div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- EXPLORE CATEGORIES (Horizontal Rail) -->
+<section class="mt-stack-lg pl-margin-main md:pl-0">
+<div class="flex justify-between items-end pr-margin-main mb-stack-sm">
+<h2 class="text-headline-sm font-headline-sm text-on-surface">EXPLORE CATEGORIES</h2>
+</div>
+<div class="flex overflow-x-auto no-scrollbar gap-4 pb-2 pr-margin-main">
+<button class="flex flex-col items-center gap-2 min-w-[72px] shrink-0 group">
+<div class="w-16 h-16 rounded-full bg-surface-container-low flex items-center justify-center group-hover:bg-primary-container group-hover:text-on-primary-container transition-colors shadow-sm">
+<span class="material-symbols-outlined text-[28px] text-primary group-hover:text-on-primary-container">restaurant</span>
+</div>
+<span class="text-label-sm font-label-sm text-on-surface-variant text-center">Food</span>
+</button>
+<button class="flex flex-col items-center gap-2 min-w-[72px] shrink-0 group">
+<div class="w-16 h-16 rounded-full bg-surface-container-low flex items-center justify-center group-hover:bg-primary-container group-hover:text-on-primary-container transition-colors shadow-sm">
+<span class="material-symbols-outlined text-[28px] text-primary group-hover:text-on-primary-container">shopping_bag</span>
+</div>
+<span class="text-label-sm font-label-sm text-on-surface-variant text-center">Retail</span>
+</button>
+<button class="flex flex-col items-center gap-2 min-w-[72px] shrink-0 group">
+<div class="w-16 h-16 rounded-full bg-surface-container-low flex items-center justify-center group-hover:bg-primary-container group-hover:text-on-primary-container transition-colors shadow-sm">
+<span class="material-symbols-outlined text-[28px] text-primary group-hover:text-on-primary-container">face_retouching_natural</span>
+</div>
+<span class="text-label-sm font-label-sm text-on-surface-variant text-center">Beauty</span>
+</button>
+<button class="flex flex-col items-center gap-2 min-w-[72px] shrink-0 group">
+<div class="w-16 h-16 rounded-full bg-surface-container-low flex items-center justify-center group-hover:bg-primary-container group-hover:text-on-primary-container transition-colors shadow-sm">
+<span class="material-symbols-outlined text-[28px] text-primary group-hover:text-on-primary-container">devices</span>
+</div>
+<span class="text-label-sm font-label-sm text-on-surface-variant text-center">Tech</span>
+</button>
+<button class="flex flex-col items-center gap-2 min-w-[72px] shrink-0 group">
+<div class="w-16 h-16 rounded-full bg-surface-container-low flex items-center justify-center group-hover:bg-primary-container group-hover:text-on-primary-container transition-colors shadow-sm">
+<span class="material-symbols-outlined text-[28px] text-primary group-hover:text-on-primary-container">real_estate_agent</span>
+</div>
+<span class="text-label-sm font-label-sm text-on-surface-variant text-center">Real Estate</span>
+</button>
+<button class="flex flex-col items-center gap-2 min-w-[72px] shrink-0 group">
+<div class="w-16 h-16 rounded-full bg-surface-container-low flex items-center justify-center group-hover:bg-primary-container group-hover:text-on-primary-container transition-colors shadow-sm">
+<span class="material-symbols-outlined text-[28px] text-primary group-hover:text-on-primary-container">fitness_center</span>
+</div>
+<span class="text-label-sm font-label-sm text-on-surface-variant text-center">Fitness</span>
+</button>
+</div>
+</section>
+<!-- POPULAR BUSINESSES (Bento Grid Style) -->
+<section class="mt-stack-lg px-margin-main">
+<div class="flex justify-between items-end mb-stack-sm">
+<h2 class="text-headline-sm font-headline-sm text-on-surface">POPULAR BUSINESSES</h2>
+<a class="text-label-lg font-label-lg text-primary hover:underline" href="#">View all</a>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-gutter-grid">
+<!-- Large Featured Item -->
+<div class="md:col-span-2 md:row-span-2 relative rounded-2xl overflow-hidden bg-surface-container border border-surface-variant shadow-sm group cursor-pointer min-h-[300px]">
+<div class="absolute inset-0 bg-cover bg-center group-hover:scale-105 transition-transform duration-500" data-alt="A wide architectural shot of a stunning modern fine-dining restaurant in Nigeria. The space features high ceilings, elegant hanging lights, dark wood accents, and lush indoor plants. The lighting is sophisticated and warm, emphasizing the premium quality of the establishment. Clean, corporate modern aesthetics." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuCbkkr89k912d57krhp4m8O4qlSFqqg21k_XX58Vk5FDAoMOZh__9OyziHCCTGNZflJYErnNRI9JgvENUgcSm3OqK1vU13IcmzRP8_5wsDVIIggl2UbrbLT1t3hyWc9akRVRxZShjka5n26S4pP_7ORH7fHWGbZBM94rjIZ8YfLk544o4Wn6CBBB5CKLsYv4mywWs6bHV0r2-zoi_0eKCSsJmEABTIxs6IM08Y6UKy9jpkvc_eBWymlnQ')"></div>
+<div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent"></div>
+<div class="absolute bottom-0 left-0 right-0 p-stack-lg">
+<div class="flex items-center gap-2 mb-2">
+<span class="bg-primary text-on-primary px-2 py-1 rounded text-label-sm font-label-sm flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">verified</span>
+                                Verified
+                            </span>
+<span class="bg-surface/20 backdrop-blur-md text-on-primary px-2 py-1 rounded text-label-sm font-label-sm flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px] text-yellow-400" style="font-variation-settings: 'FILL' 1;">star</span>
+                                4.9 (120)
+                            </span>
+</div>
+<h3 class="text-display-lg font-display-lg text-on-primary mb-1 shadow-sm">The Orchid Bistro</h3>
+<p class="text-body-lg font-body-lg text-surface-bright flex items-center gap-1">
+<span class="material-symbols-outlined text-[18px]">restaurant</span>
+                            Fine Dining • 1.2km away
+                        </p>
+</div>
+</div>
+<!-- Smaller Bento Items -->
+<div class="rounded-xl overflow-hidden bg-surface-lowest border border-surface-variant shadow-sm group cursor-pointer flex flex-col">
+<div class="h-[120px] relative overflow-hidden bg-surface-container">
+<div class="absolute inset-0 bg-cover bg-center group-hover:scale-105 transition-transform duration-300" data-alt="A bright, minimalist boutique fitness studio. Rows of high-end spin bikes face a mirror wall. The room is flooded with natural light, creating a clean, energizing atmosphere. Professional corporate modern photography." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuCeftSx_a_RLPsL1yqAtAPKMFg1P1RVfSseRDc2KrMt7Ck07R2GztBSMcJiizgFrBnknto7v7VBGHhXgUWWGypP-hnC5jrAmwY3096ttJ8O2OylOUS3WTIPnTL0MBKkBvW4lfWDx6-gozaXtK38eDjOdHBNQdxlBdIQXRvZZnTHMG-UNGJ71Z6k5udtjLDJEIBJd2E59NZALlqoUuqYP146ix6Tt-NRRNW9fa_TP1UBnkpPFzNpbz7mkQ')"></div>
+<div class="absolute top-2 right-2 bg-surface/80 backdrop-blur-sm rounded-full p-1 shadow-sm">
+<span class="material-symbols-outlined text-[16px] text-primary" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="text-label-sm font-label-sm pr-1">4.7</span>
+</div>
+</div>
+<div class="p-stack-md flex-grow flex flex-col justify-between">
+<div>
+<h4 class="text-label-lg font-label-lg text-on-surface line-clamp-1">Core Fitness Studio</h4>
+<p class="text-body-md font-body-md text-outline mt-1 line-clamp-1">Boutique Gym &amp; Spin</p>
+</div>
+</div>
+</div>
+<div class="rounded-xl overflow-hidden bg-surface-lowest border border-surface-variant shadow-sm group cursor-pointer flex flex-col">
+<div class="h-[120px] relative overflow-hidden bg-surface-container">
+<div class="absolute inset-0 bg-cover bg-center group-hover:scale-105 transition-transform duration-300" data-alt="An upscale men's barbershop interior with vintage leather chairs and modern industrial lighting. The aesthetic is clean, sharp, and highly professional, utilizing contrasting dark tones and warm highlights." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuCLG-vKCPQo2An4BLlZ3X6SWmmHRO2LVIyDi8YCcJCDyztJf5wdKIZSAHvx7bGOxzXH7aqh-_H1Je0KxUgfzod7xWvNtb9oDntdoZcHhhrXEXCPq-URSr0Ua4zoRPg0Y4r8KciqVQZqND3ARp8OcWXNHel0E_xxjNGjLTAfRa_UV4fXdy1Ywufw1zL1f9eoujy2fk_tnL0kInXh727M8mzlRGPGj5kOSPE0jTA7p19p-WOBKCwcvACi4Q')"></div>
+<div class="absolute top-2 right-2 bg-surface/80 backdrop-blur-sm rounded-full p-1 shadow-sm">
+<span class="material-symbols-outlined text-[16px] text-primary" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="text-label-sm font-label-sm pr-1">4.8</span>
+</div>
+</div>
+<div class="p-stack-md flex-grow flex flex-col justify-between">
+<div>
+<h4 class="text-label-lg font-label-lg text-on-surface line-clamp-1">The Gentleman's Cut</h4>
+<p class="text-body-md font-body-md text-outline mt-1 line-clamp-1">Premium Barbershop</p>
+</div>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- BottomNavBar -->
+<nav class="md:hidden fixed bottom-0 w-full z-50 flex justify-around items-center px-4 h-touch-target-min bg-surface dark:bg-on-background shadow-[0_-2px_10px_rgba(0,0,0,0.05)] rounded-t-xl">
+<a class="flex flex-col items-center justify-center text-primary dark:text-inverse-primary font-bold active:scale-95 transition-transform duration-150 hover:opacity-80" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">home</span>
+<span class="text-label-sm font-label-sm">HOME</span>
+</a>
+<a class="flex flex-col items-center justify-center text-outline dark:text-outline-variant active:scale-95 transition-transform duration-150 hover:opacity-80" href="#">
+<span class="material-symbols-outlined">explore</span>
+<span class="text-label-sm font-label-sm">DISCOVER</span>
+</a>
+<a class="flex flex-col items-center justify-center text-outline dark:text-outline-variant active:scale-95 transition-transform duration-150 hover:opacity-80" href="#">
+<span class="material-symbols-outlined">local_offer</span>
+<span class="text-label-sm font-label-sm">DEALS</span>
+</a>
+<a class="flex flex-col items-center justify-center text-outline dark:text-outline-variant active:scale-95 transition-transform duration-150 hover:opacity-80" href="#">
+<span class="material-symbols-outlined">bookmark</span>
+<span class="text-label-sm font-label-sm">SAVED</span>
+</a>
+<a class="flex flex-col items-center justify-center text-outline dark:text-outline-variant active:scale-95 transition-transform duration-150 hover:opacity-80" href="#">
+<span class="material-symbols-outlined">person</span>
+<span class="text-label-sm font-label-sm">ACCOUNT</span>
+</a>
+</nav>
+</body></html>
