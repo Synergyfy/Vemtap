@@ -120,13 +120,13 @@ function DealCard({ deal }: { deal: Deal }) {
 function DealGrid({ deals, loading }: { deals: Deal[]; loading: boolean }) {
   if (loading) {
     return (
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 md:gap-4">
         {Array.from({ length: 6 }).map((_, i) => <DealCardSkeleton key={i} />)}
       </div>
     );
   }
   return (
-    <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4">
+    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 md:gap-4">
       {deals.map((deal, i) => <DealCard key={deal.id || i} deal={deal} />)}
     </div>
   );
