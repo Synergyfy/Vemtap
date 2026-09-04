@@ -258,9 +258,51 @@ function LocationConfirmedScreen({ location, onStartExploring, onChangeLocation,
       <div className="absolute inset-0 bg-[#F7F9FB] flex overflow-hidden">
         <div className="w-1/2 flex flex-col justify-center items-center p-12">{successContent}{buttons}</div>
         <div className="w-1/2 bg-white border-l border-gray-100 flex flex-col overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-100 shrink-0"><h3 className="text-base font-bold text-gray-900">Nearby Deals</h3><span className="text-[10px] font-bold text-[#066CF4] uppercase tracking-wider">Preview</span></div>
-          <div className="flex-1 overflow-x-auto p-6 flex gap-4 snap-x snap-mandatory">
-            {deals.length > 0 ? deals.map((d: any, i: number) => dealCard(d, i)) : fallbackCards}
+          <div className="px-8 py-5 border-b border-gray-100 shrink-0">
+            <h3 className="text-lg font-bold text-gray-900">Nearby Deals</h3>
+            <span className="text-[10px] font-bold text-[#066CF4] uppercase tracking-wider">Preview</span>
+          </div>
+          <div className="flex-1 overflow-y-auto p-8">
+            <div className="grid grid-cols-2 gap-4">
+              {(deals.length > 0 ? deals.slice(0, 4) : [
+                { id: '1', name: 'Urban Grind Cafe', business: { categoryName: 'Cafe & Bakery' }, dealPrice: 4500, originalPrice: 5600, discountPercent: 20, photos: null },
+                { id: '2', name: 'Oasis Spa & Wellness', business: { categoryName: 'Health & Beauty' }, dealPrice: 12750, originalPrice: 15000, discountPercent: 15, photos: null },
+                { id: '3', name: 'Fresh Bites Kitchen', business: { categoryName: 'Food & Dining' }, dealPrice: 3200, originalPrice: 4000, discountPercent: 20, photos: null },
+                { id: '4', name: 'Style Hub Salon', business: { categoryName: 'Beauty & Spa' }, dealPrice: 8500, originalPrice: 10000, discountPercent: 15, photos: null },
+              ]).map((deal: any, i: number) => (
+                <motion.div
+                  key={deal.id}
+                  initial={{ opacity: 0, y: 16 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.08 }}
+                  className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow"
+                >
+                  <div className="h-28 w-full bg-gradient-to-br from-blue-50 to-blue-100/60 relative flex items-center justify-center">
+                    {deal.business?.photos?.[0] ? (
+                      <img src={deal.business.photos[0]} alt={deal.name} className="w-full h-full object-cover" />
+                    ) : (
+                      <Store size={28} className="text-[#066CF4]/30" />
+                    )}
+                    {deal.discountPercent && (
+                      <div className="absolute top-2 right-2 bg-rose-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">-{deal.discountPercent}%</div>
+                    )}
+                  </div>
+                  <div className="p-3">
+                    <div className="flex justify-between items-start mb-0.5">
+                      <h4 className="text-[13px] font-bold text-gray-900 truncate pr-1">{deal.name}</h4>
+                      <div className="flex items-center text-[10px] font-bold text-amber-600 shrink-0">
+                        <Star size={10} className="mr-0.5" fill="currentColor" />{(4.5 + Math.random() * 0.4).toFixed(1)}
+                      </div>
+                    </div>
+                    <p className="text-[11px] text-gray-400 mb-2">{deal.business?.categoryName || 'Business'}</p>
+                    <div className="flex items-baseline gap-1.5">
+                      <span className="text-[13px] font-bold text-gray-900">{deal.dealPrice ? `₦${Number(deal.dealPrice).toLocaleString()}` : 'View Deal'}</span>
+                      {deal.originalPrice && <span className="text-[10px] text-gray-400 line-through">₦{Number(deal.originalPrice).toLocaleString()}</span>}
+                    </div>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
           </div>
         </div>
       </div>
