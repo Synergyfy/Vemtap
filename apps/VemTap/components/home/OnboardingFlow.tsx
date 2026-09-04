@@ -26,20 +26,50 @@ const ONBOARDING_SCREENS = [
 ];
 
 function WelcomeScreen({ isDesktop }: { isDesktop: boolean }) {
+  const [activeImage, setActiveImage] = useState(0);
+
+  useEffect(() => {
+    if (!isDesktop) return;
+    const timer = setInterval(() => {
+      setActiveImage((prev) => (prev + 1) % CLUSTER_IMAGES.length);
+    }, 4000);
+    return () => clearInterval(timer);
+  }, [isDesktop]);
+
   return (
     <>
       {/* Mobile: full bleed image top */}
       <div className={`absolute top-0 left-0 w-full ${isDesktop ? 'h-full' : 'h-[55%] rounded-b-[2rem]'} overflow-hidden`}>
-        <img
-          src="/assets/Screen-3.png"
-          alt="Discover nearby businesses and deals"
-          className="w-full h-full object-cover"
-        />
-        {isDesktop && (
-          <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-black/30 to-transparent" />
-        )}
-        {!isDesktop && (
-          <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-white" />
+        {isDesktop ? (
+          <>
+            {CLUSTER_IMAGES.map((src, i) => (
+              <img
+                key={src}
+                src={src}
+                alt="Discover nearby businesses and deals"
+                className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ${i === activeImage ? 'opacity-100' : 'opacity-0'}`}
+              />
+            ))}
+            <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-black/30 to-transparent" />
+            <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex gap-2 z-10">
+              {CLUSTER_IMAGES.map((_, i) => (
+                <button
+                  key={i}
+                  onClick={() => setActiveImage(i)}
+                  className={`h-1.5 rounded-full transition-all duration-300 cursor-pointer ${i === activeImage ? 'w-6 bg-white' : 'w-1.5 bg-white/50'}`}
+                />
+              ))}
+            </div>
+          </>
+        ) : (
+          <>
+            <img
+              src="/assets/Screen-3.png"
+              alt="Discover nearby businesses and deals"
+              className="w-full h-full object-cover"
+            />
+            <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-white" />
+          </>
         )}
       </div>
     </>
@@ -53,44 +83,19 @@ const CLUSTER_IMAGES = [
 ];
 
 function HowItWorksScreen({ isDesktop }: { isDesktop: boolean }) {
-  const [activeImage, setActiveImage] = useState(0);
   const steps = [
     { num: '01', icon: MapPin, title: 'DISCOVER', desc: 'Find businesses and deals near you.', color: 'bg-[#066CF4]', glow: 'bg-[#066CF4]/10' },
     { num: '02', icon: Search, title: 'EXPLORE', desc: 'Browse offers, products, and services.', color: 'bg-emerald-600', glow: 'bg-emerald-500/10' },
     { num: '03', icon: Handshake, title: 'CONNECT', desc: 'Interact with businesses directly.', color: 'bg-amber-600', glow: 'bg-amber-500/10' },
   ];
 
-  useEffect(() => {
-    if (!isDesktop) return;
-    const timer = setInterval(() => {
-      setActiveImage((prev) => (prev + 1) % CLUSTER_IMAGES.length);
-    }, 4000);
-    return () => clearInterval(timer);
-  }, [isDesktop]);
-
   if (isDesktop) {
     return (
       <div className="absolute inset-0 bg-white flex">
-        {/* Left: image carousel */}
+        {/* Left: image */}
         <div className="w-1/2 relative overflow-hidden">
-          {CLUSTER_IMAGES.map((src, i) => (
-            <img
-              key={src}
-              src={src}
-              alt="How it works"
-              className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ${i === activeImage ? 'opacity-100' : 'opacity-0'}`}
-            />
-          ))}
+          <img src="https://images.unsplash.com/photo-1441984904996-e0b6ba687e04?w=800&h=1000&fit=crop" alt="How it works" className="w-full h-full object-cover" />
           <div className="absolute inset-0 bg-gradient-to-r from-black/20 to-white/40" />
-          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2 z-10">
-            {CLUSTER_IMAGES.map((_, i) => (
-              <button
-                key={i}
-                onClick={() => setActiveImage(i)}
-                className={`h-1.5 rounded-full transition-all duration-300 cursor-pointer ${i === activeImage ? 'w-6 bg-white' : 'w-1.5 bg-white/50'}`}
-              />
-            ))}
-          </div>
         </div>
         {/* Right: steps */}
         <div className="w-1/2 flex flex-col justify-center px-12 lg:px-16 pt-8 pb-32 overflow-y-auto">
