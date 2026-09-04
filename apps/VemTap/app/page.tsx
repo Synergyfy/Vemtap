@@ -226,14 +226,26 @@ export default function Homepage() {
     <div className="min-h-screen font-sans" style={{ background: C.bg, color: C.onSurface }}>
       <header className="sticky top-0 z-40 w-full" style={{ background: '#ffffff', borderBottom: `1px solid ${C.outlineVariant}` }}>
         <div className="hidden md:flex items-center justify-between px-6 h-[64px] max-w-[1400px] mx-auto gap-6">
-          <div className="flex items-center gap-3 shrink-0">
-            <HamburgerMenu />
-            <div className="h-6 w-px" style={{ background: C.outlineVariant }} />
+          <div className="flex items-center gap-6 shrink-0">
             <Link href="/" className="flex items-center gap-2">
               <img src="/VEMTAP_PNG.png" alt="VemTap" className="h-10 w-auto" />
             </Link>
+            <nav className="flex items-center gap-1">
+              {[
+                { label: 'Home', href: '/' },
+                { label: 'Deals', href: '/deals' },
+                { label: 'Business', href: '/business-landing' },
+                { label: 'Pricing', href: '/pricing' },
+              ].map((item) => (
+                <Link key={item.label} href={item.href}
+                  className="px-3 py-2 rounded-lg text-[13px] font-semibold hover:bg-gray-50 transition-colors"
+                  style={{ color: C.onSurface }}>
+                  {item.label}
+                </Link>
+              ))}
+            </nav>
           </div>
-          <form onSubmit={handleSearchSubmit} className="flex-1 max-w-[600px] flex">
+          <form onSubmit={handleSearchSubmit} className="flex-1 max-w-[500px] flex">
             <input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
               className="flex-1 h-11 px-4 rounded-l-xl text-[14px] focus:outline-none border"
               style={{ border: `1px solid ${C.outlineVariant}`, borderRight: 'none', color: C.onSurface, background: '#ffffff' }}
