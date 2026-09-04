@@ -231,47 +231,66 @@ function LocationConfirmedScreen({ location, onStartExploring, onChangeLocation,
     </div>
   );
 
-  const dealCard = (deal: any, i: number) => (
-    <motion.div key={deal.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }}
-      className="min-w-[240px] w-[240px] bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden snap-center flex flex-col">
-      <div className="h-32 w-full bg-gradient-to-br from-blue-100 to-blue-50 relative flex items-center justify-center">
-        {deal.business?.photos?.[0] ? <img src={deal.business.photos[0]} alt={deal.name} className="w-full h-full object-cover" /> : <Store size={32} className="text-[#066CF4]/40" />}
-        {deal.discountPercent && <div className="absolute top-2 right-2 bg-rose-500 text-white text-[10px] font-bold px-2 py-1 rounded-full">-{deal.discountPercent}%</div>}
-      </div>
-      <div className="p-3 flex-1 flex flex-col">
-        <div className="flex justify-between items-start mb-1">
-          <h4 className="text-xs font-bold text-gray-900 truncate pr-2">{deal.name}</h4>
-          <div className="flex items-center text-[10px] font-bold text-gray-500 shrink-0"><Star size={10} className="text-amber-500 mr-0.5" fill="currentColor" />4.{8 - i}</div>
+  const dealCard = (deal: any, i: number) => {
+    const dealImage = deal.business?.photos?.[0] || deal.mainImage || deal.image || getSectorImage(deal.business?.categoryName || deal.categoryName);
+    return (
+    <motion.div key={deal.id} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: i * 0.1, type: 'spring', stiffness: 200 }}
+      className="min-w-[200px] w-[200px] relative rounded-2xl overflow-hidden shadow-lg snap-center flex-shrink-0 group cursor-pointer" style={{ aspectRatio: '3/4' }}>
+      <img src={dealImage} alt={deal.name} className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
+      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+      <div className="absolute inset-0 bg-gradient-to-br from-white/5 via-transparent to-black/10" />
+      {deal.discountPercent && <div className="absolute top-2.5 right-2.5 bg-rose-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full shadow-lg">-{deal.discountPercent}% OFF</div>}
+      <div className="absolute bottom-0 left-0 right-0 p-3.5">
+        <div className="flex items-center gap-1 mb-1">
+          <div className="size-1.5 rounded-full bg-emerald-400 animate-pulse" />
+          <span className="text-[9px] font-bold text-emerald-300 uppercase tracking-wider">Nearby</span>
         </div>
-        <p className="text-[10px] text-gray-400 mb-2">{deal.business?.categoryName || 'Business'}</p>
-        <div className="mt-auto">
-          <span className="text-xs font-bold text-gray-900">{deal.dealPrice ? `₦${Number(deal.dealPrice).toLocaleString()}` : 'View Deal'}</span>
-          {deal.originalPrice && <span className="text-[10px] text-gray-400 line-through ml-1">₦{Number(deal.originalPrice).toLocaleString()}</span>}
+        <h4 className="text-[14px] font-black text-white leading-tight mb-0.5 drop-shadow-lg">{deal.name}</h4>
+        <p className="text-[11px] text-white/70 mb-2">{deal.business?.categoryName || 'Business'}</p>
+        <div className="flex items-center justify-between">
+          <div className="flex items-baseline gap-1">
+            <span className="text-[16px] font-black text-white drop-shadow-md">{deal.dealPrice ? `₦${Number(deal.dealPrice).toLocaleString()}` : 'View'}</span>
+            {deal.originalPrice && <span className="text-[10px] text-white/50 line-through">₦{Number(deal.originalPrice).toLocaleString()}</span>}
+          </div>
+          <div className="flex items-center gap-0.5 bg-white/15 backdrop-blur-sm rounded-full px-2 py-0.5">
+            <Star size={9} className="text-amber-400" fill="currentColor" />
+            <span className="text-[9px] font-bold text-white">4.{8 - i}</span>
+          </div>
         </div>
       </div>
     </motion.div>
-  );
+    );
+  };
 
-  const fallbackCards = (
-    <>
-      <div className="min-w-[240px] w-[240px] bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden snap-center flex flex-col">
-        <div className="h-32 w-full bg-gradient-to-br from-blue-100 to-blue-50 flex items-center justify-center"><Store size={32} className="text-[#066CF4]/40" /></div>
-        <div className="p-3 flex-1 flex flex-col justify-center">
-          <h4 className="text-xs font-bold text-gray-900 mb-1">Urban Grind Cafe</h4>
-          <p className="text-[10px] text-gray-400 mb-2">0.5 km away • Cafe & Bakery</p>
-          <div><span className="text-xs font-bold text-gray-900">₦4,500</span><span className="text-[10px] text-gray-400 line-through ml-1">₦5,600</span></div>
+  const fallbackCard = (name: string, category: string, price: number, origPrice: number, discount: number, idx: number) => {
+    const img = getSectorImage(category);
+    return (
+    <div key={idx} className="min-w-[200px] w-[200px] relative rounded-2xl overflow-hidden shadow-lg snap-center flex-shrink-0" style={{ aspectRatio: '3/4' }}>
+      <img src={img} alt={name} className="absolute inset-0 w-full h-full object-cover" />
+      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+      <div className="absolute inset-0 bg-gradient-to-br from-white/5 via-transparent to-black/10" />
+      {discount > 0 && <div className="absolute top-2.5 right-2.5 bg-rose-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full shadow-lg">-{discount}% OFF</div>}
+      <div className="absolute bottom-0 left-0 right-0 p-3.5">
+        <div className="flex items-center gap-1 mb-1">
+          <div className="size-1.5 rounded-full bg-emerald-400" />
+          <span className="text-[9px] font-bold text-emerald-300 uppercase tracking-wider">Nearby</span>
+        </div>
+        <h4 className="text-[14px] font-black text-white leading-tight mb-0.5 drop-shadow-lg">{name}</h4>
+        <p className="text-[11px] text-white/70 mb-2">{category}</p>
+        <div className="flex items-center justify-between">
+          <div className="flex items-baseline gap-1">
+            <span className="text-[16px] font-black text-white drop-shadow-md">₦{price.toLocaleString()}</span>
+            <span className="text-[10px] text-white/50 line-through">₦{origPrice.toLocaleString()}</span>
+          </div>
+          <div className="flex items-center gap-0.5 bg-white/15 backdrop-blur-sm rounded-full px-2 py-0.5">
+            <Star size={9} className="text-amber-400" fill="currentColor" />
+            <span className="text-[9px] font-bold text-white">4.{8 - idx}</span>
+          </div>
         </div>
       </div>
-      <div className="min-w-[240px] w-[240px] bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden snap-center flex flex-col">
-        <div className="h-32 w-full bg-gradient-to-br from-purple-100 to-purple-50 flex items-center justify-center"><Store size={32} className="text-purple-400/40" /></div>
-        <div className="p-3 flex-1 flex flex-col justify-center">
-          <h4 className="text-xs font-bold text-gray-900 mb-1">Oasis Spa & Wellness</h4>
-          <p className="text-[10px] text-gray-400 mb-2">1.2 km away • Health & Beauty</p>
-          <div><span className="text-xs font-bold text-gray-900">₦12,750</span><span className="text-[10px] text-gray-400 line-through ml-1">₦15,000</span></div>
-        </div>
-      </div>
-    </>
-  );
+    </div>
+    );
+  };
 
   const buttons = (
     <div className="flex flex-col gap-3 max-w-sm w-full">
@@ -301,30 +320,33 @@ function LocationConfirmedScreen({ location, onStartExploring, onChangeLocation,
                 return (
                 <motion.div
                   key={deal.id}
-                  initial={{ opacity: 0, y: 16 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: i * 0.08 }}
-                  className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow"
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: i * 0.1, type: 'spring', stiffness: 200 }}
+                  className="relative rounded-2xl overflow-hidden shadow-lg group cursor-pointer"
+                  style={{ aspectRatio: '3/4' }}
                 >
-                  <div className="h-36 w-full relative overflow-hidden">
-                    <img src={dealImage} alt={deal.name} className="w-full h-full object-cover" />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
-                    {deal.discountPercent && (
-                      <div className="absolute top-2.5 right-2.5 bg-rose-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm">-{deal.discountPercent}%</div>
-                    )}
-                    <div className="absolute bottom-2.5 left-3 right-3">
-                      <h4 className="text-[14px] font-bold text-white truncate drop-shadow-md">{deal.name}</h4>
+                  <img src={dealImage} alt={deal.name} className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+                  <div className="absolute inset-0 bg-gradient-to-br from-white/5 via-transparent to-black/10" />
+                  {deal.discountPercent && (
+                    <div className="absolute top-3 right-3 bg-rose-500 text-white text-[11px] font-black px-2.5 py-1 rounded-full shadow-lg backdrop-blur-sm">-{deal.discountPercent}% OFF</div>
+                  )}
+                  <div className="absolute bottom-0 left-0 right-0 p-4">
+                    <div className="flex items-center gap-1.5 mb-1.5">
+                      <div className="size-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                      <span className="text-[10px] font-bold text-emerald-300 uppercase tracking-wider">Nearby</span>
                     </div>
-                  </div>
-                  <div className="p-3">
-                    <p className="text-[11px] text-gray-400 mb-1.5">{deal.business?.categoryName || 'Business'}</p>
-                    <div className="flex items-baseline justify-between">
+                    <h4 className="text-[16px] font-black text-white leading-tight mb-1 drop-shadow-lg">{deal.name}</h4>
+                    <p className="text-[12px] text-white/70 mb-2.5">{deal.business?.categoryName || 'Business'}</p>
+                    <div className="flex items-center justify-between">
                       <div className="flex items-baseline gap-1.5">
-                        <span className="text-[14px] font-bold text-gray-900">{deal.dealPrice ? `₦${Number(deal.dealPrice).toLocaleString()}` : 'View Deal'}</span>
-                        {deal.originalPrice && <span className="text-[10px] text-gray-400 line-through">₦{Number(deal.originalPrice).toLocaleString()}</span>}
+                        <span className="text-[18px] font-black text-white drop-shadow-md">{deal.dealPrice ? `₦${Number(deal.dealPrice).toLocaleString()}` : 'View'}</span>
+                        {deal.originalPrice && <span className="text-[11px] text-white/50 line-through">₦{Number(deal.originalPrice).toLocaleString()}</span>}
                       </div>
-                      <div className="flex items-center text-[10px] font-bold text-amber-600">
-                        <Star size={10} className="mr-0.5" fill="currentColor" />4.{8 - i}
+                      <div className="flex items-center gap-0.5 bg-white/15 backdrop-blur-sm rounded-full px-2 py-0.5">
+                        <Star size={10} className="text-amber-400" fill="currentColor" />
+                        <span className="text-[10px] font-bold text-white">4.{8 - i}</span>
                       </div>
                     </div>
                   </div>
@@ -349,10 +371,22 @@ function LocationConfirmedScreen({ location, onStartExploring, onChangeLocation,
         {successContent}
         <div className="mt-4">
           <div className="px-5 flex justify-between items-end mb-4"><h3 className="text-base font-bold text-gray-900">Nearby Deals</h3><span className="text-[10px] font-bold text-[#066CF4] uppercase tracking-wider">Preview</span></div>
-          <div className="flex overflow-x-auto scrollbar-hide px-5 gap-4 pb-4 snap-x snap-mandatory">
-            {deals.length > 0 ? deals.map((d: any, i: number) => dealCard(d, i)) : fallbackCards}
-            <div className="min-w-[240px] w-[240px] bg-blue-50 rounded-xl border border-blue-100 overflow-hidden snap-center flex flex-col items-center justify-center py-8">
-              <Store size={32} className="text-[#066CF4]/60 mb-2" /><p className="text-xs font-bold text-gray-900 mb-0.5">Explore More</p><p className="text-[10px] text-gray-500">View all deals nearby</p>
+          <div className="flex overflow-x-auto scrollbar-hide px-5 gap-3.5 pb-4 snap-x snap-mandatory">
+            {deals.length > 0 ? deals.map((d: any, i: number) => dealCard(d, i)) : (
+              <>
+                {fallbackCard('Urban Grind Cafe', 'Cafe & Bakery', 4500, 5600, 20, 0)}
+                {fallbackCard('Oasis Spa & Wellness', 'Health & Beauty', 12750, 15000, 15, 1)}
+                {fallbackCard('Fresh Bites Kitchen', 'Food & Dining', 3200, 4000, 20, 2)}
+              </>
+            )}
+            <div className="min-w-[200px] w-[200px] relative rounded-2xl overflow-hidden shadow-lg snap-center flex-shrink-0 bg-gradient-to-br from-[#066CF4] to-blue-700 flex flex-col items-center justify-center gap-3" style={{ aspectRatio: '3/4' }}>
+              <div className="size-14 rounded-full bg-white/15 backdrop-blur-sm flex items-center justify-center">
+                <Store size={24} className="text-white" />
+              </div>
+              <div className="text-center px-4">
+                <p className="text-[14px] font-black text-white mb-1">Explore More</p>
+                <p className="text-[11px] text-white/70">View all deals nearby</p>
+              </div>
             </div>
           </div>
         </div>
