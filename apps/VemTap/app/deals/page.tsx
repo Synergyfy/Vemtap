@@ -12,7 +12,6 @@ import LocationPrompt from '@/components/home/LocationPrompt';
 import SearchModal from '@/components/home/SearchModal';
 import DealEngagementBar from '@/components/deals/DealEngagementBar';
 import PublicBottomNav from '@/components/public/PublicBottomNav';
-import HamburgerMenu from '@/components/public/HamburgerMenu';
 import type { HomeDealCard } from '@/components/home/types';
 
 /* ─── Stitch colour tokens ─── */
@@ -282,19 +281,28 @@ function DealsPageInner() {
           borderBottom: `1px solid ${C.outlineVariant}`,
         }}
       >
-        {/* Desktop: Jumia-style top bar */}
+        {/* Desktop: Top nav bar */}
         <div className="hidden md:flex items-center justify-between px-6 h-[64px] max-w-[1400px] mx-auto gap-6">
-          <div className="flex items-center gap-3 shrink-0">
-            <HamburgerMenu />
-            <div className="h-6 w-px" style={{ background: C.outlineVariant }} />
+          <div className="flex items-center gap-6 shrink-0">
             <Link href="/" className="flex items-center gap-2">
-              <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ background: C.primary }}>
-                <span className="text-white font-bold text-[14px]">V</span>
-              </div>
-              <span className="font-extrabold text-[18px] tracking-tight" style={{ color: C.onSurface }}>VemTap</span>
+              <img src="/VEMTAP_PNG.png" alt="VemTap" className="h-10 w-auto" />
             </Link>
+            <nav className="flex items-center gap-1">
+              {[
+                { label: 'Home', href: '/' },
+                { label: 'Deals', href: '/deals' },
+                { label: 'Business', href: '/business-landing' },
+                { label: 'Pricing', href: '/pricing' },
+              ].map((item) => (
+                <Link key={item.label} href={item.href}
+                  className="px-3 py-2 rounded-lg text-[13px] font-semibold hover:bg-gray-50 transition-colors"
+                  style={{ color: C.onSurface }}>
+                  {item.label}
+                </Link>
+              ))}
+            </nav>
           </div>
-          <form onSubmit={handleSearchSubmit} className="flex-1 max-w-[600px] flex">
+          <form onSubmit={handleSearchSubmit} className="flex-1 max-w-[500px] flex">
             <input
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -352,7 +360,10 @@ function DealsPageInner() {
         </div>
         {/* Mobile header */}
         <div className="md:hidden flex items-center justify-between px-3 py-2">
-          <div className="flex items-center gap-1.5 min-w-0 flex-1">
+          <Link href="/" className="flex items-center gap-1.5 shrink-0">
+            <img src="/VEMTAP_PNG.png" alt="VemTap" className="h-8 w-auto" />
+          </Link>
+          <div className="flex items-center gap-1.5 min-w-0 flex-1 mx-2">
             <span className="material-symbols-outlined shrink-0" style={{ color: C.onSurfaceVariant, fontSize: 18 }}>location_on</span>
             <h1 className="text-[13px] font-semibold tracking-tight truncate" style={{ color: C.primary }}>{activeLocation}</h1>
           </div>
