@@ -12,7 +12,6 @@ import LocationPrompt from '@/components/home/LocationPrompt';
 import SearchModal from '@/components/home/SearchModal';
 import DealEngagementBar from '@/components/deals/DealEngagementBar';
 import PublicBottomNav from '@/components/public/PublicBottomNav';
-import HamburgerMenu from '@/components/public/HamburgerMenu';
 import { DealCardSkeleton, BusinessCardSkeleton } from '@/components/home/Skeletons';
 import { offerToHomeDeal, formatNaira } from '@/components/home/mappers';
 import type { HomeDealCard } from '@/components/home/types';

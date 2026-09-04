@@ -15,7 +15,6 @@ import ClaimDealModal from '@/components/storefront/ClaimDealModal';
 import QuickActionsSheet from '@/components/storefront/QuickActionsSheet';
 import ShareSheet from '@/components/storefront/ShareSheet';
 import PublicBottomNav from '@/components/public/PublicBottomNav';
-import HamburgerMenu from '@/components/public/HamburgerMenu';
 
 const formatLocation = (address?: string | null, city?: string | null, state?: string | null) => {
     const parts = [address, city, state].filter((part) => part && String(part).trim().length > 0);
