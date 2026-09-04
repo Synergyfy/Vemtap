@@ -24,12 +24,9 @@ export default function HamburgerMenu() {
           />
           <div className="fixed top-0 left-0 h-full w-80 bg-white z-[201] shadow-2xl flex flex-col">
             <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-[#0055c4] flex items-center justify-center">
-                  <span className="text-white font-bold text-lg">V</span>
-                </div>
-                <span className="font-bold text-[16px] text-gray-900">VemTap</span>
-              </div>
+              <Link href="/" onClick={() => setIsOpen(false)} className="flex items-center gap-2">
+                <img src="/VEMTAP_PNG.png" alt="VemTap" className="h-10 w-auto" />
+              </Link>
               <button
                 onClick={() => setIsOpen(false)}
                 className="w-9 h-9 rounded-full hover:bg-gray-100 flex items-center justify-center cursor-pointer"
@@ -42,7 +39,7 @@ export default function HamburgerMenu() {
                 { icon: 'home', label: 'Home', href: '/' },
                 { icon: 'local_offer', label: 'Deals', href: '/deals' },
                 { icon: 'storefront', label: 'Business', href: '/business-landing' },
-                { icon: 'pricing', label: 'Pricing', href: '/pricing' },
+                { icon: 'payments', label: 'Pricing', href: '/pricing' },
               ].map((item) => (
                 <Link
                   key={item.label}
