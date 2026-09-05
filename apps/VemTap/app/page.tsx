@@ -12,7 +12,6 @@ import LocationPrompt from '@/components/home/LocationPrompt';
 import SearchModal from '@/components/home/SearchModal';
 import DealEngagementBar from '@/components/deals/DealEngagementBar';
 import PublicBottomNav from '@/components/public/PublicBottomNav';
-import HamburgerMenu from '@/components/public/HamburgerMenu';
 import { DealCardSkeleton, BusinessCardSkeleton } from '@/components/home/Skeletons';
 import { offerToHomeDeal, formatNaira } from '@/components/home/mappers';
 import type { HomeDealCard } from '@/components/home/types';
@@ -120,13 +119,13 @@ function DealCard({ deal }: { deal: Deal }) {
 function DealGrid({ deals, loading }: { deals: Deal[]; loading: boolean }) {
   if (loading) {
     return (
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 md:gap-4">
         {Array.from({ length: 6 }).map((_, i) => <DealCardSkeleton key={i} />)}
       </div>
     );
   }
   return (
-    <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4">
+    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 md:gap-4">
       {deals.map((deal, i) => <DealCard key={deal.id || i} deal={deal} />)}
     </div>
   );
@@ -175,8 +174,8 @@ export default function Homepage() {
 
   const popularBusinesses = useMemo(() => {
     const businesses: DealPublicBusiness[] =
-      businessesData?.businesses || businessesData?.data?.businesses ||
-      (Array.isArray(businessesData?.data) ? businessesData.data : []) || [];
+      businessesData?.businesses || (businessesData as any)?.data?.businesses ||
+      (Array.isArray((businessesData as any)?.data) ? (businessesData as any).data : []) || [];
     if (businesses.length > 0) {
       const categoryIcons: Record<string, string> = {
         food: 'restaurant', restaurant: 'restaurant', dining: 'restaurant',
@@ -226,29 +225,35 @@ export default function Homepage() {
     <div className="min-h-screen font-sans" style={{ background: C.bg, color: C.onSurface }}>
       <header className="sticky top-0 z-40 w-full" style={{ background: '#ffffff', borderBottom: `1px solid ${C.outlineVariant}` }}>
         <div className="hidden md:flex items-center justify-between px-6 h-[64px] max-w-[1400px] mx-auto gap-6">
-          <div className="flex items-center gap-3 shrink-0">
-            <HamburgerMenu />
-            <div className="h-6 w-px" style={{ background: C.outlineVariant }} />
+          <div className="flex items-center gap-6 shrink-0">
             <Link href="/" className="flex items-center gap-2">
-              <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ background: C.primary }}>
-                <span className="text-white font-bold text-[14px]">V</span>
-              </div>
-              <span className="font-extrabold text-[18px] tracking-tight" style={{ color: C.onSurface }}>VemTap</span>
+              <img src="/VEMTAP_PNG.png" alt="VemTap" className="h-10 w-auto" />
             </Link>
+            <nav className="flex items-center gap-1">
+              {[
+                { label: 'Home', href: '/' },
+                { label: 'Deals', href: '/deals' },
+                { label: 'Business', href: '/business-landing' },
+                { label: 'Pricing', href: '/pricing' },
+              ].map((item) => (
+                <Link key={item.label} href={item.href}
+                  className="px-3 py-2 rounded-lg text-[13px] font-semibold hover:bg-gray-50 transition-colors"
+                  style={{ color: C.onSurface }}>
+                  {item.label}
+                </Link>
+              ))}
+            </nav>
           </div>
-          <form onSubmit={handleSearchSubmit} className="flex-1 max-w-[600px] flex">
+          <form onSubmit={handleSearchSubmit} className="flex-1 max-w-[500px] flex">
             <input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
               className="flex-1 h-11 px-4 rounded-l-xl text-[14px] focus:outline-none border"
               style={{ border: `1px solid ${C.outlineVariant}`, borderRight: 'none', color: C.onSurface, background: '#ffffff' }}
               placeholder="Search deals, businesses..." type="text" />
             <button type="submit" className="h-11 px-6 rounded-r-xl text-white font-bold text-[13px] uppercase tracking-wider" style={{ background: C.primary }}>Search</button>
           </form>
-          <div className="flex items-center gap-1 shrink-0">
-            <Link href="/auth/onboarding" className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-[13px] font-semibold hover:bg-gray-50" style={{ color: C.onSurface }}>
-              <span className="material-symbols-outlined" style={{ fontSize: 20 }}>person</span>Account
-            </Link>
-            <Link href="#" className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-[13px] font-semibold hover:bg-gray-50" style={{ color: C.onSurface }}>
-              <span className="material-symbols-outlined" style={{ fontSize: 20 }}>help</span>Help
+          <div className="flex items-center gap-2 shrink-0">
+            <Link href="/auth/onboarding" className="h-10 px-5 rounded-xl bg-[#066CF4] text-white text-[13px] font-bold flex items-center justify-center hover:bg-[#0557b3] transition-colors">
+              Login
             </Link>
           </div>
         </div>
@@ -267,7 +272,10 @@ export default function Homepage() {
           </div>
         </div>
         <div className="md:hidden flex items-center justify-between px-3 py-2">
-          <div className="flex items-center gap-1.5 min-w-0 flex-1">
+          <Link href="/" className="flex items-center gap-1.5 shrink-0">
+            <img src="/VEMTAP_PNG.png" alt="VemTap" className="h-8 w-auto" />
+          </Link>
+          <div className="flex items-center gap-1.5 min-w-0 flex-1 mx-2">
             <span className="material-symbols-outlined shrink-0" style={{ color: C.onSurfaceVariant, fontSize: 18 }}>location_on</span>
             <h1 className="text-[13px] font-semibold tracking-tight truncate" style={{ color: C.primary }}>{activeLocation}</h1>
           </div>
@@ -343,7 +351,7 @@ export default function Homepage() {
         <section className="px-4 md:px-6 pt-6 pb-4">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-[16px] md:text-[20px] font-bold uppercase tracking-wider" style={{ color: C.onSurface }}>Popular Businesses</h2>
-            {businessesData?.businesses?.length > 0 && (
+            {businessesData?.businesses && businessesData.businesses.length > 0 && (
               <Link href="/deals" className="text-[13px] font-semibold" style={{ color: C.primary }}>View all</Link>
             )}
           </div>
@@ -373,7 +381,7 @@ export default function Homepage() {
                     <h3 className="text-[24px] sm:text-[28px] font-bold text-white tracking-tight truncate">{popularBusinesses.featured.name}</h3>
                   </div>
                   <p className="text-[14px] text-[#f7f9fb] flex items-center gap-1 font-normal opacity-95">
-                    <span className="material-symbols-outlined text-[16px]">{popularBusinesses.featured.icon || 'store'}</span>
+                    <span className="material-symbols-outlined text-[16px]">{(popularBusinesses.featured as any).icon || 'store'}</span>
                     {popularBusinesses.featured.category}
                   </p>
                 </div>
