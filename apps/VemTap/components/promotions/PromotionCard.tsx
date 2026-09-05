@@ -1,10 +1,9 @@
 'use client';
 
-import React, { useState } from 'react';
+import React from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { Clock, BadgeCheck, Zap, Heart, MessageCircle, Bookmark, Eye } from 'lucide-react';
+import { Clock, BadgeCheck, Zap, Tag, Store } from 'lucide-react';
 import { MockPromotion, formatPromoPrice, getPromoDaysLeft } from '@/lib/mock/promotions';
 
 interface PromotionCardProps {
@@ -27,9 +26,6 @@ function DaysLeftLabel({ daysLeft }: { daysLeft: number }) {
 }
 
 export default function PromotionCard({ promotion, index, onOpenDeal }: PromotionCardProps) {
-    const router = useRouter();
-    const [liked, setLiked] = useState(false);
-    const [saved, setSaved] = useState(false);
     const daysLeft = getPromoDaysLeft(promotion.endDate);
     const isFree = promotion.dealPrice === 0;
     const hasDiscount = (promotion.discountPercent ?? 0) > 0;
@@ -60,7 +56,7 @@ export default function PromotionCard({ promotion, index, onOpenDeal }: Promotio
                 <div className="relative h-full flex flex-col bg-white rounded-[1.15rem] overflow-hidden ring-1 ring-black/[0.04] shadow-[0_1px_3px_rgba(15,23,42,0.06)] hover:shadow-[0_24px_48px_-16px_rgba(15,23,42,0.22)] hover:-translate-y-1 hover:ring-black/[0.07] transition-all duration-300">
 
                     {/* Image */}
-                    <div className="relative aspect-square overflow-hidden bg-gradient-to-br from-slate-50 to-slate-100">
+                    <div className="relative aspect-[4/3] overflow-hidden bg-gradient-to-br from-blue-100 to-blue-50">
                         {promotion.image ? (
                             <img
                                 src={promotion.image}
@@ -69,21 +65,18 @@ export default function PromotionCard({ promotion, index, onOpenDeal }: Promotio
                             />
                         ) : (
                             <div className="w-full h-full flex items-center justify-center">
-                                <span className="text-4xl font-headline font-bold text-slate-200">
-                                    {promotion.name.charAt(0)}
-                                </span>
+                                <Store size={36} className="text-[#066CF4]/30" />
                             </div>
                         )}
 
-                        {/* Discount sticker — rotated, vivid */}
+                        {/* Discount badge */}
                         {discountLabel && (
-                            <div className="absolute top-2 left-2 -rotate-6 rounded-lg bg-gradient-to-br from-rose-500 to-orange-500 text-white px-2 py-1 shadow-md shadow-rose-500/30 leading-none">
-                                <span className="text-[13px] font-black tracking-tight">{discountLabel}</span>
-                                {hasDiscount && (
-                                    <span className="block text-[8px] font-bold tracking-[0.14em] opacity-90 mt-0.5">
-                                        OFF
-                                    </span>
-                                )}
+                            <div className="absolute top-2.5 left-2.5 inline-flex items-center gap-1 rounded-lg bg-red-600 text-white px-2 py-1 shadow-md leading-none">
+                                <Tag size={10} />
+                                <span className="text-[11px] font-black tracking-tight">
+                                    {discountLabel}
+                                    {hasDiscount ? ' OFF' : ''}
+                                </span>
                             </div>
                         )}
 
@@ -128,7 +121,7 @@ export default function PromotionCard({ promotion, index, onOpenDeal }: Promotio
 
                         {/* Price row */}
                         <div className="flex items-center gap-1.5 flex-wrap">
-                            <span className="text-[17px] font-black text-slate-900 tracking-tight">
+                            <span className="text-[17px] font-black text-[#066CF4] tracking-tight">
                                 {isFree ? 'FREE' : formatPromoPrice(promotion.dealPrice)}
                             </span>
                             {promotion.originalPrice > promotion.dealPrice && (
@@ -139,7 +132,7 @@ export default function PromotionCard({ promotion, index, onOpenDeal }: Promotio
                         </div>
 
                         {/* Footer */}
-                        <div className="mt-auto pt-1.5 space-y-2">
+                        <div className="mt-auto pt-1.5">
                             <div className="flex items-center justify-between gap-2">
                                 <span
                                     className={
@@ -157,45 +150,6 @@ export default function PromotionCard({ promotion, index, onOpenDeal }: Promotio
                                         Star seller
                                     </span>
                                 )}
-                            </div>
-
-                            {/* Engagement buttons */}
-                            <div className="flex items-center justify-between">
-                                {promotion.viewCount !== undefined ? (
-                                    <div className="flex items-center gap-1 text-[10px] text-gray-400">
-                                        <Eye size={10} />
-                                        {(promotion.viewCount || 0).toLocaleString()} views
-                                    </div>
-                                ) : (
-                                    <div />
-                                )}
-                                <div className="flex items-center gap-1">
-                                    <button
-                                        onClick={(e) => { e.preventDefault(); setLiked(!liked); }}
-                                        className={`flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold transition-colors ${
-                                            liked ? 'bg-rose-50 text-rose-500' : 'bg-gray-50 text-gray-400 hover:text-rose-500 hover:bg-rose-50'
-                                        }`}
-                                    >
-                                        <Heart size={10} fill={liked ? 'currentColor' : 'none'} />
-                                        {liked ? '1' : '0'}
-                                    </button>
-                                    <button
-                                        onClick={(e) => { e.preventDefault(); router.push(`/promotions/${promotion.id}#reviews`); }}
-                                        className="flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-gray-50 text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
-                                    >
-                                        <MessageCircle size={10} />
-                                        0
-                                    </button>
-                                    <button
-                                        onClick={(e) => { e.preventDefault(); setSaved(!saved); }}
-                                        className={`flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold transition-colors ${
-                                            saved ? 'bg-primary/10 text-primary' : 'bg-gray-50 text-gray-400 hover:text-primary hover:bg-primary/5'
-                                        }`}
-                                    >
-                                        <Bookmark size={10} fill={saved ? 'currentColor' : 'none'} />
-                                        {saved ? '1' : '0'}
-                                    </button>
-                                </div>
                             </div>
                         </div>
                     </div>

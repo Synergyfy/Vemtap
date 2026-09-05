@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Saved Item Confirmation</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "primary-fixed-dim": "#b0c6ff",
+                        "surface-container-lowest": "#ffffff",
+                        "background": "#f7f9fb",
+                        "on-background": "#191c1e",
+                        "error": "#ba1a1a",
+                        "on-secondary": "#ffffff",
+                        "on-error": "#ffffff",
+                        "secondary": "#505f76",
+                        "on-primary-container": "#fcfaff",
+                        "tertiary": "#535a71",
+                        "secondary-container": "#d0e1fb",
+                        "on-primary-fixed": "#001945",
+                        "on-tertiary-container": "#fcfaff",
+                        "on-primary": "#ffffff",
+                        "on-tertiary": "#ffffff",
+                        "on-tertiary-fixed-variant": "#3f465c",
+                        "primary": "#0055c4",
+                        "outline": "#727786",
+                        "inverse-primary": "#b0c6ff",
+                        "secondary-fixed-dim": "#b7c8e1",
+                        "surface-container-low": "#f2f4f6",
+                        "surface-container-high": "#e6e8ea",
+                        "inverse-on-surface": "#eff1f3",
+                        "on-primary-fixed-variant": "#00429b",
+                        "on-tertiary-fixed": "#131b2e",
+                        "surface-tint": "#0058cb",
+                        "tertiary-fixed-dim": "#bec6e0",
+                        "primary-container": "#066cf4",
+                        "on-surface": "#191c1e",
+                        "on-surface-variant": "#424655",
+                        "error-container": "#ffdad6",
+                        "surface-bright": "#f7f9fb",
+                        "tertiary-fixed": "#dae2fd",
+                        "surface-dim": "#d8dadc",
+                        "on-secondary-fixed-variant": "#38485d",
+                        "on-error-container": "#93000a",
+                        "tertiary-container": "#6b738a",
+                        "inverse-surface": "#2d3133",
+                        "primary-fixed": "#d9e2ff",
+                        "on-secondary-container": "#54647a",
+                        "surface-variant": "#e0e3e5",
+                        "surface-container": "#eceef0",
+                        "on-secondary-fixed": "#0b1c30",
+                        "secondary-fixed": "#d3e4fe",
+                        "outline-variant": "#c2c6d7",
+                        "surface": "#f7f9fb",
+                        "surface-container-highest": "#e0e3e5"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "stack-md": "1rem",
+                        "stack-lg": "1.5rem",
+                        "stack-sm": "0.5rem",
+                        "touch-target-min": "44px",
+                        "margin-main": "1.25rem",
+                        "gutter-grid": "1rem"
+                    },
+                    "fontFamily": {
+                        "headline-sm": ["Inter"],
+                        "label-sm": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "body-md": ["Inter"],
+                        "currency-display": ["Inter"],
+                        "display-lg": ["Inter"],
+                        "label-lg": ["Inter"],
+                        "headline-md": ["Inter"]
+                    },
+                    "fontSize": {
+                        "headline-sm": ["20px", { "lineHeight": "28px", "fontWeight": "600" }],
+                        "label-sm": ["12px", { "lineHeight": "16px", "fontWeight": "500" }],
+                        "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "currency-display": ["20px", { "lineHeight": "24px", "fontWeight": "700" }],
+                        "display-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "label-lg": ["14px", { "lineHeight": "20px", "letterSpacing": "0.01em", "fontWeight": "600" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background font-body-md min-h-screen relative overflow-hidden">
+<!-- Background Catalogue (Blurred) -->
+<div aria-hidden="true" class="absolute inset-0 z-0 select-none pointer-events-none">
+<!-- Top App Bar Mock -->
+<header class="fixed top-0 w-full z-10 flex justify-between items-center px-margin-main h-touch-target-min bg-surface border-b border-outline-variant opacity-30 blur-sm">
+<span class="material-symbols-outlined text-primary font-display-lg text-display-lg">menu</span>
+<h1 class="font-display-lg text-display-lg text-primary tracking-tight">VEMTAP</h1>
+<span class="material-symbols-outlined text-primary font-display-lg text-display-lg">search</span>
+</header>
+<main class="pt-[80px] px-margin-main grid grid-cols-2 md:grid-cols-3 gap-4 opacity-40 blur-md">
+<!-- Mock Product Cards -->
+<div class="bg-surface-container-lowest rounded-xl border border-outline-variant overflow-hidden h-64">
+<div class="w-full h-32 bg-surface-container-high" data-alt="A top-down view of a vibrant, steaming bowl of authentic Nigerian Jollof rice, served in a clean, modern white ceramic dish. The rice is a rich, reddish-orange color, perfectly cooked, and garnished with fresh green peas and slices of fried plantain. The setting is a brightly lit, contemporary dining table, evoking a sense of premium local discovery and culinary excellence. The aesthetic is clean, professional, and appetizing, fitting a modern food delivery interface." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuAcS25xNj1wwdSkrbFyN43IeqO8oWEY8yqBvLNL7DtS8RmOHfjccg25EN0Zvx7vVMthGIlABpH03EAkwMhKW3bQdmL1sfOMA4YGIEA2m1ojJIdarq4Ro5fmliDs4FAI_ks6PqqzK4xhMBG9SO3355_2itHnm0fhODd7OuiTPVelL69MgT6jX6v5Ek1eCPXRiibRQzfjN4bij8t-z_MM-ht1wsGWMV--zq8ge54e5zZ-BcnWl8w5mRuFbA')"></div>
+<div class="p-4">
+<div class="w-3/4 h-4 bg-outline-variant rounded mb-2"></div>
+<div class="w-1/2 h-3 bg-surface-variant rounded"></div>
+</div>
+</div>
+<div class="bg-surface-container-lowest rounded-xl border border-outline-variant overflow-hidden h-64">
+<div class="w-full h-32 bg-surface-container-high" data-alt="A close-up shot of a plate of Pounded Yam and Egusi soup. The smooth, white mound of pounded yam sits beside a rich, textured bowl of golden-yellow Egusi soup, dotted with green spinach and assorted meats. The lighting is soft and natural, emphasizing the comforting and hearty nature of the meal. The presentation is neat and inviting, aligning with a high-end local service discovery platform." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuAJuYfp4LjRJDKvGoEgbfgh71lJfRdJaydx_a89bvirasSaPhGLSv_UGez2EJ99Yiy85V5GkH5FkyWHyPD36zlhu8GNHONdl9nuE0jippgFJb1vZTCvpy3uNkUJs3jxe-B6GK8F5K_VmVHzfhOkZp8mNEUfiSFBkM9l5CNu8CmX3Zd5dkOtPl0LwAuVMDzMJHwN1sa_tDu4VRzUNyY_2gs1fhtIVl6z7uPDoyUxX0J0TgEG_Mmfx0ZV6w')"></div>
+<div class="p-4">
+<div class="w-full h-4 bg-outline-variant rounded mb-2"></div>
+<div class="w-2/3 h-3 bg-surface-variant rounded"></div>
+</div>
+</div>
+<div class="bg-surface-container-lowest rounded-xl border border-outline-variant overflow-hidden h-64">
+<div class="w-full h-32 bg-surface-container-high" data-alt="A visually appealing presentation of Suya skewers on a rustic wooden board. The finely sliced beef is coated in a reddish-brown spice blend, slightly charred, and garnished with fresh red onions and tomatoes. The lighting is warm and directional, highlighting the texture of the meat and spices. The scene communicates high-quality local street food elevated to a premium dining experience." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuBtGiUY18gHRE8BUwvxJG_3RAW0bYLX63rlCSl4c6GQu1ctLtFfGLAzW_pD4of-P4F86l5PNvgOZcLoVmoPFpm-DduRfuicJ3WWt_5TdrTeIrjX06O9gKJNuGhcva-lqZGJv4IFfoqIBQcesQOYrxdo99bwZz89WetvKCONzRG8k8kNffrk6Aq_745ezAwWc1XlSQSdi5CCxusQPQKoF0dKGT---ZT0edUuDOW04BUXlAxSpx8jp5tWBw')"></div>
+<div class="p-4">
+<div class="w-3/4 h-4 bg-outline-variant rounded mb-2"></div>
+<div class="w-1/2 h-3 bg-surface-variant rounded"></div>
+</div>
+</div>
+<div class="bg-surface-container-lowest rounded-xl border border-outline-variant overflow-hidden h-64 hidden md:block">
+<div class="w-full h-32 bg-surface-container-high"></div>
+</div>
+</main>
+</div>
+<!-- Scrim / Backdrop -->
+<div aria-hidden="true" class="fixed inset-0 bg-on-background/20 backdrop-blur-sm z-40 transition-opacity duration-300" id="backdrop"></div>
+<!-- Bottom Sheet / Toast -->
+<div aria-labelledby="dialog-title" aria-modal="true" class="fixed bottom-0 left-0 w-full z-50 transform translate-y-0 transition-transform duration-300 ease-out flex justify-center" id="bottomSheet" role="dialog">
+<div class="bg-surface-container-lowest w-full md:w-[480px] rounded-t-[24px] md:rounded-[24px] md:mb-8 shadow-[0_-4px_16px_rgba(0,0,0,0.04)] border-t md:border border-outline-variant flex flex-col pt-2 pb-6 px-margin-main items-center text-center">
+<!-- Handle -->
+<div class="w-10 h-1 bg-surface-variant rounded-full mb-6 mt-1 flex-shrink-0"></div>
+<!-- Icon -->
+<div class="w-16 h-16 bg-primary-fixed rounded-full flex items-center justify-center mb-4 text-primary">
+<span class="material-symbols-outlined text-[32px]" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+</div>
+<!-- Content -->
+<h2 class="font-headline-md text-headline-md text-on-surface mb-2" id="dialog-title">Saved</h2>
+<p class="font-body-lg text-body-lg text-on-surface-variant mb-8 px-4">
+<span class="font-semibold text-on-surface">Jollof Rice</span> has been saved.
+            </p>
+<!-- Actions -->
+<div class="w-full flex flex-col gap-3">
+<button class="w-full h-touch-target-min bg-primary text-on-primary rounded-full font-label-lg text-label-lg flex items-center justify-center hover:bg-primary-container transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2">
+                    View Saved
+                </button>
+<button class="w-full h-touch-target-min bg-transparent border border-primary text-primary rounded-full font-label-lg text-label-lg flex items-center justify-center hover:bg-primary-fixed/50 transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2">
+                    Continue Browsing
+                </button>
+</div>
+</div>
+</div>
+<!-- Entrance Animation Script -->
+<script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const sheet = document.getElementById('bottomSheet');
+            const backdrop = document.getElementById('backdrop');
+            
+            // Initial state for animation
+            sheet.classList.add('translate-y-full');
+            backdrop.classList.add('opacity-0');
+
+            // Trigger animation slightly after load
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    sheet.classList.remove('translate-y-full');
+                    backdrop.classList.remove('opacity-0');
+                    backdrop.classList.add('opacity-100');
+                });
+            });
+        });
+    </script>
+</body></html>

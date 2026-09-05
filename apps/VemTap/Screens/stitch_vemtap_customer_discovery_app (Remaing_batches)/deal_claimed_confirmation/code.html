@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Deal Claimed - Confirmation</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "on-secondary-fixed": "#0b1c30",
+                      "surface-container-highest": "#e0e3e5",
+                      "secondary-fixed": "#d3e4fe",
+                      "on-surface-variant": "#424655",
+                      "inverse-surface": "#2d3133",
+                      "on-primary-fixed": "#001945",
+                      "on-error-container": "#93000a",
+                      "secondary-container": "#d0e1fb",
+                      "on-primary-fixed-variant": "#00429b",
+                      "surface-dim": "#d8dadc",
+                      "surface-container-lowest": "#ffffff",
+                      "secondary": "#505f76",
+                      "tertiary": "#535a71",
+                      "tertiary-container": "#6b738a",
+                      "background": "#f7f9fb",
+                      "on-tertiary-fixed": "#131b2e",
+                      "primary": "#0055c4",
+                      "on-error": "#ffffff",
+                      "on-secondary-fixed-variant": "#38485d",
+                      "error": "#ba1a1a",
+                      "on-background": "#191c1e",
+                      "primary-container": "#066cf4",
+                      "surface-tint": "#0058cb",
+                      "inverse-on-surface": "#eff1f3",
+                      "on-tertiary-fixed-variant": "#3f465c",
+                      "tertiary-fixed": "#dae2fd",
+                      "surface-bright": "#f7f9fb",
+                      "surface-container": "#eceef0",
+                      "secondary-fixed-dim": "#b7c8e1",
+                      "outline": "#727786",
+                      "on-surface": "#191c1e",
+                      "error-container": "#ffdad6",
+                      "surface": "#f7f9fb",
+                      "tertiary-fixed-dim": "#bec6e0",
+                      "on-secondary-container": "#54647a",
+                      "on-secondary": "#ffffff",
+                      "on-tertiary-container": "#fcfaff",
+                      "outline-variant": "#c2c6d7",
+                      "surface-container-high": "#e6e8ea",
+                      "primary-fixed": "#d9e2ff",
+                      "on-primary-container": "#fcfaff",
+                      "inverse-primary": "#b0c6ff",
+                      "on-primary": "#ffffff",
+                      "on-tertiary": "#ffffff",
+                      "surface-container-low": "#f2f4f6",
+                      "primary-fixed-dim": "#b0c6ff",
+                      "surface-variant": "#e0e3e5"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "touch-target-min": "44px",
+                      "margin-main": "1.25rem",
+                      "stack-sm": "0.5rem",
+                      "gutter-grid": "1rem",
+                      "stack-lg": "1.5rem",
+                      "stack-md": "1rem"
+              },
+              "fontFamily": {
+                      "label-lg": ["Inter"],
+                      "headline-sm": ["Inter"],
+                      "headline-md": ["Inter"],
+                      "body-lg": ["Inter"],
+                      "display-lg": ["Inter"],
+                      "label-sm": ["Inter"],
+                      "currency-display": ["Inter"],
+                      "body-md": ["Inter"]
+              },
+              "fontSize": {
+                      "label-lg": ["14px", {"lineHeight": "20px", "letterSpacing": "0.01em", "fontWeight": "600"}],
+                      "headline-sm": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                      "headline-md": ["24px", {"lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                      "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                      "display-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                      "label-sm": ["12px", {"lineHeight": "16px", "fontWeight": "500"}],
+                      "currency-display": ["20px", {"lineHeight": "24px", "fontWeight": "700"}],
+                      "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}]
+              }
+      },
+          },
+        }
+    </script>
+<style>
+        .confetti-piece {
+            position: absolute;
+            width: 10px;
+            height: 20px;
+            background-color: #0055c4;
+            opacity: 0;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background min-h-screen flex flex-col items-center justify-center relative overflow-hidden">
+<!-- Ambient Confetti Canvas -->
+<div class="absolute inset-0 pointer-events-none z-0" id="confetti-container"></div>
+<!-- Main Content Card -->
+<main class="w-full max-w-md mx-auto px-margin-main z-10">
+<!-- Success Indicator -->
+<div class="flex flex-col items-center justify-center text-center mb-stack-lg">
+<div class="w-24 h-24 bg-primary-container rounded-full flex items-center justify-center mb-stack-md shadow-[0_0_40px_rgba(6,108,244,0.2)]">
+<span class="material-symbols-outlined text-[48px] text-on-primary-container" style="font-variation-settings: 'FILL' 1;">
+                    check_circle
+                </span>
+</div>
+<h1 class="font-display-lg text-display-lg text-on-surface mb-stack-sm">Deal Claimed!</h1>
+<p class="font-body-lg text-body-lg text-on-surface-variant">Your Weekend Brunch Deal has been successfully secured.</p>
+</div>
+<!-- Deal Summary Bento Card -->
+<div class="bg-surface-container-lowest rounded-xl border border-outline-variant p-stack-md mb-stack-lg shadow-sm">
+<h2 class="font-label-sm text-label-sm text-secondary uppercase tracking-wider mb-stack-sm border-b border-surface-variant pb-2">Deal Summary</h2>
+<div class="flex items-start gap-stack-md mb-stack-sm pt-2">
+<div class="w-16 h-16 rounded-lg overflow-hidden shrink-0">
+<img alt="Brunch Deal" class="w-full h-full object-cover" data-alt="A beautifully plated Nigerian brunch featuring jollof rice, plantains, and grilled chicken, served in a modern, brightly lit restaurant setting with elegant tableware. The scene exudes a premium, warm, and inviting local culinary experience in a corporate modern aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAN5jr33msB7WwhKJYQn8dGi4VjPWNEItyzkFgllV6TPMKne-E-849AcG1U1RrVwsJD00D3r8DtPted5hHsuVv2YfPTgx28El2G44ZguItFOZmNgPbI9zEzX_gGFW6NYt8w7Y93mUW8FNKdXZdFycdFTn-wB4n5h1Vlu8usDxfHet3lRmggCFPTnEEFexHcEJH40aRxSixPGA1-qGY_rkmxzymRCkRaAiByruKwlQ-_frBoehaDRRO1QA"/>
+</div>
+<div class="flex-1">
+<h3 class="font-headline-sm text-headline-sm text-on-surface">Weekend Brunch Special</h3>
+<div class="flex items-center text-on-surface-variant mt-1">
+<span class="material-symbols-outlined text-[16px] mr-1">storefront</span>
+<span class="font-body-md text-body-md">Royal Spice Restaurant</span>
+</div>
+</div>
+</div>
+<div class="flex justify-between items-center py-stack-sm border-y border-surface-variant my-stack-sm">
+<span class="font-body-md text-body-md text-on-surface-variant">Total Value</span>
+<span class="font-currency-display text-currency-display text-primary">₦9,600</span>
+</div>
+<div class="flex items-center gap-2 text-on-surface-variant bg-surface-container-low p-3 rounded-lg">
+<span class="material-symbols-outlined text-primary">schedule</span>
+<p class="font-body-md text-body-md flex-1">Valid until <strong class="text-on-surface">Sunday, 5:00 PM</strong></p>
+</div>
+</div>
+<!-- Actions -->
+<div class="flex flex-col gap-stack-sm">
+<button class="w-full h-touch-target-min bg-primary text-on-primary font-label-lg text-label-lg rounded-lg flex items-center justify-center hover:bg-surface-tint active:scale-[0.98] transition-all">
+                View My Deal
+            </button>
+<button class="w-full h-touch-target-min bg-transparent border border-primary text-primary font-label-lg text-label-lg rounded-lg flex items-center justify-center hover:bg-surface-container-low active:scale-[0.98] transition-all">
+                View Business
+            </button>
+</div>
+</main>
+<!-- Suppressed TopAppBar & BottomNavBar as per JSON constraints for Transactional/Success screens -->
+<script>
+        // Simple confetti effect for celebration
+        document.addEventListener('DOMContentLoaded', () => {
+            const container = document.getElementById('confetti-container');
+            const colors = ['#0055c4', '#066cf4', '#b0c6ff', '#d0e1fb'];
+            
+            for (let i = 0; i < 50; i++) {
+                const confetti = document.createElement('div');
+                confetti.classList.add('confetti-piece');
+                
+                // Randomize properties
+                const color = colors[Math.floor(Math.random() * colors.length)];
+                const left = Math.random() * 100;
+                const animDuration = Math.random() * 3 + 2;
+                const delay = Math.random() * 0.5;
+                
+                confetti.style.backgroundColor = color;
+                confetti.style.left = `${left}%`;
+                confetti.style.top = '-20px';
+                
+                // Inline animation
+                confetti.animate([
+                    { transform: 'translate3d(0,0,0) rotate(0deg)', opacity: 1 },
+                    { transform: `translate3d(${Math.random()*100 - 50}px, ${window.innerHeight}px, 0) rotate(${Math.random()*720}deg)`, opacity: 0 }
+                ], {
+                    duration: animDuration * 1000,
+                    delay: delay * 1000,
+                    easing: 'cubic-bezier(.37,0,.63,1)',
+                    fill: 'forwards'
+                });
+                
+                container.appendChild(confetti);
+            }
+        });
+    </script>
+</body></html>

@@ -293,50 +293,90 @@ export default function OrdersDashboard() {
   };
 
   return (
-    <div className="max-w-5xl mx-auto pt-4 px-4 md:px-0 pb-24">
-      <POSPageHeader
-        title="Orders & Claims"
-        subtitle="Manage incoming orders and deal claims"
-      />
+    <div className="p-4 sm:p-6 max-w-5xl mx-auto flex flex-col pb-24">
+      {/* NATIVE APP HEADER SECTION */}
+      <section className="relative bg-[#066CF4] -mx-4 -mt-4 sm:-mx-6 sm:-mt-6 px-4 sm:px-6 pt-5 pb-14 rounded-b-xl shadow-lg mb-6">
+        <div className="absolute top-0 right-0 p-8 opacity-10 pointer-events-none">
+          <ShoppingBag size={120} />
+        </div>
+        
+        <div className="relative z-10 space-y-6">
+          <div className="flex items-center justify-between">
+            <div className="flex flex-col">
+              <p className="text-blue-100 text-[10px] font-bold uppercase tracking-wider mb-1">
+                Management
+              </p>
+              <h1 className="text-base md:text-xl font-semibold text-white/85 tracking-tight">
+                Orders & Claims
+              </h1>
+            </div>
+          </div>
+          
+          <div className="pt-1 pb-2">
+            <p className="text-blue-100 text-[11px] font-semibold mb-1 flex items-center gap-1.5">
+              <TrendingUp size={12} /> Total Orders
+            </p>
+            <h2 className="text-3xl md:text-5xl font-black text-white tracking-tight">
+              {stats.total}
+            </h2>
+          </div>
+        </div>
 
-      {/* Tab Toggle */}
-      <div className="flex bg-gray-50 p-1 rounded-xl w-fit mb-6">
-        <button onClick={() => setActiveTab('orders')} className={cn(
-          "px-6 py-2 rounded-lg text-sm font-black transition-all cursor-pointer",
-          activeTab === 'orders' ? "bg-white text-[#066CF4] shadow-sm" : "text-gray-400 hover:text-gray-600"
-        )}>
-          Orders
-        </button>
-        <button onClick={() => setActiveTab('claims')} className={cn(
-          "px-6 py-2 rounded-lg text-sm font-black transition-all cursor-pointer",
-          activeTab === 'claims' ? "bg-white text-[#066CF4] shadow-sm" : "text-gray-400 hover:text-gray-600"
-        )}>
-          Deal Claims
-          {claimStats.claimed > 0 && (
-            <span className="ml-2 px-1.5 py-0.5 text-[9px] bg-amber-100 text-amber-600 rounded-full">{claimStats.claimed}</span>
-          )}
-        </button>
-      </div>
+        {/* Tab Toggle Overlapping Header */}
+        <div className="absolute left-0 right-0 -bottom-10 px-4 sm:px-6">
+          <div className="bg-white p-1.5 rounded-2xl shadow-lg shadow-black/5 flex items-center">
+            <button onClick={() => setActiveTab('orders')} className={cn(
+              "flex-1 h-12 rounded-xl text-sm font-black transition-all cursor-pointer",
+              activeTab === 'orders' ? "bg-gray-900 text-white shadow-sm" : "text-gray-400 hover:text-gray-600"
+            )}>
+              Orders
+            </button>
+            <button onClick={() => setActiveTab('claims')} className={cn(
+              "flex-1 h-12 rounded-xl text-sm font-black transition-all cursor-pointer flex items-center justify-center gap-2",
+              activeTab === 'claims' ? "bg-gray-900 text-white shadow-sm" : "text-gray-400 hover:text-gray-600"
+            )}>
+              Deal Claims
+              {claimStats.claimed > 0 && (
+                <span className={cn("px-1.5 py-0.5 text-[9px] rounded-full", activeTab === 'claims' ? "bg-white/20 text-white" : "bg-amber-100 text-amber-600")}>
+                  {claimStats.claimed}
+                </span>
+              )}
+            </button>
+          </div>
+        </div>
+      </section>
 
+      <div className="pt-8">
       {activeTab === 'orders' ? (
         <>
-          {/* Summary Stats */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6 shrink-0">
-            <div className="p-4 bg-white rounded-2xl border border-gray-100 shadow-sm">
-              <p className="text-2xl font-black text-gray-900">{stats.total}</p>
-              <p className="text-[9px] font-black uppercase tracking-widest text-gray-400 mt-1">Total Orders</p>
+          {/* Summary Stats - Scrollable Grid */}
+          <div className="grid grid-cols-3 gap-2 md:gap-3 mb-6 shrink-0">
+            <div className="p-3 sm:p-4 bg-emerald-50 rounded-2xl border border-emerald-100 shadow-sm flex flex-col justify-between h-[90px] sm:h-[110px]">
+              <div className="size-6 sm:size-8 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center">
+                <CheckCircle size={12} className="sm:w-4 sm:h-4" />
+              </div>
+              <div>
+                <p className="text-base sm:text-xl font-black text-emerald-600 truncate">{stats.completed}</p>
+                <p className="text-[8px] sm:text-[10px] font-black uppercase tracking-widest text-emerald-500 truncate">Completed</p>
+              </div>
             </div>
-            <div className="p-4 bg-emerald-50 rounded-2xl border border-emerald-100 shadow-sm">
-              <p className="text-2xl font-black text-emerald-600">{stats.completed}</p>
-              <p className="text-[9px] font-black uppercase tracking-widest text-emerald-500 mt-1">Completed</p>
+            <div className="p-3 sm:p-4 bg-blue-50 rounded-2xl border border-blue-100 shadow-sm flex flex-col justify-between h-[90px] sm:h-[110px]">
+              <div className="size-6 sm:size-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center">
+                <Zap size={12} className="sm:w-4 sm:h-4" />
+              </div>
+              <div>
+                <p className="text-base sm:text-xl font-black text-blue-600 truncate">{stats.new}</p>
+                <p className="text-[8px] sm:text-[10px] font-black uppercase tracking-widest text-blue-500 truncate">New</p>
+              </div>
             </div>
-            <div className="p-4 bg-blue-50 rounded-2xl border border-blue-100 shadow-sm">
-              <p className="text-2xl font-black text-blue-600">{stats.new}</p>
-              <p className="text-[9px] font-black uppercase tracking-widest text-blue-500 mt-1">New</p>
-            </div>
-            <div className="p-4 bg-white rounded-2xl border border-gray-100 shadow-sm">
-              <p className="text-2xl font-black text-gray-900">₦{stats.revenue.toLocaleString()}</p>
-              <p className="text-[9px] font-black uppercase tracking-widest text-gray-400 mt-1">Revenue</p>
+            <div className="p-3 sm:p-4 bg-white rounded-2xl border border-gray-100 shadow-sm flex flex-col justify-between h-[90px] sm:h-[110px]">
+              <div className="size-6 sm:size-8 rounded-full bg-gray-50 text-gray-900 flex items-center justify-center border border-gray-100">
+                <span className="text-[10px] sm:text-xs font-black">₦</span>
+              </div>
+              <div>
+                <p className="text-base sm:text-xl font-black text-gray-900 truncate">{stats.revenue > 99999 ? '99k+' : stats.revenue.toLocaleString()}</p>
+                <p className="text-[8px] sm:text-[10px] font-black uppercase tracking-widest text-gray-400 truncate">Revenue</p>
+              </div>
             </div>
           </div>
 
@@ -872,6 +912,7 @@ export default function OrdersDashboard() {
           </div>
         )}
       </AnimatePresence>
+    </div>
     </div>
   );
 }

@@ -116,38 +116,61 @@ export default function DiscoveryPage() {
     
     return (
         <PartnershipVerificationGuard>
-            <div className="relative p-4 md:p-8 pb-32 max-w-7xl mx-auto font-sans">
-            <PageHeader 
-                title="Discovery Network" 
-                description="Get more customers from nearby businesses."
-                isSticky={false}
-            />
-            
-            <div className="mt-4 md:mt-8 flex overflow-x-auto no-scrollbar mb-6 md:mb-8 sticky top-0 z-10 bg-white/90 backdrop-blur-md py-3 -mx-4 px-4 md:mx-0 md:px-0 md:static md:bg-transparent md:py-0 md:border-b md:border-gray-200 space-x-2 md:space-x-6">
-                {[
-                    { id: 'overview', label: 'Overview' },
-                    { id: 'partners', label: 'Partners' },
-                    { id: 'customers', label: 'Customers' },
-                    { id: 'results', label: 'Results' },
-                    { id: 'settings', label: 'Settings' }
-                ].map(tab => (
-                    <button
-                        key={tab.id}
-                        onClick={() => setActiveTab(tab.id as TabId)}
-                        className={cn(
-                            "px-4 py-2 md:px-0 md:pb-4 md:py-0 text-[13px] md:text-sm font-bold whitespace-nowrap transition-all relative rounded-full md:rounded-none shrink-0",
-                            activeTab === tab.id 
-                                ? "bg-primary text-white md:bg-transparent md:text-primary shadow-md shadow-primary/20 md:shadow-none" 
-                                : "bg-gray-50 text-gray-500 md:bg-transparent hover:text-gray-800"
-                        )}
-                    >
-                        {tab.label}
-                        {activeTab === tab.id && (
-                            <span className="hidden md:block absolute bottom-0 left-0 w-full h-1 bg-primary rounded-t-full"></span>
-                        )}
-                    </button>
-                ))}
-            </div>
+            <div className="p-4 sm:p-6 max-w-7xl mx-auto flex flex-col pb-28 font-sans">
+                {/* NATIVE APP HEADER SECTION */}
+                <section className="relative bg-[#066CF4] -mx-4 -mt-4 sm:-mx-6 sm:-mt-6 px-4 sm:px-6 pt-5 pb-14 rounded-b-xl shadow-lg mb-6">
+                    <div className="absolute top-0 right-0 p-8 opacity-10 pointer-events-none">
+                        <MapPin size={120} />
+                    </div>
+                    
+                    <div className="relative z-10 space-y-4">
+                        <div className="flex items-center justify-between">
+                            <div className="flex flex-col">
+                                <p className="text-blue-100 text-[10px] font-bold uppercase tracking-wider mb-1">
+                                    Network
+                                </p>
+                                <h1 className="text-lg md:text-2xl font-bold text-white tracking-tight">
+                                    Discovery
+                                </h1>
+                            </div>
+                        </div>
+                        
+                        <div className="pt-1 pb-2">
+                            <p className="text-blue-100 text-[11px] font-semibold mb-1 flex items-center gap-1.5">
+                                <Users size={12} /> Connect & Grow
+                            </p>
+                            <h2 className="text-lg md:text-2xl font-black text-white tracking-tight leading-tight">
+                                Get more customers from nearby businesses.
+                            </h2>
+                        </div>
+                    </div>
+
+                    {/* Tab Toggle Overlapping Header */}
+                    <div className="absolute left-0 right-0 -bottom-10 px-4 sm:px-6">
+                        <div className="bg-white p-1.5 rounded-2xl shadow-lg shadow-black/5 flex items-center overflow-x-auto no-scrollbar">
+                            {[
+                                { id: 'overview', label: 'Overview' },
+                                { id: 'partners', label: 'Partners' },
+                                { id: 'customers', label: 'Customers' },
+                                { id: 'results', label: 'Results' },
+                                { id: 'settings', label: 'Settings' }
+                            ].map(tab => (
+                                <button
+                                    key={tab.id}
+                                    onClick={() => setActiveTab(tab.id as TabId)}
+                                    className={cn(
+                                        "flex-none px-4 h-12 rounded-xl text-sm font-black transition-all cursor-pointer whitespace-nowrap",
+                                        activeTab === tab.id ? "bg-gray-900 text-white shadow-sm" : "text-gray-400 hover:text-gray-600"
+                                    )}
+                                >
+                                    {tab.label}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                </section>
+
+                <div className="pt-8">
 
             {isAllBranches && (
                 <div className="bg-amber-50 border border-amber-200 rounded-3xl p-6 mb-6 flex items-center gap-4">
@@ -171,6 +194,7 @@ export default function DiscoveryPage() {
                 </>
             )}
         </div>
+            </div>
         </PartnershipVerificationGuard>
     );
 }
@@ -214,34 +238,34 @@ function OverviewTab({ branchId, onNavigate }: { branchId: string; onNavigate: (
                     { label: 'Offers Redeemed', value: formatCompactNumber(stats.offersRedeemed), icon: Tag, color: 'text-orange-600', bg: 'bg-orange-50' },
                     { label: 'Revenue Generated', value: formatCurrency(stats.revenueGenerated), icon: TrendingUp, color: 'text-purple-600', bg: 'bg-purple-50' }
                 ].map((kpi, i) => (
-                    <div key={i} className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
-                        <div className={cn("size-10 rounded-2xl flex items-center justify-center mb-4", kpi.bg, kpi.color)}>
-                            <kpi.icon size={20} />
+                    <div key={i} className="bg-white p-4 sm:p-6 rounded-2xl sm:rounded-3xl border border-gray-100 shadow-sm">
+                        <div className={cn("size-8 sm:size-10 rounded-xl sm:rounded-2xl flex items-center justify-center mb-3 sm:mb-4", kpi.bg, kpi.color)}>
+                            <kpi.icon size={16} className="sm:w-5 sm:h-5" />
                         </div>
-                        <div className="text-[13px] font-bold text-gray-400 uppercase tracking-wider mb-1">{kpi.label}</div>
-                        <div className="text-3xl font-semibold text-gray-800">{kpi.value}</div>
+                        <div className="text-[10px] sm:text-[13px] font-bold text-gray-400 uppercase tracking-wider mb-1 leading-tight">{kpi.label}</div>
+                        <div className="text-xl sm:text-3xl font-semibold text-gray-800">{kpi.value}</div>
                     </div>
                 ))}
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <Button onClick={() => router.push('/dashboard/discovery/deals')} className="h-auto p-6 flex flex-col items-center justify-center gap-3 rounded-3xl bg-primary hover:bg-primary/90 text-white border-0">
-                    <div className="size-12 rounded-full bg-white/20 flex items-center justify-center">
-                        <Plus size={24} />
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
+                <Button onClick={() => router.push('/dashboard/discovery/deals')} className="h-auto p-4 sm:p-6 flex flex-col items-center justify-center gap-2 sm:gap-3 rounded-2xl sm:rounded-3xl bg-primary hover:bg-primary/90 text-white border-0">
+                    <div className="size-10 sm:size-12 rounded-full bg-white/20 flex items-center justify-center">
+                        <Plus size={20} className="sm:w-6 sm:h-6" />
                     </div>
-                    <span className="font-bold text-lg">Create Deal</span>
+                    <span className="font-bold text-sm sm:text-lg">Create Deal</span>
                 </Button>
-                <Button onClick={() => onNavigate('partners')} variant="outline" className="h-auto p-6 flex flex-col items-center justify-center gap-3 rounded-3xl border-gray-200 hover:bg-gray-50">
-                    <div className="size-12 rounded-full bg-gray-100 flex items-center justify-center text-gray-800">
-                        <Handshake size={24} />
+                <Button onClick={() => onNavigate('partners')} variant="outline" className="h-auto p-4 sm:p-6 flex flex-col items-center justify-center gap-2 sm:gap-3 rounded-2xl sm:rounded-3xl border-gray-200 hover:bg-gray-50">
+                    <div className="size-10 sm:size-12 rounded-full bg-gray-100 flex items-center justify-center text-gray-800">
+                        <Handshake size={20} className="sm:w-6 sm:h-6" />
                     </div>
-                    <span className="font-bold text-lg text-gray-800">Find Partners</span>
+                    <span className="font-bold text-sm sm:text-lg text-gray-800">Find Partners</span>
                 </Button>
-                <Button onClick={() => onNavigate('results')} variant="outline" className="h-auto p-6 flex flex-col items-center justify-center gap-3 rounded-3xl border-gray-200 hover:bg-gray-50">
-                    <div className="size-12 rounded-full bg-gray-100 flex items-center justify-center text-gray-800">
-                        <Activity size={24} />
+                <Button onClick={() => onNavigate('results')} variant="outline" className="h-auto p-4 sm:p-6 flex flex-col items-center justify-center gap-2 sm:gap-3 rounded-2xl sm:rounded-3xl border-gray-200 hover:bg-gray-50">
+                    <div className="size-10 sm:size-12 rounded-full bg-gray-100 flex items-center justify-center text-gray-800">
+                        <Activity size={20} className="sm:w-6 sm:h-6" />
                     </div>
-                    <span className="font-bold text-lg text-gray-800">View Results</span>
+                    <span className="font-bold text-sm sm:text-lg text-gray-800">View Results</span>
                 </Button>
             </div>
 

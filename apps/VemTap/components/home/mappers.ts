@@ -55,10 +55,13 @@ export function offerToHomeDeal(offer: DealOffer): HomeDealCard {
   else if (dealPrice === 0) discountLabel = 'FREE';
   else if (originalPrice > dealPrice) discountLabel = 'Special Offer';
 
+  const branchAny = offer.branch as any;
   const slug =
-    offer.branch?.username ||
-    offer.branch?.uniqueCode ||
+    branchAny?.username ||
+    branchAny?.uniqueCode ||
+    branchAny?.business?.uniqueCode ||
     offer.business?.slug ||
+    (offer.business as any)?.uniqueCode ||
     '';
 
   return {
@@ -75,6 +78,7 @@ export function offerToHomeDeal(offer: DealOffer): HomeDealCard {
     discountPercent,
     discountAmount,
     discountLabel,
+    endDate: offer.endDate ?? undefined,
     href: `/promotions/${offer.id}`,
   };
 }
@@ -109,16 +113,26 @@ export function offersToBusinessCards(offers: DealOffer[]): HomeBusinessCard[] {
       'Nearby';
 
     const category = offer.business?.categoryName || 'Business';
-    const slug =
-      offer.branch?.username ||
-      offer.branch?.uniqueCode ||
+
+    // Only link to the storefront when we have a real business code —
+    // a raw UUID (businessId/branchId) will 404 on /b/[code].
+    const branchAny = offer.branch as any;
+    const code =
+      branchAny?.username ||
+      branchAny?.uniqueCode ||
+      branchAny?.business?.uniqueCode ||
       offer.business?.slug ||
-      id;
+      (offer.business as any)?.uniqueCode ||
+      '';
 
     const existing = map.get(id);
     if (existing) {
       existing._dealCount += 1;
       existing.activeDeals = existing._dealCount;
+      // Prefer a real code if a later offer in the group carries one.
+      if (code && existing.href.startsWith('/deals')) {
+        existing.href = `/b/${encodeURIComponent(code)}`;
+      }
       continue;
     }
 
@@ -130,7 +144,7 @@ export function offersToBusinessCards(offers: DealOffer[]): HomeBusinessCard[] {
       location,
       rating: offer.business?.rating,
       activeDeals: 1,
-      href: `/marketplace?business=${encodeURIComponent(slug)}`,
+      href: code ? `/b/${encodeURIComponent(code)}` : `/deals?q=${encodeURIComponent(name)}`,
       _dealCount: 1,
     });
   }

@@ -126,7 +126,7 @@ export default function AllCustomersPage() {
     ];
 
     return (
-        <div className="p-4 md:p-8 space-y-6">
+        <div className="p-4 md:p-8 pb-28 md:pb-8 space-y-6">
             <Link
                 href="/dashboard/visitors"
                 className="inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-gray-400 hover:text-[#066CF4] transition-colors"

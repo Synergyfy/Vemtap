@@ -10,11 +10,12 @@ import {
     BarChart3, Settings as SettingsIcon,
     Activity, Sparkles, FileText, Package,
     ChevronDown, ChevronUp,
-    Tag, Handshake, Globe2
+    Tag, Handshake, Globe2, MoreHorizontal
 } from 'lucide-react';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useDashboardAnalytics } from '@/services/analytics/hooks';
 import { useBusinessLoyaltyStats } from '@/services/loyalty/hooks';
+import { ResponsiveContainer, AreaChart, Area, CartesianGrid, XAxis, YAxis, Tooltip } from 'recharts';
 import { useActiveBranch } from '@/hooks/useActiveBranch';
 import { useMyBusiness } from '@/services/businesses/hooks';
 import { useBranches } from '@/services/branches/hooks';
@@ -36,6 +37,7 @@ export default function DashboardPage() {
     const [isHealthExpanded, setIsHealthExpanded] = useState(false);
     const [isActivityExpanded, setIsActivityExpanded] = useState(false);
     const [showDealPrompt, setShowDealPrompt] = useState(false);
+    const [showBannerMenu, setShowBannerMenu] = useState(false);
     const user = useAuthStore((state) => state.user);
     const { activeBranchId, getLinkWithBranch } = useActiveBranch();
     const { data: myBusiness } = useMyBusiness();
@@ -142,58 +144,101 @@ export default function DashboardPage() {
             <CreateDealPromptModal isOpen={showDealPrompt} onClose={handleDealPromptClose} />
             <main className="p-4 sm:p-6 max-w-7xl mx-auto">
                 <div className="space-y-6">
-                        {/* 1. TOP SECTION: Greeting & Branding */}
-                        <section className="space-y-1">
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-2.5 sm:gap-3">
-                                    <h1 className="text-2xl md:text-3xl font-bold text-text-main tracking-tight mr-1">
-                                        Good {new Date().getHours() < 12 ? 'Morning' : new Date().getHours() < 17 ? 'Afternoon' : 'Evening'}, {user?.firstName || 'Owner'}
-                                    </h1>
-                                    <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-                                        <PageGuideButton />
-                                        <AICopilotButton />
-                                        <InstallAppButton iconOnly />
+                        {/* 1. NATIVE APP HEADER SECTION */}
+                        <section className="relative bg-white border-b border-gray-100 -mx-4 -mt-4 sm:-mx-6 sm:-mt-6 px-4 sm:px-6 pt-5 pb-20 rounded-b-2xl shadow-sm mb-6">
+                            <div className="absolute top-0 right-0 p-8 text-blue-500/5 pointer-events-none">
+                                <Sparkles size={120} />
+                            </div>
+                            
+                            <div className="relative z-10 space-y-3">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex flex-col">
+                                        <p className="text-gray-400 text-[9px] font-bold uppercase tracking-widest mb-0.5">
+                                            Good {new Date().getHours() < 12 ? 'Morning' : new Date().getHours() < 17 ? 'Afternoon' : 'Evening'}
+                                        </p>
+                                        <div className="flex items-center gap-2">
+                                            <h1 className="text-base md:text-lg font-bold text-gray-900 tracking-tight">
+                                                {user?.firstName || 'Owner'}
+                                            </h1>
+                                            {isAnalyticsLoading && (
+                                                <div className="size-3.5 border-2 border-gray-200 border-t-primary rounded-full animate-spin" />
+                                            )}
+                                        </div>
+                                    </div>
+                                    <div className="relative shrink-0">
+                                        <button onClick={() => setShowBannerMenu(!showBannerMenu)} className="size-9 rounded-xl bg-gray-50 border border-gray-200 flex items-center justify-center text-gray-600 hover:bg-gray-100 transition-colors">
+                                            <MoreHorizontal size={18} />
+                                        </button>
+                                        {showBannerMenu && (
+                                            <div className="absolute right-0 top-full mt-2 bg-white rounded-2xl shadow-xl border border-gray-100 p-1.5 flex flex-col gap-1 z-20 min-w-[180px]">
+                                                <div onClick={() => setShowBannerMenu(false)} className="flex items-center gap-2 px-2 py-1">
+                                                    <PageGuideButton />
+                                                    <span className="text-xs font-semibold text-gray-700">Guide</span>
+                                                </div>
+                                                <div onClick={() => setShowBannerMenu(false)} className="flex items-center gap-2 px-2 py-1">
+                                                    <AICopilotButton />
+                                                    <span className="text-xs font-semibold text-gray-700">AI Copilot</span>
+                                                </div>
+                                                <div onClick={() => setShowBannerMenu(false)} className="flex items-center gap-2 px-2 py-1">
+                                                    <InstallAppButton iconOnly />
+                                                    <span className="text-xs font-semibold text-gray-700">Install App</span>
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
-                                {isAnalyticsLoading && (
-                                    <div className="size-5 border-2 border-primary/20 border-t-primary rounded-full animate-spin" />
-                                )}
+                                
+                                {/* Main Highlight — money is hero */}
+                                <div className="pt-1 pb-0.5">
+                                    <p className="text-gray-400 text-[10px] font-bold uppercase tracking-wider mb-1 flex items-center gap-1.5">
+                                        <ShoppingBag size={12} className="text-primary" /> Today's Sales
+                                    </p>
+                                    <h2 className="text-[32px] md:text-5xl font-black text-gray-900 tracking-tight leading-none">
+                                        {kpis[2]?.value || '₦0'}
+                                    </h2>
+                                </div>
+
+                                {/* Slider Banner embedded inside header banner */}
+                                <div className="pt-0.5">
+                                    <DashboardBannerWrapper onAnalyzeDashboard={handleRefreshAnalysis} />
+                                </div>
+                            </div>
+
+                            {/* Overlapping Snapshot Cards */}
+                            <div className="absolute left-0 right-0 -bottom-10 px-4 sm:px-6">
+                                <div className="grid grid-cols-3 gap-4 md:gap-5">
+                                    {[kpis[0], kpis[1], kpis[3]].map((kpi, i) => (
+                                        <div 
+                                            key={i}
+                                            className="w-full bg-white rounded-xl sm:rounded-2xl p-3 sm:p-4 shadow-[0_8px_30px_rgb(0,0,0,0.08)] flex flex-col gap-2 sm:gap-3 h-[88px] sm:h-[100px] border border-gray-100 relative overflow-hidden backdrop-blur-sm"
+                                        >
+                                            <div className="absolute inset-0 bg-gradient-to-br from-white via-white to-blue-50/30 pointer-events-none" />
+                                            <div className="absolute -right-2 -bottom-2 opacity-[0.04] pointer-events-none">
+                                                <kpi.icon size={64} />
+                                            </div>
+                                            <div className={`size-6 sm:size-7 rounded-full ${kpi.color} text-white flex items-center justify-center shadow-sm z-10 shrink-0`}>
+                                                <kpi.icon size={12} className="sm:w-3 sm:h-3" />
+                                            </div>
+                                            <div className="flex flex-col gap-0.5 z-10">
+                                                <p className="text-sm sm:text-base font-black text-gray-900 tracking-tight truncate leading-none">{kpi.value}</p>
+                                                <p className="text-[7px] sm:text-[8px] font-bold text-gray-400 leading-tight truncate uppercase tracking-wider">{kpi.label}</p>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
                             </div>
                         </section>
 
-                        <DashboardBannerWrapper onAnalyzeDashboard={handleRefreshAnalysis} />
-
-                        <OnboardingChecklist />
-
-                        {/* 2. BUSINESS SNAPSHOT (Horizontal swipeable cards) */}
-                        <section>
-                            <div className="flex items-center justify-between mb-4 px-1">
-                                <h2 className="text-[10px] font-bold uppercase tracking-[0.16em] text-gray-400">Snapshot</h2>
-                            </div>
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
-                                {kpis.map((kpi, i) => (
-                                    <div 
-                                        key={i}
-                                        className="w-full bg-white rounded-2xl p-4 md:p-5 border border-gray-100 shadow-sm flex flex-col justify-between h-28 md:h-32 group hover:border-primary/20 transition-all hover:shadow-md"
-                                    >
-                                        <div className={`size-8 md:size-9 rounded-lg ${kpi.color} text-white flex items-center justify-center transition-transform group-hover:scale-110 shadow-lg shadow-current/10`}>
-                                            <kpi.icon size={16} className="md:w-[18px] md:h-[18px]" />
-                                        </div>
-                                        <div>
-                                            <p className="text-2xl md:text-[28px] font-bold text-text-main mb-0.5 leading-none tracking-tight">{kpi.value}</p>
-                                            <p className="text-[9px] md:text-[10px] font-bold uppercase tracking-wider text-gray-400 leading-none truncate">{kpi.label}</p>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </section>
+                        {/* Adjust spacing for content below the overlapping cards */}
+                        <div className="pt-6 space-y-6">
+                            <OnboardingChecklist />
 
                         {/* 3. QUICK ACTIONS (Visually Prominent Grid) */}
                         <section>
                             <div className="flex items-center justify-between mb-2.5">
                                 <h2 className="text-[10px] font-bold uppercase tracking-[0.16em] text-gray-400">Quick Actions</h2>
                             </div>
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3">
+                            <div className="grid grid-cols-4 gap-2 md:gap-3">
                                 {useMemo(() => {
                                     const role = (user?.role as string)?.toLowerCase() || 'owner';
                                     if (role === 'cashier') {
@@ -237,12 +282,12 @@ export default function DashboardPage() {
                                     <button 
                                         key={i}
                                         onClick={() => router.push(getLinkWithBranch(action.route))}
-                                        className={`bg-white border border-gray-100 rounded-xl px-3 py-3 flex items-center gap-3 active:scale-[0.98] transition-all shadow-sm group hover:border-primary/20 hover:shadow-md`}
+                                        className={`w-full bg-white border border-gray-100 rounded-xl px-1.5 py-3 sm:px-3 sm:py-4 flex flex-col items-center gap-1.5 sm:gap-2 active:scale-[0.98] transition-all shadow-sm group hover:border-primary/20 hover:shadow-md`}
                                     >
-                                        <div className={`size-9 md:size-10 rounded-lg ${action.color} border shrink-0 flex items-center justify-center transition-transform group-hover:scale-110`}>
-                                            <action.icon size={18} className="md:w-[20px] md:h-[20px]" />
+                                        <div className={`size-9 sm:size-10 rounded-xl ${action.color} border shrink-0 flex items-center justify-center transition-transform group-hover:scale-110`}>
+                                            <action.icon size={16} className="sm:w-[18px] sm:h-[18px]" />
                                         </div>
-                                        <span className="text-[11px] md:text-xs font-semibold text-gray-700 leading-tight text-left">{action.label}</span>
+                                        <span className="text-[9px] sm:text-[10px] md:text-xs font-semibold text-gray-700 leading-tight text-center line-clamp-2">{action.label}</span>
                                     </button>
                                 ))}
                             </div>
@@ -271,30 +316,52 @@ export default function DashboardPage() {
                                     { label: 'Customer Growth', value: 75, color: 'bg-blue-500', trend: '+12%' },
                                     { label: 'QR Scan Activity', value: 90, color: 'bg-emerald-500', trend: '+28%' },
                                 ];
-                                const renderItem = (item: any) => (
-                                    <div key={item.label} className="space-y-3">
-                                        <div className="flex items-center justify-between">
-                                            <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-600">{item.label}</span>
-                                            <div className="flex items-center gap-1">
-                                                <TrendingUp size={10} className="text-emerald-500" />
-                                                <span className="text-[10px] font-bold text-emerald-500">{item.trend}</span>
-                                            </div>
-                                        </div>
-                                        <div className="h-2.5 w-full bg-gray-50 rounded-full overflow-hidden border border-gray-100/50">
-                                            <motion.div 
-                                                initial={{ width: 0 }}
-                                                animate={{ width: `${item.value}%` }}
-                                                transition={{ duration: 1.5, ease: "easeOut" }}
-                                                className={`h-full ${item.color} rounded-full shadow-[0_0_8px_rgba(0,0,0,0.1)]`} 
-                                            />
-                                        </div>
-                                    </div>
-                                );
+                                // Single chart with two lines — POS Orders style
+                                const chartData = [
+                                    { name: 'Mon', growth: Math.max(10, healthMetrics[0].value - 35), scans: Math.max(15, (healthMetrics[1]?.value || 90) - 40) },
+                                    { name: 'Tue', growth: Math.max(15, healthMetrics[0].value - 25), scans: Math.max(20, (healthMetrics[1]?.value || 90) - 28) },
+                                    { name: 'Wed', growth: Math.max(20, healthMetrics[0].value - 16), scans: Math.max(30, (healthMetrics[1]?.value || 90) - 18) },
+                                    { name: 'Thu', growth: Math.max(25, healthMetrics[0].value - 8), scans: Math.max(40, (healthMetrics[1]?.value || 90) - 8) },
+                                    { name: 'Fri', growth: healthMetrics[0].value, scans: healthMetrics[1]?.value || 90 },
+                                ];
                                 
                                 return (
                                     <>
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                            {healthMetrics.slice(0, 1).map(renderItem)}
+                                        <div className="flex items-center gap-4 mb-4">
+                                            <div className="flex items-center gap-1.5">
+                                                <span className="size-2.5 rounded-full bg-[#3b82f6]" />
+                                                <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">{healthMetrics[0].label}</span>
+                                                <span className="text-[10px] font-bold text-emerald-500 ml-1">{healthMetrics[0].trend}</span>
+                                            </div>
+                                            {healthMetrics[1] && (
+                                                <div className="flex items-center gap-1.5">
+                                                    <span className="size-2.5 rounded-full bg-[#10b981]" />
+                                                    <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">{healthMetrics[1].label}</span>
+                                                    <span className="text-[10px] font-bold text-emerald-500 ml-1">{healthMetrics[1].trend}</span>
+                                                </div>
+                                            )}
+                                        </div>
+                                        <div className="h-[160px] w-full">
+                                            <ResponsiveContainer width="100%" height="100%">
+                                                <AreaChart data={chartData}>
+                                                    <defs>
+                                                        <linearGradient id="growthGradient" x1="0" y1="0" x2="0" y2="1">
+                                                            <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.2} />
+                                                            <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                                                        </linearGradient>
+                                                        <linearGradient id="scansGradient" x1="0" y1="0" x2="0" y2="1">
+                                                            <stop offset="5%" stopColor="#10b981" stopOpacity={0.2} />
+                                                            <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                                                        </linearGradient>
+                                                    </defs>
+                                                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                                                    <XAxis dataKey="name" tick={{ fontSize: 10, fontWeight: 700, fill: '#9CA3AF' }} axisLine={false} tickLine={false} />
+                                                    <YAxis tick={{ fontSize: 10, fontWeight: 700, fill: '#9CA3AF' }} axisLine={false} tickLine={false} allowDecimals={false} />
+                                                    <Tooltip contentStyle={{ borderRadius: 12, border: '1px solid #e5e7eb', fontSize: 12, fontWeight: 700 }} />
+                                                    <Area type="monotone" dataKey="growth" stroke="#3b82f6" fill="url(#growthGradient)" strokeWidth={2} name={healthMetrics[0].label} />
+                                                    {healthMetrics[1] && <Area type="monotone" dataKey="scans" stroke="#10b981" fill="url(#scansGradient)" strokeWidth={2} strokeDasharray="4 4" name={healthMetrics[1].label} />}
+                                                </AreaChart>
+                                            </ResponsiveContainer>
                                         </div>
                                         <AnimatePresence>
                                             {isHealthExpanded && (
@@ -302,10 +369,16 @@ export default function DashboardPage() {
                                                     initial={{ height: 0, opacity: 0 }} 
                                                     animate={{ height: 'auto', opacity: 1 }} 
                                                     exit={{ height: 0, opacity: 0 }}
-                                                    className="overflow-hidden mt-8"
+                                                    className="overflow-hidden mt-4"
                                                 >
-                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                                        {healthMetrics.slice(1).map(renderItem)}
+                                                    <div className="grid grid-cols-2 gap-4 pt-4 border-t border-gray-50">
+                                                        {healthMetrics.map((m:any) => (
+                                                            <div key={m.label} className="text-center">
+                                                                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{m.label}</p>
+                                                                <p className="text-lg font-black text-gray-900">{m.value}%</p>
+                                                                <p className="text-[10px] font-bold text-emerald-500">{m.trend} vs last week</p>
+                                                            </div>
+                                                        ))}
                                                     </div>
                                                 </motion.div>
                                             )}
@@ -431,7 +504,7 @@ export default function DashboardPage() {
                         {/* 6. MANAGE YOUR BUSINESS (Main Modules) */}
                         <section className="space-y-3">
                             <h2 className="text-[10px] font-bold uppercase tracking-[0.16em] text-gray-400">Manage Your Business</h2>
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3">
+                            <div className="grid grid-cols-4 gap-2 md:gap-3">
                                 {[
                                     { 
                                         title: 'Customers', 
@@ -493,19 +566,20 @@ export default function DashboardPage() {
                                     <button 
                                         key={i}
                                         onClick={() => router.push(module.route)}
-                                        className="bg-white border border-gray-100 px-3 py-3.5 rounded-xl flex flex-col items-start gap-2 shadow-sm active:scale-[0.98] transition-all text-left group hover:border-primary/20 hover:shadow-md"
+                                        className="w-full bg-white border border-gray-100 px-2 py-3 sm:px-3 sm:py-3.5 rounded-xl flex flex-col items-center gap-2 shadow-sm active:scale-[0.98] transition-all text-center group hover:border-primary/20 hover:shadow-md"
                                     >
-                                        <div className={`size-9 md:size-10 rounded-lg ${module.color} flex items-center justify-center transition-transform group-hover:scale-110`}>
-                                            <module.icon size={18} className="md:w-5 md:h-5" />
+                                        <div className={`size-9 sm:size-10 rounded-xl ${module.color} flex items-center justify-center transition-transform group-hover:scale-110`}>
+                                            <module.icon size={16} className="sm:w-[18px] sm:h-[18px]" />
                                         </div>
                                         <div className="min-w-0">
-                                            <h3 className="text-[11px] md:text-xs font-bold text-text-main leading-tight truncate">{module.title}</h3>
-                                            <p className="text-[9px] md:text-[10px] font-medium text-gray-400 leading-tight truncate md:whitespace-normal">{module.desc}</p>
+                                            <h3 className="text-[10px] sm:text-xs font-bold text-text-main leading-tight line-clamp-1">{module.title}</h3>
+                                            <p className="text-[8px] sm:text-[9px] font-medium text-gray-400 leading-tight line-clamp-2 hidden sm:block">{module.desc}</p>
                                         </div>
                                     </button>
                                 ))}
                             </div>
                         </section>
+                    </div>
                     </div>
             </main>
         </div>
