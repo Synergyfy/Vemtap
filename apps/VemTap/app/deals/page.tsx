@@ -291,7 +291,7 @@ function DealsPageInner() {
               {[
                 { label: 'Home', href: '/' },
                 { label: 'Deals', href: '/deals' },
-                { label: 'Business', href: '/get-started' },
+                { label: 'Saved', href: '/saved' },
                 { label: 'Pricing', href: '/pricing' },
               ].map((item) => (
                 <Link key={item.label} href={item.href}

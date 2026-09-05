@@ -106,12 +106,35 @@ export const useSetReaction = (offerId: string) => {
     });
 };
 
+export const SAVED_DEALS_KEY = 'vemtap_saved_deal_ids';
+
+export const getLocalSavedIds = (): string[] => {
+    if (typeof window === 'undefined') return [];
+    try {
+        const raw = localStorage.getItem(SAVED_DEALS_KEY);
+        const parsed = raw ? JSON.parse(raw) : [];
+        return Array.isArray(parsed) ? parsed.filter((id) => typeof id === 'string') : [];
+    } catch {
+        return [];
+    }
+};
+
 export const useToggleSave = (offerId: string) => {
     const qc = useQueryClient();
     return useMutation({
         mutationFn: () => engagementApi.toggleSave(offerId),
-        onSuccess: () => {
+        onSuccess: (data) => {
+            try {
+                const ids = new Set(getLocalSavedIds());
+                if (data?.saved) ids.add(offerId);
+                else ids.delete(offerId);
+                localStorage.setItem(SAVED_DEALS_KEY, JSON.stringify(Array.from(ids)));
+                window.dispatchEvent(new Event('vemtap-saved-changed'));
+            } catch {
+                // localStorage unavailable — backend remains source of truth
+            }
             qc.invalidateQueries({ queryKey: ['deals', 'engagement', offerId] });
+            qc.invalidateQueries({ queryKey: ['deals', 'saved'] });
         },
     });
 };

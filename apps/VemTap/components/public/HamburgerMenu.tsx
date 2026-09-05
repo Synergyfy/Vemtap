@@ -38,7 +38,7 @@ export default function HamburgerMenu() {
               {[
                 { icon: 'home', label: 'Home', href: '/' },
                 { icon: 'local_offer', label: 'Deals', href: '/deals' },
-                { icon: 'storefront', label: 'Business', href: '/get-started' },
+                { icon: 'bookmark', label: 'Saved', href: '/saved' },
                 { icon: 'payments', label: 'Pricing', href: '/pricing' },
               ].map((item) => (
                 <Link
