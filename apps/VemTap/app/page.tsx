@@ -233,7 +233,7 @@ export default function Homepage() {
               {[
                 { label: 'Home', href: '/' },
                 { label: 'Deals', href: '/deals' },
-                { label: 'Business', href: '/business-landing' },
+                { label: 'Business', href: '/get-started' },
                 { label: 'Pricing', href: '/pricing' },
               ].map((item) => (
                 <Link key={item.label} href={item.href}
@@ -252,7 +252,7 @@ export default function Homepage() {
             <button type="submit" className="h-11 px-6 rounded-r-xl text-white font-bold text-[13px] uppercase tracking-wider" style={{ background: C.primary }}>Search</button>
           </form>
           <div className="flex items-center gap-2 shrink-0">
-            <Link href="/auth/onboarding" className="h-10 px-5 rounded-xl bg-[#066CF4] text-white text-[13px] font-bold flex items-center justify-center hover:bg-[#0557b3] transition-colors">
+            <Link href="/login" className="h-10 px-5 rounded-xl bg-[#066CF4] text-white text-[13px] font-bold flex items-center justify-center hover:bg-[#0557b3] transition-colors">
               Login
             </Link>
           </div>

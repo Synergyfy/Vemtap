@@ -249,7 +249,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                     )}
                   </div>
                   <div className="flex justify-center mt-6">
-                    <Link href="/business-landing" className="text-[13px] font-bold text-[#066CF4] flex items-center gap-1 hover:underline">
+                    <Link href="/get-started" className="text-[13px] font-bold text-[#066CF4] flex items-center gap-1 hover:underline">
                       Own a business? Register your business <ArrowRight size={14} />
                     </Link>
                   </div>
@@ -268,7 +268,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                     Continue
                   </button>
                   <div className="flex justify-center mt-4">
-                    <Link href="/business-landing" className="text-[13px] font-bold text-[#066CF4] flex items-center gap-1 hover:underline">
+                    <Link href="/get-started" className="text-[13px] font-bold text-[#066CF4] flex items-center gap-1 hover:underline">
                       Own a business? Register your business <ArrowRight size={14} />
                     </Link>
                   </div>
@@ -324,7 +324,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                     Continue
                   </button>
                   <div className="flex justify-center mt-4">
-                    <Link href="/business-landing" className="text-xs font-bold text-[#066CF4] flex items-center gap-1">
+                    <Link href="/get-started" className="text-xs font-bold text-[#066CF4] flex items-center gap-1">
                       Own a business? Register your business <ArrowRight size={14} />
                     </Link>
                   </div>
@@ -350,7 +350,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                       )}
                     </div>
                     <div className="flex justify-center mt-5">
-                      <Link href="/business-landing" className="text-xs font-bold text-[#066CF4] flex items-center gap-1">
+                      <Link href="/get-started" className="text-xs font-bold text-[#066CF4] flex items-center gap-1">
                         Own a business? Register your business <ArrowRight size={14} />
                       </Link>
                     </div>

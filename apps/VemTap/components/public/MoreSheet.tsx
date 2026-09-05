@@ -12,8 +12,8 @@ interface MoreSheetProps {
 
 const items = [
   { label: 'Pricing', href: '/pricing', icon: CreditCard },
-  { label: 'Sign In', href: '/auth/onboarding', icon: LogIn },
-  { label: 'Sign Up', href: '/auth/onboarding', icon: UserPlus },
+  { label: 'Sign In', href: '/login', icon: LogIn },
+  { label: 'Sign Up', href: '/get-started', icon: UserPlus },
   { label: 'Help Center', href: '#', icon: HelpCircle },
   { label: 'Terms of Service', href: '#', icon: FileText },
   { label: 'Privacy Policy', href: '#', icon: Shield },
