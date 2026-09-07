@@ -170,7 +170,7 @@ export default function DealBusinessPreviewPage() {
                         image: offer.mainImage || '',
                         dealPrice,
                         originalPrice,
-                        discountLabel: offer.discountPercent ? `${offer.discountPercent}% OFF` : null,
+                        discountLabel: offer.discountPercent ? `${offer.discountPercent}% OFF` : '',
                         slug,
                     }}
                 />
