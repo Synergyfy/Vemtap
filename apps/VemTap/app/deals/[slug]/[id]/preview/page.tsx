@@ -80,8 +80,8 @@ export default function DealBusinessPreviewPage() {
                 <div className="bg-white rounded-2xl shadow-[0_2px_16px_rgba(0,0,0,0.06)] p-4">
                     <div className="flex items-center gap-3 mb-3">
                         <div className="w-14 h-14 rounded-xl bg-[#eef2f7] flex items-center justify-center overflow-hidden shrink-0">
-                            {business?.logoUrl ? (
-                                <img src={business.logoUrl} alt={businessName} className="w-full h-full object-cover" />
+                            {business?.logo ? (
+                                <img src={business.logo} alt={businessName} className="w-full h-full object-cover" />
                             ) : (
                                 <span className="material-symbols-outlined text-[#0055c4]" style={{ fontSize: 28 }}>storefront</span>
                             )}

@@ -15,6 +15,8 @@ export interface DealBusiness {
     phone?: string;
     email?: string;
     website?: string;
+    latitude?: number;
+    longitude?: number;
 }
 
 export interface DealHours {
