@@ -14,7 +14,7 @@ export function ProductCardSkeleton() {
 
 export function ProductDetailSkeleton() {
     return (
-        <div className="animate-pulse space-y-8 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="animate-pulse space-y-8 vemtap-container py-8">
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
                 <div className="lg:col-span-7 space-y-4">
                     <Skeleton className="aspect-square w-full rounded-2xl" />

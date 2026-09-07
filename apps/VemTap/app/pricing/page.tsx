@@ -63,7 +63,7 @@ export default function PricingPage() {
 
             <main className="pt-24 md:pt-32 pb-20 px-6">
                 {/* HERO SECTION */}
-                <section className="container mx-auto max-w-4xl text-center mb-16">
+                <section className="vemtap-container text-center mb-16">
                     <Badge className={badgeClass + " mb-5"}>
                         Transparent Pricing
                     </Badge>
@@ -102,7 +102,7 @@ export default function PricingPage() {
                 </section>
 
                 {/* PRICING CARDS */}
-                <section className="container mx-auto max-w-7xl mb-20">
+                <section className="vemtap-container mb-20">
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
                         {standardPlans.map((plan, index) => {
                             const highlight = plan.isPopular ?? false;
@@ -204,7 +204,7 @@ export default function PricingPage() {
                 <PlanComparisonTable plans={standardPlans} />
 
                 {/* ENTERPRISE CTA */}
-                <section className="container mx-auto max-w-5xl mb-20">
+                <section className="vemtap-container mb-20">
                     <div className="bg-gray-900 rounded-[36px] p-8 md:p-14 text-white flex flex-col md:flex-row items-center justify-between gap-10 relative overflow-hidden">
                         <div className="absolute top-0 right-0 w-64 h-64 bg-[#066CF4]/10 rounded-full blur-3xl" />
                         <div className="max-w-xl text-center md:text-left relative z-10">
@@ -220,7 +220,7 @@ export default function PricingPage() {
                 </section>
 
                 {/* FAQ SECTION */}
-                <section className="container mx-auto max-w-3xl">
+                <section className="vemtap-container">
                     <h2 className="text-2xl md:text-4xl lg:text-5xl font-bold text-gray-900 text-center mb-12 tracking-tight">Got Questions?</h2>
                     <div className="space-y-3">
                         {faqs.map((faq, index) => (

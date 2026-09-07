@@ -16,8 +16,8 @@ const solutions = [
 export default function SolutionSection() {
     return (
         <section className="py-24 bg-gray-50/50">
-            <div className="container mx-auto px-6">
-                <div className="max-w-3xl mx-auto text-center mb-16">
+            <div className="vemtap-container">
+                <div className="vemtap-container text-center mb-16">
                     <h2 className="text-3xl md:text-5xl font-display font-black text-text-main tracking-tight mb-6">
                         Vemtap Solves This
                     </h2>

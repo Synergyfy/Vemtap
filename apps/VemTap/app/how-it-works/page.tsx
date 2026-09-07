@@ -516,7 +516,7 @@ export default function HowItWorksPage() {
 
             <main className="pt-24 md:pt-32 pb-20 px-6">
                 {/* HERO */}
-                <section className="container mx-auto max-w-3xl text-center mb-12 md:mb-16">
+                <section className="vemtap-container text-center mb-12 md:mb-16">
                     <div className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-primary/10 rounded-full mb-5">
                         <Sparkles size={12} className="text-primary" />
                         <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-primary">
@@ -536,7 +536,7 @@ export default function HowItWorksPage() {
                 </section>
 
                 {/* GUIDE SECTIONS */}
-                <section className="container mx-auto max-w-3xl">
+                <section className="vemtap-container">
                     <div className="flex items-center gap-4 mb-6">
                         <div className="h-px flex-1 bg-gray-100" />
                         <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-text-secondary opacity-50">
@@ -603,7 +603,7 @@ export default function HowItWorksPage() {
                 </section>
 
                 {/* FINAL CTA */}
-                <section className="container mx-auto max-w-4xl mt-16 md:mt-20">
+                <section className="vemtap-container mt-16 md:mt-20">
                     <div className="relative overflow-hidden rounded-[2rem] bg-gray-50 border border-gray-100 px-6 py-12 md:px-14 md:py-16 text-center">
                         <div className="absolute -top-24 right-0 w-72 h-72 bg-primary/5 rounded-full blur-[90px] pointer-events-none" />
                         <div className="absolute -bottom-24 left-0 w-72 h-72 bg-blue-400/5 rounded-full blur-[90px] pointer-events-none" />

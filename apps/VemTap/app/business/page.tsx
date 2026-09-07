@@ -29,7 +29,7 @@ export default function BusinessLandingPage() {
         {/* HERO SECTION */}
         <section className="relative overflow-hidden pt-14 pb-20 px-6">
           <div className="absolute top-0 right-0 w-[50%] h-[100%] bg-blue-50/50 rounded-bl-[100px] -z-10" />
-          <div className="container mx-auto max-w-6xl grid grid-cols-1 lg:grid-cols-2 gap-14 lg:gap-16 items-center">
+          <div className="vemtap-container grid grid-cols-1 lg:grid-cols-2 gap-14 lg:gap-16 items-center">
             <motion.div 
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
@@ -97,7 +97,7 @@ export default function BusinessLandingPage() {
 
         {/* PROBLEM SECTION */}
         <section className="py-14 md:py-18 px-6">
-          <div className="container mx-auto max-w-5xl">
+          <div className="vemtap-container">
             <div className="text-center mb-10">
               <h2 className="text-2xl md:text-4xl lg:text-5xl font-bold text-gray-900 leading-tight tracking-tight">Most Businesses Lose <br /> Customers Every Day</h2>
               <div className="h-1 w-16 bg-red-500 rounded-full mx-auto mt-5" />
@@ -132,7 +132,7 @@ export default function BusinessLandingPage() {
           <div className="absolute top-0 right-0 w-80 h-80 bg-white/10 rounded-full -mr-40 -mt-40 blur-3xl" />
           <div className="absolute bottom-0 left-0 w-80 h-80 bg-black/10 rounded-full -ml-40 -mb-40 blur-3xl" />
           
-          <div className="container mx-auto max-w-6xl relative z-10 px-4">
+          <div className="vemtap-container relative z-10 px-4">
             <div className="text-center mb-10">
               <Badge className="bg-white/15 text-white border-none px-3.5 py-1.5 font-bold uppercase tracking-wider mb-5">
                 The Vemtap Solution
@@ -163,7 +163,7 @@ export default function BusinessLandingPage() {
 
         {/* HOW IT WORKS PREVIEW */}
         <section className="py-14 md:py-18 px-6 overflow-hidden">
-          <div className="container mx-auto max-w-6xl">
+          <div className="vemtap-container">
             <div className="text-center mb-10">
               <h2 className="text-2xl md:text-4xl lg:text-5xl font-bold text-gray-900 tracking-tight mb-3">How Vemtap Works</h2>
               <p className="text-base font-normal text-gray-500">6 simple steps to transform your physical space.</p>
@@ -204,7 +204,7 @@ export default function BusinessLandingPage() {
 
         {/* BENEFITS SECTION */}
         <section className="py-14 md:py-18 px-6 bg-gray-50">
-          <div className="container mx-auto max-w-6xl">
+          <div className="vemtap-container">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-12 items-center">
               <div className="lg:col-span-1">
                 <Badge className={badgeClass + " mb-5"}>
@@ -253,7 +253,7 @@ export default function BusinessLandingPage() {
 
         {/* DISCOVERY NETWORK SECTION */}
         <section className="py-14 md:py-18 px-6">
-          <div className="container mx-auto max-w-6xl">
+          <div className="vemtap-container">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center bg-[#066CF4]/5 rounded-[40px] p-8 md:p-16 border border-[#066CF4]/10">
               <div>
                 <Badge className="bg-[#066CF4] text-white border-none px-3.5 py-1.5 font-bold uppercase tracking-wider mb-5">
@@ -300,7 +300,7 @@ export default function BusinessLandingPage() {
 
         {/* TESTIMONIALS SECTION */}
         <section className="py-14 md:py-18 px-6">
-          <div className="container mx-auto max-w-6xl text-center">
+          <div className="vemtap-container text-center">
             <h2 className="text-2xl md:text-4xl lg:text-5xl font-bold text-gray-900 tracking-tight mb-8">What Business Owners Say</h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
               {[1, 2, 3].map(i => (
@@ -326,7 +326,7 @@ export default function BusinessLandingPage() {
 
         {/* FINAL CTA SECTION */}
         <section id="cta" className="py-14 md:py-18 px-6">
-          <div className="container mx-auto max-w-4xl text-center">
+          <div className="vemtap-container text-center">
             <div className="size-16 rounded-2xl bg-[#066CF4] text-white flex items-center justify-center mx-auto mb-8 shadow-xl shadow-blue-500/30">
               <Rocket size={32} />
             </div>

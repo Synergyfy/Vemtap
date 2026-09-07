@@ -370,6 +370,61 @@ body {
     }
 }
 
+/* ═══════════════════════════════════════════════════════════════════════════════
+   VEMTAP PUBLIC FRONTEND LAYOUT STANDARD
+
+   Public-facing VEMTAP pages use a full-width responsive shell with a 1440px
+   maximum content container. Do NOT replace this with a narrow global max-width.
+   Mobile-first means responsive adaptation, NOT a narrow desktop layout.
+
+   - Outer page sections may be 100% wide (headers, category bars, banners,
+     backgrounds, footers).
+   - Inner content must use `.vemtap-container` (or the equivalent Tailwind
+     token) so it is capped at 1440px and centered with responsive gutters.
+   - Gutters:  16px < 768px   ·   20px 768–1023px   ·   24px >= 1024px
+   - If a future page needs a deliberately narrower content area (e.g. a
+     long-form article) it must opt into a narrow component explicitly and must
+     NEVER change this global rule or add a new competing container width.
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+/* VEMTAP standard layout design tokens */
+:root {
+    --layout-content-max: 1440px;   /* maximum content width */
+    --layout-page-width: 100%;      /* outer shell width */
+    --layout-gutter-mobile: 16px;
+    --layout-gutter-tablet: 20px;
+    --layout-gutter-desktop: 24px;
+    --layout-header-h: 64px;        /* desktop header height */
+    --layout-catnav-h: 42px;        /* category navigation height */
+    --layout-sidebar-w: 260px;      /* desktop marketplace sidebar */
+    --layout-sidebar-gap: 24px;     /* sidebar / main-content gap */
+    --layout-grid-gap: 16px;        /* deal/product card grid gap */
+}
+
+/* Single source of truth for the VEMTAP content container */
+.vemtap-container {
+    width: var(--layout-page-width);
+    max-width: var(--layout-content-max);
+    margin-left: auto;
+    margin-right: auto;
+    padding-left: var(--layout-gutter-mobile);
+    padding-right: var(--layout-gutter-mobile);
+}
+
+@media (min-width: 768px) {
+    .vemtap-container {
+        padding-left: var(--layout-gutter-tablet);
+        padding-right: var(--layout-gutter-tablet);
+    }
+}
+
+@media (min-width: 1024px) {
+    .vemtap-container {
+        padding-left: var(--layout-gutter-desktop);
+        padding-right: var(--layout-gutter-desktop);
+    }
+}
+
 /* Enforce Geist / Inter font family strictly in the dashboard while respecting typography weights */
 .dashboard-typography-override,
 .dashboard-typography-override * {

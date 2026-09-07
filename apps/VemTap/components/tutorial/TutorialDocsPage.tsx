@@ -152,7 +152,7 @@ export default function TutorialDocsPage({ title = 'Knowledge Base' }: { title?:
     if (!docs.length) {
         return (
             <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
+                <div className="vemtap-container py-8">
                     <div className="rounded-2xl border border-gray-200 bg-white shadow-sm p-12 text-center">
                         <BookOpen size={32} className="mx-auto text-gray-300 mb-3" />
                         <p className="text-sm font-semibold text-gray-500">The Knowledge Base is empty.</p>
@@ -171,7 +171,7 @@ export default function TutorialDocsPage({ title = 'Knowledge Base' }: { title?:
 
     return (
         <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
+            <div className="vemtap-container py-8">
                 {/* Header */}
                 <header className="rounded-2xl border border-gray-200 bg-white shadow-sm p-6 sm:p-8 mb-6">
                     <div className="flex items-center gap-3 mb-3">

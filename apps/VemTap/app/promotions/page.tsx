@@ -156,7 +156,7 @@ export default function PromotionsPage() {
                 <>
                     {/* Trending Today Section */}
                     <section className="pt-24 md:pt-28 pb-6 px-4 md:px-8">
-                        <div className="max-w-6xl mx-auto space-y-6">
+                        <div className="vemtap-container space-y-6">
                             {/* Header with location */}
                             <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
                                 <div className="space-y-1">
@@ -269,7 +269,7 @@ export default function PromotionsPage() {
 
                     {/* Deals Grid */}
                     <section className="px-4 md:px-8 pb-20">
-                        <div className="max-w-6xl mx-auto">
+                        <div className="vemtap-container">
                             {filteredPromotions.length > 0 ? (
                                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
                                     {filteredPromotions.map((promo, i) => (

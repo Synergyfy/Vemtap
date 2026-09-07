@@ -13,7 +13,7 @@ import SearchModal from '@/components/home/SearchModal';
 import QRScanner from '@/components/home/QRScanner';
 import DealEngagementBar from '@/components/deals/DealEngagementBar';
 import PublicBottomNav from '@/components/public/PublicBottomNav';
-import ConsumerFooter from '@/components/public/ConsumerFooter';
+import Footer from '@/components/layout/Footer';
 import OnboardingAuthModal from '@/components/public/OnboardingAuthModal';
 import { useBannerStore } from '@/store/useBannerStore';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -391,7 +391,7 @@ export default function Homepage() {
   return (
     <div className="min-h-screen flex flex-col font-sans" style={{ background: C.bg, color: C.onSurface }}>
       <header className="sticky top-0 z-40 w-full" style={{ background: '#ffffff', borderBottom: `1px solid ${C.outlineVariant}` }}>
-        <div className="hidden md:flex items-center justify-between px-6 h-[64px] max-w-[1400px] mx-auto gap-6">
+        <div className="vemtap-container hidden md:flex items-center justify-between h-[64px] gap-6">
           <div className="flex items-center gap-6 shrink-0">
             <Link href="/" className="flex items-center gap-2">
               <img src="/VEMTAP_PNG.png" alt="VemTap" className="h-10 w-auto" />
@@ -441,8 +441,8 @@ export default function Homepage() {
           </div>
         </div>
         <div className="hidden md:block border-t" style={{ borderColor: C.outlineVariant }}>
-          <div className="max-w-[1400px] mx-auto px-6 flex items-center gap-1 h-[44px] overflow-x-auto no-scrollbar">
-            {[{ label: 'All Deals', icon: 'local_offer' }, { label: 'Food & Dining', icon: 'restaurant' }, { label: 'Beauty & Spa', icon: 'spa' },
+          <div className="vemtap-container flex items-center gap-1 h-[42px] overflow-x-auto no-scrollbar">
+            {[{ label: 'Food & Dining', icon: 'restaurant' }, { label: 'Beauty & Spa', icon: 'spa' },
               { label: 'Fashion', icon: 'checkroom' }, { label: 'Electronics', icon: 'devices' }, { label: 'Fitness', icon: 'fitness_center' },
               { label: 'Home & Office', icon: 'chair' }, { label: 'Automotive', icon: 'directions_car' },
             ].map((cat) => (
@@ -495,8 +495,8 @@ export default function Homepage() {
         </div>
       </header>
 
-      <main className="max-w-[1400px] mx-auto flex-1 pb-4">
-        <section className="px-4 md:px-6 pt-5">
+      <main className="vemtap-container flex-1 pb-4">
+        <section className="pt-5">
           <div className="relative rounded-2xl overflow-hidden group" style={{ minHeight: 200 }}>
             {activeBannerSlides.map((slide, i) => (
               <div
@@ -579,7 +579,7 @@ export default function Homepage() {
         </section>
 
         {dealsList.length > 0 && (
-          <section className="px-4 md:px-6 pt-6">
+          <section className="pt-6">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-[16px] md:text-[20px] font-bold" style={{ color: C.onSurface }}>Featured Deals</h2>
               <Link href="/deals" className="text-[13px] font-semibold" style={{ color: C.primary }}>View all</Link>
@@ -589,7 +589,7 @@ export default function Homepage() {
         )}
 
         {trendingDeals.length > 0 && (
-          <section className="px-4 md:px-6 pt-6">
+          <section className="pt-6">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
                 <span className="material-symbols-outlined text-[20px]" style={{ color: C.primary }}>trending_up</span>
@@ -602,7 +602,7 @@ export default function Homepage() {
         )}
 
         {newDeals.length > 0 && (
-          <section className="px-4 md:px-6 pt-6">
+          <section className="pt-6">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
                 <span className="material-symbols-outlined text-[20px]" style={{ color: '#16a34a' }}>fiber_new</span>
@@ -614,7 +614,7 @@ export default function Homepage() {
           </section>
         )}
 
-        <section className="px-4 md:px-6 pt-6 pb-4">
+        <section className="pt-6 pb-4">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-[16px] md:text-[20px] font-bold uppercase tracking-wider" style={{ color: C.onSurface }}>Popular Businesses</h2>
             {businessesData?.businesses && businessesData.businesses.length > 0 && (
@@ -674,7 +674,7 @@ export default function Homepage() {
         </section>
       </main>
 
-      <ConsumerFooter />
+      <Footer />
 
       <PublicBottomNav />
       <OnboardingAuthModal

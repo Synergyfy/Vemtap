@@ -308,7 +308,7 @@ export default function ClusterDiscoveryPage() {
 
             {/* Header */}
             <section className="bg-white border-b border-gray-100">
-                <div className="max-w-7xl mx-auto px-4 md:px-8 pt-28 pb-8 md:pt-32 md:pb-10">
+                <div className="vemtap-container pt-28 pb-8 md:pt-32 md:pb-10">
                     <button
                         onClick={() => router.push('/')}
                         className="inline-flex items-center gap-1.5 text-xs font-bold text-gray-400 hover:text-gray-600 mb-5 transition-colors"
@@ -361,7 +361,7 @@ export default function ClusterDiscoveryPage() {
 
             {/* Filters bar */}
             <section className="sticky top-0 z-30 bg-white/85 backdrop-blur-xl border-b border-black/[0.04]">
-                <div className="max-w-7xl mx-auto px-4 md:px-8 py-3">
+                <div className="vemtap-container py-3">
                     <div className="flex flex-col sm:flex-row gap-2.5">
                         <div className="relative flex-1">
                             <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -416,7 +416,7 @@ export default function ClusterDiscoveryPage() {
             </section>
 
             {/* Results */}
-            <section className="max-w-7xl mx-auto px-4 md:px-8 py-8 pb-20">
+            <section className="vemtap-container py-8 pb-20">
                 {dealsQ.isLoading ? (
                     <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-5">
                         {Array.from({ length: 8 }).map((_, i) => (
