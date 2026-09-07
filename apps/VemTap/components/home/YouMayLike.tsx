@@ -155,7 +155,7 @@ export default function YouMayLike() {
 
   const items: RecommendationItem[] = useMock
     ? MOCK_RECOMMENDATIONS
-    : offers.map((offer: { id: string; name: string; description?: string; business?: { categoryName?: string }; businessId?: string; branch?: { name?: string; uniqueCode?: string } }) => ({
+    : offers.map((offer) => ({
         id: offer.id,
         type: 'deal' as const,
         title: offer.name,
@@ -164,12 +164,12 @@ export default function YouMayLike() {
         location: offer.business?.address || '',
         discountPercent: offer.discountPercent,
         originalPrice: offer.originalPrice,
-        dealPrice: offer.dealPrice,
+        dealPrice: offer.dealPrice != null ? Number(offer.dealPrice) : undefined,
         imageColor: '#066CF4',
         businessName: offer.branch?.name || offer.branchName || offer.business?.name || 'Business',
         businessSlug: offer.business?.slug || '',
         cta: 'View Deal',
-        viewCount: offer.viewCount || 0,
+        viewCount: offer.views || 0,
         dealTag: offer.discountPercent ? `${offer.discountPercent}% OFF` : undefined,
       }));
 

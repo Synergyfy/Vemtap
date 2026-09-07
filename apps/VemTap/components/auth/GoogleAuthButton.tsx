@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { GoogleLogin } from '@react-oauth/google';
+import { GoogleLogin, type CredentialResponse } from '@react-oauth/google';
 import { useGoogleLogin as useBackendGoogleLogin } from '@/services/auth/hooks';
 import { useAuthStore } from '@/store/useAuthStore';
 import Spinner from '@/components/ui/Spinner';
@@ -24,7 +24,7 @@ export const GoogleAuthButton: React.FC<GoogleAuthButtonProps> = ({
     const { login } = useAuthStore();
     const [isProcessing, setIsProcessing] = useState(false);
 
-    const handleGoogleSuccess = async (credentialResponse: Record<string, string>) => {
+    const handleGoogleSuccess = async (credentialResponse: CredentialResponse) => {
         if (!credentialResponse?.credential) {
             toast.error('Google authentication failed — no credential received');
             return;
