@@ -85,7 +85,7 @@ function mapDeals(raw: ReturnType<typeof offerToHomeDeal>[], fallback: { image?:
     badge: d.discountLabel || (d.discountPercent ? `${d.discountPercent}% OFF` : 'DEAL'),
     time: d.endDate ? 'Limited Time' : 'Today',
     price: d.dealPrice != null ? (Number(d.dealPrice) === 0 ? 'FREE' : formatNaira(d.dealPrice)) : null,
-    image: d.image || fallback[idx % fallback.length]?.image || fallback[0].image,
+    image: d.image || fallback[idx % fallback.length]?.image || fallback[0].image || '',
     href: d.href,
     description: d.description || '',
     businessName: d.businessName || d.title,
