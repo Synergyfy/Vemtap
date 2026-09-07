@@ -400,7 +400,7 @@ export const adminBundleDiscountsApi = {
 // BANNERS (Admin)
 // =====================
 export const adminBannersApi = {
-    list: (placement?: 'business' | 'customer' | 'homepage') =>
+    list: (placement?: 'business' | 'customer' | 'homepage' | 'deals-page') =>
         api.get('/admin/banners', placement ? { params: { placement } } : undefined),
     get: (id: string) => api.get(`/admin/banners/${id}`),
     create: (data: any) => api.post('/admin/banners', data),
