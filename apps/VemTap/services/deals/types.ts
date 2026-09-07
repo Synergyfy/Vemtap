@@ -11,6 +11,7 @@ export interface DealBusiness {
     hours?: DealHours[];
     rating?: number;
     totalReviews?: number;
+    isVerified?: boolean;
     phone?: string;
     email?: string;
     website?: string;

@@ -54,14 +54,14 @@ export default function HamburgerMenu() {
             </nav>
             <div className="px-4 pb-6 space-y-2">
               <Link
-                href="/auth/onboarding"
+                href="/login"
                 onClick={() => setIsOpen(false)}
                 className="block w-full text-center py-3 rounded-xl bg-[#0055c4] text-white font-bold text-[13px] uppercase tracking-wider hover:bg-[#004bb5] transition-colors"
               >
                 Sign Up
               </Link>
               <Link
-                href="/auth/onboarding"
+                href="/login"
                 onClick={() => setIsOpen(false)}
                 className="block w-full text-center py-3 rounded-xl border border-gray-200 text-gray-700 font-bold text-[13px] uppercase tracking-wider hover:bg-gray-50 transition-colors"
               >

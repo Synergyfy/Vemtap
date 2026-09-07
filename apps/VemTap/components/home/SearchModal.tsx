@@ -2,9 +2,10 @@
 
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, X, MapPin, Store, Tag, ArrowRight, Clock } from 'lucide-react';
+import { Search, X, MapPin, Tag, ArrowRight, Clock, QrCode, ImagePlus } from 'lucide-react';
 import Link from 'next/link';
 import { usePublicOffers } from '@/services/deals/hooks';
+import type { DealOffer } from '@/services/deals/types';
 import { HOME_CATEGORIES } from './mockData';
 
 interface SearchModalProps {
@@ -29,13 +30,13 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
   const inputRef = useRef<HTMLInputElement>(null);
 
   const { data: dealsData } = usePublicOffers({ search: query.trim() || undefined, limit: 8 });
-  const offers = dealsData?.data || [];
+  const offers = useMemo(() => dealsData?.data || [], [dealsData]);
 
   useEffect(() => {
     if (isOpen) {
       setTimeout(() => inputRef.current?.focus(), 100);
     } else {
-      setQuery('');
+      setTimeout(() => setQuery(''), 0);
     }
   }, [isOpen]);
 
@@ -44,7 +45,7 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
     const q = query.toLowerCase();
     const found: SearchResult[] = [];
 
-    offers.forEach((offer: any) => {
+    offers.forEach((offer: DealOffer) => {
       const name = offer.name || '';
       const bizName = offer.business?.name || '';
       const catName = offer.business?.categoryName || '';
@@ -107,7 +108,7 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
             onClick={(e) => e.stopPropagation()}
             className="w-full max-w-xl bg-white rounded-2xl shadow-2xl overflow-hidden"
           >
-            <div className="flex items-center gap-3 px-5 h-14 border-b border-gray-100">
+            <div className="flex items-center gap-2 px-5 h-14 border-b border-gray-100">
               <Search size={18} className="text-gray-400 shrink-0" />
               <input
                 ref={inputRef}
@@ -117,6 +118,14 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
                 placeholder="Search deals, businesses, categories..."
                 className="flex-1 text-sm font-medium text-gray-900 placeholder:text-gray-400 focus:outline-none bg-transparent"
               />
+              <div className="flex items-center gap-0.5 shrink-0">
+                <button type="button" title="Scan QR code" className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors">
+                  <QrCode size={18} />
+                </button>
+                <button type="button" title="Search by image" className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors">
+                  <ImagePlus size={18} />
+                </button>
+              </div>
               <button
                 onClick={onClose}
                 className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200 transition-colors shrink-0"

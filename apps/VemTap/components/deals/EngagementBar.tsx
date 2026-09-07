@@ -49,7 +49,7 @@ export default function EngagementBar({
         if (onCommentClick) {
             onCommentClick();
         } else {
-            router.push(`/promotions/${offerId}/reviews`);
+            router.push(`${dealUrl}/reviews`);
         }
     };
 
