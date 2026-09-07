@@ -14,9 +14,6 @@ import { useAuthStore } from '@/store/useAuthStore';
 import { TapJourneyContainer } from '@/components/visitor/TapJourneyContainer';
 import { useTrackReferralVisit } from '@/services/affiliates/hooks';
 import { normalizeDayHours } from '@/lib/businessHours';
-import { formatNaira } from '@/components/home/mappers';
-import DealEngagementBar from '@/components/deals/DealEngagementBar';
-import ImageGallery from '@/components/ui/ImageGallery';
 import { notify } from '@/lib/notify';
 
 interface BusinessPublicPageClientProps {

@@ -65,12 +65,12 @@ export default function BusinessCatalogPage() {
         if (searchQuery) {
             const q = searchQuery.toLowerCase();
             result = result.filter((item) =>
-                ((item.name as string) || '').toLowerCase().includes(q) ||
-                ((item.shortDescription as string) || '').toLowerCase().includes(q)
+                item.name.toLowerCase().includes(q) ||
+                item.shortDescription.toLowerCase().includes(q)
             );
         }
         if (selectedCategory) {
-            result = result.filter((item) => (item.categoryId as string) === selectedCategory);
+            result = result.filter((item) => item.categoryId === selectedCategory);
         }
         return result;
     }, [items, searchQuery, selectedCategory]);
@@ -79,7 +79,7 @@ export default function BusinessCatalogPage() {
     const cartTotal = cart?.total || 0;
     const cartItemCount = cart?.itemCount || 0;
 
-    const handleAddToCart = (item: Record<string, unknown>) => {
+    const handleAddToCart = (item: { id: string | number }) => {
         if (!isAuthenticated) {
             setShowAuth(true);
             return;
@@ -234,12 +234,12 @@ export default function BusinessCatalogPage() {
                     </div>
                 ) : (
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                        {filteredItems.map((item: Record<string, unknown>) => {
-                            const itemId = (item.id as string) || '';
-                            const name = (item.name as string) || 'Item';
-                            const price = (item.price as number) || 0;
-                            const image = (item.image as string) || (item.mainImage as string) || '';
-                            const desc = (item.shortDescription as string) || '';
+                        {filteredItems.map((item) => {
+                            const itemId = item.id || '';
+                            const name = item.name || 'Item';
+                            const price = item.price || 0;
+                            const image = item.mainImage || '';
+                            const desc = item.shortDescription || '';
                             const qtyInCart = getItemQuantityInCart(itemId);
 
                             return (

@@ -38,7 +38,7 @@ export default function BusinessDealsPage() {
 
     const { data: apiDeals, isLoading: apiLoading } = useCatalogueOffersPublic(branchId, {
         search: searchQuery || undefined,
-    }, { enabled: !!branchId });
+    });
 
     const deals = useMemo(() => {
         return apiDeals?.data || [];
@@ -88,18 +88,18 @@ export default function BusinessDealsPage() {
                         </div>
                     ) : (
                         <section className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            {deals.map((deal: Record<string, unknown>) => {
-                                const dealId = (deal.id as string) || '';
-                                const title = (deal.title as string) || (deal.name as string) || 'Deal';
-                                const description = (deal.description as string) || '';
-                                const dealPrice = (deal.dealPrice as number) ?? (deal.calculatedPrice as number) ?? (deal.price as number) ?? 0;
-                                const originalPrice = (deal.originalPrice as number) ?? (deal.price as number) ?? 0;
-                                const discountPercent = (deal.discountPercent as number) ?? (originalPrice > dealPrice ? Math.round(((originalPrice - dealPrice) / originalPrice) * 100) : null);
-                                const badge = (deal.badge as string) || (deal.discountLabel as string) || (discountPercent ? `${discountPercent}% OFF` : null);
-                                const image = (deal.image as string) || (deal.mainImage as string) || 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=600&h=400&fit=crop';
-                                const time = (deal.time as string) || 'Limited time';
-                                const href = (deal.href as string) || `/deals/${slug}/${dealId}/preview`;
-                                const businessNameStr = (deal.businessName as string) || businessName;
+                            {deals.map((deal) => {
+                                const dealId = deal.id || '';
+                                const title = deal.name || 'Deal';
+                                const description = deal.description || '';
+                                const dealPrice = deal.calculatedPrice ?? 0;
+                                const discountPercent = deal.pricingType === 'percentage_discount' && deal.discountValue
+                                    ? deal.discountValue
+                                    : null;
+                                const badge = discountPercent ? `${discountPercent}% OFF` : null;
+                                const image = deal.mainImage || 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=600&h=400&fit=crop';
+                                const time = deal.endDate ? `Ends ${new Date(deal.endDate).toLocaleDateString()}` : 'Limited time';
+                                const href = `/deals/${slug}/${dealId}/preview`;
 
                                 return (
                                     <div
@@ -124,11 +124,6 @@ export default function BusinessDealsPage() {
                                                     <span className="text-xl font-bold text-primary">
                                                         {dealPrice === 0 ? 'FREE' : formatDealPrice(dealPrice)}
                                                     </span>
-                                                    {originalPrice > dealPrice && (
-                                                        <span className="text-sm text-outline line-through mb-0.5">
-                                                            {formatDealPrice(originalPrice)}
-                                                        </span>
-                                                    )}
                                                 </div>
                                                 <div className="flex items-center text-on-surface-variant pt-2 border-t border-outline-variant">
                                                     <Clock size={14} className="mr-1" />
@@ -142,7 +137,7 @@ export default function BusinessDealsPage() {
                                                 offerTitle={title}
                                                 offerDescription={description}
                                                 dealUrl={href}
-                                                businessName={businessNameStr}
+                                                businessName={businessName}
                                                 compact
                                             />
                                         </div>
