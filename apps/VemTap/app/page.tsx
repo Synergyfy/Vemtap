@@ -17,7 +17,8 @@ import ConsumerFooter from '@/components/public/ConsumerFooter';
 import OnboardingAuthModal from '@/components/public/OnboardingAuthModal';
 import { useBannerStore } from '@/store/useBannerStore';
 import { useAuthStore } from '@/store/useAuthStore';
-import { DealCardSkeleton, BusinessCardSkeleton } from '@/components/home/Skeletons';
+import { BusinessCardSkeleton } from '@/components/home/Skeletons';
+import { Skeleton } from '@/components/ui/skeleton';
 import { offerToHomeDeal, formatNaira } from '@/components/home/mappers';
 import type { PublicBusiness as DealPublicBusiness } from '@/services/deals/types';
 
@@ -97,7 +98,7 @@ function DealCard({ deal }: { deal: Deal }) {
   const badgeKey = deal.badge.includes('OFF') ? 'DEAL' : deal.badge;
   return (
     <div
-      className="rounded-xl overflow-hidden shadow-sm relative group cursor-pointer transition-all hover:shadow-lg hover:-translate-y-0.5 flex flex-col"
+      className="w-full min-w-0 rounded-xl overflow-hidden shadow-sm relative group cursor-pointer transition-all hover:shadow-lg hover:-translate-y-0.5 flex flex-col"
       style={{ background: '#ffffff', border: `1px solid ${C.outlineVariant}` }}
     >
       <Link href={deal.href} className="block flex-1">
@@ -123,25 +124,31 @@ function DealCard({ deal }: { deal: Deal }) {
   );
 }
 
+function GridDealCardSkeleton() {
+  return (
+    <div className="w-full min-w-0 rounded-xl border border-gray-100 bg-white overflow-hidden">
+      <Skeleton className="w-full h-[120px] md:h-[160px] rounded-none" />
+      <div className="p-3 space-y-2.5">
+        <Skeleton className="h-4 w-20 rounded-full" />
+        <Skeleton className="h-5 w-3/4" />
+        <Skeleton className="h-3 w-1/2" />
+        <Skeleton className="h-8 w-full rounded-lg" />
+      </div>
+    </div>
+  );
+}
+
 function DealGrid({ deals, loading }: { deals: Deal[]; loading: boolean }) {
   if (loading) {
     return (
-      <div className="flex gap-3 md:gap-4 overflow-x-auto no-scrollbar snap-x snap-mandatory -mx-4 px-4 md:mx-0 md:px-0 pb-2">
-        {Array.from({ length: 6 }).map((_, i) => (
-          <div key={i} className="shrink-0 snap-start">
-            <DealCardSkeleton />
-          </div>
-        ))}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:gap-4 lg:grid-cols-5">
+        {Array.from({ length: 6 }).map((_, i) => <GridDealCardSkeleton key={i} />)}
       </div>
     );
   }
   return (
-    <div className="flex gap-3 md:gap-4 overflow-x-auto no-scrollbar snap-x snap-mandatory -mx-4 px-4 md:mx-0 md:px-0 pb-2">
-      {deals.map((deal, i) => (
-        <div key={deal.id || i} className="w-[250px] sm:w-[270px] md:w-[300px] shrink-0 snap-start">
-          <DealCard deal={deal} />
-        </div>
-      ))}
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:gap-4 lg:grid-cols-5">
+      {deals.map((deal, i) => <DealCard key={deal.id || i} deal={deal} />)}
     </div>
   );
 }
