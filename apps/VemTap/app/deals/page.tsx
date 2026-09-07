@@ -505,7 +505,7 @@ function DealsPageInner() {
                         All Categories
                       </button>
                       {categoriesList.map((cat) => (
-                        <button key={cat.id} onClick={() => { setSelectedCategory(cat.slug); setShowCategoryDropdown(false); }} className="w-full flex items-center gap-2 px-3 py-2.5 text-[13px] font-medium text-left" style={{ background: selectedCategory === cat.slug ? `${C.primary}10` : '#ffffff', color: selectedCategory === cat.slug ? C.primary : C.onSurface }}>
+                        <button key={cat.id} onClick={() => { setSelectedCategory(cat.slug ?? null); setShowCategoryDropdown(false); }} className="w-full flex items-center gap-2 px-3 py-2.5 text-[13px] font-medium text-left" style={{ background: selectedCategory === cat.slug ? `${C.primary}10` : '#ffffff', color: selectedCategory === cat.slug ? C.primary : C.onSurface }}>
                           {cat.label}
                         </button>
                       ))}
@@ -942,7 +942,7 @@ function DealsPageInner() {
                     {categoriesList.map((cat) => (
                       <button
                         key={cat.id}
-                        onClick={() => { setSelectedCategory(cat.slug); setShowCategoryDropdown(false); }}
+                        onClick={() => { setSelectedCategory(cat.slug ?? null); setShowCategoryDropdown(false); }}
                         className="w-full flex items-center gap-3 px-4 py-3 text-[14px] font-medium transition-colors text-left"
                         style={{
                           background: selectedCategory === cat.slug ? 'rgba(0, 85, 196, 0.08)' : '#ffffff',
