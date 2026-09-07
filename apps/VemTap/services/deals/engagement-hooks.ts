@@ -25,6 +25,12 @@ export const useReviewPreview = (offerId: string) =>
         enabled: !!offerId,
     });
 
+export const useSavedDeals = (page = 1, limit = 20) =>
+    useQuery({
+        queryKey: ['deals', 'saved', page, limit],
+        queryFn: () => engagementApi.getSavedDeals(page, limit),
+    });
+
 // ─── Merchant Review Management ──────────────────────────────────────────────
 
 export const useBusinessReviews = (params?: BusinessReviewsQueryParams) =>

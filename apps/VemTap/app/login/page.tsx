@@ -8,7 +8,7 @@ import { GoogleLogin, type CredentialResponse } from '@react-oauth/google';
 import { 
     Mail, Lock, Eye, EyeOff,
     ShieldCheck, 
-    Zap, AlertCircle
+    Zap, AlertCircle, ArrowLeft
 } from 'lucide-react';
 
 import Logo from '@/components/brand/Logo';
@@ -17,6 +17,7 @@ import { cn } from '@/lib/utils';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/store/useAuthStore';
 import { getFirstPermittedDashboardRoute, isRouteAllowed } from '@/lib/utils/nav-filter';
+import RegisterChoiceModal from '@/components/public/RegisterChoiceModal';
 
 const isEmail = (v: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim());
 const isPhone = (v: string) => /^[\+\d][\d\s\-\(\)]{7,20}$/.test(v.trim());
@@ -40,6 +41,7 @@ function LoginPageContent() {
     const storeLogin = useAuthStore((s) => s.login);
     const [showPassword, setShowPassword] = useState(false);
     const [isLoggingIn, setIsLoggingIn] = useState(false);
+    const [showRegister, setShowRegister] = useState(false);
     const [formData, setFormData] = useState({
         email: '',
         password: '',
@@ -187,6 +189,7 @@ function LoginPageContent() {
     };
 
     return (
+        <>
         <div className="min-h-screen bg-white flex flex-col lg:flex-row overflow-hidden">
             {/* LEFT COLUMN: Visual Branding */}
             <div className="hidden lg:flex lg:w-[40%] bg-[#066CF4] items-center justify-center p-20 relative overflow-hidden">
@@ -224,6 +227,15 @@ function LoginPageContent() {
             {/* RIGHT COLUMN: Minimal Login Form */}
             <div className="flex-1 flex flex-col justify-center p-6 md:p-12 lg:p-24 bg-white relative">
                 <div className="max-w-md w-full mx-auto">
+                    {/* Back Button */}
+                    <button
+                        onClick={() => router.back()}
+                        className="flex items-center gap-2 text-sm font-semibold text-gray-500 hover:text-[#066CF4] transition-colors mb-6 cursor-pointer"
+                    >
+                        <ArrowLeft size={18} />
+                        Back
+                    </button>
+
                     {/* Mobile Logo */}
                     <div className="lg:hidden flex justify-center mb-12">
                         <Link href="/">
@@ -405,11 +417,23 @@ function LoginPageContent() {
                     {/* Sign Up Link */}
                     <div className="mt-10 text-center">
                         <p className="text-sm text-text-secondary font-medium">
-                            Don&apos;t have an account? <Link href="/get-started" className="text-primary font-bold uppercase tracking-wider text-[10px] ml-2 hover:underline">Create Account</Link>
+                            Don&apos;t have an account?{' '}
+                            <button
+                                onClick={() => setShowRegister(true)}
+                                className="text-primary font-bold uppercase tracking-wider text-[10px] ml-2 hover:underline"
+                            >
+                                Create Account
+                            </button>
                         </p>
                     </div>
                 </div>
             </div>
         </div>
+
+        <RegisterChoiceModal
+            isOpen={showRegister}
+            onClose={() => setShowRegister(false)}
+        />
+        </>
     );
 }

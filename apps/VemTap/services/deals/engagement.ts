@@ -46,6 +46,9 @@ export const toggleSave = (offerId: string): Promise<DealSaveResponse> =>
 export const getSaveStatus = (offerId: string): Promise<{ isSaved: boolean }> =>
     api.get(`/deals/${offerId}/save-status`);
 
+export const getSavedDeals = (page = 1, limit = 20): Promise<{ data: any[]; total: number; page: number; totalPages: number }> =>
+    api.get('/deals/saved', { params: { page, limit } });
+
 // ─── Engagement summary ───────────────────────────────────────────────────────
 
 export const getEngagement = (offerId: string): Promise<DealEngagementResponse> =>

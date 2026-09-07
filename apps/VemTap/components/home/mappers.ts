@@ -55,20 +55,29 @@ export function offerToHomeDeal(offer: DealOffer): HomeDealCard {
   else if (dealPrice === 0) discountLabel = 'FREE';
   else if (originalPrice > dealPrice) discountLabel = 'Special Offer';
 
-  const branchAny = offer.branch as any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const branchAny = offer.branch as Record<string, any>;
   const slug =
     branchAny?.username ||
     branchAny?.uniqueCode ||
     branchAny?.business?.uniqueCode ||
     offer.business?.slug ||
-    (offer.business as any)?.uniqueCode ||
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (offer.business as Record<string, any>)?.uniqueCode ||
     '';
+
+  const images = (offer.galleryImages?.length
+    ? offer.galleryImages
+    : image
+      ? [image]
+      : []);
 
   return {
     id: offer.id,
     title: offer.name,
     description: offer.description,
     image,
+    images,
     businessName,
     businessSlug: slug || undefined,
     category,
@@ -116,13 +125,15 @@ export function offersToBusinessCards(offers: DealOffer[]): HomeBusinessCard[] {
 
     // Only link to the storefront when we have a real business code —
     // a raw UUID (businessId/branchId) will 404 on /b/[code].
-    const branchAny = offer.branch as any;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const branchAny = offer.branch as Record<string, any>;
     const code =
       branchAny?.username ||
       branchAny?.uniqueCode ||
       branchAny?.business?.uniqueCode ||
       offer.business?.slug ||
-      (offer.business as any)?.uniqueCode ||
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (offer.business as Record<string, any>)?.uniqueCode ||
       '';
 
     const existing = map.get(id);

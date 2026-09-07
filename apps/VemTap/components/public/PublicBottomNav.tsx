@@ -3,7 +3,8 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import MoreSheet from './MoreSheet';
+import { useAuthStore } from '@/store/useAuthStore';
+import AccountSheet from './AccountSheet';
 
 interface NavItem {
   icon: string;
@@ -15,18 +16,19 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   { icon: 'home', label: 'HOME', href: '/' },
   { icon: 'local_offer', label: 'DEALS', href: '/deals' },
-  { icon: 'storefront', label: 'BUSINESS', href: '/business-landing' },
-  { icon: 'more_horiz', label: 'MORE' },
+  { icon: 'bookmark', label: 'SAVED', href: '/saved-deals' },
+  { icon: 'person', label: 'ACCOUNT' },
 ];
 
 export default function PublicBottomNav() {
   const pathname = usePathname();
-  const [isMoreOpen, setIsMoreOpen] = useState(false);
+  const [isAccountOpen, setIsAccountOpen] = useState(false);
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
 
   const isActive = (item: NavItem) => {
-    if (item.onClick) return false;
+    if (item.onClick || !item.href) return false;
     if (item.href === '/') return pathname === '/';
-    return pathname.startsWith(item.href!);
+    return pathname.startsWith(item.href);
   };
 
   return (
@@ -35,14 +37,19 @@ export default function PublicBottomNav() {
         {NAV_ITEMS.map((item) => {
           const active = isActive(item);
 
-          if (item.label === 'MORE') {
+          if (item.label === 'ACCOUNT') {
             return (
               <button
                 key={item.label}
-                onClick={() => setIsMoreOpen(true)}
+                onClick={() => setIsAccountOpen(true)}
                 className="flex flex-col items-center justify-center text-[#727786] active:scale-95 transition-transform duration-150 hover:text-[#0055c4] cursor-pointer"
               >
-                <span className="material-symbols-outlined text-[24px]">{item.icon}</span>
+                <span
+                  className="material-symbols-outlined text-[24px]"
+                  style={isAuthenticated ? { fontVariationSettings: "'FILL' 1" } : undefined}
+                >
+                  {item.icon}
+                </span>
                 <span className="text-[11px] font-medium tracking-tight mt-0.5">{item.label}</span>
               </button>
             );
@@ -68,7 +75,7 @@ export default function PublicBottomNav() {
         })}
       </nav>
 
-      <MoreSheet isOpen={isMoreOpen} onClose={() => setIsMoreOpen(false)} />
+      <AccountSheet isOpen={isAccountOpen} onClose={() => setIsAccountOpen(false)} />
     </>
   );
 }

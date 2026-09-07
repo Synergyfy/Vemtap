@@ -178,7 +178,7 @@ export const ChatConnectModal: React.FC<ChatConnectModalProps> = ({
                             {/* Google Auth */}
                             <div className="mb-5">
                                 <GoogleAuthButton
-                                    role="customer"
+                                    role="Customer"
                                     onSuccess={handleGoogleSuccess}
                                     className="h-12"
                                 />

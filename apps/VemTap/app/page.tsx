@@ -10,11 +10,15 @@ import OnboardingFlow from '@/components/home/OnboardingFlow';
 import LocationOnboardingFlow from '@/components/home/LocationOnboardingFlow';
 import LocationPrompt from '@/components/home/LocationPrompt';
 import SearchModal from '@/components/home/SearchModal';
+import QRScanner from '@/components/home/QRScanner';
 import DealEngagementBar from '@/components/deals/DealEngagementBar';
 import PublicBottomNav from '@/components/public/PublicBottomNav';
+import ConsumerFooter from '@/components/public/ConsumerFooter';
+import OnboardingAuthModal from '@/components/public/OnboardingAuthModal';
+import { useBannerStore } from '@/store/useBannerStore';
+import { useAuthStore } from '@/store/useAuthStore';
 import { DealCardSkeleton, BusinessCardSkeleton } from '@/components/home/Skeletons';
 import { offerToHomeDeal, formatNaira } from '@/components/home/mappers';
-import type { HomeDealCard } from '@/components/home/types';
 import type { PublicBusiness as DealPublicBusiness } from '@/services/deals/types';
 
 const C = {
@@ -73,7 +77,7 @@ type Deal = {
   price: string | null; image: string; href: string; description: string; businessName: string;
 };
 
-function mapDeals(raw: ReturnType<typeof offerToHomeDeal>[], fallback: any[]): Deal[] {
+function mapDeals(raw: ReturnType<typeof offerToHomeDeal>[], fallback: { image?: string }[]): Deal[] {
   return raw.map((d, idx) => ({
     id: d.id,
     title: d.businessName || d.title,
@@ -81,7 +85,7 @@ function mapDeals(raw: ReturnType<typeof offerToHomeDeal>[], fallback: any[]): D
     badge: d.discountLabel || (d.discountPercent ? `${d.discountPercent}% OFF` : 'DEAL'),
     time: d.endDate ? 'Limited Time' : 'Today',
     price: d.dealPrice != null ? (Number(d.dealPrice) === 0 ? 'FREE' : formatNaira(d.dealPrice)) : null,
-    image: d.image || fallback[idx % fallback.length]?.image || fallback[0].image,
+    image: d.image || fallback[idx % fallback.length]?.image || fallback[0].image || '',
     href: d.href,
     description: d.description || '',
     businessName: d.businessName || d.title,
@@ -92,27 +96,30 @@ function DealCard({ deal }: { deal: Deal }) {
   const badgeColors: Record<string, string> = { 'DEAL': '#066CF4', 'FREE': '#16a34a', 'NEW': '#16a34a' };
   const badgeKey = deal.badge.includes('OFF') ? 'DEAL' : deal.badge;
   return (
-    <Link
-      href={deal.href}
-      className="rounded-xl overflow-hidden shadow-sm relative group cursor-pointer transition-all hover:shadow-lg hover:-translate-y-0.5"
+    <div
+      className="rounded-xl overflow-hidden shadow-sm relative group cursor-pointer transition-all hover:shadow-lg hover:-translate-y-0.5 flex flex-col"
       style={{ background: '#ffffff', border: `1px solid ${C.outlineVariant}` }}
     >
-      <div className="h-[120px] md:h-[160px] relative w-full overflow-hidden" style={{ background: C.outlineVariant }}>
-        <img src={deal.image} alt={deal.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
-        <div className="absolute top-2 left-2 px-2 py-0.5 rounded-md font-bold" style={{ background: badgeColors[badgeKey] || '#066CF4', color: '#ffffff', fontSize: 10, lineHeight: '14px' }}>
-          {deal.badge}
+      <Link href={deal.href} className="block flex-1">
+        <div className="h-[120px] md:h-[160px] relative w-full overflow-hidden" style={{ background: C.outlineVariant }}>
+          <img src={deal.image} alt={deal.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+          <div className="absolute top-2 left-2 px-2 py-0.5 rounded-md font-bold" style={{ background: badgeColors[badgeKey] || '#066CF4', color: '#ffffff', fontSize: 10, lineHeight: '14px' }}>
+            {deal.badge}
+          </div>
         </div>
-      </div>
-      <div className="p-3 flex flex-col gap-1">
-        <h3 className="text-[13px] md:text-[14px] font-semibold line-clamp-1" style={{ color: C.onSurface }}>{deal.title}</h3>
-        <p className="text-[11px] md:text-[12px] line-clamp-1" style={{ color: C.onSurfaceVariant }}>{deal.subtitle}</p>
-        <div className="flex items-center gap-2">
-          {deal.price && <span className="text-[14px] md:text-[16px] font-bold" style={{ color: C.primary }}>{deal.price}</span>}
-          <span className="text-[10px] md:text-[11px]" style={{ color: C.outline }}>{deal.time}</span>
+        <div className="p-3 flex flex-col gap-1">
+          <h3 className="text-[13px] md:text-[14px] font-semibold line-clamp-1" style={{ color: C.onSurface }}>{deal.title}</h3>
+          <p className="text-[11px] md:text-[12px] line-clamp-1" style={{ color: C.onSurfaceVariant }}>{deal.subtitle}</p>
+          <div className="flex items-center gap-2">
+            {deal.price && <span className="text-[14px] md:text-[16px] font-bold" style={{ color: C.primary }}>{deal.price}</span>}
+            <span className="text-[10px] md:text-[11px]" style={{ color: C.outline }}>{deal.time}</span>
+          </div>
         </div>
+      </Link>
+      <div className="px-3 pb-2">
         <DealEngagementBar offerId={deal.id} offerTitle={deal.title} offerDescription={deal.description} dealUrl={deal.href} businessName={deal.businessName} compact />
       </div>
-    </Link>
+    </div>
   );
 }
 
@@ -140,14 +147,41 @@ export default function Homepage() {
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showLocationOnboarding, setShowLocationOnboarding] = useState(false);
   const [onboardingChecked, setOnboardingChecked] = useState(false);
+  const [bannerIndex, setBannerIndex] = useState(0);
+  const [isQRScannerOpen, setIsQRScannerOpen] = useState(false);
+  const [showAuthPrompt, setShowAuthPrompt] = useState(false);
+
+  const { isAuthenticated } = useAuthStore();
+  const { homepageSlides, fetchBanners: fetchHomepageBanners } = useBannerStore();
 
   useEffect(() => {
+    const t = setTimeout(() => {
+      const completed = localStorage.getItem('vemtap_onboarding_complete');
+      const locationSet = localStorage.getItem('vemtap_location_set');
+      if (!completed) setShowOnboarding(true);
+      else if (!locationSet) setShowLocationOnboarding(true);
+      setOnboardingChecked(true);
+    }, 0);
+    return () => clearTimeout(t);
+  }, []);
+
+  // First-time visitor: after location is set and the landing page is shown,
+  // prompt an unauthenticated user to sign up (Google or email/password).
+  useEffect(() => {
+    if (!onboardingChecked) return;
     const completed = localStorage.getItem('vemtap_onboarding_complete');
     const locationSet = localStorage.getItem('vemtap_location_set');
-    if (!completed) setShowOnboarding(true);
-    else if (!locationSet) setShowLocationOnboarding(true);
-    setOnboardingChecked(true);
-  }, []);
+    const promptSeen = localStorage.getItem('vemtap_auth_prompt_seen');
+    const snoozed = sessionStorage.getItem('vemtap_auth_prompt_snoozed');
+    if (completed && locationSet && !isAuthenticated && !promptSeen && !snoozed) {
+      const t = setTimeout(() => setShowAuthPrompt(true), 1500);
+      return () => clearTimeout(t);
+    }
+  }, [onboardingChecked, isAuthenticated, showLocationOnboarding]);
+
+  useEffect(() => {
+    fetchHomepageBanners('homepage');
+  }, [fetchHomepageBanners]);
 
   const handleOnboardingComplete = () => {
     localStorage.setItem('vemtap_onboarding_complete', 'true');
@@ -173,9 +207,20 @@ export default function Homepage() {
   };
 
   const popularBusinesses = useMemo(() => {
-    const businesses: DealPublicBusiness[] =
-      businessesData?.businesses || (businessesData as any)?.data?.businesses ||
-      (Array.isArray((businessesData as any)?.data) ? (businessesData as any).data : []) || [];
+    const bData = businessesData as
+      | { businesses?: DealPublicBusiness[] }
+      | { data?: DealPublicBusiness[] | { businesses?: DealPublicBusiness[] } }
+      | null
+      | undefined;
+    const inner = bData && 'data' in bData ? bData.data : undefined;
+    let businesses: DealPublicBusiness[] = [];
+    if (bData && 'businesses' in bData && Array.isArray(bData.businesses)) {
+      businesses = bData.businesses;
+    } else if (Array.isArray(inner)) {
+      businesses = inner as DealPublicBusiness[];
+    } else if (inner && typeof inner === 'object' && 'businesses' in inner && Array.isArray((inner as { businesses?: unknown }).businesses)) {
+      businesses = (inner as { businesses: DealPublicBusiness[] }).businesses;
+    }
     if (businesses.length > 0) {
       const categoryIcons: Record<string, string> = {
         food: 'restaurant', restaurant: 'restaurant', dining: 'restaurant',
@@ -193,23 +238,79 @@ export default function Homepage() {
       }));
       return { featured: mapped[0] || FALLBACK_BUSINESSES.featured, items: mapped.slice(1, 3) };
     }
-    return FALLBACK_BUSINESSES;
+    return { featured: FALLBACK_BUSINESSES.featured, items: [] };
   }, [businessesData]);
 
   const dealsList = useMemo(() => {
     const fromApi = (dealsData?.data ?? []).map(offerToHomeDeal);
-    return fromApi.length > 0 ? mapDeals(fromApi, [{ image: '' }]) : [];
+    if (fromApi.length > 0) return mapDeals(fromApi, [{ image: '' }]);
+    return [];
   }, [dealsData]);
 
   const trendingDeals = useMemo(() => {
     const fromApi = (trendingData?.data ?? []).map(offerToHomeDeal);
-    return fromApi.length > 0 ? mapDeals(fromApi, [{ image: '' }]) : [];
+    if (fromApi.length > 0) return mapDeals(fromApi, [{ image: '' }]);
+    return [];
   }, [trendingData]);
 
   const newDeals = useMemo(() => {
     const fromApi = (newData?.data ?? []).map(offerToHomeDeal);
-    return fromApi.length > 0 ? mapDeals(fromApi, [{ image: '' }]) : [];
+    if (fromApi.length > 0) return mapDeals(fromApi, [{ image: '' }]);
+    return [];
   }, [newData]);
+
+  const defaultBannerSlides = useMemo(() => [
+    {
+      id: 'default-1',
+      title: 'Discover Deals Near You',
+      description: 'Explore the best offers from businesses in your area. Updated daily.',
+      imageUrl: 'https://images.unsplash.com/photo-1607082349566-187342175e2f?w=1400&q=80',
+      ctaText: 'Browse Deals',
+      actionUrl: '/deals',
+      color: 'from-[#001d6b] to-[#001d6b]/40',
+    },
+    {
+      id: 'default-2',
+      title: 'Hot Deals This Week',
+      description: 'Save big with exclusive limited-time offers from top businesses.',
+      imageUrl: 'https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=1400&q=80',
+      ctaText: 'Shop Now',
+      actionUrl: '/deals?sortBy=trending',
+      color: 'from-emerald-900 to-emerald-900/40',
+    },
+    {
+      id: 'default-3',
+      title: 'Freebies & Flash Sales',
+      description: 'Grab free deals and flash sales before they expire!',
+      imageUrl: 'https://images.unsplash.com/photo-1556742393-d75f468bfcb0?w=1400&q=80',
+      ctaText: 'View Deals',
+      actionUrl: '/deals?sortBy=newest',
+      color: 'from-amber-900 to-amber-900/40',
+    },
+  ], []);
+
+  const activeBannerSlides = useMemo(() => {
+    if (homepageSlides.length > 0) {
+      return homepageSlides.map((s) => ({
+        id: s.id,
+        title: s.title,
+        description: s.description,
+        imageUrl: s.imageUrl || 'https://images.unsplash.com/photo-1607082349566-187342175e2f?w=1400&q=80',
+        ctaText: s.ctaText || s.actionLabel || 'Browse Deals',
+        actionUrl: s.actionUrl || '/deals',
+        color: s.color || 'from-[#001d6b] to-[#001d6b]/40',
+      }));
+    }
+    return defaultBannerSlides;
+  }, [homepageSlides, defaultBannerSlides]);
+
+  useEffect(() => {
+    if (activeBannerSlides.length <= 1) return;
+    const timer = setInterval(() => {
+      setBannerIndex((prev) => (prev + 1) % activeBannerSlides.length);
+    }, 5000);
+    return () => clearInterval(timer);
+  }, [activeBannerSlides.length]);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -217,12 +318,37 @@ export default function Homepage() {
     else setIsSearchModalOpen(true);
   };
 
+  const handleQRScanResult = (result: string) => {
+    // Try to navigate to a deal URL if it's a VemTap link
+    if (result.includes('/deals/') || result.includes('/promotions/')) {
+      router.push(result);
+    } else {
+      // Search for deals related to the QR content
+      router.push(`/deals?search=${encodeURIComponent(result)}`);
+    }
+  };
+
+  const handleImageUploadClick = () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.onchange = (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (file) {
+        // For now, navigate to deals page with a visual search context
+        // In a real implementation, this would use reverse image search API
+        router.push('/deals');
+      }
+    };
+    input.click();
+  };
+
   if (!onboardingChecked) return null;
   if (showOnboarding) return <OnboardingFlow onComplete={handleOnboardingComplete} />;
   if (showLocationOnboarding) return <LocationOnboardingFlow onComplete={handleLocationOnboardingComplete} />;
 
   return (
-    <div className="min-h-screen font-sans" style={{ background: C.bg, color: C.onSurface }}>
+    <div className="min-h-screen flex flex-col font-sans" style={{ background: C.bg, color: C.onSurface }}>
       <header className="sticky top-0 z-40 w-full" style={{ background: '#ffffff', borderBottom: `1px solid ${C.outlineVariant}` }}>
         <div className="hidden md:flex items-center justify-between px-6 h-[64px] max-w-[1400px] mx-auto gap-6">
           <div className="flex items-center gap-6 shrink-0">
@@ -233,8 +359,6 @@ export default function Homepage() {
               {[
                 { label: 'Home', href: '/' },
                 { label: 'Deals', href: '/deals' },
-                { label: 'Business', href: '/business-landing' },
-                { label: 'Pricing', href: '/pricing' },
               ].map((item) => (
                 <Link key={item.label} href={item.href}
                   className="px-3 py-2 rounded-lg text-[13px] font-semibold hover:bg-gray-50 transition-colors"
@@ -251,8 +375,26 @@ export default function Homepage() {
               placeholder="Search deals, businesses..." type="text" />
             <button type="submit" className="h-11 px-6 rounded-r-xl text-white font-bold text-[13px] uppercase tracking-wider" style={{ background: C.primary }}>Search</button>
           </form>
+          <div className="flex items-center gap-1.5 shrink-0">
+            <button
+              onClick={() => setIsQRScannerOpen(true)}
+              className="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-gray-100 transition-colors"
+              style={{ color: C.onSurfaceVariant }}
+              title="Scan QR Code"
+            >
+              <span className="material-symbols-outlined" style={{ fontSize: 22 }}>qr_code_scanner</span>
+            </button>
+            <button
+              onClick={handleImageUploadClick}
+              className="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-gray-100 transition-colors"
+              style={{ color: C.onSurfaceVariant }}
+              title="Upload Image"
+            >
+              <span className="material-symbols-outlined" style={{ fontSize: 22 }}>add_a_photo</span>
+            </button>
+          </div>
           <div className="flex items-center gap-2 shrink-0">
-            <Link href="/auth/onboarding" className="h-10 px-5 rounded-xl bg-[#066CF4] text-white text-[13px] font-bold flex items-center justify-center hover:bg-[#0557b3] transition-colors">
+            <Link href="/login" className="h-10 px-5 rounded-xl bg-[#066CF4] text-white text-[13px] font-bold flex items-center justify-center hover:bg-[#0557b3] transition-colors">
               Login
             </Link>
           </div>
@@ -279,22 +421,96 @@ export default function Homepage() {
             <span className="material-symbols-outlined shrink-0" style={{ color: C.onSurfaceVariant, fontSize: 18 }}>location_on</span>
             <h1 className="text-[13px] font-semibold tracking-tight truncate" style={{ color: C.primary }}>{activeLocation}</h1>
           </div>
-          <button onClick={() => setIsSearchModalOpen(true)} className="w-11 h-11 flex items-center justify-center rounded-full" style={{ color: C.onSurfaceVariant }}>
-            <span className="material-symbols-outlined" style={{ fontSize: 24 }}>search</span>
-          </button>
+          <div className="flex items-center gap-0.5 shrink-0">
+            <button
+              onClick={() => setIsQRScannerOpen(true)}
+              className="w-10 h-10 flex items-center justify-center rounded-full"
+              style={{ color: C.onSurfaceVariant }}
+              title="Scan QR Code"
+            >
+              <span className="material-symbols-outlined" style={{ fontSize: 22 }}>qr_code_scanner</span>
+            </button>
+            <button
+              onClick={handleImageUploadClick}
+              className="w-10 h-10 flex items-center justify-center rounded-full"
+              style={{ color: C.onSurfaceVariant }}
+              title="Upload Image"
+            >
+              <span className="material-symbols-outlined" style={{ fontSize: 22 }}>add_a_photo</span>
+            </button>
+            <button onClick={() => setIsSearchModalOpen(true)} className="w-10 h-10 flex items-center justify-center rounded-full" style={{ color: C.onSurfaceVariant }}>
+              <span className="material-symbols-outlined" style={{ fontSize: 22 }}>search</span>
+            </button>
+          </div>
         </div>
       </header>
 
-      <main className="max-w-[1400px] mx-auto pb-20 md:pb-0">
+      <main className="max-w-[1400px] mx-auto flex-1 pb-4">
         <section className="px-4 md:px-6 pt-5">
-          <div className="relative rounded-2xl overflow-hidden" style={{ minHeight: 200 }}>
-            <img src="https://images.unsplash.com/photo-1607082349566-187342175e2f?w=1400&q=80" alt="Deals banner" className="absolute inset-0 w-full h-full object-cover" />
-            <div className="absolute inset-0" style={{ background: 'linear-gradient(135deg, rgba(0,29,107,0.88) 0%, rgba(0,29,107,0.4) 60%, rgba(0,0,0,0) 100%)' }} />
-            <div className="relative p-6 md:p-8 lg:p-10">
-              <h2 className="text-[24px] md:text-[32px] font-black text-white leading-tight mb-2">Discover Deals <span className="text-yellow-300">Near You</span></h2>
-              <p className="text-[14px] text-white/80 mb-5 max-w-md">Explore the best offers from businesses in your area. Updated daily.</p>
-              <button onClick={() => router.push('/deals')} className="px-6 py-2.5 rounded-full bg-white font-bold text-[12px] uppercase tracking-wider" style={{ color: C.primary }}>Browse Deals</button>
+          <div className="relative rounded-2xl overflow-hidden group" style={{ minHeight: 200 }}>
+            {activeBannerSlides.map((slide, i) => (
+              <div
+                key={slide.id}
+                className="absolute inset-0 transition-opacity duration-700"
+                style={{ opacity: i === bannerIndex ? 1 : 0, zIndex: i === bannerIndex ? 1 : 0 }}
+              >
+                <img src={slide.imageUrl} alt={slide.title} className="absolute inset-0 w-full h-full object-cover" />
+                <div className="absolute inset-0" style={{ background: 'linear-gradient(135deg, rgba(0,29,107,0.88) 0%, rgba(0,29,107,0.4) 60%, rgba(0,0,0,0) 100%)' }} />
+              </div>
+            ))}
+            <div className="relative z-10 p-6 md:p-8 lg:p-10" style={{ minHeight: 200 }}>
+              <h2 className="text-[24px] md:text-[32px] font-black text-white leading-tight mb-2">
+                {activeBannerSlides[bannerIndex]?.title || 'Discover Deals Near You'}
+              </h2>
+              <p className="text-[14px] text-white/80 mb-5 max-w-md">
+                {activeBannerSlides[bannerIndex]?.description || 'Explore the best offers from businesses in your area. Updated daily.'}
+              </p>
+              <button
+                onClick={() => router.push(activeBannerSlides[bannerIndex]?.actionUrl || '/deals')}
+                className="px-6 py-2.5 rounded-full bg-white font-bold text-[12px] uppercase tracking-wider"
+                style={{ color: C.primary }}
+              >
+                {activeBannerSlides[bannerIndex]?.ctaText || 'Browse Deals'}
+              </button>
             </div>
+            {/* Left Arrow */}
+            {activeBannerSlides.length > 1 && (
+              <button
+                onClick={() => setBannerIndex((prev) => (prev - 1 + activeBannerSlides.length) % activeBannerSlides.length)}
+                className="absolute left-3 top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 hover:scale-110"
+                style={{ background: 'rgba(255,255,255,0.9)', color: C.onSurface, boxShadow: '0 2px 8px rgba(0,0,0,0.15)' }}
+              >
+                <span className="material-symbols-outlined" style={{ fontSize: 22 }}>chevron_left</span>
+              </button>
+            )}
+            {/* Right Arrow */}
+            {activeBannerSlides.length > 1 && (
+              <button
+                onClick={() => setBannerIndex((prev) => (prev + 1) % activeBannerSlides.length)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 hover:scale-110"
+                style={{ background: 'rgba(255,255,255,0.9)', color: C.onSurface, boxShadow: '0 2px 8px rgba(0,0,0,0.15)' }}
+              >
+                <span className="material-symbols-outlined" style={{ fontSize: 22 }}>chevron_right</span>
+              </button>
+            )}
+            {/* Dot Indicators */}
+            {activeBannerSlides.length > 1 && (
+              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2">
+                {activeBannerSlides.map((_, i) => (
+                  <button
+                    key={i}
+                    onClick={() => setBannerIndex(i)}
+                    className="transition-all duration-300"
+                    style={{
+                      width: i === bannerIndex ? 24 : 8,
+                      height: 8,
+                      borderRadius: 999,
+                      background: i === bannerIndex ? '#ffffff' : 'rgba(255,255,255,0.4)',
+                    }}
+                  />
+                ))}
+              </div>
+            )}
           </div>
         </section>
 
@@ -381,12 +597,12 @@ export default function Homepage() {
                     <h3 className="text-[24px] sm:text-[28px] font-bold text-white tracking-tight truncate">{popularBusinesses.featured.name}</h3>
                   </div>
                   <p className="text-[14px] text-[#f7f9fb] flex items-center gap-1 font-normal opacity-95">
-                    <span className="material-symbols-outlined text-[16px]">{(popularBusinesses.featured as any).icon || 'store'}</span>
+                    <span className="material-symbols-outlined text-[16px]">{(popularBusinesses.featured as { icon?: string }).icon || 'store'}</span>
                     {popularBusinesses.featured.category}
                   </p>
                 </div>
               </Link>
-              {popularBusinesses.items.map((item: any) => (
+              {popularBusinesses.items.map((item: { id: string; name: string; category: string; image: string; logoUrl?: string; href: string; verified?: boolean }) => (
                 <Link key={item.id} href={item.href}
                   className="rounded-xl overflow-hidden bg-white border border-[#e0e3e5] shadow-sm group cursor-pointer flex flex-col">
                   <div className="h-[140px] relative overflow-hidden bg-[#eceef0]">
@@ -408,12 +624,23 @@ export default function Homepage() {
         </section>
       </main>
 
+      <ConsumerFooter />
+
       <PublicBottomNav />
+      <OnboardingAuthModal
+        isOpen={showAuthPrompt}
+        onClose={() => setShowAuthPrompt(false)}
+      />
       {isLocationModalOpen && (
         <LocationPrompt isOpen={isLocationModalOpen} onClose={() => setIsLocationModalOpen(false)}
           onAllowLocation={() => { requestLocation(); setIsLocationModalOpen(false); }} />
       )}
       {isSearchModalOpen && <SearchModal isOpen={isSearchModalOpen} onClose={() => setIsSearchModalOpen(false)} />}
+      <QRScanner
+        isOpen={isQRScannerOpen}
+        onClose={() => setIsQRScannerOpen(false)}
+        onScanResult={handleQRScanResult}
+      />
     </div>
   );
 }
