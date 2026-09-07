@@ -284,6 +284,13 @@ export class CatalogueOffer extends AbstractBaseEntity {
   reviewsCount: number;
 
   @ApiProperty({
+    example: 5,
+    description: 'Number of shares on this deal',
+  })
+  @Column({ type: 'int', default: 0 })
+  sharesCount: number;
+
+  @ApiProperty({
     example: 4.5,
     description: 'Average rating from approved reviews on this deal',
     nullable: true,

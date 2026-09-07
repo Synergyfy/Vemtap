@@ -25,6 +25,7 @@ import {
   DealReactionType,
 } from './entities/deal-reaction.entity';
 import { DealSave } from './entities/deal-save.entity';
+import { DealShare } from './entities/deal-share.entity';
 import {
   BusinessReviewsQueryDto,
   CreateDealReviewDto,
@@ -46,6 +47,8 @@ export class DealEngagementService {
     private readonly reactionRepository: Repository<DealReaction>,
     @InjectRepository(DealSave)
     private readonly saveRepository: Repository<DealSave>,
+    @InjectRepository(DealShare)
+    private readonly shareRepository: Repository<DealShare>,
     @InjectDataSource()
     private readonly dataSource: DataSource,
     private readonly configService: ConfigService,
@@ -404,6 +407,66 @@ export class DealEngagementService {
     return { isSaved: !!existing };
   }
 
+  async listSavedDeals(userId: string) {
+    const saves = await this.saveRepository.find({
+      where: { userId },
+      relations: ['offer', 'offer.branch', 'offer.branch.business'],
+      order: { createdAt: 'DESC' },
+    });
+
+    return {
+      deals: saves
+        .filter((s) => s.offer)
+        .map((s) => ({
+          id: s.offer.id,
+          name: s.offer.name,
+          description: s.offer.description,
+          mainImage: s.offer.mainImage,
+          galleryImages: s.offer.galleryImages || [],
+          calculatedPrice: s.offer.calculatedPrice,
+          discountValue: s.offer.discountValue,
+          startDate: s.offer.startDate,
+          endDate: s.offer.endDate,
+          branchId: s.offer.branchId,
+          branchName: s.offer.branch?.name,
+          categoryName: s.offer.branch?.business?.category?.name ?? null,
+          savedAt: s.createdAt,
+        })),
+    };
+  }
+
+  // --- Shares ---
+
+  async recordShare(
+    userId: string,
+    offerId: string,
+    platform?: string,
+    ip?: string,
+  ) {
+    const offer = await this.getOfferOrThrow(offerId);
+
+    let ipHash: string | null = null;
+    if (ip) {
+      ipHash = this.hashIp(ip);
+    }
+
+    const share = this.shareRepository.create({
+      offerId,
+      userId,
+      platform: platform || null,
+      ipHash,
+    });
+    await this.shareRepository.save(share);
+
+    const sharesCount = await this.shareRepository.count({
+      where: { offerId },
+    });
+    await this.offerRepository.update(offerId, { sharesCount });
+    await this.clearOfferCaches(offer.id, offer.branchId);
+
+    return { sharesCount };
+  }
+
   // --- Engagement summary ---
 
   async getEngagement(offerId: string, user?: { id: string }) {
@@ -412,6 +475,7 @@ export class DealEngagementService {
       likesCount: Number(offer.likesCount || 0),
       dislikesCount: Number(offer.dislikesCount || 0),
       reviewsCount: Number(offer.reviewsCount || 0),
+      sharesCount: Number(offer.sharesCount || 0),
       averageRating:
         offer.averageRating != null ? Number(offer.averageRating) : null,
     };

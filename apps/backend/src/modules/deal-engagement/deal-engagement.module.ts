@@ -8,6 +8,7 @@ import { DealReview } from './entities/deal-review.entity';
 import { DealReviewLike } from './entities/deal-review-like.entity';
 import { DealReaction } from './entities/deal-reaction.entity';
 import { DealSave } from './entities/deal-save.entity';
+import { DealShare } from './entities/deal-share.entity';
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { DealSave } from './entities/deal-save.entity';
       DealReviewLike,
       DealReaction,
       DealSave,
+      DealShare,
     ]),
   ],
   controllers: [DealEngagementController, DealReviewAdminController],
