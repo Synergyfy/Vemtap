@@ -368,7 +368,7 @@ export default function GetStartedPage() {
                                                 ) : (
                                                     <>
                                                         <GoogleAuthButton
-                                                            role="owner"
+                                                            role="Owner"
                                                             onSuccess={handleGoogleSuccess}
                                                             label="Sign up with Google"
                                                         />
