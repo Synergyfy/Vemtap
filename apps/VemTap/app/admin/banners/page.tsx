@@ -38,6 +38,8 @@ interface BannerSlide {
     placement: BannerPlacement;
     targetType?: BannerTargetType;
     targetId?: string;
+    imageUrl?: string;
+    ctaText?: string;
 }
 
 const TARGET_OPTIONS: { value: BannerTargetType; label: string; icon: LucideIcon; description: string }[] = [
@@ -52,6 +54,7 @@ const dealUrl = (offer: DealOffer) =>
 const PLACEMENT_TABS: { value: BannerPlacement; label: string; icon: LucideIcon; description: string }[] = [
     { value: 'business', label: 'Business Dashboards', icon: Briefcase, description: 'Banners shown on the business owner dashboard.' },
     { value: 'customer', label: 'Customer App', icon: Users, description: 'Banners shown on the customer dashboard.' },
+    { value: 'homepage', label: 'Homepage Slider', icon: Megaphone, description: 'Image banners shown on the homepage hero slider.' },
 ];
 
 export default function AdminBannerManagementPage() {
@@ -207,6 +210,8 @@ export default function AdminBannerManagementPage() {
                 placement,
                 targetType: editForm.targetType || 'custom',
                 targetId: editForm.targetId,
+                imageUrl: editForm.imageUrl || undefined,
+                ctaText: editForm.ctaText || undefined,
             };
             if (isTempId(editingId)) {
                 await adminBannersApi.create(payload);
@@ -490,6 +495,33 @@ export default function AdminBannerManagementPage() {
                                             className="w-full bg-gray-50 border border-gray-100 rounded-xl p-4 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none resize-none"
                                         />
                                     </div>
+                                    {placement === 'homepage' && (
+                                        <>
+                                            <div className="space-y-2">
+                                                <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Banner Image URL</label>
+                                                <input
+                                                    type="url"
+                                                    value={editForm.imageUrl || ''}
+                                                    onChange={(e) => setEditForm({ ...editForm, imageUrl: e.target.value })}
+                                                    placeholder="https://example.com/banner.jpg"
+                                                    className="w-full h-12 bg-gray-50 border border-gray-100 rounded-xl px-4 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none"
+                                                />
+                                                <p className="text-[10px] font-medium text-text-secondary leading-snug ml-1">
+                                                    Paste a direct image URL (Unsplash, Cloudinary, etc.) for the banner background.
+                                                </p>
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Button Text (CTA)</label>
+                                                <input
+                                                    type="text"
+                                                    value={editForm.ctaText || ''}
+                                                    onChange={(e) => setEditForm({ ...editForm, ctaText: e.target.value })}
+                                                    placeholder="e.g. Browse Deals"
+                                                    className="w-full h-12 bg-gray-50 border border-gray-100 rounded-xl px-4 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none"
+                                                />
+                                            </div>
+                                        </>
+                                    )}
                                     <div className="space-y-3">
                                         <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Icon</label>
                                         <div className="flex flex-wrap gap-2">

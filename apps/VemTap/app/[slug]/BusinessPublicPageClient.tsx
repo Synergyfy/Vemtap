@@ -1,23 +1,24 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
-    MapPin, Phone, Mail, Globe, ShieldCheck, Instagram,
+    MapPin, Phone, Mail, Globe, Instagram,
     Twitter, Facebook, Share2, Building2, Linkedin, ExternalLink,
-    ChevronRight, LayoutDashboard, Loader2, Star, Clock, Youtube, Link as LinkIcon,
-    QrCode, ShoppingBag, Briefcase, Tag, FileJson
+    LayoutDashboard, Loader2, Star, Youtube, Link as LinkIcon,
+    ArrowLeft, Navigation, ChevronDown
 } from 'lucide-react';
 import { fetchDeviceByCode, fetchContextByUsername } from '@/lib/api/devices';
 import { useCustomerFlowStore } from '@/store/useCustomerFlowStore';
 import { useAuthStore } from '@/store/useAuthStore';
-import { getQrIcon, getQrDescription } from '@/lib/utils/qr-icons';
 import { TapJourneyContainer } from '@/components/visitor/TapJourneyContainer';
 import { useTrackReferralVisit } from '@/services/affiliates/hooks';
 import { normalizeDayHours } from '@/lib/businessHours';
+import { notify } from '@/lib/notify';
 
 interface BusinessPublicPageClientProps {
     slug: string;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     initialData?: any;
 }
 
@@ -36,22 +37,24 @@ export default function BusinessPublicPageClient({ slug, initialData }: Business
         if (referralCode && typeof window !== 'undefined') {
             trackVisit.mutate({ referralCode });
         }
-    }, []);
+    }, [referralCode, trackVisit]);
 
     const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
     const user = useAuthStore((state) => state.user);
-    const isBusinessAccount = isAuthenticated && user?.role?.toLowerCase() !== 'customer';
     const isCustomerAccount = isAuthenticated && user?.role?.toLowerCase() === 'customer';
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const [businessData, setBusinessData] = useState<any>(initialData || null);
     const [isLoading, setIsLoading] = useState(!initialData);
     const [isUsernameMode, setIsUsernameMode] = useState(!!initialData);
+    const [isFavorited, setIsFavorited] = useState(false);
+    const [showHours, setShowHours] = useState(false);
+    const [showLocation, setShowLocation] = useState(false);
 
     useEffect(() => {
         if (initialData) return;
 
         const loadPageData = async () => {
-            // 1. Try treating slug as a username first
             try {
                 const usernameContext = await fetchContextByUsername(slug);
                 if (usernameContext) {
@@ -60,17 +63,15 @@ export default function BusinessPublicPageClient({ slug, initialData }: Business
                     setIsLoading(false);
                     return;
                 }
-            } catch (err) {
+            } catch {
                 console.log('Not a username context, checking for device code');
             }
 
-            // 2. If not a username, check if we have a device code for the redirect/loading
             if (!deviceCode) {
                 setIsLoading(false);
                 return;
             }
 
-            // 3. Normal redirect logic for device-based visits if not authenticated
             if (!isAuthenticated && deviceCode) {
                 router.replace(`/${slug}/${deviceCode}`);
                 return;
@@ -88,9 +89,41 @@ export default function BusinessPublicPageClient({ slug, initialData }: Business
         loadPageData();
     }, [deviceCode, slug, isAuthenticated, router, initialData]);
 
+    const handleShare = useCallback(async () => {
+        const url = typeof window !== 'undefined' ? window.location.href : '';
+        const text = `Check out ${businessData?.business?.name || 'this business'} on VemTap`;
+        if (navigator.share) {
+            try {
+                await navigator.share({ title: businessData?.business?.name || 'Business', text, url });
+            } catch { /* user cancelled */ }
+        } else {
+            try {
+                await navigator.clipboard.writeText(url);
+                notify.success('Link copied to clipboard');
+            } catch {
+                notify.error('Failed to copy link');
+            }
+        }
+    }, [businessData]);
+
+    const handleDirections = useCallback(() => {
+        const address = businessData?.business?.address || 'Wuse 2, Abuja';
+        const query = encodeURIComponent(address);
+        window.open(`https://www.google.com/maps/search/?api=1&query=${query}`, '_blank');
+    }, [businessData]);
+
+    const handleContact = useCallback(() => {
+        const phone = businessData?.business?.phone;
+        if (phone) {
+            window.open(`tel:${phone}`, '_self');
+        } else {
+            notify.error('No phone number available');
+        }
+    }, [businessData]);
+
     if (isLoading) {
         return (
-            <div className="min-h-screen bg-[#fafbfc] flex items-center justify-center">
+            <div className="min-h-screen bg-surface flex items-center justify-center">
                 <Loader2 className="size-10 text-primary animate-spin" />
             </div>
         );
@@ -102,13 +135,13 @@ export default function BusinessPublicPageClient({ slug, initialData }: Business
 
     if (!businessData?.business) {
         return (
-            <div className="min-h-screen bg-[#fafbfc] flex flex-col items-center justify-center p-6 text-center">
-                <Building2 size={64} className="text-slate-300 mb-4" />
-                <h1 className="text-2xl font-black text-slate-900 mb-2 tracking-tight">Business Not Found</h1>
-                <p className="text-slate-500 font-bold mb-8">We couldn't find the business you're looking for.</p>
+            <div className="min-h-screen bg-surface flex flex-col items-center justify-center p-6 text-center">
+                <Building2 size={64} className="text-gray-300 mb-4" />
+                <h1 className="text-2xl font-bold text-on-surface mb-2">Business Not Found</h1>
+                <p className="text-on-surface-variant mb-8">We couldn&apos;t find the business you&apos;re looking for.</p>
                 <button
                     onClick={() => router.push('/')}
-                    className="px-8 h-12 bg-primary text-white font-black uppercase tracking-widest text-xs rounded-xl shadow-lg shadow-primary/20"
+                    className="px-8 h-12 bg-primary text-white font-semibold rounded-full"
                 >
                     Back to Home
                 </button>
@@ -116,10 +149,11 @@ export default function BusinessPublicPageClient({ slug, initialData }: Business
         );
     }
 
-    const { business, owner } = businessData;
+    const { business } = businessData;
     const businessName = business.name || 'VemTap Business';
     const logoUrl = business.logoUrl;
-    const rewardsVisible = business.showRewards ?? true;
+    const coverUrl = business.coverUrl || business.image || 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800&h=400&fit=crop';
+    const isOpen = business.isOpens ?? true;
 
     const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'] as const;
 
@@ -131,368 +165,349 @@ export default function BusinessPublicPageClient({ slug, initialData }: Business
         return `${norm.from} - ${norm.to}`;
     };
 
-    return (
-        <div className="min-h-screen bg-[#fafbfc] font-sans selection:bg-primary/10">
-            {/* Minimal Header */}
-            <div className="h-[25vh] md:h-[40vh] bg-linear-to-b from-primary/10 to-[#fafbfc] relative overflow-hidden flex items-center justify-center">
-                <div className="absolute top-0 left-0 w-full h-full">
-                    <div className="absolute top-[-10%] left-[-5%] size-96 bg-primary/10 rounded-full blur-3xl animate-pulse" />
-                    <div className="absolute bottom-[-10%] right-[-5%] size-96 bg-primary/10 rounded-full blur-3xl" />
-                </div>
+    const renderStars = (rating: number) => {
+        const stars = [];
+        const full = Math.floor(rating);
+        const hasHalf = rating % 1 >= 0.5;
+        for (let i = 0; i < 5; i++) {
+            if (i < full) {
+                stars.push(
+                    <span key={i} className="material-symbols-outlined text-[18px] text-amber-500" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
+                );
+            } else if (i === full && hasHalf) {
+                stars.push(
+                    <span key={i} className="material-symbols-outlined text-[18px] text-amber-500">star_half</span>
+                );
+            } else {
+                stars.push(
+                    <span key={i} className="material-symbols-outlined text-[18px] text-gray-300">star</span>
+                );
+            }
+        }
+        return stars;
+    };
 
-                <div className="absolute top-6 left-4 right-4 md:top-8 md:left-8 md:right-8 flex items-center justify-center z-10 font-bold uppercase tracking-widest text-[10px]">
-                    <div className="px-4 py-1.5 rounded-full bg-primary/10 text-primary tracking-[0.3em] font-black">
-                        {businessName}
-                    </div>
-                    <button className="absolute right-0 text-slate-400 hover:text-primary transition-colors">
-                        <Share2 size={16} />
+    return (
+        <div className="min-h-screen bg-surface" style={{ fontFamily: 'Inter, sans-serif' }}>
+            {/* Fixed Header */}
+            <header className="bg-surface border-b border-outline-variant fixed top-0 w-full z-50 flex items-center justify-center">
+                <div className="w-full max-w-5xl flex items-center justify-between px-5 h-14">
+                    <button
+                        onClick={() => router.back()}
+                        aria-label="Go back"
+                        className="flex items-center justify-center w-8 h-8 rounded-full hover:bg-gray-100 transition-colors active:scale-95"
+                    >
+                        <ArrowLeft size={20} className="text-primary" />
+                    </button>
+                    <h1 className="font-semibold text-base text-primary truncate mx-4">Business Profile</h1>
+                    <button
+                        onClick={handleShare}
+                        aria-label="Share"
+                        className="flex items-center justify-center w-8 h-8 rounded-full hover:bg-gray-100 transition-colors active:scale-95"
+                    >
+                        <Share2 size={20} className="text-primary" />
                     </button>
                 </div>
+            </header>
 
-                <div className="flex flex-col items-center text-center z-10 px-4 md:px-6">
-                    <div className="size-20 md:size-32 rounded-2xl md:rounded-3xl bg-white p-1 md:p-1.5 shadow-2xl shadow-slate-200/50 mb-4 md:mb-6 border border-white">
-                        {logoUrl ? (
-                            <img
-                                src={logoUrl}
-                                alt={businessName}
-                                className="w-full h-full rounded-2xl object-cover"
-                            />
-                        ) : (
-                            <div className="w-full h-full rounded-2xl bg-slate-50 flex items-center justify-center text-primary text-4xl font-black italic">
-                                {businessName.charAt(0)}
+            {/* Main Content */}
+            <main className="pt-14 pb-20">
+                <div className="max-w-5xl mx-auto">
+                    {/* Hero Section */}
+                    <div className="relative w-full h-60 bg-surface-container-high">
+                        <img
+                            alt={`${businessName} cover`}
+                            className="w-full h-full object-cover"
+                            src={coverUrl}
+                        />
+                        {/* Logo Overlay */}
+                        <div className="absolute -bottom-10 left-5 w-24 h-24 bg-surface rounded-full p-1 shadow-sm border border-outline-variant">
+                            {logoUrl ? (
+                                <img alt={`${businessName} logo`} className="w-full h-full object-cover rounded-full" src={logoUrl} />
+                            ) : (
+                                <div className="w-full h-full rounded-full bg-gray-100 flex items-center justify-center text-primary text-3xl font-bold">
+                                    {businessName.charAt(0)}
+                                </div>
+                            )}
+                        </div>
+                        {/* Status Badge */}
+                        <div className="absolute bottom-4 right-5 bg-surface px-3 py-1 rounded-full shadow-sm flex items-center gap-1">
+                            <div className={`w-2 h-2 rounded-full ${isOpen ? 'bg-emerald-500' : 'bg-red-500'}`} />
+                            <span className={`text-xs font-medium ${isOpen ? 'text-emerald-500' : 'text-red-500'}`}>
+                                {isOpen ? 'Open Now' : 'Closed'}
+                            </span>
+                        </div>
+                    </div>
+
+                    {/* Business Info */}
+                    <div className="px-5 pt-12 pb-6 border-b border-outline-variant">
+                        <div className="flex justify-between items-start mb-2">
+                            <div>
+                                <h2 className="text-2xl font-semibold text-on-surface mb-1">{businessName}</h2>
+                                <p className="text-sm text-on-surface-variant flex items-center gap-1">
+                                    <MapPin size={16} />
+                                    {business.address || 'Wuse 2, Abuja'}
+                                </p>
                             </div>
-                        )}
+                            <button
+                                onClick={() => setIsFavorited(!isFavorited)}
+                                className="w-10 h-10 rounded-full border border-outline-variant flex items-center justify-center hover:bg-gray-50 transition-colors active:scale-95"
+                            >
+                                <span
+                                    className="material-symbols-outlined"
+                                    style={{
+                                        fontSize: 20,
+                                        color: isFavorited ? '#ba1a1a' : '#0055c4',
+                                        fontVariationSettings: isFavorited ? "'FILL' 1" : undefined,
+                                    }}
+                                >
+                                    favorite_border
+                                </span>
+                            </button>
+                        </div>
+
+                        {/* Rating */}
+                        <div className="flex items-center gap-2 mb-4">
+                            <div className="flex">{renderStars(4.8)}</div>
+                            <span className="font-semibold text-sm text-on-surface">4.8</span>
+                            <span className="text-sm text-on-surface-variant">(324 reviews)</span>
+                        </div>
+
+                        <p className="text-sm text-on-surface mb-6 line-clamp-2">
+                            {business.about || 'Welcome to our business. We offer premium services and products to our valued customers.'}
+                        </p>
+
+                        {/* Quick Actions */}
+                        <div className="flex gap-3">
+                            <button
+                                onClick={handleDirections}
+                                className="flex-1 bg-primary text-white font-semibold h-12 rounded-full flex items-center justify-center gap-2 active:scale-95 transition-transform"
+                            >
+                                <Navigation size={20} />
+                                Directions
+                            </button>
+                            <button
+                                onClick={handleContact}
+                                className="flex-1 border border-primary text-primary font-semibold h-12 rounded-full flex items-center justify-center gap-2 hover:bg-gray-50 active:scale-95 transition-transform"
+                            >
+                                <Phone size={20} />
+                                Contact
+                            </button>
+                        </div>
                     </div>
-                    <div className="flex items-center gap-2 mb-1 md:mb-2">
-                        <h1 className="text-xl md:text-5xl font-black text-slate-900 tracking-tight capitalize">
-                            {businessName}
-                        </h1>
-                        <ShieldCheck size={20} className="text-emerald-500 md:size-6" />
-                    </div>
-                    <p className="text-slate-400 font-bold text-xs md:text-sm tracking-wide flex items-center gap-2">
-                        <span className="text-primary">{business.category || business.type || 'Business'}</span>
-                        {business.address && (
-                            <>
-                                <span className="text-slate-200">•</span>
-                                <span className="flex items-center gap-1 leading-none"><MapPin size={12} /> {business.address}</span>
-                            </>
-                        )}
-                    </p>
-                </div>
-            </div>
 
-            <div className="max-w-4xl mx-auto px-4 md:px-6 -mt-6 md:-mt-10 relative z-20 pb-24">
-                <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
-                    <div className="md:col-span-8 space-y-6">
-                        <div className="bg-white rounded-3xl md:rounded-[2.5rem] p-5 md:p-12 shadow-xl shadow-slate-200/40 border border-white/50">
-                            {business.about && (
-                                <section className="mb-8 md:mb-12">
-                                    <h2 className="text-[10px] uppercase tracking-[0.3em] font-black text-primary mb-4 md:mb-6">About the Business</h2>
-                                    <p className="text-base md:text-xl text-slate-600 leading-relaxed font-bold">
-                                        {business.about}
-                                    </p>
-                                </section>
-                            )}
+                    {/* Active Deals — shown via /{slug}/deals page */}
 
-                            {!business.about && business.welcomeMessage && (
-                                <section className="mb-12">
-                                    <h2 className="text-[10px] uppercase tracking-[0.3em] font-black text-primary mb-6">Welcome</h2>
-                                    <p className="text-lg md:text-xl text-slate-600 leading-relaxed font-bold">
-                                        {business.welcomeMessage}
-                                    </p>
-                                </section>
-                            )}
+                    {/* Products Section — shown via /{slug}/catalog page */}
 
-                            {business.openingHours && (
-                                <section className="mb-12 p-6 rounded-2xl bg-slate-50">
-                                    <h2 className="text-[10px] uppercase tracking-[0.3em] font-black text-primary mb-6 flex items-center gap-2">
-                                        <Clock size={16} /> Business Hours
-                                    </h2>
-                                    <div className="grid grid-cols-2 gap-3">
-                                        {DAYS.map((day) => (
-                                            <div key={day} className="flex justify-between items-center text-sm">
-                                                <span className="font-bold text-slate-500 capitalize">{day}</span>
-                                                <span className={`font-black ${business.openingHours?.[day]?.closed ? 'text-red-400' : 'text-slate-900'}`}>
-                                                    {formatHours(day)}
-                                                </span>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </section>
-                            )}
+                    {/* Services Section — shown via /{slug}/catalog page */}
 
-                            {business.rewardEnabled && rewardsVisible && (
-                                <section className="p-8 rounded-[2rem] bg-linear-to-br from-slate-50 to-white border border-slate-100/50">
-                                    <h3 className="text-sm font-black text-slate-900 mb-2 flex items-center gap-2">
-                                        <div className="size-8 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-                                            <Star size={16} fill="currentColor" />
+                    {/* Business Hours - Collapsible */}
+                    {business.openingHours && (
+                        <section className="border-b border-outline-variant">
+                            <button
+                                onClick={() => setShowHours(!showHours)}
+                                className="w-full px-5 py-6 flex items-center justify-between"
+                            >
+                                <h3 className="text-lg font-semibold text-on-surface">Business Hours</h3>
+                                <ChevronDown
+                                    size={20}
+                                    className={`text-on-surface-variant transition-transform duration-200 ${showHours ? 'rotate-180' : ''}`}
+                                />
+                            </button>
+                            {showHours && (
+                                <div className="px-5 pb-6 grid grid-cols-2 gap-3">
+                                    {DAYS.map((day) => (
+                                        <div key={day} className="flex justify-between items-center text-sm">
+                                            <span className="font-medium text-on-surface-variant capitalize">{day}</span>
+                                            <span className={`font-semibold ${business.openingHours?.[day]?.closed ? 'text-red-500' : 'text-on-surface'}`}>
+                                                {formatHours(day)}
+                                            </span>
                                         </div>
-                                        Exclusive Rewards
-                                    </h3>
-                                    <p className="text-slate-500 font-bold mb-6 leading-relaxed">
-                                        {business.rewardMessage || `Visit us ${business.rewardVisitThreshold || 5} times to unlock special rewards and benefits tailored for you.`}
-                                    </p>
-                                    {isCustomerAccount && (
-                                        <button
-                                            onClick={() => router.push(`/customer/dashboard`)}
-                                            className="inline-flex items-center gap-2 text-primary font-black uppercase tracking-widest text-[10px] hover:gap-3 transition-all underline underline-offset-8"
-                                        >
-                                            View your progress <ExternalLink size={14} />
-                                        </button>
-                                    )}
-                                </section>
+                                    ))}
+                                </div>
                             )}
-
-                            <div className="grid grid-cols-2 gap-8 mt-12 pt-12 border-t border-slate-50 text-center md:text-left">
-                                <div>
-                                    <p className="text-[10px] uppercase tracking-widest font-black text-slate-400 mb-1">Impact</p>
-                                    <p className="text-xl font-black text-slate-900">{business.monthlyVisitors || 'N/A'}</p>
-                                    <p className="text-[10px] font-bold text-slate-400">Monthly Visitors</p>
-                                </div>
-                                <div>
-                                    <p className="text-[10px] uppercase tracking-widest font-black text-slate-400 mb-1">Focus</p>
-                                    <p className="text-xl font-black text-slate-900 truncate">{business.goal || 'Quality Service'}</p>
-                                    <p className="text-[10px] font-bold text-slate-400">Primary Goal</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="md:col-span-4 space-y-6">
-                        <div className="bg-white rounded-3xl md:rounded-[2.5rem] p-6 md:p-8 shadow-xl shadow-slate-200/40 border border-white/50">
-                            <h3 className="text-sm font-black text-slate-900 mb-8 tracking-tight">Direct Connect</h3>
-                            <div className="space-y-6">
-                                {(business.engagement?.ublSequence || [
-                                    'system:order', 'system:service', 'system:offers', 'system:whatsapp', 'system:forms', 'system:engagement'
-                                ]).map((itemId: string) => {
-                                    if (itemId === 'system:whatsapp' && business.whatsappNumber) {
-                                        return (
-                                            <div key={itemId} className="flex items-center gap-4 group cursor-pointer" onClick={() => window.open(`https://wa.me/${business.whatsappNumber}`, '_blank')}>
-                                                <div className="size-10 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center group-hover:scale-110 transition-transform">
-                                                    <Phone size={18} />
-                                                </div>
-                                                <div className="flex-1 min-w-0">
-                                                    <p className="text-[10px] uppercase tracking-wider font-extrabold text-slate-400">WhatsApp</p>
-                                                    <p className="text-sm font-bold text-slate-900 truncate">{business.whatsappNumber}</p>
-                                                </div>
-                                            </div>
-                                        );
-                                    }
-                                    if (itemId === 'system:email' && business.officialEmail) {
-                                        return (
-                                            <div key={itemId} className="flex items-center gap-4 group cursor-pointer" onClick={() => window.open(`mailto:${business.officialEmail}`, '_blank')}>
-                                                <div className="size-10 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center group-hover:scale-110 transition-transform">
-                                                    <Mail size={18} />
-                                                </div>
-                                                <div className="flex-1 min-w-0">
-                                                    <p className="text-[10px] uppercase tracking-wider font-extrabold text-slate-400">Email</p>
-                                                    <p className="text-sm font-bold text-slate-900 truncate">{business.officialEmail}</p>
-                                                </div>
-                                            </div>
-                                        );
-                                    }
-                                    if (itemId === 'system:website' && business.website) {
-                                        return (
-                                            <div key={itemId} className="flex items-center gap-4 group cursor-pointer" onClick={() => {
-                                                const url = business.website?.startsWith('http') ? business.website : `https://${business.website}`;
-                                                window.open(url, '_blank');
-                                            }}>
-                                                <div className="size-10 rounded-2xl bg-slate-50 text-slate-600 flex items-center justify-center group-hover:scale-110 transition-transform">
-                                                    <Globe size={18} />
-                                                </div>
-                                                <div className="flex-1 min-w-0">
-                                                    <p className="text-[10px] uppercase tracking-wider font-extrabold text-slate-400">Website</p>
-                                                    <p className="text-sm font-bold text-slate-900 truncate">{business.website}</p>
-                                                </div>
-                                            </div>
-                                        );
-                                    }
-                                    if (itemId === 'system:review' && business.reviewUrl && business.showReview) {
-                                        return (
-                                            <div key={itemId} className="pt-4">
-                                                <button
-                                                    onClick={() => window.open(business.reviewUrl, '_blank')}
-                                                    className="w-full h-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center gap-2 hover:bg-primary/20 transition-colors text-xs font-black uppercase tracking-widest"
-                                                >
-                                                    <Star size={16} fill="currentColor" />
-                                                    Google Review
-                                                </button>
-                                            </div>
-                                        );
-                                    }
-
-                                    if (itemId === 'system:order' && (business.productCount || 0) > 0) {
-                                        return (
-                                            <div key={itemId} className="flex items-center gap-4 group cursor-pointer" onClick={() => router.push(`/${slug}/catalog`)}>
-                                                <div className="size-10 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center group-hover:scale-110 transition-transform">
-                                                    <ShoppingBag size={18} />
-                                                </div>
-                                                <div className="flex-1 min-w-0">
-                                                    <p className="text-[10px] uppercase tracking-wider font-extrabold text-slate-400">Shop</p>
-                                                    <p className="text-sm font-bold text-slate-900 truncate">Browse Products</p>
-                                                </div>
-                                            </div>
-                                        );
-                                    }
-                                    if (itemId === 'system:service' && (business.serviceCount || 0) > 0) {
-                                        return (
-                                            <div key={itemId} className="flex items-center gap-4 group cursor-pointer" onClick={() => router.push(`/${slug}/services`)}>
-                                                <div className="size-10 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center group-hover:scale-110 transition-transform">
-                                                    <Briefcase size={18} />
-                                                </div>
-                                                <div className="flex-1 min-w-0">
-                                                    <p className="text-[10px] uppercase tracking-wider font-extrabold text-slate-400">Services</p>
-                                                    <p className="text-sm font-bold text-slate-900 truncate">Book a Service</p>
-                                                </div>
-                                            </div>
-                                        );
-                                    }
-                                    if (itemId === 'system:offers' && (business.offerCount || 0) > 0) {
-                                        return (
-                                            <div key={itemId} className="flex items-center gap-4 group cursor-pointer" onClick={() => router.push(`/${slug}/offers`)}>
-                                                <div className="size-10 rounded-2xl bg-red-50 text-red-600 flex items-center justify-center group-hover:scale-110 transition-transform">
-                                                    <Tag size={18} />
-                                                </div>
-                                                <div className="flex-1 min-w-0">
-                                                    <p className="text-[10px] uppercase tracking-wider font-extrabold text-slate-400">Deals</p>
-                                                    <p className="text-sm font-bold text-slate-900 truncate">Exclusive Offers</p>
-                                                </div>
-                                            </div>
-                                        );
-                                    }
-                                    if (itemId === 'system:forms' && (business.formCount || 0) > 0) {
-                                        return (
-                                            <div key={itemId} className="flex items-center gap-4 group cursor-pointer" onClick={() => router.push(`/${slug}/forms`)}>
-                                                <div className="size-10 rounded-2xl bg-purple-50 text-purple-600 flex items-center justify-center group-hover:scale-110 transition-transform">
-                                                    <FileJson size={18} />
-                                                </div>
-                                                <div className="flex-1 min-w-0">
-                                                    <p className="text-[10px] uppercase tracking-wider font-extrabold text-slate-400">Forms</p>
-                                                    <p className="text-sm font-bold text-slate-900 truncate">Submit Request</p>
-                                                </div>
-                                            </div>
-                                        );
-                                    }
-
-                                    if (itemId === 'system:engagement' && business.showSocial) {
-                                        const hasSocial = business.instagramUrl || business.xUrl || business.facebookUrl || business.linkedinUrl || business.tiktokUrl || business.youtubeUrl || business.customLink;
-                                        if (!hasSocial) return null;
-                                        return (
-                                            <div key={itemId} className="mt-6 pt-6 border-t border-slate-50 flex flex-wrap gap-2">
-                                                {business.facebookUrl && (
-                                                    <button onClick={() => window.open(business.facebookUrl, '_blank')} className="size-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center hover:bg-blue-100 transition-colors">
-                                                        <Facebook size={18} />
-                                                    </button>
-                                                )}
-                                                {business.instagramUrl && (
-                                                    <button onClick={() => window.open(business.instagramUrl, '_blank')} className="size-10 rounded-xl bg-pink-50 text-pink-600 flex items-center justify-center hover:bg-pink-100 transition-colors">
-                                                        <Instagram size={18} />
-                                                    </button>
-                                                )}
-                                                {business.tiktokUrl && (
-                                                    <button onClick={() => window.open(business.tiktokUrl, '_blank')} className="size-10 rounded-xl bg-slate-900 text-white flex items-center justify-center hover:bg-slate-800 transition-colors">
-                                                        <span className="text-xs font-black">TT</span>
-                                                    </button>
-                                                )}
-                                                {business.xUrl && (
-                                                    <button onClick={() => window.open(business.xUrl, '_blank')} className="size-10 rounded-xl bg-slate-50 text-slate-900 flex items-center justify-center hover:bg-slate-100 transition-colors">
-                                                        <Twitter size={18} />
-                                                    </button>
-                                                )}
-                                                {business.youtubeUrl && (
-                                                    <button onClick={() => window.open(business.youtubeUrl, '_blank')} className="size-10 rounded-xl bg-red-50 text-red-600 flex items-center justify-center hover:bg-red-100 transition-colors">
-                                                        <Youtube size={18} />
-                                                    </button>
-                                                )}
-                                                {business.linkedinUrl && (
-                                                    <button onClick={() => window.open(business.linkedinUrl, '_blank')} className="size-10 rounded-xl bg-sky-50 text-sky-600 flex items-center justify-center hover:bg-sky-100 transition-colors">
-                                                        <Linkedin size={18} />
-                                                    </button>
-                                                )}
-                                                {business.customLink && (
-                                                    <button onClick={() => window.open(business.customLink, '_blank')} className="size-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center hover:bg-purple-100 transition-colors">
-                                                        <LinkIcon size={18} />
-                                                    </button>
-                                                )}
-                                            </div>
-                                        );
-                                    }
-
-                                    const qrCode = businessData?.qrThriveCodes?.find((q: any) => q.id === itemId);
-                                    if (qrCode) {
-                                        const Icon = getQrIcon(qrCode.type);
-                                        return (
-                                            <div 
-                                                key={itemId} 
-                                                className="flex items-center gap-4 group cursor-pointer" 
-                                                onClick={() => router.push(`/${slug}/${businessData.device.code}?qr=${qrCode.shortId}`)}
-                                            >
-                                                <div className="size-10 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center group-hover:scale-110 transition-transform">
-                                                    <Icon size={18} />
-                                                </div>
-                                                <div className="flex-1 min-w-0">
-                                                    <p className="text-[10px] uppercase tracking-wider font-extrabold text-slate-400">
-                                                        {getQrDescription(qrCode.type)}
-                                                    </p>
-                                                    <p className="text-sm font-bold text-slate-900 truncate">{qrCode.name}</p>
-                                                </div>
-                                            </div>
-                                        );
-                                    }
-
-                                    return null;
-                                })}
-                            </div>
-                        </div>
-
-                        {owner && (
-                            <div className="bg-slate-900 rounded-[2.5rem] p-6 text-white shadow-2xl shadow-slate-900/20">
-                                <div className="flex items-center gap-4">
-                                    <div className="size-10 rounded-xl bg-white/10 flex items-center justify-center">
-                                        <ShieldCheck size={20} />
-                                    </div>
-                                    <div>
-                                        <p className="text-[10px] uppercase tracking-[0.2em] font-black text-slate-400">Verified Owner</p>
-                                        <p className="text-sm font-bold">{owner.firstName}</p>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-                    </div>
-                </div>
-
-                <div className="mt-12 text-center flex flex-col items-center">
-                    {isCustomerAccount && (
-                        <button
-                            onClick={() => router.push('/customer/dashboard')}
-                            className="group relative px-12 h-20 bg-primary text-white rounded-[2rem] overflow-hidden shadow-2xl shadow-primary/40 hover:scale-105 transition-all duration-500"
-                        >
-                            <div className="absolute inset-0 bg-linear-to-r from-primary/30 to-primary/10 opacity-0 group-hover:opacity-100 transition-opacity" />
-                            <div className="relative flex items-center gap-4">
-                                <div className="flex items-center gap-4">
-                                    <div className="flex flex-col items-start">
-                                        <span className="text-[10px] uppercase tracking-[0.3em] font-black text-white/80">Ready to engage?</span>
-                                        <span className="text-lg font-black tracking-tight">Open Customer Dashboard</span>
-                                    </div>
-                                    <div className="size-10 rounded-2xl bg-white/15 flex items-center justify-center group-hover:rotate-12 transition-transform">
-                                        <LayoutDashboard size={20} />
-                                    </div>
-                                </div>
-                            </div>
-                        </button>
+                        </section>
                     )}
 
-                    <div className="mt-12 flex items-center gap-4 grayscale opacity-30 hover:grayscale-0 hover:opacity-100 transition-all duration-700 cursor-default">
-                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Powered by</span>
-                        <div className="h-6 w-px bg-slate-200" />
-                        {logoUrl ? (
-                            <img src={logoUrl} alt={businessName} className="h-6 object-contain" />
-                        ) : (
-                            <span className="text-lg font-black tracking-tighter text-slate-900">{businessName}</span>
+                    {/* Location - Collapsible */}
+                    <section className="border-b border-outline-variant">
+                        <button
+                            onClick={() => setShowLocation(!showLocation)}
+                            className="w-full px-5 py-6 flex items-center justify-between"
+                        >
+                            <h3 className="text-lg font-semibold text-on-surface">Location</h3>
+                            <ChevronDown
+                                size={20}
+                                className={`text-on-surface-variant transition-transform duration-200 ${showLocation ? 'rotate-180' : ''}`}
+                            />
+                        </button>
+                        {showLocation && (
+                            <div className="px-5 pb-6">
+                                <div className="w-full h-40 bg-surface-container-high rounded-xl border border-outline-variant overflow-hidden relative">
+                                    <div className="w-full h-full bg-gray-200 flex items-center justify-center opacity-70">
+                                        <MapPin size={40} className="text-primary" />
+                                    </div>
+                                    <div className="absolute inset-0 flex items-center justify-center">
+                                        <div className="w-10 h-10 bg-primary/20 rounded-full flex items-center justify-center">
+                                            <span className="material-symbols-outlined text-primary" style={{ fontVariationSettings: "'FILL' 1", fontSize: 24 }}>location_on</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <p className="text-sm text-on-surface-variant mt-2">
+                                    {business.address || '14 Aminu Kano Crescent, Wuse 2, Abuja, Nigeria'}
+                                </p>
+                            </div>
                         )}
-                    </div>
+                    </section>
+
+                    {/* Direct Connect */}
+                    <section className="py-6 border-b border-outline-variant px-5">
+                        <h3 className="text-lg font-semibold text-on-surface mb-4">Direct Connect</h3>
+                        <div className="space-y-4">
+                            {business.phone && (
+                                <div
+                                    className="flex items-center gap-4 group cursor-pointer"
+                                    onClick={() => window.open(`tel:${business.phone}`, '_self')}
+                                >
+                                    <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center group-hover:scale-110 transition-transform">
+                                        <Phone size={18} />
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-xs text-on-surface-variant font-medium">Phone</p>
+                                        <p className="text-sm font-semibold text-on-surface truncate">{business.phone}</p>
+                                    </div>
+                                </div>
+                            )}
+                            {business.email && (
+                                <div
+                                    className="flex items-center gap-4 group cursor-pointer"
+                                    onClick={() => window.open(`mailto:${business.email}`, '_blank')}
+                                >
+                                    <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center group-hover:scale-110 transition-transform">
+                                        <Mail size={18} />
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-xs text-on-surface-variant font-medium">Email</p>
+                                        <p className="text-sm font-semibold text-on-surface truncate">{business.email}</p>
+                                    </div>
+                                </div>
+                            )}
+                            {business.website && (
+                                <div
+                                    className="flex items-center gap-4 group cursor-pointer"
+                                    onClick={() => {
+                                        const url = business.website?.startsWith('http') ? business.website : `https://${business.website}`;
+                                        window.open(url, '_blank');
+                                    }}
+                                >
+                                    <div className="w-10 h-10 rounded-xl bg-gray-50 text-gray-600 flex items-center justify-center group-hover:scale-110 transition-transform">
+                                        <Globe size={18} />
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-xs text-on-surface-variant font-medium">Website</p>
+                                        <p className="text-sm font-semibold text-on-surface truncate">{business.website}</p>
+                                    </div>
+                                </div>
+                            )}
+                            {business.whatsappNumber && (
+                                <div
+                                    className="flex items-center gap-4 group cursor-pointer"
+                                    onClick={() => window.open(`https://wa.me/${business.whatsappNumber}`, '_blank')}
+                                >
+                                    <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center group-hover:scale-110 transition-transform">
+                                        <Phone size={18} />
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-xs text-on-surface-variant font-medium">WhatsApp</p>
+                                        <p className="text-sm font-semibold text-on-surface truncate">{business.whatsappNumber}</p>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Social Links */}
+                        {business.showSocial && (
+                            <div className="mt-6 pt-6 border-t border-outline-variant flex flex-wrap gap-2">
+                                {business.facebookUrl && (
+                                    <button onClick={() => window.open(business.facebookUrl, '_blank')} className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center hover:bg-blue-100 transition-colors">
+                                        <Facebook size={18} />
+                                    </button>
+                                )}
+                                {business.instagramUrl && (
+                                    <button onClick={() => window.open(business.instagramUrl, '_blank')} className="w-10 h-10 rounded-xl bg-pink-50 text-pink-600 flex items-center justify-center hover:bg-pink-100 transition-colors">
+                                        <Instagram size={18} />
+                                    </button>
+                                )}
+                                {business.tiktokUrl && (
+                                    <button onClick={() => window.open(business.tiktokUrl, '_blank')} className="w-10 h-10 rounded-xl bg-slate-900 text-white flex items-center justify-center hover:bg-slate-800 transition-colors">
+                                        <span className="text-xs font-bold">TT</span>
+                                    </button>
+                                )}
+                                {business.xUrl && (
+                                    <button onClick={() => window.open(business.xUrl, '_blank')} className="w-10 h-10 rounded-xl bg-gray-50 text-gray-900 flex items-center justify-center hover:bg-gray-100 transition-colors">
+                                        <Twitter size={18} />
+                                    </button>
+                                )}
+                                {business.youtubeUrl && (
+                                    <button onClick={() => window.open(business.youtubeUrl, '_blank')} className="w-10 h-10 rounded-xl bg-red-50 text-red-600 flex items-center justify-center hover:bg-red-100 transition-colors">
+                                        <Youtube size={18} />
+                                    </button>
+                                )}
+                                {business.linkedinUrl && (
+                                    <button onClick={() => window.open(business.linkedinUrl, '_blank')} className="w-10 h-10 rounded-xl bg-sky-50 text-sky-600 flex items-center justify-center hover:bg-sky-100 transition-colors">
+                                        <Linkedin size={18} />
+                                    </button>
+                                )}
+                                {business.customLink && (
+                                    <button onClick={() => window.open(business.customLink, '_blank')} className="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center hover:bg-purple-100 transition-colors">
+                                        <LinkIcon size={18} />
+                                    </button>
+                                )}
+                            </div>
+                        )}
+                    </section>
+
+                    {/* Rewards */}
+                    {business.rewardEnabled && business.showRewards !== false && isCustomerAccount && (
+                        <section className="py-6 border-b border-outline-variant px-5">
+                            <div className="p-5 rounded-2xl bg-gray-50 border border-gray-100">
+                                <h3 className="font-semibold text-on-surface mb-2 flex items-center gap-2">
+                                    <Star size={18} fill="currentColor" className="text-primary" />
+                                    Exclusive Rewards
+                                </h3>
+                                <p className="text-sm text-on-surface-variant mb-4">
+                                    {business.rewardMessage || `Visit us ${business.rewardVisitThreshold || 5} times to unlock special rewards.`}
+                                </p>
+                                <button
+                                    onClick={() => router.push('/customer/dashboard')}
+                                    className="text-primary font-semibold text-sm flex items-center gap-1 hover:gap-2 transition-all"
+                                >
+                                    View your progress <ExternalLink size={14} />
+                                </button>
+                            </div>
+                        </section>
+                    )}
+
+                    {/* Customer Dashboard CTA */}
+                    {isCustomerAccount && (
+                        <section className="py-6 px-5">
+                            <button
+                                onClick={() => router.push('/customer/dashboard')}
+                                className="w-full bg-primary text-white rounded-2xl p-5 shadow-lg shadow-primary/20 active:scale-[0.98] transition-transform"
+                            >
+                                <div className="flex items-center justify-between">
+                                    <div className="text-left">
+                                        <p className="text-xs text-white/80 font-medium uppercase tracking-wider">Ready to engage?</p>
+                                        <p className="text-lg font-bold mt-1">Open Customer Dashboard</p>
+                                    </div>
+                                    <LayoutDashboard size={24} />
+                                </div>
+                            </button>
+                        </section>
+                    )}
                 </div>
-            </div>
+            </main>
         </div>
     );
 }

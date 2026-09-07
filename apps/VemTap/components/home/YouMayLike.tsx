@@ -1,7 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { Heart, Bookmark, Share2, MapPin, ArrowRight, Tag, MessageCircle, Eye } from 'lucide-react';
+import { Heart, Bookmark, MapPin, ArrowRight, Tag, MessageCircle, Eye } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -125,7 +125,7 @@ function YouMayLikeCard({ item }: { item: RecommendationItem }) {
                 {liked ? '1' : '0'}
               </button>
               <button
-                onClick={(e) => { e.preventDefault(); if (isDeal) router.push(`/promotions/${item.id}#reviews`); }}
+                onClick={(e) => { e.preventDefault(); if (isDeal) router.push(`/deals/${item.businessSlug}/${item.id}/reviews`); }}
                 className="flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-semibold bg-gray-50 text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
               >
                 <MessageCircle size={12} />
@@ -155,7 +155,7 @@ export default function YouMayLike() {
 
   const items: RecommendationItem[] = useMock
     ? MOCK_RECOMMENDATIONS
-    : offers.map((offer: any) => ({
+    : offers.map((offer) => ({
         id: offer.id,
         type: 'deal' as const,
         title: offer.name,
@@ -164,12 +164,12 @@ export default function YouMayLike() {
         location: offer.business?.address || '',
         discountPercent: offer.discountPercent,
         originalPrice: offer.originalPrice,
-        dealPrice: offer.dealPrice,
+        dealPrice: offer.dealPrice != null ? Number(offer.dealPrice) : undefined,
         imageColor: '#066CF4',
         businessName: offer.branch?.name || offer.branchName || offer.business?.name || 'Business',
         businessSlug: offer.business?.slug || '',
         cta: 'View Deal',
-        viewCount: offer.viewCount || 0,
+        viewCount: offer.views || 0,
         dealTag: offer.discountPercent ? `${offer.discountPercent}% OFF` : undefined,
       }));
 

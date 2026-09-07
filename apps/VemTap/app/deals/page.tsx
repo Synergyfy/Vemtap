@@ -2,8 +2,9 @@
 
 import React, { useState, useMemo, useEffect, Suspense } from 'react';
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
+import { QrCode, ImagePlus } from 'lucide-react';
 import { useLocation } from '@/hooks/useLocation';
 import { usePublicOffers } from '@/services/deals/hooks';
 import { publicApi } from '@/lib/api';
@@ -11,7 +12,9 @@ import { offerToHomeDeal, formatNaira } from '@/components/home/mappers';
 import LocationPrompt from '@/components/home/LocationPrompt';
 import SearchModal from '@/components/home/SearchModal';
 import DealEngagementBar from '@/components/deals/DealEngagementBar';
+import ImageGallery from '@/components/ui/ImageGallery';
 import PublicBottomNav from '@/components/public/PublicBottomNav';
+import ConsumerFooter from '@/components/public/ConsumerFooter';
 import type { HomeDealCard } from '@/components/home/types';
 
 /* ─── Stitch colour tokens ─── */
@@ -68,6 +71,7 @@ const FALLBACK_IMAGES = [
 
 function DealsPageInner() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const { label: userLocationLabel, requestLocation } = useLocation();
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
   const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
@@ -120,18 +124,21 @@ function DealsPageInner() {
 
   const activeLocation = userLocationLabel || 'Wuse 2, Abuja';
 
-  // Seed search from URL
+  // Seed search/filter from URL (category landing links, search modal)
   useEffect(() => {
-    const q = searchParams.get('q') || searchParams.get('search') || '';
-    if (q) setSearchQuery(q);
-    const cat = searchParams.get('category');
-    if (cat) setSelectedCategory(cat);
-    const sort = searchParams.get('sortBy');
-    if (sort) setSortBy(sort);
+    const t = setTimeout(() => {
+      const q = searchParams.get('q') || searchParams.get('search') || '';
+      if (q) setSearchQuery(q);
+      const cat = searchParams.get('category');
+      if (cat) setSelectedCategory(cat);
+      const sort = searchParams.get('sortBy');
+      if (sort) setSortBy(sort);
+    }, 0);
+    return () => clearTimeout(t);
   }, [searchParams]);
 
   // Fetch live deals
-  const { data: dealsData, isLoading, isError, refetch } = usePublicOffers({ limit: 20, sortBy: 'trending' });
+  const { data: dealsData, isLoading } = usePublicOffers({ limit: 20, sortBy: 'trending' });
 
   // Fetch public categories
   const { data: categoriesData } = useQuery({
@@ -140,12 +147,21 @@ function DealsPageInner() {
     staleTime: 10 * 60 * 1000,
   });
 
+  interface CategorySource {
+    id?: string;
+    _id?: string;
+    slug?: string;
+    name?: string;
+    label?: string;
+    title?: string;
+  }
+
   const categoriesList = useMemo(() => {
     const raw = categoriesData?.items ?? categoriesData?.data ?? categoriesData?.categories ?? categoriesData;
     if (Array.isArray(raw) && raw.length > 0) {
       return raw
-        .filter((c: any) => c.name && !c.name.toLowerCase().includes('frank'))
-        .map((c: any) => ({
+        .filter((c: CategorySource) => c.name && !c.name.toLowerCase().includes('frank'))
+        .map((c: CategorySource) => ({
           id: c.id || c._id || c.slug,
           label: c.name || c.label || c.title || 'Category',
           slug: c.slug || c.name?.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, ''),
@@ -166,6 +182,11 @@ function DealsPageInner() {
   }, [dealsData]);
 
   // Text + filter + category combined
+  const createdAtOf = (d: HomeDealCard): number => {
+    const raw = (d as Partial<HomeDealCard> & { createdAt?: string }).createdAt;
+    return raw ? new Date(raw).getTime() : 0;
+  };
+
   const filteredDeals = useMemo(() => {
     let result = dealsList;
 
@@ -210,11 +231,7 @@ function DealsPageInner() {
         result = result.filter(d => d.discountPercent && d.discountPercent >= 40);
         break;
       case 'new_arrivals':
-        result = [...result].sort((a, b) => {
-          const dateA = (a as any).createdAt ? new Date((a as any).createdAt).getTime() : 0;
-          const dateB = (b as any).createdAt ? new Date((b as any).createdAt).getTime() : 0;
-          return dateB - dateA;
-        });
+        result = [...result].sort((a, b) => createdAtOf(b) - createdAtOf(a));
         break;
       case 'free':
         result = result.filter(d => d.dealPrice != null && Number(d.dealPrice) === 0);
@@ -231,11 +248,7 @@ function DealsPageInner() {
     // Sort logic
     switch (sortBy) {
       case 'newest':
-        result = [...result].sort((a, b) => {
-          const dateA = (a as any).createdAt ? new Date((a as any).createdAt).getTime() : 0;
-          const dateB = (b as any).createdAt ? new Date((b as any).createdAt).getTime() : 0;
-          return dateB - dateA;
-        });
+        result = [...result].sort((a, b) => createdAtOf(b) - createdAtOf(a));
         break;
       case 'price_asc':
         result = [...result].sort((a, b) => {
@@ -264,6 +277,45 @@ function DealsPageInner() {
 
   const allDeals = filteredDeals;
 
+  // True when the user has actively chosen a filter or typed a search,
+  // as opposed to merely browsing the default deals grid.
+  const hasActiveFilter =
+    !!searchQuery.trim() ||
+    !!selectedCategory ||
+    !!quickFilter ||
+    !!priceRange.min ||
+    !!priceRange.max ||
+    sortBy !== 'trending';
+
+  // Loose matches for "other deals you may like" when the active filter
+  // excludes everything — prefer deals tied to the current search/category,
+  // falling back to the general list so the empty state never feels dead.
+  const suggestedDeals = useMemo(() => {
+    if (dealsList.length === 0) return [];
+    const q = searchQuery.trim().toLowerCase();
+    const cat = (selectedCategory || '').toLowerCase();
+    const loose = dealsList.filter((d) => {
+      if (!q && !cat) return false;
+      const title = (d.title || '').toLowerCase();
+      const desc = (d.description || '').toLowerCase();
+      const biz = (d.businessName || '').toLowerCase();
+      const dealCat = (d.category || '').toLowerCase();
+      if (q && (title.includes(q) || desc.includes(q) || biz.includes(q))) return true;
+      if (cat && (dealCat.includes(cat) || title.includes(cat) || desc.includes(cat))) return true;
+      return false;
+    });
+    return (loose.length > 0 ? loose : dealsList).slice(0, 8);
+  }, [dealsList, searchQuery, selectedCategory]);
+
+  const clearAllFilters = () => {
+    setSearchQuery('');
+    setSelectedCategory(null);
+    setQuickFilter(null);
+    setPriceRange({ min: '', max: '' });
+    setSortBy('trending');
+    router.replace('/deals');
+  };
+
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (searchQuery.trim()) {
@@ -272,7 +324,7 @@ function DealsPageInner() {
   };
 
   return (
-    <div className="min-h-screen font-sans" style={{ background: C.bg, color: C.onSurface }}>
+    <div className="min-h-screen flex flex-col font-sans" style={{ background: C.bg, color: C.onSurface }}>
       {/* ─── TopAppBar ─── */}
       <header
         className="sticky top-0 z-40 w-full transition-colors duration-200"
@@ -291,8 +343,6 @@ function DealsPageInner() {
               {[
                 { label: 'Home', href: '/' },
                 { label: 'Deals', href: '/deals' },
-                { label: 'Business', href: '/business-landing' },
-                { label: 'Pricing', href: '/pricing' },
               ].map((item) => (
                 <Link key={item.label} href={item.href}
                   className="px-3 py-2 rounded-lg text-[13px] font-semibold hover:bg-gray-50 transition-colors"
@@ -302,21 +352,31 @@ function DealsPageInner() {
               ))}
             </nav>
           </div>
-          <form onSubmit={handleSearchSubmit} className="flex-1 max-w-[500px] flex">
-            <input
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="flex-1 h-11 px-4 rounded-l-xl text-[14px] focus:outline-none border"
-              style={{ border: `1px solid ${C.outlineVariant}`, borderRight: 'none', color: C.onSurface, background: '#ffffff' }}
-              placeholder="Search deals, businesses..."
-              type="text"
-            />
+          <form onSubmit={handleSearchSubmit} className="flex-1 max-w-[500px] flex items-center">
+            <div className="flex-1 relative">
+              <input
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full h-11 pl-4 pr-24 rounded-l-xl text-[14px] focus:outline-none border"
+                style={{ border: `1px solid ${C.outlineVariant}`, borderRight: 'none', color: C.onSurface, background: '#ffffff' }}
+                placeholder="Search deals, businesses..."
+                type="text"
+              />
+              <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-0.5">
+                <button type="button" title="Scan QR code" className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 transition-colors" style={{ color: C.onSurfaceVariant }}>
+                  <QrCode size={18} />
+                </button>
+                <button type="button" title="Search by image" className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 transition-colors" style={{ color: C.onSurfaceVariant }}>
+                  <ImagePlus size={18} />
+                </button>
+              </div>
+            </div>
             <button type="submit" className="h-11 px-6 rounded-r-xl text-white font-bold text-[13px] uppercase tracking-wider" style={{ background: C.primary }}>
               Search
             </button>
           </form>
           <div className="flex items-center gap-2 shrink-0">
-            <Link href="/auth/onboarding" className="h-10 px-5 rounded-xl bg-[#066CF4] text-white text-[13px] font-bold flex items-center justify-center hover:bg-[#0557b3] transition-colors">
+            <Link href="/login" className="h-10 px-5 rounded-xl bg-[#066CF4] text-white text-[13px] font-bold flex items-center justify-center hover:bg-[#0557b3] transition-colors">
               Login
             </Link>
             <button onClick={() => setIsLocationModalOpen(true)} className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-[13px] font-medium transition-colors hover:bg-gray-50" style={{ color: C.onSurfaceVariant }}>
@@ -377,7 +437,7 @@ function DealsPageInner() {
       </header>
 
       {/* ─── Main Content ─── */}
-      <div className="max-w-[1400px] mx-auto flex">
+      <div className="max-w-[1400px] mx-auto flex flex-1">
         {/* ─── Desktop Sidebar Filters (Collapsible) ─── */}
         <aside className="hidden md:block shrink-0 sticky top-[108px] h-[calc(100vh-108px)] border-r transition-all duration-300" style={{ borderColor: C.outlineVariant, background: '#ffffff', width: sidebarOpen ? 280 : 48 }}>
           <button
@@ -445,7 +505,7 @@ function DealsPageInner() {
                         All Categories
                       </button>
                       {categoriesList.map((cat) => (
-                        <button key={cat.id} onClick={() => { setSelectedCategory(cat.slug); setShowCategoryDropdown(false); }} className="w-full flex items-center gap-2 px-3 py-2.5 text-[13px] font-medium text-left" style={{ background: selectedCategory === cat.slug ? `${C.primary}10` : '#ffffff', color: selectedCategory === cat.slug ? C.primary : C.onSurface }}>
+                        <button key={cat.id} onClick={() => { setSelectedCategory(cat.slug ?? null); setShowCategoryDropdown(false); }} className="w-full flex items-center gap-2 px-3 py-2.5 text-[13px] font-medium text-left" style={{ background: selectedCategory === cat.slug ? `${C.primary}10` : '#ffffff', color: selectedCategory === cat.slug ? C.primary : C.onSurface }}>
                           {cat.label}
                         </button>
                       ))}
@@ -478,7 +538,8 @@ function DealsPageInner() {
                   <button onClick={() => { setQuickFilter(null); setSelectedCategory(null); setPriceRange({ min: '', max: '' }); setSortBy('trending'); }} className="w-full py-2 rounded-lg text-[12px] font-semibold border transition-colors" style={{ borderColor: C.outlineVariant, color: C.onSurfaceVariant }}>Clear all filters</button>
                 )}
                 <p className="text-[12px] font-medium text-center" style={{ color: C.onSurfaceVariant }}>
-                  {allDeals.length} {allDeals.length === 1 ? 'deal' : 'deals'} found
+                  {hasActiveFilter &&
+                    `${allDeals.length} ${allDeals.length === 1 ? 'deal' : 'deals'} found`}
                 </p>
               </div>
             </div>
@@ -562,52 +623,161 @@ function DealsPageInner() {
               </div>
             ) : allDeals.length > 0 ? (
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                {allDeals.map((deal, i) => {
+                {allDeals.map(deal => {
                   const badge = getBadge(deal);
                   return (
-                    <Link key={deal.id} href={deal.href} className="rounded-xl overflow-hidden shadow-sm relative group cursor-pointer transition-all hover:shadow-lg hover:-translate-y-0.5" style={{ background: C.surface, border: `1px solid ${C.outlineVariant}` }}>
-                      <div className="h-32 lg:h-40 relative w-full overflow-hidden" style={{ background: C.outlineVariant }}>
-                        <img src={deal.image} alt={deal.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
-                        {badge && (
-                          <div className="absolute top-2 left-2 px-2 py-0.5 rounded-md font-bold" style={{ background: badge.color, color: '#ffffff', fontSize: 10, lineHeight: '14px' }}>
-                            {badge.label}
+                    <div key={deal.id} className="rounded-xl overflow-hidden shadow-sm relative group transition-all hover:shadow-lg hover:-translate-y-0.5" style={{ background: C.surface, border: `1px solid ${C.outlineVariant}` }}>
+                      <Link href={deal.href} className="block cursor-pointer">
+                        <div className="h-32 lg:h-40 relative w-full overflow-hidden" style={{ background: C.outlineVariant }}>
+                          <ImageGallery
+                            images={deal.images || [deal.image]}
+                            alt={deal.title}
+                            aspectClass="h-full"
+                            showDots={true}
+                            showArrows={false}
+                          />
+                          {badge && (
+                            <div className="absolute top-2 left-2 px-2 py-0.5 rounded-md font-bold" style={{ background: badge.color, color: '#ffffff', fontSize: 10, lineHeight: '14px' }}>
+                              {badge.label}
+                            </div>
+                          )}
+                        </div>
+                        <div className="p-3 flex flex-col gap-1.5">
+                          <div className="min-w-0">
+                            <h3 className="text-[13px] lg:text-[14px] font-semibold leading-[18px] line-clamp-1" style={{ color: C.onSurface }}>{deal.title}</h3>
+                            <p className="text-[11px] leading-[14px] line-clamp-1 mt-0.5" style={{ color: C.onSurfaceVariant }}>{deal.businessName}</p>
                           </div>
-                        )}
-                      </div>
-                      <div className="p-3 flex flex-col gap-1.5">
-                        <div className="min-w-0">
-                          <h3 className="text-[13px] lg:text-[14px] font-semibold leading-[18px] line-clamp-1" style={{ color: C.onSurface }}>{deal.title}</h3>
-                          <p className="text-[11px] leading-[14px] line-clamp-1 mt-0.5" style={{ color: C.onSurfaceVariant }}>{deal.businessName}</p>
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            {deal.dealPrice != null && (
+                              <span className="text-[15px] lg:text-[16px] font-bold" style={{ color: C.primary }}>
+                                {Number(deal.dealPrice) === 0 ? 'FREE' : formatNaira(deal.dealPrice)}
+                              </span>
+                            )}
+                            {deal.originalPrice && deal.dealPrice && Number(deal.originalPrice) > Number(deal.dealPrice) && (
+                              <span className="text-[11px] line-through" style={{ color: C.outline }}>{formatNaira(deal.originalPrice)}</span>
+                            )}
+                          </div>
                         </div>
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          {deal.dealPrice != null && (
-                            <span className="text-[15px] lg:text-[16px] font-bold" style={{ color: C.primary }}>
-                              {Number(deal.dealPrice) === 0 ? 'FREE' : formatNaira(deal.dealPrice)}
-                            </span>
-                          )}
-                          {deal.originalPrice && deal.dealPrice && Number(deal.originalPrice) > Number(deal.dealPrice) && (
-                            <span className="text-[11px] line-through" style={{ color: C.outline }}>{formatNaira(deal.originalPrice)}</span>
-                          )}
-                        </div>
+                      </Link>
+                      <div className="px-3 pb-3">
                         <DealEngagementBar offerId={deal.id} offerTitle={deal.title} offerDescription={deal.description || ''} dealUrl={deal.href} businessName={deal.businessName} compact />
                       </div>
-                    </Link>
+                    </div>
                   );
                 })}
               </div>
             ) : (
-              <div className="text-center py-20">
-                <div className="relative mx-auto size-16 mb-4">
-                  <div className="absolute inset-0 rounded-2xl -rotate-6" style={{ background: `${C.primary}15` }} />
-                  <div className="relative size-16 rounded-2xl flex items-center justify-center text-2xl" style={{ background: '#fff', border: `1px solid ${C.outlineVariant}` }}>🛍️</div>
+              <div className="py-12">
+                {/* No-results message */}
+                <div className="text-center">
+                  <div className="relative mx-auto size-16 mb-4">
+                    <div className="absolute inset-0 rounded-2xl -rotate-6" style={{ background: `${C.primary}15` }} />
+                    <div className="relative size-16 rounded-2xl flex items-center justify-center text-2xl" style={{ background: '#fff', border: `1px solid ${C.outlineVariant}` }}>🛍️</div>
+                  </div>
+                  <p className="font-bold text-sm" style={{ color: C.onSurface }}>No deals found</p>
+                  <p className="text-xs mt-1" style={{ color: C.outline }}>Try a different search or filter — new deals drop daily.</p>
+                  <button
+                    onClick={clearAllFilters}
+                    className="mt-5 inline-flex items-center gap-1.5 rounded-xl px-5 py-2.5 text-[11px] font-bold uppercase tracking-wider text-white active:scale-95 transition-all"
+                    style={{ background: C.primary }}
+                  >
+                    View all deals
+                  </button>
                 </div>
-                <p className="font-bold text-sm" style={{ color: C.onSurface }}>No deals found</p>
-                <p className="text-xs mt-1" style={{ color: C.outline }}>Try a different search or filter — new deals drop daily.</p>
+
+                {/* List your business CTA */}
+                <div className="mt-10 rounded-2xl p-6 text-center" style={{ background: `${C.primary}08`, border: `1px solid ${C.primary}20` }}>
+                  <div className="size-12 mx-auto rounded-xl flex items-center justify-center mb-3" style={{ background: `${C.primary}15` }}>
+                    <span className="material-symbols-outlined text-2xl" style={{ color: C.primary }}>storefront</span>
+                  </div>
+                  <h3 className="font-bold text-sm mb-1" style={{ color: C.onSurface }}>Own a business?</h3>
+                  <p className="text-xs mb-4" style={{ color: C.outline }}>List your business on VemTap and reach thousands of customers in your area.</p>
+                  <Link
+                    href="/for-businesses"
+                    className="inline-flex items-center gap-1.5 rounded-xl px-5 py-2.5 text-[11px] font-bold uppercase tracking-wider text-white active:scale-95 transition-all"
+                    style={{ background: C.primary }}
+                  >
+                    Get Started — It&apos;s Free
+                  </Link>
+                </div>
+
+                {/* Other deals you may like */}
+                {suggestedDeals.length > 0 && (
+                  <div className="mt-10">
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="text-[13px] font-bold uppercase tracking-[0.12em]" style={{ color: C.onSurfaceVariant }}>
+                        Other deals you may like
+                      </h3>
+                      <button onClick={clearAllFilters} className="text-[12px] font-semibold hover:underline" style={{ color: C.primary }}>
+                        View all deals
+                      </button>
+                    </div>
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                      {suggestedDeals.map(deal => {
+                        const badge = getBadge(deal);
+                        return (
+                          <Link key={deal.id} href={deal.href} className="rounded-xl overflow-hidden shadow-sm relative group cursor-pointer transition-all hover:shadow-lg hover:-translate-y-0.5" style={{ background: C.surface, border: `1px solid ${C.outlineVariant}` }}>
+                            <div className="h-32 lg:h-36 relative w-full overflow-hidden" style={{ background: C.outlineVariant }}>
+                              <ImageGallery
+                                images={deal.images || [deal.image]}
+                                alt={deal.title}
+                                aspectClass="h-full"
+                                showDots={true}
+                                showArrows={false}
+                              />
+                              {badge && (
+                                <div className="absolute top-2 left-2 px-2 py-0.5 rounded-md font-bold" style={{ background: badge.color, color: '#ffffff', fontSize: 10, lineHeight: '14px' }}>
+                                  {badge.label}
+                                </div>
+                              )}
+                            </div>
+                            <div className="p-3 flex flex-col gap-1.5">
+                              <div className="min-w-0">
+                                <h4 className="text-[13px] font-semibold leading-[18px] line-clamp-1" style={{ color: C.onSurface }}>{deal.title}</h4>
+                                <p className="text-[11px] leading-[14px] line-clamp-1 mt-0.5" style={{ color: C.onSurfaceVariant }}>{deal.businessName}</p>
+                              </div>
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                {deal.dealPrice != null && (
+                                  <span className="text-[15px] font-bold" style={{ color: C.primary }}>
+                                    {Number(deal.dealPrice) === 0 ? 'FREE' : formatNaira(deal.dealPrice)}
+                                  </span>
+                                )}
+                                {deal.originalPrice && deal.dealPrice && Number(deal.originalPrice) > Number(deal.dealPrice) && (
+                                  <span className="text-[11px] line-through" style={{ color: C.outline }}>{formatNaira(deal.originalPrice)}</span>
+                                )}
+                              </div>
+                            </div>
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Deals not active here yet */}
+                <div className="mt-10 rounded-2xl p-6 text-center" style={{ background: `${C.primary}0a`, border: `1px solid ${C.primary}22` }}>
+                  <p className="text-xl">🏪</p>
+                  <p className="font-bold text-sm mt-1.5" style={{ color: C.onSurface }}>Deals not active here yet?</p>
+                  <p className="text-xs mt-1.5 leading-relaxed max-w-md mx-auto" style={{ color: C.onSurfaceVariant }}>
+                    Be the first to tell businesses about deals — connect with us to learn how you and the businesses around you can get started on VemTap.
+                  </p>
+                  <Link
+                    href="/contact"
+                    className="mt-4 inline-flex items-center gap-1.5 rounded-xl px-5 py-2.5 text-[11px] font-bold uppercase tracking-wider text-white active:scale-95 transition-all"
+                    style={{ background: C.primary }}
+                  >
+                    Connect with us
+                  </Link>
+                </div>
               </div>
             )}
           </div>
         </main>
+
       </div>
+
+        {/* Consumer Footer */}
+        <ConsumerFooter />
 
       <PublicBottomNav />
 
@@ -772,7 +942,7 @@ function DealsPageInner() {
                     {categoriesList.map((cat) => (
                       <button
                         key={cat.id}
-                        onClick={() => { setSelectedCategory(cat.slug); setShowCategoryDropdown(false); }}
+                        onClick={() => { setSelectedCategory(cat.slug ?? null); setShowCategoryDropdown(false); }}
                         className="w-full flex items-center gap-3 px-4 py-3 text-[14px] font-medium transition-colors text-left"
                         style={{
                           background: selectedCategory === cat.slug ? 'rgba(0, 85, 196, 0.08)' : '#ffffff',

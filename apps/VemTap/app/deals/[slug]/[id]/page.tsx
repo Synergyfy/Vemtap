@@ -1,410 +1,366 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
-import { useParams } from 'next/navigation';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { motion } from 'framer-motion';
-import {
-    ArrowLeft, Clock, Users, Share2, CheckCircle2,
-    Gift, ShieldCheck, ChevronLeft, ChevronRight, Star,
-    MapPin, Loader2, AlertCircle
-} from 'lucide-react';
-import Navbar from '@/components/layout/Navbar';
-import Footer from '@/components/layout/Footer';
-import JoinOfferModal from '@/components/promotions/JoinOfferModal';
+import { Loader2, AlertCircle } from 'lucide-react';
 import ShareDealModal from '@/components/promotions/ShareDealModal';
 import { usePublicOfferDetails } from '@/services/deals/hooks';
-import type { DealBusiness } from '@/services/deals/types';
-import { formatDealPrice, getCategoryIcon } from '@/lib/promotions';
-import { cn } from '@/lib/utils';
-import { toast } from 'react-hot-toast';
+import { useToggleSave } from '@/services/deals/engagement-hooks';
+import { formatDealPrice } from '@/lib/promotions';
+import { useAuthStore } from '@/store/useAuthStore';
 
-function getDaysLeft(endDate: string): number {
-    if (!endDate) return -1;
-    const end = new Date(endDate);
-    if (isNaN(end.getTime())) return -1;
-    const now = new Date();
-    const diff = end.getTime() - now.getTime();
-    return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
-}
-
-function getClaimPercent(claimed: number, max: number): number {
-    return Math.round((claimed / max) * 100);
-}
-
-function formatDealDate(dateStr: string): string {
+function formatDateLong(dateStr: string): string {
     if (!dateStr) return 'Ongoing';
     const date = new Date(dateStr);
     if (isNaN(date.getTime())) return 'Ongoing';
-    return date.toLocaleDateString('en-NG', {
-        month: 'short',
-        day: 'numeric',
-    });
+    return date.toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' });
 }
 
-function getUrgencyText(endDate: string): string {
-    const days = getDaysLeft(endDate);
-    if (days === -1) return 'No end date';
-    if (days === 0) return 'Ends today';
-    if (days === 1) return 'Ends tomorrow';
-    if (days <= 7) return `${days} days left`;
-    return `Ends ${formatDealDate(endDate)}`;
-}
-
-interface BusinessHours {
-    day: string;
-    open: string;
-    close: string;
-    closed: boolean;
-}
-
-function getTodayHours(hours: BusinessHours[]) {
-    const today = new Date().toLocaleDateString('en-US', { weekday: 'short' });
-    return hours.find(h => h.day === today);
-}
-
-function normalizeHours(business: DealBusiness): BusinessHours[] {
-    return business.hours || [];
-}
-
-export default function PromotionDetailPage() {
+export default function DealDetailPage() {
     const params = useParams();
+    const router = useRouter();
     const id = params.id as string;
 
-    const { data: offer, isLoading, isError } = usePublicOfferDetails(id);
+    const { data: offer, isLoading } = usePublicOfferDetails(id);
+    const { isAuthenticated } = useAuthStore();
+    const toggleSave = useToggleSave(id);
 
-    const [showJoinModal, setShowJoinModal] = useState(false);
     const [showShareModal, setShowShareModal] = useState(false);
-    const [activePhotoIndex, setActivePhotoIndex] = useState(0);
+    const [isSaved, setIsSaved] = useState(false);
+    const [topBarBg, setTopBarBg] = useState(false);
 
-    const business = offer?.business;
-    const hours = useMemo(() => business ? normalizeHours(business) : [], [business]);
-    const todayHours = useMemo(() => hours.length ? getTodayHours(hours) : undefined, [hours]);
-    const daysLeft = offer ? getDaysLeft(offer.endDate || '') : 0;
-    const claimPct = offer ? getClaimPercent(offer.claimedCount, offer.maxClaims) : 0;
-    const CategoryIcon = business ? getCategoryIcon(business.categoryId) : null;
+    const normalizedOffer = useMemo(() => {
+        if (!offer) return null;
+        return {
+            id: offer.id,
+            name: offer.name,
+            mainImage: offer.mainImage,
+            galleryImages: offer.galleryImages || [],
+            longDescription: offer.longDescription || offer.description,
+            description: offer.description,
+            calculatedPrice: offer.calculatedPrice,
+            pricingType: offer.pricingType,
+            discountValue: offer.discountValue,
+            discountLabel: offer.discountPercent
+              ? `${offer.discountPercent}% OFF`
+              : offer.discountValue && offer.pricingType === 'percentage_discount'
+                ? `${offer.discountValue}% OFF`
+                : offer.discountValue && offer.pricingType === 'fixed_discount_price'
+                  ? `${formatDealPrice(offer.discountValue)} OFF`
+                  : null,
+            endDate: offer.endDate,
+            isExpired: offer.isExpired,
+            claimedCount: offer.claimedCount,
+            maxClaims: offer.maxClaims,
+            terms: offer.terms || [],
+            business: offer.business,
+        };
+    }, [offer]);
+
+    const business = normalizedOffer?.business;
     const photos = useMemo(() => {
         const result = [...(business?.photos || [])];
-        if (offer?.mainImage && !result.includes(offer.mainImage)) result.unshift(offer.mainImage);
-        if (offer?.galleryImages?.length) {
-            offer.galleryImages.forEach(img => { if (!result.includes(img)) result.push(img); });
+        if (normalizedOffer?.mainImage && !result.includes(normalizedOffer.mainImage)) result.unshift(normalizedOffer.mainImage);
+        if (normalizedOffer?.galleryImages?.length) {
+            normalizedOffer.galleryImages.forEach((img: string) => { if (!result.includes(img)) result.push(img); });
         }
         return result;
-    }, [business, offer]);
+    }, [business, normalizedOffer]);
 
-    const discountPercent = offer?.pricingType === 'percentage_discount' && offer.discountValue
-        ? offer.discountValue : undefined;
-    const discountAmount = offer?.pricingType === 'fixed_discount_price' && offer.discountValue
-        ? offer.discountValue : undefined;
+    const discountPercent = normalizedOffer?.pricingType === 'percentage_discount' && normalizedOffer.discountValue
+        ? normalizedOffer.discountValue : undefined;
+    const discountAmount = normalizedOffer?.pricingType === 'fixed_discount_price' && normalizedOffer.discountValue
+        ? normalizedOffer.discountValue : undefined;
+
     const originalPrice = useMemo(() => {
-        if (!offer) return 0;
-        if (discountPercent) return Math.round(offer.calculatedPrice / (1 - discountPercent / 100));
-        if (discountAmount) return offer.calculatedPrice + discountAmount;
-        return offer.calculatedPrice;
-    }, [offer, discountPercent, discountAmount]);
+        if (!normalizedOffer) return 0;
+        if (discountPercent) return Math.round(normalizedOffer.calculatedPrice / (1 - discountPercent / 100));
+        if (discountAmount) return normalizedOffer.calculatedPrice + discountAmount;
+        return normalizedOffer.calculatedPrice;
+    }, [normalizedOffer, discountPercent, discountAmount]);
+
+    const savings = originalPrice - (normalizedOffer?.calculatedPrice || 0);
+
+    const dealUrl = typeof window !== 'undefined'
+        ? `${window.location.origin}/deals/${business?.slug || ''}/${normalizedOffer?.id || id}`
+        : '';
+
+    const handleScroll = useCallback(() => {
+        setTopBarBg(window.scrollY > 50);
+    }, []);
+
+    useEffect(() => {
+        window.addEventListener('scroll', handleScroll, { passive: true });
+        return () => window.removeEventListener('scroll', handleScroll);
+    }, [handleScroll]);
+
+    const handleSave = async () => {
+        if (!isAuthenticated) {
+            router.push('/login');
+            return;
+        }
+        setIsSaved(!isSaved);
+        try {
+            await toggleSave.mutateAsync();
+        } catch {
+            setIsSaved(isSaved);
+        }
+    };
 
     if (isLoading) {
         return (
-            <div className="min-h-screen bg-[#f4f5f6] flex flex-col">
-                <Navbar />
-                <div className="flex-1 flex items-center justify-center">
-                    <div className="flex flex-col items-center gap-4">
-                        <Loader2 size={32} className="animate-spin text-primary" />
-                        <p className="text-sm font-bold text-gray-400">Loading deal...</p>
-                    </div>
+            <div className="min-h-screen bg-[#f7f9fb] flex items-center justify-center pb-32">
+                <div className="flex flex-col items-center gap-4">
+                    <Loader2 size={32} className="animate-spin text-[#0055c4]" />
+                    <p className="text-sm font-bold text-[#727786]">Loading deal...</p>
                 </div>
-                <Footer />
             </div>
         );
     }
 
-    if (isError || !offer || !business) {
+    if (!normalizedOffer || !business) {
         return (
-            <div className="min-h-screen bg-[#f4f5f6] flex flex-col">
-                <Navbar />
-                <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
-                    <AlertCircle size={64} className="text-gray-200 mb-4" />
-                    <h1 className="text-2xl font-bold text-gray-900 mb-2">Deal Not Found</h1>
-                    <p className="text-gray-500 font-bold mb-8">This deal may have expired or doesn&apos;t exist.</p>
-                    <Link
-                        href="/deals"
-                        className="px-8 h-12 bg-primary text-white font-bold uppercase tracking-wider text-xs rounded-xl shadow-lg shadow-primary/20 flex items-center gap-2"
-                    >
-                        <ArrowLeft size={16} /> Browse Deals
-                    </Link>
-                </div>
-                <Footer />
+            <div className="min-h-screen bg-[#f7f9fb] flex flex-col items-center justify-center p-6 text-center pb-32">
+                <AlertCircle size={64} className="text-[#c2c6d7] mb-4" />
+                <h1 className="text-2xl font-bold text-[#191c1e] mb-2">Deal Not Found</h1>
+                <p className="text-[#727786] font-bold mb-8">This deal may have expired or doesn&apos;t exist.</p>
+                <Link
+                    href="/deals"
+                    className="px-8 h-12 bg-[#0055c4] text-white font-bold uppercase tracking-wider text-xs rounded-xl shadow-lg flex items-center gap-2"
+                >
+                    ← Browse Deals
+                </Link>
             </div>
         );
     }
-
-    const dealUrl = `${window.location.origin}/deals/${business.slug}/${offer.id}`;
 
     return (
-        <div className="min-h-screen bg-[#f4f5f6] font-body text-text-main">
-            <Navbar />
-
-            <main className="pt-24 pb-20">
-                <div className="max-w-5xl mx-auto px-4 md:px-8 mb-6">
-                    <Link
-                        href="/deals"
-                        className="inline-flex items-center gap-2 text-gray-400 hover:text-primary text-sm font-bold transition-colors"
+        <div className="min-h-screen bg-[#f7f9fb] text-[#191c1e] antialiased pb-32">
+            {/* ─── Top App Bar ─── */}
+            <header
+                className="fixed top-0 w-full z-50 transition-colors duration-300 flex justify-center"
+                style={{
+                    background: topBarBg ? 'rgba(255,255,255,0.9)' : 'transparent',
+                    backdropFilter: topBarBg ? 'blur(12px)' : undefined,
+                    boxShadow: topBarBg ? '0 1px 4px rgba(0,0,0,0.06)' : undefined,
+                }}
+            >
+                <div className="flex items-center justify-between px-5 h-[44px] w-full max-w-5xl">
+                    <button
+                        onClick={() => router.back()}
+                        className="w-10 h-10 rounded-full flex items-center justify-center text-[#191c1e] hover:bg-[#f2f4f6] transition-colors active:scale-95 duration-100 shadow-sm border border-[#c2c6d7]/30"
+                        style={{ background: 'rgba(255,255,255,0.8)' }}
                     >
-                        <ArrowLeft size={16} /> All Deals
-                    </Link>
+                        <span className="material-symbols-outlined" style={{ fontSize: 22 }}>arrow_back</span>
+                    </button>
+                    <div className="flex gap-2">
+                        <button
+                            onClick={() => setShowShareModal(true)}
+                            className="w-10 h-10 rounded-full flex items-center justify-center text-[#191c1e] hover:bg-[#f2f4f6] transition-colors active:scale-95 duration-100 shadow-sm border border-[#c2c6d7]/30"
+                            style={{ background: 'rgba(255,255,255,0.8)' }}
+                        >
+                            <span className="material-symbols-outlined" style={{ fontSize: 22 }}>share</span>
+                        </button>
+                        <button
+                            onClick={handleSave}
+                            className="w-10 h-10 rounded-full flex items-center justify-center text-[#191c1e] hover:bg-[#f2f4f6] transition-colors active:scale-95 duration-100 shadow-sm border border-[#c2c6d7]/30"
+                            style={{ background: 'rgba(255,255,255,0.8)' }}
+                        >
+                            <span
+                                className="material-symbols-outlined"
+                                style={{
+                                    fontSize: 22,
+                                    fontVariationSettings: isSaved ? "'FILL' 1" : "'FILL' 0",
+                                    color: isSaved ? '#0055c4' : undefined,
+                                }}
+                            >
+                                bookmark
+                            </span>
+                        </button>
+                    </div>
+                </div>
+            </header>
+
+            {/* ─── Hero Image ─── */}
+            <div className="relative w-full h-[397px] min-h-[300px]">
+                <img
+                    className="w-full h-full object-cover"
+                    src={photos[0] || normalizedOffer.mainImage || ''}
+                    alt={normalizedOffer.name}
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-[#191c1e]/80 via-transparent to-transparent" />
+                {/* Badge */}
+                {(discountPercent || discountAmount || normalizedOffer.discountLabel) && !normalizedOffer.isExpired && (
+                    <div className="absolute top-5 left-5 bg-[#ba1a1a] text-white px-3 py-1 rounded-full text-[12px] font-semibold shadow-md mt-12 z-40 flex items-center gap-1">
+                        <span className="material-symbols-outlined" style={{ fontSize: 14 }}>local_offer</span>
+                        {discountPercent
+                            ? `${discountPercent}% OFF`
+                            : discountAmount
+                                ? `SAVE ${formatDealPrice(discountAmount)}`
+                                : normalizedOffer.discountLabel || 'DEAL'}
+                    </div>
+                )}
+                {normalizedOffer.isExpired && (
+                    <div className="absolute top-5 left-5 bg-gray-800/80 text-white px-3 py-1 rounded-full text-[12px] font-semibold shadow-md mt-12 z-40">
+                        Expired
+                    </div>
+                )}
+            </div>
+
+            {/* ─── Main Content ─── */}
+            <main className="relative z-10 -mt-6 bg-white rounded-t-xl px-5 pt-6 pb-6 shadow-[0_-4px_16px_rgba(0,0,0,0.05)] max-w-5xl mx-auto">
+                {/* Header Info */}
+                <div className="mb-6">
+                    <div className="flex justify-between items-start mb-2">
+                        <h1 className="text-[24px] leading-[32px] font-semibold tracking-tight text-[#191c1e] max-w-[75%]">
+                            {normalizedOffer.name}
+                        </h1>
+                        {business.rating != null && (
+                            <div className="flex items-center gap-1 bg-[#f2f4f6] px-2 py-1 rounded-lg">
+                                <span
+                                    className="material-symbols-outlined text-[#0055c4]"
+                                    style={{ fontSize: 16, fontVariationSettings: "'FILL' 1" }}
+                                >
+                                    star
+                                </span>
+                                <span className="text-[14px] font-semibold text-[#191c1e]">{business.rating}</span>
+                            </div>
+                        )}
+                    </div>
+                    <div className="flex items-center gap-4 text-[#424655] text-[14px]">
+                        <div className="flex items-center gap-1">
+                            <span className="material-symbols-outlined" style={{ fontSize: 16 }}>location_on</span>
+                            {business.address || 'Location unavailable'}
+                        </div>
+                        {business.isVerified && (
+                            <div className="flex items-center gap-1 text-[#0055c4]">
+                                <span className="material-symbols-outlined" style={{ fontSize: 16 }}>verified</span>
+                                Verified
+                            </div>
+                        )}
+                    </div>
                 </div>
 
-                <div className="max-w-5xl mx-auto px-4 md:px-8">
-                    <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
-                        {/* Left: Photo + Details */}
-                        <div className="lg:col-span-3 space-y-6">
-                            {/* Photo */}
-                            <motion.div
-                                initial={{ opacity: 0, y: 20 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                className="relative rounded-2xl overflow-hidden aspect-[16/10] bg-gray-100"
-                            >
-                                <motion.img
-                                    key={activePhotoIndex}
-                                    src={photos[activePhotoIndex] || offer.mainImage || ''}
-                                    alt={business.name}
-                                    initial={{ opacity: 0 }}
-                                    animate={{ opacity: 1 }}
-                                    className="w-full h-full object-cover"
-                                />
-                                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
-
-                                <div className="absolute top-4 left-4 flex gap-2">
-                                    {offer.isExpired ? (
-                                        <span className="bg-gray-800/80 text-white px-3 py-1 rounded-lg text-sm font-bold shadow-lg">
-                                            Expired
-                                        </span>
-                                    ) : (
-                                        <>
-                                    {discountPercent && (
-                                        <span className="bg-red-500 text-white px-3 py-1 rounded-lg text-sm font-bold shadow-lg">
-                                            {discountPercent}% OFF
-                                        </span>
-                                    )}
-                                    {discountAmount && !discountPercent && (
-                                        <span className="bg-red-500 text-white px-3 py-1 rounded-lg text-sm font-bold shadow-lg">
-                                            SAVE {formatDealPrice(discountAmount)}
-                                        </span>
-                                    )}
-                                    </>
-                                    )}
-                                </div>
-
-                                <button onClick={() => setShowShareModal(true)} className="absolute top-4 right-4 bg-white/80 backdrop-blur-md p-2.5 rounded-full hover:bg-white transition-colors">
-                                    <Share2 size={18} className="text-gray-700" />
-                                </button>
-
-                                {photos.length > 1 && (
-                                    <>
-                                        <button
-                                            onClick={() => setActivePhotoIndex(i => (i - 1 + photos.length) % photos.length)}
-                                            className="absolute left-3 top-1/2 -translate-y-1/2 bg-white/80 backdrop-blur-md p-2 rounded-full hover:bg-white transition-colors"
-                                        >
-                                            <ChevronLeft size={18} className="text-gray-700" />
-                                        </button>
-                                        <button
-                                            onClick={() => setActivePhotoIndex(i => (i + 1) % photos.length)}
-                                            className="absolute right-3 top-1/2 -translate-y-1/2 bg-white/80 backdrop-blur-md p-2 rounded-full hover:bg-white transition-colors"
-                                        >
-                                            <ChevronRight size={18} className="text-gray-700" />
-                                        </button>
-                                        <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5">
-                                            {photos.map((_, i) => (
-                                                <button
-                                                    key={i}
-                                                    onClick={() => setActivePhotoIndex(i)}
-                                                    className={cn(
-                                                        "size-2 rounded-full transition-all",
-                                                        i === activePhotoIndex ? "bg-white w-6" : "bg-white/50"
-                                                    )}
-                                                />
-                                            ))}
-                                        </div>
-                                    </>
-                                )}
-                            </motion.div>
-
-                            {/* Description */}
-                            <motion.div
-                                initial={{ opacity: 0, y: 20 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: 0.1 }}
-                                className="bg-white rounded-2xl p-6 border border-gray-100"
-                            >
-                                <h2 className="text-lg font-headline font-bold text-gray-900 mb-3">About This Deal</h2>
-                                <p className="text-sm text-gray-600 font-medium leading-relaxed">
-                                    {offer.longDescription || offer.description}
-                                </p>
-                            </motion.div>
-
-                            {/* Terms */}
-                            {offer.terms && offer.terms.length > 0 && (
-                                <motion.div
-                                    initial={{ opacity: 0, y: 20 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    transition={{ delay: 0.15 }}
-                                    className="bg-white rounded-2xl p-6 border border-gray-100"
-                                >
-                                    <h2 className="text-lg font-headline font-bold text-gray-900 mb-3">Terms & Conditions</h2>
-                                    <ul className="space-y-2">
-                                        {offer.terms.map((term, i) => (
-                                            <li key={i} className="flex items-start gap-2 text-sm text-gray-500 font-medium">
-                                                <CheckCircle2 size={14} className="text-green-500 mt-0.5 shrink-0" />
-                                                {term}
-                                            </li>
-                                        ))}
-                                    </ul>
-                                </motion.div>
+                {/* Price Bento Card */}
+                <div className="bg-[#0055c4]/5 border border-[#0055c4]/10 rounded-xl p-4 mb-6 flex justify-between items-center relative overflow-hidden">
+                    <div className="absolute -right-8 -top-8 w-24 h-24 bg-[#0055c4]/10 rounded-full blur-xl" />
+                    <div>
+                        <p className="text-[12px] font-medium text-[#424655] uppercase tracking-wider mb-1">Deal Price</p>
+                        <div className="flex items-end gap-2">
+                            <span className="text-[20px] font-bold text-[#0055c4]">
+                                {normalizedOffer.calculatedPrice === 0 ? 'FREE' : formatDealPrice(normalizedOffer.calculatedPrice)}
+                            </span>
+                            {originalPrice > normalizedOffer.calculatedPrice && (
+                                <span className="text-[14px] text-[#727786] line-through mb-0.5">
+                                    {formatDealPrice(originalPrice)}
+                                </span>
                             )}
                         </div>
+                    </div>
+                    {savings > 0 && (
+                        <div className="bg-[#0055c4] text-white text-[14px] font-semibold px-3 py-1.5 rounded-lg shadow-sm">
+                            SAVE {formatDealPrice(savings)}
+                        </div>
+                    )}
+                </div>
 
-                        {/* Right: Sidebar */}
-                        <div className="lg:col-span-2 space-y-6">
-                            {/* Price Card */}
-                            <motion.div
-                                initial={{ opacity: 0, y: 20 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: 0.1 }}
-                                className="bg-white rounded-2xl border border-gray-100 p-6 space-y-5"
-                            >
-                                <div className="flex items-baseline gap-3">
-                                    <span className="text-3xl font-bold text-primary font-display tracking-tight">
-                                        {offer.calculatedPrice === 0 ? 'FREE' : formatDealPrice(offer.calculatedPrice)}
-                                    </span>
-                                    {originalPrice > offer.calculatedPrice && (
-                                        <span className="text-base text-gray-400 line-through font-bold">
-                                            {formatDealPrice(originalPrice)}
-                                        </span>
-                                    )}
-                                </div>
+                {/* Details Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                    {/* Description */}
+                    <section>
+                        <h2 className="text-[20px] font-semibold text-[#191c1e] mb-3 flex items-center gap-2">
+                            <span className="material-symbols-outlined text-[#0055c4]" style={{ fontSize: 20 }}>info</span>
+                            Deal Description
+                        </h2>
+                        <p className="text-[16px] text-[#424655] leading-relaxed">
+                            {normalizedOffer.longDescription || normalizedOffer.description || 'No description available.'}
+                        </p>
+                    </section>
 
-                                <div className="flex flex-wrap gap-3">
-                                    <div className="flex items-center gap-1.5 text-gray-500">
-                                        <Users size={14} />
-                                        <span className="text-xs font-bold">{offer.claimedCount} claimed</span>
-                                    </div>
-                                    <div className="flex items-center gap-1.5 text-gray-500">
-                                        <Clock size={14} />
-                                        <span className="text-xs font-bold">{daysLeft === -1 ? 'No end date' : daysLeft > 0 ? `${daysLeft} days left` : 'Ending today'}</span>
-                                    </div>
-                                </div>
+                    {/* Metadata Cards */}
+                    <div className="flex flex-col gap-4">
+                        {/* Validity */}
+                        <div className="bg-[#f2f4f6] p-4 rounded-xl border border-[#c2c6d7]/30 flex items-start gap-3">
+                            <div className="w-10 h-10 rounded-full bg-[#e0e3e5] flex items-center justify-center shrink-0">
+                                <span className="material-symbols-outlined text-[#191c1e]">event</span>
+                            </div>
+                            <div>
+                                <h3 className="text-[12px] font-medium text-[#424655] uppercase tracking-wider mb-0.5">Valid Until</h3>
+                                <p className="text-[16px] text-[#191c1e]">
+                                    {normalizedOffer.endDate ? formatDateLong(normalizedOffer.endDate) : 'No expiry date'}
+                                </p>
+                            </div>
+                        </div>
 
-                                <div className="space-y-2">
-                                    <div className="flex justify-between text-xs font-bold">
-                                        <span className="text-gray-400">{offer.claimedCount} of {offer.maxClaims}</span>
-                                        <span className="text-primary">{claimPct}%</span>
-                                    </div>
-                                    <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
-                                        <div className="h-full bg-gradient-to-r from-primary to-secondary rounded-full" style={{ width: `${Math.min(claimPct, 100)}%` }} />
-                                    </div>
-                                </div>
-
-                                <button
-                                    onClick={() => setShowJoinModal(true)}
-                                    disabled={!!offer.isExpired}
-                                    className={cn(
-                                        "w-full h-13 font-bold uppercase tracking-wider text-sm rounded-xl transition-colors flex items-center justify-center gap-2",
-                                        offer.isExpired
-                                            ? "bg-gray-200 text-gray-400 cursor-not-allowed"
-                                            : "bg-primary text-white shadow-lg shadow-primary/20 hover:bg-primary/90"
-                                    )}
+                        {/* Location Preview */}
+                        <div className="bg-[#f2f4f6] p-4 rounded-xl border border-[#c2c6d7]/30 flex items-start gap-3">
+                            <div className="w-10 h-10 rounded-full bg-[#e0e3e5] flex items-center justify-center shrink-0">
+                                <span className="material-symbols-outlined text-[#191c1e]">map</span>
+                            </div>
+                            <div className="flex-grow">
+                                <h3 className="text-[12px] font-medium text-[#424655] uppercase tracking-wider mb-0.5">Location</h3>
+                                <p className="text-[16px] text-[#191c1e]">{business.name}</p>
+                                <p className="text-[14px] text-[#424655]">{business.address || ''}</p>
+                            </div>
+                            {business.latitude && business.longitude && (
+                                <a
+                                    href={`https://www.google.com/maps/dir/?api=1&destination=${business.latitude},${business.longitude}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-[#0055c4] hover:bg-[#0055c4]/10 p-2 rounded-full transition-colors active:scale-95"
                                 >
-                                    <Gift size={18} /> {offer.isExpired ? 'Deal Ended' : 'Join Offer'}
-                                </button>
-
-                                <button
-                                    onClick={() => setShowShareModal(true)}
-                                    className="w-full h-11 bg-gray-50 text-gray-600 font-bold text-xs rounded-xl hover:bg-gray-100 transition-colors flex items-center justify-center gap-2 border border-gray-100"
-                                >
-                                    <Share2 size={14} /> Share Deal
-                                </button>
-
-                                <div className="flex items-center gap-2 text-gray-500 pt-1">
-                                    <ShieldCheck size={14} />
-                                    <span className="text-xs font-bold">Verified by VemTap</span>
-                                </div>
-                            </motion.div>
-
-                            {/* Business Info */}
-                            <motion.div
-                                initial={{ opacity: 0, y: 20 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: 0.15 }}
-                                className="bg-white rounded-2xl border border-gray-100 p-6 space-y-5"
-                            >
-                                <div className="flex items-center gap-3">
-                                    <div className="size-12 rounded-xl bg-gray-50 flex items-center justify-center">
-                                        {CategoryIcon && <CategoryIcon size={22} className="text-primary" />}
-                                    </div>
-                                    <div>
-                                        <p className="text-sm font-bold text-gray-900">{business.name}</p>
-                                        <p className="text-xs text-gray-400 font-bold">{business.categoryName}</p>
-                                    </div>
-                                </div>
-
-                                <div className="flex items-center gap-2">
-                                    <MapPin size={12} className="text-gray-400 shrink-0" />
-                                    <span className="text-xs text-gray-500 font-bold">{business.address}</span>
-                                </div>
-
-                                {(business.rating || business.rating === 0) && (
-                                    <div className="flex items-center gap-2">
-                                        <Star size={14} className="text-yellow-400 fill-yellow-400 shrink-0" />
-                                        <span className="text-sm font-bold text-gray-900">{business.rating}</span>
-                                        <span className="text-xs text-gray-400">({business.totalReviews || 0} reviews)</span>
-                                    </div>
-                                )}
-
-                                {/* Hours */}
-                                {hours.length > 0 && (
-                                    <div className="space-y-1.5">
-                                        <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Business Hours</p>
-                                        <div className="grid grid-cols-1 gap-1">
-                                            {hours.map(h => (
-                                                <div key={h.day} className="flex justify-between text-[11px] font-bold">
-                                                    <span className={cn(h.day === todayHours?.day ? "text-primary" : "text-gray-500")}>
-                                                        {h.day}
-                                                    </span>
-                                                    <span className={cn(h.closed ? "text-red-400" : "text-gray-500")}>
-                                                        {h.closed ? 'Closed' : `${h.open} - ${h.close}`}
-                                                    </span>
-                                                </div>
-                                            ))}
-                                        </div>
-                                        {todayHours && !todayHours.closed && (
-                                            <p className="text-[11px] text-green-600 font-bold pt-1">
-                                                Open now · Closes at {todayHours.close}
-                                            </p>
-                                        )}
-                                    </div>
-                                )}
-                            </motion.div>
+                                    <span className="material-symbols-outlined">directions</span>
+                                </a>
+                            )}
                         </div>
                     </div>
                 </div>
+
+                {/* Terms & Conditions (Expandable) */}
+                {normalizedOffer.terms && normalizedOffer.terms.length > 0 && (
+                    <section className="border-t border-[#c2c6d7]/40 pt-4">
+                        <details className="group cursor-pointer [&_summary::-webkit-details-marker]:hidden">
+                            <summary className="flex items-center justify-between text-[14px] font-semibold text-[#191c1e] py-2 select-none">
+                                <span className="flex items-center gap-2">
+                                    <span className="material-symbols-outlined text-[#424655]" style={{ fontSize: 20 }}>gavel</span>
+                                    Terms &amp; Conditions
+                                </span>
+                                <span className="material-symbols-outlined transition-transform duration-200 group-open:rotate-180">
+                                    expand_more
+                                </span>
+                            </summary>
+                            <div className="mt-3 pb-3 text-[14px] text-[#424655] space-y-2">
+                                {normalizedOffer.terms.map((term: string, i: number) => (
+                                    <p key={i}>• {term}</p>
+                                ))}
+                            </div>
+                        </details>
+                    </section>
+                )}
             </main>
 
-            <Footer />
+            {/* ─── Sticky Bottom Action Bar ─── */}
+            <div className="fixed bottom-0 left-0 w-full bg-white border-t border-[#c2c6d7]/30 z-50 shadow-[0_-4px_16px_rgba(0,0,0,0.05)] pb-6 pt-3 flex justify-center">
+                <div className="w-full max-w-5xl px-5">
+                    <button
+                        onClick={() => router.push(`/deals/${business?.slug || ''}/${normalizedOffer.id}/preview`)}
+                        disabled={!!normalizedOffer.isExpired}
+                        className="w-full h-12 bg-[#0055c4] text-white text-[14px] font-semibold rounded-xl shadow-sm flex items-center justify-center gap-2 hover:bg-[#0055c4]/90 transition-colors active:scale-95 duration-100 disabled:bg-[#c2c6d7] disabled:text-[#727786] disabled:cursor-not-allowed"
+                    >
+                        <span className="material-symbols-outlined">local_activity</span>
+                        {normalizedOffer.isExpired ? 'Deal Ended' : 'CLAIM DEAL'}
+                    </button>
+                </div>
+            </div>
 
+            {/* Share modal */}
             <ShareDealModal
                 isOpen={showShareModal}
                 onClose={() => setShowShareModal(false)}
-                title={offer.name}
-                description={offer.longDescription || offer.description}
+                title={normalizedOffer.name}
+                description={normalizedOffer.longDescription || normalizedOffer.description}
                 url={dealUrl}
-            />
-
-            <JoinOfferModal
-                isOpen={showJoinModal}
-                onClose={() => setShowJoinModal(false)}
-                offerTitle={offer.name}
-                businessName={business.name}
-                offerId={offer.id}
             />
         </div>
     );

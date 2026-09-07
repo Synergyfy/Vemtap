@@ -3,6 +3,7 @@ export interface HomeDealCard {
   title: string;
   description: string;
   image: string;
+  images?: string[];
   businessName: string;
   businessSlug?: string;
   category: string;

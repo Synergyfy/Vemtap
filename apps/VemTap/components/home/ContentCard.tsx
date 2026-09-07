@@ -121,7 +121,7 @@ export default function ContentCard({
               <Heart size={13} fill={liked ? 'currentColor' : 'none'} />
             </button>
             <button
-              onClick={(e) => { e.preventDefault(); if (type === 'deal') router.push(`/promotions/${id}#reviews`); }}
+              onClick={(e) => { e.preventDefault(); if (type === 'deal') router.push(`/deals/${businessSlug}/${id}/reviews`); }}
               className="w-7 h-7 rounded-full bg-gray-50 flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
             >
               <MessageCircle size={13} />

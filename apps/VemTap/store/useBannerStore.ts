@@ -15,11 +15,16 @@ export interface BannerSlide {
     placement?: BannerPlacement;
     targetType?: BannerTargetType;
     targetId?: string;
+    /** Optional background image URL for image-based banners */
+    imageUrl?: string;
+    /** Optional link/CTA for the banner */
+    ctaText?: string;
 }
 
 interface BannerState {
     businessSlides: BannerSlide[];
     customerSlides: BannerSlide[];
+    homepageSlides: BannerSlide[];
     loading: boolean;
     error: string | null;
     fetchBanners: (placement?: BannerPlacement) => Promise<void>;
@@ -28,6 +33,7 @@ interface BannerState {
 export const useBannerStore = create<BannerState>()((set) => ({
     businessSlides: [],
     customerSlides: [],
+    homepageSlides: [],
     loading: false,
     error: null,
     fetchBanners: async (placement) => {
@@ -40,6 +46,8 @@ export const useBannerStore = create<BannerState>()((set) => ({
                 set({ customerSlides: slides, loading: false });
             } else if (placement === 'business') {
                 set({ businessSlides: slides, loading: false });
+            } else if (placement === 'homepage') {
+                set({ homepageSlides: slides, loading: false });
             } else {
                 set({ businessSlides: slides, loading: false });
             }
