@@ -64,13 +64,13 @@ export default function BusinessCatalogPage() {
         let result = items;
         if (searchQuery) {
             const q = searchQuery.toLowerCase();
-            result = result.filter((item: Record<string, unknown>) =>
+            result = result.filter((item) =>
                 ((item.name as string) || '').toLowerCase().includes(q) ||
                 ((item.shortDescription as string) || '').toLowerCase().includes(q)
             );
         }
         if (selectedCategory) {
-            result = result.filter((item: Record<string, unknown>) => (item.categoryId as string) === selectedCategory);
+            result = result.filter((item) => (item.categoryId as string) === selectedCategory);
         }
         return result;
     }, [items, searchQuery, selectedCategory]);
