@@ -195,6 +195,15 @@ export class DealEngagementController {
   }
 
   @ApiBearerAuth()
+  @Get('saved')
+  @ApiOperation({
+    summary: 'List saved deals for the current user (Authenticated)',
+  })
+  async listSavedDeals(@Request() req: DealEngagementRequest) {
+    return this.engagementService.listSavedDeals(req.user!.id);
+  }
+
+  @ApiBearerAuth()
   @Post(':offerId/save')
   @ApiOperation({ summary: 'Toggle save for a deal (Authenticated)' })
   async toggleSave(
@@ -212,6 +221,23 @@ export class DealEngagementController {
     @Param('offerId', ParseUUIDPipe) offerId: string,
   ) {
     return this.engagementService.getSaveStatus(req.user!.id, offerId);
+  }
+
+  @ApiBearerAuth()
+  @Post(':offerId/share')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Record a share for a deal (Authenticated)' })
+  async recordShare(
+    @Request() req: DealEngagementRequest,
+    @Param('offerId', ParseUUIDPipe) offerId: string,
+    @Body('platform') platform?: string,
+  ) {
+    return this.engagementService.recordShare(
+      req.user!.id,
+      offerId,
+      platform,
+      this.resolveIp(req),
+    );
   }
 
   @Public()

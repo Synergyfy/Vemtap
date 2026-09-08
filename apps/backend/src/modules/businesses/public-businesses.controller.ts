@@ -4,6 +4,7 @@ import { BranchesService } from '../branches/branches.service';
 import { NearbyBranchesQueryDto } from '../branches/dto/nearby-branches-query.dto';
 import { ApiTags, ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';
 import { Public } from '../../common/decorators/public.decorator';
+import { NotFoundException } from '@nestjs/common';
 
 @ApiTags('Public Businesses')
 @Controller('public')
@@ -47,6 +48,19 @@ export class PublicBusinessesController {
   })
   async getBusinessByCode(@Param('code') code: string) {
     return this.businessesService.findByCode(code);
+  }
+
+  @Public()
+  @Get('businesses/username/:username')
+  @ApiOperation({ summary: 'Get business details by branch username' })
+  @ApiResponse({ status: 200, description: 'Business details with branches' })
+  @ApiResponse({ status: 404, description: 'Branch not found' })
+  async getBusinessByUsername(@Param('username') username: string) {
+    const branch = await this.branchesService.findByUsername(username);
+    if (!branch || !branch.business) {
+      throw new NotFoundException('Business not found for this username');
+    }
+    return this.businessesService.findByCode(branch.business.uniqueCode);
   }
 
   @Public()

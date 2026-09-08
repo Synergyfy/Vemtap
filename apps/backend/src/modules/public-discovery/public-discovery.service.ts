@@ -16,7 +16,18 @@ import {
   CatalogueOfferClaim,
   CatalogueOfferClaimStatus,
 } from '../catalogue/entities/catalogue-offer-claim.entity';
+import {
+  CatalogueItem,
+  CatalogueItemStatus,
+  CatalogueItemType,
+} from '../catalogue/entities/catalogue-item.entity';
 import { CatalogueOfferService } from '../catalogue/catalogue-offer.service';
+
+interface ItemCountRow {
+  businessId: string;
+  productCount: string;
+  serviceCount: string;
+}
 
 const STATS_CACHE_KEY = 'public:stats';
 const STATS_TTL_MS = 5 * 60 * 1000;
@@ -36,6 +47,8 @@ export class PublicDiscoveryService {
     private readonly offerRepository: Repository<CatalogueOffer>,
     @InjectRepository(CatalogueOfferClaim)
     private readonly claimRepository: Repository<CatalogueOfferClaim>,
+    @InjectRepository(CatalogueItem)
+    private readonly itemRepository: Repository<CatalogueItem>,
     private readonly catalogueOfferService: CatalogueOfferService,
     @Inject(CACHE_MANAGER)
     private readonly cacheManager: Cache,
@@ -55,7 +68,43 @@ export class PublicDiscoveryService {
     }
 
     const businesses = await qb.getMany();
-    return businesses.map((business) => this.toPublicBusiness(business));
+
+    if (businesses.length === 0) return [];
+
+    const businessIds = businesses.map((b) => b.id);
+
+    const counts = await this.itemRepository
+      .createQueryBuilder('item')
+      .select('item."businessId"', 'businessId')
+      .addSelect(
+        `SUM(CASE WHEN item."itemType" = :product THEN 1 ELSE 0 END)`,
+        'productCount',
+      )
+      .addSelect(
+        `SUM(CASE WHEN item."itemType" = :service THEN 1 ELSE 0 END)`,
+        'serviceCount',
+      )
+      .where('item."businessId" IN (:...businessIds)', { businessIds })
+      .andWhere('item.status = :status', { status: CatalogueItemStatus.ACTIVE })
+      .setParameter('product', CatalogueItemType.PRODUCT)
+      .setParameter('service', CatalogueItemType.SERVICE)
+      .groupBy('item."businessId"')
+      .getRawMany<ItemCountRow>();
+
+    const countMap = new Map<
+      string,
+      { productCount: number; serviceCount: number }
+    >();
+    for (const row of counts) {
+      countMap.set(row.businessId, {
+        productCount: parseInt(row.productCount, 10) || 0,
+        serviceCount: parseInt(row.serviceCount, 10) || 0,
+      });
+    }
+
+    return businesses.map((business) =>
+      this.toPublicBusiness(business, countMap.get(business.id)),
+    );
   }
 
   async search(query: string | undefined, limit = 8) {
@@ -137,7 +186,10 @@ export class PublicDiscoveryService {
     return stats;
   }
 
-  private toPublicBusiness(business: Business) {
+  private toPublicBusiness(
+    business: Business,
+    counts?: { productCount: number; serviceCount: number },
+  ) {
     const branches = business.branches || [];
     const main = branches.find((b) => b.isMainBranch) || branches[0];
     return {
@@ -153,6 +205,8 @@ export class PublicDiscoveryService {
       isVerified: business.isVerified,
       slug: main?.username || main?.uniqueCode || business.uniqueCode,
       branchCode: main?.uniqueCode ?? null,
+      productCount: counts?.productCount ?? 0,
+      serviceCount: counts?.serviceCount ?? 0,
     };
   }
 }
