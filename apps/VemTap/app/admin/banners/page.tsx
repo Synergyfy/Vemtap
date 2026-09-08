@@ -49,7 +49,7 @@ const TARGET_OPTIONS: { value: BannerTargetType; label: string; icon: LucideIcon
 ];
 
 const dealUrl = (offer: DealOffer) =>
-    offer.business?.slug ? `/deals/${offer.business.slug}/${offer.id}` : `/promotions/${offer.id}`;
+    offer.business?.slug ? `/deals/${offer.business.slug}/${offer.id}` : `/deals?search=${encodeURIComponent(offer.name || '')}`;
 
 const PLACEMENT_TABS: { value: BannerPlacement; label: string; icon: LucideIcon; description: string }[] = [
     { value: 'business', label: 'Business Dashboards', icon: Briefcase, description: 'Banners shown on the business owner dashboard.' },

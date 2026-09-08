@@ -120,10 +120,13 @@ const DEFAULT_DEALS_BANNERS: {
 function DealsPageInner() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const { label: userLocationLabel, requestLocation } = useLocation();
+  const { label: userLocationLabel, hasLocation, lat, lng, requestLocation, setManualLocation } = useLocation();
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
+  const [locationChecked, setLocationChecked] = useState(false);
+  const [locationError, setLocationError] = useState<string | null>(null);
   const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [landingSearch, setLandingSearch] = useState('');
   const [showFilterModal, setShowFilterModal] = useState(false);
   const [sortBy, setSortBy] = useState<string>('trending');
   const [quickFilter, setQuickFilter] = useState<string | null>(null);
@@ -164,7 +167,18 @@ function DealsPageInner() {
     return () => clearInterval(timer);
   }, [bannerSlides.length]);
 
-  const activeLocation = userLocationLabel || 'Wuse 2, Abuja';
+  // Auto-prompt for location if not set
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setLocationChecked(true);
+      if (!hasLocation) {
+        setIsLocationModalOpen(true);
+      }
+    }, 500);
+    return () => clearTimeout(t);
+  }, [hasLocation]);
+
+  const activeLocation = userLocationLabel || '';
 
   // Seed search/filter from URL (category landing links, search modal)
   useEffect(() => {
@@ -180,7 +194,7 @@ function DealsPageInner() {
   }, [searchParams]);
 
   // Fetch live deals
-  const { data: dealsData, isLoading } = usePublicOffers({ limit: 20, sortBy: 'trending' });
+  const { data: dealsData, isLoading } = usePublicOffers({ limit: 20, sortBy: 'trending', lat: lat ?? undefined, lng: lng ?? undefined });
 
   // Fetch public categories
   const { data: categoriesData } = useQuery({
@@ -358,11 +372,11 @@ function DealsPageInner() {
     router.replace('/deals');
   };
 
-  const handleSearchSubmit = (e: React.FormEvent) => {
+  const handleSearchSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (searchQuery.trim()) {
-      setIsSearchModalOpen(true);
-    }
+    if (!searchQuery.trim()) return;
+    const ok = await setManualLocation(searchQuery.trim());
+    if (ok) setIsLocationModalOpen(false);
   };
 
   return (
@@ -431,7 +445,6 @@ function DealsPageInner() {
         <div className="hidden md:block border-t" style={{ borderColor: C.outlineVariant }}>
           <div className="vemtap-container flex items-center gap-1 h-[42px] overflow-x-auto no-scrollbar">
             {[
-              { label: 'All Deals', icon: 'local_offer', query: '' },
               { label: 'Food & Dining', icon: 'restaurant', query: 'food' },
               { label: 'Beauty & Spa', icon: 'spa', query: 'beauty' },
               { label: 'Fashion', icon: 'checkroom', query: 'fashion' },
@@ -478,7 +491,109 @@ function DealsPageInner() {
         </div>
       </header>
 
-      {/* ─── Main Content ─── */}
+      {/* ─── Location Required: Explore Deals Near You Landing ─── */}
+      {locationChecked && !hasLocation && (
+        <div className="flex-1" style={{ background: C.bg }}>
+          <div className="max-w-xl mx-auto text-center space-y-6 w-full px-4 pt-10 pb-16">
+            <div className="space-y-3">
+              <div className="inline-flex items-center gap-2 rounded-full px-4 py-1.5" style={{ background: `${C.primary}08`, border: `1px solid ${C.primary}15` }}>
+                <span className="material-symbols-outlined" style={{ fontSize: 14, color: C.primary }}>local_offer</span>
+                <span className="text-xs font-bold uppercase tracking-wider" style={{ color: C.primary }}>
+                  Offers Near You
+                </span>
+              </div>
+              <h1 className="text-[30px] sm:text-4xl md:text-5xl font-bold tracking-tight leading-[1.15]" style={{ color: C.onSurface }}>
+                Explore Deals
+                <br />
+                <span style={{ color: C.primary }}>Near You</span>
+              </h1>
+              <p className="font-bold text-sm md:text-base max-w-md mx-auto px-4" style={{ color: C.onSurfaceVariant }}>
+                Find the best promotions, discounts, and offers from businesses around you.
+              </p>
+            </div>
+
+            {/* Location Search */}
+            <div className="space-y-3 px-4 md:px-0">
+              <div className="relative max-w-md mx-auto">
+                <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2" style={{ fontSize: 18, color: '#9ca3af' }}>search</span>
+                <input
+                  type="text"
+                  value={landingSearch}
+                  onChange={(e) => setLandingSearch(e.target.value)}
+                  onKeyDown={async (e) => {
+                    if (e.key === 'Enter' && landingSearch.trim()) {
+                      const ok = await setManualLocation(landingSearch.trim());
+                      if (!ok) setLocationError('Could not find that location. Please try another area.');
+                    }
+                  }}
+                  placeholder="Search location (e.g. Wuse 2, Abuja)..."
+                  className="w-full h-14 pl-12 pr-4 bg-gray-50 border border-gray-200 rounded-2xl text-sm font-bold text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 transition-all"
+                  style={{ '--tw-ring-color': `${C.primary}20` } as any}
+                />
+              </div>
+              {locationError && <p className="text-xs text-center font-medium" style={{ color: C.error }}>{locationError}</p>}
+
+              <button
+                onClick={async () => {
+                  setLocationError(null);
+                  const res = await requestLocation();
+                  if (!res.ok) setLocationError(res.message);
+                }}
+                className="w-full max-w-md mx-auto flex items-center justify-center gap-2 h-12 text-white font-bold uppercase tracking-wider text-xs rounded-2xl shadow-lg transition-all"
+                style={{ background: C.primary, boxShadow: `0 8px 24px ${C.primary}33` }}
+              >
+                <span className="material-symbols-outlined" style={{ fontSize: 16 }}>my_location</span>
+                Use My Current Location
+              </button>
+            </div>
+
+            {/* Popular Categories */}
+            <div className="space-y-4 pt-2 px-4 md:px-0">
+              <p className="text-xs font-bold uppercase tracking-wider" style={{ color: '#9ca3af' }}>Popular Categories</p>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 max-w-md mx-auto">
+                {[
+                  { icon: 'local_cafe', label: 'Cafes' },
+                  { icon: 'devices', label: 'Electronics' },
+                  { icon: 'restaurant', label: 'Food & Drinks' },
+                  { icon: 'home_repair_service', label: 'Services' },
+                  { icon: 'shopping_cart', label: 'Supermarket' },
+                  { icon: 'fitness_center', label: 'Gym' },
+                  { icon: 'checkroom', label: 'Fashion' },
+                  { icon: 'local_pharmacy', label: 'Pharmacy' },
+                ].map((cat) => (
+                  <button
+                    key={cat.label}
+                    onClick={() => { setSelectedCategory(cat.label.toLowerCase().split(' ')[0]); setIsLocationModalOpen(true); }}
+                    className="flex flex-col items-center gap-1.5 p-4 bg-gray-50 border border-gray-200 rounded-2xl hover:border-gray-300 transition-all group"
+                  >
+                    <span className="material-symbols-outlined" style={{ fontSize: 28, color: C.onSurfaceVariant }}>{cat.icon}</span>
+                    <span className="text-[10px] font-bold leading-tight" style={{ color: C.onSurface }}>{cat.label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Deals not active here yet */}
+            <div className="mt-10 rounded-2xl p-6 text-center" style={{ background: `${C.primary}0a`, border: `1px solid ${C.primary}22` }}>
+              <p className="text-xl">🏪</p>
+              <p className="font-bold text-sm mt-1.5" style={{ color: C.onSurface }}>Deals not active here yet?</p>
+              <p className="text-xs mt-1.5 leading-relaxed max-w-md mx-auto" style={{ color: C.onSurfaceVariant }}>
+                Be the first to tell businesses about deals — connect with us to learn how you and the businesses around you can get started on VemTap.
+              </p>
+              <Link
+                href="/contact"
+                className="mt-4 inline-flex items-center gap-1.5 rounded-xl px-5 py-2.5 text-[11px] font-bold uppercase tracking-wider text-white active:scale-95 transition-all"
+                style={{ background: C.primary }}
+              >
+                Connect with us
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ─── Main Content (only when location is set) ─── */}
+      {(!locationChecked || hasLocation) && (
       <div className="vemtap-container flex flex-1">
         {/* ─── Desktop Sidebar Filters (Collapsible) ─── */}
         <aside className="hidden md:block shrink-0 sticky top-[108px] h-[calc(100vh-108px)] border-r transition-all duration-300" style={{ borderColor: C.outlineVariant, background: '#ffffff', width: sidebarOpen ? 260 : 48 }}>
@@ -722,11 +837,27 @@ function DealsPageInner() {
                     <div className="absolute inset-0 rounded-2xl -rotate-6" style={{ background: `${C.primary}15` }} />
                     <div className="relative size-16 rounded-2xl flex items-center justify-center text-2xl" style={{ background: '#fff', border: `1px solid ${C.outlineVariant}` }}>🛍️</div>
                   </div>
-                  <p className="font-bold text-sm" style={{ color: C.onSurface }}>No deals found</p>
-                  <p className="text-xs mt-1" style={{ color: C.outline }}>Try a different search or filter — new deals drop daily.</p>
+                  <p className="font-bold text-sm" style={{ color: C.onSurface }}>
+                    {userLocationLabel ? `No deals found in ${userLocationLabel}` : 'No deals found'}
+                  </p>
+                  <p className="text-xs mt-1" style={{ color: C.outline }}>
+                    {userLocationLabel
+                      ? 'Try a different location or search — new deals drop daily.'
+                      : 'Try a different search or filter — new deals drop daily.'}
+                  </p>
+                  {userLocationLabel && (
+                    <button
+                      onClick={() => { clearAllFilters(); setIsLocationModalOpen(true); }}
+                      className="mt-3 inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-[11px] font-bold uppercase tracking-wider border transition-colors"
+                      style={{ borderColor: C.outlineVariant, color: C.onSurfaceVariant }}
+                    >
+                      <span className="material-symbols-outlined" style={{ fontSize: 14 }}>location_on</span>
+                      Change Location
+                    </button>
+                  )}
                   <button
                     onClick={clearAllFilters}
-                    className="mt-5 inline-flex items-center gap-1.5 rounded-xl px-5 py-2.5 text-[11px] font-bold uppercase tracking-wider text-white active:scale-95 transition-all"
+                    className="mt-3 inline-flex items-center gap-1.5 rounded-xl px-5 py-2.5 text-[11px] font-bold uppercase tracking-wider text-white active:scale-95 transition-all"
                     style={{ background: C.primary }}
                   >
                     View all deals
@@ -823,6 +954,7 @@ function DealsPageInner() {
         </main>
 
       </div>
+      )}
 
         {/* Consumer Footer */}
         <Footer />
@@ -833,10 +965,19 @@ function DealsPageInner() {
       {isLocationModalOpen && (
         <LocationPrompt
           isOpen={isLocationModalOpen}
-          onClose={() => setIsLocationModalOpen(false)}
-          onAllowLocation={() => {
-            requestLocation();
-            setIsLocationModalOpen(false);
+          onClose={() => { setIsLocationModalOpen(false); setLocationError(null); }}
+          isLoading={false}
+          error={locationError}
+          onAllowLocation={async () => {
+            setLocationError(null);
+            const res = await requestLocation();
+            if (res.ok) setIsLocationModalOpen(false);
+          }}
+          onSearchLocation={async (q: string) => {
+            setLocationError(null);
+            const ok = await setManualLocation(q);
+            if (ok) setIsLocationModalOpen(false);
+            else setLocationError('Could not find that location. Please try another area.');
           }}
         />
       )}

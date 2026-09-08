@@ -545,7 +545,7 @@ export default function AdminDealsPage() {
                                             </td>
                                             <td className="px-5 py-3 text-right">
                                                 <Link
-                                                    href={`/promotions/${deal.id}`}
+                                                    href={`/deals/${(deal.business as any)?.slug || (deal.business as any)?.uniqueCode || ''}/${deal.id}`}
                                                     target="_blank"
                                                     className="inline-flex items-center gap-1 text-[11px] font-bold text-gray-400 hover:text-primary transition-colors"
                                                 >
@@ -609,7 +609,7 @@ export default function AdminDealsPage() {
                                                     <span className="flex items-center gap-0.5"><Heart size={9} /> {deal.claimsCount || 0}</span>
                                                 </div>
                                                 <Link
-                                                    href={`/promotions/${deal.id}`}
+                                                    href={`/deals/${(deal.business as any)?.slug || (deal.business as any)?.uniqueCode || ''}/${deal.id}`}
                                                     target="_blank"
                                                     className="text-[11px] font-bold text-primary flex items-center gap-1"
                                                 >

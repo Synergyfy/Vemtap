@@ -435,6 +435,14 @@ export default function Homepage() {
             </button>
           </div>
           <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={openLocationModal}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-[13px] font-medium transition-colors hover:bg-gray-50"
+              style={{ color: C.onSurfaceVariant }}
+            >
+              <span className="material-symbols-outlined" style={{ fontSize: 16 }}>location_on</span>
+              <span className="truncate max-w-[140px]">{activeLocation || 'Set location'}</span>
+            </button>
             <Link href="/login" className="h-10 px-5 rounded-xl bg-[#066CF4] text-white text-[13px] font-bold flex items-center justify-center hover:bg-[#0557b3] transition-colors">
               Login
             </Link>

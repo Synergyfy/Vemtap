@@ -40,7 +40,7 @@ export default function ReviewSection({ offerId }: ReviewSectionProps) {
                     No reviews yet. Be the first to share your experience!
                 </p>
                 <Link
-                    href={`/promotions/${offerId}/reviews`}
+                    href={`/deals/${offerId}/reviews`}
                     className="block text-center text-xs font-bold text-primary hover:text-primary/80 mt-2"
                 >
                     Write a review
@@ -57,7 +57,7 @@ export default function ReviewSection({ offerId }: ReviewSectionProps) {
                     <h3 className="text-sm font-bold text-gray-900">What people are saying</h3>
                 </div>
                 <Link
-                    href={`/promotions/${offerId}/reviews`}
+                    href={`/deals/${offerId}/reviews`}
                     className="text-xs font-bold text-primary hover:text-primary/80"
                 >
                     See all
@@ -71,7 +71,7 @@ export default function ReviewSection({ offerId }: ReviewSectionProps) {
             </div>
 
             <Link
-                href={`/promotions/${offerId}/reviews`}
+                href={`/deals/${offerId}/reviews`}
                 className="block text-center text-xs font-bold text-primary hover:text-primary/80 mt-4 pt-4 border-t border-gray-100"
             >
                 See all reviews
