@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { Plus, Trash2, Edit2, Save, MoveUp, MoveDown, Sparkles, Megaphone, Zap, Gift, Loader2, Briefcase, Users, Search, Tag, Link2, X } from 'lucide-react';
+import { Plus, Trash2, Edit2, Save, MoveUp, MoveDown, Sparkles, Megaphone, Zap, Gift, Loader2, Briefcase, Users, Search, Tag, Link2, X, Upload } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { cn } from '@/lib/utils';
@@ -55,6 +55,7 @@ const PLACEMENT_TABS: { value: BannerPlacement; label: string; icon: LucideIcon;
     { value: 'business', label: 'Business Dashboards', icon: Briefcase, description: 'Banners shown on the business owner dashboard.' },
     { value: 'customer', label: 'Customer App', icon: Users, description: 'Banners shown on the customer dashboard.' },
     { value: 'homepage', label: 'Homepage Slider', icon: Megaphone, description: 'Image banners shown on the homepage hero slider.' },
+    { value: 'deals-page', label: 'Deals Page', icon: Tag, description: 'Image banners shown on the public deals page.' },
 ];
 
 export default function AdminBannerManagementPage() {
@@ -67,7 +68,26 @@ export default function AdminBannerManagementPage() {
     const [dealResults, setDealResults] = useState<DealOffer[]>([]);
     const [dealSearching, setDealSearching] = useState(false);
     const [dealSearchOpen, setDealSearchOpen] = useState(false);
+    const [uploadingImage, setUploadingImage] = useState(false);
     const dealSearchRef = React.useRef<HTMLDivElement>(null);
+
+    const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        setUploadingImage(true);
+        const toastId = toast.loading('Uploading image...');
+        try {
+            const { uploadToCloudinary } = await import('@/lib/cloudinary');
+            const url = await uploadToCloudinary(file);
+            setEditForm((prev) => ({ ...prev, imageUrl: url }));
+            toast.success('Image uploaded!', { id: toastId });
+        } catch (err: any) {
+            toast.error(err?.message || 'Failed to upload image', { id: toastId });
+        } finally {
+            setUploadingImage(false);
+            if (e.target) e.target.value = '';
+        }
+    };
 
     const searchDeals = async (query: string) => {
         if (!query.trim()) {
@@ -159,6 +179,8 @@ export default function AdminBannerManagementPage() {
             isActive: true,
             placement,
             targetType: 'custom',
+            actionLabel: placement === 'homepage' || placement === 'deals-page' ? 'Browse Deals' : 'Learn More',
+            actionUrl: placement === 'homepage' ? '/' : placement === 'deals-page' ? '/deals' : undefined,
         };
         setSlides(prev => [...prev, newSlide]);
         setEditingId(tempId);
@@ -495,19 +517,32 @@ export default function AdminBannerManagementPage() {
                                             className="w-full bg-gray-50 border border-gray-100 rounded-xl p-4 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none resize-none"
                                         />
                                     </div>
-                                    {placement === 'homepage' && (
+                                    {placement === 'homepage' || placement === 'deals-page' ? (
                                         <>
                                             <div className="space-y-2">
-                                                <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Banner Image URL</label>
-                                                <input
-                                                    type="url"
-                                                    value={editForm.imageUrl || ''}
-                                                    onChange={(e) => setEditForm({ ...editForm, imageUrl: e.target.value })}
-                                                    placeholder="https://example.com/banner.jpg"
-                                                    className="w-full h-12 bg-gray-50 border border-gray-100 rounded-xl px-4 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none"
-                                                />
+                                                <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Banner Image</label>
+                                                <div className="flex items-center gap-2">
+                                                    <input
+                                                        type="url"
+                                                        value={editForm.imageUrl || ''}
+                                                        onChange={(e) => setEditForm({ ...editForm, imageUrl: e.target.value })}
+                                                        placeholder="https://example.com/banner.jpg"
+                                                        className="w-full h-12 bg-gray-50 border border-gray-100 rounded-xl px-4 text-sm font-bold focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all outline-none"
+                                                    />
+                                                    <label className="shrink-0 inline-flex items-center gap-2 px-4 h-12 bg-white border border-gray-200 text-text-main rounded-xl text-xs font-black uppercase tracking-widest hover:border-primary/30 hover:text-primary transition-all cursor-pointer">
+                                                        {uploadingImage ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />}
+                                                        <span className="hidden sm:inline">Upload</span>
+                                                        <input
+                                                            type="file"
+                                                            accept="image/*"
+                                                            className="hidden"
+                                                            disabled={uploadingImage}
+                                                            onChange={handleImageUpload}
+                                                        />
+                                                    </label>
+                                                </div>
                                                 <p className="text-[10px] font-medium text-text-secondary leading-snug ml-1">
-                                                    Paste a direct image URL (Unsplash, Cloudinary, etc.) for the banner background.
+                                                    Paste an image URL or upload a file (JPG, PNG, WebP) for the banner background.
                                                 </p>
                                             </div>
                                             <div className="space-y-2">
@@ -521,7 +556,7 @@ export default function AdminBannerManagementPage() {
                                                 />
                                             </div>
                                         </>
-                                    )}
+                                    ) : null}
                                     <div className="space-y-3">
                                         <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Icon</label>
                                         <div className="flex flex-wrap gap-2">
@@ -645,10 +680,10 @@ export default function AdminBannerManagementPage() {
                 {slides.length === 0 && (
                     <div className="py-20 text-center bg-gray-50 rounded-3xl border-2 border-dashed border-gray-200">
                         <div className="size-16 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-4 text-gray-400">
-                            {placement === 'customer' ? <Users size={32} /> : <Megaphone size={32} />}
+                            {placement === 'customer' ? <Users size={32} /> : placement === 'deals-page' || placement === 'homepage' ? <Megaphone size={32} /> : <Briefcase size={32} />}
                         </div>
-                        <h3 className="text-base font-bold text-text-main">No {placement === 'customer' ? 'Customer' : 'Business'} Slides Found</h3>
-                        <p className="text-sm text-text-secondary mt-1">Create your first banner announcement to display on {placement === 'customer' ? 'the customer app' : 'business dashboards'}.</p>
+                        <h3 className="text-base font-bold text-text-main">No {placement === 'customer' ? 'Customer' : placement === 'homepage' ? 'Homepage' : placement === 'deals-page' ? 'Deals Page' : 'Business'} Slides Found</h3>
+                        <p className="text-sm text-text-secondary mt-1">Create your first banner announcement to display on {placement === 'customer' ? 'the customer app' : placement === 'deals-page' ? 'the public deals page' : placement === 'homepage' ? 'the homepage hero slider' : 'business dashboards'}.</p>
                         <button
                             onClick={handleAdd}
                             className="mt-6 inline-flex items-center gap-2 px-6 py-3 bg-white border border-gray-200 rounded-2xl text-xs font-black uppercase tracking-widest hover:border-primary/30 hover:text-primary transition-all shadow-sm"

@@ -32,7 +32,7 @@ export default function PlanComparisonTable({ plans }: PlanComparisonTableProps)
     };
 
     return (
-        <section className="container mx-auto max-w-7xl mb-32">
+        <section className="vemtap-container mb-32">
             {/* Header */}
             <div className="text-center mb-16">
                 <div className="inline-flex items-center gap-2 bg-blue-50 border border-blue-100 rounded-full px-4 py-2 mb-6">

@@ -1,6 +1,6 @@
 import { api } from '@/lib/api';
 
-export type BannerPlacement = 'business' | 'customer' | 'homepage';
+export type BannerPlacement = 'business' | 'customer' | 'homepage' | 'deals-page';
 
 export type BannerTargetType = 'custom' | 'deals-page' | 'deal';
 

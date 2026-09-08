@@ -28,7 +28,7 @@ export default function CookiePolicy() {
             <Navbar />
             
             <header className="pt-48 pb-20 bg-white border-b border-gray-100">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div className="vemtap-container">
                     <div className="max-w-3xl">
                         <div className="flex items-center gap-3 mb-6">
                             <span className="px-3 py-1 bg-primary/10 text-primary text-[10px] font-bold uppercase tracking-wider rounded-full">Policy Document</span>
@@ -43,7 +43,7 @@ export default function CookiePolicy() {
                 </div>
             </header>
 
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
+            <div className="vemtap-container py-20">
                 <div className="flex flex-col lg:flex-row gap-20">
                     <aside className="hidden lg:block w-64 flex-shrink-0">
                         <div className="sticky top-32">

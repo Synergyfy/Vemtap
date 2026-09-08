@@ -80,7 +80,7 @@ export default function HardwareWhitepaperPage() {
             <Navbar />
 
             <main className="pt-32 pb-24">
-                <div className="max-w-5xl mx-auto px-6 lg:px-8">
+                <div className="vemtap-container">
                     {/* Cover Section */}
                     <div className="bg-white rounded-[3rem] p-12 md:p-20 shadow-2xl shadow-slate-200/50 border border-slate-100 relative overflow-hidden mb-12">
                         <div className="absolute top-0 right-0 w-full h-full bg-linear-to-br from-primary/5 via-transparent to-transparent opacity-50"></div>

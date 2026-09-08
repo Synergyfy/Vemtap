@@ -16,7 +16,7 @@ const navLinks = [
     { label: 'Nearby Deals', href: '/deals' },
     { label: 'How It Works', href: '/how-it-works' },
     { label: 'Pricing', href: '/pricing' },
-    { label: 'For Businesses', href: '/business-landing' },
+    { label: 'For Businesses', href: '/business' },
 ];
 
 export default function Navbar() {
@@ -42,7 +42,7 @@ export default function Navbar() {
         <header className={cn(
             "fixed top-0 left-0 right-0 z-[100] transition-all duration-300 bg-white border-b border-gray-100 py-3"
         )}>
-            <nav className="container mx-auto px-6 flex items-center justify-between">
+            <nav className="vemtap-container flex items-center justify-between">
                 {/* Logo */}
                 <Link href="/" className="relative z-10 lg:z-auto flex items-center">
                     <Logo className="flex items-center h-12 lg:h-16" />
@@ -71,12 +71,6 @@ export default function Navbar() {
 
                 {/* Desktop CTAs */}
                 <div className="hidden lg:flex items-center gap-4">
-                    <Link
-                        href="/for-businesses"
-                        className="text-sm font-bold text-gray-600 hover:text-[#066CF4] transition-colors"
-                    >
-                        For Businesses
-                    </Link>
                     {isAuthenticated ? (
                         <Link href={dashboardHref}>
                             <Button className="h-12 px-8 rounded-xl bg-[#066CF4] text-xs font-black uppercase tracking-widest text-white shadow-lg shadow-blue-500/20 active:scale-95 transition-all">
@@ -152,18 +146,6 @@ export default function Navbar() {
                         <hr className="border-gray-100 my-7" />
 
                         <div className="flex flex-col gap-3">
-                            <Link
-                                href="/for-businesses"
-                                onClick={() => setIsOpen(false)}
-                                className="flex items-center justify-between rounded-2xl border border-gray-100 bg-white px-5 py-4 group hover:border-primary/25 hover:bg-primary/[0.02] active:scale-[0.99] transition-all"
-                            >
-                                <span className="text-[15px] font-bold text-text-main group-hover:text-[#066CF4] transition-colors">
-                                    For Businesses
-                                </span>
-                                <span className="flex items-center justify-center size-8 rounded-full bg-gray-50 group-hover:bg-primary/10 group-hover:text-[#066CF4] transition-colors">
-                                    <ChevronRight size={16} className="text-gray-400 group-hover:text-[#066CF4]" />
-                                </span>
-                            </Link>
                             {isAuthenticated ? (
                                 <Link href={dashboardHref} onClick={() => setIsOpen(false)}>
                                     <Button className="w-full h-14 rounded-xl bg-[#066CF4] text-sm font-black uppercase tracking-[0.18em] text-white shadow-lg shadow-blue-500/20 hover:bg-blue-600 active:scale-[0.99] transition-all">

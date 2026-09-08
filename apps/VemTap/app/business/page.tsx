@@ -18,7 +18,7 @@ import { cn } from '@/lib/utils';
 const badgeClass = 'bg-[#066CF4]/10 text-[#066CF4] border-none px-3.5 py-1.5 font-bold uppercase tracking-wider';
 const primaryBtn = 'bg-[#066CF4] text-white font-bold uppercase tracking-wider text-xs px-8 h-12 rounded-xl shadow-lg shadow-blue-500/20 hover:bg-[#066CF4]/90 active:scale-95 transition-all';
 
-export default function ForBusinessesPage() {
+export default function BusinessLandingPage() {
   const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
 
   return (
@@ -151,7 +151,7 @@ export default function ForBusinessesPage() {
               ].map((item, i) => (
                 <div key={i} className="p-6 rounded-2xl bg-white/10 backdrop-blur-md border border-white/10 hover:bg-white/20 transition-all duration-300">
                   <div className="size-12 rounded-xl bg-white text-[#066CF4] flex items-center justify-center mb-5">
-                    
+                    <item.icon size={24} />
                   </div>
                   <h3 className="text-lg font-bold mb-2">{item.title}</h3>
                   <p className="text-sm font-normal text-white/75 leading-relaxed">{item.desc}</p>

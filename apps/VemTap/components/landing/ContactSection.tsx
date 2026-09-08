@@ -70,7 +70,7 @@ export default function ContactSection({ isPage = false }: ContactSectionProps) 
 
     return (
         <section id="contact" className={isPage ? 'pt-24 pb-16 bg-white' : 'py-12 md:py-16 bg-white'}>
-            <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="vemtap-container">
                 {/* HEADER */}
                 <div className="text-center mb-12 md:mb-16">
                     <div className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-primary/10 rounded-full mb-5">
@@ -82,7 +82,7 @@ export default function ContactSection({ isPage = false }: ContactSectionProps) 
                     <h2 className="text-[28px] md:text-5xl font-bold text-text-main leading-[1.15] tracking-tight">
                         We&apos;d Love to Hear <span className="text-primary">from You</span>
                     </h2>
-                    <p className="mt-4 text-sm md:text-lg text-text-secondary font-normal max-w-2xl mx-auto leading-relaxed">
+                    <p className="mt-4 text-sm md:text-lg text-text-secondary font-normal vemtap-container leading-relaxed">
                         Pick the channel that works best for you — call, WhatsApp, chat or email. Our team is here to help.
                     </p>
                 </div>

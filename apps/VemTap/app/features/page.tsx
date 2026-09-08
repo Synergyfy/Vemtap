@@ -113,14 +113,14 @@ export default function FeaturesPage() {
             
             <main className="pt-24 md:pt-32 pb-20 px-6">
                 {/* HERO SECTION */}
-                <section className="container mx-auto max-w-4xl text-center mb-20">
+                <section className="vemtap-container text-center mb-20">
                     <Badge className={badgeClass + " mb-5"}>
                         Platform Capabilities
                     </Badge>
                     <h1 className="text-[30px] sm:text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 leading-[1.15] mb-6 tracking-tight">
                         Everything You Need To <br /> Capture, Engage & <span className="text-[#066CF4]">Retain</span>
                     </h1>
-                    <p className="text-base md:text-lg lg:text-xl text-gray-500 font-normal max-w-2xl mx-auto mb-9">
+                    <p className="text-base md:text-lg lg:text-xl text-gray-500 font-normal vemtap-container mb-9">
                         Vemtap provides the complete toolkit to turn your physical space into a digital growth engine.
                     </p>
                     <Link href="/get-started">
@@ -131,7 +131,7 @@ export default function FeaturesPage() {
                 </section>
 
                 {/* FEATURES GRID */}
-                <section className="container mx-auto max-w-6xl mb-20">
+                <section className="vemtap-container mb-20">
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
                         {featureCategories.map((category, index) => (
                             <motion.div 
@@ -165,7 +165,7 @@ export default function FeaturesPage() {
                 </section>
 
                 {/* DEEP DIVE SECTION */}
-                <section className="container mx-auto max-w-6xl mb-20 bg-gray-900 rounded-[36px] md:rounded-[60px] p-8 md:p-16 text-white relative overflow-hidden">
+                <section className="vemtap-container mb-20 bg-gray-900 rounded-[36px] md:rounded-[60px] p-8 md:p-16 text-white relative overflow-hidden">
                     <div className="absolute top-0 right-0 w-[50%] h-full bg-[#066CF4]/10 rounded-full blur-[120px]" />
                     
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center relative z-10">
@@ -202,7 +202,7 @@ export default function FeaturesPage() {
                 </section>
 
                 {/* FINAL CTA SECTION */}
-                <section className="container mx-auto max-w-4xl text-center py-16">
+                <section className="vemtap-container text-center py-16">
                     <h2 className="text-3xl md:text-5xl font-bold text-gray-900 mb-8 leading-tight tracking-tight">Start Growing Your <br /> Business Today</h2>
                     <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
                         <Link href="/get-started">

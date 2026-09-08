@@ -90,7 +90,7 @@ export default function HowItWorksSimple() {
               <ArrowRight size={16} />
             </button>
           </Link>
-          <Link href="/business-landing" className="text-xs font-bold text-[#066CF4] hover:underline flex items-center gap-1.5 py-2 px-4 rounded-full hover:bg-blue-50 transition-colors">
+          <Link href="/business" className="text-xs font-bold text-[#066CF4] hover:underline flex items-center gap-1.5 py-2 px-4 rounded-full hover:bg-blue-50 transition-colors">
             <Store size={14} />
             Own a business? Register your business &rarr;
           </Link>

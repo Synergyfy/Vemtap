@@ -14,7 +14,8 @@ import SearchModal from '@/components/home/SearchModal';
 import DealEngagementBar from '@/components/deals/DealEngagementBar';
 import ImageGallery from '@/components/ui/ImageGallery';
 import PublicBottomNav from '@/components/public/PublicBottomNav';
-import ConsumerFooter from '@/components/public/ConsumerFooter';
+import Footer from '@/components/layout/Footer';
+import { useBannerStore } from '@/store/useBannerStore';
 import type { HomeDealCard } from '@/components/home/types';
 
 /* ─── Stitch colour tokens ─── */
@@ -69,6 +70,53 @@ const FALLBACK_IMAGES = [
   'https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=600&h=400&fit=crop',
 ];
 
+/* ─── Default deals-page banners (used when admin has not published any yet) ─── */
+const DEFAULT_DEALS_BANNERS: {
+  id: string;
+  image: string;
+  tag: string;
+  tagIcon: string;
+  heading: string;
+  sub: string;
+  cta: string;
+  actionUrl: string;
+  gradient: string;
+}[] = [
+  {
+    id: 'default-deals-1',
+    image: 'https://images.unsplash.com/photo-1607082349566-187342175e2f?w=1400&q=80',
+    tag: 'Hot Deals',
+    tagIcon: 'local_fire_department',
+    heading: 'Up to 70% Off',
+    sub: 'Discover the best deals from businesses around you. Updated daily.',
+    cta: 'Shop Now',
+    actionUrl: '/deals',
+    gradient: 'linear-gradient(90deg, rgba(0,29,107,0.92) 0%, rgba(0,29,107,0.5) 50%, rgba(0,0,0,0) 100%)',
+  },
+  {
+    id: 'default-deals-2',
+    image: 'https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=1400&q=80',
+    tag: 'New Arrivals',
+    tagIcon: 'fiber_new',
+    heading: 'Fresh Finds Every Week',
+    sub: 'Be the first to grab new products and services from top businesses.',
+    cta: 'Explore',
+    actionUrl: '/deals?sortBy=trending',
+    gradient: 'linear-gradient(90deg, rgba(16,50,30,0.92) 0%, rgba(16,50,30,0.5) 50%, rgba(0,0,0,0) 100%)',
+  },
+  {
+    id: 'default-deals-3',
+    image: 'https://images.unsplash.com/photo-1556742393-d75f468bfcb0?w=1400&q=80',
+    tag: 'Free Deals',
+    tagIcon: 'redeem',
+    heading: 'Grab Freebies Near You',
+    sub: 'No cost, all benefit. Find free deals from local businesses today.',
+    cta: 'View Free Deals',
+    actionUrl: '/deals?sortBy=newest',
+    gradient: 'linear-gradient(90deg, rgba(80,20,0,0.92) 0%, rgba(80,20,0,0.5) 50%, rgba(0,0,0,0) 100%)',
+  },
+];
+
 function DealsPageInner() {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -85,35 +133,29 @@ function DealsPageInner() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [bannerIndex, setBannerIndex] = useState(0);
 
-  const bannerSlides = [
-    {
-      image: 'https://images.unsplash.com/photo-1607082349566-187342175e2f?w=1400&q=80',
-      tag: 'Hot Deals',
-      tagIcon: 'local_fire_department',
-      heading: <>Up to <span className="text-yellow-300">70% Off</span></>,
-      sub: 'Discover the best deals from businesses around you. Updated daily.',
-      cta: 'Shop Now',
-      gradient: 'linear-gradient(90deg, rgba(0,29,107,0.92) 0%, rgba(0,29,107,0.5) 50%, rgba(0,0,0,0) 100%)',
-    },
-    {
-      image: 'https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=1400&q=80',
-      tag: 'New Arrivals',
-      tagIcon: 'fiber_new',
-      heading: <>Fresh Finds <span className="text-emerald-300">Every Week</span></>,
-      sub: 'Be the first to grab new products and services from top businesses.',
-      cta: 'Explore',
-      gradient: 'linear-gradient(90deg, rgba(16,50,30,0.92) 0%, rgba(16,50,30,0.5) 50%, rgba(0,0,0,0) 100%)',
-    },
-    {
-      image: 'https://images.unsplash.com/photo-1556742393-d75f468bfcb0?w=1400&q=80',
-      tag: 'Free Deals',
-      tagIcon: 'redeem',
-      heading: <>Grab <span className="text-orange-300">Freebies</span> Near You</>,
-      sub: 'No cost, all benefit. Find free deals from local businesses today.',
-      cta: 'View Free Deals',
-      gradient: 'linear-gradient(90deg, rgba(80,20,0,0.92) 0%, rgba(80,20,0,0.5) 50%, rgba(0,0,0,0) 100%)',
-    },
-  ];
+  const { dealsSlides, fetchBanners: fetchDealsBanners } = useBannerStore();
+
+  const bannerSlides = useMemo(() => {
+    if (dealsSlides.length > 0) {
+      return dealsSlides.map((s) => ({
+        id: s.id,
+        image: s.imageUrl || 'https://images.unsplash.com/photo-1607082349566-187342175e2f?w=1400&q=80',
+        tag: s.title || 'Hot Deals',
+        tagIcon: 'local_fire_department',
+        heading: s.title || 'Discover Deals Near You',
+        sub: s.description || 'Discover the best deals from businesses around you. Updated daily.',
+        cta: (s.ctaText || s.actionLabel || 'Browse Deals'),
+        actionUrl: s.actionUrl || '/deals',
+        actionLabel: s.actionLabel,
+        gradient: 'linear-gradient(90deg, rgba(0,29,107,0.92) 0%, rgba(0,29,107,0.5) 50%, rgba(0,0,0,0) 100%)',
+      }));
+    }
+    return DEFAULT_DEALS_BANNERS;
+  }, [dealsSlides]);
+
+  useEffect(() => {
+    fetchDealsBanners('deals-page');
+  }, [fetchDealsBanners]);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -334,7 +376,7 @@ function DealsPageInner() {
         }}
       >
         {/* Desktop: Top nav bar */}
-        <div className="hidden md:flex items-center justify-between px-6 h-[64px] max-w-[1400px] mx-auto gap-6">
+        <div className="vemtap-container hidden md:flex items-center justify-between h-[64px] gap-6">
           <div className="flex items-center gap-6 shrink-0">
             <Link href="/" className="flex items-center gap-2">
               <img src="/VEMTAP_PNG.png" alt="VemTap" className="h-10 w-auto" />
@@ -387,7 +429,7 @@ function DealsPageInner() {
         </div>
         {/* Desktop: Category rail */}
         <div className="hidden md:block border-t" style={{ borderColor: C.outlineVariant }}>
-          <div className="max-w-[1400px] mx-auto px-6 flex items-center gap-1 h-[44px] overflow-x-auto no-scrollbar">
+          <div className="vemtap-container flex items-center gap-1 h-[42px] overflow-x-auto no-scrollbar">
             {[
               { label: 'All Deals', icon: 'local_offer', query: '' },
               { label: 'Food & Dining', icon: 'restaurant', query: 'food' },
@@ -437,9 +479,9 @@ function DealsPageInner() {
       </header>
 
       {/* ─── Main Content ─── */}
-      <div className="max-w-[1400px] mx-auto flex flex-1">
+      <div className="vemtap-container flex flex-1">
         {/* ─── Desktop Sidebar Filters (Collapsible) ─── */}
-        <aside className="hidden md:block shrink-0 sticky top-[108px] h-[calc(100vh-108px)] border-r transition-all duration-300" style={{ borderColor: C.outlineVariant, background: '#ffffff', width: sidebarOpen ? 280 : 48 }}>
+        <aside className="hidden md:block shrink-0 sticky top-[108px] h-[calc(100vh-108px)] border-r transition-all duration-300" style={{ borderColor: C.outlineVariant, background: '#ffffff', width: sidebarOpen ? 260 : 48 }}>
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
             className="w-full flex items-center gap-2 px-4 h-12 text-[13px] font-bold uppercase tracking-wider border-b transition-colors hover:bg-gray-50"
@@ -569,7 +611,13 @@ function DealsPageInner() {
                   </span>
                   <h2 className="text-[28px] lg:text-[34px] font-black text-white leading-tight mb-2">{bannerSlides[bannerIndex].heading}</h2>
                   <p className="text-[14px] text-white/70 mb-5">{bannerSlides[bannerIndex].sub}</p>
-                  <button className="px-6 py-2.5 rounded-full bg-white font-bold text-[12px] uppercase tracking-wider" style={{ color: C.primary }}>{bannerSlides[bannerIndex].cta}</button>
+                  <button
+                    onClick={() => router.push(bannerSlides[bannerIndex].actionUrl || '/deals')}
+                    className="px-6 py-2.5 rounded-full bg-white font-bold text-[12px] uppercase tracking-wider"
+                    style={{ color: C.primary }}
+                  >
+                    {bannerSlides[bannerIndex].cta}
+                  </button>
                 </div>
               </div>
               {/* Left Arrow */}
@@ -609,7 +657,7 @@ function DealsPageInner() {
           {/* Deals Grid */}
           <div className="p-6">
             {isLoading ? (
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
                 {Array.from({ length: 8 }).map((_, i) => (
                   <div key={i} className="rounded-xl overflow-hidden animate-pulse" style={{ background: C.surface, border: `1px solid ${C.outlineVariant}` }}>
                     <div className="h-32 lg:h-40 w-full" style={{ background: C.outlineVariant }} />
@@ -622,7 +670,7 @@ function DealsPageInner() {
                 ))}
               </div>
             ) : allDeals.length > 0 ? (
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
                 {allDeals.map(deal => {
                   const badge = getBadge(deal);
                   return (
@@ -693,7 +741,7 @@ function DealsPageInner() {
                   <h3 className="font-bold text-sm mb-1" style={{ color: C.onSurface }}>Own a business?</h3>
                   <p className="text-xs mb-4" style={{ color: C.outline }}>List your business on VemTap and reach thousands of customers in your area.</p>
                   <Link
-                    href="/for-businesses"
+                    href="/business"
                     className="inline-flex items-center gap-1.5 rounded-xl px-5 py-2.5 text-[11px] font-bold uppercase tracking-wider text-white active:scale-95 transition-all"
                     style={{ background: C.primary }}
                   >
@@ -712,7 +760,7 @@ function DealsPageInner() {
                         View all deals
                       </button>
                     </div>
-                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
                       {suggestedDeals.map(deal => {
                         const badge = getBadge(deal);
                         return (
@@ -777,7 +825,7 @@ function DealsPageInner() {
       </div>
 
         {/* Consumer Footer */}
-        <ConsumerFooter />
+        <Footer />
 
       <PublicBottomNav />
 
