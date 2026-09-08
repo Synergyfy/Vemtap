@@ -213,9 +213,10 @@ function ManualLocationScreen({ onBack, onSelect, onUseCurrentLocation, isSaving
   );
 }
 
-function LocationConfirmedScreen({ location, onStartExploring, onChangeLocation, isDesktop }: any) {
-  const { data: dealsData } = usePublicOffers({ limit: 5, sortBy: 'trending' });
+function LocationConfirmedScreen({ location, lat, lng, onStartExploring, onChangeLocation, onExploreOther, isDesktop }: any) {
+  const { data: dealsData, isLoading: dealsLoading } = usePublicOffers({ limit: 5, sortBy: 'trending', lat: lat ?? undefined, lng: lng ?? undefined });
   const deals = dealsData?.data || [];
+  const hasDeals = deals.length > 0;
 
   const successContent = (
     <div className="flex flex-col items-center text-center mb-8">
@@ -262,36 +263,6 @@ function LocationConfirmedScreen({ location, onStartExploring, onChangeLocation,
     );
   };
 
-  const fallbackCard = (name: string, category: string, price: number, origPrice: number, discount: number, idx: number) => {
-    const img = getSectorImage(category);
-    return (
-    <div key={idx} className="min-w-[200px] w-[200px] relative rounded-2xl overflow-hidden shadow-lg snap-center flex-shrink-0" style={{ aspectRatio: '3/4' }}>
-      <img src={img} alt={name} className="absolute inset-0 w-full h-full object-cover" />
-      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
-      <div className="absolute inset-0 bg-gradient-to-br from-white/5 via-transparent to-black/10" />
-      {discount > 0 && <div className="absolute top-2.5 right-2.5 bg-rose-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full shadow-lg">-{discount}% OFF</div>}
-      <div className="absolute bottom-0 left-0 right-0 p-3.5">
-        <div className="flex items-center gap-1 mb-1">
-          <div className="size-1.5 rounded-full bg-emerald-400" />
-          <span className="text-[9px] font-bold text-emerald-300 uppercase tracking-wider">Nearby</span>
-        </div>
-        <h4 className="text-[14px] font-black text-white leading-tight mb-0.5 drop-shadow-lg">{name}</h4>
-        <p className="text-[11px] text-white/70 mb-2">{category}</p>
-        <div className="flex items-center justify-between">
-          <div className="flex items-baseline gap-1">
-            <span className="text-[16px] font-black text-white drop-shadow-md">₦{price.toLocaleString()}</span>
-            <span className="text-[10px] text-white/50 line-through">₦{origPrice.toLocaleString()}</span>
-          </div>
-          <div className="flex items-center gap-0.5 bg-white/15 backdrop-blur-sm rounded-full px-2 py-0.5">
-            <Star size={9} className="text-amber-400" fill="currentColor" />
-            <span className="text-[9px] font-bold text-white">4.{8 - idx}</span>
-          </div>
-        </div>
-      </div>
-    </div>
-    );
-  };
-
   const buttons = (
     <div className="flex flex-col gap-3 max-w-sm w-full">
       <button onClick={onStartExploring} className="w-full h-12 bg-[#066CF4] text-white rounded-xl font-bold text-sm flex items-center justify-center shadow-lg shadow-blue-500/20 active:scale-[0.98] transition-all cursor-pointer">Start Exploring</button>
@@ -309,51 +280,72 @@ function LocationConfirmedScreen({ location, onStartExploring, onChangeLocation,
             <span className="text-[10px] font-bold text-[#066CF4] uppercase tracking-wider">Preview</span>
           </div>
           <div className="flex-1 overflow-y-auto p-8">
-            <div className="grid grid-cols-2 gap-4">
-              {(deals.length > 0 ? deals.slice(0, 4) : [
-                { id: '1', name: 'Urban Grind Cafe', business: { categoryName: 'Cafe & Bakery' }, dealPrice: 4500, originalPrice: 5600, discountPercent: 20 },
-                { id: '2', name: 'Oasis Spa & Wellness', business: { categoryName: 'Health & Beauty' }, dealPrice: 12750, originalPrice: 15000, discountPercent: 15 },
-                { id: '3', name: 'Fresh Bites Kitchen', business: { categoryName: 'Food & Dining' }, dealPrice: 3200, originalPrice: 4000, discountPercent: 20 },
-                { id: '4', name: 'Style Hub Salon', business: { categoryName: 'Beauty & Spa' }, dealPrice: 8500, originalPrice: 10000, discountPercent: 15 },
-              ]).map((deal: any, i: number) => {
-                const dealImage = deal.business?.photos?.[0] || deal.mainImage || deal.image || getSectorImage(deal.business?.categoryName || deal.categoryName);
-                return (
-                <motion.div
-                  key={deal.id}
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: i * 0.1, type: 'spring', stiffness: 200 }}
-                  className="relative rounded-2xl overflow-hidden shadow-lg group cursor-pointer"
-                  style={{ aspectRatio: '3/4' }}
-                >
-                  <img src={dealImage} alt={deal.name} className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
-                  <div className="absolute inset-0 bg-gradient-to-br from-white/5 via-transparent to-black/10" />
-                  {deal.discountPercent && (
-                    <div className="absolute top-3 right-3 bg-rose-500 text-white text-[11px] font-black px-2.5 py-1 rounded-full shadow-lg backdrop-blur-sm">-{deal.discountPercent}% OFF</div>
-                  )}
-                  <div className="absolute bottom-0 left-0 right-0 p-4">
-                    <div className="flex items-center gap-1.5 mb-1.5">
-                      <div className="size-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                      <span className="text-[10px] font-bold text-emerald-300 uppercase tracking-wider">Nearby</span>
-                    </div>
-                    <h4 className="text-[16px] font-black text-white leading-tight mb-1 drop-shadow-lg">{deal.name}</h4>
-                    <p className="text-[12px] text-white/70 mb-2.5">{deal.business?.categoryName || 'Business'}</p>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-baseline gap-1.5">
-                        <span className="text-[18px] font-black text-white drop-shadow-md">{deal.dealPrice ? `₦${Number(deal.dealPrice).toLocaleString()}` : 'View'}</span>
-                        {deal.originalPrice && <span className="text-[11px] text-white/50 line-through">₦{Number(deal.originalPrice).toLocaleString()}</span>}
+            {dealsLoading ? (
+              <div className="grid grid-cols-2 gap-4">
+                {[1, 2, 3, 4].map((i) => (
+                  <div key={i} className="relative rounded-2xl overflow-hidden bg-gray-100 animate-pulse" style={{ aspectRatio: '3/4' }} />
+                ))}
+              </div>
+            ) : hasDeals ? (
+              <div className="grid grid-cols-2 gap-4">
+                {deals.slice(0, 4).map((deal: any, i: number) => {
+                  const dealImage = deal.business?.photos?.[0] || deal.mainImage || deal.image || getSectorImage(deal.business?.categoryName || deal.categoryName);
+                  return (
+                  <motion.div
+                    key={deal.id}
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: i * 0.1, type: 'spring', stiffness: 200 }}
+                    className="relative rounded-2xl overflow-hidden shadow-lg group cursor-pointer"
+                    style={{ aspectRatio: '3/4' }}
+                  >
+                    <img src={dealImage} alt={deal.name} className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+                    <div className="absolute inset-0 bg-gradient-to-br from-white/5 via-transparent to-black/10" />
+                    {deal.discountPercent && (
+                      <div className="absolute top-3 right-3 bg-rose-500 text-white text-[11px] font-black px-2.5 py-1 rounded-full shadow-lg backdrop-blur-sm">-{deal.discountPercent}% OFF</div>
+                    )}
+                    <div className="absolute bottom-0 left-0 right-0 p-4">
+                      <div className="flex items-center gap-1.5 mb-1.5">
+                        <div className="size-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                        <span className="text-[10px] font-bold text-emerald-300 uppercase tracking-wider">Nearby</span>
                       </div>
-                      <div className="flex items-center gap-0.5 bg-white/15 backdrop-blur-sm rounded-full px-2 py-0.5">
-                        <Star size={10} className="text-amber-400" fill="currentColor" />
-                        <span className="text-[10px] font-bold text-white">4.{8 - i}</span>
+                      <h4 className="text-[16px] font-black text-white leading-tight mb-1 drop-shadow-lg">{deal.name}</h4>
+                      <p className="text-[12px] text-white/70 mb-2.5">{deal.business?.categoryName || 'Business'}</p>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-baseline gap-1.5">
+                          <span className="text-[18px] font-black text-white drop-shadow-md">{deal.dealPrice ? `₦${Number(deal.dealPrice).toLocaleString()}` : 'View'}</span>
+                          {deal.originalPrice && <span className="text-[11px] text-white/50 line-through">₦{Number(deal.originalPrice).toLocaleString()}</span>}
+                        </div>
+                        <div className="flex items-center gap-0.5 bg-white/15 backdrop-blur-sm rounded-full px-2 py-0.5">
+                          <Star size={10} className="text-amber-400" fill="currentColor" />
+                          <span className="text-[10px] font-bold text-white">4.{8 - i}</span>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </motion.div>
-                );
-              })}
-            </div>
+                  </motion.div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center text-center py-12">
+                <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mb-4">
+                  <Store size={28} className="text-gray-300" />
+                </div>
+                <h4 className="text-base font-bold text-gray-900 mb-2">No deals nearby yet</h4>
+                <p className="text-sm text-gray-500 max-w-xs mb-6">Be the first to tell businesses about deals in your area, or explore deals in other locations.</p>
+                <div className="flex flex-col gap-2 w-full max-w-xs">
+                  <button onClick={onExploreOther} className="h-10 rounded-xl bg-[#066CF4] text-white font-bold text-xs flex items-center justify-center gap-2">
+                    <span className="material-symbols-outlined" style={{ fontSize: 16 }}>explore</span>
+                    Explore Other Areas
+                  </button>
+                  <button onClick={onStartExploring} className="h-10 rounded-xl border border-gray-200 text-gray-600 font-bold text-xs flex items-center justify-center gap-2 hover:bg-gray-50">
+                    <span className="material-symbols-outlined" style={{ fontSize: 16 }}>storefront</span>
+                    Be the First to List
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -371,24 +363,44 @@ function LocationConfirmedScreen({ location, onStartExploring, onChangeLocation,
         {successContent}
         <div className="mt-4">
           <div className="px-5 flex justify-between items-end mb-4"><h3 className="text-base font-bold text-gray-900">Nearby Deals</h3><span className="text-[10px] font-bold text-[#066CF4] uppercase tracking-wider">Preview</span></div>
-          <div className="flex overflow-x-auto scrollbar-hide px-5 gap-3.5 pb-4 snap-x snap-mandatory">
-            {deals.length > 0 ? deals.map((d: any, i: number) => dealCard(d, i)) : (
-              <>
-                {fallbackCard('Urban Grind Cafe', 'Cafe & Bakery', 4500, 5600, 20, 0)}
-                {fallbackCard('Oasis Spa & Wellness', 'Health & Beauty', 12750, 15000, 15, 1)}
-                {fallbackCard('Fresh Bites Kitchen', 'Food & Dining', 3200, 4000, 20, 2)}
-              </>
-            )}
-            <div className="min-w-[200px] w-[200px] relative rounded-2xl overflow-hidden shadow-lg snap-center flex-shrink-0 bg-gradient-to-br from-[#066CF4] to-blue-700 flex flex-col items-center justify-center gap-3" style={{ aspectRatio: '3/4' }}>
-              <div className="size-14 rounded-full bg-white/15 backdrop-blur-sm flex items-center justify-center">
-                <Store size={24} className="text-white" />
-              </div>
-              <div className="text-center px-4">
-                <p className="text-[14px] font-black text-white mb-1">Explore More</p>
-                <p className="text-[11px] text-white/70">View all deals nearby</p>
+          {dealsLoading ? (
+            <div className="flex overflow-x-auto scrollbar-hide px-5 gap-3.5 pb-4 snap-x snap-mandatory">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="min-w-[200px] w-[200px] rounded-2xl overflow-hidden bg-gray-100 animate-pulse snap-center flex-shrink-0" style={{ aspectRatio: '3/4' }} />
+              ))}
+            </div>
+          ) : hasDeals ? (
+            <div className="flex overflow-x-auto scrollbar-hide px-5 gap-3.5 pb-4 snap-x snap-mandatory">
+              {deals.map((d: any, i: number) => dealCard(d, i))}
+              <div className="min-w-[200px] w-[200px] relative rounded-2xl overflow-hidden shadow-lg snap-center flex-shrink-0 bg-gradient-to-br from-[#066CF4] to-blue-700 flex flex-col items-center justify-center gap-3" style={{ aspectRatio: '3/4' }}>
+                <div className="size-14 rounded-full bg-white/15 backdrop-blur-sm flex items-center justify-center">
+                  <Store size={24} className="text-white" />
+                </div>
+                <div className="text-center px-4">
+                  <p className="text-[14px] font-black text-white mb-1">Explore More</p>
+                  <p className="text-[11px] text-white/70">View all deals nearby</p>
+                </div>
               </div>
             </div>
-          </div>
+          ) : (
+            <div className="px-5 py-8 text-center">
+              <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-4">
+                <Store size={28} className="text-gray-300" />
+              </div>
+              <h4 className="text-base font-bold text-gray-900 mb-2">No deals nearby yet</h4>
+              <p className="text-sm text-gray-500 max-w-xs mx-auto mb-6">Be the first to tell businesses about deals in your area, or explore deals in other locations.</p>
+              <div className="flex flex-col gap-2 max-w-xs mx-auto">
+                <button onClick={onExploreOther} className="h-10 rounded-xl bg-[#066CF4] text-white font-bold text-xs flex items-center justify-center gap-2">
+                  <span className="material-symbols-outlined" style={{ fontSize: 16 }}>explore</span>
+                  Explore Other Areas
+                </button>
+                <button onClick={onStartExploring} className="h-10 rounded-xl border border-gray-200 text-gray-600 font-bold text-xs flex items-center justify-center gap-2 hover:bg-gray-50">
+                  <span className="material-symbols-outlined" style={{ fontSize: 16 }}>storefront</span>
+                  Be the First to List
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </main>
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 px-5 py-4 z-40 shadow-[0_-4px_20px_rgba(0,0,0,0.03)]">
@@ -403,7 +415,7 @@ export default function LocationOnboardingFlow({ onComplete }: LocationOnboardin
   const [selectedLocation, setSelectedLocation] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isDesktop, setIsDesktop] = useState(false);
-  const { requestLocation, setManualLocation, isLoading } = useLocation();
+  const { lat, lng, requestLocation, setManualLocation, isLoading } = useLocation();
 
   useEffect(() => {
     const check = () => setIsDesktop(window.innerWidth >= 768);
@@ -444,7 +456,7 @@ export default function LocationOnboardingFlow({ onComplete }: LocationOnboardin
             transition={{ type: 'spring', stiffness: 300, damping: 30 }} className="absolute inset-0">
             {step === 'permission' && <LocationPermissionScreen onUseLocation={handleUseLocation} onChooseManually={handleChooseManually} isRequesting={isLoading} error={error} isDesktop={isDesktop} />}
             {step === 'manual' && <ManualLocationScreen onBack={() => setStep('permission')} onSelect={handleSelectLocation} onUseCurrentLocation={handleUseLocation} isSaving={isLoading} error={error} isDesktop={isDesktop} />}
-            {step === 'confirmed' && <LocationConfirmedScreen location={selectedLocation} onStartExploring={onComplete} onChangeLocation={() => setStep('manual')} isDesktop={isDesktop} />}
+            {step === 'confirmed' && <LocationConfirmedScreen location={selectedLocation} lat={lat} lng={lng} onStartExploring={onComplete} onChangeLocation={() => setStep('manual')} onExploreOther={() => setStep('manual')} isDesktop={isDesktop} />}
           </motion.div>
         </AnimatePresence>
       </div>

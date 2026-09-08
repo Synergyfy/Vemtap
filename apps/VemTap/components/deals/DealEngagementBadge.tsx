@@ -38,7 +38,7 @@ export default function DealEngagementBadge({ offerId }: DealEngagementBadgeProp
                 </div>
             )}
             <Link
-                href={`/promotions/${offerId}#reviews`}
+                href={`/deals/${offerId}#reviews`}
                 className="flex items-center gap-1 text-[10px] font-bold text-gray-400 hover:text-primary transition-colors"
             >
                 <span>💬</span>

@@ -88,7 +88,7 @@ export function offerToHomeDeal(offer: DealOffer): HomeDealCard {
     discountAmount,
     discountLabel,
     endDate: offer.endDate ?? undefined,
-    href: `/promotions/${offer.id}`,
+    href: slug ? `/deals/${encodeURIComponent(slug)}/${offer.id}` : `/deals?search=${encodeURIComponent(offer.name || '')}`,
   };
 }
 

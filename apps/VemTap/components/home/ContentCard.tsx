@@ -41,7 +41,7 @@ export default function ContentCard({
   const [liked, setLiked] = useState(false);
   const [saved, setSaved] = useState(false);
 
-  const href = type === 'deal' ? `/promotions/${id}` : `/b/${businessSlug}`;
+  const href = type === 'deal' ? `/deals/${businessSlug || ''}/${id}` : `/b/${businessSlug}`;
   const defaultCta = type === 'deal' ? 'View Deal' : 'View Business';
 
   return (
