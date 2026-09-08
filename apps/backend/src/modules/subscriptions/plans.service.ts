@@ -73,10 +73,7 @@ export class PlansService {
     }
   }
 
-  enrichPlanWithTax(
-    plan: Plan,
-    taxConfig: SubscriptionTaxConfig,
-  ): PlanWithTax {
+  enrichPlanWithTax(plan: Plan, taxConfig: SubscriptionTaxConfig): PlanWithTax {
     const taxInfo: PlanTaxInfo = {
       name: taxConfig?.name || 'VAT',
       taxType: taxConfig?.taxType || TaxType.PERCENTAGE,

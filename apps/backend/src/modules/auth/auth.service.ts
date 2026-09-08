@@ -51,9 +51,7 @@ function isValidReferralCode(value: string | null | undefined): boolean {
   if (!value) return false;
   const trimmed = value.trim();
   return (
-    trimmed.length > 0 &&
-    trimmed === value &&
-    /^[A-Za-z0-9-]+$/.test(trimmed)
+    trimmed.length > 0 && trimmed === value && /^[A-Za-z0-9-]+$/.test(trimmed)
   );
 }
 

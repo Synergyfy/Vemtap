@@ -1,5 +1,11 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsEnum, IsNotEmpty, IsOptional, IsString, IsUUID } from 'class-validator';
+import {
+  IsEnum,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  IsUUID,
+} from 'class-validator';
 import { Transform } from 'class-transformer';
 
 export enum DownloadFormat {
@@ -27,7 +33,9 @@ export class FindDownloadsQueryDto {
   })
   @IsOptional()
   @Transform(({ value }) =>
-    typeof value === 'string' && value.trim() === '' ? undefined : value?.trim(),
+    typeof value === 'string' && value.trim() === ''
+      ? undefined
+      : value?.trim(),
   )
   @IsUUID('4', { message: 'assetId must be a valid UUID v4' })
   assetId?: string;

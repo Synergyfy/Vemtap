@@ -43,7 +43,11 @@ export class AgentSupportController {
   @Get('all')
   @ApiOperation({ summary: 'Get all agents (for assignment/listing)' })
   async getAgents(@Query() query: PaginationQueryDto) {
-    return this.supportService.findAllAgents(query.page, query.limit, query.cursor);
+    return this.supportService.findAllAgents(
+      query.page,
+      query.limit,
+      query.cursor,
+    );
   }
 
   @Get('stats')

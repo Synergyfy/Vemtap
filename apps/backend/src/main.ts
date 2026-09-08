@@ -31,7 +31,7 @@ export function configureApp(app: INestApplication) {
     json({
       limit: '25mb',
       verify: (req: any, _res, buf) => {
-        (req as any).rawBody = buf;
+        req.rawBody = buf;
       },
     }),
   );

@@ -34,7 +34,8 @@ export class AllExceptionsFilter implements ExceptionFilter {
         (exception as any)?.constructor?.name === 'QueryFailedError';
 
       if (isQueryFailed) {
-        const driverError = (exception as any)?.driverError || (exception as any);
+        const driverError =
+          (exception as any)?.driverError || (exception as any);
         const code = driverError?.code;
 
         if (code === '22P02') {
@@ -51,7 +52,9 @@ export class AllExceptionsFilter implements ExceptionFilter {
           message = {
             statusCode: HttpStatus.CONFLICT,
             error: 'Conflict',
-            message: driverError?.detail || 'A record with this identifier or unique value already exists',
+            message:
+              driverError?.detail ||
+              'A record with this identifier or unique value already exists',
           };
         } else if (code === '23503') {
           // Foreign key violation
@@ -59,7 +62,9 @@ export class AllExceptionsFilter implements ExceptionFilter {
           message = {
             statusCode: HttpStatus.BAD_REQUEST,
             error: 'Bad Request',
-            message: driverError?.detail || 'Referenced record does not exist or cannot be deleted',
+            message:
+              driverError?.detail ||
+              'Referenced record does not exist or cannot be deleted',
           };
         } else if (code === '22001') {
           // String data right truncation (value too long)
@@ -82,9 +87,9 @@ export class AllExceptionsFilter implements ExceptionFilter {
       error:
         typeof message === 'string'
           ? message
-          : (message as any).error || (message as any).message || message,
+          : message.error || message.message || message,
       message:
-        (message as any).message ||
+        message.message ||
         (typeof message === 'string' ? message : 'Internal server error'),
     };
 

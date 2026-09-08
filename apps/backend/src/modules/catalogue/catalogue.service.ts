@@ -537,9 +537,7 @@ export class CatalogueService {
       if (mainBranch) return mainBranch.id;
     }
 
-    throw new NotFoundException(
-      `Branch with code ${branchIdOrCode} not found`,
-    );
+    throw new NotFoundException(`Branch with code ${branchIdOrCode} not found`);
   }
 
   // --- Public Listing ---

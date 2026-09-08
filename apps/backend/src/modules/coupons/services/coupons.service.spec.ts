@@ -2,7 +2,11 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { NotFoundException } from '@nestjs/common';
 import { CouponsService } from './coupons.service';
-import { Coupon, DiscountType, CouponDuration } from '../entities/coupon.entity';
+import {
+  Coupon,
+  DiscountType,
+  CouponDuration,
+} from '../entities/coupon.entity';
 
 describe('CouponsService', () => {
   let service: CouponsService;
@@ -32,7 +36,9 @@ describe('CouponsService', () => {
 
   beforeEach(async () => {
     repo = {
-      create: jest.fn().mockImplementation((dto) => ({ id: 'coupon-1', ...dto })),
+      create: jest
+        .fn()
+        .mockImplementation((dto) => ({ id: 'coupon-1', ...dto })),
       save: jest.fn().mockImplementation(async (entity) => entity),
       find: jest.fn().mockResolvedValue([mockCoupon]),
       findOne: jest.fn().mockResolvedValue({ ...mockCoupon }),
@@ -78,6 +84,8 @@ describe('CouponsService', () => {
 
   it('should throw NotFoundException if coupon does not exist', async () => {
     repo.findOne.mockResolvedValueOnce(null);
-    await expect(service.findOne('invalid-id')).rejects.toThrow(NotFoundException);
+    await expect(service.findOne('invalid-id')).rejects.toThrow(
+      NotFoundException,
+    );
   });
 });

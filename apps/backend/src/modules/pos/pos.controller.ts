@@ -75,7 +75,10 @@ export class PosController {
     @Query() filter: BranchFilterDto,
     @Req() req: RequestWithUser,
   ) {
-    return this.posService.findAllHeldSales(req.user.businessId, filter.branchId);
+    return this.posService.findAllHeldSales(
+      req.user.businessId,
+      filter.branchId,
+    );
   }
 
   @Get('sales/held/:id')

@@ -8,10 +8,7 @@ import { HttpService } from '@nestjs/axios';
 import { firstValueFrom } from 'rxjs';
 
 export type PaystackTransactionStatus =
-  | 'success'
-  | 'pending'
-  | 'failed'
-  | 'abandoned';
+  'success' | 'pending' | 'failed' | 'abandoned';
 
 export interface VerifiedTransaction {
   reference: string;
@@ -73,7 +70,9 @@ export class PaymentsService {
    * `pending` covers async payment channels (bank transfer, USSD, etc.) whose
    * status is `ongoing`, `pending`, `processing`, or `queued`.
    */
-  async verifyTransaction(reference: string): Promise<VerifiedTransaction | null> {
+  async verifyTransaction(
+    reference: string,
+  ): Promise<VerifiedTransaction | null> {
     try {
       const secretKey = process.env.PAYSTACK_SECRET_KEY;
       if (!secretKey) {
@@ -263,7 +262,8 @@ export class PaymentsService {
         ) {
           existing.status = createPaymentDto.status;
           existing.metadata = createPaymentDto.metadata ?? existing.metadata;
-          existing.businessId = createPaymentDto.businessId ?? existing.businessId;
+          existing.businessId =
+            createPaymentDto.businessId ?? existing.businessId;
           existing.userId = createPaymentDto.userId ?? existing.userId;
           return this.paymentRepository.save(existing);
         }

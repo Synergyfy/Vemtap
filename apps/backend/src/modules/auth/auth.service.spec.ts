@@ -671,7 +671,10 @@ describe('AuthService', () => {
       });
 
       expect(result.access_token).toBe('mock_token');
-      expect(mockSubscriptionsService.subscribeToFreePlan).toHaveBeenCalledWith('biz-1', true);
+      expect(mockSubscriptionsService.subscribeToFreePlan).toHaveBeenCalledWith(
+        'biz-1',
+        true,
+      );
     });
 
     it('should throw for non-existent user', async () => {

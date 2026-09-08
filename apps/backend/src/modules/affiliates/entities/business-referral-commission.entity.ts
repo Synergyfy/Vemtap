@@ -33,7 +33,10 @@ export class BusinessReferralCommission extends AbstractBaseEntity {
   @Column({ default: true })
   isFirstPayment: boolean;
 
-  @ApiProperty({ example: 'T123456789', description: 'Linked payment reference' })
+  @ApiProperty({
+    example: 'T123456789',
+    description: 'Linked payment reference',
+  })
   @Column({ type: 'varchar', nullable: true })
   paymentReference: string;
 }

@@ -11,7 +11,9 @@ export class FindMarketingAssetsQueryDto extends BranchFilterDto {
   @IsOptional()
   @IsString()
   @Transform(({ value }) =>
-    typeof value === 'string' && value.trim() === '' ? undefined : value?.trim(),
+    typeof value === 'string' && value.trim() === ''
+      ? undefined
+      : value?.trim(),
   )
   type?: string;
 }

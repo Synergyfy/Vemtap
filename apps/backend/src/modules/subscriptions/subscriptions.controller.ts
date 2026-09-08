@@ -218,7 +218,8 @@ export class SubscriptionsController {
   })
   @ApiResponse({
     status: 200,
-    description: 'Calculated breakdown of subtotal, discount, tax amount, and total',
+    description:
+      'Calculated breakdown of subtotal, discount, tax amount, and total',
   })
   async previewPrice(@Query() dto: PricePreviewDto, @Request() req: any) {
     let businessId: string | undefined;
@@ -229,7 +230,6 @@ export class SubscriptionsController {
     }
     return this.subscriptionsService.previewPrice(dto, businessId);
   }
-
 
   // --- Admin Tax Endpoints ---
 
@@ -266,16 +266,14 @@ export class SubscriptionsController {
   @Patch('admin/tax-config/toggle')
   @Roles(UserRole.ADMIN)
   @ApiOperation({
-    summary: 'Admin: Quick toggle to enable or disable VAT/Tax for subscriptions',
+    summary:
+      'Admin: Quick toggle to enable or disable VAT/Tax for subscriptions',
   })
   @ApiResponse({
     status: 200,
     description: 'Tax status toggled successfully and recorded in history',
   })
-  async toggleTax(
-    @Request() req: any,
-    @Body() dto: ToggleSubscriptionTaxDto,
-  ) {
+  async toggleTax(@Request() req: any, @Body() dto: ToggleSubscriptionTaxDto) {
     return this.subscriptionTaxService.toggleTax(req.user.id, dto);
   }
 

@@ -14,7 +14,8 @@ import {
 export class CreatePromoCodeDto {
   @ApiProperty({
     example: 'SAVE50',
-    description: 'Customer facing promo code string (will be normalized to uppercase)',
+    description:
+      'Customer facing promo code string (will be normalized to uppercase)',
   })
   @IsString()
   @IsNotEmpty()

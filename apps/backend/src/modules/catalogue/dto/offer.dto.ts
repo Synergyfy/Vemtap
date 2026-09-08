@@ -22,7 +22,10 @@ export class CreateCatalogueOfferDto {
   @IsString()
   name: string;
 
-  @ApiPropertyOptional({ example: 'Get 2 burgers and a drink for less!', default: '' })
+  @ApiPropertyOptional({
+    example: 'Get 2 burgers and a drink for less!',
+    default: '',
+  })
   @IsOptional()
   @IsString()
   @Transform(({ value }) => (typeof value === 'string' ? value : ''))
@@ -34,7 +37,9 @@ export class CreateCatalogueOfferDto {
   })
   @IsOptional()
   @Transform(({ value }) =>
-    typeof value === 'string' && value.trim() === '' ? undefined : value?.trim(),
+    typeof value === 'string' && value.trim() === ''
+      ? undefined
+      : value?.trim(),
   )
   @IsUUID('4', { message: 'sourceProductId must be a valid UUID v4' })
   sourceProductId?: string;
@@ -186,7 +191,10 @@ export class CreateCatalogueOfferDto {
   @IsString()
   longDescription?: string;
 
-  @ApiPropertyOptional({ description: 'Whether the offer is featured', example: false })
+  @ApiPropertyOptional({
+    description: 'Whether the offer is featured',
+    example: false,
+  })
   @IsOptional()
   @IsBoolean()
   isFeatured?: boolean;
@@ -198,7 +206,10 @@ export class UpdateCatalogueOfferDto {
   @IsString()
   name?: string;
 
-  @ApiPropertyOptional({ description: 'Whether the offer is featured', example: false })
+  @ApiPropertyOptional({
+    description: 'Whether the offer is featured',
+    example: false,
+  })
   @IsOptional()
   @IsBoolean()
   isFeatured?: boolean;
@@ -209,7 +220,9 @@ export class UpdateCatalogueOfferDto {
   })
   @IsOptional()
   @Transform(({ value }) =>
-    typeof value === 'string' && value.trim() === '' ? undefined : value?.trim(),
+    typeof value === 'string' && value.trim() === ''
+      ? undefined
+      : value?.trim(),
   )
   @IsUUID('4', { message: 'sourceProductId must be a valid UUID v4' })
   sourceProductId?: string;

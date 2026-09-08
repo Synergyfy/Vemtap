@@ -43,7 +43,12 @@ describe('PlansService', () => {
           subtotal,
           taxAmount: 0,
           total: subtotal,
-          taxRule: { name: 'VAT', taxType: TaxType.PERCENTAGE, rate: 10, isEnabled: false },
+          taxRule: {
+            name: 'VAT',
+            taxType: TaxType.PERCENTAGE,
+            rate: 10,
+            isEnabled: false,
+          },
         };
       }
       const taxAmount = (subtotal * config.rate) / 100;
@@ -51,7 +56,12 @@ describe('PlansService', () => {
         subtotal,
         taxAmount,
         total: subtotal + taxAmount,
-        taxRule: { name: config.name, taxType: config.taxType, rate: config.rate, isEnabled: true },
+        taxRule: {
+          name: config.name,
+          taxType: config.taxType,
+          rate: config.rate,
+          isEnabled: true,
+        },
       };
     }),
   };
