@@ -6,7 +6,18 @@ import { useRouter } from 'next/navigation';
 import { X, CheckCircle, Store, Clock, Info } from 'lucide-react';
 import { useAuthStore } from '@/store/useAuthStore';
 import { formatDealPrice } from '@/lib/promotions';
+import { useCreateCatalogueOrder } from '@/services/catalogue/hooks';
+import { signupVisitorAndLogin } from '@/lib/visitorAuth';
 import RedeemDealModal from './RedeemDealModal';
+
+export interface ClaimConfig {
+    branchId: string;
+    deviceId?: string;
+    sessionToken?: string;
+    successPath?: string;
+    onSuccess?: () => void;
+    quantity?: number;
+}
 
 interface ClaimDealModalProps {
     isOpen: boolean;
@@ -21,13 +32,15 @@ interface ClaimDealModalProps {
         discountLabel: string;
         slug: string;
     };
+    claimConfig?: ClaimConfig;
 }
 
 type ModalView = 'form' | 'confirm' | 'success' | 'mydeal';
 
-export default function ClaimDealModal({ isOpen, onClose, deal }: ClaimDealModalProps) {
+export default function ClaimDealModal({ isOpen, onClose, deal, claimConfig }: ClaimDealModalProps) {
     const router = useRouter();
     const { isAuthenticated, user } = useAuthStore();
+    const createOrderMutation = useCreateCatalogueOrder();
     const [view, setView] = useState<ModalView>(isAuthenticated ? 'confirm' : 'form');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [formData, setFormData] = useState({
@@ -73,6 +86,41 @@ export default function ClaimDealModal({ isOpen, onClose, deal }: ClaimDealModal
         return () => { document.body.style.overflow = ''; };
     }, [isOpen, isAuthenticated, user]);
 
+    const performRealClaim = async (info: { name: string; email: string; phone: string }) => {
+        if (!claimConfig) return;
+        const { branchId, deviceId, quantity } = claimConfig;
+
+        if (!isAuthenticated) {
+            await signupVisitorAndLogin({
+                name: info.name,
+                email: info.email || undefined,
+                phone: info.phone || undefined,
+                branchId,
+            });
+        }
+
+        const nameParts = (info.name || '').trim().split(/\s+/);
+        await createOrderMutation.mutateAsync({
+            branchId,
+            deviceId,
+            firstName: nameParts[0] || 'Guest',
+            lastName: nameParts.slice(1).join(' ') || ' ',
+            email: info.email || undefined,
+            phone: info.phone || 'N/A',
+            items: [{ offerId: deal.id, quantity: quantity || 1 }],
+        });
+
+        if (claimConfig.onSuccess) {
+            claimConfig.onSuccess();
+            return;
+        }
+        if (claimConfig.successPath) {
+            router.push(claimConfig.successPath);
+            return;
+        }
+        setView('success');
+    };
+
     const handleSubmit = async () => {
         if (!formData.name.trim() || !formData.email.trim()) {
             setError('Please fill in your name and email');
@@ -85,10 +133,14 @@ export default function ClaimDealModal({ isOpen, onClose, deal }: ClaimDealModal
         setIsSubmitting(true);
         setError(null);
         try {
-            await new Promise((r) => setTimeout(r, 1500));
-            setView('success');
-        } catch {
-            setError('Something went wrong. Please try again.');
+            if (claimConfig) {
+                await performRealClaim(formData);
+            } else {
+                await new Promise((r) => setTimeout(r, 1500));
+                setView('success');
+            }
+        } catch (err: any) {
+            setError(err?.response?.data?.message || 'Something went wrong. Please try again.');
         } finally {
             setIsSubmitting(false);
         }
@@ -98,10 +150,14 @@ export default function ClaimDealModal({ isOpen, onClose, deal }: ClaimDealModal
         setIsSubmitting(true);
         setError(null);
         try {
-            await new Promise((r) => setTimeout(r, 1500));
-            setView('success');
-        } catch {
-            setError('Something went wrong. Please try again.');
+            if (claimConfig) {
+                await performRealClaim(formData);
+            } else {
+                await new Promise((r) => setTimeout(r, 1500));
+                setView('success');
+            }
+        } catch (err: any) {
+            setError(err?.response?.data?.message || 'Something went wrong. Please try again.');
         } finally {
             setIsSubmitting(false);
         }
@@ -311,6 +367,7 @@ export default function ClaimDealModal({ isOpen, onClose, deal }: ClaimDealModal
                                 <MyDealView
                                     deal={deal}
                                     redemptionCode={redemptionCode}
+                                    isRealClaim={!!claimConfig}
                                     onRedeemClick={() => setShowRedeemModal(true)}
                                 />
                             )}
@@ -409,9 +466,10 @@ function SuccessView({ deal, onViewMyDeal, onViewBusiness }: {
     );
 }
 
-function MyDealView({ deal, redemptionCode, onRedeemClick }: {
+function MyDealView({ deal, redemptionCode, isRealClaim, onRedeemClick }: {
     deal: ClaimDealModalProps['deal'];
     redemptionCode: string;
+    isRealClaim: boolean;
     onRedeemClick: () => void;
 }) {
     return (
@@ -432,12 +490,22 @@ function MyDealView({ deal, redemptionCode, onRedeemClick }: {
                     </p>
 
                     {/* Redemption Code */}
-                    <div className="mt-3 pt-3 border-t border-gray-100">
-                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Redemption Code</p>
-                        <div className="bg-gray-50 px-4 py-2.5 rounded-lg text-center">
-                            <span className="text-[20px] font-mono tracking-widest text-gray-900 font-bold">{redemptionCode}</span>
+                    {isRealClaim ? (
+                        <div className="mt-3 pt-3 border-t border-gray-100">
+                            <div className="bg-[#d9e2ff] rounded-lg p-3">
+                                <p className="text-[12px] text-[#00429b] leading-relaxed">
+                                    Your claim has been received by <strong>{deal.businessName}</strong>. Show this screen when you visit the business to redeem your deal.
+                                </p>
+                            </div>
                         </div>
-                    </div>
+                    ) : (
+                        <div className="mt-3 pt-3 border-t border-gray-100">
+                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Redemption Code</p>
+                            <div className="bg-gray-50 px-4 py-2.5 rounded-lg text-center">
+                                <span className="text-[20px] font-mono tracking-widest text-gray-900 font-bold">{redemptionCode}</span>
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
 
