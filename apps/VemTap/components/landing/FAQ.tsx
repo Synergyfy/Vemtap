@@ -34,7 +34,7 @@ export default function FAQ() {
 
     return (
         <section id="faq" className="py-12 md:py-16 bg-white overflow-hidden">
-            <div className="max-w-4xl mx-auto px-6 sm:px-10">
+            <div className="vemtap-container">
                 <div className="text-center mb-20">
                     <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary/10 rounded-full mb-6">
                         <HelpCircle size={14} className="text-primary" />

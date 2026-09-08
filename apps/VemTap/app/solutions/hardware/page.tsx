@@ -37,8 +37,8 @@ export default function HardwareSolutionPage() {
                         WebkitMaskImage: 'linear-gradient(to right, black 20%, transparent 80%)'
                     }}></div>
 
-                    <div className="container mx-auto px-8 md:px-16 lg:px-20 max-w-6xl text-center z-10 relative">
-                        <h1 className="font-bold text-[30px] sm:text-4xl md:text-5xl leading-[1.15] text-text-main max-w-4xl mx-auto mb-10 tracking-tight">
+                    <div className="vemtap-container text-center z-10 relative">
+                        <h1 className="font-bold text-[30px] sm:text-4xl md:text-5xl leading-[1.15] text-text-main vemtap-container mb-10 tracking-tight">
                             The bridge between physical <br />
                             <span className="text-gradient">touchpoints & digital loyalty.</span>
                         </h1>
@@ -54,7 +54,7 @@ export default function HardwareSolutionPage() {
                         </div>
 
                         {/* Hardware Visualization Mockup */}
-                        <div className="relative max-w-4xl mx-auto group perspective-[2000px]">
+                        <div className="relative vemtap-container group perspective-[2000px]">
                             <div className="absolute -inset-1 bg-linear-to-r from-primary/30 to-blue-300/30 rounded-[2.5rem] blur opacity-20 animate-pulse"></div>
                             <div className="relative bg-white rounded-[2.5rem] shadow-2xl border border-gray-100 p-6 md:p-12 flex flex-col md:flex-row items-center gap-12 overflow-hidden">
                                 <div className="absolute top-0 right-0 w-1/2 h-full bg-gray-50/50 -z-10 rotate-12 translate-x-12"></div>
@@ -103,7 +103,7 @@ export default function HardwareSolutionPage() {
 
                 {/* THE SCIENCE SECTION - High Performance Info */}
                 <section className="py-32 px-4 bg-white">
-                    <div className="max-w-7xl mx-auto">
+                    <div className="vemtap-container">
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-24 items-start">
                             <div className="space-y-12 sticky top-32">
                                 <div className="space-y-6">
@@ -180,8 +180,8 @@ export default function HardwareSolutionPage() {
 
                 {/* THE CATALOG EXPLORER - Grid Content */}
                 <section className="py-32 px-4 bg-gray-50 border-y border-gray-100">
-                    <div className="max-w-7xl mx-auto space-y-20">
-                        <div className="text-center max-w-3xl mx-auto space-y-6">
+                    <div className="vemtap-container space-y-20">
+                        <div className="text-center vemtap-container space-y-6">
                             <h2 className="text-4xl md:text-5xl font-display font-bold tracking-tight">Built for every venue type.</h2>
                             <p className="text-lg text-text-secondary font-medium">Modular hardware designed to blend into your aesthetic while standing out in utility.</p>
                         </div>
@@ -242,7 +242,7 @@ export default function HardwareSolutionPage() {
                 {/* RELIABILITY SECTION - Enterprise Content */}
                 <section className="py-48 px-4 bg-white overflow-hidden relative">
                     <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full bg-primary/2 rounded-full blur-3xl pointer-events-none"></div>
-                    <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-24 items-center">
+                    <div className="vemtap-container grid grid-cols-1 lg:grid-cols-2 gap-24 items-center">
                         <div className="space-y-10 relative z-10">
                             <h2 className="text-2xl md:text-4xl lg:text-5xl font-bold tracking-tight leading-[1.15]">Reliability that <br /> merchants trust.</h2>
                             <p className="text-lg text-text-secondary font-medium leading-relaxed">
@@ -308,7 +308,7 @@ export default function HardwareSolutionPage() {
 
                 {/* FINAL CALL TO ACTION */}
                 <section className="py-24 px-4 bg-white">
-                    <div className="max-w-7xl mx-auto container">
+                    <div className="vemtap-container container">
                         <Link href="/marketplace" className="block relative rounded-[3rem] overflow-hidden shadow-2xl group transition-transform duration-500 hover:scale-[1.02]">
                             <div className="absolute inset-0 bg-black/0 group-hover:bg-white/10 transition-colors z-10 pointer-events-none"></div>
                             <img

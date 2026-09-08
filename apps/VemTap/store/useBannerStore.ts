@@ -25,6 +25,7 @@ interface BannerState {
     businessSlides: BannerSlide[];
     customerSlides: BannerSlide[];
     homepageSlides: BannerSlide[];
+    dealsSlides: BannerSlide[];
     loading: boolean;
     error: string | null;
     fetchBanners: (placement?: BannerPlacement) => Promise<void>;
@@ -34,6 +35,7 @@ export const useBannerStore = create<BannerState>()((set) => ({
     businessSlides: [],
     customerSlides: [],
     homepageSlides: [],
+    dealsSlides: [],
     loading: false,
     error: null,
     fetchBanners: async (placement) => {
@@ -48,6 +50,8 @@ export const useBannerStore = create<BannerState>()((set) => ({
                 set({ businessSlides: slides, loading: false });
             } else if (placement === 'homepage') {
                 set({ homepageSlides: slides, loading: false });
+            } else if (placement === 'deals-page') {
+                set({ dealsSlides: slides, loading: false });
             } else {
                 set({ businessSlides: slides, loading: false });
             }

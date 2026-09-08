@@ -3323,7 +3323,7 @@ export default function PublicProfilingForm() {
     const StepIcon = meta.icon;
 
     return (
-        <div className="max-w-4xl mx-auto">
+        <div className="vemtap-container">
             {/* Achievement Toast */}
             <AnimatePresence>{showAchievement && <AchievementToast achievement={showAchievement} onClose={() => setShowAchievement(null)} />}</AnimatePresence>
 

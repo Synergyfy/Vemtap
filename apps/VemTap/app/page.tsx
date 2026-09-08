@@ -13,11 +13,12 @@ import SearchModal from '@/components/home/SearchModal';
 import QRScanner from '@/components/home/QRScanner';
 import DealEngagementBar from '@/components/deals/DealEngagementBar';
 import PublicBottomNav from '@/components/public/PublicBottomNav';
-import ConsumerFooter from '@/components/public/ConsumerFooter';
+import Footer from '@/components/layout/Footer';
 import OnboardingAuthModal from '@/components/public/OnboardingAuthModal';
 import { useBannerStore } from '@/store/useBannerStore';
 import { useAuthStore } from '@/store/useAuthStore';
-import { DealCardSkeleton, BusinessCardSkeleton } from '@/components/home/Skeletons';
+import { BusinessCardSkeleton } from '@/components/home/Skeletons';
+import { Skeleton } from '@/components/ui/skeleton';
 import { offerToHomeDeal, formatNaira } from '@/components/home/mappers';
 import type { PublicBusiness as DealPublicBusiness } from '@/services/deals/types';
 
@@ -97,7 +98,7 @@ function DealCard({ deal }: { deal: Deal }) {
   const badgeKey = deal.badge.includes('OFF') ? 'DEAL' : deal.badge;
   return (
     <div
-      className="rounded-xl overflow-hidden shadow-sm relative group cursor-pointer transition-all hover:shadow-lg hover:-translate-y-0.5 flex flex-col"
+      className="w-full min-w-0 rounded-xl overflow-hidden shadow-sm relative group cursor-pointer transition-all hover:shadow-lg hover:-translate-y-0.5 flex flex-col"
       style={{ background: '#ffffff', border: `1px solid ${C.outlineVariant}` }}
     >
       <Link href={deal.href} className="block flex-1">
@@ -123,16 +124,30 @@ function DealCard({ deal }: { deal: Deal }) {
   );
 }
 
+function GridDealCardSkeleton() {
+  return (
+    <div className="w-full min-w-0 rounded-xl border border-gray-100 bg-white overflow-hidden">
+      <Skeleton className="w-full h-[120px] md:h-[160px] rounded-none" />
+      <div className="p-3 space-y-2.5">
+        <Skeleton className="h-4 w-20 rounded-full" />
+        <Skeleton className="h-5 w-3/4" />
+        <Skeleton className="h-3 w-1/2" />
+        <Skeleton className="h-8 w-full rounded-lg" />
+      </div>
+    </div>
+  );
+}
+
 function DealGrid({ deals, loading }: { deals: Deal[]; loading: boolean }) {
   if (loading) {
     return (
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 md:gap-4">
-        {Array.from({ length: 6 }).map((_, i) => <DealCardSkeleton key={i} />)}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:gap-4 lg:grid-cols-5">
+        {Array.from({ length: 6 }).map((_, i) => <GridDealCardSkeleton key={i} />)}
       </div>
     );
   }
   return (
-    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 md:gap-4">
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:gap-4 lg:grid-cols-5">
       {deals.map((deal, i) => <DealCard key={deal.id || i} deal={deal} />)}
     </div>
   );
@@ -140,8 +155,17 @@ function DealGrid({ deals, loading }: { deals: Deal[]; loading: boolean }) {
 
 export default function Homepage() {
   const router = useRouter();
-  const { label: userLocationLabel, requestLocation } = useLocation();
+  const {
+    label: userLocationLabel,
+    lat,
+    lng,
+    hasLocation,
+    isLoading: locationLoading,
+    requestLocation,
+    setManualLocation,
+  } = useLocation();
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
+  const [locationError, setLocationError] = useState<string | null>(null);
   const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [showOnboarding, setShowOnboarding] = useState(false);
@@ -150,6 +174,11 @@ export default function Homepage() {
   const [bannerIndex, setBannerIndex] = useState(0);
   const [isQRScannerOpen, setIsQRScannerOpen] = useState(false);
   const [showAuthPrompt, setShowAuthPrompt] = useState(false);
+
+  const openLocationModal = () => {
+    setLocationError(null);
+    setIsLocationModalOpen(true);
+  };
 
   const { isAuthenticated } = useAuthStore();
   const { homepageSlides, fetchBanners: fetchHomepageBanners } = useBannerStore();
@@ -193,12 +222,24 @@ export default function Homepage() {
     setShowLocationOnboarding(false);
   };
 
-  const { data: dealsData, isLoading: dealsLoading } = usePublicOffers({ limit: 6, sortBy: 'trending' });
-  const { data: trendingData, isLoading: trendingLoading } = usePublicOffers({ limit: 6, sortBy: 'trending' });
-  const { data: newData, isLoading: newLoading } = usePublicOffers({ limit: 6, sortBy: 'newest' });
+  // Returning visitors who completed onboarding but never set a location:
+  // always ask them to set one (Use My Location or search a location) instead of
+  // silently falling back to a hardcoded default city.
+
+  useEffect(() => {
+    if (!onboardingChecked) return;
+    if (hasLocation) return;
+    if (localStorage.getItem('vemtap_onboarding_complete') !== 'true') return;
+    const t = setTimeout(() => openLocationModal(), 800);
+    return () => clearTimeout(t);
+  }, [onboardingChecked, hasLocation]);
+
+  const { data: dealsData, isLoading: dealsLoading } = usePublicOffers({ limit: 6, sortBy: 'trending', lat: lat ?? undefined, lng: lng ?? undefined });
+  const { data: trendingData, isLoading: trendingLoading } = usePublicOffers({ limit: 6, sortBy: 'trending', lat: lat ?? undefined, lng: lng ?? undefined });
+  const { data: newData, isLoading: newLoading } = usePublicOffers({ limit: 6, sortBy: 'newest', lat: lat ?? undefined, lng: lng ?? undefined });
   const { data: businessesData, isLoading: businessesLoading } = usePublicBusinesses({ sortBy: 'popular', limit: 6 });
 
-  const activeLocation = userLocationLabel || 'Wuse 2, Abuja';
+  const activeLocation = userLocationLabel || '';
 
   const getSectorCover = (catName?: string, catId?: string) => {
     const slug = (catName || catId || '').toLowerCase();
@@ -350,7 +391,7 @@ export default function Homepage() {
   return (
     <div className="min-h-screen flex flex-col font-sans" style={{ background: C.bg, color: C.onSurface }}>
       <header className="sticky top-0 z-40 w-full" style={{ background: '#ffffff', borderBottom: `1px solid ${C.outlineVariant}` }}>
-        <div className="hidden md:flex items-center justify-between px-6 h-[64px] max-w-[1400px] mx-auto gap-6">
+        <div className="vemtap-container hidden md:flex items-center justify-between h-[64px] gap-6">
           <div className="flex items-center gap-6 shrink-0">
             <Link href="/" className="flex items-center gap-2">
               <img src="/VEMTAP_PNG.png" alt="VemTap" className="h-10 w-auto" />
@@ -400,8 +441,8 @@ export default function Homepage() {
           </div>
         </div>
         <div className="hidden md:block border-t" style={{ borderColor: C.outlineVariant }}>
-          <div className="max-w-[1400px] mx-auto px-6 flex items-center gap-1 h-[44px] overflow-x-auto no-scrollbar">
-            {[{ label: 'All Deals', icon: 'local_offer' }, { label: 'Food & Dining', icon: 'restaurant' }, { label: 'Beauty & Spa', icon: 'spa' },
+          <div className="vemtap-container flex items-center gap-1 h-[42px] overflow-x-auto no-scrollbar">
+            {[{ label: 'Food & Dining', icon: 'restaurant' }, { label: 'Beauty & Spa', icon: 'spa' },
               { label: 'Fashion', icon: 'checkroom' }, { label: 'Electronics', icon: 'devices' }, { label: 'Fitness', icon: 'fitness_center' },
               { label: 'Home & Office', icon: 'chair' }, { label: 'Automotive', icon: 'directions_car' },
             ].map((cat) => (
@@ -417,10 +458,19 @@ export default function Homepage() {
           <Link href="/" className="flex items-center gap-1.5 shrink-0">
             <img src="/VEMTAP_PNG.png" alt="VemTap" className="h-8 w-auto" />
           </Link>
-          <div className="flex items-center gap-1.5 min-w-0 flex-1 mx-2">
-            <span className="material-symbols-outlined shrink-0" style={{ color: C.onSurfaceVariant, fontSize: 18 }}>location_on</span>
-            <h1 className="text-[13px] font-semibold tracking-tight truncate" style={{ color: C.primary }}>{activeLocation}</h1>
-          </div>
+          <button
+              type="button"
+              onClick={openLocationModal}
+              className="flex items-center gap-1.5 min-w-0 flex-1 mx-2 text-left"
+            >
+              <span className="material-symbols-outlined shrink-0" style={{ color: C.onSurfaceVariant, fontSize: 18 }}>location_on</span>
+              <h1 className="text-[13px] font-semibold tracking-tight truncate" style={{ color: C.primary }}>
+                {activeLocation || 'Set location'}
+              </h1>
+              {!activeLocation && (
+                <span className="material-symbols-outlined shrink-0" style={{ color: C.primary, fontSize: 16 }}>expand_more</span>
+              )}
+            </button>
           <div className="flex items-center gap-0.5 shrink-0">
             <button
               onClick={() => setIsQRScannerOpen(true)}
@@ -445,8 +495,8 @@ export default function Homepage() {
         </div>
       </header>
 
-      <main className="max-w-[1400px] mx-auto flex-1 pb-4">
-        <section className="px-4 md:px-6 pt-5">
+      <main className="vemtap-container flex-1 pb-4">
+        <section className="pt-5">
           <div className="relative rounded-2xl overflow-hidden group" style={{ minHeight: 200 }}>
             {activeBannerSlides.map((slide, i) => (
               <div
@@ -529,7 +579,7 @@ export default function Homepage() {
         </section>
 
         {dealsList.length > 0 && (
-          <section className="px-4 md:px-6 pt-6">
+          <section className="pt-6">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-[16px] md:text-[20px] font-bold" style={{ color: C.onSurface }}>Featured Deals</h2>
               <Link href="/deals" className="text-[13px] font-semibold" style={{ color: C.primary }}>View all</Link>
@@ -539,7 +589,7 @@ export default function Homepage() {
         )}
 
         {trendingDeals.length > 0 && (
-          <section className="px-4 md:px-6 pt-6">
+          <section className="pt-6">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
                 <span className="material-symbols-outlined text-[20px]" style={{ color: C.primary }}>trending_up</span>
@@ -552,7 +602,7 @@ export default function Homepage() {
         )}
 
         {newDeals.length > 0 && (
-          <section className="px-4 md:px-6 pt-6">
+          <section className="pt-6">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
                 <span className="material-symbols-outlined text-[20px]" style={{ color: '#16a34a' }}>fiber_new</span>
@@ -564,7 +614,7 @@ export default function Homepage() {
           </section>
         )}
 
-        <section className="px-4 md:px-6 pt-6 pb-4">
+        <section className="pt-6 pb-4">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-[16px] md:text-[20px] font-bold uppercase tracking-wider" style={{ color: C.onSurface }}>Popular Businesses</h2>
             {businessesData?.businesses && businessesData.businesses.length > 0 && (
@@ -624,7 +674,7 @@ export default function Homepage() {
         </section>
       </main>
 
-      <ConsumerFooter />
+      <Footer />
 
       <PublicBottomNav />
       <OnboardingAuthModal
@@ -632,8 +682,23 @@ export default function Homepage() {
         onClose={() => setShowAuthPrompt(false)}
       />
       {isLocationModalOpen && (
-        <LocationPrompt isOpen={isLocationModalOpen} onClose={() => setIsLocationModalOpen(false)}
-          onAllowLocation={() => { requestLocation(); setIsLocationModalOpen(false); }} />
+        <LocationPrompt
+          isOpen={isLocationModalOpen}
+          onClose={() => setIsLocationModalOpen(false)}
+          isLoading={locationLoading}
+          error={locationError}
+          onAllowLocation={async () => {
+            setLocationError(null);
+            const res = await requestLocation();
+            if (res.ok) setIsLocationModalOpen(false);
+          }}
+          onSearchLocation={async (q: string) => {
+            setLocationError(null);
+            const ok = await setManualLocation(q);
+            if (ok) setIsLocationModalOpen(false);
+            else setLocationError('Could not find that location. Please try another area.');
+          }}
+        />
       )}
       {isSearchModalOpen && <SearchModal isOpen={isSearchModalOpen} onClose={() => setIsSearchModalOpen(false)} />}
       <QRScanner

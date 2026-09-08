@@ -33,7 +33,7 @@ export default function SavedDealsPage() {
       <div className="min-h-screen font-sans flex flex-col" style={{ background: C.bg }}>
         {/* Header */}
         <header className="sticky top-0 z-40 bg-white border-b" style={{ borderColor: C.outlineVariant }}>
-          <div className="max-w-[1400px] mx-auto px-4 md:px-6 h-[56px] flex items-center gap-4">
+          <div className="vemtap-container h-[56px] flex items-center gap-4">
             <button onClick={() => router.back()} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100">
               <ArrowLeft size={18} style={{ color: C.onSurface }} />
             </button>
@@ -70,7 +70,7 @@ export default function SavedDealsPage() {
     <div className="min-h-screen font-sans flex flex-col" style={{ background: C.bg }}>
       {/* Header */}
       <header className="sticky top-0 z-40 bg-white border-b" style={{ borderColor: C.outlineVariant }}>
-        <div className="max-w-[1400px] mx-auto px-4 md:px-6 h-[56px] flex items-center gap-4">
+        <div className="vemtap-container h-[56px] flex items-center gap-4">
           <button onClick={() => router.back()} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100">
             <ArrowLeft size={18} style={{ color: C.onSurface }} />
           </button>
@@ -83,7 +83,7 @@ export default function SavedDealsPage() {
         </div>
       </header>
 
-      <main className="max-w-[1400px] mx-auto px-4 md:px-6 py-6 pb-24 md:pb-8">
+      <main className="vemtap-container py-6 pb-24 md:pb-8">
         {/* Loading State */}
         {isLoading && (
           <div className="flex items-center justify-center py-20">

@@ -51,7 +51,7 @@ export default function StatusPage() {
         <div className="min-h-screen bg-white">
             <Navbar />
             <main className="pt-48 pb-24 px-4 sm:px-6 lg:px-8">
-                <div className="max-w-5xl mx-auto">
+                <div className="vemtap-container">
                     {/* Status Overview */}
                     <div className={`${theme.banner} border p-8 md:p-12 rounded-2xl mb-16 flex flex-col md:flex-row items-center justify-between gap-8 relative overflow-hidden`}>
                         <div className="absolute top-0 right-0 p-8">

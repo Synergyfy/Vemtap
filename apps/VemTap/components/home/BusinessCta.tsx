@@ -51,7 +51,7 @@ export default function BusinessCTA() {
                 ))}
               </div>
 
-              <Link href="/business-landing">
+              <Link href="/business">
                 <button className="h-12 px-8 rounded-full bg-white text-[#066CF4] font-bold text-sm shadow-xl shadow-black/10 hover:bg-gray-50 active:scale-[0.98] transition-all flex items-center gap-2 cursor-pointer">
                   Get Started as a Business
                   <ArrowRight size={16} />

@@ -1,17 +1,115 @@
-import React from 'react';
+'use client';
+
+import React, { useState } from 'react';
 import Link from 'next/link';
+import { ChevronDown } from 'lucide-react';
 import Logo from '@/components/brand/Logo';
+
+interface FooterLink {
+    label: string;
+    href: string;
+}
+
+interface FooterSection {
+    title: string;
+    links: FooterLink[];
+}
+
+const footerSections: FooterSection[] = [
+    {
+        title: 'Discover',
+        links: [
+            { label: 'Deals', href: '/deals' },
+            { label: 'Businesses', href: '/deals' },
+            { label: 'Categories', href: '/deals' },
+            { label: 'Search', href: '/deals' },
+            { label: 'Locations', href: '/deals' },
+        ],
+    },
+    {
+        title: 'For Businesses',
+        links: [
+            { label: 'Why VEMTAP', href: '/business' },
+            { label: 'Features', href: '/features' },
+            { label: 'Pricing', href: '/pricing' },
+            { label: 'Business Login', href: '/login' },
+            { label: 'Get Started', href: '/get-started' },
+        ],
+    },
+    {
+        title: 'Company',
+        links: [
+            { label: 'About', href: '/business' },
+            { label: 'Contact', href: '/contact' },
+            { label: 'Help', href: '/support' },
+            { label: 'Privacy', href: '/privacy' },
+            { label: 'Terms', href: '/terms' },
+        ],
+    },
+];
+
+function CollapsibleFooterSection({ section }: { section: FooterSection }) {
+    const [isOpen, setIsOpen] = useState(false);
+
+    return (
+        <div className="border-b border-gray-100">
+            <button
+                type="button"
+                aria-expanded={isOpen}
+                onClick={() => setIsOpen((open) => !open)}
+                className="w-full flex items-center justify-between py-4 text-left group"
+            >
+                <h4 className="font-bold text-sm font-display uppercase tracking-wider text-gray-900 group-hover:text-primary transition-colors">
+                    {section.title}
+                </h4>
+                <ChevronDown
+                    size={18}
+                    className={`text-gray-400 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
+                />
+            </button>
+            {isOpen && (
+                <ul className="pb-4 space-y-3 text-text-secondary font-bold text-sm">
+                    {section.links.map((link) => (
+                        <li key={link.label}>
+                            <Link href={link.href} className="hover:text-primary transition-colors">
+                                {link.label}
+                            </Link>
+                        </li>
+                    ))}
+                </ul>
+            )}
+        </div>
+    );
+}
+
+function StaticFooterSection({ section }: { section: FooterSection }) {
+    return (
+        <div>
+            <h4 className="font-bold text-sm mb-6 font-display uppercase tracking-wider text-gray-900">{section.title}</h4>
+            <ul className="space-y-3 text-text-secondary font-bold text-sm">
+                {section.links.map((link) => (
+                    <li key={link.label}>
+                        <Link href={link.href} className="hover:text-primary transition-colors">
+                            {link.label}
+                        </Link>
+                    </li>
+                ))}
+            </ul>
+        </div>
+    );
+}
 
 export default function Footer() {
     return (
-        <footer className="bg-white text-text-main py-24 px-4 sm:px-6 lg:px-8 border-t border-gray-100">
-            <div className="max-w-7xl mx-auto">
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-16 mb-20">
-                    <div className="col-span-1 md:col-span-1">
-                        <Link href="/" className="mb-8 block w-fit">
+        <footer className="bg-white text-text-main py-16 md:py-20 border-t border-gray-100">
+            <div className="vemtap-container">
+                <div className="grid grid-cols-1 md:grid-cols-[2fr_1fr_1fr_1fr] gap-x-8 gap-y-10 mb-16">
+                    {/* Brand */}
+                    <div>
+                        <Link href="/" className="mb-6 block w-fit">
                             <Logo className="flex items-center h-14" iconSize={72} />
                         </Link>
-                        <p className="text-text-secondary max-w-xs mb-10 font-bold leading-relaxed text-sm">
+                        <p className="text-text-secondary max-w-xs mb-8 font-bold leading-relaxed text-sm">
                             Discover deals, businesses, products and services around you.
                         </p>
                         <div className="flex gap-3">
@@ -29,36 +127,17 @@ export default function Footer() {
                             </Link>
                         </div>
                     </div>
-                    <div>
-                        <h4 className="font-bold text-sm mb-6 font-display uppercase tracking-wider text-gray-900">Discover</h4>
-                        <ul className="space-y-3 text-text-secondary font-bold text-sm">
-                            <li><Link href="/deals" className="hover:text-primary transition-colors">Deals</Link></li>
-                            <li><Link href="/deals" className="hover:text-primary transition-colors">Businesses</Link></li>
-                            <li><Link href="/deals" className="hover:text-primary transition-colors">Categories</Link></li>
-                            <li><Link href="/deals" className="hover:text-primary transition-colors">Search</Link></li>
-                            <li><Link href="/deals" className="hover:text-primary transition-colors">Locations</Link></li>
-                        </ul>
-                    </div>
-                    <div>
-                        <h4 className="font-bold text-sm mb-6 font-display uppercase tracking-wider text-gray-900">For Businesses</h4>
-                        <ul className="space-y-3 text-text-secondary font-bold text-sm">
-                            <li><Link href="/business-landing" className="hover:text-primary transition-colors">Why VEMTAP</Link></li>
-                            <li><Link href="/features" className="hover:text-primary transition-colors">Features</Link></li>
-                            <li><Link href="/pricing" className="hover:text-primary transition-colors">Pricing</Link></li>
-                            <li><Link href="/login" className="hover:text-primary transition-colors">Business Login</Link></li>
-                            <li><Link href="/get-started" className="hover:text-primary transition-colors">Get Started</Link></li>
-                        </ul>
-                    </div>
-                    <div>
-                        <h4 className="font-bold text-sm mb-6 font-display uppercase tracking-wider text-gray-900">Company</h4>
-                        <ul className="space-y-3 text-text-secondary font-bold text-sm">
-                            <li><Link href="/business-landing" className="hover:text-primary transition-colors">About</Link></li>
-                            <li><Link href="/contact" className="hover:text-primary transition-colors">Contact</Link></li>
-                            <li><Link href="/support" className="hover:text-primary transition-colors">Help</Link></li>
-                            <li><Link href="/privacy" className="hover:text-primary transition-colors">Privacy</Link></li>
-                            <li><Link href="/terms" className="hover:text-primary transition-colors">Terms</Link></li>
-                        </ul>
-                    </div>
+                    {/* Link sections — expanded columns on desktop, collapsible accordion on mobile */}
+                    {footerSections.map((section) => (
+                        <div key={section.title}>
+                            <div className="hidden md:block">
+                                <StaticFooterSection section={section} />
+                            </div>
+                            <div className="md:hidden">
+                                <CollapsibleFooterSection section={section} />
+                            </div>
+                        </div>
+                    ))}
                 </div>
                 <div className="pt-10 border-t border-gray-100 flex flex-col md:flex-row justify-between items-center text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">
                     <p>© {new Date().getFullYear()} VemTap Inc. All rights reserved.</p>

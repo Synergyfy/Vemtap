@@ -17,7 +17,7 @@ export default function Hero() {
                 WebkitMaskImage: 'linear-gradient(to right, black 20%, transparent 80%)'
             }}></div>
 
-            <div className="container mx-auto px-6 md:px-16 lg:px-20 max-w-7xl z-10 relative">
+            <div className="vemtap-container z-10 relative">
                 {/* Top Section: Split Layout (Text & Video) */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-center mb-24">
                     {/* Left Column: Content */}
@@ -79,7 +79,7 @@ export default function Hero() {
                 </div>
 
                 {/* Bottom Section: Dashboard Mockup */}
-                <div className="max-w-6xl mx-auto animate-in fade-in slide-in-from-bottom-12 duration-1000 delay-500 overflow-hidden px-2 md:px-0">
+                <div className="vemtap-container animate-in fade-in slide-in-from-bottom-12 duration-1000 delay-500 overflow-hidden px-2 md:px-0">
                     <div className="relative group">
                         <div className="absolute -inset-1 bg-linear-to-r from-primary/20 to-blue-400/20 rounded-[3rem] blur-3xl opacity-20 animate-pulse"></div>
                         <div className="relative bg-white rounded-[2.5rem] md:rounded-[3.5rem] shadow-[0_50px_100px_-20px_rgba(0,0,0,0.15)] overflow-hidden border border-gray-100">

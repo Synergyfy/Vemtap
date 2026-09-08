@@ -8,7 +8,7 @@ import Link from 'next/link';
 export default function DiscoveryNetworkSection() {
     return (
         <section className="py-24 bg-white overflow-hidden">
-            <div className="container mx-auto px-6">
+            <div className="vemtap-container">
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
                     <motion.div
                         initial={{ opacity: 0, x: -30 }}

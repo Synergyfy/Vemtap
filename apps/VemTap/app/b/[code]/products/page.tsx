@@ -80,7 +80,7 @@ export default function BusinessProductsPage() {
         <div className="min-h-screen" style={{ background: '#f7f9fb', color: '#191c1e', fontFamily: 'Inter, sans-serif' }}>
             {/* Desktop Header */}
             <header className="hidden md:flex fixed top-0 w-full z-50 flex-col" style={{ background: '#ffffff', borderBottom: '1px solid #e6e8ea' }}>
-                <div className="flex items-center justify-between px-6 h-[60px] max-w-[1200px] mx-auto w-full">
+                <div className="vemtap-container flex items-center justify-between h-[60px]">
                     <div className="flex items-center gap-4">
                         <button onClick={() => router.back()} className="flex items-center justify-center w-9 h-9 rounded-lg hover:bg-gray-100 transition-colors" style={{ color: '#0055c4' }}>
                             <span className="material-symbols-outlined">arrow_back</span>
@@ -91,7 +91,7 @@ export default function BusinessProductsPage() {
                     </div>
                 </div>
                 <div className="border-t border-gray-100">
-                    <nav className="max-w-[1200px] mx-auto px-6 flex items-center gap-1 h-[44px] overflow-x-auto no-scrollbar">
+                    <nav className="vemtap-container flex items-center gap-1 h-[42px] overflow-x-auto no-scrollbar">
                         {STORE_NAV_ITEMS.map((item) => {
                             const isActive = item.href.includes('/products');
                             return (
@@ -116,7 +116,7 @@ export default function BusinessProductsPage() {
 
             {/* Main Content */}
             <main className="md:pt-[104px]" style={{ paddingTop: 56, paddingBottom: 80 }}>
-                <div className="max-w-[1200px] mx-auto md:px-6">
+                <div className="vemtap-container md:px-6">
                     {/* Search Bar */}
                     <div className="relative w-full mt-6 mb-6 md:max-w-md">
                     <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2" style={{ color: '#424655', fontSize: 20 }}>

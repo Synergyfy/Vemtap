@@ -507,7 +507,7 @@ export default function HeroSlide({ variant, locationLabel, onLocationClick }: H
                 Put your business, products and offers in front of people looking for what you offer.
               </p>
               <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-3 justify-center md:justify-start">
-                <Link href="/business-landing">
+                <Link href="/business">
                   <Button className="h-10 sm:h-12 px-5 sm:px-8 rounded-xl bg-primary hover:bg-primary-hover text-white font-bold text-xs sm:text-sm shadow-lg shadow-primary/25 active:scale-[0.98] transition-all flex items-center gap-2">
                     Get Started as a Business
                     <ArrowRight size={14} className="sm:w-4 sm:h-4" />
