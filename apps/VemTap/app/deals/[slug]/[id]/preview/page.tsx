@@ -1,11 +1,11 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import Link from 'next/link';
 import { Loader2 } from 'lucide-react';
 import { formatDealPrice } from '@/lib/promotions';
 import { usePublicOfferDetails } from '@/services/deals/hooks';
+import { fetchContextByUsername } from '@/lib/api/devices';
 import PublicBottomNav from '@/components/public/PublicBottomNav';
 import ClaimDealModal from '@/components/deals/ClaimDealModal';
 
@@ -15,8 +15,23 @@ export default function DealBusinessPreviewPage() {
     const id = params.id as string;
     const slug = params.slug as string;
     const [showClaimModal, setShowClaimModal] = useState(false);
+    const [branchId, setBranchId] = useState('');
 
     const { data: offer, isLoading } = usePublicOfferDetails(id);
+
+    useEffect(() => {
+        let active = true;
+        const resolve = async () => {
+            try {
+                const ctx = await fetchContextByUsername(slug);
+                if (active && ctx?.business?.id) setBranchId(ctx.business.id);
+            } catch {
+                // slug may not be a username — claim falls back to preview mode
+            }
+        };
+        resolve();
+        return () => { active = false; };
+    }, [slug]);
 
     if (isLoading) {
         return (
@@ -173,6 +188,7 @@ export default function DealBusinessPreviewPage() {
                         discountLabel: offer.discountPercent ? `${offer.discountPercent}% OFF` : '',
                         slug,
                     }}
+                    claimConfig={branchId ? { branchId } : undefined}
                 />
             )}
         </div>
