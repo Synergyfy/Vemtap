@@ -83,9 +83,8 @@ export default function ClaimDealModal({ isOpen, onClose, deal, claimConfig }: C
             await requestClaimOtp({
                 offerId: deal.id,
                 firstName: nameParts[0] || 'Guest',
-                lastName: nameParts.slice(1).join(' ') || ' ',
                 email: info.email,
-                phone: info.phone || undefined,
+                phone: info.phone || '',
             });
             setView('otp');
         } catch (err: any) {

@@ -131,7 +131,8 @@ export default function AddOnPurchaseModal({ isOpen, onClose, addons, credit, bu
                                     });
                                 } else if (credit.type === 'ai') {
                                     await api.post('/ai/credits/purchase', {
-                                        packageId: credit.pkg.id,
+                                        credits: credit.pkg.credits,
+                                        amount: credit.pkg.price,
                                         reference: response.reference,
                                     });
                                 }
