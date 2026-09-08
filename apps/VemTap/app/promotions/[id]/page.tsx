@@ -1,24 +1,27 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
-import { useParams } from 'next/navigation';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { motion, AnimatePresence } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import {
-    ArrowLeft, MapPin, Clock, Users, Share2, CheckCircle2,
-    Loader2, Gift, ShieldCheck, Copy, X, ChevronRight, Phone,
-    Navigation, MessageCircle, ExternalLink,
-    Link as LinkIcon,
+    ArrowLeft,
+    Loader2,
+    X,
+    ShieldCheck,
+    ChevronRight,
+    CheckCircle2,
+    Gift,
+    Copy,
 } from 'lucide-react';
-import Navbar from '@/components/layout/Navbar';
-import Footer from '@/components/layout/Footer';
 import { MOCK_PROMOTIONS, formatPromoPrice, formatPromoDate, getPromoDaysLeft } from '@/lib/mock/promotions';
 import type { MockPromotion } from '@/lib/mock/promotions';
 import { usePublicOfferDetails, useRequestClaimOtp, useVerifyClaimOtp } from '@/services/deals/hooks';
-import EngagementBar from '@/components/deals/EngagementBar';
+import { useEngagement } from '@/services/deals/engagement-hooks';
+import DealEngagementBar from '@/components/deals/DealEngagementBar';
 import ReviewSection from '@/components/deals/ReviewSection';
 import WriteReviewModal from '@/components/deals/WriteReviewModal';
-import { useEngagement } from '@/services/deals/engagement-hooks';
+import ShareDealModal from '@/components/promotions/ShareDealModal';
 import { toast } from 'react-hot-toast';
 
 type ClaimStep = 'phone' | 'otp' | 'success';
@@ -50,8 +53,16 @@ function offerToPromotion(offer: any): MockPromotion | null {
     };
 }
 
+function formatDateLong(dateStr?: string): string {
+    if (!dateStr) return 'No expiry date';
+    const date = new Date(dateStr);
+    if (isNaN(date.getTime())) return 'No expiry date';
+    return date.toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' });
+}
+
 export default function PromotionDetailPage() {
     const params = useParams();
+    const router = useRouter();
     const id = params.id as string;
 
     const mockPromotion = MOCK_PROMOTIONS.find(p => p.id === id);
@@ -68,51 +79,70 @@ export default function PromotionDetailPage() {
     const [couponCode, setCouponCode] = useState('');
     const [showShareModal, setShowShareModal] = useState(false);
     const [showWriteReview, setShowWriteReview] = useState(false);
+    const [topBarBg, setTopBarBg] = useState(false);
 
     const { data: engagement } = useEngagement(id);
-    const reviewCount = engagement?.reviewsCount ?? 0;
 
     const requestClaimOtp = useRequestClaimOtp();
     const verifyClaimOtp = useVerifyClaimOtp();
 
+    const handleScroll = useCallback(() => {
+        setTopBarBg(window.scrollY > 50);
+    }, []);
+
+    useEffect(() => {
+        window.addEventListener('scroll', handleScroll, { passive: true });
+        return () => window.removeEventListener('scroll', handleScroll);
+    }, [handleScroll]);
+
+    // ─── Derived data ───
+    const branch = offerData?.branch || {};
+    const businessName = promotion?.businessName || branch.name || '';
+    const businessSlug = promotion?.businessSlug || branch.username || branch.uniqueCode || '';
+    const discountPercent = promotion?.discountPercent || null;
+    const discountAmount = promotion?.discountAmount || null;
+    const dealPrice = promotion?.dealPrice ?? 0;
+    const originalPrice = promotion?.originalPrice ?? 0;
+    const savings = originalPrice - dealPrice;
+    const dealUrl = typeof window !== 'undefined' ? window.location.href : '';
+
+    const daysLeft = promotion ? getPromoDaysLeft(promotion.endDate) : -1;
+    const isExpired = promotion?.endDate ? new Date(promotion.endDate) < new Date() : false;
+    const claimPercent = promotion && promotion.maxClaims > 0
+        ? Math.round((promotion.claimedCount / promotion.maxClaims) * 100)
+        : 0;
+
+    // ─── Loading ───
     if (isLoading) {
         return (
-            <div className="min-h-screen bg-white flex flex-col">
-                <Navbar />
-                <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
-                    <Loader2 size={40} className="animate-spin text-primary mb-4" />
-                    <h1 className="text-2xl font-bold text-gray-900 mb-2">Loading deal...</h1>
+            <div className="min-h-screen bg-[#f7f9fb] flex items-center justify-center pb-32">
+                <div className="flex flex-col items-center gap-4">
+                    <Loader2 size={32} className="animate-spin text-[#0055c4]" />
+                    <p className="text-sm font-bold text-[#727786]">Loading deal...</p>
                 </div>
-                <Footer />
             </div>
         );
     }
 
     if (!promotion) {
         return (
-            <div className="min-h-screen bg-white flex flex-col">
-                <Navbar />
-                <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
-                    <Gift size={64} className="text-gray-200 mb-4" />
-                    <h1 className="text-2xl font-bold text-gray-900 mb-2">{isError ? 'Failed to load' : 'Promotion Not Found'}</h1>
-                    <p className="text-gray-500 font-bold mb-8">
-                        {isError ? 'Unable to fetch this deal. Please try again.' : 'This deal may have expired or doesn&apos;t exist.'}
-                    </p>
-                    <Link
-href="/deals"
-                        className="px-8 h-12 bg-primary text-white font-bold uppercase tracking-wider text-xs rounded-xl shadow-lg shadow-primary/20 flex items-center gap-2"
-                    >
-                        <ArrowLeft size={16} /> Browse Deals
-                    </Link>
-                </div>
-                <Footer />
+            <div className="min-h-screen bg-[#f7f9fb] flex flex-col items-center justify-center p-6 text-center pb-32">
+                <Gift size={64} className="text-[#c2c6d7] mb-4" />
+                <h1 className="text-2xl font-bold text-[#191c1e] mb-2">{isError ? 'Failed to load' : 'Deal Not Found'}</h1>
+                <p className="text-[#727786] font-bold mb-8">
+                    {isError ? 'Unable to fetch this deal. Please try again.' : 'This deal may have expired or doesn\'t exist.'}
+                </p>
+                <Link
+                    href="/deals"
+                    className="px-8 h-12 bg-[#0055c4] text-white font-bold uppercase tracking-wider text-xs rounded-xl shadow-lg flex items-center gap-2"
+                >
+                    ← Browse Deals
+                </Link>
             </div>
         );
     }
 
-    const daysLeft = getPromoDaysLeft(promotion.endDate);
-    const claimPercent = Math.round((promotion.claimedCount / promotion.maxClaims) * 100);
-
+    // ─── Handlers ───
     const handlePhoneSubmit = async () => {
         if (!claimName.trim()) { toast.error('Please enter your name'); return; }
         if (!claimEmail.trim() || !claimEmail.includes('@')) { toast.error('Please enter a valid email'); return; }
@@ -145,35 +175,16 @@ href="/deals"
         }
     };
 
-    const handleShare = () => {
-        setShowShareModal(true);
-    };
-
     const handleShareWhatsApp = () => {
-        const text = `Check out this deal at ${promotion.businessName}: ${promotion.name}\n\n${promotion.longDescription.slice(0, 200)}...\n\nGet it here: ${window.location.href}`;
+        const text = `Check out this deal at ${businessName}: ${promotion.name}\n\n${promotion.longDescription.slice(0, 200)}...\n\nGet it here: ${dealUrl}`;
         window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
         setShowShareModal(false);
     };
 
     const handleCopyLink = () => {
-        navigator.clipboard.writeText(window.location.href);
+        navigator.clipboard.writeText(dealUrl);
         toast.success('Link copied to clipboard!');
         setShowShareModal(false);
-    };
-
-    const handleNativeShare = async () => {
-        if (navigator.share) {
-            try {
-                await navigator.share({
-                    title: `${promotion.name} at ${promotion.businessName}`,
-                    text: promotion.longDescription.slice(0, 200),
-                    url: window.location.href,
-                });
-            } catch { /* user cancelled */ }
-            setShowShareModal(false);
-        } else {
-            handleCopyLink();
-        }
     };
 
     const resetModal = () => {
@@ -185,405 +196,321 @@ href="/deals"
         setClaimPhone('');
     };
 
+    // ─── Render ───
     return (
-        <div className="min-h-screen bg-white font-body text-text-main">
-            <Navbar />
-
-            <main className="pt-24 pb-20">
-                {/* Back nav */}
-                <div className="max-w-4xl mx-auto px-4 md:px-8 mb-6">
-                    <Link
-                        href="/deals"
-                        className="inline-flex items-center gap-2 text-gray-400 hover:text-primary text-sm font-bold transition-colors"
+        <div className="min-h-screen bg-[#f7f9fb] text-[#191c1e] antialiased pb-32">
+            {/* ─── Top App Bar ─── */}
+            <header
+                className="fixed top-0 w-full z-50 transition-colors duration-300 flex justify-center"
+                style={{
+                    background: topBarBg ? 'rgba(255,255,255,0.9)' : 'transparent',
+                    backdropFilter: topBarBg ? 'blur(12px)' : undefined,
+                    boxShadow: topBarBg ? '0 1px 4px rgba(0,0,0,0.06)' : undefined,
+                }}
+            >
+                <div className="flex items-center justify-between px-5 h-[44px] w-full max-w-5xl">
+                    <button
+                        onClick={() => router.back()}
+                        className="w-10 h-10 rounded-full flex items-center justify-center text-[#191c1e] hover:bg-[#f2f4f6] transition-colors active:scale-95 duration-100 shadow-sm border border-[#c2c6d7]/30"
+                        style={{ background: 'rgba(255,255,255,0.8)' }}
                     >
-                        <ArrowLeft size={16} /> All Deals
-                    </Link>
-                </div>
-
-                {/* Hero image */}
-                <div className="max-w-4xl mx-auto px-4 md:px-8">
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="relative rounded-3xl overflow-hidden aspect-[21/9] bg-gray-100"
-                    >
-                        <img
-                            src={promotion.image}
-                            alt={promotion.name}
-                            className="w-full h-full object-cover"
-                        />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
-
-                        {/* Discount badge */}
-                        {promotion.discountPercent && (
-                            <div className="absolute top-4 left-4 bg-red-500 text-white px-4 py-1.5 rounded-full text-sm font-bold shadow-lg">
-                                {promotion.discountPercent}% OFF
-                            </div>
-                        )}
-                        {promotion.discountAmount && !promotion.discountPercent && (
-                            <div className="absolute top-4 left-4 bg-red-500 text-white px-4 py-1.5 rounded-full text-sm font-bold shadow-lg">
-                                SAVE {formatPromoPrice(promotion.discountAmount)}
-                            </div>
-                        )}
-
-                        {/* Share */}
+                        <span className="material-symbols-outlined" style={{ fontSize: 22 }}>arrow_back</span>
+                    </button>
+                    <div className="flex gap-2">
                         <button
-                            onClick={handleShare}
-                            className="absolute top-4 right-4 bg-white/80 backdrop-blur-md p-2.5 rounded-full hover:bg-white transition-colors"
-                            aria-label="Share this deal"
+                            onClick={() => setShowShareModal(true)}
+                            className="w-10 h-10 rounded-full flex items-center justify-center text-[#191c1e] hover:bg-[#f2f4f6] transition-colors active:scale-95 duration-100 shadow-sm border border-[#c2c6d7]/30"
+                            style={{ background: 'rgba(255,255,255,0.8)' }}
                         >
-                            <Share2 size={18} className="text-gray-700" />
+                            <span className="material-symbols-outlined" style={{ fontSize: 22 }}>share</span>
                         </button>
+                    </div>
+                </div>
+            </header>
 
-                        {/* Bottom overlay info */}
-                        <div className="absolute bottom-0 left-0 right-0 p-6 md:p-8">
-                            <p className="text-white/70 text-xs font-bold uppercase tracking-wider mb-2">
-                                {promotion.businessName}
-                            </p>
-                            <h1 className="text-3xl md:text-4xl font-headline font-bold text-white tracking-tight">
-                                {promotion.name}
-                            </h1>
-                        </div>
-                    </motion.div>
+            {/* ─── Hero Image ─── */}
+            <div className="relative w-full h-[397px] min-h-[300px]">
+                <img
+                    className="w-full h-full object-cover"
+                    src={promotion.image || '/placeholder.png'}
+                    alt={promotion.name}
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-[#191c1e]/80 via-transparent to-transparent" />
+                {/* Badge */}
+                {(discountPercent || discountAmount) && (
+                    <div className="absolute top-5 left-5 bg-[#ba1a1a] text-white px-3 py-1 rounded-full text-[12px] font-semibold shadow-md mt-12 z-40 flex items-center gap-1">
+                        <span className="material-symbols-outlined" style={{ fontSize: 14 }}>local_offer</span>
+                        {discountPercent
+                            ? `${discountPercent}% OFF`
+                            : discountAmount
+                                ? `SAVE ${formatPromoPrice(discountAmount)}`
+                                : 'DEAL'}
+                    </div>
+                )}
+            </div>
+
+            {/* ─── Main Content ─── */}
+            <main className="relative z-10 -mt-6 bg-white rounded-t-xl px-5 pt-6 pb-6 shadow-[0_-4px_16px_rgba(0,0,0,0.05)] max-w-5xl mx-auto">
+                {/* Header Info */}
+                <div className="mb-6">
+                    <div className="flex justify-between items-start mb-2">
+                        <h1 className="text-[24px] leading-[32px] font-semibold tracking-tight text-[#191c1e] max-w-[75%]">
+                            {promotion.name}
+                        </h1>
+                        {engagement?.averageRating != null && (
+                            <div className="flex items-center gap-1 bg-[#f2f4f6] px-2 py-1 rounded-lg">
+                                <span className="material-symbols-outlined text-[#0055c4]" style={{ fontSize: 16, fontVariationSettings: "'FILL' 1" }}>star</span>
+                                <span className="text-[14px] font-semibold text-[#191c1e]">{engagement.averageRating}</span>
+                            </div>
+                        )}
+                    </div>
+                    <div className="flex items-center gap-4 text-[#424655] text-[14px]">
+                        {businessName && (
+                            <div className="flex items-center gap-1">
+                                <span className="material-symbols-outlined" style={{ fontSize: 16 }}>storefront</span>
+                                {businessName}
+                            </div>
+                        )}
+                        {promotion.location && (
+                            <div className="flex items-center gap-1">
+                                <span className="material-symbols-outlined" style={{ fontSize: 16 }}>location_on</span>
+                                {promotion.location}
+                            </div>
+                        )}
+                    </div>
                 </div>
 
-                {/* Content */}
-                <div className="max-w-4xl mx-auto px-4 md:px-8 mt-8">
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                        {/* Left: Details */}
-                        <div className="lg:col-span-2 space-y-8">
-                            {/* Price card */}
-                            <motion.div
-                                initial={{ opacity: 0, y: 20 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: 0.1 }}
-                                className="bg-gray-50 rounded-2xl p-6 border border-gray-100"
-                            >
-                                <div className="flex items-end gap-3 mb-4">
-                                    <span className="text-4xl font-bold text-primary font-display tracking-tight">
-                                        {formatPromoPrice(promotion.dealPrice)}
-                                    </span>
-                                    {promotion.originalPrice > promotion.dealPrice && (
-                                        <span className="text-lg text-gray-400 line-through font-bold mb-1">
-                                            {formatPromoPrice(promotion.originalPrice)}
-                                        </span>
-                                    )}
-                                </div>
+                {/* Price Bento Card */}
+                <div className="bg-[#0055c4]/5 border border-[#0055c4]/10 rounded-xl p-4 mb-6 flex justify-between items-center relative overflow-hidden">
+                    <div className="absolute -right-8 -top-8 w-24 h-24 bg-[#0055c4]/10 rounded-full blur-xl" />
+                    <div>
+                        <p className="text-[12px] font-medium text-[#424655] uppercase tracking-wider mb-1">Deal Price</p>
+                        <div className="flex items-end gap-2">
+                            <span className="text-[20px] font-bold text-[#0055c4]">
+                                {dealPrice === 0 ? 'FREE' : formatPromoPrice(dealPrice)}
+                            </span>
+                            {originalPrice > dealPrice && (
+                                <span className="text-[14px] text-[#727786] line-through mb-0.5">
+                                    {formatPromoPrice(originalPrice)}
+                                </span>
+                            )}
+                        </div>
+                    </div>
+                    {savings > 0 && (
+                        <div className="bg-[#0055c4] text-white text-[14px] font-semibold px-3 py-1.5 rounded-lg shadow-sm">
+                            SAVE {formatPromoPrice(savings)}
+                        </div>
+                    )}
+                </div>
 
-                                <div className="flex flex-wrap gap-3">
-                                    <div className="flex items-center gap-1.5 text-gray-500">
-                                        <MapPin size={14} />
-                                        <span className="text-xs font-bold">{promotion.location}</span>
-                                    </div>
-                                    <div className="flex items-center gap-1.5 text-gray-500">
-                                        <Clock size={14} />
-                                        <span className="text-xs font-bold">
-                                            {formatPromoDate(promotion.startDate)} — {formatPromoDate(promotion.endDate)}
-                                        </span>
-                                    </div>
-                                    <div className="flex items-center gap-1.5 text-gray-500">
-                                        <Users size={14} />
-                                        <span className="text-xs font-bold">{promotion.claimedCount} people claimed</span>
-                                    </div>
-                                </div>
+                {/* Details Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                    {/* Description */}
+                    <section>
+                        <h2 className="text-[20px] font-semibold text-[#191c1e] mb-3 flex items-center gap-2">
+                            <span className="material-symbols-outlined text-[#0055c4]" style={{ fontSize: 20 }}>info</span>
+                            Deal Description
+                        </h2>
+                        <p className="text-[16px] text-[#424655] leading-relaxed">
+                            {promotion.longDescription || promotion.description || 'No description available.'}
+                        </p>
+                    </section>
 
-                                {/* Claim progress */}
-                                <div className="mt-4 space-y-2">
-                                    <div className="flex justify-between text-xs font-bold">
-                                        <span className="text-gray-400">{promotion.claimedCount} of {promotion.maxClaims} claimed</span>
-                                        <span className="text-primary">{claimPercent}%</span>
-                                    </div>
-                                    <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
+                    {/* Metadata Cards */}
+                    <div className="flex flex-col gap-4">
+                        {/* Validity */}
+                        <div className="bg-[#f2f4f6] p-4 rounded-xl border border-[#c2c6d7]/30 flex items-start gap-3">
+                            <div className="w-10 h-10 rounded-full bg-[#e0e3e5] flex items-center justify-center shrink-0">
+                                <span className="material-symbols-outlined text-[#191c1e]">event</span>
+                            </div>
+                            <div>
+                                <h3 className="text-[12px] font-medium text-[#424655] uppercase tracking-wider mb-0.5">Valid Until</h3>
+                                <p className="text-[16px] text-[#191c1e]">
+                                    {formatDateLong(promotion.endDate)}
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* Location */}
+                        {promotion.location && (
+                            <div className="bg-[#f2f4f6] p-4 rounded-xl border border-[#c2c6d7]/30 flex items-start gap-3">
+                                <div className="w-10 h-10 rounded-full bg-[#e0e3e5] flex items-center justify-center shrink-0">
+                                    <span className="material-symbols-outlined text-[#191c1e]">map</span>
+                                </div>
+                                <div className="flex-grow">
+                                    <h3 className="text-[12px] font-medium text-[#424655] uppercase tracking-wider mb-0.5">Location</h3>
+                                    <p className="text-[16px] text-[#191c1e]">{businessName}</p>
+                                    <p className="text-[14px] text-[#424655]">{promotion.location}</p>
+                                </div>
+                                <a
+                                    href={`https://www.google.com/maps/search/${encodeURIComponent(promotion.location + ' ' + businessName)}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-[#0055c4] hover:bg-[#0055c4]/10 p-2 rounded-full transition-colors active:scale-95"
+                                >
+                                    <span className="material-symbols-outlined">directions</span>
+                                </a>
+                            </div>
+                        )}
+
+                        {/* Claim Progress */}
+                        {promotion.maxClaims > 0 && (
+                            <div className="bg-[#f2f4f6] p-4 rounded-xl border border-[#c2c6d7]/30 flex items-start gap-3">
+                                <div className="w-10 h-10 rounded-full bg-[#e0e3e5] flex items-center justify-center shrink-0">
+                                    <span className="material-symbols-outlined text-[#191c1e]">group</span>
+                                </div>
+                                <div className="flex-grow">
+                                    <h3 className="text-[12px] font-medium text-[#424655] uppercase tracking-wider mb-0.5">Claimed</h3>
+                                    <p className="text-[16px] text-[#191c1e]">{promotion.claimedCount} of {promotion.maxClaims}</p>
+                                    <div className="mt-2 w-full h-1.5 bg-[#e0e3e5] rounded-full overflow-hidden">
                                         <div
-                                            className="h-full bg-gradient-to-r from-primary to-secondary rounded-full"
+                                            className="h-full bg-[#0055c4] rounded-full"
                                             style={{ width: `${Math.min(claimPercent, 100)}%` }}
                                         />
                                     </div>
                                 </div>
-                            </motion.div>
-
-                            {/* Description */}
-                            <motion.div
-                                initial={{ opacity: 0, y: 20 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: 0.2 }}
-                                className="space-y-4"
-                            >
-                                <h2 className="text-lg font-headline font-bold text-gray-900">About This Deal</h2>
-                                <p className="text-sm text-gray-600 font-medium leading-relaxed">
-                                    {promotion.longDescription}
-                                </p>
-                            </motion.div>
-
-                            {/* Terms */}
-                            <motion.div
-                                initial={{ opacity: 0, y: 20 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: 0.3 }}
-                                className="space-y-4"
-                            >
-                                <h2 className="text-lg font-headline font-bold text-gray-900">Terms & Conditions</h2>
-                                <ul className="space-y-2">
-                                    {promotion.terms.map((term, i) => (
-                                        <li key={i} className="flex items-start gap-2 text-sm text-gray-500 font-medium">
-                                            <CheckCircle2 size={14} className="text-green-500 mt-0.5 shrink-0" />
-                                            {term}
-                                        </li>
-                                    ))}
-                                </ul>
-                            </motion.div>
-
-                            {/* Reviews Preview */}
-                            <motion.div
-                                initial={{ opacity: 0, y: 20 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: 0.35 }}
-                            >
-                                <ReviewSection offerId={id} />
-                            </motion.div>
-                        </div>
-
-                        {/* Right: Sidebar */}
-                        <div className="space-y-6">
-                            {/* Claim CTA card */}
-                            <motion.div
-                                initial={{ opacity: 0, y: 20 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: 0.2 }}
-                                className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm sticky top-28 space-y-6"
-                            >
-                                <div className="space-y-2">
-                                    <div className="flex items-center gap-2 text-gray-500">
-                                        <Clock size={14} />
-                                        <span className="text-xs font-bold">
-                                            {daysLeft === -1 ? 'No end date' : daysLeft > 0 ? `${daysLeft} days left` : 'Ending today'}
-                                        </span>
-                                    </div>
-                                    <div className="flex items-center gap-2 text-gray-500">
-                                        <ShieldCheck size={14} />
-                                        <span className="text-xs font-bold">Verified by VemTap</span>
-                                    </div>
-                                </div>
-
-                                <button
-                                    onClick={() => setShowClaimModal(true)}
-                                    className="w-full h-14 bg-primary text-white font-bold uppercase tracking-wider text-sm rounded-2xl shadow-lg shadow-primary/20 hover:bg-primary/90 transition-colors flex items-center justify-center gap-2"
-                                >
-                                    <Gift size={18} /> Claim This Deal
-                                </button>
-
-                                <button
-                                    onClick={handleShare}
-                                    className="w-full h-12 bg-gray-50 text-gray-600 font-bold text-xs rounded-xl hover:bg-gray-100 transition-colors flex items-center justify-center gap-2 border border-gray-100"
-                                >
-                                    <Share2 size={14} /> Share Deal
-                                </button>
-
-                                <EngagementBar
-                                    offerId={id}
-                                    offerTitle={promotion.name}
-                                    offerDescription={promotion.longDescription}
-                                    dealUrl={typeof window !== 'undefined' ? window.location.href : ''}
-                                    reviewCount={reviewCount}
-                                    onCommentClick={() => setShowWriteReview(true)}
-                                    businessName={promotion.businessName || 'Business'}
-                                />
-
-                                {/* Business info */}
-                                <div className="pt-4 border-t border-gray-100 space-y-3">
-                                    <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Offered by</p>
-                                    <div>
-                                        <p className="text-sm font-bold text-gray-900">{promotion.businessName}</p>
-                                        <p className="text-xs text-gray-400 font-bold flex items-center gap-1 mt-1">
-                                            <MapPin size={10} /> {promotion.location}
-                                        </p>
-                                        {promotion.distance && (
-                                            <p className="text-xs text-gray-400 font-bold flex items-center gap-1 mt-1">
-                                                <Navigation size={10} /> {promotion.distance} away
-                                            </p>
-                                        )}
-                                        {promotion.businessHours && (
-                                            <p className="text-xs text-gray-400 font-bold flex items-center gap-1 mt-1">
-                                                <Clock size={10} /> {promotion.businessHours}
-                                            </p>
-                                        )}
-                                    </div>
-                                    {promotion.location && (
-                                        <a
-                                            href={`https://www.google.com/maps/search/${encodeURIComponent(promotion.location + ' ' + promotion.businessName)}`}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="w-full h-10 bg-gray-50 text-gray-600 font-bold text-xs rounded-xl hover:bg-gray-100 transition-colors flex items-center justify-center gap-2 border border-gray-100"
-                                        >
-                                            <Navigation size={14} /> Get Directions
-                                        </a>
-                                    )}
-                                </div>
-                            </motion.div>
-                        </div>
+                            </div>
+                        )}
                     </div>
                 </div>
+
+                {/* Terms & Conditions */}
+                {promotion.terms && promotion.terms.length > 0 && (
+                    <section className="border-t border-[#c2c6d7]/40 pt-4 mb-6">
+                        <details className="group cursor-pointer [&_summary::-webkit-details-marker]:hidden">
+                            <summary className="flex items-center justify-between text-[14px] font-semibold text-[#191c1e] py-2 select-none">
+                                <span className="flex items-center gap-2">
+                                    <span className="material-symbols-outlined text-[#424655]" style={{ fontSize: 20 }}>gavel</span>
+                                    Terms &amp; Conditions
+                                </span>
+                                <span className="material-symbols-outlined transition-transform duration-200 group-open:rotate-180">
+                                    expand_more
+                                </span>
+                            </summary>
+                            <div className="mt-3 pb-3 text-[14px] text-[#424655] space-y-2">
+                                {promotion.terms.map((term: string, i: number) => (
+                                    <p key={i}>• {term}</p>
+                                ))}
+                            </div>
+                        </details>
+                    </section>
+                )}
+
+                {/* Reviews */}
+                <section className="border-t border-[#c2c6d7]/40 pt-4 mb-2">
+                    <ReviewSection offerId={id} />
+                </section>
             </main>
 
-            <Footer />
+            {/* ─── Sticky Bottom Action Bar ─── */}
+            <div className="fixed bottom-0 left-0 w-full bg-white border-t border-[#c2c6d7]/30 z-50 shadow-[0_-4px_16px_rgba(0,0,0,0.05)] pb-6 pt-3 flex justify-center">
+                <div className="w-full max-w-5xl px-5 flex gap-3">
+                    <button
+                        onClick={() => setShowClaimModal(true)}
+                        disabled={isExpired}
+                        className="flex-1 h-12 bg-[#0055c4] text-white text-[14px] font-semibold rounded-xl shadow-sm flex items-center justify-center gap-2 hover:bg-[#0055c4]/90 transition-colors active:scale-95 duration-100 disabled:bg-[#c2c6d7] disabled:text-[#727786] disabled:cursor-not-allowed"
+                    >
+                        <span className="material-symbols-outlined">local_activity</span>
+                        {isExpired ? 'Deal Ended' : 'CLAIM DEAL'}
+                    </button>
+                </div>
+            </div>
 
-            {/* Share Modal */}
-            <AnimatePresence>
-                {showShareModal && (
-                    <div className="fixed inset-0 z-[200] flex items-end md:items-center justify-center p-4">
-                        <motion.div
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
-                            onClick={() => setShowShareModal(false)}
-                            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-                        />
-                        <motion.div
-                            initial={{ y: '100%' }}
-                            animate={{ y: 0 }}
-                            exit={{ y: '100%' }}
-                            className="relative w-full max-w-sm bg-white rounded-t-3xl md:rounded-3xl overflow-hidden shadow-2xl"
-                        >
-                            <div className="p-6 md:p-8 space-y-6">
-                                <div className="flex items-center justify-between">
-                                    <h2 className="text-lg font-headline font-bold text-gray-900">Share This Deal</h2>
-                                    <button
-                                        onClick={() => setShowShareModal(false)}
-                                        className="size-8 bg-gray-100 rounded-full flex items-center justify-center hover:bg-gray-200 transition-colors"
-                                    >
-                                        <X size={16} className="text-gray-500" />
-                                    </button>
-                                </div>
+            {/* ─── Share Modal (new design) ─── */}
+            <ShareDealModal
+                isOpen={showShareModal}
+                onClose={() => setShowShareModal(false)}
+                title={promotion.name}
+                description={promotion.longDescription || promotion.description}
+                url={dealUrl}
+            />
 
-                                <div className="space-y-3">
-                                    <button
-                                        onClick={handleShareWhatsApp}
-                                        className="w-full flex items-center gap-4 p-4 bg-green-50 border border-green-100 rounded-2xl hover:bg-green-100 transition-colors group"
-                                    >
-                                        <div className="size-12 rounded-xl bg-green-500 flex items-center justify-center shrink-0">
-                                            <MessageCircle size={24} className="text-white" />
-                                        </div>
-                                        <div className="text-left flex-1 min-w-0">
-                                            <p className="text-sm font-bold text-gray-900">Share on WhatsApp</p>
-                                            <p className="text-[10px] text-gray-500 font-medium line-clamp-1">
-                                                {promotion.name} — {promotion.longDescription.slice(0, 80)}...
-                                            </p>
-                                        </div>
-                                        <ExternalLink size={16} className="text-green-400 shrink-0" />
-                                    </button>
-
-                                    <button
-                                        onClick={handleCopyLink}
-                                        className="w-full flex items-center gap-4 p-4 bg-gray-50 border border-gray-100 rounded-2xl hover:bg-gray-100 transition-colors group"
-                                    >
-                                        <div className="size-12 rounded-xl bg-gray-200 flex items-center justify-center shrink-0">
-                                            <LinkIcon size={24} className="text-gray-600" />
-                                        </div>
-                                        <div className="text-left flex-1 min-w-0">
-                                            <p className="text-sm font-bold text-gray-900">Copy Link</p>
-                                            <p className="text-[10px] text-gray-500 font-medium truncate">
-                                                {window.location.href}
-                                            </p>
-                                        </div>
-                                        <Copy size={16} className="text-gray-400 shrink-0" />
-                                    </button>
-
-                                    <button
-                                        onClick={handleNativeShare}
-                                        className="w-full flex items-center gap-4 p-4 bg-primary/5 border border-primary/10 rounded-2xl hover:bg-primary/10 transition-colors group"
-                                    >
-                                        <div className="size-12 rounded-xl bg-primary flex items-center justify-center shrink-0">
-                                            <Share2 size={24} className="text-white" />
-                                        </div>
-                                        <div className="text-left flex-1">
-                                            <p className="text-sm font-bold text-gray-900">More Options</p>
-                                            <p className="text-[10px] text-gray-500 font-medium">Share via other apps</p>
-                                        </div>
-                                        <ExternalLink size={16} className="text-primary/40 shrink-0" />
-                                    </button>
-                                </div>
-                            </div>
-                        </motion.div>
-                    </div>
-                )}
-            </AnimatePresence>
-
-            {/* Claim Modal */}
+            {/* ─── Claim Modal (OTP flow, new design) ─── */}
             <AnimatePresence>
                 {showClaimModal && (
-                    <div className="fixed inset-0 z-[200] flex items-end md:items-center justify-center p-4">
+                    <div className="fixed inset-0 z-[200] flex items-end sm:items-center justify-center">
                         <motion.div
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
                             onClick={resetModal}
-                            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+                            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
                         />
                         <motion.div
-                            initial={{ y: '100%' }}
-                            animate={{ y: 0 }}
-                            exit={{ y: '100%' }}
-                            className="relative w-full max-w-md bg-white rounded-t-3xl md:rounded-3xl overflow-hidden shadow-2xl"
+                            initial={{ y: '100%', opacity: 0 }}
+                            animate={{ y: 0, opacity: 1 }}
+                            exit={{ y: '100%', opacity: 0 }}
+                            transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+                            onClick={(e) => e.stopPropagation()}
+                            className="relative w-full max-w-md bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl max-h-[90vh] overflow-y-auto"
                         >
-                            {/* Close */}
-                            <button
-                                onClick={resetModal}
-                                className="absolute top-4 right-4 z-10 size-10 bg-gray-100 rounded-full flex items-center justify-center hover:bg-gray-200 transition-colors"
-                            >
-                                <X size={18} className="text-gray-500" />
-                            </button>
+                            {/* Header */}
+                            <div className="sticky top-0 bg-white/90 backdrop-blur-md z-10 flex items-center justify-between px-5 h-14 border-b border-gray-100 rounded-t-3xl sm:rounded-t-3xl">
+                                <button onClick={resetModal} className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-gray-100 transition-colors">
+                                    <X size={20} className="text-gray-500" />
+                                </button>
+                                <h2 className="text-[15px] font-semibold text-gray-900">
+                                    {claimStep === 'phone' && 'Claim Deal'}
+                                    {claimStep === 'otp' && 'Verify Identity'}
+                                    {claimStep === 'success' && 'Deal Claimed!'}
+                                </h2>
+                                <div className="w-10" />
+                            </div>
 
-                            <AnimatePresence mode="wait">
-                                {/* Step 1: Phone */}
+                            <div className="p-5">
+                                {/* Step 1: Info Form */}
                                 {claimStep === 'phone' && (
-                                    <motion.div
-                                        key="phone"
-                                        initial={{ opacity: 0, x: -20 }}
-                                        animate={{ opacity: 1, x: 0 }}
-                                        exit={{ opacity: 0, x: -20 }}
-                                        className="p-6 md:p-8 space-y-6"
-                                    >
-                                        <div className="space-y-2">
-                                            <div className="size-14 bg-primary/10 rounded-2xl flex items-center justify-center mb-4">
-                                                <Gift size={28} className="text-primary" />
+                                    <div className="space-y-4">
+                                        <div className="bg-gray-50 rounded-xl border border-gray-200 p-4 flex gap-3 mb-1">
+                                            <div className="w-16 h-16 rounded-lg overflow-hidden flex-shrink-0 bg-gray-200">
+                                                <img src={promotion.image} alt={promotion.name} className="w-full h-full object-cover" />
                                             </div>
-                                            <h2 className="text-xl font-headline font-bold text-gray-900">Claim Your Deal</h2>
-                                            <p className="text-sm text-gray-500 font-medium">
-                                                Enter your details to claim <strong>{promotion.name}</strong>.
-                                            </p>
+                                            <div className="flex-1 min-w-0">
+                                                <div className="inline-flex items-center gap-1 text-[#0055c4] bg-[#066cf4]/10 px-2 py-0.5 rounded text-[10px] font-bold tracking-wide uppercase mb-1">
+                                                    {discountPercent ? `${discountPercent}% OFF` : 'DEAL'}
+                                                </div>
+                                                <h3 className="text-[14px] font-semibold text-gray-900 line-clamp-1">{promotion.name}</h3>
+                                                <p className="text-[12px] text-gray-500 mt-0.5">{businessName}</p>
+                                            </div>
                                         </div>
 
-                                        <div className="space-y-4">
+                                        <h3 className="text-[16px] font-semibold text-gray-900">Your Information</h3>
+
+                                        <div className="space-y-3">
                                             <div>
-                                                <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1.5 block">Full Name *</label>
+                                                <label className="text-[11px] font-medium text-gray-500 block mb-1">Full Name *</label>
                                                 <input
                                                     type="text"
                                                     value={claimName}
                                                     onChange={(e) => setClaimName(e.target.value)}
-                                                    className="w-full h-11 px-4 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/30"
-                                                    placeholder="John Doe"
+                                                    placeholder="Enter your full name"
+                                                    className="w-full h-11 px-4 rounded-lg border border-gray-200 bg-white text-[14px] focus:border-[#0055c4] focus:ring-1 focus:ring-[#0055c4] outline-none transition-all"
                                                 />
                                             </div>
                                             <div>
-                                                <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1.5 block">Email Address *</label>
+                                                <label className="text-[11px] font-medium text-gray-500 block mb-1">Email Address *</label>
                                                 <input
                                                     type="email"
                                                     value={claimEmail}
                                                     onChange={(e) => setClaimEmail(e.target.value)}
-                                                    className="w-full h-11 px-4 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/30"
-                                                    placeholder="john@example.com"
+                                                    placeholder="Enter your email"
+                                                    className="w-full h-11 px-4 rounded-lg border border-gray-200 bg-white text-[14px] focus:border-[#0055c4] focus:ring-1 focus:ring-[#0055c4] outline-none transition-all"
                                                 />
                                             </div>
                                             <div>
-                                                <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1.5 block">Phone Number *</label>
-                                                <div className="relative">
-                                                    <Phone size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                                                <label className="text-[11px] font-medium text-gray-500 block mb-1">Phone Number *</label>
+                                                <div className="flex gap-2">
+                                                    <select className="h-11 px-3 rounded-lg border border-gray-200 bg-white text-[14px] focus:border-[#0055c4] focus:ring-1 focus:ring-[#0055c4] outline-none transition-all w-24">
+                                                        <option>+234</option>
+                                                        <option>+1</option>
+                                                        <option>+44</option>
+                                                    </select>
                                                     <input
                                                         type="tel"
                                                         value={claimPhone}
                                                         onChange={(e) => setClaimPhone(e.target.value)}
-                                                        className="w-full h-11 pl-10 pr-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/30"
-                                                        placeholder="0801 234 5678"
+                                                        placeholder="Enter phone number"
+                                                        className="flex-grow h-11 px-4 rounded-lg border border-gray-200 bg-white text-[14px] focus:border-[#0055c4] focus:ring-1 focus:ring-[#0055c4] outline-none transition-all"
                                                     />
                                                 </div>
                                             </div>
@@ -591,52 +518,49 @@ href="/deals"
 
                                         <button
                                             onClick={handlePhoneSubmit}
-                                            disabled={isSubmitting}
-                                            className="w-full h-13 bg-primary text-white font-bold uppercase tracking-wider text-sm rounded-2xl shadow-lg shadow-primary/20 hover:bg-primary/90 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+                                            disabled={isSubmitting || !claimName.trim() || !claimEmail.trim()}
+                                            className="w-full h-12 bg-[#0055c4] text-white font-semibold text-[14px] rounded-lg flex items-center justify-center gap-2 hover:bg-[#0055c4]/90 transition-colors active:scale-[0.98] disabled:opacity-50"
                                         >
                                             {isSubmitting ? (
-                                                <Loader2 size={18} className="animate-spin" />
+                                                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                                             ) : (
                                                 <>Get Verification Code <ChevronRight size={16} /></>
                                             )}
                                         </button>
 
-                                        <p className="text-[10px] text-gray-400 text-center font-bold">
+                                        <p className="text-[11px] text-gray-400 text-center">
                                             By claiming, you agree to VemTap&apos;s Terms of Service.
                                         </p>
-                                    </motion.div>
+                                    </div>
                                 )}
 
-
-
-                                {/* Step 4: OTP */}
+                                {/* Step 2: OTP */}
                                 {claimStep === 'otp' && (
-                                    <motion.div
-                                        key="otp"
-                                        initial={{ opacity: 0, x: 20 }}
-                                        animate={{ opacity: 1, x: 0 }}
-                                        exit={{ opacity: 0, x: 20 }}
-                                        className="p-6 md:p-8 space-y-6"
-                                    >
-                                        <div className="space-y-2">
-                                            <div className="size-14 bg-green-50 rounded-2xl flex items-center justify-center mb-4">
-                                                <ShieldCheck size={28} className="text-green-500" />
+                                    <div className="space-y-4">
+                                        <div className="bg-gray-50 rounded-xl border border-gray-200 p-4 flex gap-3 mb-1">
+                                            <div className="w-16 h-16 rounded-lg overflow-hidden flex-shrink-0 bg-gray-200">
+                                                <img src={promotion.image} alt={promotion.name} className="w-full h-full object-cover" />
                                             </div>
-                                            <h2 className="text-xl font-headline font-bold text-gray-900">Verify Your Identity</h2>
-                                            <p className="text-sm text-gray-500 font-medium">
-                                                We&apos;ve sent a verification code to <strong>{claimEmail}</strong>. Enter it below to confirm your claim.
+                                            <div className="flex-1 min-w-0">
+                                                <h3 className="text-[14px] font-semibold text-gray-900 line-clamp-1">{promotion.name}</h3>
+                                                <p className="text-[12px] text-gray-500 mt-0.5">{businessName}</p>
+                                            </div>
+                                        </div>
+
+                                        <div className="bg-green-50 rounded-lg p-3 flex items-start gap-2">
+                                            <ShieldCheck size={16} className="text-green-600 mt-0.5 shrink-0" />
+                                            <p className="text-[12px] text-green-700">
+                                                A verification code has been sent to <strong>{claimEmail}</strong>
                                             </p>
                                         </div>
 
                                         <div>
-                                            <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1.5 block">
-                                                Verification Code
-                                            </label>
+                                            <label className="text-[11px] font-medium text-gray-500 block mb-1">Verification Code</label>
                                             <input
                                                 type="text"
                                                 value={otp}
                                                 onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                                                className="w-full h-14 px-4 bg-gray-50 border border-gray-200 rounded-xl text-center text-2xl font-bold tracking-wider focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/30"
+                                                className="w-full h-14 px-4 rounded-lg border border-gray-200 bg-white text-center text-2xl font-bold tracking-widest focus:border-[#0055c4] focus:ring-1 focus:ring-[#0055c4] outline-none transition-all"
                                                 placeholder="000000"
                                                 maxLength={6}
                                             />
@@ -644,11 +568,11 @@ href="/deals"
 
                                         <button
                                             onClick={handleOtpVerify}
-                                            disabled={isSubmitting}
-                                            className="w-full h-13 bg-primary text-white font-bold uppercase tracking-wider text-sm rounded-2xl shadow-lg shadow-primary/20 hover:bg-primary/90 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+                                            disabled={isSubmitting || otp.length < 4}
+                                            className="w-full h-12 bg-[#0055c4] text-white font-semibold text-[14px] rounded-lg flex items-center justify-center gap-2 hover:bg-[#0055c4]/90 transition-colors active:scale-[0.98] disabled:opacity-50"
                                         >
                                             {isSubmitting ? (
-                                                <Loader2 size={18} className="animate-spin" />
+                                                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                                             ) : (
                                                 'Verify & Claim'
                                             )}
@@ -656,82 +580,76 @@ href="/deals"
 
                                         <button
                                             onClick={() => setClaimStep('phone')}
-                                            className="w-full text-xs font-bold text-gray-400 hover:text-primary transition-colors"
+                                            className="w-full text-[12px] font-semibold text-gray-400 hover:text-[#0055c4] transition-colors"
                                         >
                                             ← Start over
                                         </button>
-                                    </motion.div>
+                                    </div>
                                 )}
 
-                                {/* Step 5: Success */}
+                                {/* Step 3: Success */}
                                 {claimStep === 'success' && (
-                                    <motion.div
-                                        key="success"
-                                        initial={{ opacity: 0, scale: 0.95 }}
-                                        animate={{ opacity: 1, scale: 1 }}
-                                        className="p-6 md:p-8 space-y-6 text-center"
-                                    >
+                                    <div className="space-y-4 text-center">
                                         <motion.div
                                             initial={{ scale: 0 }}
                                             animate={{ scale: 1 }}
                                             transition={{ type: 'spring', stiffness: 300, damping: 20 }}
-                                            className="w-20 h-20 mx-auto bg-green-50 rounded-full flex items-center justify-center"
+                                            className="w-20 h-20 mx-auto bg-[#066cf4] rounded-full flex items-center justify-center mb-2 shadow-[0_0_40px_rgba(6,108,244,0.2)]"
                                         >
-                                            <CheckCircle2 size={40} className="text-green-500" />
+                                            <CheckCircle2 size={40} className="text-white" />
                                         </motion.div>
 
-                                        <div className="space-y-2">
-                                            <h2 className="text-xl font-headline font-bold text-gray-900">Deal Claimed!</h2>
-                                            <p className="text-sm text-gray-500 font-medium">
-                                                Show this code at <strong>{promotion.businessName}</strong> to redeem your deal.
-                                            </p>
+                                        <h2 className="text-[22px] font-bold text-gray-900">Deal Claimed!</h2>
+                                        <p className="text-[14px] text-gray-500">
+                                            Show this code at <strong>{businessName}</strong> to redeem your deal.
+                                        </p>
+
+                                        <div className="bg-white rounded-xl border border-gray-200 p-4 text-left">
+                                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Your Claim Code</p>
+                                            <div className="bg-gray-50 px-4 py-3 rounded-lg text-center">
+                                                <span className="text-[22px] font-mono tracking-widest text-[#0055c4] font-bold">{couponCode}</span>
+                                            </div>
                                         </div>
 
-                                        <div className="bg-gray-50 rounded-2xl p-6 border border-gray-100">
-                                            <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-2">
-                                                Your Claim Code
-                                            </p>
-                                            <p className="text-3xl font-bold text-primary tracking-wider font-display">
-                                                {couponCode}
-                                            </p>
-                                        </div>
-
-                                        <div className="space-y-3">
+                                        <div className="space-y-2.5">
                                             <button
                                                 onClick={() => {
                                                     navigator.clipboard.writeText(couponCode);
                                                     toast.success('Code copied!');
                                                 }}
-                                                className="w-full h-12 bg-gray-50 text-gray-600 font-bold text-xs rounded-xl hover:bg-gray-100 transition-colors flex items-center justify-center gap-2 border border-gray-100"
+                                                className="w-full h-12 bg-gray-50 border border-gray-200 text-gray-600 font-semibold text-[14px] rounded-lg flex items-center justify-center gap-2 hover:bg-gray-100 active:scale-[0.98] transition-all"
                                             >
-                                                <Copy size={14} /> Copy Code
+                                                <Copy size={16} /> Copy Code
                                             </button>
-
                                             <Link
                                                 href="/deals"
                                                 onClick={resetModal}
-                                                className="w-full h-12 bg-primary text-white font-bold uppercase tracking-wider text-xs rounded-2xl shadow-lg shadow-primary/20 flex items-center justify-center gap-2"
+                                                className="w-full h-12 bg-[#0055c4] text-white font-semibold text-[14px] rounded-lg flex items-center justify-center gap-2 hover:bg-[#0055c4]/90 active:scale-[0.98] transition-all"
                                             >
                                                 Browse More Deals
                                             </Link>
                                         </div>
 
-                                        <p className="text-[10px] text-gray-400 font-bold">
-                                            This code is valid for {(() => { const d = promotion?.endDate ? getPromoDaysLeft(promotion.endDate) : 7; return d === -1 ? 'unlimited' : `${d} days`; })()}.
+                                        <p className="text-[11px] text-gray-400">
+                                            Valid for {(() => {
+                                                const d = promotion?.endDate ? getPromoDaysLeft(promotion.endDate) : 7;
+                                                return d === -1 ? 'unlimited time' : `${d} days`;
+                                            })()}
                                         </p>
-                                    </motion.div>
+                                    </div>
                                 )}
-                            </AnimatePresence>
+                            </div>
                         </motion.div>
                     </div>
                 )}
             </AnimatePresence>
 
+            {/* ─── Write Review Modal ─── */}
             <WriteReviewModal
                 isOpen={showWriteReview}
                 onClose={() => setShowWriteReview(false)}
                 offerId={id}
-                businessName={promotion.businessName || 'Business'}
+                businessName={businessName || 'Business'}
             />
         </div>
     );

@@ -120,8 +120,9 @@ const DEFAULT_DEALS_BANNERS: {
 function DealsPageInner() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const { label: userLocationLabel, requestLocation } = useLocation();
+  const { label: userLocationLabel, requestLocation, setManualLocation } = useLocation();
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
+  const [locationError, setLocationError] = useState<string | null>(null);
   const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [showFilterModal, setShowFilterModal] = useState(false);
@@ -833,10 +834,19 @@ function DealsPageInner() {
       {isLocationModalOpen && (
         <LocationPrompt
           isOpen={isLocationModalOpen}
-          onClose={() => setIsLocationModalOpen(false)}
-          onAllowLocation={() => {
-            requestLocation();
-            setIsLocationModalOpen(false);
+          onClose={() => { setIsLocationModalOpen(false); setLocationError(null); }}
+          isLoading={false}
+          error={locationError}
+          onAllowLocation={async () => {
+            setLocationError(null);
+            const res = await requestLocation();
+            if (res.ok) setIsLocationModalOpen(false);
+          }}
+          onSearchLocation={async (q: string) => {
+            setLocationError(null);
+            const ok = await setManualLocation(q);
+            if (ok) setIsLocationModalOpen(false);
+            else setLocationError('Could not find that location. Please try another area.');
           }}
         />
       )}
