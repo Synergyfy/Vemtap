@@ -133,9 +133,7 @@ export default function SavedDealsPage() {
               const dealPrice = deal.dealPrice ?? deal.price ?? null;
               const originalPrice = deal.originalPrice ?? null;
               const discountPercent = deal.discountPercent || (originalPrice && dealPrice ? Math.round(((originalPrice - dealPrice) / originalPrice) * 100) : null);
-              const href = deal.business?.slug
-                ? `/deals/${deal.business.slug}/${deal.id}`
-                : `/deals?search=${encodeURIComponent(deal.name || '')}`;
+              const href = `/deals/${encodeURIComponent(deal.business?.slug || deal.businessId || deal.branchId || deal.id)}/${deal.id}`;
 
               return (
                 <div
