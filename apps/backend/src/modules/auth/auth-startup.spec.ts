@@ -8,6 +8,8 @@ import { DataSource } from 'typeorm';
 
 describe('AuthModule Startup', () => {
   beforeAll(() => {
+    process.env.RESEND_API_KEY = 're_test_key';
+    process.env.JWT_SECRET = 'test-jwt-secret';
     jest.spyOn(DataSource.prototype, 'initialize').mockImplementation(function (
       this: any,
     ) {

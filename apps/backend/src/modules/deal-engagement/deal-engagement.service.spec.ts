@@ -13,6 +13,7 @@ import {
   DealReactionType,
 } from './entities/deal-reaction.entity';
 import { DealSave } from './entities/deal-save.entity';
+import { DealShare } from './entities/deal-share.entity';
 
 describe('DealEngagementService', () => {
   let service: DealEngagementService;
@@ -124,6 +125,15 @@ describe('DealEngagementService', () => {
           useValue: mockReactionRepository,
         },
         { provide: getRepositoryToken(DealSave), useValue: mockSaveRepository },
+        {
+          provide: getRepositoryToken(DealShare),
+          useValue: {
+            findOne: jest.fn(),
+            create: jest.fn(),
+            save: jest.fn(),
+            remove: jest.fn(),
+          },
+        },
         { provide: DataSource, useValue: mockDataSource },
         { provide: ConfigService, useValue: mockConfigService },
         { provide: CACHE_MANAGER, useValue: mockCacheManager },
@@ -471,6 +481,7 @@ describe('DealEngagementService', () => {
         dislikesCount: 1,
         reviewsCount: 7,
         averageRating: 4.8,
+        sharesCount: 0,
       });
       expect(result).not.toHaveProperty('type');
     });
