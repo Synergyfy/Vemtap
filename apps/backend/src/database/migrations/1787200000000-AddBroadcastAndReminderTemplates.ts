@@ -132,9 +132,15 @@ export class AddBroadcastAndReminderTemplates1787200000000 implements MigrationI
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`DROP TABLE IF EXISTS "subscription_reminder_templates"`);
-    await queryRunner.query(`DROP INDEX IF EXISTS "IDX_notification_broadcasts_createdAt"`);
-    await queryRunner.query(`DROP INDEX IF EXISTS "IDX_notification_broadcasts_targetAudience"`);
+    await queryRunner.query(
+      `DROP TABLE IF EXISTS "subscription_reminder_templates"`,
+    );
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS "IDX_notification_broadcasts_createdAt"`,
+    );
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS "IDX_notification_broadcasts_targetAudience"`,
+    );
     await queryRunner.query(`DROP TABLE IF EXISTS "notification_broadcasts"`);
   }
 }

@@ -56,7 +56,7 @@ export class UsersService {
       });
 
     let businessName = branch?.business?.name;
-    let branchName = branch?.name;
+    const branchName = branch?.name;
 
     if (!businessName && branch?.businessId) {
       const business = await this.usersRepository.manager

@@ -131,9 +131,8 @@ export class CatalogueOfferService {
     });
 
     // Check active subscription plan to determine default isFeatured status
-    const activeSub = await this.subscriptionsService.activeSubscription(
-      businessId,
-    );
+    const activeSub =
+      await this.subscriptionsService.activeSubscription(businessId);
     const autoFeatureDeals = Boolean(activeSub?.plan?.autoFeatureDeals);
     offer.isFeatured =
       dto.isFeatured !== undefined ? dto.isFeatured : autoFeatureDeals;
@@ -327,7 +326,10 @@ export class CatalogueOfferService {
     });
 
     const result = {
-      data: paginated.data,
+      data: paginated.data.map((offer) => ({
+        ...offer,
+        galleryImages: offer.galleryImages || [],
+      })),
       total: paginated.total,
       page: paginated.page,
       limit: paginated.limit,
@@ -530,6 +532,7 @@ export class CatalogueOfferService {
             : false,
           maxClaimsPerCustomer: offer.maxClaimsPerCustomer,
           audienceTarget: offer.audienceTarget,
+          galleryImages: offer.galleryImages || [],
           terms: offer.terms,
           claimCodePrefix: offer.claimCodePrefix,
         };
@@ -812,6 +815,7 @@ export class CatalogueOfferService {
         claim: {
           id: existingClaim.id,
           claimCode: existingClaim.claimCode,
+          redemptionCode: existingClaim.claimCode,
           expiresAt: existingClaim.expiresAt,
           status: existingClaim.status,
         },
@@ -890,6 +894,7 @@ export class CatalogueOfferService {
       claim: {
         id: claim.id,
         claimCode: claim.claimCode,
+        redemptionCode: claim.claimCode,
         expiresAt: claim.expiresAt,
         status: claim.status,
       },
@@ -1247,7 +1252,9 @@ export class CatalogueOfferService {
           originalPrice: originalPrice > 0 ? originalPrice : dealPrice,
           dealPrice,
           discount,
-          discountValue: offer.discountValue ? Number(offer.discountValue) : null,
+          discountValue: offer.discountValue
+            ? Number(offer.discountValue)
+            : null,
           fixedPrice: offer.fixedPrice ? Number(offer.fixedPrice) : null,
         },
         dates: {

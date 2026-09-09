@@ -36,11 +36,23 @@ export const SUBSCRIPTION_REMINDER_PLACEHOLDERS = [
   { placeholder: '{{businessName}}', description: 'Name of the business' },
   { placeholder: '{{ownerName}}', description: "Business owner's full name" },
   { placeholder: '{{planName}}', description: 'Name of the subscription plan' },
-  { placeholder: '{{daysLeft}}', description: 'Number of days left until expiry' },
+  {
+    placeholder: '{{daysLeft}}',
+    description: 'Number of days left until expiry',
+  },
   { placeholder: '{{daysText}}', description: '"X days" or "1 day"' },
-  { placeholder: '{{clusterName}}', description: 'Assigned cluster or area name' },
-  { placeholder: '{{people}}', description: 'Active shoppers in cluster this month' },
-  { placeholder: '{{businesses}}', description: 'Active businesses in cluster' },
+  {
+    placeholder: '{{clusterName}}',
+    description: 'Assigned cluster or area name',
+  },
+  {
+    placeholder: '{{people}}',
+    description: 'Active shoppers in cluster this month',
+  },
+  {
+    placeholder: '{{businesses}}',
+    description: 'Active businesses in cluster',
+  },
   { placeholder: '{{renewalUrl}}', description: 'Deep link to renewal page' },
 ] as const;
 

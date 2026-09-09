@@ -53,10 +53,7 @@ export class CouponsController {
     status: 200,
     description: 'Promotion code is valid and breakdown calculated',
   })
-  async validate(
-    @Body() dto: ValidatePromoCodeDto,
-    @Request() req: any,
-  ) {
+  async validate(@Body() dto: ValidatePromoCodeDto, @Request() req: any) {
     let businessId = dto.businessId;
     if (!businessId && req?.user) {
       businessId = await this.extractBusinessId(req);

@@ -2,6 +2,7 @@ import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule } from '@nestjs/config';
 import { MessagingModule } from '../messaging/messaging.module';
+import { PaymentsModule } from '../payments/payments.module';
 import { AiCopilotController } from './ai-copilot.controller';
 import { AiCopilotService } from './ai-copilot.service';
 import { BotRegistry } from './bots/bot-registry';
@@ -36,6 +37,7 @@ import { Plan } from '../subscriptions/entities/plan.entity';
     ConfigModule,
     TypeOrmModule.forFeature([AiCreditUsage, Subscription, Plan]),
     forwardRef(() => MessagingModule),
+    forwardRef(() => PaymentsModule),
   ],
   controllers: [AiCopilotController],
   providers: [

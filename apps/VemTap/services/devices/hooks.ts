@@ -49,10 +49,18 @@ export const useDeviceStats = (branchId?: string) => {
 };
 
 export const useDevice = (id: string) => {
+    const { activeBranchId: urlBranchId, isAllBranches } = useActiveBranch();
     return useQuery<Device, Error>({
-        queryKey: ['device', id],
+        queryKey: ['device', id, urlBranchId, isAllBranches],
         queryFn: async () => {
-            return await api.get(`/devices/${id}`);
+            const searchParams = new URLSearchParams();
+            if (urlBranchId) {
+                searchParams.append('branchId', urlBranchId);
+            } else if (isAllBranches) {
+                searchParams.append('allBranches', 'true');
+            }
+            const query = searchParams.toString();
+            return await api.get(`/devices/${id}${query ? `?${query}` : ''}`);
         },
         enabled: !!id,
     });

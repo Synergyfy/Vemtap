@@ -36,7 +36,8 @@ export class SubscriptionTaxConfig extends AbstractBaseEntity {
 
   @ApiProperty({
     example: true,
-    description: 'Whether this tax is currently enabled and applied at checkout',
+    description:
+      'Whether this tax is currently enabled and applied at checkout',
   })
   @Column({ default: false })
   isEnabled: boolean;

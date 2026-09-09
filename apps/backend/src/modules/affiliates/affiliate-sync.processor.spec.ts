@@ -6,7 +6,10 @@ import {
 
 describe('AffiliateSyncProcessor', () => {
   let processor: AffiliateSyncProcessor;
-  let externalService: { recordReferral: jest.Mock; processWithdrawal: jest.Mock };
+  let externalService: {
+    recordReferral: jest.Mock;
+    processWithdrawal: jest.Mock;
+  };
 
   beforeEach(() => {
     externalService = {

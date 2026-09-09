@@ -3,10 +3,10 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
-import { X, CheckCircle, Store, Clock, Info } from 'lucide-react';
+import { X, CheckCircle, Store, Clock, Info, Copy, Check } from 'lucide-react';
 import { useAuthStore } from '@/store/useAuthStore';
 import { formatDealPrice } from '@/lib/promotions';
-import { useCreateCatalogueOrder } from '@/services/catalogue/hooks';
+import { requestClaimOtp, verifyClaimOtp } from '@/services/deals/hooks';
 import { signupVisitorAndLogin } from '@/lib/visitorAuth';
 import RedeemDealModal from './RedeemDealModal';
 
@@ -35,12 +35,11 @@ interface ClaimDealModalProps {
     claimConfig?: ClaimConfig;
 }
 
-type ModalView = 'form' | 'confirm' | 'success' | 'mydeal';
+type ModalView = 'form' | 'otp' | 'confirm' | 'success' | 'mydeal';
 
 export default function ClaimDealModal({ isOpen, onClose, deal, claimConfig }: ClaimDealModalProps) {
     const router = useRouter();
     const { isAuthenticated, user } = useAuthStore();
-    const createOrderMutation = useCreateCatalogueOrder();
     const [view, setView] = useState<ModalView>(isAuthenticated ? 'confirm' : 'form');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [formData, setFormData] = useState({
@@ -50,20 +49,10 @@ export default function ClaimDealModal({ isOpen, onClose, deal, claimConfig }: C
     });
     const [agreedToTerms, setAgreedToTerms] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [redemptionCode, setRedemptionCode] = useState('');
+    const [claimCode, setClaimCode] = useState('');
+    const [otpCode, setOtpCode] = useState('');
     const [showRedeemModal, setShowRedeemModal] = useState(false);
-
-    useEffect(() => {
-        if (!isOpen) return;
-        const t = setTimeout(() => {
-            const prefix = deal.id.toUpperCase().slice(0, 3);
-            const array = new Uint8Array(4);
-            crypto.getRandomValues(array);
-            const suffix = Array.from(array, (b) => 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'[b % 36]).join('');
-            setRedemptionCode(`VEM-${prefix}-${suffix}`);
-        }, 0);
-        return () => clearTimeout(t);
-    }, [isOpen, deal.id]);
+    const [copied, setCopied] = useState(false);
 
     useEffect(() => {
         if (isOpen) {
@@ -86,39 +75,66 @@ export default function ClaimDealModal({ isOpen, onClose, deal, claimConfig }: C
         return () => { document.body.style.overflow = ''; };
     }, [isOpen, isAuthenticated, user]);
 
-    const performRealClaim = async (info: { name: string; email: string; phone: string }) => {
-        if (!claimConfig) return;
-        const { branchId, deviceId, quantity } = claimConfig;
-
-        if (!isAuthenticated) {
-            await signupVisitorAndLogin({
-                name: info.name,
-                email: info.email || undefined,
-                phone: info.phone || undefined,
-                branchId,
+    const requestOtp = async (info: { name: string; email: string; phone: string }) => {
+        setIsSubmitting(true);
+        setError(null);
+        try {
+            const nameParts = info.name.trim().split(/\s+/);
+            await requestClaimOtp({
+                offerId: deal.id,
+                firstName: nameParts[0] || 'Guest',
+                email: info.email,
+                phone: info.phone || '',
             });
+            setView('otp');
+        } catch (err: any) {
+            setError(err?.response?.data?.message || err?.message || 'Failed to send verification code. Please try again.');
+        } finally {
+            setIsSubmitting(false);
         }
+    };
 
-        const nameParts = (info.name || '').trim().split(/\s+/);
-        await createOrderMutation.mutateAsync({
-            branchId,
-            deviceId,
-            firstName: nameParts[0] || 'Guest',
-            lastName: nameParts.slice(1).join(' ') || ' ',
-            email: info.email || undefined,
-            phone: info.phone || 'N/A',
-            items: [{ offerId: deal.id, quantity: quantity || 1 }],
-        });
-
-        if (claimConfig.onSuccess) {
-            claimConfig.onSuccess();
+    const verifyOtp = async () => {
+        if (!otpCode.trim()) {
+            setError('Please enter the verification code');
             return;
         }
-        if (claimConfig.successPath) {
-            router.push(claimConfig.successPath);
-            return;
+        setIsSubmitting(true);
+        setError(null);
+        try {
+            if (claimConfig && !isAuthenticated) {
+                const { branchId } = claimConfig;
+                await signupVisitorAndLogin({
+                    name: formData.name,
+                    email: formData.email || undefined,
+                    phone: formData.phone || undefined,
+                    branchId,
+                });
+            }
+
+            const res = await verifyClaimOtp({
+                email: formData.email,
+                offerId: deal.id,
+                code: otpCode,
+            });
+
+            const code = res.claim?.claimCode || '';
+            setClaimCode(code);
+
+            if (claimConfig?.onSuccess) {
+                claimConfig.onSuccess();
+                return;
+            }
+            if (claimConfig?.successPath) {
+                router.push(claimConfig.successPath);
+                return;
+            }
+            setView('success');
+        } catch (err: any) {
+            setError(err?.response?.data?.message || err?.message || 'Invalid or expired code. Please verify and try again.');
+        } finally {
+            setIsSubmitting(false);
         }
-        setView('success');
     };
 
     const handleSubmit = async () => {
@@ -130,41 +146,47 @@ export default function ClaimDealModal({ isOpen, onClose, deal, claimConfig }: C
             setError('Please agree to the terms');
             return;
         }
-        setIsSubmitting(true);
         setError(null);
-        try {
-            if (claimConfig) {
-                await performRealClaim(formData);
-            } else {
+        if (claimConfig) {
+            await requestOtp(formData);
+        } else {
+            setIsSubmitting(true);
+            try {
                 await new Promise((r) => setTimeout(r, 1500));
                 setView('success');
+            } finally {
+                setIsSubmitting(false);
             }
-        } catch (err: any) {
-            setError(err?.response?.data?.message || 'Something went wrong. Please try again.');
-        } finally {
-            setIsSubmitting(false);
         }
     };
 
     const handleConfirm = async () => {
-        setIsSubmitting(true);
+        if (!agreedToTerms) {
+            setError('Please agree to the terms');
+            return;
+        }
         setError(null);
-        try {
-            if (claimConfig) {
-                await performRealClaim(formData);
-            } else {
+        if (claimConfig) {
+            await requestOtp(formData);
+        } else {
+            setIsSubmitting(true);
+            try {
                 await new Promise((r) => setTimeout(r, 1500));
                 setView('success');
+            } finally {
+                setIsSubmitting(false);
             }
-        } catch (err: any) {
-            setError(err?.response?.data?.message || 'Something went wrong. Please try again.');
-        } finally {
-            setIsSubmitting(false);
         }
     };
 
     const handleViewMyDeal = () => {
         setView('mydeal');
+    };
+
+    const handleCopyCode = () => {
+        navigator.clipboard.writeText(claimCode);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
     };
 
     return (
@@ -193,6 +215,7 @@ export default function ClaimDealModal({ isOpen, onClose, deal, claimConfig }: C
                             </button>
                             <h2 className="text-[15px] font-semibold text-gray-900">
                                 {view === 'form' && 'Claim Deal'}
+                                {view === 'otp' && 'Verify Code'}
                                 {view === 'confirm' && 'Confirm Details'}
                                 {view === 'success' && 'Deal Claimed!'}
                                 {view === 'mydeal' && 'My Deal'}
@@ -296,6 +319,51 @@ export default function ClaimDealModal({ isOpen, onClose, deal, claimConfig }: C
                                 </div>
                             )}
 
+                            {/* OTP View */}
+                            {view === 'otp' && (
+                                <div className="space-y-4">
+                                    <p className="text-[13px] text-gray-500 text-center">
+                                        We sent a verification code to <strong className="text-gray-900">{formData.email}</strong>.
+                                        Please enter the code below to complete your claim.
+                                    </p>
+
+                                    <div className="flex flex-col items-center gap-1">
+                                        <label className="text-[11px] font-medium text-gray-500">Verification Code</label>
+                                        <input
+                                            type="text"
+                                            value={otpCode}
+                                            onChange={(e) => setOtpCode(e.target.value)}
+                                            placeholder="------"
+                                            maxLength={6}
+                                            className="w-full max-w-[200px] h-12 px-4 rounded-lg border border-gray-200 bg-white text-[18px] text-center font-mono tracking-[0.3em] focus:border-[#0055c4] focus:ring-1 focus:ring-[#0055c4] outline-none transition-all"
+                                        />
+                                    </div>
+
+                                    {error && (
+                                        <p className="text-[12px] text-red-500 bg-red-50 p-3 rounded-lg">{error}</p>
+                                    )}
+
+                                    <button
+                                        onClick={verifyOtp}
+                                        disabled={isSubmitting || !otpCode.trim()}
+                                        className="w-full h-12 bg-[#0055c4] text-white font-semibold text-[14px] rounded-lg flex items-center justify-center gap-2 hover:bg-[#0055c4]/90 transition-colors active:scale-[0.98] disabled:opacity-50"
+                                    >
+                                        {isSubmitting ? (
+                                            <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                        ) : (
+                                            'Verify & Claim Deal'
+                                        )}
+                                    </button>
+
+                                    <button
+                                        onClick={() => { setView('form'); setError(null); }}
+                                        className="w-full h-10 text-[13px] text-gray-500 hover:text-gray-700 font-medium transition-colors"
+                                    >
+                                        Go Back / Edit Details
+                                    </button>
+                                </div>
+                            )}
+
                             {/* Confirm View (authenticated user) */}
                             {view === 'confirm' && (
                                 <div className="space-y-4">
@@ -357,6 +425,7 @@ export default function ClaimDealModal({ isOpen, onClose, deal, claimConfig }: C
                             {view === 'success' && (
                                 <SuccessView
                                     deal={deal}
+                                    claimCode={claimCode}
                                     onViewMyDeal={handleViewMyDeal}
                                     onViewBusiness={() => { onClose(); router.push(`/${deal.slug}`); }}
                                 />
@@ -366,8 +435,9 @@ export default function ClaimDealModal({ isOpen, onClose, deal, claimConfig }: C
                             {view === 'mydeal' && (
                                 <MyDealView
                                     deal={deal}
-                                    redemptionCode={redemptionCode}
-                                    isRealClaim={!!claimConfig}
+                                    claimCode={claimCode}
+                                    onCopyCode={handleCopyCode}
+                                    copied={copied}
                                     onRedeemClick={() => setShowRedeemModal(true)}
                                 />
                             )}
@@ -388,8 +458,9 @@ export default function ClaimDealModal({ isOpen, onClose, deal, claimConfig }: C
     );
 }
 
-function SuccessView({ deal, onViewMyDeal, onViewBusiness }: {
+function SuccessView({ deal, claimCode, onViewMyDeal, onViewBusiness }: {
     deal: ClaimDealModalProps['deal'];
+    claimCode: string;
     onViewMyDeal: () => void;
     onViewBusiness: () => void;
 }) {
@@ -423,6 +494,14 @@ function SuccessView({ deal, onViewMyDeal, onViewBusiness }: {
             </div>
             <h2 className="text-[22px] font-bold text-gray-900 mb-2">Deal Claimed!</h2>
             <p className="text-[14px] text-gray-500 mb-6">Your {deal.title} has been successfully secured.</p>
+
+            {/* Claim Code */}
+            {claimCode && (
+                <div className="w-full bg-gray-50 rounded-xl border border-gray-200 p-4 mb-5">
+                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Your Claim Code</p>
+                    <p className="text-[20px] font-mono tracking-widest text-[#0055c4] font-bold">{claimCode}</p>
+                </div>
+            )}
 
             {/* Deal Summary */}
             <div className="w-full bg-white rounded-xl border border-gray-200 p-4 mb-5 text-left">
@@ -466,10 +545,11 @@ function SuccessView({ deal, onViewMyDeal, onViewBusiness }: {
     );
 }
 
-function MyDealView({ deal, redemptionCode, isRealClaim, onRedeemClick }: {
+function MyDealView({ deal, claimCode, onCopyCode, copied, onRedeemClick }: {
     deal: ClaimDealModalProps['deal'];
-    redemptionCode: string;
-    isRealClaim: boolean;
+    claimCode: string;
+    onCopyCode: () => void;
+    copied: boolean;
     onRedeemClick: () => void;
 }) {
     return (
@@ -489,23 +569,22 @@ function MyDealView({ deal, redemptionCode, isRealClaim, onRedeemClick }: {
                         <Store size={14} /> {deal.businessName}
                     </p>
 
-                    {/* Redemption Code */}
-                    {isRealClaim ? (
-                        <div className="mt-3 pt-3 border-t border-gray-100">
-                            <div className="bg-[#d9e2ff] rounded-lg p-3">
-                                <p className="text-[12px] text-[#00429b] leading-relaxed">
-                                    Your claim has been received by <strong>{deal.businessName}</strong>. Show this screen when you visit the business to redeem your deal.
-                                </p>
-                            </div>
+                    {/* Claim Code */}
+                    <div className="mt-3 pt-3 border-t border-gray-100">
+                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Your Claim Code</p>
+                        <div className="bg-gray-50 px-4 py-2.5 rounded-lg text-center">
+                            <span className="text-[20px] font-mono tracking-widest text-[#0055c4] font-bold">{claimCode || 'CLAIMED'}</span>
                         </div>
-                    ) : (
-                        <div className="mt-3 pt-3 border-t border-gray-100">
-                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Redemption Code</p>
-                            <div className="bg-gray-50 px-4 py-2.5 rounded-lg text-center">
-                                <span className="text-[20px] font-mono tracking-widest text-gray-900 font-bold">{redemptionCode}</span>
-                            </div>
-                        </div>
-                    )}
+                        {claimCode && (
+                            <button
+                                onClick={onCopyCode}
+                                className="mt-2 w-full h-10 bg-gray-50 border border-gray-200 rounded-lg flex items-center justify-center gap-2 text-[13px] font-medium text-gray-600 hover:bg-gray-100 transition-colors"
+                            >
+                                {copied ? <Check size={14} className="text-green-500" /> : <Copy size={14} />}
+                                {copied ? 'Copied!' : 'Copy Code'}
+                            </button>
+                        )}
+                    </div>
                 </div>
             </div>
 
@@ -516,7 +595,7 @@ function MyDealView({ deal, redemptionCode, isRealClaim, onRedeemClick }: {
                     <h4 className="text-[14px] font-semibold text-[#001945]">HOW TO USE</h4>
                 </div>
                 <p className="text-[13px] text-[#00429b]">
-                    Show this claim at the business when redeeming your Deal.
+                    Show this claim code at the business when redeeming your Deal.
                 </p>
             </div>
 

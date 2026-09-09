@@ -1,8 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class AddAffiliateCommissionConfig1786896000000
-  implements MigrationInterface
-{
+export class AddAffiliateCommissionConfig1786896000000 implements MigrationInterface {
   name = 'AddAffiliateCommissionConfig1786896000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {

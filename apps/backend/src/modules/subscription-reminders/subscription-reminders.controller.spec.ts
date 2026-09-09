@@ -17,7 +17,9 @@ describe('SubscriptionRemindersController', () => {
 
   beforeEach(async () => {
     service = {
-      getPlaceholders: jest.fn().mockResolvedValue([{ placeholder: '{{clusterName}}' }]),
+      getPlaceholders: jest
+        .fn()
+        .mockResolvedValue([{ placeholder: '{{clusterName}}' }]),
       getTemplates: jest.fn().mockResolvedValue([mockTemplate]),
       getTemplateById: jest.fn().mockResolvedValue(mockTemplate),
       createTemplate: jest.fn().mockResolvedValue(mockTemplate),

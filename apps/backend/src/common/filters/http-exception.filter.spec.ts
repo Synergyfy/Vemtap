@@ -68,15 +68,11 @@ describe('AllExceptionsFilter', () => {
   });
 
   it('should translate PostgreSQL 23505 (unique violation) to 409 Conflict', () => {
-    const queryError = new QueryFailedError(
-      'INSERT INTO table',
-      [],
-      {
-        name: 'error',
-        code: '23505',
-        detail: 'Key (email)=(test@example.com) already exists.',
-      } as any,
-    );
+    const queryError = new QueryFailedError('INSERT INTO table', [], {
+      name: 'error',
+      code: '23505',
+      detail: 'Key (email)=(test@example.com) already exists.',
+    } as any);
 
     filter.catch(queryError, mockHost);
 
@@ -91,15 +87,12 @@ describe('AllExceptionsFilter', () => {
   });
 
   it('should translate PostgreSQL 23503 (foreign key violation) to 400 Bad Request', () => {
-    const queryError = new QueryFailedError(
-      'INSERT INTO table',
-      [],
-      {
-        name: 'error',
-        code: '23503',
-        detail: 'Key (business_id)=(non-existent) is not present in table "businesses".',
-      } as any,
-    );
+    const queryError = new QueryFailedError('INSERT INTO table', [], {
+      name: 'error',
+      code: '23503',
+      detail:
+        'Key (business_id)=(non-existent) is not present in table "businesses".',
+    } as any);
 
     filter.catch(queryError, mockHost);
 
@@ -108,7 +101,8 @@ describe('AllExceptionsFilter', () => {
       expect.objectContaining({
         success: false,
         statusCode: HttpStatus.BAD_REQUEST,
-        message: 'Key (business_id)=(non-existent) is not present in table "businesses".',
+        message:
+          'Key (business_id)=(non-existent) is not present in table "businesses".',
       }),
     );
   });

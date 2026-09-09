@@ -35,7 +35,8 @@ export class AdminBroadcastDto {
   @ApiProperty({
     enum: TargetAudience,
     example: TargetAudience.ALL,
-    description: 'Target audience for the broadcast (ALL, BUSINESSES, CUSTOMERS, AGENTS)',
+    description:
+      'Target audience for the broadcast (ALL, BUSINESSES, CUSTOMERS, AGENTS)',
   })
   @IsEnum(TargetAudience)
   @IsNotEmpty()
@@ -43,7 +44,8 @@ export class AdminBroadcastDto {
 
   @ApiPropertyOptional({
     example: 'announcement',
-    description: 'Type of notification: announcement, info, warning, success, error',
+    description:
+      'Type of notification: announcement, info, warning, success, error',
     default: 'announcement',
   })
   @IsString()
@@ -60,7 +62,8 @@ export class AdminBroadcastDto {
 
   @ApiPropertyOptional({
     example: true,
-    description: 'Whether to send Web Push notification to users with registered push tokens',
+    description:
+      'Whether to send Web Push notification to users with registered push tokens',
     default: true,
   })
   @IsBoolean()

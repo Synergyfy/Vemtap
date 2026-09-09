@@ -333,7 +333,7 @@ export const useResetDashboard = () => {
     return useMutation({
         mutationFn: async (branchId?: string | void) => {
             const qs = typeof branchId === 'string' ? `?branchId=${branchId}` : '';
-            return await api.post(`/visitors/reset-dashboard${qs}`, {});
+            return await api.delete(`/visitors/reset${qs}`);
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['visitors'] });

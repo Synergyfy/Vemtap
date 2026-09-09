@@ -10,6 +10,7 @@ import { Branch } from '../branches/entities/branch.entity';
 import { Category } from '../businesses/entities/category.entity';
 import { CatalogueOffer } from '../catalogue/entities/catalogue-offer.entity';
 import { CatalogueOfferClaim } from '../catalogue/entities/catalogue-offer-claim.entity';
+import { CatalogueItem } from '../catalogue/entities/catalogue-item.entity';
 import { CatalogueOfferService } from '../catalogue/catalogue-offer.service';
 
 describe('PublicDiscoveryService', () => {
@@ -23,6 +24,18 @@ describe('PublicDiscoveryService', () => {
   const categoryRepo = { find: jest.fn() };
   const offerRepo = { createQueryBuilder: jest.fn(), count: jest.fn() };
   const claimRepo = { count: jest.fn() };
+  const itemRepo = {
+    find: jest.fn(),
+    createQueryBuilder: jest.fn().mockReturnValue({
+      select: jest.fn().mockReturnThis(),
+      addSelect: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
+      andWhere: jest.fn().mockReturnThis(),
+      setParameter: jest.fn().mockReturnThis(),
+      groupBy: jest.fn().mockReturnThis(),
+      getRawMany: jest.fn().mockResolvedValue([]),
+    }),
+  };
   const catalogueOfferService = {
     findAllOffersPublicGlobal: jest.fn(),
   };
@@ -49,6 +62,16 @@ describe('PublicDiscoveryService', () => {
   beforeEach(async () => {
     jest.resetAllMocks();
 
+    itemRepo.createQueryBuilder.mockReturnValue({
+      select: jest.fn().mockReturnThis(),
+      addSelect: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
+      andWhere: jest.fn().mockReturnThis(),
+      setParameter: jest.fn().mockReturnThis(),
+      groupBy: jest.fn().mockReturnThis(),
+      getRawMany: jest.fn().mockResolvedValue([]),
+    });
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         PublicDiscoveryService,
@@ -60,6 +83,7 @@ describe('PublicDiscoveryService', () => {
           provide: getRepositoryToken(CatalogueOfferClaim),
           useValue: claimRepo,
         },
+        { provide: getRepositoryToken(CatalogueItem), useValue: itemRepo },
         { provide: CatalogueOfferService, useValue: catalogueOfferService },
         { provide: CACHE_MANAGER, useValue: cacheManager },
       ],
