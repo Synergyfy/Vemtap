@@ -6,22 +6,35 @@ import { join } from 'path';
 dotenv.config({ path: join(__dirname, '../.env.test'), override: true });
 
 const dbName = process.env.DB_NAME;
+const dbHost = process.env.DB_HOST;
+const dbUser = process.env.DB_USERNAME;
+const dbPass = process.env.DB_PASSWORD;
 
-if (!dbName) {
-  console.error('DB_NAME is not defined.');
+const missing = [
+  !dbName && 'DB_NAME',
+  !dbHost && 'DB_HOST',
+  !dbUser && 'DB_USERNAME',
+  !dbPass && 'DB_PASSWORD',
+].filter(Boolean);
+
+if (missing.length) {
+  console.error(
+    `Missing required environment variables: ${missing.join(', ')}. ` +
+      'Ensure .env.test exists or these are set in the CI environment.',
+  );
   process.exit(1);
 }
 
 // Warning if name doesn't imply test, but allow it if user explicitly configured it
-if (!dbName.includes('test')) {
+if (!dbName!.includes('test')) {
   console.warn(`WARNING: DB_NAME "${dbName}" does not contain "test". Ensure this is not a production database!`);
 }
 
 const baseConfig = {
-  host: process.env.DB_HOST,
+  host: dbHost,
   port: parseInt(process.env.DB_PORT || '5432', 10),
-  user: process.env.DB_USERNAME,
-  password: process.env.DB_PASSWORD,
+  user: dbUser,
+  password: dbPass,
   ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false,
 };
 
