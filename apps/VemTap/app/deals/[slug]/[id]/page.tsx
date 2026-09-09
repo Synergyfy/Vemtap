@@ -5,10 +5,14 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Loader2, AlertCircle } from 'lucide-react';
 import ShareDealModal from '@/components/promotions/ShareDealModal';
+import DealEngagementBar from '@/components/deals/DealEngagementBar';
+import ReviewSection from '@/components/deals/ReviewSection';
+import ClaimDealModal from '@/components/deals/ClaimDealModal';
 import { usePublicOfferDetails } from '@/services/deals/hooks';
-import { useToggleSave } from '@/services/deals/engagement-hooks';
+import { useEngagement, useToggleSave } from '@/services/deals/engagement-hooks';
 import { formatDealPrice } from '@/lib/promotions';
 import { useAuthStore } from '@/store/useAuthStore';
+import { fetchContextByUsername } from '@/lib/api/devices';
 
 function formatDateLong(dateStr: string): string {
     if (!dateStr) return 'Ongoing';
@@ -20,15 +24,20 @@ function formatDateLong(dateStr: string): string {
 export default function DealDetailPage() {
     const params = useParams();
     const router = useRouter();
+    const slug = params.slug as string;
     const id = params.id as string;
 
     const { data: offer, isLoading } = usePublicOfferDetails(id);
     const { isAuthenticated } = useAuthStore();
     const toggleSave = useToggleSave(id);
+    const { data: engagement } = useEngagement(id);
 
     const [showShareModal, setShowShareModal] = useState(false);
-    const [isSaved, setIsSaved] = useState(false);
+    const [showClaimModal, setShowClaimModal] = useState(false);
+    const [branchId, setBranchId] = useState<string | null>(null);
     const [topBarBg, setTopBarBg] = useState(false);
+
+    const isSaved = engagement?.isSaved ?? false;
 
     const normalizedOffer = useMemo(() => {
         if (!offer) return null;
@@ -42,6 +51,7 @@ export default function DealDetailPage() {
             calculatedPrice: offer.calculatedPrice,
             pricingType: offer.pricingType,
             discountValue: offer.discountValue,
+            discountPercent: offer.discountPercent,
             discountLabel: offer.discountPercent
               ? `${offer.discountPercent}% OFF`
               : offer.discountValue && offer.pricingType === 'percentage_discount'
@@ -95,17 +105,22 @@ export default function DealDetailPage() {
         return () => window.removeEventListener('scroll', handleScroll);
     }, [handleScroll]);
 
+    // Fetch branchId for claim flow
+    useEffect(() => {
+        if (!slug) return;
+        fetchContextByUsername(slug)
+            .then((ctx) => setBranchId(ctx.branch?.id || ctx.business?.id))
+            .catch(() => {});
+    }, [slug]);
+
     const handleSave = async () => {
         if (!isAuthenticated) {
             router.push('/login');
             return;
         }
-        setIsSaved(!isSaved);
         try {
             await toggleSave.mutateAsync();
-        } catch {
-            setIsSaved(isSaved);
-        }
+        } catch {}
     };
 
     if (isLoading) {
@@ -265,8 +280,17 @@ export default function DealDetailPage() {
                     )}
                 </div>
 
+                {/* Engagement Bar */}
+                <DealEngagementBar
+                    offerId={id}
+                    offerTitle={normalizedOffer.name}
+                    offerDescription={normalizedOffer.description || ''}
+                    dealUrl={dealUrl}
+                    businessName={business.name}
+                />
+
                 {/* Details Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6 mt-6">
                     {/* Description */}
                     <section>
                         <h2 className="text-[20px] font-semibold text-[#191c1e] mb-3 flex items-center gap-2">
@@ -338,13 +362,24 @@ export default function DealDetailPage() {
                         </details>
                     </section>
                 )}
+
+                {/* Reviews Section */}
+                <section className="border-t border-[#c2c6d7]/40 pt-4 mt-4">
+                    <ReviewSection offerId={id} />
+                </section>
             </main>
 
             {/* ─── Sticky Bottom Action Bar ─── */}
             <div className="fixed bottom-0 left-0 w-full bg-white border-t border-[#c2c6d7]/30 z-50 shadow-[0_-4px_16px_rgba(0,0,0,0.05)] pb-6 pt-3 flex justify-center">
                 <div className="w-full max-w-5xl px-5">
                     <button
-                        onClick={() => router.push(`/deals/${business?.slug || ''}/${normalizedOffer.id}/preview`)}
+                        onClick={() => {
+                            if (!isAuthenticated) {
+                                setShowClaimModal(true);
+                                return;
+                            }
+                            setShowClaimModal(true);
+                        }}
                         disabled={!!normalizedOffer.isExpired}
                         className="w-full h-12 bg-[#0055c4] text-white text-[14px] font-semibold rounded-xl shadow-sm flex items-center justify-center gap-2 hover:bg-[#0055c4]/90 transition-colors active:scale-95 duration-100 disabled:bg-[#c2c6d7] disabled:text-[#727786] disabled:cursor-not-allowed"
                     >
@@ -361,6 +396,26 @@ export default function DealDetailPage() {
                 title={normalizedOffer.name}
                 description={normalizedOffer.longDescription || normalizedOffer.description}
                 url={dealUrl}
+            />
+
+            {/* Claim Deal Modal */}
+            <ClaimDealModal
+                isOpen={showClaimModal}
+                onClose={() => setShowClaimModal(false)}
+                deal={{
+                    id: normalizedOffer.id,
+                    title: normalizedOffer.name,
+                    businessName: business.name,
+                    image: photos[0] || normalizedOffer.mainImage || '',
+                    dealPrice: normalizedOffer.calculatedPrice,
+                    originalPrice,
+                    discountLabel: normalizedOffer.discountLabel || '',
+                    slug: business.slug || slug,
+                }}
+                claimConfig={branchId ? {
+                    branchId,
+                    successPath: `/deals/${business.slug || slug}/${normalizedOffer.id}`,
+                } : undefined}
             />
         </div>
     );

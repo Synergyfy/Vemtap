@@ -31,7 +31,7 @@ function YouMayLikeCard({ item }: { item: RecommendationItem }) {
   const [liked, setLiked] = useState(false);
   const [saved, setSaved] = useState(false);
   const isDeal = item.type === 'deal';
-  const href = isDeal ? `/promotions/${item.id}` : `/b/${item.businessSlug}`;
+  const href = isDeal ? `/deals/${item.businessSlug || ''}/${item.id}` : `/b/${item.businessSlug}`;
 
   return (
     <motion.div

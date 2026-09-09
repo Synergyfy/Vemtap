@@ -4,11 +4,12 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { X, Mail, Lock, Eye, EyeOff, Zap, ChevronLeft } from 'lucide-react';
-import { api } from '@/lib/api';
+import { X, Mail, User, Phone, Zap } from 'lucide-react';
 import { useAuthStore } from '@/store/useAuthStore';
 import { GoogleAuthButton } from '@/components/auth/GoogleAuthButton';
-import PasswordValidation from '@/components/shared/PasswordValidation';
+import { signupVisitorAndLogin } from '@/lib/visitorAuth';
+import { api } from '@/lib/api';
+import { toast } from 'react-hot-toast';
 
 interface OnboardingAuthModalProps {
   isOpen: boolean;
@@ -21,12 +22,9 @@ const SNOOZE_KEY = 'vemtap_auth_prompt_snoozed';
 export default function OnboardingAuthModal({ isOpen, onClose }: OnboardingAuthModalProps) {
   const router = useRouter();
   const { login } = useAuthStore();
-  const [view, setView] = useState<'choice' | 'email'>('choice');
+  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [phone, setPhone] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -59,37 +57,30 @@ export default function OnboardingAuthModal({ isOpen, onClose }: OnboardingAuthM
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
 
-  const handleEmailSignup = async (e: React.FormEvent) => {
+  const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+
+    if (!name.trim()) {
+      setError('Please enter your name');
+      return;
+    }
     if (!email.trim()) {
       setError('Please enter your email address');
-      return;
-    }
-    if (password.length < 8) {
-      setError('Password must be at least 8 characters');
-      return;
-    }
-    if (password !== confirmPassword) {
-      setError('Passwords do not match');
       return;
     }
 
     setIsSubmitting(true);
     try {
-      const nameHint = email.trim().split('@')[0] || 'Member';
-      const response = await api.post('/auth/register', {
-        name: nameHint,
+      await signupVisitorAndLogin({
+        name: name.trim(),
         email: email.trim(),
-        phone: undefined,
-        password,
-        role: 'Customer',
+        phone: phone.trim() || undefined,
       });
-      if (response?.user && response?.access_token) {
-        await login(response.user, response.access_token);
+
+      if (useAuthStore.getState().isAuthenticated) {
+        toast.success('Account created successfully!');
         handleDone();
-      } else {
-        setError('Registration succeeded but login failed. Please sign in.');
       }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Registration failed. Please try again.';
@@ -99,7 +90,15 @@ export default function OnboardingAuthModal({ isOpen, onClose }: OnboardingAuthM
     }
   };
 
-  const handleGoogleSuccess = () => {
+  const handleGoogleSuccess = async (res: any) => {
+    // After Google auth, send default password to user's email
+    if (res.user?.email) {
+      try {
+        await api.post('/auth/resend-default-password', { identifier: res.user.email });
+      } catch {
+        // Silently fail — user is already logged in
+      }
+    }
     handleDone();
   };
 
@@ -141,10 +140,10 @@ export default function OnboardingAuthModal({ isOpen, onClose }: OnboardingAuthM
                 </button>
               </div>
               <h2 className="font-black text-xl mt-4">
-                {view === 'choice' ? 'Create your free account' : 'Sign in with Email'}
+                Join VemTap
               </h2>
               <p className="text-white/80 text-sm mt-1 leading-relaxed">
-                Sign up to save deals, claim offers, earn rewards, and get personalized offers near you.
+                Create an account to save deals, claim offers, earn rewards, and get personalized offers near you.
               </p>
             </div>
 
@@ -155,113 +154,74 @@ export default function OnboardingAuthModal({ isOpen, onClose }: OnboardingAuthM
                 </div>
               )}
 
-              {view === 'choice' && (
-                <div className="space-y-4">
-                  <GoogleAuthButton role="Customer" onSuccess={handleGoogleSuccess} />
+              {/* Google Auth */}
+              <div className="mb-4">
+                <GoogleAuthButton role="Customer" onSuccess={handleGoogleSuccess} />
+              </div>
 
-                  <div className="relative flex items-center justify-center">
-                    <div className="absolute w-full h-px bg-gray-200" />
-                    <span className="relative px-3 bg-white text-[10px] font-bold uppercase tracking-wider text-gray-400">
-                      or
-                    </span>
-                  </div>
+              {/* Divider */}
+              <div className="relative flex items-center justify-center mb-4">
+                <div className="absolute w-full h-px bg-gray-200" />
+                <span className="relative px-3 bg-white text-[10px] font-bold uppercase tracking-wider text-gray-400">
+                  or
+                </span>
+              </div>
 
-                  <button
-                    onClick={() => setView('email')}
-                    className="w-full h-12 bg-gray-900 text-white font-bold text-sm rounded-xl flex items-center justify-center gap-2 active:scale-95 transition-all"
-                  >
-                    <Mail size={16} />
-                    Sign in with Email
-                  </button>
-
-                  <p className="text-center text-[11px] text-gray-400 leading-relaxed">
-                    By signing up, you agree to our{' '}
-                    <Link href="/terms" className="text-[#0055c4] hover:underline">Terms of Service</Link>
-                    {' '}and{' '}
-                    <Link href="/privacy" className="text-[#0055c4] hover:underline">Privacy Policy</Link>
-                  </p>
+              {/* Signup Form */}
+              <form onSubmit={handleFormSubmit} className="space-y-3">
+                <div className="relative">
+                  <User className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+                  <input
+                    type="text"
+                    value={name}
+                    onChange={(e) => { setName(e.target.value); setError(null); }}
+                    placeholder="Full Name"
+                    autoComplete="name"
+                    className="w-full pl-10 pr-4 h-12 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#0055c4]/20 focus:border-[#0055c4]/40"
+                  />
                 </div>
-              )}
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => { setEmail(e.target.value); setError(null); }}
+                    placeholder="Email Address"
+                    autoComplete="email"
+                    className="w-full pl-10 pr-4 h-12 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#0055c4]/20 focus:border-[#0055c4]/40"
+                  />
+                </div>
+                <div className="relative">
+                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+                  <input
+                    type="tel"
+                    value={phone}
+                    onChange={(e) => { setPhone(e.target.value); setError(null); }}
+                    placeholder="Phone Number (optional)"
+                    autoComplete="tel"
+                    className="w-full pl-10 pr-4 h-12 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#0055c4]/20 focus:border-[#0055c4]/40"
+                  />
+                </div>
 
-              {view === 'email' && (
-                <form onSubmit={handleEmailSignup} className="space-y-3">
-                  <p className="text-xs text-gray-500 leading-relaxed">
-                    Enter your email and create a password to use when signing in later.
-                  </p>
-                  <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
-                    <input
-                      type="email"
-                      value={email}
-                      onChange={(e) => { setEmail(e.target.value); setError(null); }}
-                      placeholder="Email address"
-                      autoComplete="email"
-                      className="w-full pl-10 pr-4 h-12 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#0055c4]/20 focus:border-[#0055c4]/40"
-                    />
-                  </div>
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
-                    <input
-                      type={showPassword ? 'text' : 'password'}
-                      value={password}
-                      onChange={(e) => { setPassword(e.target.value); setError(null); }}
-                      placeholder="Password"
-                      autoComplete="new-password"
-                      className="w-full pl-10 pr-10 h-12 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#0055c4]/20 focus:border-[#0055c4]/40"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                      aria-label={showPassword ? 'Hide password' : 'Show password'}
-                    >
-                      {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                    </button>
-                  </div>
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
-                    <input
-                      type={showConfirmPassword ? 'text' : 'password'}
-                      value={confirmPassword}
-                      onChange={(e) => { setConfirmPassword(e.target.value); setError(null); }}
-                      placeholder="Confirm password"
-                      autoComplete="new-password"
-                      className="w-full pl-10 pr-10 h-12 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#0055c4]/20 focus:border-[#0055c4]/40"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                      aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
-                    >
-                      {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                    </button>
-                  </div>
+                <button
+                  type="submit"
+                  disabled={isSubmitting || !name.trim() || !email.trim()}
+                  className="w-full h-12 bg-[#0055c4] text-white font-bold text-sm rounded-xl shadow-lg shadow-blue-500/20 active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                >
+                  {isSubmitting ? (
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  ) : (
+                    'Create Account'
+                  )}
+                </button>
 
-                  <PasswordValidation password={password} />
-
-                  <button
-                    type="submit"
-                    disabled={isSubmitting}
-                    className="w-full h-12 bg-[#0055c4] text-white font-bold text-sm rounded-xl shadow-lg shadow-blue-500/20 active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
-                  >
-                    {isSubmitting ? (
-                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    ) : (
-                      'Create Account'
-                    )}
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setView('choice')}
-                    className="w-full flex items-center justify-center gap-1 text-[12px] font-semibold text-gray-400 hover:text-gray-600"
-                  >
-                    <ChevronLeft size={14} />
-                    Back to sign in options
-                  </button>
-                </form>
-              )}
+                <p className="text-center text-[11px] text-gray-400 leading-relaxed">
+                  By signing up, you agree to our{' '}
+                  <Link href="/terms" className="text-[#0055c4] hover:underline">Terms of Service</Link>
+                  {' '}and{' '}
+                  <Link href="/privacy" className="text-[#0055c4] hover:underline">Privacy Policy</Link>
+                </p>
+              </form>
 
               <div className="mt-4 pt-4 border-t border-gray-100 flex items-center justify-between">
                 <button

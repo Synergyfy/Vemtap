@@ -504,7 +504,7 @@ function PromotionsTab({ branchId, onCreatePromo, onEditPromo, onImportProduct }
                                         asChild
                                         className="w-full rounded-xl font-bold text-[10px] md:text-xs h-8 md:h-9 transition-colors"
                                     >
-                                        <Link href={`/promotions/${promo.id}`} className="flex items-center justify-center gap-2">
+                                        <Link href={`/deals/${(promo as any).business?.slug || (promo as any).branch?.slug || ''}/${promo.id}`} className="flex items-center justify-center gap-2">
                                             <ArrowRight size={13} className="text-[#066CF4]" />
                                             View Deal on Site
                                         </Link>

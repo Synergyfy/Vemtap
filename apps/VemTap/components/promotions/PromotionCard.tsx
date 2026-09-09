@@ -49,7 +49,7 @@ export default function PromotionCard({ promotion, index, onOpenDeal }: Promotio
             className="h-[340px]"
         >
             <Link
-                href={`/promotions/${promotion.id}`}
+                href={`/deals/${promotion.businessSlug || ''}/${promotion.id}`}
                 className="block h-full group"
                 onClick={() => onOpenDeal?.(promotion.id)}
             >
