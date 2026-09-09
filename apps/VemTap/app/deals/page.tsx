@@ -168,14 +168,16 @@ function DealsPageInner() {
     return () => clearInterval(timer);
   }, [bannerSlides.length]);
 
-  // Always prompt for location on deals page — no deals shown without it
+  // Only prompt for location on deals page when no location is stored
   useEffect(() => {
+    // If location is already set (from localStorage), never show the modal
+    if (hasLocation) return;
     const t = setTimeout(() => {
       setLocationChecked(true);
-      // Always open location modal on deals page
       setIsLocationModalOpen(true);
     }, 500);
     return () => clearTimeout(t);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const activeLocation = userLocationLabel || '';
