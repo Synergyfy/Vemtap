@@ -20,6 +20,7 @@ import { useAuthStore } from '@/store/useAuthStore';
 import { BusinessCardSkeleton } from '@/components/home/Skeletons';
 import { Skeleton } from '@/components/ui/skeleton';
 import { offerToHomeDeal, formatNaira } from '@/components/home/mappers';
+import { haversineDistance, formatDistance } from '@/lib/distance';
 import type { PublicBusiness as DealPublicBusiness } from '@/services/deals/types';
 
 const C = {
@@ -76,6 +77,7 @@ const FALLBACK_BUSINESSES = {
 type Deal = {
   id: string; title: string; subtitle: string; badge: string; time: string;
   price: string | null; image: string; href: string; description: string; businessName: string;
+  lat?: number; lng?: number;
 };
 
 function mapDeals(raw: ReturnType<typeof offerToHomeDeal>[], fallback: { image?: string }[]): Deal[] {
@@ -90,12 +92,19 @@ function mapDeals(raw: ReturnType<typeof offerToHomeDeal>[], fallback: { image?:
     href: d.href,
     description: d.description || '',
     businessName: d.businessName || d.title,
+    lat: d.lat,
+    lng: d.lng,
   }));
 }
 
 function DealCard({ deal }: { deal: Deal }) {
   const badgeColors: Record<string, string> = { 'DEAL': '#066CF4', 'FREE': '#16a34a', 'NEW': '#16a34a' };
   const badgeKey = deal.badge.includes('OFF') ? 'DEAL' : deal.badge;
+  const { lat: userLat, lng: userLng, hasLocation } = useLocation();
+  const distance =
+    hasLocation && userLat != null && userLng != null && deal.lat != null && deal.lng != null
+      ? formatDistance(haversineDistance(userLat, userLng, deal.lat, deal.lng))
+      : null;
   return (
     <div
       className="w-full min-w-0 rounded-xl overflow-hidden shadow-sm relative group cursor-pointer transition-all hover:shadow-lg hover:-translate-y-0.5 flex flex-col"
@@ -115,6 +124,11 @@ function DealCard({ deal }: { deal: Deal }) {
             {deal.price && <span className="text-[14px] md:text-[16px] font-bold" style={{ color: C.primary }}>{deal.price}</span>}
             <span className="text-[10px] md:text-[11px]" style={{ color: C.outline }}>{deal.time}</span>
           </div>
+          {distance && (
+            <div className="flex items-center gap-1 mt-0.5">
+              <span className="text-[10px] md:text-[11px]" style={{ color: C.outline }}>{distance} away</span>
+            </div>
+          )}
         </div>
       </Link>
       <div className="px-3 pb-2">
@@ -504,6 +518,21 @@ export default function Homepage() {
       </header>
 
       <main className="vemtap-container flex-1 pb-4">
+        {!hasLocation && (
+          <section className="pt-5">
+            <div className="bg-[#f0f4ff] border border-[#d0e1fb] rounded-2xl p-6 text-center">
+              <span className="material-symbols-outlined text-[40px] mb-3" style={{ color: C.primary }}>location_on</span>
+              <h2 className="text-[18px] font-bold mb-2" style={{ color: C.onSurface }}>Set your location to see deals</h2>
+              <p className="text-[13px] mb-4" style={{ color: C.onSurfaceVariant }}>Allow location access or search for your area to discover deals near you.</p>
+              <button
+                onClick={openLocationModal}
+                className="px-6 py-3 rounded-xl bg-[#0055c4] text-white font-bold text-[13px] shadow-lg shadow-[#0055c4]/20 active:scale-95 transition-all"
+              >
+                Set My Location
+              </button>
+            </div>
+          </section>
+        )}
         <section className="pt-5">
           <div className="relative rounded-2xl overflow-hidden group" style={{ minHeight: 200 }}>
             {activeBannerSlides.map((slide, i) => (
@@ -586,7 +615,7 @@ export default function Homepage() {
           </div>
         </section>
 
-        {dealsList.length > 0 && (
+        {hasLocation && dealsList.length > 0 && (
           <section className="pt-6">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-[16px] md:text-[20px] font-bold" style={{ color: C.onSurface }}>Featured Deals</h2>
@@ -596,7 +625,7 @@ export default function Homepage() {
           </section>
         )}
 
-        {trendingDeals.length > 0 && (
+        {hasLocation && trendingDeals.length > 0 && (
           <section className="pt-6">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
@@ -609,7 +638,7 @@ export default function Homepage() {
           </section>
         )}
 
-        {newDeals.length > 0 && (
+        {hasLocation && newDeals.length > 0 && (
           <section className="pt-6">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
@@ -692,7 +721,10 @@ export default function Homepage() {
       {isLocationModalOpen && (
         <LocationPrompt
           isOpen={isLocationModalOpen}
-          onClose={() => setIsLocationModalOpen(false)}
+          onClose={() => {
+            if (hasLocation) setIsLocationModalOpen(false);
+          }}
+          closable={hasLocation}
           isLoading={locationLoading}
           error={locationError}
           onAllowLocation={async () => {

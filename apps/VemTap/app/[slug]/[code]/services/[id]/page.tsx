@@ -2,7 +2,6 @@
 
 import React, { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { motion, AnimatePresence } from 'framer-motion';
 import { 
     ArrowLeft, 
     Star, 
@@ -12,6 +11,7 @@ import {
     Loader2,
     CheckCircle2
 } from 'lucide-react';
+import ImageGallery from '@/components/ui/ImageGallery';
 import { useCustomerFlowStore } from '@/store/useCustomerFlowStore';
 import { useAuthStore } from '@/store/useAuthStore';
 import { 
@@ -35,7 +35,6 @@ export default function ServiceDetailPage() {
     const { data: service, isLoading } = useCatalogueItem(params.id as string, branchId || undefined);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [showAuthForm, setShowAuthForm] = useState(false);
-    const [activeImageIndex, setActiveImageIndex] = useState(0);
     const [pendingBookingDetails, setPendingBookingDetails] = useState<{ date: string, time: string } | null>(null);
 
     const createOrderMutation = useCreateCatalogueOrder();
@@ -129,7 +128,7 @@ export default function ServiceDetailPage() {
     return (
         <div className="min-h-screen bg-surface font-body text-on-surface pb-32">
             {/* Header / Hero Section */}
-            <div className="relative h-[45vh] md:h-[60vh] w-full overflow-hidden">
+            <div className="relative w-full bg-slate-900">
                 <header className="absolute top-0 left-0 w-full px-6 py-6 md:py-8 flex justify-between items-center z-30">
                     <button onClick={() => router.back()} className="size-12 md:size-14 bg-white/20 backdrop-blur-xl rounded-xl md:rounded-2xl flex items-center justify-center text-white border border-white/20 shadow-2xl hover:bg-white hover:text-slate-900 transition-all">
                         <ArrowLeft size={24} className="md:size-28" />
@@ -140,40 +139,22 @@ export default function ServiceDetailPage() {
                     <div className="size-10 md:size-14" />
                 </header>
 
-                <AnimatePresence mode="wait">
-                    <motion.div 
-                        key={activeImageIndex}
-                        initial={{ opacity: 0, scale: 1.1 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        exit={{ opacity: 0, scale: 0.95 }}
-                        transition={{ duration: 0.8 }}
-                        className="absolute inset-0"
-                    >
-                        {images.length > 0 ? (
-                            <img src={images[activeImageIndex]} alt="" className="size-full object-cover shadow-2xl" />
-                        ) : (
-                            <div className="size-full bg-slate-900 flex items-center justify-center text-white/50">
-                                <Calendar size={120} strokeWidth={1} />
-                            </div>
-                        )}
-                        <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/20 to-transparent" />
-                    </motion.div>
-                </AnimatePresence>
-
-                {images.length > 1 && (
-                    <div className="absolute bottom-12 left-1/2 -translate-x-1/2 flex items-center gap-3 z-30">
-                        {images.map((_, idx) => (
-                            <button 
-                                key={idx}
-                                onClick={() => setActiveImageIndex(idx)}
-                                className={cn(
-                                    "transition-all rounded-full shadow-lg",
-                                    activeImageIndex === idx ? "w-10 h-2.5 bg-white" : "w-2.5 h-2.5 bg-white/40 hover:bg-white/60"
-                                )}
-                            />
-                        ))}
-                    </div>
-                )}
+                <div className="max-w-5xl mx-auto px-4 pt-20 pb-6">
+                    {images.length > 0 ? (
+                        <ImageGallery
+                            images={images}
+                            alt={service.name}
+                            layout="product"
+                            className="w-full"
+                            showDots={true}
+                            showArrows={true}
+                        />
+                    ) : (
+                        <div className="aspect-square w-full bg-slate-800 flex items-center justify-center text-white/50 rounded-xl">
+                            <Calendar size={120} strokeWidth={1} />
+                        </div>
+                    )}
+                </div>
             </div>
 
             {/* Content Section */}
@@ -254,29 +235,24 @@ export default function ServiceDetailPage() {
             </main>
 
             {/* Auth Form Modal */}
-            <AnimatePresence>
-                {showAuthForm && (
-                    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
-                        <motion.div 
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
-                            className="absolute inset-0 bg-black/60 backdrop-blur-md"
+            {showAuthForm && (
+                <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+                    <div 
+                        className="absolute inset-0 bg-black/60"
+                    />
+                    <div className="relative w-full max-w-lg">
+                        <StepForm 
+                            storeName={storeName}
+                            logoUrl={logoUrl}
+                            customWelcomeTitle="Almost Booked"
+                            customWelcomeMessage="Please share your contact info to secure your spot for this service."
+                            isSubmitting={isSubmitting}
+                            onBack={() => setShowAuthForm(false)}
+                            onSubmit={onAuthComplete}
                         />
-                        <div className="relative w-full max-w-lg">
-                            <StepForm 
-                                storeName={storeName}
-                                logoUrl={logoUrl}
-                                customWelcomeTitle="Almost Booked"
-                                customWelcomeMessage="Please share your contact info to secure your spot for this service."
-                                isSubmitting={isSubmitting}
-                                onBack={() => setShowAuthForm(false)}
-                                onSubmit={onAuthComplete}
-                            />
-                        </div>
                     </div>
-                )}
-            </AnimatePresence>
+                </div>
+            )}
         </div>
     );
 }

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useEngagement, useSetReaction, useToggleSave } from '@/services/deals/engagement-hooks';
@@ -95,6 +96,9 @@ export default function DealEngagementBar({
   const iconSize = compact ? 16 : 18;
   const btnSize = compact ? 28 : 32;
 
+  // Render auth modal via portal to escape card's overflow-hidden and transform stacking context
+  const authModalRoot = typeof document !== 'undefined' ? document.body : null;
+
   return (
     <>
       <div className="flex items-center gap-1" onClick={stopClick}>
@@ -179,19 +183,23 @@ export default function DealEngagementBar({
         businessName={businessName}
       />
 
-      <ChatConnectModal
-        isOpen={showAuthModal}
-        onClose={() => {
-          pendingActionRef.current = null;
-          setShowAuthModal(false);
-        }}
-        onSuccess={() => {}}
-        storeName={businessName}
-        signInTitle="Welcome Back"
-        signInSubtitle="Sign in to like, save, and review deals."
-        signUpTitle="Join VemTap"
-        signUpSubtitle="Create an account to engage with deals."
-      />
+      {/* Auth modal rendered via portal to escape card overflow/transform stacking context */}
+      {authModalRoot && createPortal(
+        <ChatConnectModal
+          isOpen={showAuthModal}
+          onClose={() => {
+            pendingActionRef.current = null;
+            setShowAuthModal(false);
+          }}
+          onSuccess={() => {}}
+          storeName={businessName}
+          signInTitle="Welcome Back"
+          signInSubtitle="Sign in to like, save, and review deals."
+          signUpTitle="Join VemTap"
+          signUpSubtitle="Create an account to engage with deals."
+        />,
+        authModalRoot
+      )}
     </>
   );
 }

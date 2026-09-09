@@ -1,5 +1,6 @@
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { api } from '@/lib/api';
+import { getDemoDealsPage, getDemoDeal } from '@/lib/mock/demoDeals';
 import type {
     DealOffer,
     PaginatedOffersResponse,
@@ -19,11 +20,26 @@ export const getPublicOffers = async (params: DealsQueryParams = {}): Promise<Pa
         }
     });
     const queryStr = qs.toString();
-    return api.get(`/catalogue/offers/public${queryStr ? `?${queryStr}` : ''}`);
+    try {
+        const result = await api.get(`/catalogue/offers/public${queryStr ? `?${queryStr}` : ''}`);
+        // If the API returns empty data, fall back to demo deals
+        const items = result?.data ?? [];
+        if (items.length > 0) return result;
+        return { ...result, data: getDemoDealsPage(params).data };
+    } catch {
+        // API failed — return demo deals so the UI still works
+        return getDemoDealsPage(params);
+    }
 };
 
 export const getPublicOfferDetails = async (id: string): Promise<DealOffer> => {
-    return api.get(`/catalogue/offers/public/details/${id}`);
+    try {
+        return await api.get(`/catalogue/offers/public/details/${id}`);
+    } catch {
+        const demo = getDemoDeal(id);
+        if (demo) return demo;
+        throw new Error('Deal not found');
+    }
 };
 
 export const checkPhone = async (phone: string): Promise<CheckPhoneResponse> => {

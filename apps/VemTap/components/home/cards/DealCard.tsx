@@ -2,9 +2,11 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { Tag, Clock, Store } from 'lucide-react';
+import { Tag, Clock, Store, MapPin } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatNaira } from '../mappers';
+import { haversineDistance, formatDistance } from '@/lib/distance';
+import { useLocation } from '@/hooks/useLocation';
 import type { HomeDealCard } from '../types';
 
 interface DealCardProps {
@@ -29,6 +31,12 @@ function formatCountdown(endDate?: string): string | null {
 
 export default function DealCard({ deal, className }: DealCardProps) {
   const countdown = formatCountdown(deal.endDate);
+  const { lat: userLat, lng: userLng, hasLocation } = useLocation();
+
+  const distance =
+    hasLocation && userLat != null && userLng != null && deal.lat != null && deal.lng != null
+      ? formatDistance(haversineDistance(userLat, userLng, deal.lat, deal.lng))
+      : null;
 
   return (
     <Link
@@ -82,6 +90,12 @@ export default function DealCard({ deal, className }: DealCardProps) {
             </span>
           )}
         </div>
+        {distance && (
+          <div className="flex items-center gap-1 mt-1.5">
+            <MapPin size={10} className="text-gray-400 shrink-0" />
+            <span className="text-[10px] text-gray-400">{distance} away</span>
+          </div>
+        )}
       </div>
     </Link>
   );
