@@ -93,7 +93,10 @@ export function offerToHomeDeal(offer: DealOffer): HomeDealCard {
     discountAmount,
     discountLabel,
     endDate: offer.endDate ?? undefined,
-    href: `/deals/${slug ? encodeURIComponent(slug) + '/' : ''}${offer.id}`,
+    // Always use two-segment path so Next.js matches app/deals/[slug]/[id]
+    // and not the catch-all app/[slug]/[code] which loads TapJourneyContainer.
+    const dealSlug = slug || offer.businessId || offer.branchId || offer.id;
+    href: `/deals/${encodeURIComponent(dealSlug)}/${offer.id}`,
   };
 }
 
