@@ -1,6 +1,7 @@
 'use client';
 
 import { ReactNode, useState, useCallback, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useAuthStore } from '@/store/useAuthStore';
 import { ChatConnectModal } from '@/components/visitor/ChatConnectModal';
 import { toast } from 'react-hot-toast';
@@ -23,6 +24,7 @@ export default function AuthGuard({
     const { isAuthenticated } = useAuthStore();
     const [showAuthModal, setShowAuthModal] = useState(false);
     const pendingActionRef = useRef(false);
+    const portalRoot = typeof document !== 'undefined' ? document.body : null;
 
     // When isAuthenticated flips true while modal is open, close modal + fire action
     useEffect(() => {
@@ -30,7 +32,6 @@ export default function AuthGuard({
             pendingActionRef.current = false;
             setShowAuthModal(false);
             toast.success('Signed in! ' + actionLabel);
-            // Small delay to let modal close animation start
             setTimeout(() => onAction(), 150);
         }
     }, [isAuthenticated, showAuthModal, onAction, actionLabel]);
@@ -52,23 +53,23 @@ export default function AuthGuard({
             <div onClick={handleClick} className="contents">
                 {children}
             </div>
-            <ChatConnectModal
-                isOpen={showAuthModal}
-                onClose={() => {
-                    pendingActionRef.current = false;
-                    setShowAuthModal(false);
-                }}
-                onSuccess={() => {
-                    // The useEffect above handles closing via isAuthenticated change.
-                    // This is a fallback in case the store updates before the effect runs.
-                }}
-                storeName={businessName}
-                logoUrl={logoUrl}
-                signInTitle="Welcome Back"
-                signInSubtitle="Sign in to like, save, and review deals."
-                signUpTitle="Join VemTap"
-                signUpSubtitle="Create an account to engage with deals."
-            />
+            {portalRoot && createPortal(
+                <ChatConnectModal
+                    isOpen={showAuthModal}
+                    onClose={() => {
+                        pendingActionRef.current = false;
+                        setShowAuthModal(false);
+                    }}
+                    onSuccess={() => {}}
+                    storeName={businessName}
+                    logoUrl={logoUrl}
+                    signInTitle="Welcome Back"
+                    signInSubtitle="Sign in to like, save, and review deals."
+                    signUpTitle="Join VemTap"
+                    signUpSubtitle="Create an account to engage with deals."
+                />,
+                portalRoot
+            )}
         </>
     );
 }

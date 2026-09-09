@@ -2,7 +2,6 @@
 
 import React, { useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { AnimatePresence, motion } from 'framer-motion';
 import {
     ArrowLeft,
     Loader2,
@@ -12,6 +11,7 @@ import {
     Gift,
     ShieldCheck,
 } from 'lucide-react';
+import ImageGallery from '@/components/ui/ImageGallery';
 import { useCustomerFlowStore } from '@/store/useCustomerFlowStore';
 import { useCatalogueOfferDetails, CatalogueItem } from '@/services/catalogue/hooks';
 import { formatPrice } from '@/lib/utils';
@@ -77,28 +77,31 @@ export default function OfferDetailPage() {
                 </div>
             </header>
 
-            {/* ─── Hero Image ─── */}
-            <div className="relative w-full h-[350px] min-h-[280px]">
-                <img
-                    src={offer.mainImage || '/placeholder.png'}
-                    alt={offer.name}
-                    className="w-full h-full object-cover"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-[#191c1e]/80 via-transparent to-transparent" />
+            {/* ─── Hero Image Gallery ─── */}
+            <div className="relative w-full bg-[#f7f9fb]">
+                <div className="max-w-5xl mx-auto px-4 pt-14">
+                    {(() => {
+                        const allImages = [offer.mainImage, ...(offer.galleryImages || [])].filter(Boolean) as string[];
+                        return allImages.length > 0 ? (
+                            <ImageGallery
+                                images={allImages}
+                                alt={offer.name}
+                                layout="product"
+                                className="w-full"
+                                showDots={true}
+                                showArrows={true}
+                            />
+                        ) : (
+                            <div className="aspect-square w-full bg-gray-200 rounded-xl" />
+                        );
+                    })()}
+                </div>
                 {percent > 0 && (
-                    <div className="absolute top-14 left-5 bg-[#ba1a1a] text-white px-3 py-1 rounded-full text-[12px] font-semibold shadow-md flex items-center gap-1">
+                    <div className="absolute top-[70px] left-6 bg-[#ba1a1a] text-white px-3 py-1 rounded-full text-[12px] font-semibold shadow-md flex items-center gap-1 pointer-events-none z-10">
                         <Sparkles size={14} />
                         {percent}% OFF
                     </div>
                 )}
-                <div className="absolute bottom-5 left-5 right-5">
-                    <h1 className="text-[26px] leading-[34px] font-bold text-white tracking-tight">
-                        {offer.name}
-                    </h1>
-                    {offer.description && (
-                        <p className="text-[14px] text-white/80 mt-1 line-clamp-2">{offer.description}</p>
-                    )}
-                </div>
             </div>
 
             {/* ─── Main Content ─── */}
@@ -222,59 +225,51 @@ export default function OfferDetailPage() {
             </div>
 
             {/* ─── Item Preview Modal ─── */}
-            <AnimatePresence>
-                {previewItem && (
-                    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
-                        <motion.div
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
+            {previewItem && (
+                <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+                    <div
+                        onClick={() => setPreviewItem(null)}
+                        className="absolute inset-0 bg-black/50"
+                    />
+                    <div
+                        className="relative w-full max-w-lg bg-white rounded-[2rem] overflow-hidden shadow-2xl flex flex-col max-h-[85vh]"
+                    >
+                        <button
                             onClick={() => setPreviewItem(null)}
-                            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-                        />
-                        <motion.div
-                            initial={{ opacity: 0, scale: 0.9, y: 20 }}
-                            animate={{ opacity: 1, scale: 1, y: 0 }}
-                            exit={{ opacity: 0, scale: 0.9, y: 20 }}
-                            className="relative w-full max-w-lg bg-white rounded-[2rem] overflow-hidden shadow-2xl flex flex-col max-h-[85vh]"
+                            className="absolute top-4 right-4 z-10 size-9 bg-white shadow-md rounded-full flex items-center justify-center hover:bg-[#f2f4f6] transition-colors"
                         >
-                            <button
-                                onClick={() => setPreviewItem(null)}
-                                className="absolute top-4 right-4 z-10 size-9 bg-white shadow-md rounded-full flex items-center justify-center hover:bg-[#f2f4f6] transition-colors"
-                            >
-                                <X size={18} className="text-[#191c1e]" />
-                            </button>
-                            <div className="overflow-y-auto">
-                                <div className="relative aspect-video w-full">
-                                    <img src={previewItem.mainImage || '/placeholder.png'} alt={previewItem.name} className="w-full h-full object-cover" />
-                                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
-                                    <div className="absolute bottom-5 left-5 right-5">
-                                        <span className="px-2.5 py-1 bg-[#0055c4] text-white text-[10px] font-bold uppercase tracking-widest rounded-full mb-2 inline-block">
-                                            {previewItem.category?.name || (previewItem.itemType === 'service' ? 'Service' : 'Product')}
-                                        </span>
-                                        <h2 className="text-[22px] font-bold text-white tracking-tight leading-tight">{previewItem.name}</h2>
-                                    </div>
-                                </div>
-                                <div className="p-6 space-y-5">
-                                    <div className="space-y-2">
-                                        <h4 className="text-[11px] font-bold uppercase tracking-widest text-[#727786]">Description</h4>
-                                        <p className="text-[14px] leading-relaxed text-[#424655] whitespace-pre-wrap">
-                                            {previewItem.description || previewItem.shortDescription || 'No description available for this item.'}
-                                        </p>
-                                        <p className="text-[18px] font-bold text-[#191c1e] pt-1">{formatPrice(Number(previewItem.price))}</p>
-                                    </div>
-                                    <button
-                                        onClick={() => setPreviewItem(null)}
-                                        className="w-full py-3.5 bg-[#0055c4] text-white font-semibold rounded-xl hover:bg-[#0055c4]/90 transition-all uppercase tracking-widest text-[12px]"
-                                    >
-                                        Back to Offer
-                                    </button>
+                            <X size={18} className="text-[#191c1e]" />
+                        </button>
+                        <div className="overflow-y-auto">
+                            <div className="relative aspect-video w-full">
+                                <img src={previewItem.mainImage || '/placeholder.png'} alt={previewItem.name} className="w-full h-full object-cover" />
+                                <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
+                                <div className="absolute bottom-5 left-5 right-5">
+                                    <span className="px-2.5 py-1 bg-[#0055c4] text-white text-[10px] font-bold uppercase tracking-widest rounded-full mb-2 inline-block">
+                                        {previewItem.category?.name || (previewItem.itemType === 'service' ? 'Service' : 'Product')}
+                                    </span>
+                                    <h2 className="text-[22px] font-bold text-white tracking-tight leading-tight">{previewItem.name}</h2>
                                 </div>
                             </div>
-                        </motion.div>
+                            <div className="p-6 space-y-5">
+                                <div className="space-y-2">
+                                    <h4 className="text-[11px] font-bold uppercase tracking-widest text-[#727786]">Description</h4>
+                                    <p className="text-[14px] leading-relaxed text-[#424655] whitespace-pre-wrap">
+                                        {previewItem.description || previewItem.shortDescription || 'No description available for this item.'}
+                                    </p>
+                                    <p className="text-[18px] font-bold text-[#191c1e] pt-1">{formatPrice(Number(previewItem.price))}</p>
+                                </div>
+                                <button
+                                    onClick={() => setPreviewItem(null)}
+                                    className="w-full py-3.5 bg-[#0055c4] text-white font-semibold rounded-xl hover:bg-[#0055c4]/90 transition-all uppercase tracking-widest text-[12px]"
+                                >
+                                    Back to Offer
+                                </button>
+                            </div>
+                        </div>
                     </div>
-                )}
-            </AnimatePresence>
+                </div>
+            )}
 
             {/* ─── Claim Deal Modal ─── */}
             <ClaimDealModal

@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { motion } from 'framer-motion';
+import { createPortal } from 'react-dom';
 import { X, MessageCircle, Phone, MapPin, ExternalLink } from 'lucide-react';
 
 interface RedeemDealModalProps {
@@ -16,6 +16,7 @@ export default function RedeemDealModal({ isOpen, onClose, deal, onChat }: Redee
     const businessPhone = deal?.businessPhone || '+2348012345678';
     const businessName = deal?.businessName || 'Business';
     const dealTitle = deal?.title || 'this deal';
+    const portalRoot = typeof document !== 'undefined' ? document.body : null;
 
     const prefilledMessage = encodeURIComponent(
         `Hi ${businessName}! I just claimed your deal "${dealTitle}" on VemTap. I'd like to arrange how to redeem it. `
@@ -33,17 +34,13 @@ export default function RedeemDealModal({ isOpen, onClose, deal, onChat }: Redee
         window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(businessName)}`, '_blank');
     };
 
-    if (!isOpen) return null;
+    if (!isOpen || !portalRoot) return null;
 
-    return (
+    return createPortal(
         <div className="fixed inset-0 z-[200] flex items-end sm:items-center justify-center">
-            <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
+            <div className="absolute inset-0 bg-black/50" onClick={onClose} />
 
-            <motion.div
-                initial={{ y: 100, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                exit={{ y: 100, opacity: 0 }}
-                transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+            <div
                 className="relative w-full sm:max-w-md bg-white sm:rounded-2xl rounded-t-2xl shadow-2xl max-h-[85vh] overflow-hidden"
             >
                 {/* Handle (mobile) */}
@@ -57,7 +54,7 @@ export default function RedeemDealModal({ isOpen, onClose, deal, onChat }: Redee
                         <h2 className="text-[17px] font-bold text-gray-900">Redeem Deal</h2>
                         <p className="text-[13px] text-gray-500 mt-0.5">How would you like to connect?</p>
                     </div>
-                    <button onClick={onClose} className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">
+                    <button onClick={onClose} className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center hover:bg-gray-200 transition-colors">
                         <X size={18} className="text-gray-500" />
                     </button>
                 </div>
@@ -134,7 +131,8 @@ export default function RedeemDealModal({ isOpen, onClose, deal, onChat }: Redee
                         </p>
                     </div>
                 </div>
-            </motion.div>
-        </div>
+            </div>
+        </div>,
+        portalRoot
     );
 }

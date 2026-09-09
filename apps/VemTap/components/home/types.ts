@@ -8,6 +8,8 @@ export interface HomeDealCard {
   businessSlug?: string;
   category: string;
   location: string;
+  lat?: number;
+  lng?: number;
   originalPrice?: number;
   dealPrice?: number;
   discountPercent?: number;

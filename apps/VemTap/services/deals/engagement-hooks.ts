@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import * as engagementApi from './engagement';
-import type { CreateReviewDto, BusinessReviewsQueryParams } from './types';
+import { isDemoDeal, DEMO_ENGAGEMENT } from '@/lib/mock/demoDeals';
+import type { CreateReviewDto, BusinessReviewsQueryParams, DealEngagementResponse } from './types';
 
 // ─── Queries ──────────────────────────────────────────────────────────────────
 
@@ -104,20 +105,53 @@ export const useToggleReviewLike = (offerId: string) => {
 
 export const useSetReaction = (offerId: string) => {
     const qc = useQueryClient();
+    const isDemo = isDemoDeal(offerId);
     return useMutation({
-        mutationFn: (type: 'like' | 'dislike') => engagementApi.setReaction(offerId, type),
-        onSuccess: () => {
-            qc.invalidateQueries({ queryKey: ['deals', 'engagement', offerId] });
+        mutationFn: (type: 'like' | 'dislike') => {
+            if (isDemo) {
+                return engagementApi.setReaction(offerId, type);
+            }
+            return engagementApi.setReaction(offerId, type);
+        },
+        onSuccess: (data) => {
+            if (isDemo) {
+                // Update cache directly for instant UI feedback
+                qc.setQueryData<DealEngagementResponse>(
+                    ['deals', 'engagement', offerId],
+                    (old) => ({
+                        ...(old ?? { likesCount: 0, dislikesCount: 0, reviewsCount: 0, averageRating: null }),
+                        type: data.type,
+                        likesCount: data.likesCount,
+                        dislikesCount: data.dislikesCount,
+                    })
+                );
+            } else {
+                qc.invalidateQueries({ queryKey: ['deals', 'engagement', offerId] });
+            }
         },
     });
 };
 
 export const useToggleSave = (offerId: string) => {
     const qc = useQueryClient();
+    const isDemo = isDemoDeal(offerId);
     return useMutation({
-        mutationFn: () => engagementApi.toggleSave(offerId),
-        onSuccess: () => {
-            qc.invalidateQueries({ queryKey: ['deals', 'engagement', offerId] });
+        mutationFn: () => {
+            return engagementApi.toggleSave(offerId);
+        },
+        onSuccess: (data) => {
+            if (isDemo) {
+                // Update cache directly for instant UI feedback
+                qc.setQueryData<DealEngagementResponse>(
+                    ['deals', 'engagement', offerId],
+                    (old) => ({
+                        ...(old ?? { likesCount: 0, dislikesCount: 0, reviewsCount: 0, averageRating: null }),
+                        isSaved: data.saved,
+                    })
+                );
+            } else {
+                qc.invalidateQueries({ queryKey: ['deals', 'engagement', offerId] });
+            }
         },
     });
 };
