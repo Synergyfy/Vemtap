@@ -69,6 +69,7 @@ jobs:
       # Also DB_HOST is localhost here.
       run: pnpm --filter @vemtap/backend test:e2e
       env:
+        NODE_OPTIONS: --max-old-space-size=6144
         NODE_ENV: test
         DB_HOST: localhost
         DB_PORT: 5432
