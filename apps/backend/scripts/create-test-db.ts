@@ -67,6 +67,20 @@ async function createDb() {
   } finally {
     await maintenanceClient.end().catch(() => {});
   }
+
+  // Enable PostGIS extension on the test database (optional — skip if unavailable)
+  const testClient = new Client({ ...baseConfig, database: dbName });
+  try {
+    await testClient.connect();
+    await testClient.query('CREATE EXTENSION IF NOT EXISTS "postgis"');
+    console.log('PostGIS extension enabled.');
+  } catch {
+    console.warn(
+      'PostGIS extension not available — spatial queries will be skipped in tests.',
+    );
+  } finally {
+    await testClient.end().catch(() => {});
+  }
 }
 
 createDb();
