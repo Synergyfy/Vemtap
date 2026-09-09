@@ -1,9 +1,9 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { createPortal } from 'react-dom';
+import { X, CheckCircle, Store, Clock, Info, Mail, User as UserIcon, Pencil } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { X, CheckCircle, Store, Clock, Info } from 'lucide-react';
 import { useAuthStore } from '@/store/useAuthStore';
 import { formatDealPrice } from '@/lib/promotions';
 import { useCreateCatalogueOrder } from '@/services/catalogue/hooks';
@@ -31,17 +31,18 @@ interface ClaimDealModalProps {
         originalPrice: number;
         discountLabel: string;
         slug: string;
+        businessPhone?: string;
     };
     claimConfig?: ClaimConfig;
 }
 
-type ModalView = 'form' | 'confirm' | 'success' | 'mydeal';
+type ModalView = 'choose' | 'form' | 'confirm' | 'success' | 'mydeal';
 
 export default function ClaimDealModal({ isOpen, onClose, deal, claimConfig }: ClaimDealModalProps) {
     const router = useRouter();
     const { isAuthenticated, user } = useAuthStore();
     const createOrderMutation = useCreateCatalogueOrder();
-    const [view, setView] = useState<ModalView>(isAuthenticated ? 'confirm' : 'form');
+    const [view, setView] = useState<ModalView>(isAuthenticated ? 'choose' : 'form');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [formData, setFormData] = useState({
         name: user?.name || '',
@@ -52,6 +53,7 @@ export default function ClaimDealModal({ isOpen, onClose, deal, claimConfig }: C
     const [error, setError] = useState<string | null>(null);
     const [redemptionCode, setRedemptionCode] = useState('');
     const [showRedeemModal, setShowRedeemModal] = useState(false);
+    const portalRoot = typeof document !== 'undefined' ? document.body : null;
 
     useEffect(() => {
         if (!isOpen) return;
@@ -69,16 +71,15 @@ export default function ClaimDealModal({ isOpen, onClose, deal, claimConfig }: C
         if (isOpen) {
             document.body.style.overflow = 'hidden';
             if (isAuthenticated && user) {
-                setTimeout(() => {
-                    setFormData({
-                        name: user.name || '',
-                        email: user.email || '',
-                        phone: user.phone || '',
-                    });
-                    setView('confirm');
-                }, 0);
+                setFormData({
+                    name: user.name || '',
+                    email: user.email || '',
+                    phone: user.phone || '',
+                });
+                setView('choose');
             } else {
-                setTimeout(() => setView('form'), 0);
+                setFormData({ name: '', email: '', phone: '' });
+                setView('form');
             }
         } else {
             document.body.style.overflow = '';
@@ -167,31 +168,26 @@ export default function ClaimDealModal({ isOpen, onClose, deal, claimConfig }: C
         setView('mydeal');
     };
 
+    if (!isOpen) return null;
+
     return (
         <>
-        <AnimatePresence>
-            {isOpen && (
-                <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    className="fixed inset-0 z-[200] bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center"
+            {portalRoot && createPortal(
+                <div
+                    className="fixed inset-0 z-[200] bg-black/50 flex items-end sm:items-center justify-center p-0 sm:p-4"
                     onClick={onClose}
                 >
-                    <motion.div
-                        initial={{ y: '100%', opacity: 0 }}
-                        animate={{ y: 0, opacity: 1 }}
-                        exit={{ y: '100%', opacity: 0 }}
-                        transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+                    <div
                         onClick={(e) => e.stopPropagation()}
                         className="w-full max-w-md bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl max-h-[90vh] overflow-y-auto"
                     >
                         {/* Header */}
-                        <div className="sticky top-0 bg-white/90 backdrop-blur-md z-10 flex items-center justify-between px-5 h-14 border-b border-gray-100 rounded-t-3xl sm:rounded-t-3xl">
+                        <div className="sticky top-0 bg-white z-10 flex items-center justify-between px-5 h-14 border-b border-gray-100 rounded-t-3xl sm:rounded-t-3xl">
                             <button onClick={onClose} className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-gray-100 transition-colors">
                                 <X size={20} className="text-gray-500" />
                             </button>
                             <h2 className="text-[15px] font-semibold text-gray-900">
+                                {view === 'choose' && 'Use Your Details'}
                                 {view === 'form' && 'Claim Deal'}
                                 {view === 'confirm' && 'Confirm Details'}
                                 {view === 'success' && 'Deal Claimed!'}
@@ -215,10 +211,82 @@ export default function ClaimDealModal({ isOpen, onClose, deal, claimConfig }: C
                                 </div>
                             </div>
 
-                            {/* Form View */}
+                            {/* Choose View — authenticated user picks existing info or new */}
+                            {view === 'choose' && (
+                                <div className="space-y-4">
+                                    <p className="text-[13px] text-gray-500">We found your account. Use these details to claim this deal?</p>
+
+                                    <div className="space-y-3">
+                                        {formData.name && (
+                                            <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                                                <UserIcon size={16} className="text-gray-400 shrink-0" />
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Name</p>
+                                                    <p className="text-[13px] font-semibold text-gray-900 truncate">{formData.name}</p>
+                                                </div>
+                                            </div>
+                                        )}
+                                        {formData.email && (
+                                            <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                                                <Mail size={16} className="text-gray-400 shrink-0" />
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Email</p>
+                                                    <p className="text-[13px] font-semibold text-gray-900 truncate">{formData.email}</p>
+                                                </div>
+                                            </div>
+                                        )}
+                                        {formData.phone && (
+                                            <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                                                <span className="material-symbols-outlined text-gray-400 shrink-0" style={{ fontSize: 16 }}>phone</span>
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Phone</p>
+                                                    <p className="text-[13px] font-semibold text-gray-900 truncate">{formData.phone}</p>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    <div className="bg-blue-50 border border-blue-100 rounded-lg p-3">
+                                        <p className="text-[11px] text-blue-700 leading-relaxed">
+                                            <strong>Tip:</strong> Your email is used to send your account password and for verification. Make sure it&apos;s correct.
+                                        </p>
+                                    </div>
+
+                                    <button
+                                        onClick={() => {
+                                            setAgreedToTerms(false);
+                                            setView('confirm');
+                                        }}
+                                        className="w-full h-12 bg-[#0055c4] text-white font-semibold text-[14px] rounded-lg flex items-center justify-center gap-2 hover:bg-[#0055c4]/90 transition-colors active:scale-[0.98]"
+                                    >
+                                        Yes, use these details
+                                        <CheckCircle size={18} />
+                                    </button>
+
+                                    <button
+                                        onClick={() => {
+                                            setFormData({ name: '', email: '', phone: '' });
+                                            setAgreedToTerms(false);
+                                            setView('form');
+                                        }}
+                                        className="w-full h-12 bg-transparent border border-gray-200 text-gray-600 font-semibold text-[14px] rounded-lg flex items-center justify-center gap-2 hover:bg-gray-50 transition-colors active:scale-[0.98]"
+                                    >
+                                        <Pencil size={16} />
+                                        Use different details
+                                    </button>
+                                </div>
+                            )}
+
+                            {/* Form View — unauthenticated or chose different details */}
                             {view === 'form' && (
                                 <div className="space-y-4">
                                     <h3 className="text-[16px] font-semibold text-gray-900">Your Information</h3>
+
+                                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+                                        <p className="text-[11px] text-amber-800 leading-relaxed">
+                                            <strong>Important:</strong> Your email is used to create your account and send your password. Please enter a valid email you can access — you&apos;ll need it to sign in and manage your claimed deals.
+                                        </p>
+                                    </div>
 
                                     <div className="space-y-3">
                                         <div>
@@ -237,26 +305,20 @@ export default function ClaimDealModal({ isOpen, onClose, deal, claimConfig }: C
                                                 type="email"
                                                 value={formData.email}
                                                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                                                placeholder="Enter your email"
+                                                placeholder="you@example.com"
                                                 className="w-full h-11 px-4 rounded-lg border border-gray-200 bg-white text-[14px] focus:border-[#0055c4] focus:ring-1 focus:ring-[#0055c4] outline-none transition-all"
                                             />
+                                            <p className="text-[10px] text-gray-400 mt-1">We&apos;ll send your account password and verification link here</p>
                                         </div>
                                         <div>
-                                            <label className="text-[11px] font-medium text-gray-500 block mb-1">Phone Number</label>
-                                            <div className="flex gap-2">
-                                                <select className="h-11 px-3 rounded-lg border border-gray-200 bg-white text-[14px] focus:border-[#0055c4] focus:ring-1 focus:ring-[#0055c4] outline-none transition-all w-24">
-                                                    <option>+234</option>
-                                                    <option>+1</option>
-                                                    <option>+44</option>
-                                                </select>
-                                                <input
-                                                    type="tel"
-                                                    value={formData.phone}
-                                                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                                                    placeholder="Enter phone number"
-                                                    className="flex-grow h-11 px-4 rounded-lg border border-gray-200 bg-white text-[14px] focus:border-[#0055c4] focus:ring-1 focus:ring-[#0055c4] outline-none transition-all"
-                                                />
-                                            </div>
+                                            <label className="text-[11px] font-medium text-gray-500 block mb-1">Phone Number (optional)</label>
+                                            <input
+                                                type="tel"
+                                                value={formData.phone}
+                                                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                                                placeholder="e.g. 0801 234 5678"
+                                                className="w-full h-11 px-4 rounded-lg border border-gray-200 bg-white text-[14px] focus:border-[#0055c4] focus:ring-1 focus:ring-[#0055c4] outline-none transition-all"
+                                            />
                                         </div>
                                     </div>
 
@@ -293,10 +355,26 @@ export default function ClaimDealModal({ isOpen, onClose, deal, claimConfig }: C
                                             </>
                                         )}
                                     </button>
+
+                                    {isAuthenticated && (
+                                        <button
+                                            onClick={() => {
+                                                setFormData({
+                                                    name: user?.name || '',
+                                                    email: user?.email || '',
+                                                    phone: user?.phone || '',
+                                                });
+                                                setView('choose');
+                                            }}
+                                            className="w-full text-center text-[13px] font-medium text-[#0055c4] hover:underline py-1"
+                                        >
+                                            Back to my details
+                                        </button>
+                                    )}
                                 </div>
                             )}
 
-                            {/* Confirm View (authenticated user) */}
+                            {/* Confirm View — review before claiming */}
                             {view === 'confirm' && (
                                 <div className="space-y-4">
                                     <p className="text-[13px] text-gray-500">Confirm this is your information to claim this deal:</p>
@@ -316,6 +394,12 @@ export default function ClaimDealModal({ isOpen, onClose, deal, claimConfig }: C
                                                 <span className="text-[13px] font-semibold text-gray-900">{formData.phone}</span>
                                             </div>
                                         )}
+                                    </div>
+
+                                    <div className="bg-blue-50 border border-blue-100 rounded-lg p-3">
+                                        <p className="text-[11px] text-blue-700 leading-relaxed">
+                                            <strong>Note:</strong> A password will be sent to <strong>{formData.email}</strong> for your account. Keep it safe — you&apos;ll need it to sign in later.
+                                        </p>
                                     </div>
 
                                     <div className="bg-gray-50 p-4 rounded-lg">
@@ -350,6 +434,23 @@ export default function ClaimDealModal({ isOpen, onClose, deal, claimConfig }: C
                                             </>
                                         )}
                                     </button>
+
+                                    {!isAuthenticated && (
+                                        <button
+                                            onClick={() => setView('form')}
+                                            className="w-full text-center text-[13px] font-medium text-[#0055c4] hover:underline py-1"
+                                        >
+                                            Edit my details
+                                        </button>
+                                    )}
+                                    {isAuthenticated && (
+                                        <button
+                                            onClick={() => setView('choose')}
+                                            className="w-full text-center text-[13px] font-medium text-[#0055c4] hover:underline py-1"
+                                        >
+                                            Change details
+                                        </button>
+                                    )}
                                 </div>
                             )}
 
@@ -372,18 +473,17 @@ export default function ClaimDealModal({ isOpen, onClose, deal, claimConfig }: C
                                 />
                             )}
                         </div>
-                    </motion.div>
-                </motion.div>
+                    </div>
+                </div>,
+                portalRoot
             )}
-        </AnimatePresence>
 
-        {/* Redeem Deal Modal — rendered outside AnimatePresence to avoid parent backdrop intercepting clicks */}
-        <RedeemDealModal
-            isOpen={showRedeemModal}
-            onClose={() => setShowRedeemModal(false)}
-            deal={deal}
-            onChat={() => { onClose(); router.push(`/chat?business=${deal.slug}`); }}
-        />
+            <RedeemDealModal
+                isOpen={showRedeemModal}
+                onClose={() => setShowRedeemModal(false)}
+                deal={deal}
+                onChat={() => { onClose(); router.push(`/chat?business=${deal.slug}`); }}
+            />
         </>
     );
 }
@@ -424,7 +524,6 @@ function SuccessView({ deal, onViewMyDeal, onViewBusiness }: {
             <h2 className="text-[22px] font-bold text-gray-900 mb-2">Deal Claimed!</h2>
             <p className="text-[14px] text-gray-500 mb-6">Your {deal.title} has been successfully secured.</p>
 
-            {/* Deal Summary */}
             <div className="w-full bg-white rounded-xl border border-gray-200 p-4 mb-5 text-left">
                 <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-3">Deal Summary</p>
                 <div className="flex items-start gap-3 mb-3">
@@ -474,7 +573,6 @@ function MyDealView({ deal, redemptionCode, isRealClaim, onRedeemClick }: {
 }) {
     return (
         <div className="space-y-4">
-            {/* Deal Image & Info */}
             <div className="bg-white rounded-xl overflow-hidden border border-gray-200 shadow-sm">
                 <div className="relative w-full aspect-[16/9] bg-gray-100">
                     <img src={deal.image} alt={deal.title} className="w-full h-full object-cover" />
@@ -489,7 +587,6 @@ function MyDealView({ deal, redemptionCode, isRealClaim, onRedeemClick }: {
                         <Store size={14} /> {deal.businessName}
                     </p>
 
-                    {/* Redemption Code */}
                     {isRealClaim ? (
                         <div className="mt-3 pt-3 border-t border-gray-100">
                             <div className="bg-[#d9e2ff] rounded-lg p-3">
@@ -509,7 +606,6 @@ function MyDealView({ deal, redemptionCode, isRealClaim, onRedeemClick }: {
                 </div>
             </div>
 
-            {/* Instructions */}
             <div className="bg-[#d9e2ff] rounded-xl p-4 border border-[#b0c6ff]">
                 <div className="flex items-center gap-2 mb-2">
                     <Info size={16} className="text-[#00429b]" />
@@ -520,7 +616,6 @@ function MyDealView({ deal, redemptionCode, isRealClaim, onRedeemClick }: {
                 </p>
             </div>
 
-            {/* Redeem Button */}
             <button
                 onClick={onRedeemClick}
                 className="w-full h-12 bg-[#0055c4] text-white font-semibold text-[14px] rounded-lg flex items-center justify-center gap-2 hover:bg-[#0055c4]/90 active:scale-[0.98] transition-all"

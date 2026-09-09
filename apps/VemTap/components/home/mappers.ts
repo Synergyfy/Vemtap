@@ -49,6 +49,9 @@ export function offerToHomeDeal(offer: DealOffer): HomeDealCard {
     offer.offerType ||
     'Deal';
 
+  const lat = offer.business?.latitude;
+  const lng = offer.business?.longitude;
+
   let discountLabel: string | undefined;
   if (discountPercent) discountLabel = `${discountPercent}% OFF`;
   else if (discountAmount) discountLabel = `${formatNaira(discountAmount)} OFF`;
@@ -82,6 +85,8 @@ export function offerToHomeDeal(offer: DealOffer): HomeDealCard {
     businessSlug: slug || undefined,
     category,
     location,
+    lat,
+    lng,
     originalPrice: originalPrice > dealPrice ? originalPrice : undefined,
     dealPrice,
     discountPercent,

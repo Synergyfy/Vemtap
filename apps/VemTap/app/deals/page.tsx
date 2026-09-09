@@ -9,6 +9,7 @@ import { useLocation } from '@/hooks/useLocation';
 import { usePublicOffers } from '@/services/deals/hooks';
 import { publicApi } from '@/lib/api';
 import { offerToHomeDeal, formatNaira } from '@/components/home/mappers';
+import { haversineDistance, formatDistance } from '@/lib/distance';
 import LocationPrompt from '@/components/home/LocationPrompt';
 import SearchModal from '@/components/home/SearchModal';
 import DealEngagementBar from '@/components/deals/DealEngagementBar';
@@ -167,16 +168,15 @@ function DealsPageInner() {
     return () => clearInterval(timer);
   }, [bannerSlides.length]);
 
-  // Auto-prompt for location if not set
+  // Always prompt for location on deals page — no deals shown without it
   useEffect(() => {
     const t = setTimeout(() => {
       setLocationChecked(true);
-      if (!hasLocation) {
-        setIsLocationModalOpen(true);
-      }
+      // Always open location modal on deals page
+      setIsLocationModalOpen(true);
     }, 500);
     return () => clearTimeout(t);
-  }, [hasLocation]);
+  }, []);
 
   const activeLocation = userLocationLabel || '';
 
@@ -593,7 +593,7 @@ function DealsPageInner() {
       )}
 
       {/* ─── Main Content (only when location is set) ─── */}
-      {(!locationChecked || hasLocation) && (
+      {hasLocation && (
       <div className="vemtap-container flex flex-1">
         {/* ─── Desktop Sidebar Filters (Collapsible) ─── */}
         <aside className="hidden md:block shrink-0 sticky top-[108px] h-[calc(100vh-108px)] border-r transition-all duration-300" style={{ borderColor: C.outlineVariant, background: '#ffffff', width: sidebarOpen ? 260 : 48 }}>
@@ -788,6 +788,10 @@ function DealsPageInner() {
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
                 {allDeals.map(deal => {
                   const badge = getBadge(deal);
+                  const distance =
+                    hasLocation && lat != null && lng != null && deal.lat != null && deal.lng != null
+                      ? formatDistance(haversineDistance(lat, lng, deal.lat, deal.lng))
+                      : null;
                   return (
                     <div key={deal.id} className="rounded-xl overflow-hidden shadow-sm relative group transition-all hover:shadow-lg hover:-translate-y-0.5" style={{ background: C.surface, border: `1px solid ${C.outlineVariant}` }}>
                       <Link href={deal.href} className="block cursor-pointer">
@@ -820,6 +824,11 @@ function DealsPageInner() {
                               <span className="text-[11px] line-through" style={{ color: C.outline }}>{formatNaira(deal.originalPrice)}</span>
                             )}
                           </div>
+                          {distance && (
+                            <div className="flex items-center gap-1">
+                              <span className="text-[10px]" style={{ color: C.outline }}>{distance} away</span>
+                            </div>
+                          )}
                         </div>
                       </Link>
                       <div className="px-3 pb-3">
@@ -845,20 +854,31 @@ function DealsPageInner() {
                       ? 'Try a different location or search — new deals drop daily.'
                       : 'Try a different search or filter — new deals drop daily.'}
                   </p>
+
+                  {/* View in other locations — first action */}
+                  <button
+                    onClick={() => { clearAllFilters(); setIsLocationModalOpen(true); }}
+                    className="mt-4 inline-flex items-center gap-1.5 rounded-xl px-5 py-2.5 text-[11px] font-bold uppercase tracking-wider text-white active:scale-95 transition-all"
+                    style={{ background: C.primary }}
+                  >
+                    <span className="material-symbols-outlined" style={{ fontSize: 14 }}>location_on</span>
+                    View in other locations
+                  </button>
+
                   {userLocationLabel && (
                     <button
                       onClick={() => { clearAllFilters(); setIsLocationModalOpen(true); }}
                       className="mt-3 inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-[11px] font-bold uppercase tracking-wider border transition-colors"
                       style={{ borderColor: C.outlineVariant, color: C.onSurfaceVariant }}
                     >
-                      <span className="material-symbols-outlined" style={{ fontSize: 14 }}>location_on</span>
+                      <span className="material-symbols-outlined" style={{ fontSize: 14 }}>my_location</span>
                       Change Location
                     </button>
                   )}
                   <button
                     onClick={clearAllFilters}
-                    className="mt-3 inline-flex items-center gap-1.5 rounded-xl px-5 py-2.5 text-[11px] font-bold uppercase tracking-wider text-white active:scale-95 transition-all"
-                    style={{ background: C.primary }}
+                    className="mt-3 inline-flex items-center gap-1.5 rounded-xl px-5 py-2.5 text-[11px] font-bold uppercase tracking-wider border transition-colors"
+                    style={{ borderColor: C.outlineVariant, color: C.onSurfaceVariant }}
                   >
                     View all deals
                   </button>
@@ -961,11 +981,18 @@ function DealsPageInner() {
 
       <PublicBottomNav />
 
-      {/* ─── Location Modal ─── */}
+      {/* ─── Location Modal (unclosable until location is set) ─── */}
       {isLocationModalOpen && (
         <LocationPrompt
           isOpen={isLocationModalOpen}
-          onClose={() => { setIsLocationModalOpen(false); setLocationError(null); }}
+          onClose={() => {
+            // Only allow closing if user already has a location set
+            if (hasLocation) {
+              setIsLocationModalOpen(false);
+              setLocationError(null);
+            }
+          }}
+          closable={hasLocation}
           isLoading={false}
           error={locationError}
           onAllowLocation={async () => {

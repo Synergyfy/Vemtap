@@ -3,7 +3,8 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Loader2, AlertCircle } from 'lucide-react';
+import { Loader2, AlertCircle, MapPin } from 'lucide-react';
+import ImageGallery from '@/components/ui/ImageGallery';
 import ShareDealModal from '@/components/promotions/ShareDealModal';
 import DealEngagementBar from '@/components/deals/DealEngagementBar';
 import ReviewSection from '@/components/deals/ReviewSection';
@@ -13,6 +14,8 @@ import { useEngagement, useToggleSave } from '@/services/deals/engagement-hooks'
 import { formatDealPrice } from '@/lib/promotions';
 import { useAuthStore } from '@/store/useAuthStore';
 import { fetchContextByUsername } from '@/lib/api/devices';
+import { useLocation } from '@/hooks/useLocation';
+import { haversineDistance, formatDistance } from '@/lib/distance';
 
 function formatDateLong(dateStr: string): string {
     if (!dateStr) return 'Ongoing';
@@ -31,6 +34,7 @@ export default function DealDetailPage() {
     const { isAuthenticated } = useAuthStore();
     const toggleSave = useToggleSave(id);
     const { data: engagement } = useEngagement(id);
+    const { lat: userLat, lng: userLng, hasLocation } = useLocation();
 
     const [showShareModal, setShowShareModal] = useState(false);
     const [showClaimModal, setShowClaimModal] = useState(false);
@@ -38,6 +42,11 @@ export default function DealDetailPage() {
     const [topBarBg, setTopBarBg] = useState(false);
 
     const isSaved = engagement?.isSaved ?? false;
+
+    const distance =
+        hasLocation && userLat != null && userLng != null && offer?.business?.latitude != null && offer?.business?.longitude != null
+            ? formatDistance(haversineDistance(userLat, userLng, offer.business.latitude, offer.business.longitude))
+            : null;
 
     const normalizedOffer = useMemo(() => {
         if (!offer) return null;
@@ -69,31 +78,66 @@ export default function DealDetailPage() {
     }, [offer]);
 
     const business = normalizedOffer?.business;
+
+    // Fallback data when API fails — ensures engagement/review sections always work
+    const effectiveBusiness = business || {
+        id: id,
+        name: 'Business',
+        slug: slug || '',
+        address: '',
+        photos: [],
+        categoryName: 'Deal',
+        rating: undefined,
+        totalReviews: undefined,
+        isVerified: false,
+        latitude: undefined,
+        longitude: undefined,
+        phone: undefined,
+    };
+    const effectiveNormalizedOffer = normalizedOffer || {
+        id,
+        name: 'Deal',
+        mainImage: '',
+        galleryImages: [],
+        longDescription: '',
+        description: '',
+        calculatedPrice: 0,
+        pricingType: 'percentage_discount' as const,
+        discountValue: null,
+        discountPercent: undefined,
+        discountLabel: null,
+        endDate: undefined,
+        isExpired: false,
+        claimedCount: 0,
+        maxClaims: 0,
+        terms: [],
+        business: effectiveBusiness,
+    };
     const photos = useMemo(() => {
         const result = [...(business?.photos || [])];
-        if (normalizedOffer?.mainImage && !result.includes(normalizedOffer.mainImage)) result.unshift(normalizedOffer.mainImage);
-        if (normalizedOffer?.galleryImages?.length) {
-            normalizedOffer.galleryImages.forEach((img: string) => { if (!result.includes(img)) result.push(img); });
+        if (effectiveNormalizedOffer?.mainImage && !result.includes(effectiveNormalizedOffer.mainImage)) result.unshift(effectiveNormalizedOffer.mainImage);
+        if (effectiveNormalizedOffer?.galleryImages?.length) {
+            effectiveNormalizedOffer.galleryImages.forEach((img: string) => { if (!result.includes(img)) result.push(img); });
         }
         return result;
-    }, [business, normalizedOffer]);
+    }, [business, effectiveNormalizedOffer]);
 
-    const discountPercent = normalizedOffer?.pricingType === 'percentage_discount' && normalizedOffer.discountValue
-        ? normalizedOffer.discountValue : undefined;
-    const discountAmount = normalizedOffer?.pricingType === 'fixed_discount_price' && normalizedOffer.discountValue
-        ? normalizedOffer.discountValue : undefined;
+    const discountPercent = effectiveNormalizedOffer?.pricingType === 'percentage_discount' && effectiveNormalizedOffer.discountValue
+        ? effectiveNormalizedOffer.discountValue : undefined;
+    const discountAmount = effectiveNormalizedOffer?.pricingType === 'fixed_discount_price' && effectiveNormalizedOffer.discountValue
+        ? effectiveNormalizedOffer.discountValue : undefined;
 
     const originalPrice = useMemo(() => {
-        if (!normalizedOffer) return 0;
-        if (discountPercent) return Math.round(normalizedOffer.calculatedPrice / (1 - discountPercent / 100));
-        if (discountAmount) return normalizedOffer.calculatedPrice + discountAmount;
-        return normalizedOffer.calculatedPrice;
-    }, [normalizedOffer, discountPercent, discountAmount]);
+        if (!effectiveNormalizedOffer) return 0;
+        if (discountPercent) return Math.round(effectiveNormalizedOffer.calculatedPrice / (1 - discountPercent / 100));
+        if (discountAmount) return effectiveNormalizedOffer.calculatedPrice + discountAmount;
+        return effectiveNormalizedOffer.calculatedPrice;
+    }, [effectiveNormalizedOffer, discountPercent, discountAmount]);
 
-    const savings = originalPrice - (normalizedOffer?.calculatedPrice || 0);
+    const savings = originalPrice - (effectiveNormalizedOffer?.calculatedPrice || 0);
 
     const dealUrl = typeof window !== 'undefined'
-        ? `${window.location.origin}/deals/${business?.slug || ''}/${normalizedOffer?.id || id}`
+        ? `${window.location.origin}/deals/${business?.slug || ''}/${effectiveNormalizedOffer?.id || id}`
         : '';
 
     const handleScroll = useCallback(() => {
@@ -134,27 +178,11 @@ export default function DealDetailPage() {
         );
     }
 
-    if (!normalizedOffer || !business) {
-        return (
-            <div className="min-h-screen bg-[#f7f9fb] flex flex-col items-center justify-center p-6 text-center pb-32">
-                <AlertCircle size={64} className="text-[#c2c6d7] mb-4" />
-                <h1 className="text-2xl font-bold text-[#191c1e] mb-2">Deal Not Found</h1>
-                <p className="text-[#727786] font-bold mb-8">This deal may have expired or doesn&apos;t exist.</p>
-                <Link
-                    href="/deals"
-                    className="px-8 h-12 bg-[#0055c4] text-white font-bold uppercase tracking-wider text-xs rounded-xl shadow-lg flex items-center gap-2"
-                >
-                    ← Browse Deals
-                </Link>
-            </div>
-        );
-    }
-
     return (
         <div className="min-h-screen bg-[#f7f9fb] text-[#191c1e] antialiased pb-32">
             {/* ─── Top App Bar ─── */}
             <header
-                className="fixed top-0 w-full z-50 transition-colors duration-300 flex justify-center"
+                className="fixed top-0 w-full z-50 transition-colors duration-300 hidden md:flex justify-center"
                 style={{
                     background: topBarBg ? 'rgba(255,255,255,0.9)' : 'transparent',
                     backdropFilter: topBarBg ? 'blur(12px)' : undefined,
@@ -197,27 +225,35 @@ export default function DealDetailPage() {
                 </div>
             </header>
 
-            {/* ─── Hero Image ─── */}
-            <div className="relative w-full h-[397px] min-h-[300px]">
-                <img
-                    className="w-full h-full object-cover"
-                    src={photos[0] || normalizedOffer.mainImage || ''}
-                    alt={normalizedOffer.name}
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-[#191c1e]/80 via-transparent to-transparent" />
+            {/* ─── Hero Image Gallery ─── */}
+            <div className="relative w-full bg-[#f7f9fb]">
+                <div className="max-w-5xl mx-auto px-4 pt-14">
+                    {photos.length > 0 ? (
+                        <ImageGallery
+                            images={photos}
+                            alt={effectiveNormalizedOffer.name}
+                            layout="product"
+                            className="w-full"
+                            showDots={true}
+                            showArrows={true}
+                        />
+                    ) : (
+                        <div className="aspect-square w-full bg-gray-200 rounded-xl" />
+                    )}
+                </div>
                 {/* Badge */}
-                {(discountPercent || discountAmount || normalizedOffer.discountLabel) && !normalizedOffer.isExpired && (
-                    <div className="absolute top-5 left-5 bg-[#ba1a1a] text-white px-3 py-1 rounded-full text-[12px] font-semibold shadow-md mt-12 z-40 flex items-center gap-1">
+                {(discountPercent || discountAmount || effectiveNormalizedOffer.discountLabel) && !effectiveNormalizedOffer.isExpired && (
+                    <div className="absolute top-[70px] left-6 bg-[#ba1a1a] text-white px-3 py-1 rounded-full text-[12px] font-semibold shadow-md z-40 flex items-center gap-1 pointer-events-none">
                         <span className="material-symbols-outlined" style={{ fontSize: 14 }}>local_offer</span>
                         {discountPercent
                             ? `${discountPercent}% OFF`
                             : discountAmount
                                 ? `SAVE ${formatDealPrice(discountAmount)}`
-                                : normalizedOffer.discountLabel || 'DEAL'}
+                                : effectiveNormalizedOffer.discountLabel || 'DEAL'}
                     </div>
                 )}
-                {normalizedOffer.isExpired && (
-                    <div className="absolute top-5 left-5 bg-gray-800/80 text-white px-3 py-1 rounded-full text-[12px] font-semibold shadow-md mt-12 z-40">
+                {effectiveNormalizedOffer.isExpired && (
+                    <div className="absolute top-[70px] left-6 bg-gray-800/80 text-white px-3 py-1 rounded-full text-[12px] font-semibold shadow-md z-40 pointer-events-none">
                         Expired
                     </div>
                 )}
@@ -229,9 +265,9 @@ export default function DealDetailPage() {
                 <div className="mb-6">
                     <div className="flex justify-between items-start mb-2">
                         <h1 className="text-[24px] leading-[32px] font-semibold tracking-tight text-[#191c1e] max-w-[75%]">
-                            {normalizedOffer.name}
+                            {effectiveNormalizedOffer.name}
                         </h1>
-                        {business.rating != null && (
+                        {effectiveBusiness.rating != null && (
                             <div className="flex items-center gap-1 bg-[#f2f4f6] px-2 py-1 rounded-lg">
                                 <span
                                     className="material-symbols-outlined text-[#0055c4]"
@@ -239,16 +275,16 @@ export default function DealDetailPage() {
                                 >
                                     star
                                 </span>
-                                <span className="text-[14px] font-semibold text-[#191c1e]">{business.rating}</span>
+                                <span className="text-[14px] font-semibold text-[#191c1e]">{effectiveBusiness.rating}</span>
                             </div>
                         )}
                     </div>
                     <div className="flex items-center gap-4 text-[#424655] text-[14px]">
                         <div className="flex items-center gap-1">
                             <span className="material-symbols-outlined" style={{ fontSize: 16 }}>location_on</span>
-                            {business.address || 'Location unavailable'}
+                            {effectiveBusiness.address || 'Location unavailable'}
                         </div>
-                        {business.isVerified && (
+                        {effectiveBusiness.isVerified && (
                             <div className="flex items-center gap-1 text-[#0055c4]">
                                 <span className="material-symbols-outlined" style={{ fontSize: 16 }}>verified</span>
                                 Verified
@@ -264,9 +300,9 @@ export default function DealDetailPage() {
                         <p className="text-[12px] font-medium text-[#424655] uppercase tracking-wider mb-1">Deal Price</p>
                         <div className="flex items-end gap-2">
                             <span className="text-[20px] font-bold text-[#0055c4]">
-                                {normalizedOffer.calculatedPrice === 0 ? 'FREE' : formatDealPrice(normalizedOffer.calculatedPrice)}
+                                {effectiveNormalizedOffer.calculatedPrice === 0 ? 'FREE' : formatDealPrice(effectiveNormalizedOffer.calculatedPrice)}
                             </span>
-                            {originalPrice > normalizedOffer.calculatedPrice && (
+                            {originalPrice > effectiveNormalizedOffer.calculatedPrice && (
                                 <span className="text-[14px] text-[#727786] line-through mb-0.5">
                                     {formatDealPrice(originalPrice)}
                                 </span>
@@ -283,10 +319,10 @@ export default function DealDetailPage() {
                 {/* Engagement Bar */}
                 <DealEngagementBar
                     offerId={id}
-                    offerTitle={normalizedOffer.name}
-                    offerDescription={normalizedOffer.description || ''}
+                    offerTitle={effectiveNormalizedOffer.name}
+                    offerDescription={effectiveNormalizedOffer.description || ''}
                     dealUrl={dealUrl}
-                    businessName={business.name}
+                    businessName={effectiveBusiness.name}
                 />
 
                 {/* Details Grid */}
@@ -298,7 +334,7 @@ export default function DealDetailPage() {
                             Deal Description
                         </h2>
                         <p className="text-[16px] text-[#424655] leading-relaxed">
-                            {normalizedOffer.longDescription || normalizedOffer.description || 'No description available.'}
+                            {effectiveNormalizedOffer.longDescription || effectiveNormalizedOffer.description || 'No description available.'}
                         </p>
                     </section>
 
@@ -312,7 +348,7 @@ export default function DealDetailPage() {
                             <div>
                                 <h3 className="text-[12px] font-medium text-[#424655] uppercase tracking-wider mb-0.5">Valid Until</h3>
                                 <p className="text-[16px] text-[#191c1e]">
-                                    {normalizedOffer.endDate ? formatDateLong(normalizedOffer.endDate) : 'No expiry date'}
+                                    {effectiveNormalizedOffer.endDate ? formatDateLong(effectiveNormalizedOffer.endDate) : 'No expiry date'}
                                 </p>
                             </div>
                         </div>
@@ -324,12 +360,18 @@ export default function DealDetailPage() {
                             </div>
                             <div className="flex-grow">
                                 <h3 className="text-[12px] font-medium text-[#424655] uppercase tracking-wider mb-0.5">Location</h3>
-                                <p className="text-[16px] text-[#191c1e]">{business.name}</p>
-                                <p className="text-[14px] text-[#424655]">{business.address || ''}</p>
+                                <p className="text-[16px] text-[#191c1e]">{effectiveBusiness.name}</p>
+                                <p className="text-[14px] text-[#424655]">{effectiveBusiness.address || ''}</p>
+                                {distance && (
+                                    <div className="flex items-center gap-1 mt-1">
+                                        <MapPin size={12} className="text-[#0055c4]" />
+                                        <span className="text-[12px] text-[#0055c4] font-medium">{distance} away</span>
+                                    </div>
+                                )}
                             </div>
-                            {business.latitude && business.longitude && (
+                            {effectiveBusiness.latitude && effectiveBusiness.longitude && (
                                 <a
-                                    href={`https://www.google.com/maps/dir/?api=1&destination=${business.latitude},${business.longitude}`}
+                                    href={`https://www.google.com/maps/dir/?api=1&destination=${effectiveBusiness.latitude},${effectiveBusiness.longitude}`}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     className="text-[#0055c4] hover:bg-[#0055c4]/10 p-2 rounded-full transition-colors active:scale-95"
@@ -342,7 +384,7 @@ export default function DealDetailPage() {
                 </div>
 
                 {/* Terms & Conditions (Expandable) */}
-                {normalizedOffer.terms && normalizedOffer.terms.length > 0 && (
+                {effectiveNormalizedOffer.terms && effectiveNormalizedOffer.terms.length > 0 && (
                     <section className="border-t border-[#c2c6d7]/40 pt-4">
                         <details className="group cursor-pointer [&_summary::-webkit-details-marker]:hidden">
                             <summary className="flex items-center justify-between text-[14px] font-semibold text-[#191c1e] py-2 select-none">
@@ -355,7 +397,7 @@ export default function DealDetailPage() {
                                 </span>
                             </summary>
                             <div className="mt-3 pb-3 text-[14px] text-[#424655] space-y-2">
-                                {normalizedOffer.terms.map((term: string, i: number) => (
+                                {effectiveNormalizedOffer.terms.map((term: string, i: number) => (
                                     <p key={i}>• {term}</p>
                                 ))}
                             </div>
@@ -380,11 +422,11 @@ export default function DealDetailPage() {
                             }
                             setShowClaimModal(true);
                         }}
-                        disabled={!!normalizedOffer.isExpired}
+                        disabled={!!effectiveNormalizedOffer.isExpired}
                         className="w-full h-12 bg-[#0055c4] text-white text-[14px] font-semibold rounded-xl shadow-sm flex items-center justify-center gap-2 hover:bg-[#0055c4]/90 transition-colors active:scale-95 duration-100 disabled:bg-[#c2c6d7] disabled:text-[#727786] disabled:cursor-not-allowed"
                     >
                         <span className="material-symbols-outlined">local_activity</span>
-                        {normalizedOffer.isExpired ? 'Deal Ended' : 'CLAIM DEAL'}
+                        {effectiveNormalizedOffer.isExpired ? 'Deal Ended' : 'CLAIM DEAL'}
                     </button>
                 </div>
             </div>
@@ -393,8 +435,8 @@ export default function DealDetailPage() {
             <ShareDealModal
                 isOpen={showShareModal}
                 onClose={() => setShowShareModal(false)}
-                title={normalizedOffer.name}
-                description={normalizedOffer.longDescription || normalizedOffer.description}
+                title={effectiveNormalizedOffer.name}
+                description={effectiveNormalizedOffer.longDescription || effectiveNormalizedOffer.description}
                 url={dealUrl}
             />
 
@@ -403,18 +445,19 @@ export default function DealDetailPage() {
                 isOpen={showClaimModal}
                 onClose={() => setShowClaimModal(false)}
                 deal={{
-                    id: normalizedOffer.id,
-                    title: normalizedOffer.name,
-                    businessName: business.name,
-                    image: photos[0] || normalizedOffer.mainImage || '',
-                    dealPrice: normalizedOffer.calculatedPrice,
+                    id: effectiveNormalizedOffer.id,
+                    title: effectiveNormalizedOffer.name,
+                    businessName: effectiveBusiness.name,
+                    image: photos[0] || effectiveNormalizedOffer.mainImage || '',
+                    dealPrice: effectiveNormalizedOffer.calculatedPrice,
                     originalPrice,
-                    discountLabel: normalizedOffer.discountLabel || '',
-                    slug: business.slug || slug,
+                    discountLabel: effectiveNormalizedOffer.discountLabel || '',
+                    slug: effectiveBusiness.slug || slug,
+                    businessPhone: effectiveBusiness.phone || '',
                 }}
                 claimConfig={branchId ? {
                     branchId,
-                    successPath: `/deals/${business.slug || slug}/${normalizedOffer.id}`,
+                    successPath: `/deals/${effectiveBusiness.slug || slug}/${effectiveNormalizedOffer.id}`,
                 } : undefined}
             />
         </div>
