@@ -107,10 +107,10 @@ export default function EmailVerificationModal({ isOpen, onClose, onSuccess, ema
                             <div className="space-y-2.5">
                                 <button
                                     onClick={handleSendCode}
-                                    disabled={sendVerification.isPending}
+                                    disabled={sendVerification.isLoading}
                                     className="w-full h-12 bg-[#0055c4] text-white font-semibold text-[14px] rounded-lg flex items-center justify-center gap-2 hover:bg-[#0055c4]/90 transition-colors active:scale-[0.98] disabled:opacity-50"
                                 >
-                                    {sendVerification.isPending ? (
+                                    {sendVerification.isLoading ? (
                                         <Loader2 size={18} className="animate-spin" />
                                     ) : (
                                         <>
@@ -157,10 +157,10 @@ export default function EmailVerificationModal({ isOpen, onClose, onSuccess, ema
                             <div className="space-y-2.5">
                                 <button
                                     onClick={handleVerifyCode}
-                                    disabled={code.length < 4 || verifyEmail.isPending}
+                                    disabled={code.length < 4 || verifyEmail.isLoading}
                                     className="w-full h-12 bg-[#0055c4] text-white font-semibold text-[14px] rounded-lg flex items-center justify-center gap-2 hover:bg-[#0055c4]/90 transition-colors active:scale-[0.98] disabled:opacity-50"
                                 >
-                                    {verifyEmail.isPending ? (
+                                    {verifyEmail.isLoading ? (
                                         <Loader2 size={18} className="animate-spin" />
                                     ) : (
                                         <>
@@ -172,7 +172,7 @@ export default function EmailVerificationModal({ isOpen, onClose, onSuccess, ema
 
                                 <button
                                     onClick={handleSendCode}
-                                    disabled={sendVerification.isPending}
+                                    disabled={sendVerification.isLoading}
                                     className="w-full h-11 text-[#0055c4] font-semibold text-[13px] rounded-lg hover:bg-gray-50 transition-colors flex items-center justify-center gap-2"
                                 >
                                     <RefreshCw size={14} />
