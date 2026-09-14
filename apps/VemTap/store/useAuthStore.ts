@@ -124,6 +124,11 @@ export const useAuthStore = create<AuthState>()(
           userData.role = userData.role.toLowerCase() as UserRole;
         }
 
+        // Derive display name when the API only returns firstName/lastName
+        if (userData && !userData.name) {
+          userData.name = [userData.firstName, userData.lastName].filter(Boolean).join(' ').trim() || userData.email;
+        }
+
         // Sync activeBranchId with the user's branchId to prevent stale dashboard views
         const branchIdToSet = userData.branchId || null;
         
@@ -150,6 +155,11 @@ export const useAuthStore = create<AuthState>()(
        
         if (userData?.role) {
           userData.role = userData.role.toLowerCase() as UserRole;
+        }
+        
+        // Derive display name when the API only returns firstName/lastName
+        if (userData && !userData.name) {
+          userData.name = [userData.firstName, userData.lastName].filter(Boolean).join(' ').trim() || userData.email;
         }
         
         // Sync activeBranchId on signup as well

@@ -20,6 +20,13 @@ import { RegisterOwnerDto } from './dto/register-owner.dto';
 import { RegisterAdminDto } from './dto/register-admin.dto';
 import { RequestOtpDto } from './dto/request-otp.dto';
 import { PasswordResetOtpDto } from './dto/password-reset-otp.dto';
+import {
+  RequestCustomerSignupOtpDto,
+  ResendCustomerOtpDto,
+  VerifyAndSetCustomerPinDto,
+  RequestCustomerPinResetDto,
+  ResetCustomerPinDto,
+} from './dto/customer-auth.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { SwitchRoleDto } from './dto/switch-role.dto';
@@ -215,6 +222,87 @@ export class AuthController {
   })
   async registerOwner(@Body() registerOwnerDto: RegisterOwnerDto) {
     return this.authService.registerOwner(registerOwnerDto);
+  }
+
+  @Public()
+  @Post('customer/register/request-otp')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Request OTP for Customer Registration' })
+  @ApiBody({ type: RequestCustomerSignupOtpDto })
+  @ApiResponse({
+    status: 200,
+    description: 'OTP sent successfully',
+    type: MessageResponseDto,
+  })
+  async requestCustomerRegistrationOtp(
+    @Body() dto: RequestCustomerSignupOtpDto,
+  ) {
+    return this.authService.requestCustomerRegistrationOtp(dto);
+  }
+
+  @Public()
+  @Post('customer/otp/resend')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Resend OTP for Customer' })
+  @ApiBody({ type: ResendCustomerOtpDto })
+  @ApiResponse({
+    status: 200,
+    description: 'OTP resent successfully',
+    type: MessageResponseDto,
+  })
+  async resendCustomerOtp(@Body() dto: ResendCustomerOtpDto) {
+    return this.authService.resendCustomerOtp(dto);
+  }
+
+  @Public()
+  @Post('customer/register/verify-and-set-pin')
+  @ApiOperation({ summary: 'Verify OTP and Set 6-Digit PIN for Customer' })
+  @ApiBody({ type: VerifyAndSetCustomerPinDto })
+  @ApiResponse({
+    status: 201,
+    description: 'Customer verified and PIN set successfully',
+    type: AuthResponseDto,
+  })
+  async verifyAndSetCustomerPin(
+    @Body() dto: VerifyAndSetCustomerPinDto,
+  ) {
+    return this.authService.verifyOtpAndSetCustomerPin(dto);
+  }
+
+  @Public()
+  @Post('customer/pin/forgot')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Request OTP for Customer PIN Reset' })
+  @ApiBody({ type: RequestCustomerPinResetDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Reset OTP sent successfully',
+    type: MessageResponseDto,
+  })
+  async requestCustomerPinReset(
+    @Body() dto: RequestCustomerPinResetDto,
+  ) {
+    return this.authService.requestCustomerPinReset(dto);
+  }
+
+  @Public()
+  @Post('customer/pin/reset')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Verify OTP and Reset Customer 6-Digit PIN' })
+  @ApiBody({ type: ResetCustomerPinDto })
+  @ApiResponse({
+    status: 200,
+    description: 'PIN reset successfully',
+    type: MessageResponseDto,
+  })
+  async resetCustomerPin(
+    @Body() dto: ResetCustomerPinDto,
+    @Request() req: any,
+  ) {
+    return this.authService.resetCustomerPin(dto, {
+      ip: req?.ip,
+      userAgent: req?.headers?.['user-agent'],
+    });
   }
 
   @Public()

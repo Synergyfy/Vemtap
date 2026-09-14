@@ -15,7 +15,7 @@ import {
   LessThan,
 } from 'typeorm';
 import { v4 as uuidv4 } from 'uuid';
-import { User, UserRole } from '../users/entities/user.entity';
+import { User, UserRole, UserStatus } from '../users/entities/user.entity';
 import { Visit } from './entities/visit.entity';
 import { Device, DeviceStatus } from '../devices/entities/device.entity';
 import { Branch } from '../branches/entities/branch.entity';
@@ -567,16 +567,15 @@ export class VisitorsService {
       }
     }
 
-    // New customers receive a per-account random password (emailed to them)
-    // instead of a shared default, so the constant can never be used as a
-    // universal backdoor. Immediate auto-login is provided by the auth token
-    // returned from this endpoint (see buildAuthResponse below).
-    const defaultPassword = randomBytes(9).toString('base64url').slice(0, 12);
+    const providedPin = (dto as any).pin;
     let isNewCustomer = false;
 
     if (!user) {
       isNewCustomer = true;
-      const hashedPassword = await bcrypt.hash(defaultPassword, 10);
+      const hashedPassword = providedPin
+        ? await bcrypt.hash(providedPin, 10)
+        : undefined;
+
       user = this.userRepository.create({
         email: dto.email,
         firstName: dto.firstName,
@@ -584,6 +583,9 @@ export class VisitorsService {
         phone: dto.phone,
         password: hashedPassword,
         role: UserRole.CUSTOMER,
+        status: providedPin ? UserStatus.ACTIVE : UserStatus.PENDING,
+        emailVerified: !!providedPin,
+        isPasswordChanged: !!providedPin,
         uniqueCode: `CUST-${Math.floor(100000 + Math.random() * 900000)}`,
       });
       await this.userRepository.save(user);
@@ -591,7 +593,6 @@ export class VisitorsService {
       await this.mailService.sendWelcomeEmail(
         user.email,
         `${user.firstName} ${user.lastName}`.trim() || 'Visitor',
-        defaultPassword,
       );
     } else if (user.role === UserRole.CUSTOMER) {
       // Update existing customer details if they are provided and currently empty
