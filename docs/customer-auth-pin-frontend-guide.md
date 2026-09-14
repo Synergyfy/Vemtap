@@ -37,7 +37,8 @@ Dispatches a 6-digit verification code to the customer's email address.
 - **Request Body (`RequestCustomerSignupOtpDto`)**:
   ```json
   {
-    "fullName": "Jane Doe",
+    "firstName": "Jane",
+    "lastName": "Doe",
     "email": "jane@example.com",
     "phone": "+2348012345678" // optional, E.164 format
   }
@@ -46,16 +47,14 @@ Dispatches a 6-digit verification code to the customer's email address.
   - `200 OK`:
     ```json
     {
-      "message": "Verification OTP sent to your email",
-      "email": "jane@example.com",
-      "expiresInMinutes": 10
+      "message": "OTP sent successfully to your email"
     }
     ```
   - `409 Conflict`: If an active account already exists with this email or phone:
     ```json
     {
       "statusCode": 409,
-      "message": "A customer account with this email already exists. Please log in."
+      "message": "User with this email already exists"
     }
     ```
 
@@ -77,9 +76,7 @@ Dispatches a fresh 10-minute OTP code if the previous code expired or was not re
   - `200 OK`:
     ```json
     {
-      "message": "A fresh verification OTP has been sent to your email",
-      "email": "jane@example.com",
-      "expiresInMinutes": 10
+      "message": "A new OTP has been sent to your email"
     }
     ```
   - `404 Not Found`: If no pending customer record was found for this email.
@@ -96,9 +93,10 @@ Verifies the OTP code, securely hashes the 6-digit PIN, activates the customer a
   ```json
   {
     "email": "jane@example.com",
-    "otp": "123456",            // exactly 6 digits: /^\d{6}$/
+    "otp": "123456",            // exactly 6 digits (or "code": "123456")
     "pin": "654321",            // exactly 6 digits: /^\d{6}$/
-    "fullName": "Jane Doe",     // optional if already provided in Step 1
+    "firstName": "Jane",        // optional if provided in Step 1
+    "lastName": "Doe",          // optional if provided in Step 1
     "phone": "+2348012345678"   // optional
   }
   ```
@@ -223,23 +221,25 @@ import axios from 'axios';
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1';
 
 export interface CustomerSignupStep1Payload {
-  fullName: string;
+  firstName: string;
+  lastName: string;
   email: string;
   phone?: string;
 }
 
 export interface VerifyAndSetPinPayload {
   email: string;
-  otp: string;
+  otp: string; // or code: string
   pin: string;
-  fullName?: string;
+  firstName?: string;
+  lastName?: string;
   phone?: string;
 }
 
 export interface ResetPinPayload {
   email: string;
-  otp: string;
-  pin: string;
+  otp: string; // or code: string
+  pin: string; // or newPin: string
 }
 
 export const customerAuthApi = {
@@ -296,7 +296,7 @@ sequenceDiagram
     participant API as Backend API
 
     Note over User,UI: Step 1: Contact Details
-    User->>UI: Enters Full Name, Email, optional Phone
+    User->>UI: Enters First Name, Last Name, Email, optional Phone
     User->>UI: Clicks "Send Code"
     UI->>API: POST /auth/customer/register/request-otp
     API-->>UI: 200 OK (expiresInMinutes: 10)
@@ -316,8 +316,8 @@ sequenceDiagram
 ### 3.3 UI Validation Rules Checklist
 
 | Field | Type | Validation Rule | Error Message Prompt |
-| :--- | :--- | :--- | :--- |
-| `fullName` | String | Trimmed, $\ge$ 2 characters | "Please enter your full name." |
+| `firstName` | String | Trimmed, $\ge$ 2 characters | "Please enter your first name." |
+| `lastName` | String | Trimmed, $\ge$ 2 characters | "Please enter your last name." |
 | `email` | String | Valid email address | "Please enter a valid email address." |
 | `phone` | String | Optional, E.164 (`/^\+?[1-9]\d{7,14}$/`) | "Please enter a valid phone number." |
 | `otp` | String | Exactly 6 numeric digits (`/^\d{6}$/`) | "Please enter the 6-digit code sent to your email." |

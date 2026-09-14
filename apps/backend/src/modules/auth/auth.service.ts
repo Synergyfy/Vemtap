@@ -1023,9 +1023,9 @@ export class AuthService {
       }
     }
 
-    const nameParts = (dto.name || '').trim().split(/\s+/).filter(Boolean);
-    const firstName = nameParts[0] || 'Customer';
-    const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : '';
+    const firstName = (dto.firstName || '').trim() || 'Customer';
+    const lastName = (dto.lastName || '').trim();
+    const fullName = `${firstName} ${lastName}`.trim();
 
     const code = Math.floor(100000 + Math.random() * 900000).toString(); // 6-digit OTP
     const expiresAt = new Date();
@@ -1037,7 +1037,7 @@ export class AuthService {
       expiresAt,
       metadata: {
         purpose: 'customer-registration',
-        name: dto.name,
+        name: fullName,
         firstName,
         lastName,
         phone: dto.phone,
@@ -1121,17 +1121,20 @@ export class AuthService {
       existingUser.emailVerified = true;
       existingUser.status = UserStatus.ACTIVE;
       existingUser.isPasswordChanged = true;
+      const firstName = dto.firstName || metadata.firstName;
+      const lastName = dto.lastName || metadata.lastName;
+      const phone = dto.phone || metadata.phone;
       if (
-        metadata.firstName &&
+        firstName &&
         (!existingUser.firstName || existingUser.firstName === 'Customer')
       ) {
-        existingUser.firstName = metadata.firstName;
+        existingUser.firstName = firstName;
       }
-      if (metadata.lastName && !existingUser.lastName) {
-        existingUser.lastName = metadata.lastName;
+      if (lastName && !existingUser.lastName) {
+        existingUser.lastName = lastName;
       }
-      if (metadata.phone && !existingUser.phone) {
-        existingUser.phone = metadata.phone;
+      if (phone && !existingUser.phone) {
+        existingUser.phone = phone;
       }
       if (branchId && !existingUser.branchId) {
         existingUser.branchId = branchId;
@@ -1140,9 +1143,9 @@ export class AuthService {
     } else {
       user = await this.usersService.create({
         email,
-        firstName: metadata.firstName || 'Customer',
-        lastName: metadata.lastName || '',
-        phone: metadata.phone,
+        firstName: dto.firstName || metadata.firstName || 'Customer',
+        lastName: dto.lastName || metadata.lastName || '',
+        phone: dto.phone || metadata.phone,
         password: hashedPassword,
         role: UserRole.CUSTOMER,
         status: UserStatus.ACTIVE,
