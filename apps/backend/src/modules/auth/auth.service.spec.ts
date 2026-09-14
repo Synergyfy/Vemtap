@@ -1034,4 +1034,192 @@ describe('AuthService', () => {
       ).rejects.toThrow(BadRequestException);
     });
   });
+
+  // ==================== Customer Auth & PIN Management ====================
+  describe('Customer Auth & PIN Management', () => {
+    describe('requestCustomerRegistrationOtp', () => {
+      it('should generate and send 6-digit OTP for unique email and phone', async () => {
+        usersService.findByEmail.mockResolvedValue(null);
+        usersService.findByPhone.mockResolvedValue(null);
+
+        const result = await service.requestCustomerRegistrationOtp({
+          firstName: 'Jane',
+          lastName: 'Doe',
+          email: 'jane@example.com',
+          phone: '+2348012345678',
+        });
+
+        expect(otpRepository.create).toHaveBeenCalledWith(
+          expect.objectContaining({
+            email: 'jane@example.com',
+            metadata: expect.objectContaining({
+              firstName: 'Jane',
+              lastName: 'Doe',
+              role: UserRole.CUSTOMER,
+            }),
+          }),
+        );
+        expect(mailService.sendOtp).toHaveBeenCalled();
+        expect(result).toEqual({ message: 'OTP sent successfully to your email' });
+      });
+
+      it('should throw ConflictException if active customer already exists with email', async () => {
+        usersService.findByEmail.mockResolvedValue({
+          id: 'user-1',
+          email: 'jane@example.com',
+          status: UserStatus.ACTIVE,
+        });
+
+        await expect(
+          service.requestCustomerRegistrationOtp({
+            firstName: 'Jane',
+            lastName: 'Doe',
+            email: 'jane@example.com',
+          }),
+        ).rejects.toThrow(ConflictException);
+      });
+    });
+
+    describe('resendCustomerOtp', () => {
+      it('should issue a fresh OTP with 10-minute expiry', async () => {
+        otpRepository.findOne.mockResolvedValue({
+          email: 'jane@example.com',
+          code: '111111',
+          metadata: { purpose: 'customer-registration', firstName: 'Jane' },
+        });
+
+        const result = await service.resendCustomerOtp({
+          email: 'jane@example.com',
+        });
+
+        expect(otpRepository.create).toHaveBeenCalledWith(
+          expect.objectContaining({
+            email: 'jane@example.com',
+            metadata: expect.objectContaining({ firstName: 'Jane' }),
+          }),
+        );
+        expect(mailService.sendOtp).toHaveBeenCalled();
+        expect(result).toEqual({ message: 'A new OTP has been sent to your email' });
+      });
+    });
+
+    describe('verifyOtpAndSetCustomerPin', () => {
+      it('should verify OTP, hash 6-digit PIN, create active customer and return auth token', async () => {
+        otpRepository.findOne.mockResolvedValue({
+          email: 'jane@example.com',
+          code: '123456',
+          expiresAt: new Date(Date.now() + 60000),
+          metadata: { firstName: 'Jane', lastName: 'Doe', phone: '+2348012345678' },
+        });
+        usersService.findByEmail.mockResolvedValue(null);
+        usersService.create.mockResolvedValue({
+          id: 'cust-1',
+          email: 'jane@example.com',
+          firstName: 'Jane',
+          lastName: 'Doe',
+          role: UserRole.CUSTOMER,
+          status: UserStatus.ACTIVE,
+          emailVerified: true,
+        });
+
+        const result = await service.verifyOtpAndSetCustomerPin({
+          email: 'jane@example.com',
+          code: '123456',
+          pin: '654321',
+        });
+
+        expect(bcrypt.hash).toHaveBeenCalledWith('654321', 10);
+        expect(usersService.create).toHaveBeenCalledWith(
+          expect.objectContaining({
+            email: 'jane@example.com',
+            role: UserRole.CUSTOMER,
+            status: UserStatus.ACTIVE,
+            emailVerified: true,
+          }),
+        );
+        expect(otpRepository.remove).toHaveBeenCalled();
+        expect(result.access_token).toBe('mock_token');
+      });
+
+      it('should throw BadRequestException if OTP is expired', async () => {
+        otpRepository.findOne.mockResolvedValue({
+          email: 'jane@example.com',
+          code: '123456',
+          expiresAt: new Date(Date.now() - 1000),
+        });
+
+        await expect(
+          service.verifyOtpAndSetCustomerPin({
+            email: 'jane@example.com',
+            code: '123456',
+            pin: '654321',
+          }),
+        ).rejects.toThrow(BadRequestException);
+      });
+    });
+
+    describe('login - unverified customer interception', () => {
+      it('should send OTP and return requiresPinSetup if customer email is not verified', async () => {
+        usersService.findByIdentifier.mockResolvedValue({
+          id: 'cust-unverified',
+          email: 'pending@example.com',
+          role: UserRole.CUSTOMER,
+          emailVerified: false,
+          status: UserStatus.PENDING,
+          password: null,
+        });
+
+        const result = await service.login({
+          identifier: 'pending@example.com',
+          password: '123456',
+        });
+
+        expect(otpRepository.save).toHaveBeenCalled();
+        expect(mailService.sendOtp).toHaveBeenCalled();
+        expect(result.requiresPinSetup).toBe(true);
+        expect(result.email).toBe('pending@example.com');
+      });
+    });
+
+    describe('requestCustomerPinReset and resetCustomerPin', () => {
+      it('should send OTP for customer pin reset', async () => {
+        usersService.findByEmail.mockResolvedValue({
+          id: 'cust-1',
+          email: 'jane@example.com',
+          role: UserRole.CUSTOMER,
+        });
+
+        const result = await service.requestCustomerPinReset({
+          email: 'jane@example.com',
+        });
+
+        expect(otpRepository.save).toHaveBeenCalled();
+        expect(mailService.sendOtp).toHaveBeenCalled();
+        expect(result.message).toContain('reset OTP has been sent');
+      });
+
+      it('should reset customer PIN with valid OTP', async () => {
+        otpRepository.findOne.mockResolvedValue({
+          email: 'jane@example.com',
+          code: '123456',
+          expiresAt: new Date(Date.now() + 60000),
+        });
+        usersService.findByEmail.mockResolvedValue({
+          id: 'cust-1',
+          email: 'jane@example.com',
+          role: UserRole.CUSTOMER,
+        });
+
+        const result = await service.resetCustomerPin({
+          email: 'jane@example.com',
+          otp: '123456',
+          newPin: '999888',
+        });
+
+        expect(usersService.updatePassword).toHaveBeenCalled();
+        expect(otpRepository.remove).toHaveBeenCalled();
+        expect(result.message).toContain('PIN reset successfully');
+      });
+    });
+  });
 });
