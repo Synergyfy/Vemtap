@@ -347,8 +347,8 @@ function LoginPageContent() {
                             <div className="flex justify-between items-center">
                                 <label className="text-xs font-medium text-text-secondary">Password or PIN</label>
                                 <div className="flex items-center gap-3">
-                                    <Link href="/forgot-password" title="reset password" className="text-xs font-semibold text-primary hover:underline">Forgot password?</Link>
-                                    {/* <Link href="/forgot-pin" title="reset pin" className="text-xs font-semibold text-primary hover:underline">Forgot PIN?</Link> */}
+                                    {/* <Link href="/forgot-password" title="reset password" className="text-xs font-semibold text-primary hover:underline">Forgot password?</Link> */}
+                                    <Link href="/forgot-pin" title="reset pin" className="text-xs font-semibold text-primary hover:underline">Forgot Password?</Link>
                                 </div>
                             </div>
                             <div className="relative">
