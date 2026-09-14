@@ -232,6 +232,139 @@ describe('Auth & Notifications (e2e)', () => {
     expect(statusRes.body.role).toBe('Customer');
   });
 
+  it('Customer flow: request OTP → verify & set 6-digit PIN → login with PIN → reset PIN', async () => {
+    const customerEmail = `customer-${Date.now()}@example.com`;
+
+    // 1. Request OTP with Full Name, Email, and Phone
+    const reqOtpRes = await request(app.getHttpServer())
+      .post('/api/v1/auth/customer/register/request-otp')
+      .send({
+        name: 'Sarah Connor',
+        email: customerEmail,
+        phone: '+2348099887766',
+      })
+      .expect(200);
+    expect(reqOtpRes.body.message).toContain('OTP sent successfully');
+
+    // 2. Locate OTP record in DB
+    const otpRecord = await otpRepository.findOne({
+      where: { email: customerEmail },
+      order: { createdAt: 'DESC' },
+    });
+    expect(otpRecord).toBeDefined();
+    expect(otpRecord.code).toHaveLength(6);
+
+    // 3. Setting PIN with invalid OTP should fail
+    await request(app.getHttpServer())
+      .post('/api/v1/auth/customer/register/verify-and-set-pin')
+      .send({
+        email: customerEmail,
+        code: '000000',
+        pin: '123456',
+      })
+      .expect(400);
+
+    // 4. Setting PIN with invalid PIN format (non-6 digits) should fail
+    await request(app.getHttpServer())
+      .post('/api/v1/auth/customer/register/verify-and-set-pin')
+      .send({
+        email: customerEmail,
+        code: otpRecord.code,
+        pin: '1234',
+      })
+      .expect(400);
+
+    // 5. Successfully verify and set 6-digit PIN
+    const verifyRes = await request(app.getHttpServer())
+      .post('/api/v1/auth/customer/register/verify-and-set-pin')
+      .send({
+        email: customerEmail,
+        code: otpRecord.code,
+        pin: '123456',
+      })
+      .expect(201);
+    expect(verifyRes.body.access_token).toBeDefined();
+    expect(verifyRes.body.user.role).toBe('Customer');
+
+    // 6. Log in with the 6-digit PIN
+    const loginRes = await request(app.getHttpServer())
+      .post('/api/v1/auth/login')
+      .send({
+        identifier: customerEmail,
+        password: '123456',
+      })
+      .expect(200);
+    expect(loginRes.body.access_token).toBeDefined();
+
+    // 7. Request PIN Reset
+    await request(app.getHttpServer())
+      .post('/api/v1/auth/customer/pin/forgot')
+      .send({ email: customerEmail })
+      .expect(200);
+
+    const resetOtp = await otpRepository.findOne({
+      where: { email: customerEmail },
+      order: { createdAt: 'DESC' },
+    });
+    expect(resetOtp).toBeDefined();
+
+    // 8. Confirm Reset with new 6-digit PIN
+    await request(app.getHttpServer())
+      .post('/api/v1/auth/customer/pin/reset')
+      .send({
+        email: customerEmail,
+        otp: resetOtp.code,
+        newPin: '654321',
+      })
+      .expect(200);
+
+    // 9. Log in with new 6-digit PIN
+    const newLoginRes = await request(app.getHttpServer())
+      .post('/api/v1/auth/login')
+      .send({
+        identifier: customerEmail,
+        password: '654321',
+      })
+      .expect(200);
+    expect(newLoginRes.body.access_token).toBeDefined();
+  });
+
+  it('Customer unverified login should trigger OTP and require PIN setup', async () => {
+    const unverifiedEmail = `unverified-${Date.now()}@example.com`;
+
+    // Create a pending customer with no password
+    const userRepo = app.get('UserRepository');
+    const user = userRepo.create({
+      email: unverifiedEmail,
+      firstName: 'Unverified',
+      lastName: 'Customer',
+      role: 'Customer',
+      status: 'Pending',
+      emailVerified: false,
+      password: null,
+    });
+    await userRepo.save(user);
+
+    // Attempting login sends OTP and returns requiresPinSetup
+    const loginRes = await request(app.getHttpServer())
+      .post('/api/v1/auth/login')
+      .send({
+        identifier: unverifiedEmail,
+        password: 'any_password',
+      })
+      .expect(200);
+
+    expect(loginRes.body.requiresPinSetup).toBe(true);
+    expect(loginRes.body.email).toBe(unverifiedEmail);
+
+    // Verify OTP was stored in DB
+    const otp = await otpRepository.findOne({
+      where: { email: unverifiedEmail },
+      order: { createdAt: 'DESC' },
+    });
+    expect(otp).toBeDefined();
+  });
+
   it('Customer completeCustomerSetup: should update email for dummy-email user', async () => {
     const dummyEmail = `dummy-${Date.now()}@vemtap.dummy`;
     const realEmail = `real-${Date.now()}@example.com`;
