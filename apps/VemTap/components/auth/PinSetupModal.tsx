@@ -278,7 +278,7 @@ export default function PinSetupModal({ isOpen, email, onClose, onSuccess }: Pin
                       autoComplete="one-time-code"
                       value={otpCode}
                       onChange={(e) => setOtpCode(e.target.value.replace(/[^0-9]/g, '').slice(0, 6))}
-                      placeholder="Enter 6-digit code"
+                      placeholder="Enter 6-digit OTP code"
                       className="w-full h-12 bg-gray-50 border border-gray-200 rounded-xl text-center text-lg tracking-widest font-mono font-semibold focus:outline-none focus:ring-2 focus:ring-[#0055c4]/20 focus:border-[#0055c4]/40"
                     />
 
@@ -289,7 +289,7 @@ export default function PinSetupModal({ isOpen, email, onClose, onSuccess }: Pin
                         autoComplete="new-password"
                         value={pin}
                         onChange={(e) => setPin(e.target.value.replace(/[^0-9]/g, '').slice(0, 6))}
-                        placeholder="6-digit PIN"
+                            placeholder="Create 6-Digit PIN"
                         className="w-full h-12 bg-gray-50 border border-gray-200 rounded-xl text-center text-lg tracking-widest font-mono font-semibold focus:outline-none focus:ring-2 focus:ring-[#0055c4]/20 focus:border-[#0055c4]/40"
                       />
                       <input

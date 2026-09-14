@@ -392,7 +392,7 @@ export default function RegisterChoiceModal({ isOpen, onClose }: RegisterChoiceM
                       autoComplete="one-time-code"
                       value={otpCode}
                       onChange={(e) => setOtpCode(e.target.value.replace(/[^0-9]/g, '').slice(0, 6))}
-                      placeholder="Enter 6-digit code"
+                      placeholder="Enter 6-digit OTP code"
                       className="w-full h-12 bg-gray-50 border border-gray-200 rounded-xl text-center text-lg tracking-widest font-mono text-sm-2 font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-400"
                     />
 
@@ -403,7 +403,7 @@ export default function RegisterChoiceModal({ isOpen, onClose }: RegisterChoiceM
                         autoComplete="new-password"
                         value={customerForm.pin}
                         onChange={(e) => setCustomerForm({ ...customerForm, pin: e.target.value.replace(/[^0-9]/g, '').slice(0, 6) })}
-                        placeholder="6-digit PIN"
+                        placeholder="Create 6-digit PIN"
                         className="w-full h-12 bg-gray-50 border border-gray-200 rounded-xl text-center text-lg tracking-widest font-mono font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-400"
                       />
                       <input
