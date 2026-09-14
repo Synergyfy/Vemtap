@@ -13,6 +13,12 @@ import { BatchSendProcessor } from '../../src/modules/messaging/processors/batch
 import { IndividualSendProcessor } from '../../src/modules/messaging/processors/individual-send.processor';
 import { FlowDelayProcessor } from '../../src/modules/messaging/processors/flow-delay.processor';
 import { AutomationProcessor } from '../../src/modules/messaging/processors/automation.processor';
+import { RotatorRefreshProcessor } from '../../src/modules/rotator/rotator-refresh.processor';
+import { ClusterAutoAssignProcessor } from '../../src/modules/clusters/cluster-auto-assign.processor';
+import { PushNotificationProcessor } from '../../src/modules/notifications/push-notification.processor';
+import { OrderNotificationProcessor } from '../../src/modules/catalogue-orders/processors/order-notification.processor';
+import { GeocodingProcessor } from '../../src/modules/businesses/processors/geocoding.processor';
+import { AffiliateSyncProcessor } from '../../src/modules/affiliates/affiliate-sync.processor';
 import { TestErrorFilter } from '../../src/common/filters/test-error.filter';
 
 export async function createTestApp(
@@ -23,12 +29,10 @@ export async function createTestApp(
     imports: [AppModule],
   });
 
-  // ... (rest of the mocking logic)
-
   // Mock BullMQ Queues to avoid Redis connections in E2E tests
   const mockQueue = {
-    add: jest.fn(),
-    addBulk: jest.fn(),
+    add: jest.fn().mockResolvedValue({ id: 'mock-job-id' }),
+    addBulk: jest.fn().mockResolvedValue([]),
     process: jest.fn(),
     close: jest.fn(),
     on: jest.fn(),
@@ -37,28 +41,35 @@ export async function createTestApp(
   };
 
   console.log('[TestApp] Overriding BullMQ providers...');
-  builder
-    .overrideProvider(getQueueToken('messaging-batch-send'))
-    .useValue(mockQueue);
-  builder
-    .overrideProvider(getQueueToken('messaging-individual-send'))
-    .useValue(mockQueue);
-  builder
-    .overrideProvider(getQueueToken('messaging-flow-delay'))
-    .useValue(mockQueue);
-  builder
-    .overrideProvider(getQueueToken('messaging-automation'))
-    .useValue(mockQueue);
+  const queueNames = [
+    'messaging-batch-send',
+    'messaging-individual-send',
+    'messaging-flow-delay',
+    'messaging-automation',
+    'rotator-refresh',
+    'cluster-auto-assign',
+    'push-notifications',
+    'order-notifications',
+    'geocoding',
+    'affiliate-external-sync',
+  ];
+
+  for (const queueName of queueNames) {
+    builder.overrideProvider(getQueueToken(queueName)).useValue(mockQueue);
+  }
 
   // Mock BullMQ Processors to avoid starting workers that require Redis connections
-  builder.overrideProvider(BatchSendProcessor).useValue({ process: jest.fn() });
-  builder
-    .overrideProvider(IndividualSendProcessor)
-    .useValue({ process: jest.fn() });
-  builder.overrideProvider(FlowDelayProcessor).useValue({ process: jest.fn() });
-  builder
-    .overrideProvider(AutomationProcessor)
-    .useValue({ process: jest.fn() });
+  const mockProcessor = { process: jest.fn() };
+  builder.overrideProvider(BatchSendProcessor).useValue(mockProcessor);
+  builder.overrideProvider(IndividualSendProcessor).useValue(mockProcessor);
+  builder.overrideProvider(FlowDelayProcessor).useValue(mockProcessor);
+  builder.overrideProvider(AutomationProcessor).useValue(mockProcessor);
+  builder.overrideProvider(RotatorRefreshProcessor).useValue(mockProcessor);
+  builder.overrideProvider(ClusterAutoAssignProcessor).useValue(mockProcessor);
+  builder.overrideProvider(PushNotificationProcessor).useValue(mockProcessor);
+  builder.overrideProvider(OrderNotificationProcessor).useValue(mockProcessor);
+  builder.overrideProvider(GeocodingProcessor).useValue(mockProcessor);
+  builder.overrideProvider(AffiliateSyncProcessor).useValue(mockProcessor);
 
   if (configureBuilder) {
     configureBuilder(builder);
