@@ -1,56 +1,73 @@
 # Frontend Integration Guide: Customer OTP & 6-Digit PIN Authentication Flow
 
-This document details the backend authentication contract and step-by-step frontend implementation guide for the customer registration, login interception, PIN management, and PIN reset features.
+This guide provides the complete, authoritative specification for frontend engineers implementing the customer signup, login, PIN creation, and PIN reset workflows in VemTap.
 
 ---
 
-## 1. Overview & Key Principles
+## 1. Architecture & Core Rules
 
-1. **Numeric 6-Digit PIN as Password**:
-   - Customers do **not** use traditional passwords or auto-generated passwords.
-   - The password is a strict **6-digit numeric PIN** (e.g. `123456`, matching `/^\d{6}$/`).
-2. **OTP-First Registration**:
-   - The customer **cannot** set a PIN upfront during the first screen.
-   - They must first submit their contact details (`fullName`, `email`, and optional `phone`) to receive a 6-digit verification code.
-   - The 6-digit PIN can only be submitted alongside a valid OTP code.
-3. **10-Minute OTP Expiration & Resend**:
-   - All OTPs strictly expire in **10 minutes** (`expiresInMinutes: 10`).
-   - Customers can request a new OTP at any time if their code expired or was lost.
+1. **6-Digit Numeric PIN as Password**:
+   - Customers do **not** use alphanumeric passwords or auto-generated temporary strings.
+   - Customer credentials consist of their **email** (or phone) and a **6-digit numeric PIN** (`/^\d{6}$/`, e.g. `123456`).
+   - The PIN is securely hashed with bcrypt on the backend and stored in the customer's password field.
+2. **Two-Step OTP-First Registration**:
+   - **Step 1 (Contact Details)**: The customer inputs `firstName`, `lastName`, `email`, and optional `phone`. The backend generates and emails a 6-digit verification code (OTP).
+   - **Step 2 (Verification & PIN Setup)**: The customer enters the 6-digit OTP received in their email along with their desired 6-digit PIN. Only upon successful OTP verification is the account created/activated and the PIN set.
+3. **10-Minute OTP Expiration & Resend Cooldown**:
+   - All OTPs expire strictly in **10 minutes**.
+   - The frontend should implement a **60-second cooldown timer** before allowing the user to click "Resend Code".
 4. **Unverified Customer Login Interception**:
-   - If an unverified customer attempts to log in via `/api/v1/auth/login`, the backend intercepts the login, generates and sends a fresh 10-minute OTP to their email, and returns `{ requiresPinSetup: true, email: ... }`.
-   - The frontend should detect `requiresPinSetup` and immediately present the OTP & PIN setup screen.
-5. **Forgot PIN / Reset PIN**:
-   - Customers can reset a forgotten PIN using an email OTP.
+   - When an unverified customer attempts to log in via `/api/v1/auth/login`, the backend intercepts the login, generates and emails a fresh 10-minute OTP, and responds with `{ requiresPinSetup: true, email: ... }`.
+   - The frontend must check for `requiresPinSetup: true` and automatically display Step 2 (OTP verification & PIN setup) with the email pre-populated.
+5. **PIN Reset (Forgot PIN)**:
+   - If a customer forgets their 6-digit PIN, they request a reset OTP via email, and submit their new 6-digit PIN along with the OTP.
 
 ---
 
-## 2. API Endpoints Reference
+## 2. API Endpoints Specification
 
-Base URL prefix: `/api/v1/auth`
+Base URL: `${NEXT_PUBLIC_API_URL}/auth` (e.g. `https://testapi.vemtap.com/api/v1/auth`)
+
+```
+┌────────────────────────────────────────────────────────────┬────────┬─────────────────────────────┐
+│ Action                                                     │ Method │ Endpoint                    │
+├────────────────────────────────────────────────────────────┼────────┼─────────────────────────────┤
+│ 1. Request Registration OTP                                │ POST   │ /customer/register/request-otp │
+│ 2. Resend OTP                                              │ POST   │ /customer/otp/resend        │
+│ 3. Verify OTP & Set 6-Digit PIN (Completes Registration)   │ POST   │ /customer/register/verify-and-set-pin │
+│ 4. Customer Login (Intercepts unverified accounts)        │ POST   │ /login                      │
+│ 5. Request PIN Reset OTP (Forgot PIN)                      │ POST   │ /customer/pin/forgot        │
+│ 6. Submit New 6-Digit PIN with OTP                         │ POST   │ /customer/pin/reset         │
+└────────────────────────────────────────────────────────────┴────────┴─────────────────────────────┘
+```
+
+---
 
 ### 2.1 Request Customer Signup OTP
-Dispatches a 6-digit verification code to the customer's email address.
+Dispatches a 6-digit verification code to the customer's email.
 
-- **Method**: `POST`
-- **Path**: `/api/v1/auth/customer/register/request-otp`
-- **Access**: Public
-- **Request Body (`RequestCustomerSignupOtpDto`)**:
+- **Endpoint**: `POST /api/v1/auth/customer/register/request-otp`
+- **Auth**: Public
+- **Headers**: `Content-Type: application/json`
+- **Request Body**:
   ```json
   {
     "firstName": "Jane",
     "lastName": "Doe",
     "email": "jane@example.com",
-    "phone": "+2348012345678" // optional, E.164 format
+    "phone": "+2348012345678",        // optional, E.164 format
+    "branchId": "d290f1ee-..."        // optional, UUID v4 for branch attribution
   }
   ```
-- **Responses**:
-  - `200 OK`:
-    ```json
-    {
-      "message": "OTP sent successfully to your email"
-    }
-    ```
-  - `409 Conflict`: If an active account already exists with this email or phone:
+- **Success Response (`200 OK`)**:
+  ```json
+  {
+    "message": "OTP sent successfully to your email"
+  }
+  ```
+- **Error Responses**:
+  - `400 Bad Request`: Validation failure (e.g. invalid email format, missing `firstName`/`lastName`).
+  - `409 Conflict`: Account already exists with this email or phone:
     ```json
     {
       "statusCode": 409,
@@ -63,84 +80,84 @@ Dispatches a 6-digit verification code to the customer's email address.
 ### 2.2 Resend Customer OTP
 Dispatches a fresh 10-minute OTP code if the previous code expired or was not received.
 
-- **Method**: `POST`
-- **Path**: `/api/v1/auth/customer/otp/resend`
-- **Access**: Public
-- **Request Body (`ResendCustomerOtpDto`)**:
+- **Endpoint**: `POST /api/v1/auth/customer/otp/resend`
+- **Auth**: Public
+- **Request Body**:
   ```json
   {
     "email": "jane@example.com"
   }
   ```
-- **Responses**:
-  - `200 OK`:
-    ```json
-    {
-      "message": "A new OTP has been sent to your email"
-    }
-    ```
-  - `404 Not Found`: If no pending customer record was found for this email.
+- **Success Response (`200 OK`)**:
+  ```json
+  {
+    "message": "A new OTP has been sent to your email"
+  }
+  ```
 
 ---
 
 ### 2.3 Verify OTP & Set 6-Digit PIN (Completes Signup)
-Verifies the OTP code, securely hashes the 6-digit PIN, activates the customer account (`emailVerified: true`, `status: ACTIVE`), and returns an authentication JWT session.
+Verifies the OTP, hashes the 6-digit PIN as the customer password, sets `emailVerified: true` and `status: ACTIVE`, and returns an authenticated JWT session.
 
-- **Method**: `POST`
-- **Path**: `/api/v1/auth/customer/register/verify-and-set-pin`
-- **Access**: Public
-- **Request Body (`VerifyAndSetCustomerPinDto`)**:
+- **Endpoint**: `POST /api/v1/auth/customer/register/verify-and-set-pin`
+- **Auth**: Public
+- **Request Body**:
   ```json
   {
     "email": "jane@example.com",
-    "otp": "123456",            // exactly 6 digits (or "code": "123456")
-    "pin": "654321",            // exactly 6 digits: /^\d{6}$/
+    "otp": "123456",            // 6-digit code from email (backend also accepts "code")
+    "pin": "654321",            // exactly 6 numeric digits: /^\d{6}$/
     "firstName": "Jane",        // optional if provided in Step 1
     "lastName": "Doe",          // optional if provided in Step 1
-    "phone": "+2348012345678"   // optional
+    "phone": "+2348012345678",  // optional
+    "branchId": "d290f1ee-..."  // optional
   }
   ```
-- **Responses**:
-  - `201 Created`:
-    ```json
-    {
-      "accessToken": "eyJhbGciOi...",
-      "user": {
-        "id": "uuid",
-        "email": "jane@example.com",
-        "role": "Customer",
-        "status": "Active",
-        "emailVerified": true
-      }
-    }
-    ```
+- **Success Response (`201 Created`)**:
+  ```json
+  {
+    "access_token": "eyJhbGciOi...",
+    "user": {
+      "id": "c7a8...",
+      "email": "jane@example.com",
+      "firstName": "Jane",
+      "lastName": "Doe",
+      "role": "Customer",
+      "status": "Active",
+      "emailVerified": true
+    },
+    "isNewUser": true
+  }
+  ```
+- **Error Responses**:
   - `400 Bad Request`:
-    - `"Invalid verification code"` (code does not match)
-    - `"Verification code has expired. Please request a new one."` (expired after 10 mins)
-    - `"PIN must be exactly 6 digits"` (if non-numeric or wrong length)
+    - `"Invalid OTP code"`
+    - `"OTP has expired. Please request a new code."`
+    - `"PIN must be exactly 6 digits"`
+    - `"Verification session not found"`
 
 ---
 
 ### 2.4 Login with PIN & Unverified Customer Interception
-Customers log in via the standard `/auth/login` endpoint using their email (or phone) and their 6-digit PIN as the `password`.
+Customers log in using their email (or phone) and their 6-digit PIN as the `password`.
 
-- **Method**: `POST`
-- **Path**: `/api/v1/auth/login`
-- **Access**: Public
+- **Endpoint**: `POST /api/v1/auth/login`
+- **Auth**: Public
 - **Request Body**:
   ```json
   {
-    "emailOrPhone": "jane@example.com",
-    "password": "654321" // The customer's 6-digit PIN
+    "identifier": "jane@example.com", // email or phone
+    "password": "654321"              // the 6-digit PIN
   }
   ```
 
-#### Standard Successful Login Response (`200 OK`):
+#### Standard Success Response (`200 OK`):
 ```json
 {
-  "accessToken": "eyJhbGciOi...",
+  "access_token": "eyJhbGciOi...",
   "user": {
-    "id": "uuid",
+    "id": "c7a8...",
     "email": "jane@example.com",
     "role": "Customer",
     "status": "Active"
@@ -148,8 +165,8 @@ Customers log in via the standard `/auth/login` endpoint using their email (or p
 }
 ```
 
-#### Unverified Customer Interception Response (`200 OK`):
-When a customer account has not yet completed OTP verification or set a PIN, the backend intercepts the login, sends a fresh 10-minute OTP to their email, and returns:
+#### Unverified Customer Interception (`200 OK` with `requiresPinSetup: true`):
+If the customer has not completed OTP verification or set their PIN, the backend intercepts the login, generates and emails a fresh 10-minute OTP, and returns:
 ```json
 {
   "requiresPinSetup": true,
@@ -157,128 +174,125 @@ When a customer account has not yet completed OTP verification or set a PIN, the
   "message": "Please verify your email and set your 6-digit PIN to proceed."
 }
 ```
-> **Frontend Action**: Check `if (response.data.requiresPinSetup)`. If true, transition the user to the OTP & PIN setup modal with the email pre-populated.
+> **Frontend Implementation Requirement**:
+> When receiving `response.data.requiresPinSetup === true`, do NOT treat this as a standard login. Instead, open the Step 2 modal (OTP verification + 6-digit PIN setup) prefilled with the customer's email.
 
 ---
 
 ### 2.5 Request PIN Reset (Forgot PIN)
-Generates and emails a 10-minute reset OTP code.
+Dispatches a 10-minute reset OTP code to the customer's email.
 
-- **Method**: `POST`
-- **Path**: `/api/v1/auth/customer/pin/forgot`
-- **Access**: Public
-- **Request Body (`RequestCustomerPinResetDto`)**:
+- **Endpoint**: `POST /api/v1/auth/customer/pin/forgot`
+- **Auth**: Public
+- **Request Body**:
   ```json
   {
     "email": "jane@example.com"
   }
   ```
-- **Responses**:
-  - `200 OK`:
-    ```json
-    {
-      "message": "If this email is associated with a customer account, a PIN reset code has been sent."
-    }
-    ```
+- **Success Response (`200 OK`)**:
+  ```json
+  {
+    "message": "If an account exists with this email, a reset OTP has been sent."
+  }
+  ```
 
 ---
 
 ### 2.6 Reset 6-Digit PIN
-Verifies the reset OTP and updates the customer's PIN.
+Verifies the reset OTP and updates the customer's 6-digit PIN.
 
-- **Method**: `POST`
-- **Path**: `/api/v1/auth/customer/pin/reset`
-- **Access**: Public
-- **Request Body (`ResetCustomerPinDto`)**:
+- **Endpoint**: `POST /api/v1/auth/customer/pin/reset`
+- **Auth**: Public
+- **Request Body**:
   ```json
   {
     "email": "jane@example.com",
-    "otp": "123456", // 6 digits
-    "pin": "987654"  // New 6 digits PIN
+    "otp": "123456",            // 6-digit code received via email
+    "newPin": "987654"          // new 6-digit PIN (backend also accepts "pin")
   }
   ```
-- **Responses**:
-  - `200 OK`:
-    ```json
-    {
-      "message": "Your 6-digit PIN has been successfully reset. You can now log in."
-    }
-    ```
-  - `400 Bad Request`:
-    - `"Invalid verification code"`
-    - `"Verification code has expired. Please request a new one."`
-    - `"PIN must be exactly 6 digits"`
+- **Success Response (`200 OK`)**:
+  ```json
+  {
+    "message": "PIN reset successfully. You can now log in with your new PIN."
+  }
+  ```
+- **Error Responses**:
+  - `400 Bad Request`: `"Invalid or expired reset OTP"`, `"New PIN must be exactly 6 digits"`.
 
 ---
 
-## 3. Recommended Frontend Integration Architecture
+## 3. Frontend Implementation Reference
 
-### 3.1 TypeScript API Client (`visitorAuth.ts` or `customerAuth.ts`)
+### 3.1 TypeScript Service Client (`customerAuth.ts`)
 
 ```typescript
 import axios from 'axios';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://testapi.vemtap.com/api/v1';
 
-export interface CustomerSignupStep1Payload {
+export interface CustomerSignupStep1Dto {
   firstName: string;
   lastName: string;
   email: string;
   phone?: string;
+  branchId?: string;
 }
 
-export interface VerifyAndSetPinPayload {
+export interface VerifyAndSetPinDto {
   email: string;
-  otp: string; // or code: string
+  otp: string;
   pin: string;
   firstName?: string;
   lastName?: string;
   phone?: string;
+  branchId?: string;
 }
 
-export interface ResetPinPayload {
+export interface ResetPinDto {
   email: string;
-  otp: string; // or code: string
-  pin: string; // or newPin: string
+  otp: string;
+  newPin: string;
 }
 
 export const customerAuthApi = {
-  // 1. Step 1: Send OTP to email
-  requestSignupOtp: async (data: CustomerSignupStep1Payload) => {
-    const res = await axios.post(`${API_BASE}/auth/customer/register/request-otp`, data);
+  // Step 1: Send registration OTP
+  requestSignupOtp: async (data: CustomerSignupStep1Dto) => {
+    const res = await axios.post(`${API_URL}/auth/customer/register/request-otp`, data);
     return res.data;
   },
 
-  // 2. Resend OTP
+  // Resend OTP
   resendOtp: async (email: string) => {
-    const res = await axios.post(`${API_BASE}/auth/customer/otp/resend`, { email });
+    const res = await axios.post(`${API_URL}/auth/customer/otp/resend`, { email });
     return res.data;
   },
 
-  // 3. Step 2: Verify OTP and Set 6-Digit PIN (Returns Auth Session)
-  verifyAndSetPin: async (data: VerifyAndSetPinPayload) => {
-    const res = await axios.post(`${API_BASE}/auth/customer/register/verify-and-set-pin`, data);
+  // Step 2: Verify OTP and Set 6-Digit PIN
+  verifyAndSetPin: async (data: VerifyAndSetPinDto) => {
+    const res = await axios.post(`${API_URL}/auth/customer/register/verify-and-set-pin`, data);
     return res.data;
   },
 
-  // 4. Request PIN Reset (Forgot PIN)
-  requestPinReset: async (email: string) => {
-    const res = await axios.post(`${API_BASE}/auth/customer/pin/forgot`, { email });
-    return res.data;
-  },
-
-  // 5. Submit New PIN with OTP
-  resetPin: async (data: ResetPinPayload) => {
-    const res = await axios.post(`${API_BASE}/auth/customer/pin/reset`, data);
-    return res.data;
-  },
-
-  // 6. Login
-  login: async (emailOrPhone: string, pin: string) => {
-    const res = await axios.post(`${API_BASE}/auth/login`, {
-      emailOrPhone,
+  // Customer Login (handles PIN & unverified interception)
+  login: async (identifier: string, pin: string) => {
+    const res = await axios.post(`${API_URL}/auth/login`, {
+      identifier,
       password: pin,
     });
+    return res.data;
+  },
+
+  // Request PIN Reset (Forgot PIN)
+  requestPinReset: async (email: string) => {
+    const res = await axios.post(`${API_URL}/auth/customer/pin/forgot`, { email });
+    return res.data;
+  },
+
+  // Submit New PIN
+  resetPin: async (data: ResetPinDto) => {
+    const res = await axios.post(`${API_URL}/auth/customer/pin/reset`, data);
     return res.data;
   },
 };
@@ -286,81 +300,104 @@ export const customerAuthApi = {
 
 ---
 
-### 3.2 Registration Modal UX Flow (2-Step Pattern)
+### 3.2 Sequence Diagram: 2-Step Registration Flow
 
 ```mermaid
 sequenceDiagram
     autonumber
-    actor User as Customer
-    participant UI as Frontend Modal
+    actor Customer
+    participant Modal as Frontend Modal
     participant API as Backend API
+    participant Mail as Email Service
 
-    Note over User,UI: Step 1: Contact Details
-    User->>UI: Enters First Name, Last Name, Email, optional Phone
-    User->>UI: Clicks "Send Code"
-    UI->>API: POST /auth/customer/register/request-otp
-    API-->>UI: 200 OK (expiresInMinutes: 10)
-    UI->>UI: Switch to Step 2 & Start 60s Resend Timer
+    Note over Customer,Modal: Step 1: Profile & Contact Details
+    Customer->>Modal: Enters First Name, Last Name, Email, optional Phone
+    Customer->>Modal: Clicks "Continue / Send Code"
+    Modal->>API: POST /auth/customer/register/request-otp
+    API->>Mail: Dispatches 6-digit OTP (10 min expiry)
+    API-->>Modal: 200 OK ("OTP sent successfully")
+    Modal->>Modal: Switch to Step 2 & start 60s cooldown countdown
 
-    Note over User,UI: Step 2: Verification & PIN Creation
-    User->>UI: Enters 6-digit OTP from Email
-    User->>UI: Enters 6-digit PIN & Confirms PIN
-    User->>UI: Clicks "Set PIN & Complete Registration"
-    UI->>API: POST /auth/customer/register/verify-and-set-pin
-    API-->>UI: 201 Created ({ accessToken, user })
-    UI->>UI: Store Token & Redirect / Close Modal
+    Note over Customer,Modal: Step 2: OTP Verification & PIN Creation
+    Customer->>Modal: Enters 6-digit OTP received from email
+    Customer->>Modal: Enters 6-digit numeric PIN and confirms PIN
+    Customer->>Modal: Clicks "Complete Sign Up"
+    Modal->>API: POST /auth/customer/register/verify-and-set-pin
+    API-->>Modal: 201 Created ({ access_token, user })
+    Modal->>Modal: Save access_token in localStorage/cookies
+    Modal-->>Customer: Redirect to Dashboard / Onboarding
 ```
 
 ---
 
-### 3.3 UI Validation Rules Checklist
+### 3.3 Handling Login Interception in Frontend
 
-| Field | Type | Validation Rule | Error Message Prompt |
-| `firstName` | String | Trimmed, $\ge$ 2 characters | "Please enter your first name." |
-| `lastName` | String | Trimmed, $\ge$ 2 characters | "Please enter your last name." |
-| `email` | String | Valid email address | "Please enter a valid email address." |
-| `phone` | String | Optional, E.164 (`/^\+?[1-9]\d{7,14}$/`) | "Please enter a valid phone number." |
-| `otp` | String | Exactly 6 numeric digits (`/^\d{6}$/`) | "Please enter the 6-digit code sent to your email." |
-| `pin` | String | Exactly 6 numeric digits (`/^\d{6}$/`) | "PIN must be exactly 6 digits." |
-| `confirmPin` | String | Must equal `pin` | "PINs do not match." |
-
----
-
-### 3.4 Handling Login Redirection for Unverified Users
-
-In your login handler (e.g. `LoginForm.tsx` or `loginVisitor`):
+In your `login` handler component:
 
 ```typescript
-const handleLogin = async (emailOrPhone: string, pin: string) => {
+const handleCustomerLogin = async (identifier: string, pin: string) => {
   try {
-    const response = await customerAuthApi.login(emailOrPhone, pin);
+    const response = await customerAuthApi.login(identifier, pin);
 
-    // Check for interception response
+    // 1. Check if user is unverified and requires PIN setup
     if (response.requiresPinSetup) {
       toast.info(response.message || 'Please verify your email and set your 6-digit PIN.');
-      // Open OTP & PIN setup modal
-      setModalState({
+      // Transition UI to Step 2 with email pre-filled
+      setAuthModalState({
+        isOpen: true,
         step: 2,
         email: response.email,
-        isOpen: true,
       });
       return;
     }
 
-    // Normal login flow
-    localStorage.setItem('accessToken', response.accessToken);
+    // 2. Normal successful login
+    localStorage.setItem('accessToken', response.access_token);
     router.push('/dashboard');
   } catch (error: any) {
-    toast.error(error?.response?.data?.message || 'Invalid credentials');
+    toast.error(error.response?.data?.message || 'Invalid credentials');
   }
 };
 ```
 
 ---
 
-### 3.5 Resend Timer Best Practice
-To prevent abuse and provide great UX:
-1. When entering Step 2, initialize a 60-second countdown (`resendCooldown = 60`).
-2. Disable the "Resend Code" button while `resendCooldown > 0`.
-3. Display: `"Resend in 0:45"` until cooldown reaches 0.
-4. When clicked, invoke `customerAuthApi.resendOtp(email)` and reset the timer back to 60 seconds.
+### 3.4 UI Input Validation Rules Checklist
+
+| Field Name | Type | Validation Constraint | User-Facing Validation Error |
+| :--- | :--- | :--- | :--- |
+| `firstName` | String | Trimmed, non-empty, $\ge$ 2 chars | *"Please enter your first name."* |
+| `lastName` | String | Trimmed, non-empty, $\ge$ 2 chars | *"Please enter your last name."* |
+| `email` | String | Valid email address (`/^[^\s@]+@[^\s@]+\.[^\s@]+$/`) | *"Please enter a valid email address."* |
+| `phone` | String | Optional, E.164 (`/^\+?[1-9]\d{7,14}$/`) | *"Please enter a valid phone number."* |
+| `otp` | String | Exactly 6 numeric digits (`/^\d{6}$/`) | *"Please enter the 6-digit code sent to your email."* |
+| `pin` | String | Exactly 6 numeric digits (`/^\d{6}$/`) | *"PIN must be exactly 6 numeric digits."* |
+| `confirmPin`| String | Must match `pin` | *"PINs do not match."* |
+
+---
+
+### 3.5 Resend Button 60-Second Cooldown Pattern
+
+```typescript
+import { useState, useEffect } from 'react';
+
+export function useResendCooldown(initialSeconds = 60) {
+  const [countdown, setCountdown] = useState(0);
+
+  const startCooldown = () => setCountdown(initialSeconds);
+
+  useEffect(() => {
+    if (countdown <= 0) return;
+    const timer = setInterval(() => {
+      setCountdown((prev) => prev - 1);
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [countdown]);
+
+  return {
+    canResend: countdown === 0,
+    countdown,
+    startCooldown,
+  };
+}
+```
