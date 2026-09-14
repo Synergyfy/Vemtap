@@ -13,39 +13,14 @@ export class RequestCustomerSignupOtpDto {
   @ApiProperty({ example: 'John', description: 'First name of the customer' })
   @IsString()
   @IsNotEmpty()
-  @Transform(({ value, obj }) => {
-    if (typeof value === 'string' && value.trim()) return value.trim();
-    const fallback = obj?.name || obj?.fullName;
-    if (typeof fallback === 'string' && fallback.trim()) {
-      return fallback.trim().split(/\s+/)[0];
-    }
-    return value;
-  })
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
   firstName: string;
 
   @ApiProperty({ example: 'Doe', description: 'Last name of the customer' })
   @IsString()
   @IsNotEmpty()
-  @Transform(({ value, obj }) => {
-    if (typeof value === 'string' && value.trim()) return value.trim();
-    const fallback = obj?.name || obj?.fullName;
-    if (typeof fallback === 'string' && fallback.trim()) {
-      const parts = fallback.trim().split(/\s+/);
-      return parts.length > 1 ? parts.slice(1).join(' ') : 'Customer';
-    }
-    return value;
-  })
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
   lastName: string;
-
-  @ApiPropertyOptional({ example: 'John Doe', description: 'Legacy full name support' })
-  @IsOptional()
-  @IsString()
-  name?: string;
-
-  @ApiPropertyOptional({ example: 'John Doe', description: 'Legacy full name support' })
-  @IsOptional()
-  @IsString()
-  fullName?: string;
 
   @ApiProperty({
     example: 'customer@example.com',
@@ -158,14 +133,6 @@ export class VerifyAndSetCustomerPinDto {
   @IsOptional()
   @IsString()
   lastName?: string;
-
-  @ApiPropertyOptional({
-    example: 'Jane Doe',
-    description: 'Optional full name',
-  })
-  @IsOptional()
-  @IsString()
-  fullName?: string;
 
   @ApiPropertyOptional({
     example: '+2348012345678',
