@@ -1043,7 +1043,8 @@ describe('AuthService', () => {
         usersService.findByPhone.mockResolvedValue(null);
 
         const result = await service.requestCustomerRegistrationOtp({
-          name: 'Jane Doe',
+          firstName: 'Jane',
+          lastName: 'Doe',
           email: 'jane@example.com',
           phone: '+2348012345678',
         });
@@ -1071,7 +1072,8 @@ describe('AuthService', () => {
 
         await expect(
           service.requestCustomerRegistrationOtp({
-            name: 'Jane Doe',
+            firstName: 'Jane',
+            lastName: 'Doe',
             email: 'jane@example.com',
           }),
         ).rejects.toThrow(ConflictException);

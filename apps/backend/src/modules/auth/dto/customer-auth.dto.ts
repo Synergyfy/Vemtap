@@ -10,11 +10,17 @@ import {
 import { Transform } from 'class-transformer';
 
 export class RequestCustomerSignupOtpDto {
-  @ApiProperty({ example: 'Jane Doe', description: 'Full name of the customer' })
+  @ApiProperty({ example: 'John', description: 'First name of the customer' })
   @IsString()
   @IsNotEmpty()
   @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
-  name: string;
+  firstName: string;
+
+  @ApiProperty({ example: 'Doe', description: 'Last name of the customer' })
+  @IsString()
+  @IsNotEmpty()
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
+  lastName: string;
 
   @ApiProperty({
     example: 'customer@example.com',
@@ -89,8 +95,19 @@ export class VerifyAndSetCustomerPinDto {
   })
   @IsString()
   @IsNotEmpty()
-  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
+  @Transform(({ value, obj }) => {
+    const raw = value ?? obj?.otp;
+    return typeof raw === 'string' ? raw.trim() : raw;
+  })
   code: string;
+
+  @ApiPropertyOptional({
+    example: '123456',
+    description: 'Alias for code',
+  })
+  @IsOptional()
+  @IsString()
+  otp?: string;
 
   @ApiProperty({
     example: '123456',
@@ -100,6 +117,30 @@ export class VerifyAndSetCustomerPinDto {
   @IsNotEmpty()
   @Matches(/^\d{6}$/, { message: 'PIN must be exactly 6 digits' })
   pin: string;
+
+  @ApiPropertyOptional({
+    example: 'John',
+    description: 'Optional first name',
+  })
+  @IsOptional()
+  @IsString()
+  firstName?: string;
+
+  @ApiPropertyOptional({
+    example: 'Doe',
+    description: 'Optional last name',
+  })
+  @IsOptional()
+  @IsString()
+  lastName?: string;
+
+  @ApiPropertyOptional({
+    example: '+2348012345678',
+    description: 'Optional phone number',
+  })
+  @IsOptional()
+  @IsString()
+  phone?: string;
 
   @ApiPropertyOptional({
     example: 'd290f1ee-6c54-4b01-90e6-d701748f0851',
@@ -144,8 +185,19 @@ export class ResetCustomerPinDto {
   })
   @IsString()
   @IsNotEmpty()
-  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
+  @Transform(({ value, obj }) => {
+    const raw = value ?? obj?.code;
+    return typeof raw === 'string' ? raw.trim() : raw;
+  })
   otp: string;
+
+  @ApiPropertyOptional({
+    example: '123456',
+    description: 'Alias for otp',
+  })
+  @IsOptional()
+  @IsString()
+  code?: string;
 
   @ApiProperty({
     example: '654321',
@@ -154,5 +206,17 @@ export class ResetCustomerPinDto {
   @IsString()
   @IsNotEmpty()
   @Matches(/^\d{6}$/, { message: 'New PIN must be exactly 6 digits' })
+  @Transform(({ value, obj }) => {
+    const raw = value ?? obj?.pin;
+    return typeof raw === 'string' ? raw.trim() : raw;
+  })
   newPin: string;
+
+  @ApiPropertyOptional({
+    example: '654321',
+    description: 'Alias for newPin',
+  })
+  @IsOptional()
+  @IsString()
+  pin?: string;
 }

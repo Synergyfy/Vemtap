@@ -239,7 +239,8 @@ describe('Auth & Notifications (e2e)', () => {
     const reqOtpRes = await request(app.getHttpServer())
       .post('/api/v1/auth/customer/register/request-otp')
       .send({
-        name: 'Sarah Connor',
+        firstName: 'Sarah',
+        lastName: 'Connor',
         email: customerEmail,
         phone: '+2348099887766',
       })
