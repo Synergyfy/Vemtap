@@ -38,7 +38,7 @@ export default function CookiePolicy() {
                         <h1 className="text-[30px] sm:text-4xl md:text-5xl lg:text-6xl font-bold text-text-main mb-8 leading-[1.15] tracking-tight">
                             Cookie <span className="blue-text-gradient">Policy</span>
                         </h1>
-                        <p className="text-text-secondary font-medium italic">Effective Date: [Insert Date] | Last Updated: [Insert Date]</p>
+                        <p className="text-text-secondary font-medium italic">Effective Date: September 14, 2026 | Last Updated: September 14, 2026</p>
                     </div>
                 </div>
             </header>
@@ -135,8 +135,8 @@ export default function CookiePolicy() {
                             <section id="contact" className="scroll-mt-32">
                                 <h2 className="text-3xl font-display font-bold text-text-main mb-6">10. Contact Us</h2>
                                 <p className="text-lg leading-relaxed text-text-secondary font-medium">If you have questions about this Cookie Policy, contact us:</p>
-                                <p className="text-lg font-bold mt-4">Email: <a href="mailto:[Insert Email]" className="text-primary hover:underline">[Insert Email]</a></p>
-                                <p className="text-lg font-bold">Website: <a href="[Insert Website]" className="text-primary hover:underline">[Insert Website]</a></p>
+                                <p className="text-lg font-bold mt-4">Email: <a href="mailto:support@vemtap.com" className="text-primary hover:underline">support@vemtap.com</a></p>
+                                <p className="text-lg font-bold">Website: <a href="vemtap.com" className="text-primary hover:underline">vemtap.com</a></p>
                             </section>
 
                             <section id="compliance" className="scroll-mt-32">

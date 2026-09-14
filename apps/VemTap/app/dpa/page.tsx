@@ -49,7 +49,7 @@ export default function DPA() {
                         <h1 className="text-[30px] sm:text-4xl md:text-5xl lg:text-6xl font-bold text-text-main mb-8 leading-[1.15] tracking-tight">
                             Data Processing <span className="blue-text-gradient">Agreement</span>
                         </h1>
-                        <p className="text-text-secondary font-medium italic">Effective Date: [Insert Date]</p>
+                        <p className="text-text-secondary font-medium italic">Effective Date: September 14, 2026</p>
                     </div>
                 </div>
             </header>
@@ -334,7 +334,7 @@ export default function DPA() {
                                 <h2 className="text-3xl font-display font-bold text-text-main mb-6">22. Contact Information</h2>
                                 <p className="text-text-secondary font-medium italic mb-10 max-w-sm mx-auto uppercase underline">For data protection matters:</p>
                                 <div className="inline-block p-1 bg-white rounded-full shadow-xl shadow-gray-200/50">
-                                    <a href="mailto:[Insert Email]" className="flex items-center gap-4 px-8 py-4 bg-text-main text-white rounded-full font-bold text-sm hover:bg-primary transition-all">
+                                    <a href="mailto:support@vemtap.com" className="flex items-center gap-4 px-8 py-4 bg-[#066CF4] text-white rounded-full font-bold text-sm hover:bg-primary transition-all">
                                         <span>contact@vemtap.io</span>
                                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
                                     </a>

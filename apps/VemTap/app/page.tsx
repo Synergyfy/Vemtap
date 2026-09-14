@@ -194,7 +194,9 @@ export default function Homepage() {
     setIsLocationModalOpen(true);
   };
 
-  const { isAuthenticated } = useAuthStore();
+  const { isAuthenticated, user } = useAuthStore();
+  const userRole = user?.role?.toLowerCase();
+  const dashboardHref = userRole === 'admin' ? '/admin/dashboard' : userRole === 'agent' ? '/agent/dashboard' : userRole === 'customer' ? '/customer/dashboard' : '/dashboard';
   const { homepageSlides, fetchBanners: fetchHomepageBanners } = useBannerStore();
 
   useEffect(() => {
@@ -457,9 +459,15 @@ export default function Homepage() {
               <span className="material-symbols-outlined" style={{ fontSize: 16 }}>location_on</span>
               <span className="truncate max-w-[140px]">{activeLocation || 'Set location'}</span>
             </button>
-            <Link href="/login" className="h-10 px-5 rounded-xl bg-[#066CF4] text-white text-[13px] font-bold flex items-center justify-center hover:bg-[#0557b3] transition-colors">
-              Login
-            </Link>
+            {isAuthenticated ? (
+              <Link href={dashboardHref} className="h-10 px-5 rounded-xl bg-[#066CF4] text-white text-[13px] font-bold flex items-center justify-center hover:bg-[#0557b3] transition-colors">
+                My Dashboard
+              </Link>
+            ) : (
+              <Link href="/login" className="h-10 px-5 rounded-xl bg-[#066CF4] text-white text-[13px] font-bold flex items-center justify-center hover:bg-[#0557b3] transition-colors">
+                Login
+              </Link>
+            )}
           </div>
         </div>
         <div className="hidden md:block border-t" style={{ borderColor: C.outlineVariant }}>
