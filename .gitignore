@@ -85,3 +85,9 @@ opencode.json
 
 # Mocked data audit
 DASHBOARD-MOCKED-DATA-AUDIT.md
+
+# Scratch / throwaway one-off scripts (e.g. destructively re-creating local schema)
+scratch/
+
+# Scratch / throwaway one-off scripts (e.g. ones that reset the schema)
+scratch/

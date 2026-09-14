@@ -48,7 +48,7 @@ export default function TermsOfService() {
                         <h1 className="text-[30px] sm:text-4xl md:text-5xl lg:text-6xl font-bold text-text-main mb-8 leading-[1.15] tracking-tight">
                             Terms of <span className="blue-text-gradient">Service</span>
                         </h1>
-                        <p className="text-text-secondary font-medium italic">Last Updated: [Insert Date]</p>
+                        <p className="text-text-secondary font-medium italic">Last Updated: September 14, 2026</p>
                     </div>
                 </div>
             </header>
@@ -267,8 +267,8 @@ export default function TermsOfService() {
                             <section id="contact" className="scroll-mt-32">
                                 <h2 className="text-3xl font-display font-bold text-text-main mb-6">21. Contact Information</h2>
                                 <p className="text-text-secondary font-medium leading-relaxed italic">For inquiries:</p>
-                                <p className="text-text-secondary font-medium leading-relaxed mt-4">Email: <a href="mailto:[Insert Email]" className="text-primary hover:underline font-bold">[Insert Email]</a></p>
-                                <p className="text-text-secondary font-medium leading-relaxed mt-2">Website: <a href="[Insert Website]" className="text-primary hover:underline font-bold">[Insert Website]</a></p>
+                                <p className="text-text-secondary font-medium leading-relaxed mt-4">Email: <a href="mailto:support@vemtap.com" className="text-primary hover:underline font-bold">support@vemtap.com</a></p>
+                                <p className="text-text-secondary font-medium leading-relaxed mt-2">Website: <a href="vemtap.com" className="text-primary hover:underline font-bold">vemtap.com</a></p>
                             </section>
 
                         </div>

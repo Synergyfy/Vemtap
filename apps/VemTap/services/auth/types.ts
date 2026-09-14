@@ -38,9 +38,41 @@ export interface AuthResponse {
 }
 
 export interface LoginRequest {
-    email: string;
+    identifier: string;
     password: string;
     twoFactorCode?: string;
+}
+
+export interface CustomerRegisterRequestOtpRequest {
+    firstName?: string;
+    lastName?: string;
+    email: string;
+    phone?: string;
+    branchId?: string;
+}
+
+export interface CustomerResendRegistrationOtpRequest {
+    email: string;
+}
+
+export interface CustomerRegisterVerifyAndSetPinRequest {
+    email: string;
+    code: string;
+    pin: string;
+    firstName?: string;
+    lastName?: string;
+    phone?: string;
+    branchId?: string;
+}
+
+export interface ForgotPinRequest {
+    email: string;
+}
+
+export interface ResetPinRequest {
+    email: string;
+    otp: string;
+    newPin: string;
 }
 
 export interface TwoFactorSetupResponse {

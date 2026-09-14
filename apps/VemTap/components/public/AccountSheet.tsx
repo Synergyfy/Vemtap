@@ -8,6 +8,7 @@ import { X, Mail, Lock, Eye, EyeOff, User, LogOut, Zap } from 'lucide-react';
 import { useAuthStore } from '@/store/useAuthStore';
 import { api } from '@/lib/api';
 import RegisterChoiceModal from './RegisterChoiceModal';
+import PinSetupModal from '@/components/auth/PinSetupModal';
 
 interface AccountSheetProps {
   isOpen: boolean;
@@ -30,6 +31,7 @@ export default function AccountSheet({ isOpen, onClose }: AccountSheetProps) {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [pinSetupEmail, setPinSetupEmail] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -57,6 +59,11 @@ export default function AccountSheet({ isOpen, onClose }: AccountSheetProps) {
         identifier: email.trim(),
         password,
       });
+      if (response?.requiresPinSetup) {
+        setPinSetupEmail(response?.email || email.trim());
+        setIsLoggingIn(false);
+        return;
+      }
       if (!response?.user || !response?.access_token) {
         setError('Invalid credentials');
         return;
@@ -211,10 +218,10 @@ export default function AccountSheet({ isOpen, onClose }: AccountSheetProps) {
                     </form>
 
                     <Link
-                      href="/forgot-password"
+                      href="/forgot-pin"
                       className="block text-center text-xs font-semibold text-[#0055c4] hover:underline"
                     >
-                      Forgot password?
+                      Forgot PIN?
                     </Link>
 
                     <div className="relative flex items-center justify-center my-2">
@@ -292,6 +299,13 @@ export default function AccountSheet({ isOpen, onClose }: AccountSheetProps) {
       <RegisterChoiceModal
         isOpen={showRegister}
         onClose={() => setShowRegister(false)}
+      />
+
+      <PinSetupModal
+        isOpen={!!pinSetupEmail}
+        email={pinSetupEmail || email}
+        onClose={() => setPinSetupEmail(null)}
+        onSuccess={() => onClose()}
       />
     </>
   );

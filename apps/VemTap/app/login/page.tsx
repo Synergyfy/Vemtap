@@ -18,6 +18,7 @@ import { api } from '@/lib/api';
 import { useAuthStore } from '@/store/useAuthStore';
 import { getFirstPermittedDashboardRoute, isRouteAllowed } from '@/lib/utils/nav-filter';
 import RegisterChoiceModal from '@/components/public/RegisterChoiceModal';
+import PinSetupModal from '@/components/auth/PinSetupModal';
 
 const isEmail = (v: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim());
 const isPhone = (v: string) => /^[\+\d][\d\s\-\(\)]{7,20}$/.test(v.trim());
@@ -51,6 +52,7 @@ function LoginPageContent() {
     const [requires2FA, setRequires2FA] = useState(false);
     const [twoFACode, setTwoFACode] = useState('');
     const [pendingLogin, setPendingLogin] = useState<{ identifier: string; password: string } | null>(null);
+    const [pinSetup, setPinSetup] = useState<{ open: boolean; email: string }>({ open: false, email: '' });
 
     const validate = () => {
         const errors: { email?: string; password?: string } = {};
@@ -63,9 +65,9 @@ function LoginPageContent() {
         }
 
         if (!formData.password) {
-            errors.password = 'Password is required';
+            errors.password = 'Password or PIN is required';
         } else if (formData.password.length < 6) {
-            errors.password = 'Password must be at least 6 characters';
+            errors.password = 'Must be at least 6 characters';
         }
 
         setFieldErrors(errors);
@@ -142,6 +144,12 @@ function LoginPageContent() {
                 identifier: formData.email.trim(),
                 password: formData.password,
             });
+
+            if (response?.requiresPinSetup) {
+                setPinSetup({ open: true, email: response?.email || formData.email.trim() });
+                setIsLoggingIn(false);
+                return;
+            }
 
             if (response?.requiresTwoFactor) {
                 setRequires2FA(true);
@@ -337,8 +345,11 @@ function LoginPageContent() {
 
                         <div className="space-y-2">
                             <div className="flex justify-between items-center">
-                                <label className="text-xs font-medium text-text-secondary">Password</label>
-                                <Link href="/forgot-password" title="reset password" className="text-xs font-semibold text-primary hover:underline">Forgot?</Link>
+                                <label className="text-xs font-medium text-text-secondary">Password or PIN</label>
+                                <div className="flex items-center gap-3">
+                                    <Link href="/forgot-password" title="reset password" className="text-xs font-semibold text-primary hover:underline">Forgot password?</Link>
+                                    {/* <Link href="/forgot-pin" title="reset pin" className="text-xs font-semibold text-primary hover:underline">Forgot PIN?</Link> */}
+                                </div>
                             </div>
                             <div className="relative">
                                 <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
@@ -433,6 +444,12 @@ function LoginPageContent() {
         <RegisterChoiceModal
             isOpen={showRegister}
             onClose={() => setShowRegister(false)}
+        />
+
+        <PinSetupModal
+            isOpen={pinSetup.open}
+            email={pinSetup.email}
+            onClose={() => setPinSetup({ open: false, email: '' })}
         />
         </>
     );

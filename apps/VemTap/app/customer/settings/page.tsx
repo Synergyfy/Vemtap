@@ -5,6 +5,7 @@ import { notify } from '@/lib/notify';
 import { User, Mail, Phone, Bell, Shield, Trash2, Camera, Check, LogOut, ChevronRight, Laptop, Smartphone, Loader2 } from 'lucide-react';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useRouter, useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 import { useChangePassword } from '@/services/auth/hooks';
 import { useRegisterPushToken, useClearPushToken, useNotificationPreferences, useUpdateNotificationPreferences } from '@/services/notifications/hooks';
 import { useLinkedDevices, useRenameDevice, useRevokeDevice } from '@/services/users/hooks';
@@ -139,9 +140,9 @@ export default function CustomerSettingsPage() {
     };
 
     const { changePassword, isLoading: isChangingPassword } = useChangePassword();
-    const [currentPassword, setCurrentPassword] = useState('');
-    const [newPassword, setNewPassword] = useState('');
-    const [confirmPassword, setConfirmPassword] = useState('');
+    const [currentPin, setCurrentPin] = useState('');
+    const [newPin, setNewPin] = useState('');
+    const [confirmPin, setConfirmPin] = useState('');
 
     const [name, setName] = useState(user?.name || [user?.firstName, user?.lastName].filter(Boolean).join(' ') || '');
     const [phone, setPhone] = useState(user?.phone || '');
@@ -202,24 +203,24 @@ export default function CustomerSettingsPage() {
     const handleChangePassword = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        if (newPassword !== confirmPassword) {
-            notify.error('New passwords do not match');
+        if (!/^\d{6}$/.test(newPin)) {
+            notify.error('PIN must be exactly 6 digits');
             return;
         }
 
-        if (newPassword.length < 8) {
-            notify.error('Password must be at least 8 characters long');
+        if (newPin !== confirmPin) {
+            notify.error('New PINs do not match');
             return;
         }
 
         try {
-            await changePassword({ currentPassword, newPassword });
-            notify.success('Password updated successfully');
-            setCurrentPassword('');
-            setNewPassword('');
-            setConfirmPassword('');
+            await changePassword({ currentPassword: currentPin, newPassword: newPin });
+            notify.success('PIN updated successfully');
+            setCurrentPin('');
+            setNewPin('');
+            setConfirmPin('');
         } catch (error: any) {
-            notify.error(error.message || 'Failed to change password');
+            notify.error(error.message || 'Failed to update PIN');
         }
     };
 
@@ -562,22 +563,27 @@ readOnly={!profileEditing}
                                         <div>
                                             <h4 className="text-sm font-bold text-text-main flex items-center gap-2 mb-1.5">
                                                 <Shield size={16} className="text-primary" />
-                                                Account Password
+                                                Security PIN
                                             </h4>
                                             <p className="text-xs text-text-secondary max-w-sm leading-relaxed mb-4">
-                                                Update your password to keep your account secure. We recommend changing it periodically.
+                                                Your 6-digit PIN is what you use to sign in. Update it to keep your account secure, or use{" "}
+                                                <Link href="/forgot-pin" className="text-primary font-semibold hover:underline">Forgot PIN?</Link>{" "}
+                                                to reset it if you cannot remember it.
                                             </p>
                                         </div>
 
                                         <div className="space-y-3 max-w-md">
                                             <div className="space-y-2">
                                                 <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">
-                                                    Current Password
+                                                    Current PIN
                                                 </label>
                                                 <input
                                                     type="password"
-                                                    value={currentPassword}
-                                                    onChange={(e) => setCurrentPassword(e.target.value)}
+                                                    inputMode="numeric"
+                                                    maxLength={6}
+                                                    value={currentPin}
+                                                    onChange={(e) => setCurrentPin(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                                                    placeholder="••••••"
                                                     required
                                                     className="w-full h-11 px-4 border border-gray-200 rounded-xl text-sm font-bold bg-white focus:outline-none focus:ring-4 focus:ring-primary/10 transition-all outline-none"
                                                 />
@@ -585,12 +591,15 @@ readOnly={!profileEditing}
 
                                             <div className="space-y-2">
                                                 <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">
-                                                    New Password
+                                                    New PIN
                                                 </label>
                                                 <input
                                                     type="password"
-                                                    value={newPassword}
-                                                    onChange={(e) => setNewPassword(e.target.value)}
+                                                    inputMode="numeric"
+                                                    maxLength={6}
+                                                    value={newPin}
+                                                    onChange={(e) => setNewPin(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                                                    placeholder="••••••"
                                                     required
                                                     className="w-full h-11 px-4 border border-gray-200 rounded-xl text-sm font-bold bg-white focus:outline-none focus:ring-4 focus:ring-primary/10 transition-all outline-none"
                                                 />
@@ -598,12 +607,15 @@ readOnly={!profileEditing}
 
                                             <div className="space-y-2">
                                                 <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">
-                                                    Confirm New Password
+                                                    Confirm New PIN
                                                 </label>
                                                 <input
                                                     type="password"
-                                                    value={confirmPassword}
-                                                    onChange={(e) => setConfirmPassword(e.target.value)}
+                                                    inputMode="numeric"
+                                                    maxLength={6}
+                                                    value={confirmPin}
+                                                    onChange={(e) => setConfirmPin(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                                                    placeholder="••••••"
                                                     required
                                                     className="w-full h-11 px-4 border border-gray-200 rounded-xl text-sm font-bold bg-white focus:outline-none focus:ring-4 focus:ring-primary/10 transition-all outline-none"
                                                 />
@@ -613,13 +625,13 @@ readOnly={!profileEditing}
                                         <div className="pt-1">
                                             <button
                                                 type="submit"
-                                                disabled={isChangingPassword || !currentPassword || !newPassword || !confirmPassword}
+                                                disabled={isChangingPassword || !currentPin || !newPin || !confirmPin}
                                                 className="px-6 h-11 bg-primary text-white font-bold text-xs rounded-xl hover:bg-primary-hover transition-all active:scale-95 flex items-center justify-center gap-2 shadow-lg shadow-primary/20 disabled:opacity-50 disabled:cursor-not-allowed"
                                             >
                                                 {isChangingPassword ? (
                                                     <Loader2 className="animate-spin" size={16} />
                                                 ) : (
-                                                    'Update Password'
+                                                    'Update PIN'
                                                 )}
                                             </button>
                                         </div>
