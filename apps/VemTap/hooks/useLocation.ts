@@ -44,11 +44,9 @@ function loadStoredLocation(): { coords: GeolocationCoordinates | null; label: s
     if (typeof stored?.lat !== 'number' || typeof stored?.lng !== 'number') {
       return { coords: null, label: null };
     }
-    // Hook-written format carries a timestamp (1h expiry); other writers
-    // (e.g. /deals) store plain {lat,lng} with no expiry — accept both.
-    if (typeof stored.timestamp === 'number' && Date.now() - stored.timestamp > 3600000) {
-      return { coords: null, label: null };
-    }
+    // Location is a persistent user preference and never expires. Writers store
+    // either {lat,lng,label,timestamp} (this hook) or plain {lat,lng} (e.g.
+    // /deals, /customer/discover) — both formats are accepted.
     const label: string | null =
       typeof stored.label === 'string' && stored.label
         ? stored.label
