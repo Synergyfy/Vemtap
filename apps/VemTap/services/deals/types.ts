@@ -83,6 +83,8 @@ export interface DealsQueryParams {
     sortBy?: string;
     lat?: number;
     lng?: number;
+    /** Server-side Haversine radius filter in km */
+    radius?: number;
 }
 
 export interface CheckPhoneResponse {

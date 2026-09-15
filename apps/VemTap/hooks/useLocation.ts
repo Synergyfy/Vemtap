@@ -44,11 +44,9 @@ function loadStoredLocation(): { coords: GeolocationCoordinates | null; label: s
     if (typeof stored?.lat !== 'number' || typeof stored?.lng !== 'number') {
       return { coords: null, label: null };
     }
-    // Hook-written format carries a timestamp (1h expiry); other writers
-    // (e.g. /deals) store plain {lat,lng} with no expiry — accept both.
-    if (typeof stored.timestamp === 'number' && Date.now() - stored.timestamp > 3600000) {
-      return { coords: null, label: null };
-    }
+    // Location is a persistent user preference and never expires. Writers store
+    // either {lat,lng,label,timestamp} (this hook) or plain {lat,lng} (e.g.
+    // /deals, /customer/discover) — both formats are accepted.
     const label: string | null =
       typeof stored.label === 'string' && stored.label
         ? stored.label
@@ -77,24 +75,15 @@ function clearStoredLocation() {
 }
 
 export function useLocation() {
-  const [state, setState] = useState<LocationState>(() => {
-    const { coords, label } = loadStoredLocation();
-    if (coords) {
-      return {
-        lat: coords.lat,
-        lng: coords.lng,
-        label,
-        permissionState: 'granted' as PermissionState,
-        isLoading: false,
-      };
-    }
-    return {
-      lat: null,
-      lng: null,
-      label: null,
-      permissionState: 'unknown' as PermissionState,
-      isLoading: false,
-    };
+  // Start from the same default state on the server and the first client
+  // render so SSR output and hydration match. The mount effect below re-reads
+  // localStorage and applies any persisted location after hydration.
+  const [state, setState] = useState<LocationState>({
+    lat: null,
+    lng: null,
+    label: null,
+    permissionState: 'unknown' as PermissionState,
+    isLoading: false,
   });
 
   // Re-sync from localStorage on mount (covers SSR hydration where the

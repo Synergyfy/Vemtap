@@ -335,9 +335,9 @@ export default function CustomerSidebar({ children }: CustomerSidebarProps) {
                 {/* Mobile Header */}
                 <header className="lg:hidden shrink-0 sticky top-0 z-40 h-16 bg-white/95 backdrop-blur-lg border-b border-gray-100 flex items-center justify-between px-4">
                     <Link href="/customer/dashboard" className="flex items-center gap-2 min-w-0">
-                        <div className="shrink-0">
-                            <Logo />
-                        </div>
+                        <span className="text-sm font-bold text-gray-900 truncate">
+                            Hello, {user?.firstName || 'Customer'}
+                        </span>
                         <span className="hidden sm:block text-sm font-bold text-gray-900 truncate max-w-[160px]">{pageTitle}</span>
                     </Link>
                     <div className="flex items-center gap-1.5">
@@ -403,9 +403,6 @@ export default function CustomerSidebar({ children }: CustomerSidebarProps) {
                             )}
                         </Link>
 
-                        {/* Avatar Menu */}
-                        <CustomerAvatarMenu />
-
                         {/* Notification Button */}
                         <button
                             onClick={() => setShowNotifications(!showNotifications)}
@@ -418,6 +415,9 @@ export default function CustomerSidebar({ children }: CustomerSidebarProps) {
                                 </span>
                             )}
                         </button>
+
+                        {/* Avatar Menu */}
+                        <CustomerAvatarMenu />
 
                         {/* Notifications Dropdown */}
                         {showNotifications && (

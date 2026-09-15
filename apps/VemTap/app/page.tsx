@@ -83,8 +83,8 @@ type Deal = {
 function mapDeals(raw: ReturnType<typeof offerToHomeDeal>[], fallback: { image?: string }[]): Deal[] {
   return raw.map((d, idx) => ({
     id: d.id,
-    title: d.businessName || d.title,
-    subtitle: d.title || d.description || 'Exclusive Offer',
+    title: d.title || d.description || 'Exclusive Offer',
+    subtitle: d.businessName || d.title,
     badge: d.discountLabel || (d.discountPercent ? `${d.discountPercent}% OFF` : 'DEAL'),
     time: d.endDate ? 'Limited Time' : 'Today',
     price: d.dealPrice != null ? (Number(d.dealPrice) === 0 ? 'FREE' : formatNaira(d.dealPrice)) : null,
