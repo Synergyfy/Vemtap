@@ -4,7 +4,7 @@ import React, { useState, useMemo, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
-import { QrCode, ImagePlus } from 'lucide-react';
+import { QrCode, ImagePlus, Navigation } from 'lucide-react';
 import { useLocation } from '@/hooks/useLocation';
 import { usePublicOffers } from '@/services/deals/hooks';
 import { publicApi } from '@/lib/api';
@@ -17,6 +17,7 @@ import ImageGallery from '@/components/ui/ImageGallery';
 import PublicBottomNav from '@/components/public/PublicBottomNav';
 import Footer from '@/components/layout/Footer';
 import { useBannerStore } from '@/store/useBannerStore';
+import { useAuthStore } from '@/store/useAuthStore';
 import type { HomeDealCard } from '@/components/home/types';
 
 /* ─── Stitch colour tokens ─── */
@@ -125,6 +126,9 @@ function DealsPageInner() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { label: userLocationLabel, hasLocation, lat, lng, requestLocation, setManualLocation } = useLocation();
+  const { isAuthenticated, user } = useAuthStore();
+  const userRole = user?.role?.toLowerCase();
+  const dashboardHref = userRole === 'admin' ? '/admin/dashboard' : userRole === 'agent' ? '/agent/dashboard' : userRole === 'customer' ? '/customer/dashboard' : '/dashboard';
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
   const [locationChecked, setLocationChecked] = useState(false);
   const [locationError, setLocationError] = useState<string | null>(null);
@@ -173,15 +177,16 @@ function DealsPageInner() {
 
   // Only prompt for location on deals page when no location is stored
   useEffect(() => {
-    // If location is already set (from localStorage), never show the modal
+    // If location is already set (from localStorage), never show the modal.
+    // hasLocation starts false until the useLocation hydration effect applies
+    // the persisted location, so it must be tracked here to cancel the prompt.
     if (hasLocation) return;
     const t = setTimeout(() => {
       setLocationChecked(true);
       setIsLocationModalOpen(true);
     }, 500);
     return () => clearTimeout(t);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [hasLocation]);
 
   const [activeLocation, setActiveLocation] = useState('');
   useEffect(() => {
@@ -446,13 +451,19 @@ function DealsPageInner() {
             </button>
           </form>
           <div className="flex items-center gap-2 shrink-0">
-            <Link href="/login" className="h-10 px-5 rounded-xl bg-[#066CF4] text-white text-[13px] font-bold flex items-center justify-center hover:bg-[#0557b3] transition-colors">
-              Login
-            </Link>
             <button onClick={() => setIsLocationModalOpen(true)} className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-[13px] font-medium transition-colors hover:bg-gray-50" style={{ color: C.onSurfaceVariant }}>
               <span className="material-symbols-outlined" style={{ fontSize: 16 }}>location_on</span>
               <span className="truncate max-w-[140px]">{activeLocation}</span>
             </button>
+            {isAuthenticated ? (
+              <Link href={dashboardHref} className="h-10 px-5 rounded-xl bg-[#066CF4] text-white text-[13px] font-bold flex items-center justify-center hover:bg-[#0557b3] transition-colors">
+                My Dashboard
+              </Link>
+            ) : (
+              <Link href="/login" className="h-10 px-5 rounded-xl bg-[#066CF4] text-white text-[13px] font-bold flex items-center justify-center hover:bg-[#0557b3] transition-colors">
+                Login
+              </Link>
+            )}
           </div>
         </div>
         {/* Desktop: Category rail */}
@@ -841,6 +852,18 @@ function DealsPageInner() {
                           {distance && (
                             <div className="flex items-center gap-1">
                               <span className="text-[10px]" style={{ color: C.outline }}>{distance} away</span>
+                              <span className="text-[10px]" style={{ color: C.outlineVariant }}>·</span>
+                              <a
+                                href={`https://www.google.com/maps/dir/?api=1&origin=${lat},${lng}&destination=${deal.lat},${deal.lng}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                aria-label={`Get directions to ${deal.businessName || deal.title}`}
+                                className="inline-flex items-center gap-0.5 text-[10px] font-medium"
+                                style={{ color: C.primary }}
+                              >
+                                <Navigation size={10} />
+                                Get Directions
+                              </a>
                             </div>
                           )}
                         </div>

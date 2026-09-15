@@ -403,9 +403,6 @@ export default function CustomerSidebar({ children }: CustomerSidebarProps) {
                             )}
                         </Link>
 
-                        {/* Avatar Menu */}
-                        <CustomerAvatarMenu />
-
                         {/* Notification Button */}
                         <button
                             onClick={() => setShowNotifications(!showNotifications)}
@@ -418,6 +415,9 @@ export default function CustomerSidebar({ children }: CustomerSidebarProps) {
                                 </span>
                             )}
                         </button>
+
+                        {/* Avatar Menu */}
+                        <CustomerAvatarMenu />
 
                         {/* Notifications Dropdown */}
                         {showNotifications && (

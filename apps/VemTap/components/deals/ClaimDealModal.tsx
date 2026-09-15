@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { X, CheckCircle, Store, Clock, Info, Mail, User as UserIcon, Pencil } from 'lucide-react';
+import { X, CheckCircle, Store, Clock, Info, Mail, Pencil } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/useAuthStore';
 import { formatDealPrice } from '@/lib/promotions';
@@ -217,30 +217,12 @@ export default function ClaimDealModal({ isOpen, onClose, deal, claimConfig }: C
                                     <p className="text-[13px] text-gray-500">We found your account. Use these details to claim this deal?</p>
 
                                     <div className="space-y-3">
-                                        {formData.name && (
-                                            <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                                                <UserIcon size={16} className="text-gray-400 shrink-0" />
-                                                <div className="flex-1 min-w-0">
-                                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Name</p>
-                                                    <p className="text-[13px] font-semibold text-gray-900 truncate">{formData.name}</p>
-                                                </div>
-                                            </div>
-                                        )}
                                         {formData.email && (
                                             <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
                                                 <Mail size={16} className="text-gray-400 shrink-0" />
                                                 <div className="flex-1 min-w-0">
                                                     <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Email</p>
                                                     <p className="text-[13px] font-semibold text-gray-900 truncate">{formData.email}</p>
-                                                </div>
-                                            </div>
-                                        )}
-                                        {formData.phone && (
-                                            <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                                                <span className="material-symbols-outlined text-gray-400 shrink-0" style={{ fontSize: 16 }}>phone</span>
-                                                <div className="flex-1 min-w-0">
-                                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Phone</p>
-                                                    <p className="text-[13px] font-semibold text-gray-900 truncate">{formData.phone}</p>
                                                 </div>
                                             </div>
                                         )}
