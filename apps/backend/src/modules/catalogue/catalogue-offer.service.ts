@@ -513,6 +513,26 @@ export class CatalogueOfferService {
           branchId: offer.branchId,
           branchName: offer.branch?.name,
           categoryName: offer.branch?.business?.category?.name,
+          business: offer.branch?.business
+            ? {
+                id: offer.branch.business.id,
+                name: offer.branch.business.name,
+                slug: offer.branch.business.uniqueCode,
+                logo: offer.branch.business.logoUrl ?? undefined,
+                categoryId: offer.branch.business.categoryId ?? undefined,
+                categoryName: offer.branch?.business?.category?.name ?? undefined,
+                address: offer.branch.business.address ?? undefined,
+                city: offer.branch.business.city ?? undefined,
+                latitude:
+                  offer.branch.business.latitude ??
+                  offer.branch?.latitude ??
+                  undefined,
+                longitude:
+                  offer.branch.business.longitude ??
+                  offer.branch?.longitude ??
+                  undefined,
+              }
+            : undefined,
           items: offer.items,
           claimedCount,
           totalLimit: (offer as any).totalLimit ?? offer.quantity,
