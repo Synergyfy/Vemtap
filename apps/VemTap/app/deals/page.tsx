@@ -38,6 +38,9 @@ const C = {
   surfaceContainerLow: '#f2f4f6',
 } as const;
 
+/* ─── Radius filter (km) for nearby deals ─── */
+const DEALS_RADIUS_KM = 25;
+
 /* ─── Sort options ─── */
 const SORT_OPTIONS = [
   { id: 'trending', label: 'Trending', icon: 'trending_up' },
@@ -180,7 +183,10 @@ function DealsPageInner() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const activeLocation = userLocationLabel || '';
+  const [activeLocation, setActiveLocation] = useState('');
+  useEffect(() => {
+    setActiveLocation(userLocationLabel || '');
+  }, [userLocationLabel]);
 
   // Seed search/filter from URL (category landing links, search modal)
   useEffect(() => {
@@ -196,7 +202,13 @@ function DealsPageInner() {
   }, [searchParams]);
 
   // Fetch live deals
-  const { data: dealsData, isLoading } = usePublicOffers({ limit: 20, sortBy: 'trending', lat: lat ?? undefined, lng: lng ?? undefined });
+  const { data: dealsData, isLoading } = usePublicOffers({
+    limit: 20,
+    sortBy: 'trending',
+    lat: lat ?? undefined,
+    lng: lng ?? undefined,
+    radius: hasLocation && lat != null && lng != null ? DEALS_RADIUS_KM : undefined,
+  });
 
   // Fetch public categories
   const { data: categoriesData } = useQuery({
