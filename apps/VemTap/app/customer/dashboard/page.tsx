@@ -265,7 +265,7 @@ export default function CustomerDashboardPage() {
         id: banner.id || `promo-${banner.title}`,
         title: banner.title,
         description: banner.description || '',
-        children: <PromotionalBanner data={banner} />,
+        children: <PromotionalBanner data={{ ...banner, gradient: 'bg-primary' }} />,
     }));
 
     return (

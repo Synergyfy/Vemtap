@@ -50,7 +50,7 @@ interface PromotionalBannerVariantStyle {
 
 const variantStyles: Record<PromotionalBannerVariant, PromotionalBannerVariantStyle> = {
     promo: {
-        gradient: 'bg-gradient-to-br from-primary via-blue-600 to-indigo-700',
+        gradient: 'bg-primary',
         icon: Sparkles,
         text: 'text-white',
         badge: 'bg-white/20 text-white border-white/15',
@@ -120,12 +120,12 @@ export default function PromotionalBanner({ data, className }: PromotionalBanner
                         {title}
                     </h3>
                     {description && (
-                        <p className={cn('mt-0.5 md:mt-1 text-[10px] md:text-xs font-medium leading-snug line-clamp-1 md:line-clamp-2', style.description)}>
+                        <p className={cn('mt-0.5 text-[10px] md:text-xs font-medium leading-snug line-clamp-1', style.description)}>
                             {description}
                         </p>
                     )}
                     {ctaText && (
-                        <span className={cn('inline-flex items-center gap-1 mt-1.5 md:mt-2 px-2.5 md:px-3 py-1 md:py-1.5 rounded-lg md:rounded-xl font-black text-[8px] md:text-[9px] uppercase tracking-widest shadow-md', style.cta)}>
+                        <span className={cn('inline-flex items-center gap-1 mt-1 px-2.5 md:px-3 py-1 md:py-1.5 rounded-lg md:rounded-xl font-black text-[8px] md:text-[9px] uppercase tracking-widest shadow-md', style.cta)}>
                             {ctaText}
                             <ArrowRight size={10} className="md:h-[11px] md:w-[11px]" />
                         </span>
@@ -146,7 +146,7 @@ export default function PromotionalBanner({ data, className }: PromotionalBanner
     );
 
     const baseClasses = cn(
-        'group relative w-full overflow-hidden rounded-xl md:rounded-2xl p-2.5 md:p-3 transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2',
+        'group relative w-full overflow-hidden rounded-xl md:rounded-2xl p-0 transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2',
         bg,
         style.ring,
         className
