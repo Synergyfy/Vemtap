@@ -71,11 +71,11 @@ export interface User {
 }
 
 export interface AuthState {
-  user: User | null;null; // Globally selected branch for filtering
+  user: User | null; // Globally selected branch for filtering
   hasHydrated: boolean; //
   access_token: string | null;
   isAuthenticated: boolean;
-  activeBranchId: string |  True once the persisted auth session has been restored from storage
+  activeBranchId: string | null; // True once the persisted auth session has been restored from storage
 
   login: (userData: User, access_token: string) => Promise<void>;
   signup: (userData: User, access_token: string) => Promise<void>;
