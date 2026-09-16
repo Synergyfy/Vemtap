@@ -4,16 +4,16 @@ import React, { useState, useMemo, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
-import { QrCode, ImagePlus, Navigation } from 'lucide-react';
 import { useLocation } from '@/hooks/useLocation';
 import { usePublicOffers } from '@/services/deals/hooks';
 import { publicApi } from '@/lib/api';
 import { offerToHomeDeal, formatNaira } from '@/components/home/mappers';
-import { haversineDistance, formatDistance } from '@/lib/distance';
+import { haversineDistance, formatDistance, getDirectionsUrl } from '@/lib/distance';
 import LocationPrompt from '@/components/home/LocationPrompt';
 import SearchModal from '@/components/home/SearchModal';
 import DealEngagementBar from '@/components/deals/DealEngagementBar';
 import ImageGallery from '@/components/ui/ImageGallery';
+import DealsToolbar from '@/components/deals/DealsToolbar';
 import PublicBottomNav from '@/components/public/PublicBottomNav';
 import Footer from '@/components/layout/Footer';
 import { useBannerStore } from '@/store/useBannerStore';
@@ -38,9 +38,6 @@ const C = {
   onTertiaryContainer: '#fcfaff',
   surfaceContainerLow: '#f2f4f6',
 } as const;
-
-/* ─── Radius filter (km) for nearby deals ─── */
-const DEALS_RADIUS_KM = 25;
 
 /* ─── Sort options ─── */
 const SORT_OPTIONS = [
@@ -212,7 +209,6 @@ function DealsPageInner() {
     sortBy: 'trending',
     lat: lat ?? undefined,
     lng: lng ?? undefined,
-    radius: hasLocation && lat != null && lng != null ? DEALS_RADIUS_KM : undefined,
   });
 
   // Fetch public categories
@@ -401,120 +397,20 @@ function DealsPageInner() {
   return (
     <div className="min-h-screen flex flex-col font-sans" style={{ background: C.bg, color: C.onSurface }}>
       {/* ─── TopAppBar ─── */}
-      <header
-        className="sticky top-0 z-40 w-full transition-colors duration-200"
-        style={{
-          background: '#ffffff',
-          borderBottom: `1px solid ${C.outlineVariant}`,
-        }}
-      >
-        {/* Desktop: Top nav bar */}
-        <div className="vemtap-container hidden md:flex items-center justify-between h-[64px] gap-6">
-          <div className="flex items-center gap-6 shrink-0">
-            <Link href="/" className="flex items-center gap-2">
-              <img src="/VEMTAP_PNG.png" alt="VemTap" className="h-10 w-auto" />
-            </Link>
-            <nav className="flex items-center gap-1">
-              {[
-                { label: 'Home', href: '/' },
-                { label: 'Deals', href: '/deals' },
-              ].map((item) => (
-                <Link key={item.label} href={item.href}
-                  className="px-3 py-2 rounded-lg text-[13px] font-semibold hover:bg-gray-50 transition-colors"
-                  style={{ color: C.onSurface }}>
-                  {item.label}
-                </Link>
-              ))}
-            </nav>
-          </div>
-          <form onSubmit={handleSearchSubmit} className="flex-1 max-w-[500px] flex items-center">
-            <div className="flex-1 relative">
-              <input
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full h-11 pl-4 pr-24 rounded-l-xl text-[14px] focus:outline-none border"
-                style={{ border: `1px solid ${C.outlineVariant}`, borderRight: 'none', color: C.onSurface, background: '#ffffff' }}
-                placeholder="Search deals, businesses..."
-                type="text"
-              />
-              <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-0.5">
-                <button type="button" title="Scan QR code" className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 transition-colors" style={{ color: C.onSurfaceVariant }}>
-                  <QrCode size={18} />
-                </button>
-                <button type="button" title="Search by image" className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 transition-colors" style={{ color: C.onSurfaceVariant }}>
-                  <ImagePlus size={18} />
-                </button>
-              </div>
-            </div>
-            <button type="submit" className="h-11 px-6 rounded-r-xl text-white font-bold text-[13px] uppercase tracking-wider" style={{ background: C.primary }}>
-              Search
-            </button>
-          </form>
-          <div className="flex items-center gap-2 shrink-0">
-            <button onClick={() => setIsLocationModalOpen(true)} className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-[13px] font-medium transition-colors hover:bg-gray-50" style={{ color: C.onSurfaceVariant }}>
-              <span className="material-symbols-outlined" style={{ fontSize: 16 }}>location_on</span>
-              <span className="truncate max-w-[140px]">{activeLocation}</span>
-            </button>
-            {isAuthenticated ? (
-              <Link href={dashboardHref} className="h-10 px-5 rounded-xl bg-[#066CF4] text-white text-[13px] font-bold flex items-center justify-center hover:bg-[#0557b3] transition-colors">
-                My Dashboard
-              </Link>
-            ) : (
-              <Link href="/login" className="h-10 px-5 rounded-xl bg-[#066CF4] text-white text-[13px] font-bold flex items-center justify-center hover:bg-[#0557b3] transition-colors">
-                Login
-              </Link>
-            )}
-          </div>
-        </div>
-        {/* Desktop: Category rail */}
-        <div className="hidden md:block border-t" style={{ borderColor: C.outlineVariant }}>
-          <div className="vemtap-container flex items-center gap-1 h-[42px] overflow-x-auto no-scrollbar">
-            {[
-              { label: 'Food & Dining', icon: 'restaurant', query: 'food' },
-              { label: 'Beauty & Spa', icon: 'spa', query: 'beauty' },
-              { label: 'Fashion', icon: 'checkroom', query: 'fashion' },
-              { label: 'Electronics', icon: 'devices', query: 'tech' },
-              { label: 'Fitness', icon: 'fitness_center', query: 'fitness' },
-              { label: 'Home & Office', icon: 'chair', query: 'home' },
-              { label: 'Automotive', icon: 'directions_car', query: 'automotive' },
-            ].map((cat) => (
-              <button
-                key={cat.label}
-                onClick={() => setSelectedCategory(cat.query || null)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-semibold whitespace-nowrap transition-all shrink-0"
-                style={{
-                  background: selectedCategory === cat.query ? C.primary : 'transparent',
-                  color: selectedCategory === cat.query ? '#ffffff' : C.onSurfaceVariant,
-                }}
-              >
-                <span className="material-symbols-outlined" style={{ fontSize: 16 }}>{cat.icon}</span>
-                {cat.label}
-              </button>
-            ))}
-          </div>
-        </div>
-        {/* Mobile header */}
-        <div className="md:hidden flex items-center justify-between px-3 py-2">
-          <Link href="/" className="flex items-center gap-1.5 shrink-0">
-            <img src="/VEMTAP_PNG.png" alt="VemTap" className="h-8 w-auto" />
-          </Link>
-          <div className="flex items-center gap-1.5 min-w-0 flex-1 mx-2">
-            <span className="material-symbols-outlined shrink-0" style={{ color: C.onSurfaceVariant, fontSize: 18 }}>location_on</span>
-            <h1 className="text-[13px] font-semibold tracking-tight truncate" style={{ color: C.primary }}>{activeLocation}</h1>
-          </div>
-          <div className="flex items-center gap-1">
-            <button onClick={() => setShowFilterModal(true)} className="w-11 h-11 flex items-center justify-center rounded-full relative" style={{ color: C.onSurfaceVariant }}>
-              <span className="material-symbols-outlined" style={{ fontSize: 24 }}>tune</span>
-              {(quickFilter || selectedCategory || priceRange.min || priceRange.max || sortBy !== 'trending') && (
-                <div className="absolute top-1.5 right-1.5 w-2.5 h-2.5 rounded-full" style={{ background: C.primary }} />
-              )}
-            </button>
-            <button onClick={() => setIsSearchModalOpen(true)} className="w-11 h-11 flex items-center justify-center rounded-full" style={{ color: C.onSurfaceVariant }}>
-              <span className="material-symbols-outlined" style={{ fontSize: 24 }}>search</span>
-            </button>
-          </div>
-        </div>
-      </header>
+      <DealsToolbar
+        searchQuery={searchQuery}
+        onSearchQueryChange={setSearchQuery}
+        onSearchSubmit={handleSearchSubmit}
+        activeLocation={activeLocation}
+        onOpenLocation={() => setIsLocationModalOpen(true)}
+        isAuthenticated={isAuthenticated}
+        dashboardHref={dashboardHref}
+        onOpenFilter={() => setShowFilterModal(true)}
+        onOpenMobileSearch={() => setIsSearchModalOpen(true)}
+        hasActiveFilters={!!(quickFilter || selectedCategory || priceRange.min || priceRange.max || sortBy !== 'trending')}
+        selectedCategory={selectedCategory}
+        onSelectCategory={setSelectedCategory}
+      />
 
       {/* ─── Location Required: Explore Deals Near You Landing ─── */}
       {locationChecked && !hasLocation && (
@@ -817,6 +713,10 @@ function DealsPageInner() {
                     hasLocation && lat != null && lng != null && deal.lat != null && deal.lng != null
                       ? formatDistance(haversineDistance(lat, lng, deal.lat, deal.lng))
                       : null;
+                  const directionsHref =
+                    hasLocation && lat != null && lng != null && deal.lat != null && deal.lng != null
+                      ? getDirectionsUrl(lat, lng, deal.lat, deal.lng)
+                      : null;
                   return (
                     <div key={deal.id} className="rounded-xl overflow-hidden shadow-sm relative group transition-all hover:shadow-lg hover:-translate-y-0.5" style={{ background: C.surface, border: `1px solid ${C.outlineVariant}` }}>
                       <Link href={deal.href} className="block cursor-pointer">
@@ -849,21 +749,24 @@ function DealsPageInner() {
                               <span className="text-[11px] line-through" style={{ color: C.outline }}>{formatNaira(deal.originalPrice)}</span>
                             )}
                           </div>
-                          {distance && (
+                          {distance && directionsHref && (
                             <div className="flex items-center gap-1">
                               <span className="text-[10px]" style={{ color: C.outline }}>{distance} away</span>
-                              <span className="text-[10px]" style={{ color: C.outlineVariant }}>·</span>
-                              <a
-                                href={`https://www.google.com/maps/dir/?api=1&origin=${lat},${lng}&destination=${deal.lat},${deal.lng}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                aria-label={`Get directions to ${deal.businessName || deal.title}`}
-                                className="inline-flex items-center gap-0.5 text-[10px] font-medium"
+                              <button
+                                type="button"
+                                aria-label="Get Directions"
+                                className="flex items-center p-0.5"
                                 style={{ color: C.primary }}
+                                onClick={e => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  window.open(directionsHref, '_blank', 'noopener,noreferrer');
+                                }}
                               >
-                                <Navigation size={10} />
-                                Get Directions
-                              </a>
+                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                  <polygon points="3 11 22 2 13 21 11 13 3 11" />
+                                </svg>
+                              </button>
                             </div>
                           )}
                         </div>

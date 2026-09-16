@@ -19,3 +19,11 @@ export function formatDistance(km: number): string {
     if (km < 10) return `${km.toFixed(1)} km`;
     return `${Math.round(km)} km`;
 }
+
+/** Google Maps directions URL from an origin to a destination coordinate pair */
+export function getDirectionsUrl(
+    originLat: number, originLng: number,
+    destLat: number, destLng: number,
+): string {
+    return `https://www.google.com/maps/dir/?api=1&origin=${originLat},${originLng}&destination=${destLat},${destLng}`;
+}

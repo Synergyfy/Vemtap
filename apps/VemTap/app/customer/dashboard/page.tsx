@@ -7,14 +7,16 @@ import QRScannerModal from '@/components/customer/QRScannerModal';
 import Link from 'next/link';
 import {
     History, Star, PiggyBank, Coffee, Smartphone, Dumbbell,
-    QrCode, Scan, ArrowRight, ChevronRight,
+    QrCode, ArrowRight, ChevronRight,
     Loader2, Gift, CheckCircle2, Search
 } from 'lucide-react';
 import { QRCodeCanvas } from 'qrcode.react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import AdminViewerBanner from '@/components/admin/control-tower/AdminViewerBanner';
 import CustomerDealsBanner from '@/components/customer/CustomerDealsBanner';
+import PromotionalBanner from '@/components/dashboard/PromotionalBanner';
 import type { BannerSlide } from '@/components/dashboard/DashboardBanner';
+import { useActivePromotionalBanners } from '@/services/promotional-banners';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useCustomerFlowStore } from '@/store/useCustomerFlowStore';
 import { fetchDeviceByCode } from '@/lib/api/devices';
@@ -32,6 +34,7 @@ import {
 export default function CustomerDashboardPage() {
     const user = useAuthStore((state) => state.user);
     const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+    const hasHydrated = useAuthStore((state) => state.hasHydrated);
     const { businessId: flowBusinessId, branchId: flowBranchId, deviceCode } = useCustomerFlowStore();
 
     const [businessInfo, setBusinessInfo] = useState<any>(null);
@@ -63,9 +66,31 @@ export default function CustomerDashboardPage() {
     const recentTransactions = Array.isArray(recentTransactionsData) ? recentTransactionsData : (recentTransactionsData?.data || []);
     const isLoyaltyLoading = isRewardsLoading || isHistoryLoading;
 
+    const userPoints = profile?.currentPointsBalance || 0;
+    const businessName = businessInfo?.business?.name || profile?.businessId || 'VemTap';
+    const businessLogo = businessInfo?.business?.logoUrl || '/icon.png';
+    const businessAddress = businessInfo?.business?.address || '';
+    const firstName = user?.firstName || (user?.name || '').split(' ')[0] || 'Customer';
+
+    const { data: activePromotions = [] } = useActivePromotionalBanners({
+        firstName,
+        businessName,
+        businessAddress,
+        businessLogo,
+        businessId,
+    });
+
     useEffect(() => {
 
-        console.log('[CUSTOMER DASHBOARD] 🔍 Auth check', { isAuthenticated, userRole: user?.role });
+        console.log('[CUSTOMER DASHBOARD] 🔍 Auth check', { isAuthenticated, userRole: user?.role, hasHydrated });
+
+        // Wait for the persisted auth session to be restored before redirecting.
+        // The store hydrates asynchronously from localStorage, so on page reload the
+        // first render/effect can otherwise see isAuthenticated=false prematurely.
+        if (!hasHydrated) {
+            console.log('[CUSTOMER DASHBOARD] ⏳ Auth still initializing, holding off redirect');
+            return;
+        }
 
         if (!isAuthenticated) {
 
@@ -103,17 +128,22 @@ export default function CustomerDashboardPage() {
         };
 
         initializeDashboard();
-    }, [isAuthenticated, user, router, flowBranchId, deviceCode]);
+    }, [isAuthenticated, hasHydrated, user, router, flowBranchId, deviceCode]);
+
+    if (!hasHydrated) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-[#fafbfc]">
+                <div className="flex flex-col items-center gap-4">
+                    <div className="size-10 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Loading Dashboard...</p>
+                </div>
+            </div>
+        );
+    }
 
     if (!isAuthenticated || (!isAdminMode && user?.role?.toLowerCase() !== 'customer')) {
         return null;
     }
-
-    const userPoints = profile?.currentPointsBalance || 0;
-    const businessName = businessInfo?.business?.name || profile?.businessId || 'VemTap';
-    const businessLogo = businessInfo?.business?.logoUrl || '/icon.png';
-    const businessAddress = businessInfo?.business?.address || '';
-    const firstName = user?.firstName || (user?.name || '').split(' ')[0] || 'Customer';
 
     const handleRedeem = (rewardId: string, name: string, points: number) => {
         if (points > userPoints) {
@@ -231,95 +261,20 @@ export default function CustomerDashboardPage() {
         },
     ];
 
-    const memberSlide: BannerSlide = {
-        id: 'member-card',
-        title: 'Member Card',
-        description: '',
-        color: 'bg-linear-to-br from-primary via-blue-600 to-indigo-700 text-white',
-        children: (
-            <div className="relative p-4 md:p-8">
-                <div className="absolute -top-24 -right-24 w-64 h-64 bg-white/10 rounded-full blur-3xl" />
-                <div className="absolute -bottom-20 -left-16 w-48 h-48 bg-black/20 rounded-full blur-2xl" />
-
-                <div className="relative z-10">
-                    {/* Top row: identity + QR */}
-                    <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0 flex-1">
-                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-white/20 rounded-full text-[8px] md:text-[10px] font-black uppercase tracking-widest backdrop-blur-md border border-white/10">
-                                <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
-                                Member ID: LP-{profile?.id ? profile.id.substring(0, 8).toUpperCase() : '....'}
-                            </span>
-                            <h1 className="text-lg md:text-2xl font-bold mt-2 leading-tight tracking-tight">
-                                Hi, {firstName} 👋
-                            </h1>
-                            <p className="text-blue-50/90 text-[11px] md:text-sm mt-1 font-medium leading-snug truncate">
-                                {businessName}{businessAddress ? ` • ${businessAddress}` : ''}
-                            </p>
-                        </div>
-
-                        <button
-                            onClick={() => setShowIdModal(true)}
-                            className="shrink-0 w-16 h-16 md:w-20 md:h-20 rounded-2xl md:rounded-3xl bg-white shadow-lg flex items-center justify-center active:scale-95 transition-transform"
-                            aria-label="View My QR"
-                        >
-                            {user?.id ? (
-                                <QRCodeCanvas
-                                    value={user.id}
-                                    size={52}
-                                    level="H"
-                                    includeMargin={false}
-                                    imageSettings={{
-                                        src: businessLogo,
-                                        x: undefined,
-                                        y: undefined,
-                                        height: 12,
-                                        width: 12,
-                                        excavate: true,
-                                    }}
-                                />
-                            ) : (
-                                <div className="w-full h-full flex items-center justify-center text-gray-300">
-                                    <QrCode size={24} className="animate-pulse" />
-                                </div>
-                            )}
-                        </button>
-                    </div>
-
-                    {/* Points balance bar */}
-                    <div className="mt-4 md:mt-6 flex items-center justify-between gap-3 rounded-2xl bg-white/10 border border-white/15 backdrop-blur-md p-3 md:p-4">
-                        <div className="min-w-0">
-                            <p className="text-[8px] md:text-[10px] uppercase tracking-widest text-blue-100 font-bold">Available Points</p>
-                            <p className="text-2xl md:text-3xl font-black mt-0.5 leading-none tabular-nums">{userPoints.toLocaleString()}</p>
-                        </div>
-                        <div className="flex items-center gap-2 shrink-0">
-                            <button
-                                onClick={() => setShowIdModal(true)}
-                                className="h-10 md:h-12 px-3.5 md:px-5 bg-white text-primary rounded-xl font-black text-[9px] md:text-[10px] uppercase tracking-widest shadow-md active:scale-95 transition-all flex items-center gap-1.5"
-                            >
-                                <Scan size={14} />
-                                My QR
-                            </button>
-                            <Link
-                                href="/customer/rewards"
-                                className="h-10 md:h-12 px-3.5 md:px-5 bg-white/10 border border-white/20 text-white rounded-xl font-black text-[9px] md:text-[10px] uppercase tracking-widest active:scale-95 transition-all flex items-center gap-1.5"
-                            >
-                                Perks
-                                <ArrowRight size={13} />
-                            </Link>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        ),
-    };
+    const promoSlides: BannerSlide[] = (activePromotions ?? []).map((banner) => ({
+        id: banner.id || `promo-${banner.title}`,
+        title: banner.title,
+        description: banner.description || '',
+        children: <PromotionalBanner data={{ ...banner, gradient: 'bg-primary' }} />,
+    }));
 
     return (
         <div className="min-h-screen bg-[#f4f5f6] pb-10">
             <div className="mx-auto w-full max-w-5xl px-4 md:px-8 pt-4 md:pt-6 space-y-5 md:space-y-8">
                 {isAdminMode && <AdminViewerBanner />}
 
-                {/* ─── Member Card + Deals Banner (merged slider) ─── */}
-                <CustomerDealsBanner memberSlide={memberSlide} firstName={firstName} />
+                {/* ─── Promotional Banner(s) + Deals Banner (merged slider) ─── */}
+                <CustomerDealsBanner promoSlides={promoSlides} firstName={firstName} />
 
                 {/* ─── Quick Stats ─── */}                <section className="space-y-2 md:space-y-3">
                     <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 px-1">Snapshot</h2>
