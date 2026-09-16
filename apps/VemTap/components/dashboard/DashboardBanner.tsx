@@ -79,37 +79,41 @@ export default function DashboardBanner({ slides, autoPlayInterval = 5000, class
                         currentSlide.color && !currentSlide.color.includes('bg-white') ? currentSlide.color : ""
                     )}
                 >
-                    <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 flex-1">
-                        {(Icon || currentSlide.image) && (
-                            <div className="size-8 sm:size-9 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0 shadow-sm overflow-hidden">
-                                {currentSlide.image ? (
-                                    <img src={currentSlide.image} alt={currentSlide.title} className="w-full h-full object-cover" />
-                                ) : (
-                                    <Icon size={18} className="text-primary" />
-                                )}
-                            </div>
-                        )}
-                        <div className="min-w-0 flex-1 leading-tight">
-                            <div className="flex items-center gap-1.5 flex-wrap truncate">
-                                {currentSlide.tag && (
-                                    <span className="text-[8px] sm:text-[9px] font-extrabold px-1.5 py-0.5 bg-primary text-white rounded-md uppercase tracking-wider shrink-0">
-                                        {currentSlide.tag}
+                    {currentSlide.children ? (
+                        <div className="min-w-0 flex-1">{currentSlide.children}</div>
+                    ) : (
+                        <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 flex-1">
+                            {(Icon || currentSlide.image) && (
+                                <div className="size-8 sm:size-9 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0 shadow-sm overflow-hidden">
+                                    {currentSlide.image ? (
+                                        <img src={currentSlide.image} alt={currentSlide.title} className="w-full h-full object-cover" />
+                                    ) : (
+                                        <Icon size={18} className="text-primary" />
+                                    )}
+                                </div>
+                            )}
+                            <div className="min-w-0 flex-1 leading-tight">
+                                <div className="flex items-center gap-1.5 flex-wrap truncate">
+                                    {currentSlide.tag && (
+                                        <span className="text-[8px] sm:text-[9px] font-extrabold px-1.5 py-0.5 bg-primary text-white rounded-md uppercase tracking-wider shrink-0">
+                                            {currentSlide.tag}
+                                        </span>
+                                    )}
+                                    <span className="font-bold text-xs sm:text-sm text-gray-900 truncate">
+                                        {currentSlide.title}
                                     </span>
-                                )}
-                                <span className="font-bold text-xs sm:text-sm text-gray-900 truncate">
-                                    {currentSlide.title}
-                                </span>
+                                </div>
+                                <p className="text-[10px] sm:text-[11px] font-medium text-gray-600 truncate mt-0.5 flex items-center gap-1">
+                                    <span className="truncate">{currentSlide.description}</span>
+                                    {currentSlide.actionLabel && (
+                                        <span className="font-bold text-primary underline decoration-primary/40 hover:decoration-primary inline-flex items-center gap-0.5 shrink-0 ml-1">
+                                            {currentSlide.actionLabel} &rarr;
+                                        </span>
+                                    )}
+                                </p>
                             </div>
-                            <p className="text-[10px] sm:text-[11px] font-medium text-gray-600 truncate mt-0.5 flex items-center gap-1">
-                                <span className="truncate">{currentSlide.description}</span>
-                                {currentSlide.actionLabel && (
-                                    <span className="font-bold text-primary underline decoration-primary/40 hover:decoration-primary inline-flex items-center gap-0.5 shrink-0 ml-1">
-                                        {currentSlide.actionLabel} &rarr;
-                                    </span>
-                                )}
-                            </p>
                         </div>
-                    </div>
+                    )}
 
                     {slides.length > 1 && (
                         <div className="flex gap-1 shrink-0 items-center pl-1" onClick={(e) => e.stopPropagation()}>
