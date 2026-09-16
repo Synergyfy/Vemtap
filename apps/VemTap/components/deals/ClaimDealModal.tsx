@@ -363,19 +363,9 @@ export default function ClaimDealModal({ isOpen, onClose, deal, claimConfig }: C
 
                                     <div className="space-y-3">
                                         <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                                            <span className="text-[12px] text-gray-500">Name</span>
-                                            <span className="text-[13px] font-semibold text-gray-900">{formData.name}</span>
-                                        </div>
-                                        <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                                             <span className="text-[12px] text-gray-500">Email</span>
                                             <span className="text-[13px] font-semibold text-gray-900">{formData.email}</span>
                                         </div>
-                                        {formData.phone && (
-                                            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                                                <span className="text-[12px] text-gray-500">Phone</span>
-                                                <span className="text-[13px] font-semibold text-gray-900">{formData.phone}</span>
-                                            </div>
-                                        )}
                                     </div>
 
                                     <div className="bg-blue-50 border border-blue-100 rounded-lg p-3">

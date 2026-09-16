@@ -4,7 +4,7 @@ import React, { useState, useMemo, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
-import { QrCode, ImagePlus, Navigation } from 'lucide-react';
+import { QrCode, ImagePlus } from 'lucide-react';
 import { useLocation } from '@/hooks/useLocation';
 import { usePublicOffers } from '@/services/deals/hooks';
 import { publicApi } from '@/lib/api';
@@ -38,9 +38,6 @@ const C = {
   onTertiaryContainer: '#fcfaff',
   surfaceContainerLow: '#f2f4f6',
 } as const;
-
-/* ─── Radius filter (km) for nearby deals ─── */
-const DEALS_RADIUS_KM = 25;
 
 /* ─── Sort options ─── */
 const SORT_OPTIONS = [
@@ -212,7 +209,6 @@ function DealsPageInner() {
     sortBy: 'trending',
     lat: lat ?? undefined,
     lng: lng ?? undefined,
-    radius: hasLocation && lat != null && lng != null ? DEALS_RADIUS_KM : undefined,
   });
 
   // Fetch public categories
@@ -852,18 +848,6 @@ function DealsPageInner() {
                           {distance && (
                             <div className="flex items-center gap-1">
                               <span className="text-[10px]" style={{ color: C.outline }}>{distance} away</span>
-                              <span className="text-[10px]" style={{ color: C.outlineVariant }}>·</span>
-                              <a
-                                href={`https://www.google.com/maps/dir/?api=1&origin=${lat},${lng}&destination=${deal.lat},${deal.lng}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                aria-label={`Get directions to ${deal.businessName || deal.title}`}
-                                className="inline-flex items-center gap-0.5 text-[10px] font-medium"
-                                style={{ color: C.primary }}
-                              >
-                                <Navigation size={10} />
-                                Get Directions
-                              </a>
                             </div>
                           )}
                         </div>
