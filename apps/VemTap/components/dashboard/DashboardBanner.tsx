@@ -47,6 +47,7 @@ export default function DashboardBanner({ slides, autoPlayInterval = 5000, class
 
     const currentSlide = slides[currentIndex];
     const Icon = currentSlide.icon;
+    const hasChildren = Boolean(currentSlide.children);
 
     const handleSlideClick = () => {
         if (currentSlide.onAction) {
@@ -73,9 +74,10 @@ export default function DashboardBanner({ slides, autoPlayInterval = 5000, class
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: 6 }}
                     transition={{ duration: 0.25 }}
-                    onClick={handleSlideClick}
+                    onClick={hasChildren ? undefined : handleSlideClick}
                     className={cn(
-                        "rounded-xl p-2.5 sm:p-3 transition-all duration-300 cursor-pointer shadow-sm border border-blue-100/80 bg-gradient-to-r from-blue-50/80 via-indigo-50/40 to-blue-50/80 hover:border-blue-200 flex items-center justify-between gap-2.5 sm:gap-3",
+                        "rounded-xl p-2.5 sm:p-3 transition-all duration-300 shadow-sm border border-blue-100/80 bg-gradient-to-r from-blue-50/80 via-indigo-50/40 to-blue-50/80 hover:border-blue-200 flex items-center justify-between gap-2.5 sm:gap-3",
+                        !hasChildren && "cursor-pointer",
                         currentSlide.color && !currentSlide.color.includes('bg-white') ? currentSlide.color : ""
                     )}
                 >

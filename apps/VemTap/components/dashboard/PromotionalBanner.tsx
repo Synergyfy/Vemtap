@@ -6,9 +6,9 @@ import { cn } from '@/lib/utils';
 import { ArrowRight, Gift, Megaphone, Sparkles, Zap } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
-export type PromoBannerVariant = 'promo' | 'announcement' | 'campaign' | 'notice';
+export type PromotionalBannerVariant = 'promo' | 'announcement' | 'campaign' | 'notice';
 
-export interface PromoBannerData {
+export interface PromotionalBannerData {
     id?: string;
     title: string;
     description?: string;
@@ -17,11 +17,27 @@ export interface PromoBannerData {
     actionUrl?: string;
     onAction?: () => void;
     badge?: string;
-    variant?: PromoBannerVariant;
+    variant?: PromotionalBannerVariant;
     gradient?: string;
+    isActive?: boolean;
+    startAt?: string | Date;
+    endAt?: string | Date;
 }
 
-interface PromoBannerVariantStyle {
+export function isPromotionalBannerActive(data: PromotionalBannerData, now: Date = new Date()): boolean {
+    if (data.isActive === false) return false;
+    if (data.startAt) {
+        const start = new Date(data.startAt).getTime();
+        if (!Number.isNaN(start) && now.getTime() < start) return false;
+    }
+    if (data.endAt) {
+        const end = new Date(data.endAt).getTime();
+        if (!Number.isNaN(end) && now.getTime() > end) return false;
+    }
+    return true;
+}
+
+interface PromotionalBannerVariantStyle {
     gradient: string;
     icon: LucideIcon;
     text: string;
@@ -32,7 +48,7 @@ interface PromoBannerVariantStyle {
     ring: string;
 }
 
-const variantStyles: Record<PromoBannerVariant, PromoBannerVariantStyle> = {
+const variantStyles: Record<PromotionalBannerVariant, PromotionalBannerVariantStyle> = {
     promo: {
         gradient: 'bg-gradient-to-br from-primary via-blue-600 to-indigo-700',
         icon: Sparkles,
@@ -75,52 +91,54 @@ const variantStyles: Record<PromoBannerVariant, PromoBannerVariantStyle> = {
     },
 };
 
-interface PromoBannerProps {
-    data: PromoBannerData;
+interface PromotionalBannerProps {
+    data: PromotionalBannerData;
     className?: string;
 }
 
-export default function PromoBanner({ data, className }: PromoBannerProps) {
+export default function PromotionalBanner({ data, className }: PromotionalBannerProps) {
     const { title, description, image, ctaText, actionUrl, onAction, badge, variant = 'promo', gradient } = data;
     const style = variantStyles[variant];
     const Icon = style.icon;
     const bg = gradient || style.gradient;
 
+    if (!isPromotionalBannerActive(data)) return null;
+
     const content = (
         <>
-            <div aria-hidden="true" className="pointer-events-none absolute -top-16 -right-12 w-48 h-48 bg-white/10 rounded-full blur-3xl" />
-            <div aria-hidden="true" className="pointer-events-none absolute -bottom-12 left-1/3 w-40 h-40 bg-black/10 rounded-full blur-2xl" />
+            <div aria-hidden="true" className="pointer-events-none absolute -top-12 -right-10 w-36 h-36 bg-white/10 rounded-full blur-3xl" />
+            <div aria-hidden="true" className="pointer-events-none absolute -bottom-10 left-1/3 w-32 h-32 bg-black/10 rounded-full blur-2xl" />
 
-            <div className="relative z-10 flex items-center justify-between gap-4 md:gap-6">
+            <div className="relative z-10 flex items-center gap-2.5 md:gap-4">
                 <div className="min-w-0 flex-1">
                     {badge && (
-                        <span className={cn('inline-flex items-center px-2.5 py-1 rounded-full border text-[8px] md:text-[9px] font-black uppercase tracking-widest', style.badge)}>
+                        <span className={cn('inline-flex items-center px-1.5 py-px md:px-2 md:py-0.5 rounded-full border text-[7px] md:text-[8px] font-black uppercase tracking-widest', style.badge)}>
                             {badge}
                         </span>
                     )}
-                    <h3 className={cn('mt-2 text-lg md:text-2xl font-bold leading-tight tracking-tight', style.text)}>
+                    <h3 className={cn('mt-1 text-[13px] md:text-base font-bold leading-tight tracking-tight truncate', style.text)}>
                         {title}
                     </h3>
                     {description && (
-                        <p className={cn('mt-1 text-[11px] md:text-[13px] font-medium leading-snug truncate', style.description)}>
+                        <p className={cn('mt-0.5 md:mt-1 text-[10px] md:text-xs font-medium leading-snug line-clamp-1 md:line-clamp-2', style.description)}>
                             {description}
                         </p>
                     )}
                     {ctaText && (
-                        <span className={cn('inline-flex items-center gap-1.5 mt-3 md:mt-4 px-3 md:px-4 py-2 rounded-xl font-black text-[9px] md:text-[10px] uppercase tracking-widest shadow-md', style.cta)}>
+                        <span className={cn('inline-flex items-center gap-1 mt-1.5 md:mt-2 px-2.5 md:px-3 py-1 md:py-1.5 rounded-lg md:rounded-xl font-black text-[8px] md:text-[9px] uppercase tracking-widest shadow-md', style.cta)}>
                             {ctaText}
-                            <ArrowRight size={13} className="md:w-[14px] md:h-[14px]" />
+                            <ArrowRight size={10} className="md:h-[11px] md:w-[11px]" />
                         </span>
                     )}
                 </div>
 
                 {image ? (
-                    <div className="shrink-0 w-14 h-14 md:w-24 md:h-24 rounded-2xl md:rounded-3xl overflow-hidden ring-1 ring-white/20 shadow-lg bg-white/10">
+                    <div className="shrink-0 w-11 h-11 md:w-14 md:h-14 rounded-xl md:rounded-2xl overflow-hidden ring-1 ring-white/20 shadow-lg bg-white/10">
                         <img src={image} alt="" aria-hidden="true" className="w-full h-full object-cover" />
                     </div>
                 ) : (
-                    <div className={cn('shrink-0 w-12 h-12 md:w-16 md:h-16 rounded-2xl border flex items-center justify-center shadow-inner', style.artwork)}>
-                        <Icon size={22} className="md:w-7 md:h-7" />
+                    <div className={cn('shrink-0 w-8 h-8 md:w-10 md:h-10 rounded-xl border flex items-center justify-center shadow-inner', style.artwork)}>
+                        <Icon size={16} className="md:w-[18px] md:h-[18px]" />
                     </div>
                 )}
             </div>
@@ -128,7 +146,7 @@ export default function PromoBanner({ data, className }: PromoBannerProps) {
     );
 
     const baseClasses = cn(
-        'group relative w-full overflow-hidden rounded-2xl md:rounded-3xl p-4 md:p-6 transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2',
+        'group relative w-full overflow-hidden rounded-xl md:rounded-2xl p-2.5 md:p-3 transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2',
         bg,
         style.ring,
         className

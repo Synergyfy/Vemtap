@@ -14,8 +14,9 @@ import { QRCodeCanvas } from 'qrcode.react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import AdminViewerBanner from '@/components/admin/control-tower/AdminViewerBanner';
 import CustomerDealsBanner from '@/components/customer/CustomerDealsBanner';
-import PromoBanner, { PromoBannerData } from '@/components/dashboard/PromoBanner';
+import PromotionalBanner from '@/components/dashboard/PromotionalBanner';
 import type { BannerSlide } from '@/components/dashboard/DashboardBanner';
+import { useActivePromotionalBanners } from '@/services/promotional-banners';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useCustomerFlowStore } from '@/store/useCustomerFlowStore';
 import { fetchDeviceByCode } from '@/lib/api/devices';
@@ -64,6 +65,20 @@ export default function CustomerDashboardPage() {
     const recentTransactions = Array.isArray(recentTransactionsData) ? recentTransactionsData : (recentTransactionsData?.data || []);
     const isLoyaltyLoading = isRewardsLoading || isHistoryLoading;
 
+    const userPoints = profile?.currentPointsBalance || 0;
+    const businessName = businessInfo?.business?.name || profile?.businessId || 'VemTap';
+    const businessLogo = businessInfo?.business?.logoUrl || '/icon.png';
+    const businessAddress = businessInfo?.business?.address || '';
+    const firstName = user?.firstName || (user?.name || '').split(' ')[0] || 'Customer';
+
+    const { data: activePromotions = [] } = useActivePromotionalBanners({
+        firstName,
+        businessName,
+        businessAddress,
+        businessLogo,
+        businessId,
+    });
+
     useEffect(() => {
 
         console.log('[CUSTOMER DASHBOARD] 🔍 Auth check', { isAuthenticated, userRole: user?.role });
@@ -109,12 +124,6 @@ export default function CustomerDashboardPage() {
     if (!isAuthenticated || (!isAdminMode && user?.role?.toLowerCase() !== 'customer')) {
         return null;
     }
-
-    const userPoints = profile?.currentPointsBalance || 0;
-    const businessName = businessInfo?.business?.name || profile?.businessId || 'VemTap';
-    const businessLogo = businessInfo?.business?.logoUrl || '/icon.png';
-    const businessAddress = businessInfo?.business?.address || '';
-    const firstName = user?.firstName || (user?.name || '').split(' ')[0] || 'Customer';
 
     const handleRedeem = (rewardId: string, name: string, points: number) => {
         if (points > userPoints) {
@@ -232,31 +241,20 @@ export default function CustomerDashboardPage() {
         },
     ];
 
-    const memberPromo: PromoBannerData = {
-        id: 'member-promo',
-        title: `Hi, ${firstName}! Big rewards are waiting for you`,
-        description: `${businessName}${businessAddress ? ` • ${businessAddress}` : ''} — your perks, points and exclusive offers in one place.`,
-        badge: 'Promo',
-        ctaText: 'Explore Perks',
-        actionUrl: '/customer/rewards',
-        variant: 'promo',
-        image: businessLogo || undefined,
-    };
-
-    const memberSlide: BannerSlide = {
-        id: 'member-promo',
-        title: memberPromo.title,
-        description: memberPromo.description || '',
-        children: <PromoBanner data={memberPromo} />,
-    };
+    const promoSlides: BannerSlide[] = (activePromotions ?? []).map((banner) => ({
+        id: banner.id || `promo-${banner.title}`,
+        title: banner.title,
+        description: banner.description || '',
+        children: <PromotionalBanner data={banner} />,
+    }));
 
     return (
         <div className="min-h-screen bg-[#f4f5f6] pb-10">
             <div className="mx-auto w-full max-w-5xl px-4 md:px-8 pt-4 md:pt-6 space-y-5 md:space-y-8">
                 {isAdminMode && <AdminViewerBanner />}
 
-                {/* ─── Member Card + Deals Banner (merged slider) ─── */}
-                <CustomerDealsBanner memberSlide={memberSlide} firstName={firstName} />
+                {/* ─── Promotional Banner(s) + Deals Banner (merged slider) ─── */}
+                <CustomerDealsBanner promoSlides={promoSlides} firstName={firstName} />
 
                 {/* ─── Quick Stats ─── */}                <section className="space-y-2 md:space-y-3">
                     <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 px-1">Snapshot</h2>
