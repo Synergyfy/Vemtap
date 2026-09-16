@@ -34,6 +34,7 @@ import {
 export default function CustomerDashboardPage() {
     const user = useAuthStore((state) => state.user);
     const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+    const hasHydrated = useAuthStore((state) => state.hasHydrated);
     const { businessId: flowBusinessId, branchId: flowBranchId, deviceCode } = useCustomerFlowStore();
 
     const [businessInfo, setBusinessInfo] = useState<any>(null);
@@ -81,7 +82,15 @@ export default function CustomerDashboardPage() {
 
     useEffect(() => {
 
-        console.log('[CUSTOMER DASHBOARD] 🔍 Auth check', { isAuthenticated, userRole: user?.role });
+        console.log('[CUSTOMER DASHBOARD] 🔍 Auth check', { isAuthenticated, userRole: user?.role, hasHydrated });
+
+        // Wait for the persisted auth session to be restored before redirecting.
+        // The store hydrates asynchronously from localStorage, so on page reload the
+        // first render/effect can otherwise see isAuthenticated=false prematurely.
+        if (!hasHydrated) {
+            console.log('[CUSTOMER DASHBOARD] ⏳ Auth still initializing, holding off redirect');
+            return;
+        }
 
         if (!isAuthenticated) {
 
@@ -119,7 +128,18 @@ export default function CustomerDashboardPage() {
         };
 
         initializeDashboard();
-    }, [isAuthenticated, user, router, flowBranchId, deviceCode]);
+    }, [isAuthenticated, hasHydrated, user, router, flowBranchId, deviceCode]);
+
+    if (!hasHydrated) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-[#fafbfc]">
+                <div className="flex flex-col items-center gap-4">
+                    <div className="size-10 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Loading Dashboard...</p>
+                </div>
+            </div>
+        );
+    }
 
     if (!isAuthenticated || (!isAdminMode && user?.role?.toLowerCase() !== 'customer')) {
         return null;

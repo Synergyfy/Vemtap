@@ -71,10 +71,11 @@ export interface User {
 }
 
 export interface AuthState {
-  user: User | null;
+  user: User | null;null; // Globally selected branch for filtering
+  hasHydrated: boolean; //
   access_token: string | null;
   isAuthenticated: boolean;
-  activeBranchId: string | null; // Globally selected branch for filtering
+  activeBranchId: string |  True once the persisted auth session has been restored from storage
 
   login: (userData: User, access_token: string) => Promise<void>;
   signup: (userData: User, access_token: string) => Promise<void>;
@@ -84,13 +85,23 @@ export interface AuthState {
   subscribe: (planId: SubscriptionPlan) => Promise<{ success: boolean; error?: string }>;
 }
 
+// Setter captured during store creation so the persist rehydration callback can
+// flip `hasHydrated` WITHOUT referencing `useAuthStore` — zustand hydrates
+// synchronously from localStorage inside create(), while `useAuthStore` is still
+// in its temporal dead zone, so using the store const there throws a ReferenceError.
+let applyHydrationFlag: (() => void) | undefined;
+
 export const useAuthStore = create<AuthState>()(
   persist(
-    (set, get) => ({
+    (set, get) => {
+      applyHydrationFlag = () => set({ hasHydrated: true });
+
+      return {
       user: null,
       access_token: null,
       isAuthenticated: false,
       activeBranchId: null,
+      hasHydrated: false,
 
       login: async (userData: User, access_token: string) => {
         console.log('[AUTH] login() called', { email: userData?.email, role: userData?.role });       
@@ -266,9 +277,19 @@ export const useAuthStore = create<AuthState>()(
           return { success: false, error: 'Failed to subscribe' };
         }
       }
-    }),
+    };
+    },
     {
       name: 'auth-storage-v2',
+      partialize: (state) => ({
+        user: state.user,
+        access_token: state.access_token,
+        isAuthenticated: state.isAuthenticated,
+        activeBranchId: state.activeBranchId,
+      }),
+      onRehydrateStorage: () => () => {
+        applyHydrationFlag?.();
+      },
     }
   )
 );
