@@ -5,6 +5,8 @@ import { createPortal } from 'react-dom';
 import { X, CheckCircle, Store, Clock, Info, Mail, Pencil } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/useAuthStore';
+import { GoogleAuthButton } from '@/components/auth/GoogleAuthButton';
+import { useCustomerRegisterRequestOtp, useCustomerResendRegistrationOtp, useCustomerRegisterVerifyAndSetPin } from '@/services/auth/hooks';
 import { formatDealPrice } from '@/lib/promotions';
 import { useCreateCatalogueOrder } from '@/services/catalogue/hooks';
 import { signupVisitorAndLogin } from '@/lib/visitorAuth';
@@ -36,11 +38,11 @@ interface ClaimDealModalProps {
     claimConfig?: ClaimConfig;
 }
 
-type ModalView = 'choose' | 'form' | 'confirm' | 'success' | 'mydeal';
+type ModalView = 'choose' | 'form' | 'confirm' | 'success' | 'mydeal' | 'different' | 'different-details' | 'different-otp';
 
 export default function ClaimDealModal({ isOpen, onClose, deal, claimConfig }: ClaimDealModalProps) {
     const router = useRouter();
-    const { isAuthenticated, user } = useAuthStore();
+    const { isAuthenticated, user, login } = useAuthStore();
     const createOrderMutation = useCreateCatalogueOrder();
     const [view, setView] = useState<ModalView>(isAuthenticated ? 'choose' : 'form');
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -54,6 +56,15 @@ export default function ClaimDealModal({ isOpen, onClose, deal, claimConfig }: C
     const [redemptionCode, setRedemptionCode] = useState('');
     const [showRedeemModal, setShowRedeemModal] = useState(false);
     const portalRoot = typeof document !== 'undefined' ? document.body : null;
+
+    const [differentForm, setDifferentForm] = useState({ firstName: '', lastName: '', email: '', pin: '', confirmPin: '' });
+    const [differentOtp, setDifferentOtp] = useState('');
+    const [differentSubmitting, setDifferentSubmitting] = useState(false);
+    const [differentResendTimer, setDifferentResendTimer] = useState(0);
+    const [differentResendLoading, setDifferentResendLoading] = useState(false);
+    const { requestOtp } = useCustomerRegisterRequestOtp();
+    const { resendOtp } = useCustomerResendRegistrationOtp();
+    const { verifyAndSetPin } = useCustomerRegisterVerifyAndSetPin();
 
     useEffect(() => {
         if (!isOpen) return;
@@ -70,6 +81,11 @@ export default function ClaimDealModal({ isOpen, onClose, deal, claimConfig }: C
     useEffect(() => {
         if (isOpen) {
             document.body.style.overflow = 'hidden';
+            setDifferentForm({ firstName: '', lastName: '', email: '', pin: '', confirmPin: '' });
+            setDifferentOtp('');
+            setDifferentResendTimer(0);
+            setDifferentSubmitting(false);
+            setDifferentResendLoading(false);
             if (isAuthenticated && user) {
                 setFormData({
                     name: user.name || '',
@@ -86,6 +102,12 @@ export default function ClaimDealModal({ isOpen, onClose, deal, claimConfig }: C
         }
         return () => { document.body.style.overflow = ''; };
     }, [isOpen, isAuthenticated, user]);
+
+    useEffect(() => {
+        if (differentResendTimer <= 0) return;
+        const interval = setInterval(() => setDifferentResendTimer((prev) => prev - 1), 1000);
+        return () => clearInterval(interval);
+    }, [differentResendTimer]);
 
     const performRealClaim = async (info: { name: string; email: string; phone: string }) => {
         if (!claimConfig) return;
@@ -168,6 +190,71 @@ export default function ClaimDealModal({ isOpen, onClose, deal, claimConfig }: C
         setView('mydeal');
     };
 
+    const handleDifferentRequestOtp = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setError(null);
+        if (!differentForm.firstName.trim()) { setError('First name is required'); return; }
+        if (!differentForm.lastName.trim()) { setError('Last name is required'); return; }
+        if (!differentForm.email.trim()) { setError('Email is required'); return; }
+        setDifferentSubmitting(true);
+        try {
+            await requestOtp({
+                firstName: differentForm.firstName.trim(),
+                lastName: differentForm.lastName.trim(),
+                email: differentForm.email.trim(),
+                branchId: claimConfig?.branchId,
+            });
+            setDifferentOtp('');
+            setDifferentResendTimer(60);
+            setView('different-otp');
+        } catch (err: unknown) {
+            setError(err instanceof Error ? err.message : 'Failed to send verification code. Please try again.');
+        } finally {
+            setDifferentSubmitting(false);
+        }
+    };
+
+    const handleDifferentVerifyOtp = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setError(null);
+        if (!/^\d{6}$/.test(differentOtp.trim())) { setError('Verification code must be exactly 6 digits'); return; }
+        if (!/^\d{6}$/.test(differentForm.pin)) { setError('PIN must be exactly 6 digits'); return; }
+        if (differentForm.pin !== differentForm.confirmPin) { setError('PINs do not match'); return; }
+        setDifferentSubmitting(true);
+        try {
+            const response = await verifyAndSetPin({
+                email: differentForm.email.trim(),
+                code: differentOtp.trim(),
+                pin: differentForm.pin,
+                firstName: differentForm.firstName.trim(),
+                lastName: differentForm.lastName.trim(),
+                branchId: claimConfig?.branchId,
+            });
+            if (response?.user && response?.access_token) {
+                await login(response.user, response.access_token);
+            }
+        } catch (err: unknown) {
+            setError(err instanceof Error ? err.message : 'Verification failed. Please try again.');
+        } finally {
+            setDifferentSubmitting(false);
+        }
+    };
+
+    const handleDifferentResendOtp = async () => {
+        if (differentResendTimer > 0) return;
+        setError(null);
+        setDifferentResendLoading(true);
+        try {
+            await resendOtp({ email: differentForm.email.trim() });
+            setDifferentOtp('');
+            setDifferentResendTimer(60);
+        } catch (err: unknown) {
+            setError(err instanceof Error ? err.message : 'Failed to resend verification code. Please try again.');
+        } finally {
+            setDifferentResendLoading(false);
+        }
+    };
+
     if (!isOpen) return null;
 
     return (
@@ -188,6 +275,9 @@ export default function ClaimDealModal({ isOpen, onClose, deal, claimConfig }: C
                             </button>
                             <h2 className="text-[15px] font-semibold text-gray-900">
                                 {view === 'choose' && 'Use Your Details'}
+                                {view === 'different' && 'Use Different Details'}
+                                {view === 'different-details' && 'Customer Sign Up'}
+                                {view === 'different-otp' && 'Verify Email'}
                                 {view === 'form' && 'Claim Deal'}
                                 {view === 'confirm' && 'Confirm Details'}
                                 {view === 'success' && 'Deal Claimed!'}
@@ -246,17 +336,202 @@ export default function ClaimDealModal({ isOpen, onClose, deal, claimConfig }: C
                                     </button>
 
                                     <button
-                                        onClick={() => {
-                                            setFormData({ name: '', email: '', phone: '' });
-                                            setAgreedToTerms(false);
-                                            setView('form');
-                                        }}
+                                        onClick={() => setView('different')}
                                         className="w-full h-12 bg-transparent border border-gray-200 text-gray-600 font-semibold text-[14px] rounded-lg flex items-center justify-center gap-2 hover:bg-gray-50 transition-colors active:scale-[0.98]"
                                     >
                                         <Pencil size={16} />
                                         Use different details
                                     </button>
                                 </div>
+                            )}
+
+                            {/* Different Details View — authenticated user chooses a different account */}
+                            {view === 'different' && (
+                                <div className="space-y-4">
+                                    <p className="text-[13px] text-gray-500">
+                                        Use different details for this claim by signing in with another account.
+                                    </p>
+
+                                    <GoogleAuthButton role="Customer" />
+
+                                    <div className="relative flex items-center justify-center py-1">
+                                        <div className="absolute w-full h-px bg-gray-200" />
+                                        <span className="relative px-3 bg-white text-[10px] font-bold uppercase tracking-wider text-gray-400">or</span>
+                                    </div>
+
+                                    <button
+                                        onClick={() => setView('different-details')}
+                                        className="w-full h-12 bg-white border border-gray-200 rounded-lg text-[14px] font-semibold text-gray-900 flex items-center justify-center gap-2 hover:bg-gray-50 transition-colors active:scale-[0.98]"
+                                    >
+                                        <Mail size={16} className="text-[#0055c4]" />
+                                        Sign in with email
+                                    </button>
+
+                                    <button
+                                        onClick={() => setView('choose')}
+                                        className="w-full text-center text-[13px] font-medium text-[#0055c4] hover:underline py-1"
+                                    >
+                                        Back
+                                    </button>
+                                </div>
+                            )}
+
+                            {/* Different Details — email registration (reuses customer register hooks) */}
+                            {view === 'different-details' && (
+                                <div className="space-y-4">
+                                    <h3 className="text-[16px] font-semibold text-gray-900">Your Details</h3>
+                                    <p className="text-[13px] text-gray-500">
+                                        We&apos;ll verify your email and let you set a secure 6-digit PIN.
+                                    </p>
+
+                                    {error && (
+                                        <p className="text-[12px] text-red-500 bg-red-50 p-3 rounded-lg">{error}</p>
+                                    )}
+
+                                    <form onSubmit={handleDifferentRequestOtp} className="space-y-3">
+                                        <div className="grid grid-cols-2 gap-3">
+                                            <div>
+                                                <label className="text-[11px] font-medium text-gray-500 block mb-1">First Name</label>
+                                                <input
+                                                    type="text"
+                                                    value={differentForm.firstName}
+                                                    onChange={(e) => setDifferentForm({ ...differentForm, firstName: e.target.value })}
+                                                    placeholder="John"
+                                                    className="w-full h-11 px-4 rounded-lg border border-gray-200 bg-white text-[14px] focus:border-[#0055c4] focus:ring-1 focus:ring-[#0055c4] outline-none transition-all"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="text-[11px] font-medium text-gray-500 block mb-1">Last Name</label>
+                                                <input
+                                                    type="text"
+                                                    value={differentForm.lastName}
+                                                    onChange={(e) => setDifferentForm({ ...differentForm, lastName: e.target.value })}
+                                                    placeholder="Doe"
+                                                    className="w-full h-11 px-4 rounded-lg border border-gray-200 bg-white text-[14px] focus:border-[#0055c4] focus:ring-1 focus:ring-[#0055c4] outline-none transition-all"
+                                                />
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label className="text-[11px] font-medium text-gray-500 block mb-1">Email Address</label>
+                                            <input
+                                                type="email"
+                                                value={differentForm.email}
+                                                onChange={(e) => setDifferentForm({ ...differentForm, email: e.target.value })}
+                                                placeholder="you@example.com"
+                                                className="w-full h-11 px-4 rounded-lg border border-gray-200 bg-white text-[14px] focus:border-[#0055c4] focus:ring-1 focus:ring-[#0055c4] outline-none transition-all"
+                                            />
+                                        </div>
+
+                                        <button
+                                            type="submit"
+                                            disabled={differentSubmitting || !differentForm.firstName.trim() || !differentForm.lastName.trim() || !differentForm.email.trim()}
+                                            className="w-full h-12 bg-[#0055c4] text-white font-semibold text-[14px] rounded-lg flex items-center justify-center gap-2 hover:bg-[#0055c4]/90 transition-colors active:scale-[0.98] disabled:opacity-50"
+                                        >
+                                            {differentSubmitting ? (
+                                                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                            ) : (
+                                                'Send Verification Code'
+                                            )}
+                                        </button>
+                                    </form>
+
+                                    <button
+                                        onClick={() => setView('different')}
+                                        className="w-full text-center text-[13px] font-medium text-[#0055c4] hover:underline py-1"
+                                    >
+                                        Back
+                                    </button>
+                                </div>
+                            )}
+
+                            {/* Different Details — OTP + PIN setup */}
+                            {view === 'different-otp' && (
+                                <form onSubmit={handleDifferentVerifyOtp} className="space-y-4">
+                                    <div>
+                                        <h3 className="text-[16px] font-semibold text-gray-900">Verify Email</h3>
+                                        <p className="text-[13px] text-gray-500 mt-1">
+                                            We sent a verification code to <strong className="text-gray-900">{differentForm.email.trim()}</strong>. Enter it below and set your 6-digit PIN.
+                                        </p>
+                                    </div>
+
+                                    {error && (
+                                        <p className="text-[12px] text-red-500 bg-red-50 p-3 rounded-lg">{error}</p>
+                                    )}
+
+                                    <div className="space-y-3">
+                                        <div>
+                                            <label className="text-[11px] font-medium text-gray-500 block mb-1">Verification Code</label>
+                                            <input
+                                                type="text"
+                                                inputMode="numeric"
+                                                autoComplete="one-time-code"
+                                                value={differentOtp}
+                                                onChange={(e) => setDifferentOtp(e.target.value.replace(/[^0-9]/g, '').slice(0, 6))}
+                                                placeholder="Enter 6-digit OTP code"
+                                                className="w-full h-11 px-4 rounded-lg border border-gray-200 bg-white text-center text-lg tracking-widest font-mono font-semibold focus:border-[#0055c4] focus:ring-1 focus:ring-[#0055c4] outline-none transition-all"
+                                            />
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-3">
+                                            <div>
+                                                <label className="text-[11px] font-medium text-gray-500 block mb-1">Create 6-digit PIN</label>
+                                                <input
+                                                    type="password"
+                                                    inputMode="numeric"
+                                                    autoComplete="new-password"
+                                                    value={differentForm.pin}
+                                                    onChange={(e) => setDifferentForm({ ...differentForm, pin: e.target.value.replace(/[^0-9]/g, '').slice(0, 6) })}
+                                                    placeholder="PIN"
+                                                    className="w-full h-11 px-4 rounded-lg border border-gray-200 bg-white text-center text-lg tracking-widest font-mono font-semibold focus:border-[#0055c4] focus:ring-1 focus:ring-[#0055c4] outline-none transition-all"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="text-[11px] font-medium text-gray-500 block mb-1">Confirm PIN</label>
+                                                <input
+                                                    type="password"
+                                                    inputMode="numeric"
+                                                    autoComplete="new-password"
+                                                    value={differentForm.confirmPin}
+                                                    onChange={(e) => setDifferentForm({ ...differentForm, confirmPin: e.target.value.replace(/[^0-9]/g, '').slice(0, 6) })}
+                                                    placeholder="Confirm"
+                                                    className="w-full h-11 px-4 rounded-lg border border-gray-200 bg-white text-center text-lg tracking-widest font-mono font-semibold focus:border-[#0055c4] focus:ring-1 focus:ring-[#0055c4] outline-none transition-all"
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <button
+                                        type="submit"
+                                        disabled={differentSubmitting || differentOtp.length < 6 || differentForm.pin.length < 6 || differentForm.confirmPin.length < 6}
+                                        className="w-full h-12 bg-[#0055c4] text-white font-semibold text-[14px] rounded-lg flex items-center justify-center gap-2 hover:bg-[#0055c4]/90 transition-colors active:scale-[0.98] disabled:opacity-50"
+                                    >
+                                        {differentSubmitting ? (
+                                            <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                        ) : (
+                                            'Verify & Set PIN'
+                                        )}
+                                    </button>
+
+                                    <button
+                                        type="button"
+                                        onClick={handleDifferentResendOtp}
+                                        disabled={differentResendTimer > 0 || differentResendLoading}
+                                        className="w-full text-center text-[13px] font-semibold text-[#0055c4] hover:underline disabled:text-gray-400 disabled:hover:no-underline"
+                                    >
+                                        {differentResendLoading
+                                            ? 'Resending...'
+                                            : differentResendTimer > 0
+                                                ? `Resend code in ${differentResendTimer}s`
+                                                : 'Resend code'}
+                                    </button>
+
+                                    <button
+                                        type="button"
+                                        onClick={() => { setDifferentOtp(''); setError(null); setView('different-details'); }}
+                                        className="w-full text-center text-[13px] font-medium text-[#0055c4] hover:underline py-1"
+                                    >
+                                        Back
+                                    </button>
+                                </form>
                             )}
 
                             {/* Form View — unauthenticated or chose different details */}
@@ -363,19 +638,9 @@ export default function ClaimDealModal({ isOpen, onClose, deal, claimConfig }: C
 
                                     <div className="space-y-3">
                                         <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                                            <span className="text-[12px] text-gray-500">Name</span>
-                                            <span className="text-[13px] font-semibold text-gray-900">{formData.name}</span>
-                                        </div>
-                                        <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                                             <span className="text-[12px] text-gray-500">Email</span>
                                             <span className="text-[13px] font-semibold text-gray-900">{formData.email}</span>
                                         </div>
-                                        {formData.phone && (
-                                            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                                                <span className="text-[12px] text-gray-500">Phone</span>
-                                                <span className="text-[13px] font-semibold text-gray-900">{formData.phone}</span>
-                                            </div>
-                                        )}
                                     </div>
 
                                     <div className="bg-blue-50 border border-blue-100 rounded-lg p-3">

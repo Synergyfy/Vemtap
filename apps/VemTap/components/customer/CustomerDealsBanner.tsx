@@ -6,11 +6,11 @@ import { useBannerStore, getIconByName } from '@/store/useBannerStore';
 import { resolveBannerText } from '@/lib/utils';
 
 interface CustomerDealsBannerProps {
-    memberSlide?: BannerSlide;
+    promoSlides?: BannerSlide[];
     firstName?: string;
 }
 
-export default function CustomerDealsBanner({ memberSlide, firstName }: CustomerDealsBannerProps) {
+export default function CustomerDealsBanner({ promoSlides, firstName }: CustomerDealsBannerProps) {
     const { customerSlides, fetchBanners } = useBannerStore();
 
     useEffect(() => {
@@ -21,8 +21,8 @@ export default function CustomerDealsBanner({ memberSlide, firstName }: Customer
         const resolveVars = { firstName: firstName || 'there', name: firstName || 'there' };
         const list: BannerSlide[] = [];
 
-        if (memberSlide) {
-            list.push(memberSlide);
+        if (promoSlides && promoSlides.length > 0) {
+            list.push(...promoSlides);
         }
 
         customerSlides.forEach((s) => {
@@ -40,7 +40,7 @@ export default function CustomerDealsBanner({ memberSlide, firstName }: Customer
         });
 
         return list;
-    }, [customerSlides, memberSlide, firstName]);
+    }, [customerSlides, promoSlides, firstName]);
 
     return <DashboardBanner slides={slides} autoPlayInterval={6000} />;
 }

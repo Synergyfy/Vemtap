@@ -15,7 +15,8 @@ import { formatDealPrice } from '@/lib/promotions';
 import { useAuthStore } from '@/store/useAuthStore';
 import { fetchContextByUsername } from '@/lib/api/devices';
 import { useLocation } from '@/hooks/useLocation';
-import { haversineDistance, formatDistance } from '@/lib/distance';
+import DealsToolbar from '@/components/deals/DealsToolbar';
+import { haversineDistance, formatDistance, getDirectionsUrl } from '@/lib/distance';
 
 function formatDateLong(dateStr: string): string {
     if (!dateStr) return 'Ongoing';
@@ -31,21 +32,29 @@ export default function DealDetailPage() {
     const id = params.id as string;
 
     const { data: offer, isLoading } = usePublicOfferDetails(id);
-    const { isAuthenticated } = useAuthStore();
+    const { isAuthenticated, user } = useAuthStore();
     const toggleSave = useToggleSave(id);
     const { data: engagement } = useEngagement(id);
-    const { lat: userLat, lng: userLng, hasLocation } = useLocation();
+    const { lat: userLat, lng: userLng, hasLocation, label: userLocationLabel } = useLocation();
+    const userRole = user?.role?.toLowerCase();
+    const dashboardHref = userRole === 'admin' ? '/admin/dashboard' : userRole === 'agent' ? '/agent/dashboard' : userRole === 'customer' ? '/customer/dashboard' : '/dashboard';
 
     const [showShareModal, setShowShareModal] = useState(false);
     const [showClaimModal, setShowClaimModal] = useState(false);
     const [branchId, setBranchId] = useState<string | null>(null);
     const [topBarBg, setTopBarBg] = useState(false);
+    const [searchQuery, setSearchQuery] = useState('');
 
     const isSaved = engagement?.isSaved ?? false;
 
     const distance =
         hasLocation && userLat != null && userLng != null && offer?.business?.latitude != null && offer?.business?.longitude != null
             ? formatDistance(haversineDistance(userLat, userLng, offer.business.latitude, offer.business.longitude))
+            : null;
+
+    const directionsHref =
+        hasLocation && userLat != null && userLng != null && offer?.business?.latitude != null && offer?.business?.longitude != null
+            ? getDirectionsUrl(userLat, userLng, offer.business.latitude, offer.business.longitude)
             : null;
 
     const normalizedOffer = useMemo(() => {
@@ -167,6 +176,13 @@ export default function DealDetailPage() {
         } catch {}
     };
 
+    const handleSearchSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        const q = searchQuery.trim();
+        if (!q) return;
+        router.push(`/deals?q=${encodeURIComponent(q)}`);
+    };
+
     if (isLoading) {
         return (
             <div className="min-h-screen bg-[#f7f9fb] flex items-center justify-center pb-32">
@@ -180,9 +196,20 @@ export default function DealDetailPage() {
 
     return (
         <div className="min-h-screen bg-[#f7f9fb] text-[#191c1e] antialiased pb-32">
+            {/* ─── Deals Top Bar ─── */}
+            <DealsToolbar
+                searchQuery={searchQuery}
+                onSearchQueryChange={setSearchQuery}
+                onSearchSubmit={handleSearchSubmit}
+                activeLocation={userLocationLabel || ''}
+                onOpenLocation={() => {}}
+                isAuthenticated={isAuthenticated}
+                dashboardHref={dashboardHref}
+            />
+
             {/* ─── Top App Bar ─── */}
             <header
-                className="fixed top-0 w-full z-50 transition-colors duration-300 hidden md:flex justify-center"
+                className="fixed top-[64px] w-full z-50 transition-colors duration-300 hidden md:flex justify-center"
                 style={{
                     background: topBarBg ? 'rgba(255,255,255,0.9)' : 'transparent',
                     backdropFilter: topBarBg ? 'blur(12px)' : undefined,
@@ -227,7 +254,7 @@ export default function DealDetailPage() {
 
             {/* ─── Hero Image Gallery ─── */}
             <div className="relative w-full bg-[#f7f9fb]">
-                <div className="max-w-5xl mx-auto px-4 pt-14">
+                <div className="max-w-5xl mx-auto px-4 pt-4 md:pt-[60px]">
                     {photos.length > 0 ? (
                         <ImageGallery
                             images={photos}
@@ -243,7 +270,7 @@ export default function DealDetailPage() {
                 </div>
                 {/* Badge */}
                 {(discountPercent || discountAmount || effectiveNormalizedOffer.discountLabel) && !effectiveNormalizedOffer.isExpired && (
-                    <div className="absolute top-[70px] left-6 bg-[#ba1a1a] text-white px-3 py-1 rounded-full text-[12px] font-semibold shadow-md z-40 flex items-center gap-1 pointer-events-none">
+                    <div className="absolute top-[120px] md:top-[152px] left-6 bg-[#ba1a1a] text-white px-3 py-1 rounded-full text-[12px] font-semibold shadow-md z-40 flex items-center gap-1 pointer-events-none">
                         <span className="material-symbols-outlined" style={{ fontSize: 14 }}>local_offer</span>
                         {discountPercent
                             ? `${discountPercent}% OFF`
@@ -253,7 +280,7 @@ export default function DealDetailPage() {
                     </div>
                 )}
                 {effectiveNormalizedOffer.isExpired && (
-                    <div className="absolute top-[70px] left-6 bg-gray-800/80 text-white px-3 py-1 rounded-full text-[12px] font-semibold shadow-md z-40 pointer-events-none">
+                    <div className="absolute top-[120px] md:top-[152px] left-6 bg-gray-800/80 text-white px-3 py-1 rounded-full text-[12px] font-semibold shadow-md z-40 pointer-events-none">
                         Expired
                     </div>
                 )}
@@ -362,23 +389,24 @@ export default function DealDetailPage() {
                                 <h3 className="text-[12px] font-medium text-[#424655] uppercase tracking-wider mb-0.5">Location</h3>
                                 <p className="text-[16px] text-[#191c1e]">{effectiveBusiness.name}</p>
                                 <p className="text-[14px] text-[#424655]">{effectiveBusiness.address || ''}</p>
-                                {distance && (
+                                {distance && directionsHref && (
                                     <div className="flex items-center gap-1 mt-1">
                                         <MapPin size={12} className="text-[#0055c4]" />
                                         <span className="text-[12px] text-[#0055c4] font-medium">{distance} away</span>
+                                        <a
+                                            href={directionsHref}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="text-[12px] text-[#0055c4] font-medium underline flex items-center gap-0.5"
+                                        >
+                                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                                <polygon points="3 11 22 2 13 21 11 13 3 11" />
+                                            </svg>
+                                            Get Directions
+                                        </a>
                                     </div>
                                 )}
                             </div>
-                            {effectiveBusiness.latitude && effectiveBusiness.longitude && (
-                                <a
-                                    href={`https://www.google.com/maps/dir/?api=1&destination=${effectiveBusiness.latitude},${effectiveBusiness.longitude}`}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="text-[#0055c4] hover:bg-[#0055c4]/10 p-2 rounded-full transition-colors active:scale-95"
-                                >
-                                    <span className="material-symbols-outlined">directions</span>
-                                </a>
-                            )}
                         </div>
                     </div>
                 </div>
