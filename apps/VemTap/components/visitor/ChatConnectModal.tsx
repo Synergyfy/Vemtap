@@ -44,7 +44,12 @@ interface ChatConnectModalProps {
     signUpSubtitle?: string;
 }
 
-export const ChatConnectModal: React.FC<ChatConnectModalProps> = ({
+export const ChatConnectModal: React.FC<ChatConnectModalProps> = (props) => {
+    if (!props.isOpen) return null;
+    return <ChatConnectModalContent {...props} />;
+};
+
+const ChatConnectModalContent: React.FC<ChatConnectModalProps> = ({
     isOpen,
     onClose,
     onSuccess,

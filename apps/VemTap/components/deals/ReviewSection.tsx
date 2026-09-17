@@ -7,11 +7,25 @@ import ReviewCard from './ReviewCard';
 
 interface ReviewSectionProps {
     offerId: string;
+    dealUrl?: string;
+    businessSlug?: string;
+    businessName?: string;
+    onWriteReview?: () => void;
 }
 
-export default function ReviewSection({ offerId }: ReviewSectionProps) {
+export default function ReviewSection({
+    offerId,
+    dealUrl,
+    businessSlug,
+    businessName = 'Business',
+    onWriteReview,
+}: ReviewSectionProps) {
     const { data, isLoading } = useReviewPreview(offerId);
     const reviews = data?.reviews || [];
+
+    const reviewsHref = dealUrl
+        ? `${dealUrl}/reviews`
+        : `/deals/${businessSlug || 'b'}/${offerId}/reviews`;
 
     if (isLoading) {
         return (
@@ -39,12 +53,22 @@ export default function ReviewSection({ offerId }: ReviewSectionProps) {
                 <p className="text-xs text-gray-400 font-medium text-center py-4">
                     No reviews yet. Be the first to share your experience!
                 </p>
-                <Link
-                    href={`/deals/${offerId}/reviews`}
-                    className="block text-center text-xs font-bold text-primary hover:text-primary/80 mt-2"
-                >
-                    Write a review
-                </Link>
+                {onWriteReview ? (
+                    <button
+                        type="button"
+                        onClick={onWriteReview}
+                        className="block w-full text-center text-xs font-bold text-primary hover:text-primary/80 mt-2"
+                    >
+                        Write a review
+                    </button>
+                ) : (
+                    <Link
+                        href={reviewsHref}
+                        className="block text-center text-xs font-bold text-primary hover:text-primary/80 mt-2"
+                    >
+                        Write a review
+                    </Link>
+                )}
             </div>
         );
     }
@@ -56,12 +80,23 @@ export default function ReviewSection({ offerId }: ReviewSectionProps) {
                     <MessageCircle size={18} className="text-gray-900" />
                     <h3 className="text-sm font-bold text-gray-900">What people are saying</h3>
                 </div>
-                <Link
-                    href={`/deals/${offerId}/reviews`}
-                    className="text-xs font-bold text-primary hover:text-primary/80"
-                >
-                    See all
-                </Link>
+                <div className="flex items-center gap-3">
+                    {onWriteReview && (
+                        <button
+                            type="button"
+                            onClick={onWriteReview}
+                            className="text-xs font-bold text-primary hover:text-primary/80"
+                        >
+                            Write review
+                        </button>
+                    )}
+                    <Link
+                        href={reviewsHref}
+                        className="text-xs font-bold text-primary hover:text-primary/80"
+                    >
+                        See all
+                    </Link>
+                </div>
             </div>
 
             <div className="space-y-3">
@@ -70,12 +105,23 @@ export default function ReviewSection({ offerId }: ReviewSectionProps) {
                 ))}
             </div>
 
-            <Link
-                href={`/deals/${offerId}/reviews`}
-                className="block text-center text-xs font-bold text-primary hover:text-primary/80 mt-4 pt-4 border-t border-gray-100"
-            >
-                See all reviews
-            </Link>
+            <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-100">
+                {onWriteReview && (
+                    <button
+                        type="button"
+                        onClick={onWriteReview}
+                        className="text-xs font-bold text-primary hover:text-primary/80"
+                    >
+                        Write a review
+                    </button>
+                )}
+                <Link
+                    href={reviewsHref}
+                    className="text-xs font-bold text-primary hover:text-primary/80 ml-auto"
+                >
+                    See all reviews →
+                </Link>
+            </div>
         </div>
     );
 }

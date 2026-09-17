@@ -1049,7 +1049,10 @@ export class AuthService {
 
     await this.mailService.sendOtp(email, code);
 
-    return { message: 'OTP sent successfully to your email' };
+    return {
+      message: 'OTP sent successfully to your email',
+      expiresInMinutes: 10,
+    };
   }
 
   async resendCustomerOtp(dto: ResendCustomerOtpDto) {

@@ -36,6 +36,7 @@ import { paginateWithCursor } from '../../common/utils/cursor-pagination.util';
 import { Otp } from '../auth/entities/otp.entity';
 import { MailService } from '../mail/mail.service';
 import { RequestClaimOtpDto, VerifyClaimDto } from './dto/claim.dto';
+import { SendDealGiftDto } from './dto/send-deal-gift.dto';
 import { CACHE_MANAGER, type Cache } from '@nestjs/cache-manager';
 import { AiCreditService } from '../ai-copilot/services/ai-credit.service';
 import { OpenAIClient } from '../ai-copilot/openai/openai.client';
@@ -366,6 +367,7 @@ export class CatalogueOfferService {
       .leftJoinAndSelect('offer.items', 'item')
       .leftJoinAndSelect('offer.branch', 'branch')
       .leftJoinAndSelect('branch.business', 'business')
+      .leftJoinAndSelect('business.category', 'category')
       .where('offer.status = :status', { status: CatalogueOfferStatus.ACTIVE })
       .andWhere('(offer.endDate IS NULL OR offer.endDate >= NOW())')
       .andWhere('branch.joinDiscoveryNetwork = :joinDiscoveryNetwork', {
@@ -391,9 +393,11 @@ export class CatalogueOfferService {
     if (lat !== undefined && lng !== undefined) {
       const earthRadius = 6371; // km
       const distanceFormula = `${earthRadius} * acos(
-        cos(radians(:lat)) * cos(radians(branch.latitude)) *
-        cos(radians(branch.longitude) - radians(:lng)) +
-        sin(radians(:lat)) * sin(radians(branch.latitude))
+        LEAST(1.0, GREATEST(-1.0,
+          cos(radians(:lat)) * cos(radians(branch.latitude)) *
+          cos(radians(branch.longitude) - radians(:lng)) +
+          sin(radians(:lat)) * sin(radians(branch.latitude))
+        ))
       )`;
 
       qb.addSelect(distanceFormula, 'distance');
@@ -475,86 +479,116 @@ export class CatalogueOfferService {
   }
 
   private async mapPublicOffers(rawOffers: CatalogueOffer[]) {
-    return Promise.all(
-      rawOffers.map(async (offer) => {
-        const originalPrice = offer.items.reduce(
-          (acc, it) => acc + Number(it.price || 0),
-          0,
+    if (!rawOffers || rawOffers.length === 0) return [];
+
+    const offerIds = rawOffers.map((o) => o.id);
+    let claimCountMap = new Map<string, number>();
+
+    if (typeof this.claimRepository.createQueryBuilder === 'function') {
+      const claimCountsRaw = await this.claimRepository
+        .createQueryBuilder('claim')
+        .select('claim.offerId', 'offerId')
+        .addSelect('COUNT(claim.id)', 'count')
+        .where('claim.offerId IN (:...offerIds)', { offerIds })
+        .andWhere('claim.status IN (:...claimStatuses)', {
+          claimStatuses: [
+            CatalogueOfferClaimStatus.CLAIMED,
+            CatalogueOfferClaimStatus.REDEEMED,
+          ],
+        })
+        .groupBy('claim.offerId')
+        .getRawMany();
+
+      claimCountMap = new Map<string, number>(
+        claimCountsRaw.map((row) => [row.offerId, parseInt(row.count, 10) || 0]),
+      );
+    } else {
+      await Promise.all(
+        rawOffers.map(async (offer) => {
+          const count = await this.claimRepository.count({
+            where: {
+              offerId: offer.id,
+              status: In([
+                CatalogueOfferClaimStatus.CLAIMED,
+                CatalogueOfferClaimStatus.REDEEMED,
+              ]),
+            },
+          });
+          claimCountMap.set(offer.id, count);
+        }),
+      );
+    }
+
+    return rawOffers.map((offer) => {
+      const originalPrice = (offer.items || []).reduce(
+        (acc, it) => acc + Number(it.price || 0),
+        0,
+      );
+
+      let discountPercent = 0;
+      if (originalPrice > 0 && offer.calculatedPrice < originalPrice) {
+        discountPercent = Math.round(
+          ((originalPrice - offer.calculatedPrice) / originalPrice) * 100,
         );
+      }
 
-        let discountPercent = 0;
-        if (originalPrice > 0 && offer.calculatedPrice < originalPrice) {
-          discountPercent = Math.round(
-            ((originalPrice - offer.calculatedPrice) / originalPrice) * 100,
-          );
-        }
+      const claimedCount = claimCountMap.get(offer.id) || 0;
 
-        const claimedCount = await this.claimRepository.count({
-          where: {
-            offerId: offer.id,
-            status: In([
-              CatalogueOfferClaimStatus.CLAIMED,
-              CatalogueOfferClaimStatus.REDEEMED,
-            ]),
-          },
-        });
-
-        return {
-          id: offer.id,
-          name: offer.name,
-          description: offer.description,
-          pricingType: offer.pricingType,
-          fixedPrice: offer.fixedPrice,
-          percentageOff: (offer as any).percentageOff ?? offer.discountValue,
-          calculatedPrice: offer.calculatedPrice,
-          originalPrice,
-          discountPercent,
-          status: offer.status,
-          branchId: offer.branchId,
-          branchName: offer.branch?.name,
-          categoryName: offer.branch?.business?.category?.name,
-          business: offer.branch?.business
-            ? {
-                id: offer.branch.business.id,
-                name: offer.branch.business.name,
-                slug: offer.branch.business.uniqueCode,
-                logo: offer.branch.business.logoUrl ?? undefined,
-                categoryId: offer.branch.business.categoryId ?? undefined,
-                categoryName: offer.branch?.business?.category?.name ?? undefined,
-                address: offer.branch.business.address ?? undefined,
-                city: offer.branch.business.city ?? undefined,
-                latitude:
-                  offer.branch.business.latitude ??
-                  offer.branch?.latitude ??
-                  undefined,
-                longitude:
-                  offer.branch.business.longitude ??
-                  offer.branch?.longitude ??
-                  undefined,
-              }
-            : undefined,
-          items: offer.items,
-          claimedCount,
-          totalLimit: (offer as any).totalLimit ?? offer.quantity,
-          remainingLimit:
-            ((offer as any).totalLimit ?? offer.quantity) != null
-              ? Math.max(
-                  0,
-                  ((offer as any).totalLimit ?? offer.quantity) - claimedCount,
-                )
-              : null,
-          startDate: offer.startDate,
-          endDate: offer.endDate,
-          isExpired: offer.endDate
-            ? new Date() > new Date(offer.endDate)
-            : false,
-          maxClaimsPerCustomer: offer.maxClaimsPerCustomer,
-          audienceTarget: offer.audienceTarget,
-          terms: offer.terms,
-          claimCodePrefix: offer.claimCodePrefix,
-        };
-      }),
-    );
+      return {
+        id: offer.id,
+        name: offer.name,
+        description: offer.description,
+        pricingType: offer.pricingType,
+        fixedPrice: offer.fixedPrice,
+        percentageOff: (offer as any).percentageOff ?? offer.discountValue,
+        calculatedPrice: offer.calculatedPrice,
+        originalPrice,
+        discountPercent,
+        status: offer.status,
+        branchId: offer.branchId,
+        branchName: offer.branch?.name,
+        categoryName: offer.branch?.business?.category?.name,
+        business: offer.branch?.business
+          ? {
+              id: offer.branch.business.id,
+              name: offer.branch.business.name,
+              slug: offer.branch.business.uniqueCode,
+              logo: offer.branch.business.logoUrl ?? undefined,
+              categoryId: offer.branch.business.categoryId ?? undefined,
+              categoryName: offer.branch?.business?.category?.name ?? undefined,
+              address: offer.branch.business.address ?? undefined,
+              city: offer.branch.business.city ?? undefined,
+              latitude:
+                offer.branch.business.latitude ??
+                offer.branch?.latitude ??
+                undefined,
+              longitude:
+                offer.branch.business.longitude ??
+                offer.branch?.longitude ??
+                undefined,
+            }
+          : undefined,
+        items: offer.items,
+        claimedCount,
+        totalLimit: (offer as any).totalLimit ?? offer.quantity,
+        remainingLimit:
+          ((offer as any).totalLimit ?? offer.quantity) != null
+            ? Math.max(
+                0,
+                ((offer as any).totalLimit ?? offer.quantity) - claimedCount,
+              )
+            : null,
+        startDate: offer.startDate,
+        endDate: offer.endDate,
+        isExpired: offer.endDate
+          ? new Date() > new Date(offer.endDate)
+          : false,
+        maxClaimsPerCustomer: offer.maxClaimsPerCustomer,
+        audienceTarget: offer.audienceTarget,
+        terms: offer.terms,
+        claimCodePrefix: offer.claimCodePrefix,
+      };
+    });
   }
 
   async findOneOffer(id: string, branchId?: string) {
@@ -610,6 +644,17 @@ export class CatalogueOfferService {
     const now = new Date();
     const isExpired = offer.endDate ? now > new Date(offer.endDate) : false;
 
+    const branchAddress =
+      offer.branch?.address || offer.branch?.business?.address || undefined;
+    const branchCity =
+      offer.branch?.city || offer.branch?.business?.city || undefined;
+    const branchState =
+      offer.branch?.state || offer.branch?.business?.state || undefined;
+    const branchLat =
+      offer.branch?.latitude ?? offer.branch?.business?.latitude ?? undefined;
+    const branchLng =
+      offer.branch?.longitude ?? offer.branch?.business?.longitude ?? undefined;
+
     const mappedOffer = {
       ...offer,
       originalPrice,
@@ -628,6 +673,27 @@ export class CatalogueOfferService {
       ],
       longDescription: offer.description,
       claimCodePrefix: offer.claimCodePrefix,
+      business: offer.branch?.business
+        ? {
+            id: offer.branch.business.id,
+            name: offer.branch.business.name,
+            slug:
+              offer.branch.uniqueCode ||
+              offer.branch.username ||
+              offer.branch.business.uniqueCode,
+            logo: offer.branch.business.logoUrl ?? undefined,
+            categoryId: offer.branch.business.categoryId ?? undefined,
+            categoryName:
+              (offer.branch.business as any)?.category?.name ?? undefined,
+            address: branchAddress,
+            city: branchCity,
+            state: branchState,
+            latitude: branchLat,
+            longitude: branchLng,
+            phone: (offer.branch as any)?.phone ?? undefined,
+            isVerified: offer.branch.business.isVerified ?? false,
+          }
+        : undefined,
       sourceProductId: offer.sourceProductId || null,
       sourceProduct: offer.sourceProduct
         ? {
@@ -860,6 +926,114 @@ export class CatalogueOfferService {
       }
     }
 
+    const executeSave = async (managerOrRepo: any) => {
+      // Re-check claim limit inside transaction to prevent race conditions
+      if (offer.quantity !== null && offer.quantity !== undefined) {
+        let claimedCount = 0;
+        if (typeof managerOrRepo.count === 'function') {
+          claimedCount = managerOrRepo.count.length === 2
+            ? await managerOrRepo.count(CatalogueOfferClaim, {
+                where: {
+                  offerId: offer.id,
+                  status: In([
+                    CatalogueOfferClaimStatus.CLAIMED,
+                    CatalogueOfferClaimStatus.REDEEMED,
+                  ]),
+                },
+              })
+            : await managerOrRepo.count({
+                where: {
+                  offerId: offer.id,
+                  status: In([
+                    CatalogueOfferClaimStatus.CLAIMED,
+                    CatalogueOfferClaimStatus.REDEEMED,
+                  ]),
+                },
+              });
+        }
+        if (claimedCount >= offer.quantity) {
+          throw new BadRequestException(
+            'This promotion has reached its claim limit',
+          );
+        }
+      }
+
+      otpRecord.isVerified = true;
+      if (managerOrRepo.save && managerOrRepo.save.length === 2) {
+        await managerOrRepo.save(Otp, otpRecord);
+      } else {
+        await this.otpRepository.save(otpRecord);
+      }
+
+      const branchCode = offer.branch?.uniqueCode || 'XXXXX';
+      const prefix = offer.claimCodePrefix || 'VEM';
+      const randomString = Math.random()
+        .toString(36)
+        .substring(2, 6)
+        .toUpperCase();
+      const claimCode = `${prefix}-${branchCode}-${randomString}`;
+
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + 7);
+
+      const claimData = {
+        offerId: offer.id,
+        firstName: otpRecord.metadata.firstName,
+        lastName: otpRecord.metadata.lastName || null,
+        email: otpRecord.metadata.email,
+        phone: otpRecord.metadata.phone,
+        claimCode,
+        status: CatalogueOfferClaimStatus.CLAIMED,
+        expiresAt,
+      };
+
+      const claim = managerOrRepo.create
+        ? managerOrRepo.create.length === 2
+          ? managerOrRepo.create(CatalogueOfferClaim, claimData)
+          : managerOrRepo.create(claimData)
+        : this.claimRepository.create(claimData);
+
+      const savedClaim = managerOrRepo.save && managerOrRepo.save.length === 2
+        ? await managerOrRepo.save(CatalogueOfferClaim, claim)
+        : await this.claimRepository.save(claim);
+
+      await this.clearCache(offer.branchId, offer.id);
+
+      return {
+        message: 'Deal claimed successfully',
+        claim: {
+          id: savedClaim?.id || claim.id,
+          claimCode: savedClaim?.claimCode || claim.claimCode,
+          expiresAt: savedClaim?.expiresAt || claim.expiresAt,
+          status: savedClaim?.status || claim.status,
+        },
+      };
+    };
+
+    if (this.claimRepository.manager?.transaction) {
+      return await this.claimRepository.manager.transaction(executeSave);
+    }
+    return await executeSave(this.claimRepository);
+  }
+
+  async sendDealGift(dto: SendDealGiftDto, callerOrigin?: string) {
+    const offer = await this.offerRepository.findOne({
+      where: { id: dto.offerId, status: CatalogueOfferStatus.ACTIVE },
+      relations: ['items', 'branch', 'branch.business', 'business'],
+    });
+
+    if (!offer) {
+      throw new NotFoundException('Promotion not found or inactive');
+    }
+
+    const now = new Date();
+    if (offer.startDate && now < new Date(offer.startDate)) {
+      throw new BadRequestException('This promotion has not started yet');
+    }
+    if (offer.endDate && now > new Date(offer.endDate)) {
+      throw new BadRequestException('This promotion has expired');
+    }
+
     if (offer.quantity !== null && offer.quantity !== undefined) {
       const claimedCount = await this.claimRepository.count({
         where: {
@@ -872,47 +1046,111 @@ export class CatalogueOfferService {
       });
       if (claimedCount >= offer.quantity) {
         throw new BadRequestException(
-          'This promotion has reached its claim limit',
+          'This promotion has reached its maximum total claim limit',
         );
       }
     }
 
-    otpRecord.isVerified = true;
-    await this.otpRepository.save(otpRecord);
+    const recipientEmail = dto.recipientEmail.trim().toLowerCase();
 
-    const branchCode = offer.branch?.uniqueCode || 'XXXXX';
-    const prefix = offer.claimCodePrefix || 'VEM';
-    const randomString = Math.random()
-      .toString(36)
-      .substring(2, 6)
-      .toUpperCase();
-    const claimCode = `${prefix}-${branchCode}-${randomString}`;
+    // Check max claims per customer for the recipient
+    if (
+      offer.maxClaimsPerCustomer !== null &&
+      offer.maxClaimsPerCustomer !== undefined
+    ) {
+      const recipientClaimsCount = await this.claimRepository.count({
+        where: {
+          offerId: offer.id,
+          email: recipientEmail,
+          status: In([
+            CatalogueOfferClaimStatus.CLAIMED,
+            CatalogueOfferClaimStatus.REDEEMED,
+          ]),
+        },
+      });
+      if (recipientClaimsCount >= offer.maxClaimsPerCustomer) {
+        throw new BadRequestException(
+          `The recipient (${recipientEmail}) has already reached the maximum claim limit (${offer.maxClaimsPerCustomer}) for this deal.`,
+        );
+      }
+    }
 
-    const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 7);
+    const business = offer.branch?.business || offer.business;
+    let targetBranch = offer.branch;
+    if (dto.branchId && dto.branchId !== offer.branchId) {
+      const branchMatch = await this.branchRepository.findOne({
+        where: { id: dto.branchId },
+      });
+      if (branchMatch) {
+        targetBranch = branchMatch;
+      }
+    }
 
-    const claim = this.claimRepository.create({
-      offerId: offer.id,
-      firstName: otpRecord.metadata.firstName,
-      lastName: otpRecord.metadata.lastName || null,
-      email: otpRecord.metadata.email,
-      phone: otpRecord.metadata.phone,
-      claimCode,
-      status: CatalogueOfferClaimStatus.CLAIMED,
-      expiresAt,
+    const originalPrice = (offer.items || []).reduce(
+      (acc, it) => acc + Number(it.price || 0),
+      0,
+    );
+
+    let discountLabel = '';
+    if (
+      offer.discountValue &&
+      offer.pricingType === CatalogueOfferPricingType.PERCENTAGE_DISCOUNT
+    ) {
+      discountLabel = `${offer.discountValue}% OFF`;
+    } else if (
+      originalPrice > 0 &&
+      Number(offer.calculatedPrice) < originalPrice
+    ) {
+      const saved = originalPrice - Number(offer.calculatedPrice);
+      const pct = Math.round((saved / originalPrice) * 100);
+      discountLabel = `Save ₦${saved.toLocaleString('en-NG')} (${pct}% OFF)`;
+    }
+
+    const emailSent = await this.mailService.sendDealGiftEmail({
+      recipientEmail,
+      senderName: dto.senderName?.trim(),
+      senderEmail: dto.senderEmail?.trim(),
+      note: dto.note?.trim(),
+      frontendBaseUrl: dto.frontendBaseUrl || callerOrigin,
+      offer: {
+        id: offer.id,
+        name: offer.name,
+        description: offer.description || offer.longDescription || undefined,
+        mainImage:
+          offer.mainImage ||
+          (offer.galleryImages && offer.galleryImages[0]) ||
+          undefined,
+        calculatedPrice: Number(offer.calculatedPrice),
+        originalPrice: originalPrice > 0 ? originalPrice : undefined,
+        discountLabel,
+        endDate: offer.endDate || undefined,
+        terms: offer.terms || undefined,
+      },
+      business: {
+        name: business?.name || 'VemTap Partner',
+        slug: targetBranch?.uniqueCode || business?.uniqueCode || undefined,
+        phone: business?.phone || undefined,
+        address: business?.address || undefined,
+        logoUrl: business?.logoUrl || undefined,
+      },
+      branch: {
+        name: targetBranch?.name || undefined,
+        address: targetBranch?.address || undefined,
+        city: targetBranch?.city || undefined,
+        state: targetBranch?.state || undefined,
+        phone: targetBranch?.phone || undefined,
+      },
     });
 
-    await this.claimRepository.save(claim);
-    await this.clearCache(offer.branchId, offer.id);
+    if (!emailSent) {
+      throw new BadRequestException(
+        'Failed to dispatch deal gift email. Please try again.',
+      );
+    }
 
     return {
-      message: 'Deal claimed successfully',
-      claim: {
-        id: claim.id,
-        claimCode: claim.claimCode,
-        expiresAt: claim.expiresAt,
-        status: claim.status,
-      },
+      success: true,
+      message: `Deal invitation and instructions sent successfully to ${recipientEmail}`,
     };
   }
 

@@ -1,13 +1,14 @@
 'use client';
 
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { Loader2, AlertCircle, MapPin } from 'lucide-react';
+import { Loader2, AlertCircle, MapPin, Gift } from 'lucide-react';
 import ImageGallery from '@/components/ui/ImageGallery';
 import ShareDealModal from '@/components/promotions/ShareDealModal';
 import DealEngagementBar from '@/components/deals/DealEngagementBar';
 import ReviewSection from '@/components/deals/ReviewSection';
+import WriteReviewModal from '@/components/deals/WriteReviewModal';
 import ClaimDealModal from '@/components/deals/ClaimDealModal';
 import { usePublicOfferDetails } from '@/services/deals/hooks';
 import { useEngagement, useToggleSave } from '@/services/deals/engagement-hooks';
@@ -28,8 +29,13 @@ function formatDateLong(dateStr: string): string {
 export default function DealDetailPage() {
     const params = useParams();
     const router = useRouter();
+    const searchParams = useSearchParams();
     const slug = params.slug as string;
     const id = params.id as string;
+
+    const isGiftRef = searchParams?.get('ref') === 'gift';
+    const giftEmail = searchParams?.get('email') || '';
+    const giftSender = searchParams?.get('sender') || 'A friend';
 
     const { data: offer, isLoading } = usePublicOfferDetails(id);
     const { isAuthenticated, user } = useAuthStore();
@@ -41,20 +47,79 @@ export default function DealDetailPage() {
 
     const [showShareModal, setShowShareModal] = useState(false);
     const [showClaimModal, setShowClaimModal] = useState(false);
+    const [showWriteReviewModal, setShowWriteReviewModal] = useState(false);
     const [branchId, setBranchId] = useState<string | null>(null);
     const [topBarBg, setTopBarBg] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
 
     const isSaved = engagement?.isSaved ?? false;
 
+    const resolvedBusiness = useMemo(() => {
+        if (!offer) return null;
+        const b = offer.business;
+        const br = offer.branch;
+        const brBiz = offer.branch?.business;
+
+        const name = b?.name || brBiz?.name || br?.name || 'Business';
+        const address =
+            b?.address ||
+            br?.address ||
+            brBiz?.address ||
+            [br?.address, br?.city, br?.state].filter(Boolean).join(', ') ||
+            '';
+        const latitude = b?.latitude ?? br?.latitude ?? brBiz?.latitude;
+        const longitude = b?.longitude ?? br?.longitude ?? brBiz?.longitude;
+        const categoryName = b?.categoryName || brBiz?.category?.name || 'Deal';
+        const isVerified = b?.isVerified ?? brBiz?.isVerified ?? false;
+        const phone = b?.phone || br?.phone || brBiz?.phone;
+        const rating = b?.rating ?? (offer as any).averageRating;
+        const totalReviews = b?.totalReviews ?? (offer as any).reviewsCount;
+        const logo = b?.logo || brBiz?.logoUrl;
+        const photos = b?.photos || offer.galleryImages || [];
+
+        return {
+            id: b?.id || brBiz?.id || br?.id || id,
+            name,
+            slug: slug || b?.slug || br?.uniqueCode || '',
+            address,
+            city: b?.city || br?.city || brBiz?.city,
+            state: br?.state || brBiz?.state,
+            photos,
+            categoryName,
+            rating,
+            totalReviews,
+            isVerified,
+            latitude,
+            longitude,
+            phone,
+            logo,
+        };
+    }, [offer, slug, id]);
+
+    const business = resolvedBusiness;
+    const effectiveBusiness = business || {
+        id,
+        name: 'Business',
+        slug: slug || '',
+        address: '',
+        photos: [],
+        categoryName: 'Deal',
+        rating: undefined,
+        totalReviews: undefined,
+        isVerified: false,
+        latitude: undefined,
+        longitude: undefined,
+        phone: undefined,
+    };
+
     const distance =
-        hasLocation && userLat != null && userLng != null && offer?.business?.latitude != null && offer?.business?.longitude != null
-            ? formatDistance(haversineDistance(userLat, userLng, offer.business.latitude, offer.business.longitude))
+        hasLocation && userLat != null && userLng != null && effectiveBusiness.latitude != null && effectiveBusiness.longitude != null
+            ? formatDistance(haversineDistance(userLat, userLng, effectiveBusiness.latitude, effectiveBusiness.longitude))
             : null;
 
     const directionsHref =
-        hasLocation && userLat != null && userLng != null && offer?.business?.latitude != null && offer?.business?.longitude != null
-            ? getDirectionsUrl(userLat, userLng, offer.business.latitude, offer.business.longitude)
+        hasLocation && userLat != null && userLng != null && effectiveBusiness.latitude != null && effectiveBusiness.longitude != null
+            ? getDirectionsUrl(userLat, userLng, effectiveBusiness.latitude, effectiveBusiness.longitude)
             : null;
 
     const normalizedOffer = useMemo(() => {
@@ -82,27 +147,11 @@ export default function DealDetailPage() {
             claimedCount: offer.claimedCount,
             maxClaims: offer.maxClaims,
             terms: offer.terms || [],
-            business: offer.business,
+            business: effectiveBusiness,
+            branchId: offer.branchId,
+            branch: offer.branch,
         };
-    }, [offer]);
-
-    const business = normalizedOffer?.business;
-
-    // Fallback data when API fails — ensures engagement/review sections always work
-    const effectiveBusiness = business || {
-        id: id,
-        name: 'Business',
-        slug: slug || '',
-        address: '',
-        photos: [],
-        categoryName: 'Deal',
-        rating: undefined,
-        totalReviews: undefined,
-        isVerified: false,
-        latitude: undefined,
-        longitude: undefined,
-        phone: undefined,
-    };
+    }, [offer, effectiveBusiness]);
     const effectiveNormalizedOffer = normalizedOffer || {
         id,
         name: 'Deal',
@@ -121,6 +170,8 @@ export default function DealDetailPage() {
         maxClaims: 0,
         terms: [],
         business: effectiveBusiness,
+        branchId: undefined,
+        branch: undefined,
     };
     const photos = useMemo(() => {
         const result = [...(business?.photos || [])];
@@ -255,6 +306,30 @@ export default function DealDetailPage() {
             {/* ─── Hero Image Gallery ─── */}
             <div className="relative w-full bg-[#f7f9fb]">
                 <div className="max-w-5xl mx-auto px-4 pt-4 md:pt-[60px]">
+                    {isGiftRef && (
+                        <div className="mb-4 p-4 rounded-2xl bg-gradient-to-r from-purple-700 via-indigo-700 to-purple-800 text-white shadow-lg flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-in fade-in slide-in-from-top-3">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center shrink-0 shadow-inner">
+                                    <Gift size={22} className="text-yellow-300" />
+                                </div>
+                                <div>
+                                    <p className="text-[14px] font-bold flex items-center gap-1.5">
+                                        Special Gift from {giftSender}!
+                                    </p>
+                                    <p className="text-[12px] text-purple-100">
+                                        You&apos;ve been gifted this deal. Tap &quot;Claim Deal Now&quot; to get your discount code.
+                                    </p>
+                                </div>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setShowClaimModal(true)}
+                                className="px-4 py-2 rounded-xl bg-white text-purple-900 font-bold text-[13px] hover:bg-white/90 shadow-sm shrink-0 active:scale-95 transition-all text-center cursor-pointer"
+                            >
+                                Claim Deal Now
+                            </button>
+                        </div>
+                    )}
                     {photos.length > 0 ? (
                         <ImageGallery
                             images={photos}
@@ -306,11 +381,29 @@ export default function DealDetailPage() {
                             </div>
                         )}
                     </div>
-                    <div className="flex items-center gap-4 text-[#424655] text-[14px]">
+                    <div className="flex flex-wrap items-center gap-3 text-[#424655] text-[14px]">
                         <div className="flex items-center gap-1">
-                            <span className="material-symbols-outlined" style={{ fontSize: 16 }}>location_on</span>
-                            {effectiveBusiness.address || 'Location unavailable'}
+                            <span className="material-symbols-outlined shrink-0" style={{ fontSize: 16 }}>location_on</span>
+                            <span>{effectiveBusiness.address || 'Location unavailable'}</span>
                         </div>
+                        {distance && directionsHref && (
+                            <div className="flex items-center gap-1.5">
+                                <span className="text-[#727786]">·</span>
+                                <span className="text-[#727786] text-[13px] font-medium">{distance} away</span>
+                                <a
+                                    href={directionsHref}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center gap-1 text-[#0055c4] font-semibold text-[13px] hover:underline bg-[#0055c4]/5 px-2 py-0.5 rounded-md"
+                                    title="Get directions"
+                                >
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                        <polygon points="3 11 22 2 13 21 11 13 3 11" />
+                                    </svg>
+                                    Directions
+                                </a>
+                            </div>
+                        )}
                         {effectiveBusiness.isVerified && (
                             <div className="flex items-center gap-1 text-[#0055c4]">
                                 <span className="material-symbols-outlined" style={{ fontSize: 16 }}>verified</span>
@@ -435,7 +528,13 @@ export default function DealDetailPage() {
 
                 {/* Reviews Section */}
                 <section className="border-t border-[#c2c6d7]/40 pt-4 mt-4">
-                    <ReviewSection offerId={id} />
+                    <ReviewSection
+                        offerId={id}
+                        dealUrl={dealUrl}
+                        businessSlug={slug}
+                        businessName={effectiveBusiness.name}
+                        onWriteReview={() => setShowWriteReviewModal(true)}
+                    />
                 </section>
             </main>
 
@@ -459,6 +558,16 @@ export default function DealDetailPage() {
                 </div>
             </div>
 
+            {/* Write Review Modal */}
+            {showWriteReviewModal && (
+                <WriteReviewModal
+                    isOpen={showWriteReviewModal}
+                    onClose={() => setShowWriteReviewModal(false)}
+                    offerId={id}
+                    businessName={effectiveBusiness.name}
+                />
+            )}
+
             {/* Share modal */}
             <ShareDealModal
                 isOpen={showShareModal}
@@ -469,25 +578,31 @@ export default function DealDetailPage() {
             />
 
             {/* Claim Deal Modal */}
-            <ClaimDealModal
-                isOpen={showClaimModal}
-                onClose={() => setShowClaimModal(false)}
-                deal={{
-                    id: effectiveNormalizedOffer.id,
-                    title: effectiveNormalizedOffer.name,
-                    businessName: effectiveBusiness.name,
-                    image: photos[0] || effectiveNormalizedOffer.mainImage || '',
-                    dealPrice: effectiveNormalizedOffer.calculatedPrice,
-                    originalPrice,
-                    discountLabel: effectiveNormalizedOffer.discountLabel || '',
-                    slug: effectiveBusiness.slug || slug,
-                    businessPhone: effectiveBusiness.phone || '',
-                }}
-                claimConfig={branchId ? {
-                    branchId,
-                    successPath: `/deals/${effectiveBusiness.slug || slug}/${effectiveNormalizedOffer.id}`,
-                } : undefined}
-            />
+            {showClaimModal && (() => {
+                const effectiveBranchId = branchId || effectiveNormalizedOffer?.branchId || (effectiveNormalizedOffer?.branch as any)?.id || null;
+                return (
+                    <ClaimDealModal
+                        isOpen={showClaimModal}
+                        onClose={() => setShowClaimModal(false)}
+                        deal={{
+                            id: effectiveNormalizedOffer.id,
+                            title: effectiveNormalizedOffer.name,
+                            businessName: effectiveBusiness.name,
+                            image: photos[0] || effectiveNormalizedOffer.mainImage || '',
+                            dealPrice: effectiveNormalizedOffer.calculatedPrice,
+                            originalPrice,
+                            discountLabel: effectiveNormalizedOffer.discountLabel || '',
+                            slug: effectiveBusiness.slug || slug,
+                            businessPhone: effectiveBusiness.phone || '',
+                        }}
+                        claimConfig={effectiveBranchId ? {
+                            branchId: effectiveBranchId,
+                            successPath: `/deals/${effectiveBusiness.slug || slug}/${effectiveNormalizedOffer.id}`,
+                        } : undefined}
+                        initialEmail={giftEmail || undefined}
+                    />
+                );
+            })()}
         </div>
     );
 }

@@ -228,7 +228,7 @@ export default function WriteReviewModal({ isOpen, onClose, offerId, businessNam
                 </div>
             </div>
 
-            {portalRoot && createPortal(
+            {showAuthModal && portalRoot && createPortal(
                 <ChatConnectModal
                     isOpen={showAuthModal}
                     onClose={() => {

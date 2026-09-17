@@ -214,3 +214,19 @@ export interface PublicStatsResponse {
     totalClaims: number;
     totalBranches: number;
 }
+
+export interface SendDealGiftPayload {
+    offerId: string;
+    recipientEmail: string;
+    senderName?: string;
+    senderEmail?: string;
+    note?: string;
+    branchId?: string;
+    frontendBaseUrl?: string;
+}
+
+export interface SendDealGiftResponse {
+    success: boolean;
+    message: string;
+}
+

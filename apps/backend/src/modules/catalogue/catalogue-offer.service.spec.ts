@@ -109,6 +109,7 @@ describe('CatalogueOfferService', () => {
     const otpRecord = mockOtpRecord;
     mailService = {
       sendOtp: jest.fn().mockResolvedValue(true),
+      sendDealGiftEmail: jest.fn().mockResolvedValue(true),
     };
 
     subscriptionsService = {
@@ -785,4 +786,115 @@ describe('CatalogueOfferService', () => {
       expect(result[0]).toEqual({ id: 'b-1', name: 'Alpha Cafe' });
     });
   });
+
+  describe('sendDealGift', () => {
+    it('successfully sends deal gift email to recipient', async () => {
+      const activeOffer = {
+        ...mockOffer,
+        status: CatalogueOfferStatus.ACTIVE,
+        items: [{ price: '100' }],
+        calculatedPrice: 80,
+        branch: {
+          name: 'Main Branch',
+          address: '123 Main St',
+          business: { name: 'Burger Queen', slug: 'burger-queen' },
+        },
+      };
+      offerRepo.findOne.mockResolvedValue(activeOffer);
+      claimRepo.count.mockResolvedValue(0);
+
+      const result = await service.sendDealGift({
+        offerId: 'offer-1',
+        recipientEmail: 'friend@example.com',
+        senderName: 'John Doe',
+        note: 'Enjoy lunch on me!',
+      });
+
+      expect(result.success).toBe(true);
+      expect(result.message).toContain('friend@example.com');
+      expect(mailService.sendDealGiftEmail).toHaveBeenCalledWith(
+        expect.objectContaining({
+          recipientEmail: 'friend@example.com',
+          senderName: 'John Doe',
+          note: 'Enjoy lunch on me!',
+        }),
+      );
+    });
+
+    it('passes callerOrigin and custom frontendBaseUrl to mailService', async () => {
+      const activeOffer = {
+        id: 'offer-2',
+        name: 'Free Coffee',
+        status: CatalogueOfferStatus.ACTIVE,
+        items: [],
+        calculatedPrice: 0,
+        branch: {
+          name: 'Central',
+          business: { name: 'Cafe Hub', uniqueCode: 'cafe-hub' },
+        },
+      };
+      offerRepo.findOne.mockResolvedValue(activeOffer);
+      claimRepo.count.mockResolvedValue(0);
+
+      await service.sendDealGift(
+        {
+          offerId: 'offer-2',
+          recipientEmail: 'coffee@example.com',
+          frontendBaseUrl: 'http://localhost:3005',
+        },
+        'http://localhost:3000',
+      );
+
+      expect(mailService.sendDealGiftEmail).toHaveBeenCalledWith(
+        expect.objectContaining({
+          recipientEmail: 'coffee@example.com',
+          frontendBaseUrl: 'http://localhost:3005',
+        }),
+      );
+    });
+
+    it('throws NotFoundException if offer is not found', async () => {
+      offerRepo.findOne.mockResolvedValue(null);
+
+      await expect(
+        service.sendDealGift({
+          offerId: 'non-existent',
+          recipientEmail: 'friend@example.com',
+        }),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('throws BadRequestException if deal has expired', async () => {
+      const expiredOffer = {
+        ...mockOffer,
+        endDate: new Date('2020-01-01'),
+      };
+      offerRepo.findOne.mockResolvedValue(expiredOffer);
+
+      await expect(
+        service.sendDealGift({
+          offerId: 'offer-1',
+          recipientEmail: 'friend@example.com',
+        }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('throws BadRequestException if recipient reached max claims', async () => {
+      const limitedOffer = {
+        ...mockOffer,
+        maxClaimsPerCustomer: 1,
+        items: [],
+      };
+      offerRepo.findOne.mockResolvedValue(limitedOffer);
+      claimRepo.count.mockResolvedValue(1);
+
+      await expect(
+        service.sendDealGift({
+          offerId: 'offer-1',
+          recipientEmail: 'friend@example.com',
+        }),
+      ).rejects.toThrow(BadRequestException);
+    });
+  });
 });
+

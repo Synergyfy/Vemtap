@@ -62,7 +62,8 @@ export default function QRScanner({ isOpen, onClose, onScanResult }: QRScannerPr
       setIsProcessing(true);
       try {
         // Dynamically import jsQR for QR code scanning from images
-        const { default: jsQR } = await import('jsqr');
+        // @ts-ignore - jsqr does not provide built-in type declarations
+        const { default: jsQR } = (await import('jsqr')) as any;
         const img = new Image();
         const url = URL.createObjectURL(file);
         img.src = url;

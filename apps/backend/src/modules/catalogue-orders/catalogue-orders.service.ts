@@ -266,6 +266,26 @@ export class CatalogueOrderService {
           );
         }
 
+        // Per-customer claim limit check
+        if (
+          offer.maxClaimsPerCustomer !== null &&
+          offer.maxClaimsPerCustomer !== undefined
+        ) {
+          const previousClaimsCount = await this.orderItemRepository
+            .createQueryBuilder('item')
+            .innerJoin('item.order', 'order')
+            .where('item.offerId = :offerId', { offerId: offer.id })
+            .andWhere('order.customerId = :customerId', { customerId: customer.id })
+            .andWhere('order.status != :cancelled', { cancelled: 'CANCELLED' })
+            .getCount();
+
+          if (previousClaimsCount + itemDto.quantity > offer.maxClaimsPerCustomer) {
+            throw new BadRequestException(
+              `You have reached the maximum number of claims (${offer.maxClaimsPerCustomer}) for this deal.`,
+            );
+          }
+        }
+
         // Check stock for ALL items in offer
         for (const offerItem of offer.items) {
           if (offerItem.stockQuantity !== null && !offerItem.allowBackOrder) {

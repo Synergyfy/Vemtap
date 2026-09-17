@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { X, MessageCircle, Phone, MapPin, ExternalLink } from 'lucide-react';
 
@@ -16,7 +16,11 @@ export default function RedeemDealModal({ isOpen, onClose, deal, onChat }: Redee
     const businessPhone = deal?.businessPhone || '+2348012345678';
     const businessName = deal?.businessName || 'Business';
     const dealTitle = deal?.title || 'this deal';
-    const portalRoot = typeof document !== 'undefined' ? document.body : null;
+    const [mounted, setMounted] = useState(false);
+
+    useEffect(() => {
+        setMounted(true);
+    }, []);
 
     const prefilledMessage = encodeURIComponent(
         `Hi ${businessName}! I just claimed your deal "${dealTitle}" on VemTap. I'd like to arrange how to redeem it. `
@@ -34,7 +38,7 @@ export default function RedeemDealModal({ isOpen, onClose, deal, onChat }: Redee
         window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(businessName)}`, '_blank');
     };
 
-    if (!isOpen || !portalRoot) return null;
+    if (!isOpen || !mounted) return null;
 
     return createPortal(
         <div className="fixed inset-0 z-[200] flex items-end sm:items-center justify-center">
@@ -133,6 +137,6 @@ export default function RedeemDealModal({ isOpen, onClose, deal, onChat }: Redee
                 </div>
             </div>
         </div>,
-        portalRoot
+        document.body
     );
 }
