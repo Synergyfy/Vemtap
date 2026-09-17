@@ -175,22 +175,128 @@ export class DeviceTapController {
     },
   })
   async getContextByUsername(@Param('username') username: string) {
-    // Find branch by username
-    const branch = await this.branchesService.findByUsername(username);
+    // 1. Try finding branch by username
+    let branch: Branch | null = await this.branchesService.findByUsername(
+      username,
+    );
+
+    // 2. Fallback: Try finding branch by uniqueCode (branch code or business code)
     if (!branch) {
+      try {
+        branch = await this.branchesService.findByCode(username);
+      } catch (err) {
+        // Not found by code, proceed
+      }
+    }
+
+    // 3. Fallback: If username is a UUID, try finding branch by ID
+    if (!branch) {
+      const isUuid =
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+          username,
+        );
+      if (isUuid) {
+        try {
+          branch = await this.branchesService.findById(username, ['business']);
+        } catch (err) {
+          // Not found by ID, proceed
+        }
+      }
+    }
+
+    if (!branch || !branch.isActive) {
       throw new NotFoundException(
         `Branch with username "${username}" not found`,
       );
     }
 
-    // Get first active device for this branch
-    const device = await this.devicesService.findFirstByBranchId(branch.id);
+    // 4. Get first active device for this branch
+    let device = await this.devicesService.findFirstByBranchId(branch.id);
     if (!device) {
-      throw new BadRequestException('No active device found for this branch');
+      const allDevices = await this.devicesService.findAllByBranch(branch.id);
+      device = allDevices.find((d) => d.isMain) || allDevices[0] || null;
     }
 
-    // Reuse existing context logic by calling with device code
-    return this.getDeviceContext(device.code);
+    if (device) {
+      return this.getDeviceContext(device.code);
+    }
+
+    // 5. If branch has no physical device yet, construct virtual context
+    const branchId = branch.id;
+    const [productCount, serviceCount, offerCount, forms] = await Promise.all([
+      this.catalogueService.countItemsByType(
+        branchId,
+        CatalogueItemType.PRODUCT,
+      ),
+      this.catalogueService.countItemsByType(
+        branchId,
+        CatalogueItemType.SERVICE,
+      ),
+      this.catalogueOfferService.countOffers(branchId),
+      this.formsService.getFormsForVisitor(branchId),
+    ]);
+
+    const branchData = {
+      productCount,
+      serviceCount,
+      offerCount,
+      formCount: forms.length,
+    };
+
+    let qrThriveCodes: any[] = [];
+    const ublSequence = branch.engagement?.ublSequence || [];
+    const externalQrIds = ublSequence.filter(
+      (id: string) => !id.startsWith('system:'),
+    );
+
+    if (externalQrIds.length > 0) {
+      qrThriveCodes = await this.qrThriveService.getPublicQRCodesForBranch(
+        branchId,
+        externalQrIds,
+      );
+    }
+
+    const cluster = branch.clusterId
+      ? await this.clustersService.getClusterForBranch(branchId)
+      : null;
+
+    return {
+      device: {
+        id: branch.id,
+        name: branch.name,
+        code: branch.uniqueCode || username,
+        location: branch.address || branch.city || 'Main',
+      },
+      branch: {
+        ...branchData,
+        id: branch.id,
+        name: branch.name,
+        welcomeMessage: branch.welcomeMessage,
+        successMessage: branch.successMessage,
+        whatsappNumber: branch.whatsappNumber,
+        logoUrl: branch.logoUrl,
+        engagement: branch.engagement,
+        showReview: branch.showReview,
+        showSocial: branch.showSocial,
+        showFeedback: branch.showFeedback,
+        welcomeTitle: branch.welcomeTitle,
+        welcomeTag: branch.welcomeTag,
+        formAppearanceColor: branch.formAppearanceColor,
+      },
+      qrThriveCodes,
+      cluster,
+      business: branch.business
+        ? {
+            id: branch.business.id,
+            name: branch.business.name,
+            logoUrl: branch.business.logoUrl,
+          }
+        : {
+            id: branch.businessId,
+            name: branch.name,
+            logoUrl: branch.logoUrl,
+          },
+    };
   }
 
   /**

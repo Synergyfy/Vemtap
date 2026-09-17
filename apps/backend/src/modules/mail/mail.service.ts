@@ -908,4 +908,415 @@ export class MailService {
 
     return { subject, html };
   }
+
+  async sendDealGiftEmail(params: DealGiftEmailParams): Promise<boolean> {
+    try {
+      const { recipientEmail, senderName, note, offer, business, branch } = params;
+      const safeSender = (senderName || 'A friend').trim();
+      const safeBusinessName = business.name || 'VemTap Partner';
+      const subject = `🎁 ${safeSender} sent you a deal: ${offer.name} at ${safeBusinessName}!`;
+
+      const frontendUrl = this.resolveFrontendBaseUrl(params.frontendBaseUrl);
+
+      const businessSlug = business.slug || 'deal';
+      const claimUrl = `${frontendUrl}/deals/${businessSlug}/${offer.id}?ref=gift&email=${encodeURIComponent(recipientEmail)}&sender=${encodeURIComponent(safeSender)}`;
+
+      const formatNaira = (val?: number) => {
+        if (val === undefined || val === null || isNaN(val)) return null;
+        return `₦${Number(val).toLocaleString('en-NG')}`;
+      };
+
+      const dealPriceStr = formatNaira(offer.calculatedPrice);
+      const originalPriceStr = formatNaira(offer.originalPrice);
+
+      let savingsText = '';
+      if (offer.discountLabel) {
+        savingsText = offer.discountLabel;
+      } else if (
+        offer.originalPrice &&
+        offer.calculatedPrice &&
+        offer.originalPrice > offer.calculatedPrice
+      ) {
+        const saved = offer.originalPrice - offer.calculatedPrice;
+        const pct = Math.round((saved / offer.originalPrice) * 100);
+        savingsText = `Save ${formatNaira(saved)} (${pct}% OFF)`;
+      }
+
+      const branchAddress = branch?.address || business.address || '';
+      const branchLocation = [branchAddress, branch?.city, branch?.state]
+        .filter(Boolean)
+        .join(', ');
+      const branchPhone = branch?.phone || business.phone || '';
+
+      const expiryStr = offer.endDate
+        ? new Date(offer.endDate).toLocaleDateString('en-NG', {
+            day: 'numeric',
+            month: 'short',
+            year: 'numeric',
+          })
+        : 'Ongoing';
+
+      const escapeHtml = (str: string = '') =>
+        str
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#039;');
+
+      const html = `
+      <!DOCTYPE html>
+      <html lang="en">
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>${subject}</title>
+      </head>
+      <body style="margin: 0; padding: 0; background-color: #f1f5f9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; -webkit-font-smoothing: antialiased;">
+        <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #f1f5f9; padding: 24px 12px;">
+          <tr>
+            <td align="center">
+              <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 600px; background-color: #ffffff; border-radius: 20px; overflow: hidden; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.08); border: 1px solid #e2e8f0;">
+                
+                <!-- Top Brand Strip -->
+                <tr>
+                  <td style="padding: 16px 28px; background-color: #0f172a; text-align: left;">
+                    <table border="0" cellpadding="0" cellspacing="0" width="100%">
+                      <tr>
+                        <td>
+                          <span style="font-size: 18px; font-weight: 800; color: #ffffff; letter-spacing: -0.02em;">Vem<span style="color: #38bdf8;">Tap</span> Deals</span>
+                        </td>
+                        <td align="right">
+                          <span style="background: rgba(255,255,255,0.15); color: #e2e8f0; font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 999px; text-transform: uppercase; letter-spacing: 0.05em;">Special Gift</span>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+
+                <!-- Hero Banner -->
+                <tr>
+                  <td style="background: linear-gradient(135deg, #4338ca 0%, #6366f1 50%, #8b5cf6 100%); padding: 36px 28px; text-align: center; color: #ffffff;">
+                    <div style="font-size: 42px; margin-bottom: 8px;">🎁</div>
+                    <h1 style="margin: 0 0 10px 0; font-size: 24px; font-weight: 800; line-height: 1.25; letter-spacing: -0.02em; color: #ffffff;">
+                      ${safeSender} sent you a deal!
+                    </h1>
+                    <p style="margin: 0; font-size: 15px; color: #e0e7ff; line-height: 1.5; max-width: 460px; margin: 0 auto;">
+                      You have been gifted an exclusive discount at <strong>${safeBusinessName}</strong>.
+                    </p>
+                  </td>
+                </tr>
+
+                <!-- Main Content -->
+                <tr>
+                  <td style="padding: 30px 28px;">
+
+                    ${
+                      note
+                        ? `
+                    <!-- Personal Note Callout -->
+                    <div style="background-color: #faf5ff; border: 1px solid #e9d5ff; border-left: 5px solid #a855f7; border-radius: 12px; padding: 16px 20px; margin-bottom: 24px;">
+                      <p style="margin: 0 0 6px 0; font-size: 11px; font-weight: 800; text-transform: uppercase; color: #9333ea; letter-spacing: 0.05em;">
+                        Personal Message from ${safeSender}:
+                      </p>
+                      <p style="margin: 0; font-size: 14px; font-style: italic; color: #4c1d95; line-height: 1.6;">
+                        &ldquo;${escapeHtml(note)}&rdquo;
+                      </p>
+                    </div>
+                    `
+                        : ''
+                    }
+
+                    <!-- Deal Preview Card -->
+                    <div style="border: 1.5px solid #e2e8f0; border-radius: 16px; overflow: hidden; background: #ffffff; margin-bottom: 26px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.04);">
+                      ${
+                        offer.mainImage
+                          ? `
+                      <div style="width: 100%; height: 200px; max-height: 220px; overflow: hidden; background-color: #f1f5f9; text-align: center;">
+                        <img src="${offer.mainImage}" alt="${escapeHtml(offer.name)}" style="width: 100%; height: 200px; object-fit: cover; display: block;" />
+                      </div>
+                      `
+                          : ''
+                      }
+                      
+                      <div style="padding: 20px;">
+                        ${
+                          savingsText
+                            ? `
+                        <div style="display: inline-block; background-color: #ecfdf5; border: 1px solid #a7f3d0; color: #047857; font-size: 12px; font-weight: 800; padding: 4px 10px; border-radius: 6px; margin-bottom: 10px;">
+                          ${savingsText}
+                        </div>
+                        `
+                            : ''
+                        }
+
+                        <h2 style="margin: 0 0 8px 0; font-size: 20px; font-weight: 800; color: #0f172a; line-height: 1.3;">
+                          ${escapeHtml(offer.name)}
+                        </h2>
+
+                        ${
+                          offer.description
+                            ? `
+                        <p style="margin: 0 0 16px 0; font-size: 13px; color: #64748b; line-height: 1.5;">
+                          ${escapeHtml(offer.description)}
+                        </p>
+                        `
+                            : ''
+                        }
+
+                        <!-- Pricing Table -->
+                        <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #f8fafc; border-radius: 10px; padding: 12px 14px; margin-bottom: 16px;">
+                          <tr>
+                            <td valign="middle">
+                              <span style="font-size: 11px; color: #64748b; text-transform: uppercase; font-weight: 700; letter-spacing: 0.05em; display: block;">Deal Price</span>
+                              <span style="font-size: 22px; font-weight: 800; color: #059669; letter-spacing: -0.02em;">
+                                ${dealPriceStr || 'Discounted'}
+                              </span>
+                              ${
+                                originalPriceStr
+                                  ? `
+                              <span style="font-size: 14px; color: #94a3b8; text-decoration: line-through; margin-left: 8px; font-weight: 500;">
+                                ${originalPriceStr}
+                              </span>
+                              `
+                                  : ''
+                              }
+                            </td>
+                            <td align="right" valign="middle">
+                              <span style="font-size: 11px; color: #64748b; text-transform: uppercase; font-weight: 700; letter-spacing: 0.05em; display: block;">Valid Until</span>
+                              <span style="font-size: 13px; font-weight: 700; color: #1e293b;">
+                                ${expiryStr}
+                              </span>
+                            </td>
+                          </tr>
+                        </table>
+
+                        <!-- Location & Contact Info -->
+                        <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="font-size: 12px; color: #475569;">
+                          <tr>
+                            <td style="padding: 4px 0;">
+                              📍 <strong>Location:</strong> ${escapeHtml(branchLocation || safeBusinessName)}
+                            </td>
+                          </tr>
+                          ${
+                            branchPhone
+                              ? `
+                          <tr>
+                            <td style="padding: 4px 0;">
+                              📞 <strong>Phone:</strong> <a href="tel:${branchPhone}" style="color: #4f46e5; text-decoration: none; font-weight: 600;">${branchPhone}</a>
+                            </td>
+                          </tr>
+                          `
+                              : ''
+                          }
+                        </table>
+
+                      </div>
+                    </div>
+
+                    <!-- 3-Step Guide (How It Works) -->
+                    <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 14px; padding: 20px; margin-bottom: 28px;">
+                      <h3 style="margin: 0 0 14px 0; font-size: 13px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; color: #1e293b;">
+                        How to Claim & Redeem (3 Easy Steps):
+                      </h3>
+
+                      <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%">
+                        <tr>
+                          <td valign="top" style="width: 32px; padding-bottom: 12px;">
+                            <div style="width: 24px; height: 24px; background-color: #4f46e5; color: #ffffff; border-radius: 50%; text-align: center; line-height: 24px; font-size: 12px; font-weight: 800;">1</div>
+                          </td>
+                          <td valign="top" style="padding-bottom: 12px;">
+                            <strong style="color: #0f172a; font-size: 13px;">Tap the Claim Button</strong>
+                            <p style="margin: 2px 0 0 0; font-size: 12px; color: #64748b; line-height: 1.4;">
+                              Click the green button below. Your email is already recognized so you won't lose your spot.
+                            </p>
+                          </td>
+                        </tr>
+                        <tr>
+                          <td valign="top" style="width: 32px; padding-bottom: 12px;">
+                            <div style="width: 24px; height: 24px; background-color: #4f46e5; color: #ffffff; border-radius: 50%; text-align: center; line-height: 24px; font-size: 12px; font-weight: 800;">2</div>
+                          </td>
+                          <td valign="top" style="padding-bottom: 12px;">
+                            <strong style="color: #0f172a; font-size: 13px;">Get Your Unique Claim Code</strong>
+                            <p style="margin: 2px 0 0 0; font-size: 12px; color: #64748b; line-height: 1.4;">
+                              Sign in or set your 6-digit PIN in seconds. A unique redemption code will appear on your screen.
+                            </p>
+                          </td>
+                        </tr>
+                        <tr>
+                          <td valign="top" style="width: 32px;">
+                            <div style="width: 24px; height: 24px; background-color: #10b981; color: #ffffff; border-radius: 50%; text-align: center; line-height: 24px; font-size: 12px; font-weight: 800;">3</div>
+                          </td>
+                          <td valign="top">
+                            <strong style="color: #0f172a; font-size: 13px;">Present at Store & Enjoy Savings!</strong>
+                            <p style="margin: 2px 0 0 0; font-size: 12px; color: #64748b; line-height: 1.4;">
+                              Visit <strong>${safeBusinessName}</strong>, show the code to the cashier/staff at payment, and get your deal.
+                            </p>
+                          </td>
+                        </tr>
+                      </table>
+                    </div>
+
+                    <!-- Call To Action Button -->
+                    <div style="text-align: center; margin: 30px 0 20px 0;">
+                      <a href="${claimUrl}" style="display: inline-block; background: linear-gradient(135deg, #059669 0%, #10b981 100%); color: #ffffff; padding: 18px 38px; border-radius: 12px; text-decoration: none; font-weight: 800; font-size: 16px; box-shadow: 0 10px 15px -3px rgba(16, 185, 129, 0.4); letter-spacing: -0.01em;">
+                        CLAIM THIS DEAL NOW &rarr;
+                      </a>
+                    </div>
+
+                    <!-- Fallback Link -->
+                    <div style="background-color: #f8fafc; border-radius: 8px; padding: 12px; text-align: center; margin-top: 20px;">
+                      <p style="margin: 0 0 4px 0; font-size: 11px; color: #64748b;">
+                        If the button above does not work, copy and paste this link in your browser:
+                      </p>
+                      <a href="${claimUrl}" style="color: #4f46e5; font-size: 11px; word-break: break-all; font-weight: 600;">
+                        ${claimUrl}
+                      </a>
+                    </div>
+
+                  </td>
+                </tr>
+
+                <!-- Footer -->
+                <tr>
+                  <td style="background-color: #f8fafc; padding: 24px 28px; text-align: center; border-top: 1px solid #e2e8f0;">
+                    <p style="margin: 0 0 8px 0; font-size: 13px; font-weight: 700; color: #334155;">
+                      VemTap Deals • Instant Local Savings
+                    </p>
+                    <p style="margin: 0; font-size: 11px; color: #94a3b8; line-height: 1.5;">
+                      &copy; ${new Date().getFullYear()} VemTap Technologies. All rights reserved.<br>
+                      You received this email because ${safeSender} gifted you a deal via VemTap.
+                    </p>
+                  </td>
+                </tr>
+
+              </table>
+            </td>
+          </tr>
+        </table>
+      </body>
+      </html>
+      `;
+
+      await this.resend.emails.send({
+        from: `${safeBusinessName} via VemTap <hello@vemtap.com>`,
+        to: recipientEmail,
+        subject,
+        html,
+      });
+
+      this.logger.log(
+        `Deal gift email sent to ${recipientEmail} from ${safeSender} for offer ${offer.id}`,
+      );
+      return true;
+    } catch (error) {
+      this.logger.error(
+        `Error sending deal gift email to ${params.recipientEmail}:`,
+        error,
+      );
+      return false;
+    }
+  }
+
+  /**
+   * Dynamically resolves the frontend base URL based on caller/request origin,
+   * environment variables, and deployment environment:
+   * - Localhost: preserves exact scheme, host, and serving port (e.g. http://localhost:3000, http://localhost:3002)
+   * - Staging: https://vemtap.vercel.app
+   * - Production: https://vemtap.com
+   */
+  resolveFrontendBaseUrl(candidateUrl?: string): string {
+    if (candidateUrl && typeof candidateUrl === 'string') {
+      const trimmed = candidateUrl.trim().replace(/\/+$/, '');
+      if (trimmed) {
+        try {
+          const parsed = new URL(
+            trimmed.startsWith('http://') || trimmed.startsWith('https://')
+              ? trimmed
+              : `https://${trimmed}`,
+          );
+
+          // If localhost / 127.0.0.1, preserve the exact scheme and port
+          if (
+            parsed.hostname === 'localhost' ||
+            parsed.hostname === '127.0.0.1' ||
+            parsed.hostname === '0.0.0.0'
+          ) {
+            return parsed.origin;
+          }
+
+          // If valid protocol and host, return origin
+          if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
+            return parsed.origin;
+          }
+        } catch {
+          // Fall through if URL parsing fails
+        }
+      }
+    }
+
+    // Check explicit configuration from environment
+    const envUrl =
+      this.configService.get<string>('FRONTEND_URL') ||
+      this.configService.get<string>('VEMTAP_APP_URL') ||
+      this.configService.get<string>('APP_URL');
+    if (envUrl && typeof envUrl === 'string') {
+      const trimmedEnv = envUrl.trim().replace(/\/+$/, '');
+      if (trimmedEnv) {
+        return trimmedEnv.startsWith('http')
+          ? trimmedEnv
+          : `https://${trimmedEnv}`;
+      }
+    }
+
+    // Detect environment from NODE_ENV
+    const nodeEnv = (
+      this.configService.get<string>('NODE_ENV') ||
+      process.env.NODE_ENV ||
+      'development'
+    ).toLowerCase();
+
+    if (nodeEnv === 'production' || nodeEnv === 'prod') {
+      return 'https://vemtap.com';
+    }
+    if (nodeEnv === 'staging') {
+      return 'https://vemtap.vercel.app';
+    }
+
+    // Default for local development
+    return 'http://localhost:3000';
+  }
+}
+
+export interface DealGiftEmailParams {
+  recipientEmail: string;
+  senderName?: string;
+  senderEmail?: string;
+  note?: string;
+  frontendBaseUrl?: string;
+  offer: {
+    id: string;
+    name: string;
+    description?: string;
+    mainImage?: string;
+    calculatedPrice?: number;
+    originalPrice?: number;
+    discountLabel?: string;
+    endDate?: Date | string;
+    terms?: string[];
+  };
+  business: {
+    name: string;
+    slug?: string;
+    phone?: string;
+    address?: string;
+    logoUrl?: string;
+  };
+  branch?: {
+    name?: string;
+    address?: string;
+    city?: string;
+    state?: string;
+    phone?: string;
+  };
 }

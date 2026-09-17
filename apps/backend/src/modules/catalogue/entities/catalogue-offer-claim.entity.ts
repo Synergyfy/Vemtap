@@ -10,9 +10,12 @@ export enum CatalogueOfferClaimStatus {
 }
 
 @Entity('catalogue_offer_claims')
+@Index(['offerId', 'status'])
+@Index(['offerId', 'email'])
 export class CatalogueOfferClaim extends AbstractBaseEntity {
   @ApiProperty({ example: 'uuid-of-offer' })
   @Column({ type: 'uuid' })
+  @Index()
   offerId: string;
 
   @ManyToOne(() => CatalogueOffer, { onDelete: 'CASCADE' })

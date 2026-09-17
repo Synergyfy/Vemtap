@@ -28,6 +28,7 @@ import {
   GenerateOfferTermsDto,
 } from './dto/offer.dto';
 import { RequestClaimOtpDto, VerifyClaimDto } from './dto/claim.dto';
+import { SendDealGiftDto } from './dto/send-deal-gift.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { PermissionsGuard } from '../../common/guards/permissions.guard';
@@ -139,6 +140,25 @@ export class CatalogueOfferController {
   @ApiOperation({ summary: 'Verify OTP and complete promotion claim (Public)' })
   async verifyClaim(@Body() dto: VerifyClaimDto) {
     return this.offerService.verifyClaim(dto);
+  }
+
+  @Public()
+  @Post('claim/gift')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary:
+      'Send deal gift details and claim instructions to another person (Public)',
+  })
+  async sendDealGift(@Body() dto: SendDealGiftDto, @Req() req: any) {
+    const originHeader = (req?.headers?.['origin'] as string) || undefined;
+    let refererOrigin: string | undefined;
+    if (req?.headers?.['referer']) {
+      try {
+        refererOrigin = new URL(req.headers['referer']).origin;
+      } catch {}
+    }
+    const detectedOrigin = dto.frontendBaseUrl || originHeader || refererOrigin;
+    return this.offerService.sendDealGift(dto, detectedOrigin);
   }
 
   @ApiBearerAuth()

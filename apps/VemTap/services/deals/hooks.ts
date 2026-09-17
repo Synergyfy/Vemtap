@@ -1,6 +1,5 @@
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { api } from '@/lib/api';
-import { getDemoDealsPage, getDemoDeal } from '@/lib/mock/demoDeals';
 import type {
     DealOffer,
     PaginatedOffersResponse,
@@ -10,6 +9,8 @@ import type {
     ClaimRequestResponse,
     ClaimVerifyDto,
     ClaimVerifyResponse,
+    SendDealGiftPayload,
+    SendDealGiftResponse,
 } from './types';
 
 export const getPublicOffers = async (params: DealsQueryParams = {}): Promise<PaginatedOffersResponse> => {
@@ -22,24 +23,14 @@ export const getPublicOffers = async (params: DealsQueryParams = {}): Promise<Pa
     const queryStr = qs.toString();
     try {
         const result = await api.get(`/catalogue/offers/public${queryStr ? `?${queryStr}` : ''}`);
-        // If the API returns empty data, fall back to demo deals
-        const items = result?.data ?? [];
-        if (items.length > 0) return result;
-        return { ...result, data: getDemoDealsPage(params).data };
+        return result ?? { data: [], total: 0, page: 1, limit: params.limit || 10 };
     } catch {
-        // API failed — return demo deals so the UI still works
-        return getDemoDealsPage(params);
+        return { data: [], total: 0, page: 1, limit: params.limit || 10 };
     }
 };
 
 export const getPublicOfferDetails = async (id: string): Promise<DealOffer> => {
-    try {
-        return await api.get(`/catalogue/offers/public/details/${id}`);
-    } catch {
-        const demo = getDemoDeal(id);
-        if (demo) return demo;
-        throw new Error('Deal not found');
-    }
+    return api.get(`/catalogue/offers/public/details/${id}`);
 };
 
 export const checkPhone = async (phone: string): Promise<CheckPhoneResponse> => {
@@ -89,3 +80,14 @@ export const useGenerateDealTerms = () => {
         },
     });
 };
+
+export const sendDealGift = async (data: SendDealGiftPayload): Promise<SendDealGiftResponse> => {
+    return api.post('/catalogue/offers/claim/gift', data);
+};
+
+export const useSendDealGift = () => {
+    return useMutation<SendDealGiftResponse, Error, SendDealGiftPayload>({
+        mutationFn: sendDealGift,
+    });
+};
+

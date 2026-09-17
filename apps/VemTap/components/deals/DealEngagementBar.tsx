@@ -168,23 +168,27 @@ export default function DealEngagementBar({
         <span style={{ fontSize: 11, color: C.outline, fontWeight: 500 }}>{formatCount(sharesCount)}</span>
       </div>
 
-      <ShareDealModal
-        isOpen={showShare}
-        onClose={() => setShowShare(false)}
-        title={offerTitle}
-        description={offerDescription}
-        url={dealUrl}
-      />
+      {showShare && (
+        <ShareDealModal
+          isOpen={showShare}
+          onClose={() => setShowShare(false)}
+          title={offerTitle}
+          description={offerDescription}
+          url={dealUrl}
+        />
+      )}
 
-      <WriteReviewModal
-        isOpen={showReview}
-        onClose={() => setShowReview(false)}
-        offerId={offerId}
-        businessName={businessName}
-      />
+      {showReview && (
+        <WriteReviewModal
+          isOpen={showReview}
+          onClose={() => setShowReview(false)}
+          offerId={offerId}
+          businessName={businessName}
+        />
+      )}
 
-      {/* Auth modal rendered via portal to escape card overflow/transform stacking context */}
-      {authModalRoot && createPortal(
+      {/* Auth modal rendered via portal only when open */}
+      {showAuthModal && authModalRoot && createPortal(
         <ChatConnectModal
           isOpen={showAuthModal}
           onClose={() => {

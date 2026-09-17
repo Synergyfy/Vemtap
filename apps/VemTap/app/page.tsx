@@ -21,6 +21,7 @@ import { BusinessCardSkeleton } from '@/components/home/Skeletons';
 import { Skeleton } from '@/components/ui/skeleton';
 import { offerToHomeDeal, formatNaira } from '@/components/home/mappers';
 import { haversineDistance, formatDistance, getDirectionsUrl } from '@/lib/distance';
+import DistanceNoticeBanner from '@/components/deals/DistanceNoticeBanner';
 import type { PublicBusiness as DealPublicBusiness } from '@/services/deals/types';
 
 const C = {
@@ -269,7 +270,7 @@ export default function Homepage() {
     return () => clearTimeout(t);
   }, [onboardingChecked, hasLocation]);
 
-  const { data: dealsData, isLoading: dealsLoading } = usePublicOffers({ limit: 6, sortBy: 'trending', lat: lat ?? undefined, lng: lng ?? undefined });
+  const { data: dealsData, isLoading: dealsLoading } = usePublicOffers({ limit: 6, sortBy: 'featured', lat: lat ?? undefined, lng: lng ?? undefined });
   const { data: trendingData, isLoading: trendingLoading } = usePublicOffers({ limit: 6, sortBy: 'trending', lat: lat ?? undefined, lng: lng ?? undefined });
   const { data: newData, isLoading: newLoading } = usePublicOffers({ limit: 6, sortBy: 'newest', lat: lat ?? undefined, lng: lng ?? undefined });
   const { data: businessesData, isLoading: businessesLoading } = usePublicBusinesses({ sortBy: 'popular', limit: 6 });
@@ -334,6 +335,24 @@ export default function Homepage() {
     if (fromApi.length > 0) return mapDeals(fromApi, [{ image: '' }]);
     return [];
   }, [newData]);
+
+  const closestDealDistanceKm = useMemo(() => {
+    if (!hasLocation || lat == null || lng == null) return null;
+    const allDeals = [...dealsList, ...trendingDeals, ...newDeals];
+    if (allDeals.length === 0) return null;
+    let min: number | null = null;
+    for (const d of allDeals) {
+      if (d.lat != null && d.lng != null) {
+        const dist = haversineDistance(lat, lng, d.lat, d.lng);
+        if (min === null || dist < min) {
+          min = dist;
+        }
+      }
+    }
+    return min;
+  }, [hasLocation, lat, lng, dealsList, trendingDeals, newDeals]);
+
+  const showFarDistanceNotice = closestDealDistanceKm !== null && closestDealDistanceKm > 15;
 
   const defaultBannerSlides = useMemo(() => [
     {
@@ -641,6 +660,16 @@ export default function Homepage() {
             ))}
           </div>
         </section>
+
+        {hasLocation && showFarDistanceNotice && (
+          <section className="pt-6">
+            <DistanceNoticeBanner
+              locationName={activeLocation}
+              minDistanceKm={closestDealDistanceKm}
+              onOpenLocationModal={openLocationModal}
+            />
+          </section>
+        )}
 
         {hasLocation && dealsList.length > 0 && (
           <section className="pt-6">
