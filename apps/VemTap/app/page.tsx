@@ -20,7 +20,7 @@ import { useAuthStore } from '@/store/useAuthStore';
 import { BusinessCardSkeleton } from '@/components/home/Skeletons';
 import { Skeleton } from '@/components/ui/skeleton';
 import { offerToHomeDeal, formatNaira } from '@/components/home/mappers';
-import { haversineDistance, formatDistance } from '@/lib/distance';
+import { haversineDistance, formatDistance, getDirectionsUrl } from '@/lib/distance';
 import type { PublicBusiness as DealPublicBusiness } from '@/services/deals/types';
 
 const C = {
@@ -105,6 +105,10 @@ function DealCard({ deal }: { deal: Deal }) {
     hasLocation && userLat != null && userLng != null && deal.lat != null && deal.lng != null
       ? formatDistance(haversineDistance(userLat, userLng, deal.lat, deal.lng))
       : null;
+  const directionsHref =
+    hasLocation && userLat != null && userLng != null && deal.lat != null && deal.lng != null
+      ? getDirectionsUrl(userLat, userLng, deal.lat, deal.lng)
+      : null;
   return (
     <div
       className="w-full min-w-0 rounded-xl overflow-hidden shadow-sm relative group cursor-pointer transition-all hover:shadow-lg hover:-translate-y-0.5 flex flex-col"
@@ -124,9 +128,24 @@ function DealCard({ deal }: { deal: Deal }) {
             {deal.price && <span className="text-[14px] md:text-[16px] font-bold" style={{ color: C.primary }}>{deal.price}</span>}
             <span className="text-[10px] md:text-[11px]" style={{ color: C.outline }}>{deal.time}</span>
           </div>
-          {distance && (
+          {distance && directionsHref && (
             <div className="flex items-center gap-1 mt-0.5">
               <span className="text-[10px] md:text-[11px]" style={{ color: C.outline }}>{distance} away</span>
+              <button
+                type="button"
+                aria-label="Get Directions"
+                className="flex items-center p-0.5"
+                style={{ color: C.primary }}
+                onClick={e => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  window.open(directionsHref, '_blank', 'noopener,noreferrer');
+                }}
+              >
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <polygon points="3 11 22 2 13 21 11 13 3 11" />
+                </svg>
+              </button>
             </div>
           )}
         </div>

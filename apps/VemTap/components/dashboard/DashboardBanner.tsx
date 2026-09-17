@@ -128,9 +128,9 @@ export default function DashboardBanner({ slides, autoPlayInterval = 5000, class
                                     }}
                                     className={cn(
                                         "h-1.5 rounded-full transition-all duration-300 cursor-pointer border-none p-0 focus:outline-none",
-                                        currentIndex === i 
-                                            ? "w-4 bg-primary" 
-                                            : "w-1.5 bg-primary/20 hover:bg-primary/40"
+                                        currentIndex === i
+                                            ? (currentSlide.isLight ? "w-4 bg-primary" : "w-4 bg-white")
+                                            : (currentSlide.isLight ? "w-1.5 bg-primary/20 hover:bg-primary/40" : "w-1.5 bg-white/40 hover:bg-white/60")
                                     )}
                                     aria-label={`Go to slide ${i + 1}`}
                                 />
