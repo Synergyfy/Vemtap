@@ -19,6 +19,7 @@ import Footer from '@/components/layout/Footer';
 import { useBannerStore } from '@/store/useBannerStore';
 import { useAuthStore } from '@/store/useAuthStore';
 import type { HomeDealCard } from '@/components/home/types';
+import DistanceNoticeBanner from '@/components/deals/DistanceNoticeBanner';
 
 /* ─── Stitch colour tokens ─── */
 const C = {
@@ -347,6 +348,22 @@ function DealsPageInner() {
   }, [dealsList, searchQuery, selectedCategory, priceRange, quickFilter, sortBy]);
 
   const allDeals = filteredDeals;
+
+  const closestDealDistanceKm = useMemo(() => {
+    if (!hasLocation || lat == null || lng == null || allDeals.length === 0) return null;
+    let min: number | null = null;
+    for (const d of allDeals) {
+      if (d.lat != null && d.lng != null) {
+        const dist = haversineDistance(lat, lng, d.lat, d.lng);
+        if (min === null || dist < min) {
+          min = dist;
+        }
+      }
+    }
+    return min;
+  }, [hasLocation, lat, lng, allDeals]);
+
+  const showFarDistanceNotice = closestDealDistanceKm !== null && closestDealDistanceKm > 15;
 
   // True when the user has actively chosen a filter or typed a search,
   // as opposed to merely browsing the default deals grid.
@@ -691,7 +708,15 @@ function DealsPageInner() {
           </div>
 
           {/* Deals Grid */}
-          <div className="p-6">
+          <div className="p-6 space-y-5">
+            {hasLocation && showFarDistanceNotice && (
+              <DistanceNoticeBanner
+                locationName={userLocationLabel}
+                minDistanceKm={closestDealDistanceKm}
+                onOpenLocationModal={() => setIsLocationModalOpen(true)}
+              />
+            )}
+
             {isLoading ? (
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
                 {Array.from({ length: 8 }).map((_, i) => (

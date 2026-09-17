@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { GoogleLogin, type CredentialResponse } from '@react-oauth/google';
 import { useGoogleLogin as useBackendGoogleLogin } from '@/services/auth/hooks';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -23,6 +23,11 @@ export const GoogleAuthButton: React.FC<GoogleAuthButtonProps> = ({
     const { googleLogin, isLoading } = useBackendGoogleLogin();
     const { login } = useAuthStore();
     const [isProcessing, setIsProcessing] = useState(false);
+    const [mounted, setMounted] = useState(false);
+
+    useEffect(() => {
+        setMounted(true);
+    }, []);
 
     const handleGoogleSuccess = async (credentialResponse: CredentialResponse) => {
         if (!credentialResponse?.credential) {
@@ -50,7 +55,7 @@ export const GoogleAuthButton: React.FC<GoogleAuthButtonProps> = ({
         }
     };
 
-    const loading = isLoading || isProcessing;
+    const loading = isLoading || isProcessing || !mounted;
 
     return (
         <div className={`w-full flex justify-center items-center ${className}`}>

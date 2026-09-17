@@ -10,17 +10,17 @@ import {
 import { Transform } from 'class-transformer';
 
 export class RequestCustomerSignupOtpDto {
-  @ApiProperty({ example: 'John', description: 'First name of the customer' })
+  @ApiPropertyOptional({ example: 'John', description: 'Optional first name of the customer' })
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
-  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
-  firstName: string;
+  @Transform(({ value }) => (typeof value === 'string' && value.trim() === '' ? undefined : value?.trim()))
+  firstName?: string;
 
-  @ApiProperty({ example: 'Doe', description: 'Last name of the customer' })
+  @ApiPropertyOptional({ example: 'Doe', description: 'Optional last name of the customer' })
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
-  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
-  lastName: string;
+  @Transform(({ value }) => (typeof value === 'string' && value.trim() === '' ? undefined : value?.trim()))
+  lastName?: string;
 
   @ApiProperty({
     example: 'customer@example.com',

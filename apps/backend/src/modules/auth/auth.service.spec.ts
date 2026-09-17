@@ -1059,8 +1059,32 @@ describe('AuthService', () => {
             }),
           }),
         );
-        expect(mailService.sendOtp).toHaveBeenCalled();
-        expect(result).toEqual({ message: 'OTP sent successfully to your email' });
+        expect(result).toEqual({
+          message: 'OTP sent successfully to your email',
+          expiresInMinutes: 10,
+        });
+      });
+
+      it('should generate and send 6-digit OTP when only email is provided', async () => {
+        usersService.findByEmail.mockResolvedValue(null);
+
+        const result = await service.requestCustomerRegistrationOtp({
+          email: 'emailonly@example.com',
+        });
+
+        expect(otpRepository.create).toHaveBeenCalledWith(
+          expect.objectContaining({
+            email: 'emailonly@example.com',
+            metadata: expect.objectContaining({
+              firstName: 'Customer',
+              role: UserRole.CUSTOMER,
+            }),
+          }),
+        );
+        expect(result).toEqual({
+          message: 'OTP sent successfully to your email',
+          expiresInMinutes: 10,
+        });
       });
 
       it('should throw ConflictException if active customer already exists with email', async () => {

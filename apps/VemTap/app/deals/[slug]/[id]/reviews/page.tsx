@@ -152,27 +152,43 @@ export default function DealReviewsPage() {
                 {/* Reviews List */}
                 <section className="flex flex-col gap-4">
                     <h2 className="text-[20px] font-semibold text-[#191c1e]">Customer Reviews</h2>
-                    <div className="flex flex-col gap-4">
-                        {reviews.map((review) => (
-                            <div key={review.id} className="bg-white rounded-xl p-5 border border-[#c2c6d7] shadow-sm flex flex-col gap-3">
-                                <div className="flex justify-between items-start">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-10 h-10 rounded-full bg-[#d0e1fb] flex items-center justify-center text-[#0b1c30] text-[14px] font-semibold">
-                                            {review.reviewerName.charAt(0)}
+                    {reviews.length === 0 ? (
+                        <div className="bg-white rounded-xl p-8 border border-[#c2c6d7] text-center flex flex-col items-center gap-3">
+                            <span className="material-symbols-outlined text-4xl text-[#727786]">chat_bubble_outline</span>
+                            <h3 className="text-[16px] font-semibold text-[#191c1e]">No reviews yet</h3>
+                            <p className="text-[13px] text-[#727786] max-w-sm">
+                                Have you redeemed this deal? Be the first to share your rating and review with others!
+                            </p>
+                            <button
+                                onClick={() => setShowWriteReview(true)}
+                                className="mt-2 bg-[#0055c4] text-white px-5 py-2.5 rounded-full text-[13px] font-semibold hover:bg-[#0055c4]/90 transition-colors"
+                            >
+                                Write the First Review
+                            </button>
+                        </div>
+                    ) : (
+                        <div className="flex flex-col gap-4">
+                            {reviews.map((review) => (
+                                <div key={review.id} className="bg-white rounded-xl p-5 border border-[#c2c6d7] shadow-sm flex flex-col gap-3">
+                                    <div className="flex justify-between items-start">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-10 h-10 rounded-full bg-[#d0e1fb] flex items-center justify-center text-[#0b1c30] text-[14px] font-semibold">
+                                                {review.reviewerName.charAt(0)}
+                                            </div>
+                                            <div className="flex flex-col">
+                                                <span className="text-[14px] font-semibold text-[#191c1e]">{review.reviewerName}</span>
+                                                <span className="text-[12px] font-medium text-[#727786]">{timeAgo(review.createdAt)}</span>
+                                            </div>
                                         </div>
-                                        <div className="flex flex-col">
-                                            <span className="text-[14px] font-semibold text-[#191c1e]">{review.reviewerName}</span>
-                                            <span className="text-[12px] font-medium text-[#727786]">{timeAgo(review.createdAt)}</span>
-                                        </div>
+                                        {review.rating && review.rating > 0 && renderStars(review.rating, 'sm')}
                                     </div>
-                                    {review.rating && review.rating > 0 && renderStars(review.rating, 'sm')}
+                                    <p className="text-[14px] text-[#191c1e] leading-relaxed">
+                                        {review.comment}
+                                    </p>
                                 </div>
-                                <p className="text-[14px] text-[#191c1e] leading-relaxed">
-                                    {review.comment}
-                                </p>
-                            </div>
-                        ))}
-                    </div>
+                            ))}
+                        </div>
+                    )}
                 </section>
             </main>
 
