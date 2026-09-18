@@ -101,8 +101,14 @@ export class AllExceptionsFilter implements ExceptionFilter {
         stack,
       );
     } else {
+      const dbDetail =
+        (exception as any)?.driverError?.detail ||
+        (exception as any)?.driverError?.message ||
+        '';
       this.logger.warn(
-        `${request.method} ${request.url} ${status} - ${errorResponse.message}`,
+        `${request.method} ${request.url} ${status} - ${errorResponse.message}${
+          dbDetail ? ` (DB Detail: ${dbDetail})` : ''
+        }`,
       );
     }
 

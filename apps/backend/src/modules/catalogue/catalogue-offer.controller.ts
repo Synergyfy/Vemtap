@@ -29,6 +29,7 @@ import {
 } from './dto/offer.dto';
 import { RequestClaimOtpDto, VerifyClaimDto } from './dto/claim.dto';
 import { SendDealGiftDto } from './dto/send-deal-gift.dto';
+import { RejectDealGiftDto } from './dto/reject-deal-gift.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { PermissionsGuard } from '../../common/guards/permissions.guard';
@@ -142,12 +143,13 @@ export class CatalogueOfferController {
     return this.offerService.verifyClaim(dto);
   }
 
-  @Public()
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
   @Post('claim/gift')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary:
-      'Send deal gift details and claim instructions to another person (Public)',
+      'Send deal gift details and claim instructions to another person (Authenticated)',
   })
   async sendDealGift(@Body() dto: SendDealGiftDto, @Req() req: any) {
     const originHeader = (req?.headers?.['origin'] as string) || undefined;
@@ -158,7 +160,44 @@ export class CatalogueOfferController {
       } catch {}
     }
     const detectedOrigin = dto.frontendBaseUrl || originHeader || refererOrigin;
-    return this.offerService.sendDealGift(dto, detectedOrigin);
+    return this.offerService.sendDealGift(dto, req.user, detectedOrigin);
+  }
+
+  @Public()
+  @Get('gift/:token')
+  @ApiOperation({ summary: 'Get gift deal details for recipient (Public)' })
+  async getGiftByToken(@Param('token') token: string) {
+    return this.offerService.getGiftByToken(token);
+  }
+
+  @Public()
+  @Post('gift/:token/reject')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Reject/decline a deal gift (Public)' })
+  async rejectDealGift(
+    @Param('token') token: string,
+    @Body() dto: RejectDealGiftDto,
+  ) {
+    return this.offerService.rejectDealGift(token, dto.reason);
+  }
+
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
+  @Get('gifts/branch/:branchId')
+  @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.ADMIN, UserRole.STAFF)
+  @Permissions('inventory')
+  @ApiOperation({ summary: 'Get gifted deals for a branch (Admin)' })
+  async getBranchGiftedDeals(
+    @Param('branchId', ParseUUIDPipe) branchId: string,
+    @Query('page') page?: number,
+    @Query('limit') limit?: number,
+    @Query('search') search?: string,
+  ) {
+    return this.offerService.getBranchGiftedDeals(branchId, {
+      page,
+      limit,
+      search,
+    });
   }
 
   @ApiBearerAuth()

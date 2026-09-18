@@ -2,7 +2,7 @@
 
 import React, { useState, useRef } from 'react';
 import {
-    Tag, Plus, X, CheckCircle2, ArrowRight, Search, ChevronRight, Loader2, Trash2, Clock, Sparkles, Image as ImageIcon, AlertCircle, RefreshCw, Users, BadgeCheck, ShoppingBag, Flame,
+    Tag, Plus, X, CheckCircle2, ArrowRight, Search, ChevronRight, Loader2, Trash2, Clock, Sparkles, Image as ImageIcon, AlertCircle, RefreshCw, Users, BadgeCheck, ShoppingBag, Flame, Gift,
 } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
@@ -20,6 +20,7 @@ import PartnershipVerificationGuard from '@/components/dashboard/partnership/Par
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import DealEngagementBadge from '@/components/deals/DealEngagementBadge';
 import MakeDealFlow from '@/components/dashboard/catalogue/MakeDealFlow';
+import GiftedDealsTab from '@/components/dashboard/discovery/GiftedDealsTab';
 import { motion } from 'framer-motion';
 
 const DeliveryRadiusMap = dynamic(() => import('@/components/dashboard/discovery/DeliveryRadiusMap'), { ssr: false });
@@ -71,6 +72,7 @@ export default function DealsPage() {
     const [isCreatingPromo, setIsCreatingPromo] = useState(false);
     const [editingPromo, setEditingPromo] = useState<CatalogueOffer | null>(null);
     const [importProduct, setImportProduct] = useState<CatalogueItem | null>(null);
+    const [mainTab, setMainTab] = useState<'my-deals' | 'gifted'>('my-deals');
     const { activeBranchId, isAllBranches } = useActiveBranch();
 
     return (
@@ -143,12 +145,47 @@ export default function DealsPage() {
                         )}
 
                         {!isAllBranches && (
+                            <div className="flex items-center gap-2 mb-6">
+                                <button
+                                    type="button"
+                                    onClick={() => setMainTab('my-deals')}
+                                    className={cn(
+                                        "flex items-center gap-2 px-4 py-2 rounded-full text-xs sm:text-sm font-bold transition-all cursor-pointer",
+                                        mainTab === 'my-deals'
+                                            ? "bg-[#066CF4] text-white shadow-sm"
+                                            : "bg-white border border-gray-200 text-gray-700 hover:bg-gray-50"
+                                    )}
+                                >
+                                    <Tag size={14} />
+                                    <span>My Deals</span>
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setMainTab('gifted')}
+                                    className={cn(
+                                        "flex items-center gap-2 px-4 py-2 rounded-full text-xs sm:text-sm font-bold transition-all cursor-pointer",
+                                        mainTab === 'gifted'
+                                            ? "bg-purple-600 text-white shadow-sm"
+                                            : "bg-white border border-gray-200 text-gray-700 hover:bg-gray-50"
+                                    )}
+                                >
+                                    <Gift size={14} />
+                                    <span>Gifted Deals</span>
+                                </button>
+                            </div>
+                        )}
+
+                        {!isAllBranches && mainTab === 'my-deals' && (
                             <PromotionsTab
                                 branchId={activeBranchId!}
                                 onCreatePromo={() => setIsCreatingPromo(true)}
                                 onEditPromo={(promo) => { setEditingPromo(promo); setIsCreatingPromo(true); }}
                                 onImportProduct={(product) => setImportProduct(product)}
                             />
+                        )}
+
+                        {!isAllBranches && mainTab === 'gifted' && (
+                            <GiftedDealsTab branchId={activeBranchId!} />
                         )}
                     </>
                 ) : (

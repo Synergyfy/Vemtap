@@ -37,9 +37,17 @@ describe('CatalogueOrderService', () => {
     findAndCount: jest.fn().mockResolvedValue([[], 0]),
   };
 
+  const mockQueryBuilder = {
+    innerJoin: jest.fn().mockReturnThis(),
+    where: jest.fn().mockReturnThis(),
+    andWhere: jest.fn().mockReturnThis(),
+    getCount: jest.fn().mockResolvedValue(0),
+  };
+
   const mockOrderItemRepo = {
     create: jest.fn().mockImplementation((dto) => dto),
     save: jest.fn(),
+    createQueryBuilder: jest.fn().mockReturnValue(mockQueryBuilder),
   };
 
   const mockItemRepo = {
@@ -140,7 +148,10 @@ describe('CatalogueOrderService', () => {
         },
         {
           provide: MailService,
-          useValue: { sendMail: jest.fn().mockResolvedValue({}) },
+          useValue: {
+            sendMail: jest.fn().mockResolvedValue({}),
+            sendWelcomeEmail: jest.fn().mockResolvedValue({}),
+          },
         },
         {
           provide: CatalogueService,
@@ -224,6 +235,156 @@ describe('CatalogueOrderService', () => {
       expect(result.totalAmount).toBe(15);
       expect(result.items[0].loyaltyPointsAtOrder).toBe(20);
       expect(mockOrderRepo.save).toHaveBeenCalled();
+    });
+
+    it('should check maxClaimsPerCustomer with CatalogueOrderStatus.CANCELLED', async () => {
+      const dto = {
+        firstName: 'Amet',
+        lastName: 'Cor',
+        phone: 'N/A',
+        email: 'ligezeq@mailinator.com',
+        branchId: 'br-1',
+        items: [{ offerId: 'offer-1', quantity: 1 }],
+      };
+
+      mockBranchRepo.findOne.mockResolvedValue({
+        id: 'br-1',
+        businessId: 'bus-1',
+      });
+      mockUserRepo.findOne.mockResolvedValue({
+        id: 'cust-1',
+        email: 'ligezeq@mailinator.com',
+      });
+      mockOfferRepo.findOne.mockResolvedValue({
+        items: [],
+        id: 'offer-1',
+        name: 'Deal',
+        calculatedPrice: 0,
+        loyaltyPoints: 0,
+        branchId: 'br-1',
+        maxClaimsPerCustomer: 1,
+      });
+
+      await service.createOrder(dto);
+
+      expect(mockOrderItemRepo.createQueryBuilder).toHaveBeenCalledWith('item');
+      expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
+        'order.status != :cancelled',
+        { cancelled: CatalogueOrderStatus.CANCELLED },
+      );
+    });
+
+    it('should throw BadRequestException if customer exceeds maxClaimsPerCustomer', async () => {
+      const dto = {
+        firstName: 'Amet',
+        lastName: 'Cor',
+        phone: '+12345678',
+        branchId: 'br-1',
+        items: [{ offerId: 'offer-1', quantity: 1 }],
+      };
+
+      mockBranchRepo.findOne.mockResolvedValue({
+        id: 'br-1',
+        businessId: 'bus-1',
+      });
+      mockUserRepo.findOne.mockResolvedValue({
+        id: 'cust-1',
+        phone: '+12345678',
+      });
+      mockOfferRepo.findOne.mockResolvedValue({
+        items: [],
+        id: 'offer-1',
+        name: 'Deal',
+        calculatedPrice: 0,
+        loyaltyPoints: 0,
+        branchId: 'br-1',
+        maxClaimsPerCustomer: 1,
+      });
+
+      mockQueryBuilder.getCount.mockResolvedValueOnce(1);
+
+      await expect(service.createOrder(dto)).rejects.toThrow(
+        BadRequestException,
+      );
+    });
+
+    it('should handle guest customer with phone N/A without matching placeholder or saving string N/A', async () => {
+      const dto = {
+        firstName: 'Amet',
+        lastName: 'Cor',
+        phone: 'N/A',
+        email: 'newguest@example.com',
+        branchId: 'br-1',
+        items: [{ itemId: 'item-1', quantity: 1 }],
+      };
+
+      mockBranchRepo.findOne.mockResolvedValue({
+        id: 'br-1',
+        businessId: 'bus-1',
+      });
+      mockUserRepo.findOne.mockResolvedValue(null);
+      mockItemRepo.findOne.mockResolvedValue({
+        id: 'item-1',
+        name: 'Item',
+        price: 10,
+        loyaltyPoints: 0,
+        status: CatalogueItemStatus.ACTIVE,
+        isSuspended: false,
+        branches: [{ id: 'br-1' }],
+        stockQuantity: 10,
+        allowBackOrder: false,
+      });
+
+      await service.createOrder(dto);
+
+      // Should not search phone for 'N/A'
+      expect(mockUserRepo.findOne).not.toHaveBeenCalledWith({
+        where: { phone: 'N/A' },
+      });
+      // Should create customer with phone: undefined
+      expect(mockUserRepo.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          phone: undefined,
+          email: 'newguest@example.com',
+        }),
+      );
+    });
+
+    it('should use existingUser if passed instead of looking up user by phone or email', async () => {
+      const existingUser: any = {
+        id: 'existing-cust-id',
+        firstName: 'Logged',
+        lastName: 'In',
+        email: 'loggedin@example.com',
+      };
+      const dto = {
+        firstName: 'Amet',
+        lastName: 'Cor',
+        phone: 'N/A',
+        branchId: 'br-1',
+        items: [{ itemId: 'item-1', quantity: 1 }],
+      };
+
+      mockBranchRepo.findOne.mockResolvedValue({
+        id: 'br-1',
+        businessId: 'bus-1',
+      });
+      mockItemRepo.findOne.mockResolvedValue({
+        id: 'item-1',
+        name: 'Item',
+        price: 10,
+        loyaltyPoints: 0,
+        status: CatalogueItemStatus.ACTIVE,
+        isSuspended: false,
+        branches: [{ id: 'br-1' }],
+        stockQuantity: 10,
+        allowBackOrder: false,
+      });
+
+      const order = await service.createOrder(dto, existingUser);
+
+      expect(mockUserRepo.findOne).not.toHaveBeenCalled();
+      expect(order.customerId).toBe('existing-cust-id');
     });
   });
 

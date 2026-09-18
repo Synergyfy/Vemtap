@@ -14,10 +14,11 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { icon: 'home', label: 'HOME', href: '/' },
-  { icon: 'local_offer', label: 'DEALS', href: '/deals' },
-  { icon: 'bookmark', label: 'SAVED', href: '/saved-deals' },
-  { icon: 'person', label: 'ACCOUNT' },
+  { icon: 'home', label: 'Home', href: '/' },
+  { icon: 'explore', label: 'Discover', href: '/deals' },
+  { icon: 'local_offer', label: 'Deals', href: '/deals' },
+  { icon: 'bookmark', label: 'Saved', href: '/saved-deals' },
+  { icon: 'person', label: 'Account' },
 ];
 
 export default function PublicBottomNav() {
@@ -27,22 +28,28 @@ export default function PublicBottomNav() {
 
   const isActive = (item: NavItem) => {
     if (item.onClick || !item.href) return false;
+    if (item.label === 'Discover') {
+      return pathname.startsWith('/b/') || pathname === '/discover';
+    }
+    if (item.label === 'Deals') {
+      return pathname.startsWith('/deals');
+    }
     if (item.href === '/') return pathname === '/';
     return pathname.startsWith(item.href);
   };
 
   return (
     <>
-      <nav className="md:hidden fixed bottom-0 w-full z-50 flex justify-around items-center px-4 h-[56px] bg-white shadow-[0_-2px_10px_rgba(0,0,0,0.06)] rounded-t-xl border-t border-[#e0e3e5]">
+      <nav className="md:hidden fixed bottom-0 w-full z-50 flex justify-around items-center px-2 h-16 bg-white shadow-[0_-2px_12px_rgba(0,0,0,0.06)] rounded-t-xl border-t border-[#c2c6d7] pb-[env(safe-area-inset-bottom,0px)]">
         {NAV_ITEMS.map((item) => {
           const active = isActive(item);
 
-          if (item.label === 'ACCOUNT') {
+          if (item.label === 'Account') {
             return (
               <button
                 key={item.label}
                 onClick={() => setIsAccountOpen(true)}
-                className="flex flex-col items-center justify-center text-[#727786] active:scale-95 transition-transform duration-150 hover:text-[#0055c4] cursor-pointer"
+                className="flex flex-col items-center justify-center text-[#424655] active:scale-95 transition-transform duration-150 hover:text-[#0055c4] cursor-pointer p-1.5"
               >
                 <span
                   className="material-symbols-outlined text-[24px]"
@@ -50,7 +57,7 @@ export default function PublicBottomNav() {
                 >
                   {item.icon}
                 </span>
-                <span className="text-[11px] font-medium tracking-tight mt-0.5">{item.label}</span>
+                <span className="text-[12px] font-medium tracking-tight mt-0.5">{item.label}</span>
               </button>
             );
           }
@@ -59,8 +66,8 @@ export default function PublicBottomNav() {
             <Link
               key={item.label}
               href={item.href!}
-              className={`flex flex-col items-center justify-center active:scale-95 transition-transform duration-150 ${
-                active ? 'text-[#0055c4] font-bold' : 'text-[#727786] hover:text-[#0055c4]'
+              className={`flex flex-col items-center justify-center p-1.5 active:scale-95 transition-transform duration-150 ${
+                active ? 'text-[#0055c4] font-bold' : 'text-[#424655] hover:text-[#0055c4]'
               }`}
             >
               <span
@@ -69,7 +76,7 @@ export default function PublicBottomNav() {
               >
                 {item.icon}
               </span>
-              <span className="text-[11px] font-medium tracking-tight mt-0.5">{item.label}</span>
+              <span className="text-[12px] font-medium tracking-tight mt-0.5">{item.label}</span>
             </Link>
           );
         })}

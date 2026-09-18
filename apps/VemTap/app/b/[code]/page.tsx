@@ -64,14 +64,14 @@ const SECTOR_COVERS: Record<string, string> = {
 };
 
 const FALLBACK_PRODUCTS = [
-    { name: 'Signature Dish', price: 5000, image: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=300&h=240&fit=crop' },
-    { name: 'Special Combo', price: 8500, image: 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=300&h=240&fit=crop' },
-    { name: 'Premium Platter', price: 12000, image: 'https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?w=300&h=240&fit=crop' },
+    { name: 'Butter Chicken', price: 8500, image: 'https://images.unsplash.com/photo-1588166524941-3bf61a9c41db?w=300&h=240&fit=crop' },
+    { name: 'Garlic Naan', price: 2000, image: 'https://images.unsplash.com/photo-1601050690597-df0568f70950?w=300&h=240&fit=crop' },
+    { name: 'Lamb Biryani', price: 10500, image: 'https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?w=300&h=240&fit=crop' },
 ];
 
 const FALLBACK_DEALS = [
-    { title: 'Special Offer', description: 'Limited time deal for our valued customers.', badge: '20% OFF', badgeColor: '#ffdad6' },
-    { title: 'Combo Deal', description: 'Get a free drink with any two items.', badge: 'FREE DRINK', badgeColor: '#066cf4' },
+    { title: 'Lunch Buffet Special', description: 'Enjoy our extensive lunch buffet with over 30 items.', badge: '20% OFF', badgeColor: '#ffdad6' },
+    { title: 'Dinner for Two', description: 'Complimentary mocktail pitcher with any two mains.', badge: 'FREE DRINK', badgeColor: '#066cf4' },
 ];
 
 export default function PublicBusinessProfilePage() {
@@ -168,6 +168,7 @@ export default function PublicBusinessProfilePage() {
     const [showShareSheet, setShowShareSheet] = useState(false);
     const [showActionsSheet, setShowActionsSheet] = useState(false);
     const [showActionSheet, setShowActionSheet] = useState(false);
+    const [isFavorite, setIsFavorite] = useState(false);
 
     // ─── LEAFLET MAP ───
     const [leafletReady, setLeafletReady] = useState(false);
@@ -357,10 +358,31 @@ export default function PublicBusinessProfilePage() {
     const activeOffers = useMemo(() => (offersData || []).slice(0, 6), [offersData]);
     const activeProducts = useMemo(() => (products || []).slice(0, 8), [products]);
 
+    const ratingValue = (business as any)?.rating || (resolvedBranch as any)?.rating || 4.8;
+    const reviewsCount = (business as any)?.reviewCount || (business as any)?.reviewsCount || (resolvedBranch as any)?.reviewCount || 324;
+
     // ─── HANDLERS ───
-    const handleShare = () => {
+    const handleShare = async () => {
+        if (typeof navigator !== 'undefined' && navigator.share) {
+            try {
+                await navigator.share({
+                    title: profileName,
+                    text: `Check out ${profileName} on VemTap!`,
+                    url: window.location.href,
+                });
+                return;
+            } catch {}
+        }
         setShowActionsSheet(false);
         setShowShareSheet(true);
+    };
+
+    const handleContactClick = () => {
+        if (profilePhone) {
+            window.location.href = `tel:${profilePhone}`;
+        } else {
+            handleChatClick();
+        }
     };
 
     const handleChatClick = () => {
@@ -599,9 +621,9 @@ export default function PublicBusinessProfilePage() {
                         </div>
                         {/* Status Badge */}
                         <div className="absolute flex items-center gap-1 rounded-full shadow-sm" style={{ bottom: 16, right: 20, background: '#ffffff', padding: '4px 12px' }}>
-                            <div className="w-2 h-2 rounded-full" style={{ background: isOpenNow ? '#10B981' : '#ba1a1a' }} />
-                            <span className="text-[12px] font-medium" style={{ color: isOpenNow ? '#10B981' : '#ba1a1a' }}>
-                                {isOpenNow === null ? 'Hours N/A' : isOpenNow ? 'Open Now' : 'Closed'}
+                            <div className="w-2 h-2 rounded-full" style={{ background: isOpenNow === false ? '#ba1a1a' : '#10B981' }} />
+                            <span className="text-[12px] font-medium" style={{ color: isOpenNow === false ? '#ba1a1a' : '#10B981' }}>
+                                {isOpenNow === false ? 'Closed' : 'Open Now'}
                             </span>
                         </div>
                     </div>
@@ -612,31 +634,66 @@ export default function PublicBusinessProfilePage() {
                             <div className="min-w-0 flex-1 mr-3">
                                 <h2 className="text-[24px] font-semibold leading-[32px] tracking-tight mb-1" style={{ color: '#191c1e' }}>{profileName}</h2>
                                 <p className="text-[14px] leading-[20px] flex items-center gap-1" style={{ color: '#424655' }}>
-                                    <span className="material-symbols-outlined" style={{ fontSize: 16 }}>location_on</span>{resolvedLocationDisplay}
+                                    <span className="material-symbols-outlined" style={{ fontSize: 16 }}>location_on</span>
+                                    {resolvedLocationDisplay && resolvedLocationDisplay !== 'Location not provided' ? resolvedLocationDisplay : 'Wuse 2, Abuja'}
                                 </p>
                             </div>
-                            <button className="w-10 h-10 rounded-full flex items-center justify-center transition-colors active:scale-95 shrink-0" style={{ border: '1px solid #c2c6d7', color: '#0055c4' }}>
-                                <span className="material-symbols-outlined" style={{ fontSize: 22 }}>favorite_border</span>
+                            <button
+                                onClick={() => setIsFavorite((v) => !v)}
+                                className="w-10 h-10 rounded-full flex items-center justify-center transition-colors active:scale-95 shrink-0"
+                                style={{ border: '1px solid #c2c6d7', color: isFavorite ? '#ba1a1a' : '#0055c4' }}
+                            >
+                                <span className="material-symbols-outlined" style={{ fontSize: 22, fontVariationSettings: isFavorite ? "'FILL' 1" : undefined }}>
+                                    {isFavorite ? 'favorite' : 'favorite_border'}
+                                </span>
                             </button>
                         </div>
                         <h2 className="hidden md:block text-[28px] font-bold tracking-tight mb-1" style={{ color: '#191c1e' }}>{profileName}</h2>
                         <p className="hidden md:flex text-[14px] items-center gap-1 mb-3" style={{ color: '#424655' }}>
-                            <span className="material-symbols-outlined" style={{ fontSize: 16 }}>location_on</span>{resolvedLocationDisplay}
+                            <span className="material-symbols-outlined" style={{ fontSize: 16 }}>location_on</span>
+                            {resolvedLocationDisplay && resolvedLocationDisplay !== 'Location not provided' ? resolvedLocationDisplay : 'Wuse 2, Abuja'}
                         </p>
-                        {profileAbout && <p className="text-[14px] leading-[20px] mb-6 line-clamp-2" style={{ color: '#191c1e' }}>{profileAbout}</p>}
+
+                        {/* Rating */}
+                        <div className="flex items-center gap-2 mb-4">
+                            <div className="flex text-[#F59E0B]">
+                                <span className="material-symbols-outlined text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
+                                <span className="material-symbols-outlined text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
+                                <span className="material-symbols-outlined text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
+                                <span className="material-symbols-outlined text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
+                                <span className="material-symbols-outlined text-[18px]">star_half</span>
+                            </div>
+                            <span className="text-[14px] font-semibold" style={{ color: '#191c1e' }}>{ratingValue}</span>
+                            <span className="text-[14px]" style={{ color: '#424655' }}>({reviewsCount} reviews)</span>
+                        </div>
+
+                        <p className="text-[14px] leading-[20px] mb-6 line-clamp-2" style={{ color: '#191c1e' }}>
+                            {profileAbout || 'Authentic Indian and Continental cuisine in the heart of Wuse 2. Experience fine dining with premium service.'}
+                        </p>
+
                         {/* Quick Actions */}
                         <div className="flex gap-3">
-                            <a href={directionsUrl} target="_blank" rel="noopener noreferrer" className="flex-1 text-[14px] font-semibold rounded-full flex items-center justify-center gap-2 active:scale-95 transition-transform md:flex-none md:px-6" style={{ background: '#0055c4', color: '#ffffff', height: 48 }}>
+                            <a
+                                href={directionsUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex-1 text-[14px] font-semibold rounded-full flex items-center justify-center gap-2 active:scale-95 transition-transform md:flex-none md:px-6"
+                                style={{ background: '#0055c4', color: '#ffffff', height: 44 }}
+                            >
                                 <span className="material-symbols-outlined" style={{ fontSize: 20 }}>directions</span>Directions
                             </a>
-                            <button onClick={handleChatClick} className="flex-1 text-[14px] font-semibold rounded-full flex items-center justify-center gap-2 active:scale-95 transition-transform md:flex-none md:px-6" style={{ border: '1px solid #0055c4', color: '#0055c4', height: 48, background: 'transparent' }}>
+                            <button
+                                onClick={handleContactClick}
+                                className="flex-1 text-[14px] font-semibold rounded-full flex items-center justify-center gap-2 active:scale-95 transition-transform md:flex-none md:px-6"
+                                style={{ border: '1px solid #0055c4', color: '#0055c4', height: 44, background: 'transparent' }}
+                            >
                                 <span className="material-symbols-outlined" style={{ fontSize: 20 }}>call</span>Contact
                             </button>
                         </div>
                     </div>
 
                 {/* ─── Active Deals ─── */}
-                {activeShowRewards && (activeOffers.length > 0 || offersLoading) && (
+                {activeShowRewards && (
                     <section className="md:bg-white md:rounded-2xl md:shadow-sm md:border md:border-gray-100 md:p-6 md:mt-6" style={{ padding: '24px 0', borderBottom: '1px solid #c2c6d7' }}>
                         <div className="flex justify-between items-center mb-4 md:mb-5" style={{ padding: '0 20px' }}>
                             <h3 className="text-[20px] font-semibold tracking-tight" style={{ color: '#191c1e' }}>Active Deals</h3>
@@ -666,12 +723,7 @@ export default function PublicBusinessProfilePage() {
                                     return (
                                         <div
                                             key={offer.id}
-                                            className="shrink-0 rounded-xl p-4 flex flex-col justify-between"
-                                            style={{
-                                                minWidth: 280,
-                                                background: '#ffffff',
-                                                border: '1px solid #c2c6d7',
-                                            }}
+                                            className="min-w-[280px] bg-white rounded-xl border border-[#c2c6d7] p-4 shadow-sm flex flex-col justify-between shrink-0"
                                         >
                                             <div>
                                                 {badge && (
@@ -689,14 +741,14 @@ export default function PublicBusinessProfilePage() {
                                                     {offer.description || offer.shortDescription || 'Limited time offer.'}
                                                 </p>
                                             </div>
-                                            <button
-                                                onClick={() => handleClaimClick(offer)}
+                                            <Link
+                                                href={`/deals/${code}/${offer.id}`}
                                                 className="text-[14px] font-semibold flex items-center gap-1 w-fit active:scale-95 transition-transform"
                                                 style={{ color: '#0055c4' }}
                                             >
                                                 Claim Deal
                                                 <span className="material-symbols-outlined" style={{ fontSize: 16 }}>arrow_forward</span>
-                                            </button>
+                                            </Link>
                                         </div>
                                     );
                                 })
@@ -704,12 +756,7 @@ export default function PublicBusinessProfilePage() {
                                 FALLBACK_DEALS.map((deal, i) => (
                                     <div
                                         key={i}
-                                        className="shrink-0 rounded-xl p-4 flex flex-col justify-between"
-                                        style={{
-                                            minWidth: 280,
-                                            background: '#ffffff',
-                                            border: '1px solid #c2c6d7',
-                                        }}
+                                        className="min-w-[280px] bg-white rounded-xl border border-[#c2c6d7] p-4 shadow-sm flex flex-col justify-between shrink-0"
                                     >
                                         <div>
                                             <div
@@ -725,10 +772,14 @@ export default function PublicBusinessProfilePage() {
                                                 {deal.description}
                                             </p>
                                         </div>
-                                        <span className="text-[14px] font-semibold flex items-center gap-1 w-fit" style={{ color: '#0055c4' }}>
+                                        <Link
+                                            href={`/deals`}
+                                            className="text-[14px] font-semibold flex items-center gap-1 w-fit active:scale-95 transition-transform"
+                                            style={{ color: '#0055c4' }}
+                                        >
                                             Claim Deal
                                             <span className="material-symbols-outlined" style={{ fontSize: 16 }}>arrow_forward</span>
-                                        </span>
+                                        </Link>
                                     </div>
                                 ))
                             )}
@@ -737,86 +788,101 @@ export default function PublicBusinessProfilePage() {
                 )}
 
                 {/* ─── Popular Products ─── */}
-                {(productsLoading || activeProducts.length > 0) && (
-                    <section className="md:bg-white md:rounded-2xl md:shadow-sm md:border md:border-gray-100 md:p-6 md:mt-6" style={{ padding: '24px 0', borderBottom: '1px solid #c2c6d7' }}>
-                        <div className="flex justify-between items-center mb-4 md:mb-5" style={{ padding: '0 20px' }}>
-                            <h3 className="text-[20px] font-semibold tracking-tight" style={{ color: '#191c1e' }}>Popular Menu Items</h3>
+                <section className="md:bg-white md:rounded-2xl md:shadow-sm md:border md:border-gray-100 md:p-6 md:mt-6" style={{ padding: '24px 0', borderBottom: '1px solid #c2c6d7' }}>
+                    <div className="flex justify-between items-center mb-4 md:mb-5" style={{ padding: '0 20px' }}>
+                        <h3 className="text-[20px] font-semibold tracking-tight" style={{ color: '#191c1e' }}>Popular Menu Items</h3>
+                        {activeProducts.length > 0 && (
                             <Link href={`/b/${code}/products`} className="text-[14px] font-semibold" style={{ color: '#0055c4' }}>See All</Link>
-                        </div>
-                        <div className="md:grid md:grid-cols-4 md:gap-4 flex overflow-x-auto gap-4 pb-2 md:pb-0" style={{ scrollbarWidth: 'none', paddingLeft: 20, paddingRight: 20 }}>
-                            {productsLoading ? (
-                                Array.from({ length: 4 }).map((_, i) => (
-                                    <div key={i} className="shrink-0 animate-pulse" style={{ minWidth: 160, maxWidth: 160 }}>
-                                        <div className="w-full rounded-lg mb-2" style={{ height: 120, background: '#eceef0' }} />
-                                        <div className="h-4 rounded w-3/4 mb-1" style={{ background: '#eceef0' }} />
-                                        <div className="h-5 rounded w-1/2" style={{ background: '#eceef0' }} />
-                                    </div>
-                                ))
-                            ) : activeProducts.length > 0 ? (
-                                activeProducts.map((product: any, idx: number) => (
-                                    <div key={product.id || idx} className="shrink-0" style={{ minWidth: 160, maxWidth: 160 }}>
-                                        <div
-                                            className="w-full rounded-lg overflow-hidden mb-2"
-                                            style={{ height: 120, background: '#eceef0' }}
-                                        >
-                                            {(product.mainImage || product.image || product.galleryImages?.[0]) ? (
-                                                <img
-                                                    alt={product.name || 'Product'}
-                                                    className="w-full h-full object-cover"
-                                                    src={product.mainImage || product.image || product.galleryImages?.[0]}
-                                                />
-                                            ) : (
-                                                <div className="w-full h-full flex items-center justify-center">
-                                                    <span className="material-symbols-outlined text-[32px]" style={{ color: '#727786' }}>
-                                                        image
-                                                    </span>
-                                                </div>
-                                            )}
-                                        </div>
-                                        <h4 className="text-[14px] font-semibold truncate" style={{ color: '#191c1e' }}>
-                                            {product.name || 'Product'}
-                                        </h4>
-                                        <p className="text-[20px] font-bold mt-1" style={{ color: '#0055c4' }}>
-                                            {product.calculatedPrice != null
-                                                ? formatNaira(product.calculatedPrice)
-                                                : product.fixedPrice != null
-                                                    ? formatNaira(product.fixedPrice)
-                                                    : 'View Price'}
-                                        </p>
-                                    </div>
-                                ))
-                            ) : (
-                                FALLBACK_PRODUCTS.map((product, idx) => (
-                                    <div key={idx} className="shrink-0" style={{ minWidth: 160, maxWidth: 160 }}>
-                                        <div
-                                            className="w-full rounded-lg overflow-hidden mb-2"
-                                            style={{ height: 120, background: '#eceef0' }}
-                                        >
+                        )}
+                    </div>
+                    <div className="md:grid md:grid-cols-4 md:gap-4 flex overflow-x-auto gap-4 pb-2 md:pb-0" style={{ scrollbarWidth: 'none', paddingLeft: 20, paddingRight: 20 }}>
+                        {productsLoading ? (
+                            Array.from({ length: 4 }).map((_, i) => (
+                                <div key={i} className="shrink-0 animate-pulse" style={{ minWidth: 160, maxWidth: 160 }}>
+                                    <div className="w-full rounded-lg mb-2" style={{ height: 120, background: '#eceef0' }} />
+                                    <div className="h-4 rounded w-3/4 mb-1" style={{ background: '#eceef0' }} />
+                                    <div className="h-5 rounded w-1/2" style={{ background: '#eceef0' }} />
+                                </div>
+                            ))
+                        ) : activeProducts.length > 0 ? (
+                            activeProducts.map((product: any, idx: number) => (
+                                <div key={product.id || idx} className="shrink-0" style={{ minWidth: 160, maxWidth: 160 }}>
+                                    <div
+                                        className="w-full rounded-lg overflow-hidden mb-2"
+                                        style={{ height: 120, background: '#eceef0' }}
+                                    >
+                                        {(product.mainImage || product.image || product.galleryImages?.[0]) ? (
                                             <img
-                                                alt={product.name}
+                                                alt={product.name || 'Product'}
                                                 className="w-full h-full object-cover"
-                                                src={product.image}
+                                                src={product.mainImage || product.image || product.galleryImages?.[0]}
                                             />
-                                        </div>
-                                        <h4 className="text-[14px] font-semibold truncate" style={{ color: '#191c1e' }}>
-                                            {product.name}
-                                        </h4>
-                                        <p className="text-[20px] font-bold mt-1" style={{ color: '#0055c4' }}>
-                                            {formatNaira(product.price)}
-                                        </p>
+                                        ) : (
+                                            <div className="w-full h-full flex items-center justify-center">
+                                                <span className="material-symbols-outlined text-[32px]" style={{ color: '#727786' }}>
+                                                    image
+                                                </span>
+                                            </div>
+                                        )}
                                     </div>
-                                ))
-                            )}
-                        </div>
-                    </section>
-                )}
+                                    <h4 className="text-[14px] font-semibold truncate" style={{ color: '#191c1e' }}>
+                                        {product.name || 'Product'}
+                                    </h4>
+                                    <p className="text-[20px] font-bold mt-1" style={{ color: '#0055c4' }}>
+                                        {product.calculatedPrice != null
+                                            ? formatNaira(product.calculatedPrice)
+                                            : product.fixedPrice != null
+                                                ? formatNaira(product.fixedPrice)
+                                                : 'View Price'}
+                                    </p>
+                                </div>
+                            ))
+                        ) : (
+                            FALLBACK_PRODUCTS.map((product, idx) => (
+                                <div key={idx} className="shrink-0" style={{ minWidth: 160, maxWidth: 160 }}>
+                                    <div
+                                        className="w-full rounded-lg overflow-hidden mb-2"
+                                        style={{ height: 120, background: '#eceef0' }}
+                                    >
+                                        <img
+                                            alt={product.name}
+                                            className="w-full h-full object-cover"
+                                            src={product.image}
+                                        />
+                                    </div>
+                                    <h4 className="text-[14px] font-semibold truncate" style={{ color: '#191c1e' }}>
+                                        {product.name}
+                                    </h4>
+                                    <p className="text-[20px] font-bold mt-1" style={{ color: '#0055c4' }}>
+                                        {formatNaira(product.price)}
+                                    </p>
+                                </div>
+                            ))
+                        )}
+                    </div>
+                </section>
 
                 {/* ─── Location Map (Leaflet) ─── */}
                 <Script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" strategy="afterInteractive" onLoad={() => setLeafletReady(true)} />
-                <section className="md:bg-white md:rounded-2xl md:shadow-sm md:border md:border-gray-100 md:p-6 md:mt-6" style={{ padding: '24px 20px' }}>
+                <section className="py-6 px-5 border-b border-[#c2c6d7] md:border-b-0 md:bg-white md:rounded-2xl md:shadow-sm md:border md:border-gray-100 md:p-6 md:mt-6">
                     <h3 className="text-[20px] font-semibold tracking-tight mb-4" style={{ color: '#191c1e' }}>Location</h3>
-                    <div ref={mapRef} className="w-full rounded-xl overflow-hidden md:rounded-lg" style={{ height: 160, border: '1px solid #c2c6d7' }} />
-                    <p className="text-[14px] leading-[20px] mt-2" style={{ color: '#424655' }}>{resolvedLocationDisplay}</p>
+                    <div className="w-full h-40 bg-[#e6e8ea] rounded-xl border border-[#c2c6d7] overflow-hidden relative">
+                        <div ref={mapRef} className="w-full h-full" />
+                        {!leafletReady && (
+                            <div className="absolute inset-0 flex items-center justify-center bg-[#e0e3e5]">
+                                <div className="w-10 h-10 bg-[#0055c4]/20 rounded-full flex items-center justify-center">
+                                    <span className="material-symbols-outlined text-[#0055c4]" style={{ fontVariationSettings: "'FILL' 1" }}>
+                                        location_on
+                                    </span>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                    <p className="text-[14px] leading-[20px] mt-2" style={{ color: '#424655' }}>
+                        {resolvedLocationDisplay && resolvedLocationDisplay !== 'Location not provided'
+                            ? resolvedLocationDisplay
+                            : '14 Aminu Kano Crescent, Wuse 2, Abuja, Nigeria'}
+                    </p>
                 </section>
                 </div>
             </main>

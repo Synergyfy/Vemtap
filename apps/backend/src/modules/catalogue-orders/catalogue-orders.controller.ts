@@ -38,8 +38,8 @@ export class CatalogueOrdersController {
   @Public()
   @Post()
   @ApiOperation({ summary: 'Place a new catalogue order (Public)' })
-  async createOrder(@Body() dto: CreateCatalogueOrderDto) {
-    return this.orderService.createOrder(dto);
+  async createOrder(@Body() dto: CreateCatalogueOrderDto, @Req() req: any) {
+    return this.orderService.createOrder(dto, req?.user);
   }
 
   @ApiBearerAuth()

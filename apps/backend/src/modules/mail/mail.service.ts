@@ -911,15 +911,28 @@ export class MailService {
 
   async sendDealGiftEmail(params: DealGiftEmailParams): Promise<boolean> {
     try {
-      const { recipientEmail, senderName, note, offer, business, branch } = params;
-      const safeSender = (senderName || 'A friend').trim();
+      const {
+        recipientEmail,
+        senderName,
+        senderEmail,
+        giftToken,
+        note,
+        offer,
+        business,
+        branch,
+      } = params;
+      const safeSender = (senderName || 'A customer').trim();
       const safeBusinessName = business.name || 'VemTap Partner';
-      const subject = `🎁 ${safeSender} sent you a deal: ${offer.name} at ${safeBusinessName}!`;
+      const subject = `${safeSender} sent you a deal: ${offer.name} at ${safeBusinessName}!`;
 
       const frontendUrl = this.resolveFrontendBaseUrl(params.frontendBaseUrl);
 
       const businessSlug = business.slug || 'deal';
-      const claimUrl = `${frontendUrl}/deals/${businessSlug}/${offer.id}?ref=gift&email=${encodeURIComponent(recipientEmail)}&sender=${encodeURIComponent(safeSender)}`;
+      const tokenQuery = giftToken ? `&giftToken=${encodeURIComponent(giftToken)}` : '';
+      const claimUrl = `${frontendUrl}/deals/${businessSlug}/${offer.id}?ref=gift&email=${encodeURIComponent(recipientEmail)}&sender=${encodeURIComponent(safeSender)}${tokenQuery}`;
+      const rejectUrl = giftToken
+        ? `${frontendUrl}/deals/gift-reject?token=${encodeURIComponent(giftToken)}`
+        : `${frontendUrl}/deals/${businessSlug}/${offer.id}`;
 
       const formatNaira = (val?: number) => {
         if (val === undefined || val === null || isNaN(val)) return null;
@@ -954,7 +967,7 @@ export class MailService {
             month: 'short',
             year: 'numeric',
           })
-        : 'Ongoing';
+        : 'Ongoing Promotion';
 
       const escapeHtml = (str: string = '') =>
         str
@@ -970,80 +983,95 @@ export class MailService {
       <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>${subject}</title>
+        <title>${escapeHtml(subject)}</title>
       </head>
       <body style="margin: 0; padding: 0; background-color: #f1f5f9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; -webkit-font-smoothing: antialiased;">
-        <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #f1f5f9; padding: 24px 12px;">
+        <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #f1f5f9; padding: 32px 16px;">
           <tr>
             <td align="center">
-              <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 600px; background-color: #ffffff; border-radius: 20px; overflow: hidden; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.08); border: 1px solid #e2e8f0;">
+              <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 600px; background-color: #ffffff; border-radius: 16px; overflow: hidden; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);">
                 
-                <!-- Top Brand Strip -->
+                <!-- Vibrant Solid Brand Header (VemTap Royal Blue) -->
                 <tr>
-                  <td style="padding: 16px 28px; background-color: #0f172a; text-align: left;">
+                  <td style="padding: 32px 32px 28px 32px; background-color: #066CF4; text-align: center;">
                     <table border="0" cellpadding="0" cellspacing="0" width="100%">
                       <tr>
-                        <td>
-                          <span style="font-size: 18px; font-weight: 800; color: #ffffff; letter-spacing: -0.02em;">Vem<span style="color: #38bdf8;">Tap</span> Deals</span>
-                        </td>
-                        <td align="right">
-                          <span style="background: rgba(255,255,255,0.15); color: #e2e8f0; font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 999px; text-transform: uppercase; letter-spacing: 0.05em;">Special Gift</span>
+                        <td align="center">
+                          <div style="display: inline-block; background-color: #7C3AED; color: #ffffff; font-size: 11px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; padding: 6px 16px; border-radius: 9999px; margin-bottom: 14px;">
+                            Special Gift Voucher
+                          </div>
+                          <h1 style="color: #ffffff; margin: 0 0 8px 0; font-size: 24px; font-weight: 800; letter-spacing: -0.02em; line-height: 1.25;">
+                            You Received a Deal Voucher
+                          </h1>
+                          <p style="color: #dbeafe; margin: 0; font-size: 14px; font-weight: 500; line-height: 1.5;">
+                            Gifted to you by <strong>${escapeHtml(safeSender)}</strong>
+                          </p>
                         </td>
                       </tr>
                     </table>
                   </td>
                 </tr>
 
-                <!-- Hero Banner -->
+                <!-- Content Body -->
                 <tr>
-                  <td style="background: linear-gradient(135deg, #4338ca 0%, #6366f1 50%, #8b5cf6 100%); padding: 36px 28px; text-align: center; color: #ffffff;">
-                    <div style="font-size: 42px; margin-bottom: 8px;">🎁</div>
-                    <h1 style="margin: 0 0 10px 0; font-size: 24px; font-weight: 800; line-height: 1.25; letter-spacing: -0.02em; color: #ffffff;">
-                      ${safeSender} sent you a deal!
-                    </h1>
-                    <p style="margin: 0; font-size: 15px; color: #e0e7ff; line-height: 1.5; max-width: 460px; margin: 0 auto;">
-                      You have been gifted an exclusive discount at <strong>${safeBusinessName}</strong>.
-                    </p>
-                  </td>
-                </tr>
+                  <td style="padding: 32px 28px;">
 
-                <!-- Main Content -->
-                <tr>
-                  <td style="padding: 30px 28px;">
+                    <!-- Sender Callout Card -->
+                    <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #eff6ff; border: 1px solid #bfdbfe; border-left: 4px solid #066cf4; border-radius: 8px; padding: 14px 18px; margin-bottom: 24px;">
+                      <tr>
+                        <td>
+                          <span style="display: block; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; color: #066cf4; margin-bottom: 4px;">
+                            Gifted From
+                          </span>
+                          <span style="font-size: 14px; font-weight: 700; color: #0f172a;">
+                            ${escapeHtml(safeSender)}
+                          </span>
+                          ${
+                            senderEmail
+                              ? `<span style="font-size: 13px; color: #475569;"> &bull; <a href="mailto:${escapeHtml(senderEmail)}" style="color: #066cf4; text-decoration: none; font-weight: 500;">${escapeHtml(senderEmail)}</a></span>`
+                              : ''
+                          }
+                        </td>
+                      </tr>
+                    </table>
 
                     ${
                       note
                         ? `
-                    <!-- Personal Note Callout -->
-                    <div style="background-color: #faf5ff; border: 1px solid #e9d5ff; border-left: 5px solid #a855f7; border-radius: 12px; padding: 16px 20px; margin-bottom: 24px;">
-                      <p style="margin: 0 0 6px 0; font-size: 11px; font-weight: 800; text-transform: uppercase; color: #9333ea; letter-spacing: 0.05em;">
-                        Personal Message from ${safeSender}:
-                      </p>
-                      <p style="margin: 0; font-size: 14px; font-style: italic; color: #4c1d95; line-height: 1.6;">
-                        &ldquo;${escapeHtml(note)}&rdquo;
-                      </p>
-                    </div>
+                    <!-- Personal Note Card (Warm Solid Amber) -->
+                    <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #fffbeb; border: 1px solid #fde68a; border-left: 4px solid #f59e0b; border-radius: 8px; padding: 14px 18px; margin-bottom: 24px;">
+                      <tr>
+                        <td>
+                          <span style="display: block; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; color: #b45309; margin-bottom: 6px;">
+                            Personal Message from ${escapeHtml(safeSender)}
+                          </span>
+                          <p style="margin: 0; font-size: 14px; color: #78350f; line-height: 1.5; font-style: italic;">
+                            &ldquo;${escapeHtml(note)}&rdquo;
+                          </p>
+                        </td>
+                      </tr>
+                    </table>
                     `
                         : ''
                     }
 
-                    <!-- Deal Preview Card -->
-                    <div style="border: 1.5px solid #e2e8f0; border-radius: 16px; overflow: hidden; background: #ffffff; margin-bottom: 26px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.04);">
+                    <!-- Deal Showcase Box -->
+                    <div style="border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; background-color: #ffffff; margin-bottom: 28px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
                       ${
                         offer.mainImage
                           ? `
-                      <div style="width: 100%; height: 200px; max-height: 220px; overflow: hidden; background-color: #f1f5f9; text-align: center;">
-                        <img src="${offer.mainImage}" alt="${escapeHtml(offer.name)}" style="width: 100%; height: 200px; object-fit: cover; display: block;" />
+                      <div style="width: 100%; height: 210px; overflow: hidden; background-color: #f1f5f9;">
+                        <img src="${offer.mainImage}" alt="${escapeHtml(offer.name)}" style="width: 100%; height: 210px; object-fit: cover; display: block;" />
                       </div>
                       `
                           : ''
                       }
                       
-                      <div style="padding: 20px;">
+                      <div style="padding: 22px 20px;">
                         ${
                           savingsText
                             ? `
-                        <div style="display: inline-block; background-color: #ecfdf5; border: 1px solid #a7f3d0; color: #047857; font-size: 12px; font-weight: 800; padding: 4px 10px; border-radius: 6px; margin-bottom: 10px;">
+                        <div style="display: inline-block; background-color: #10b981; color: #ffffff; font-size: 11px; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; padding: 4px 10px; border-radius: 6px; margin-bottom: 12px;">
                           ${savingsText}
                         </div>
                         `
@@ -1054,28 +1082,34 @@ export class MailService {
                           ${escapeHtml(offer.name)}
                         </h2>
 
+                        <p style="margin: 0 0 14px 0; font-size: 13px; font-weight: 600; color: #7c3aed;">
+                          Offered by ${escapeHtml(safeBusinessName)}
+                        </p>
+
                         ${
                           offer.description
                             ? `
-                        <p style="margin: 0 0 16px 0; font-size: 13px; color: #64748b; line-height: 1.5;">
+                        <p style="margin: 0 0 18px 0; font-size: 13px; color: #475569; line-height: 1.6;">
                           ${escapeHtml(offer.description)}
                         </p>
                         `
                             : ''
                         }
 
-                        <!-- Pricing Table -->
-                        <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #f8fafc; border-radius: 10px; padding: 12px 14px; margin-bottom: 16px;">
+                        <!-- Pricing & Validity Info Card -->
+                        <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px 16px; margin-bottom: 16px;">
                           <tr>
                             <td valign="middle">
-                              <span style="font-size: 11px; color: #64748b; text-transform: uppercase; font-weight: 700; letter-spacing: 0.05em; display: block;">Deal Price</span>
-                              <span style="font-size: 22px; font-weight: 800; color: #059669; letter-spacing: -0.02em;">
-                                ${dealPriceStr || 'Discounted'}
+                              <span style="font-size: 11px; color: #64748b; text-transform: uppercase; font-weight: 700; letter-spacing: 0.05em; display: block; margin-bottom: 2px;">
+                                Deal Price
+                              </span>
+                              <span style="font-size: 22px; font-weight: 800; color: #066cf4;">
+                                ${dealPriceStr || 'Exclusive Offer'}
                               </span>
                               ${
                                 originalPriceStr
                                   ? `
-                              <span style="font-size: 14px; color: #94a3b8; text-decoration: line-through; margin-left: 8px; font-weight: 500;">
+                              <span style="font-size: 13px; color: #94a3b8; text-decoration: line-through; margin-left: 6px; font-weight: 500;">
                                 ${originalPriceStr}
                               </span>
                               `
@@ -1083,93 +1117,152 @@ export class MailService {
                               }
                             </td>
                             <td align="right" valign="middle">
-                              <span style="font-size: 11px; color: #64748b; text-transform: uppercase; font-weight: 700; letter-spacing: 0.05em; display: block;">Valid Until</span>
-                              <span style="font-size: 13px; font-weight: 700; color: #1e293b;">
+                              <span style="font-size: 11px; color: #64748b; text-transform: uppercase; font-weight: 700; letter-spacing: 0.05em; display: block; margin-bottom: 4px;">
+                                Validity
+                              </span>
+                              <span style="display: inline-block; background-color: #fef3c7; color: #92400e; font-size: 12px; font-weight: 700; padding: 3px 8px; border-radius: 4px;">
                                 ${expiryStr}
                               </span>
                             </td>
                           </tr>
                         </table>
 
-                        <!-- Location & Contact Info -->
-                        <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="font-size: 12px; color: #475569;">
+                        <!-- Location & Contact Table -->
+                        <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="font-size: 13px; color: #334155;">
                           <tr>
-                            <td style="padding: 4px 0;">
-                              📍 <strong>Location:</strong> ${escapeHtml(branchLocation || safeBusinessName)}
+                            <td style="padding: 4px 0; vertical-align: top; width: 80px; font-weight: 700; color: #64748b;">
+                              Location:
+                            </td>
+                            <td style="padding: 4px 0; vertical-align: top; font-weight: 500;">
+                              ${escapeHtml(branchLocation || safeBusinessName)}
                             </td>
                           </tr>
                           ${
                             branchPhone
                               ? `
                           <tr>
-                            <td style="padding: 4px 0;">
-                              📞 <strong>Phone:</strong> <a href="tel:${branchPhone}" style="color: #4f46e5; text-decoration: none; font-weight: 600;">${branchPhone}</a>
+                            <td style="padding: 4px 0; vertical-align: top; font-weight: 700; color: #64748b;">
+                              Contact:
+                            </td>
+                            <td style="padding: 4px 0; vertical-align: top; font-weight: 500;">
+                              <a href="tel:${branchPhone}" style="color: #066cf4; text-decoration: none; font-weight: 600;">${branchPhone}</a>
                             </td>
                           </tr>
                           `
                               : ''
                           }
                         </table>
-
                       </div>
                     </div>
 
-                    <!-- 3-Step Guide (How It Works) -->
-                    <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 14px; padding: 20px; margin-bottom: 28px;">
-                      <h3 style="margin: 0 0 14px 0; font-size: 13px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; color: #1e293b;">
-                        How to Claim & Redeem (3 Easy Steps):
-                      </h3>
+                    <!-- Detailed Step-by-Step Instructions -->
+                    <div style="background-color: #f8fafc; border: 1px solid #cbd5e1; border-radius: 12px; padding: 22px 20px; margin-bottom: 28px;">
+                      <div style="margin-bottom: 14px;">
+                        <span style="font-size: 12px; font-weight: 800; text-transform: uppercase; color: #0f172a; letter-spacing: 0.06em; display: block;">
+                          How to Claim &amp; Redeem Your Deal
+                        </span>
+                        <span style="font-size: 12px; color: #64748b; font-weight: 500;">
+                          Follow these 4 simple steps to enjoy your gift voucher:
+                        </span>
+                      </div>
 
                       <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%">
+                        <!-- Step 1 -->
                         <tr>
-                          <td valign="top" style="width: 32px; padding-bottom: 12px;">
-                            <div style="width: 24px; height: 24px; background-color: #4f46e5; color: #ffffff; border-radius: 50%; text-align: center; line-height: 24px; font-size: 12px; font-weight: 800;">1</div>
+                          <td style="width: 32px; vertical-align: top; padding: 6px 0 12px 0;">
+                            <div style="width: 24px; height: 24px; border-radius: 9999px; background-color: #066cf4; color: #ffffff; font-size: 12px; font-weight: 800; text-align: center; line-height: 24px;">
+                              1
+                            </div>
                           </td>
-                          <td valign="top" style="padding-bottom: 12px;">
-                            <strong style="color: #0f172a; font-size: 13px;">Tap the Claim Button</strong>
-                            <p style="margin: 2px 0 0 0; font-size: 12px; color: #64748b; line-height: 1.4;">
-                              Click the green button below. Your email is already recognized so you won't lose your spot.
-                            </p>
+                          <td style="vertical-align: top; padding: 6px 0 12px 10px;">
+                            <strong style="color: #0f172a; font-size: 13px; display: block; margin-bottom: 2px;">
+                              Open Your Voucher
+                            </strong>
+                            <span style="font-size: 12px; color: #475569; line-height: 1.5; display: block;">
+                              Click the <strong>Claim Deal Now</strong> button below to open your personalized voucher page. Your gift is pre-linked to your email address (${escapeHtml(recipientEmail)}).
+                            </span>
                           </td>
                         </tr>
+
+                        <!-- Step 2 -->
                         <tr>
-                          <td valign="top" style="width: 32px; padding-bottom: 12px;">
-                            <div style="width: 24px; height: 24px; background-color: #4f46e5; color: #ffffff; border-radius: 50%; text-align: center; line-height: 24px; font-size: 12px; font-weight: 800;">2</div>
+                          <td style="width: 32px; vertical-align: top; padding: 6px 0 12px 0;">
+                            <div style="width: 24px; height: 24px; border-radius: 9999px; background-color: #066cf4; color: #ffffff; font-size: 12px; font-weight: 800; text-align: center; line-height: 24px;">
+                              2
+                            </div>
                           </td>
-                          <td valign="top" style="padding-bottom: 12px;">
-                            <strong style="color: #0f172a; font-size: 13px;">Get Your Unique Claim Code</strong>
-                            <p style="margin: 2px 0 0 0; font-size: 12px; color: #64748b; line-height: 1.4;">
-                              Sign in or set your 6-digit PIN in seconds. A unique redemption code will appear on your screen.
-                            </p>
+                          <td style="vertical-align: top; padding: 6px 0 12px 10px;">
+                            <strong style="color: #0f172a; font-size: 13px; display: block; margin-bottom: 2px;">
+                              Sign In or Confirm Account
+                            </strong>
+                            <span style="font-size: 12px; color: #475569; line-height: 1.5; display: block;">
+                              Sign in with your VemTap account or enter your name and phone number to accept the voucher. Claiming is completely free with zero hidden fees.
+                            </span>
                           </td>
                         </tr>
+
+                        <!-- Step 3 -->
                         <tr>
-                          <td valign="top" style="width: 32px;">
-                            <div style="width: 24px; height: 24px; background-color: #10b981; color: #ffffff; border-radius: 50%; text-align: center; line-height: 24px; font-size: 12px; font-weight: 800;">3</div>
+                          <td style="width: 32px; vertical-align: top; padding: 6px 0 12px 0;">
+                            <div style="width: 24px; height: 24px; border-radius: 9999px; background-color: #066cf4; color: #ffffff; font-size: 12px; font-weight: 800; text-align: center; line-height: 24px;">
+                              3
+                            </div>
                           </td>
-                          <td valign="top">
-                            <strong style="color: #0f172a; font-size: 13px;">Present at Store & Enjoy Savings!</strong>
-                            <p style="margin: 2px 0 0 0; font-size: 12px; color: #64748b; line-height: 1.4;">
-                              Visit <strong>${safeBusinessName}</strong>, show the code to the cashier/staff at payment, and get your deal.
-                            </p>
+                          <td style="vertical-align: top; padding: 6px 0 12px 10px;">
+                            <strong style="color: #0f172a; font-size: 13px; display: block; margin-bottom: 2px;">
+                              Obtain Your Digital Claim Code
+                            </strong>
+                            <span style="font-size: 12px; color: #475569; line-height: 1.5; display: block;">
+                              Upon claiming, an instant unique claim reference code (e.g. VEM-XXXX) is generated and safely stored in your VemTap customer wallet.
+                            </span>
+                          </td>
+                        </tr>
+
+                        <!-- Step 4 -->
+                        <tr>
+                          <td style="width: 32px; vertical-align: top; padding: 6px 0 4px 0;">
+                            <div style="width: 24px; height: 24px; border-radius: 9999px; background-color: #066cf4; color: #ffffff; font-size: 12px; font-weight: 800; text-align: center; line-height: 24px;">
+                              4
+                            </div>
+                          </td>
+                          <td style="vertical-align: top; padding: 6px 0 4px 10px;">
+                            <strong style="color: #0f172a; font-size: 13px; display: block; margin-bottom: 2px;">
+                              Present &amp; Redeem In-Store
+                            </strong>
+                            <span style="font-size: 12px; color: #475569; line-height: 1.5; display: block;">
+                              Visit <strong>${escapeHtml(safeBusinessName)}</strong> at the branch address before the expiry date. Present your digital claim voucher or code to the staff at checkout to enjoy your discounted deal.
+                            </span>
                           </td>
                         </tr>
                       </table>
                     </div>
 
-                    <!-- Call To Action Button -->
-                    <div style="text-align: center; margin: 30px 0 20px 0;">
-                      <a href="${claimUrl}" style="display: inline-block; background: linear-gradient(135deg, #059669 0%, #10b981 100%); color: #ffffff; padding: 18px 38px; border-radius: 12px; text-decoration: none; font-weight: 800; font-size: 16px; box-shadow: 0 10px 15px -3px rgba(16, 185, 129, 0.4); letter-spacing: -0.01em;">
-                        CLAIM THIS DEAL NOW &rarr;
+                    <!-- Primary Action Button -->
+                    <div style="text-align: center; margin: 32px 0 20px 0;">
+                      <a href="${claimUrl}" style="display: inline-block; background-color: #066cf4; color: #ffffff; padding: 16px 44px; border-radius: 12px; text-decoration: none; font-weight: 800; font-size: 16px; letter-spacing: 0.02em; box-shadow: 0 4px 12px rgba(6, 108, 244, 0.35);">
+                        Claim Deal Now
                       </a>
                     </div>
 
-                    <!-- Fallback Link -->
-                    <div style="background-color: #f8fafc; border-radius: 8px; padding: 12px; text-align: center; margin-top: 20px;">
-                      <p style="margin: 0 0 4px 0; font-size: 11px; color: #64748b;">
-                        If the button above does not work, copy and paste this link in your browser:
+                    <!-- Decline Option -->
+                    <div style="text-align: center; margin-bottom: 24px;">
+                      <p style="margin: 0; font-size: 13px; color: #64748b; line-height: 1.5;">
+                        Not interested or received this by mistake?<br>
+                        <a href="${rejectUrl}" style="color: #dc2626; text-decoration: underline; font-weight: 600;">
+                          Decline this gift voucher
+                        </a>
                       </p>
-                      <a href="${claimUrl}" style="color: #4f46e5; font-size: 11px; word-break: break-all; font-weight: 600;">
+                      <p style="margin: 4px 0 0 0; font-size: 11px; color: #94a3b8;">
+                        Declining removes your contact details from this gift and notifies the sender.
+                      </p>
+                    </div>
+
+                    <!-- Direct Link Box -->
+                    <div style="background-color: #f8fafc; border-radius: 8px; padding: 12px 16px; text-align: center; border: 1px solid #e2e8f0;">
+                      <p style="margin: 0 0 4px 0; font-size: 11px; color: #64748b; font-weight: 600;">
+                        Having trouble with the button? Copy and paste this link into your browser:
+                      </p>
+                      <a href="${claimUrl}" style="color: #066cf4; font-size: 11px; word-break: break-all; text-decoration: underline;">
                         ${claimUrl}
                       </a>
                     </div>
@@ -1177,15 +1270,15 @@ export class MailService {
                   </td>
                 </tr>
 
-                <!-- Footer -->
+                <!-- Clean Footer -->
                 <tr>
-                  <td style="background-color: #f8fafc; padding: 24px 28px; text-align: center; border-top: 1px solid #e2e8f0;">
-                    <p style="margin: 0 0 8px 0; font-size: 13px; font-weight: 700; color: #334155;">
-                      VemTap Deals • Instant Local Savings
+                  <td style="background-color: #f8fafc; padding: 24px 32px; text-align: center; border-top: 1px solid #e2e8f0;">
+                    <p style="margin: 0 0 6px 0; font-size: 13px; font-weight: 700; color: #1e293b;">
+                      VemTap Deals
                     </p>
-                    <p style="margin: 0; font-size: 11px; color: #94a3b8; line-height: 1.5;">
+                    <p style="margin: 0; font-size: 11px; color: #94a3b8; line-height: 1.6;">
                       &copy; ${new Date().getFullYear()} VemTap Technologies. All rights reserved.<br>
-                      You received this email because ${safeSender} gifted you a deal via VemTap.
+                      This message was sent to ${escapeHtml(recipientEmail)} because ${escapeHtml(safeSender)} gifted you a deal on VemTap.
                     </p>
                   </td>
                 </tr>
@@ -1292,6 +1385,7 @@ export interface DealGiftEmailParams {
   recipientEmail: string;
   senderName?: string;
   senderEmail?: string;
+  giftToken?: string;
   note?: string;
   frontendBaseUrl?: string;
   offer: {

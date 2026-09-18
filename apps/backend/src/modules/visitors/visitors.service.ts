@@ -1677,12 +1677,18 @@ export class VisitorsService {
     }
 
     // 4. Create/Update Contact
-    let contact = await this.contactRepository.findOne({
-      where: [
-        { branchId, email: user.email },
-        { branchId, phone: user.phone },
-      ],
-    });
+    const contactConditions: any[] = [];
+    if (user.email) contactConditions.push({ branchId, email: user.email });
+    if (user.phone && user.phone !== 'N/A') {
+      contactConditions.push({ branchId, phone: user.phone });
+    }
+
+    let contact =
+      contactConditions.length > 0
+        ? await this.contactRepository.findOne({
+            where: contactConditions,
+          })
+        : null;
 
     if (!contact) {
       contact = this.contactRepository.create({
