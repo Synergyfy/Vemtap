@@ -12,6 +12,7 @@ import { CatalogueOfferController } from './catalogue-offer.controller';
 import { AdminDealsController } from './admin-deals.controller';
 import { SubscriptionsModule } from '../subscriptions/subscriptions.module';
 import { CatalogueOfferClaim } from './entities/catalogue-offer-claim.entity';
+import { CatalogueDealGift } from './entities/catalogue-deal-gift.entity';
 import { Otp } from '../auth/entities/otp.entity';
 import { MailModule } from '../mail/mail.module';
 import { AiCopilotModule } from '../ai-copilot/ai-copilot.module';
@@ -25,6 +26,7 @@ import { ClustersModule } from '../clusters/clusters.module';
       CatalogueItem,
       CatalogueOffer,
       CatalogueOfferClaim,
+      CatalogueDealGift,
       Branch,
       Business,
       Otp,

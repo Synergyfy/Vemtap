@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  Optional,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Not, IsNull } from 'typeorm';
@@ -35,6 +36,7 @@ import * as bcrypt from 'bcrypt';
 import { VisitorsService } from '../visitors/visitors.service';
 import { MailService } from '../mail/mail.service';
 import { CatalogueService } from '../catalogue/catalogue.service';
+import { CatalogueOfferService } from '../catalogue/catalogue-offer.service';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { v4 as uuidv4 } from 'uuid';
@@ -65,6 +67,8 @@ export class CatalogueOrderService {
     private readonly catalogueService: CatalogueService,
     @InjectQueue('order-notifications')
     private readonly orderNotificationQueue: Queue,
+    @Optional()
+    private readonly catalogueOfferService?: CatalogueOfferService,
   ) {}
 
   async bulkCheckout(dto: BulkCheckoutDto, user?: User) {
@@ -116,9 +120,11 @@ export class CatalogueOrderService {
     let customer: User | null = existingUser || null;
 
     if (!customer) {
-      customer = await this.userRepository.findOne({
-        where: { phone: dto.phone },
-      });
+      if (dto.phone && dto.phone !== 'N/A') {
+        customer = await this.userRepository.findOne({
+          where: { phone: dto.phone },
+        });
+      }
 
       if (!customer && dto.email) {
         customer = await this.userRepository.findOne({
@@ -132,14 +138,18 @@ export class CatalogueOrderService {
       const hashedPassword = await bcrypt.hash(defaultPassword, 10);
 
       // Use provided email or generate a dummy one
-      const dummyEmail = `guest_${dto.phone.replace(/\+/g, '')}@vemtap.dummy`;
+      const phoneClean =
+        dto.phone && dto.phone !== 'N/A'
+          ? dto.phone.replace(/\+/g, '')
+          : uuidv4().slice(0, 8);
+      const dummyEmail = `guest_${phoneClean}@vemtap.dummy`;
       const finalEmail = dto.email || dummyEmail;
       const isDummy = !dto.email;
 
       customer = this.userRepository.create({
         firstName: dto.firstName,
         lastName: dto.lastName,
-        phone: dto.phone,
+        phone: dto.phone && dto.phone !== 'N/A' ? dto.phone : undefined,
         email: finalEmail,
         role: UserRole.CUSTOMER,
         password: hashedPassword,
@@ -276,7 +286,9 @@ export class CatalogueOrderService {
             .innerJoin('item.order', 'order')
             .where('item.offerId = :offerId', { offerId: offer.id })
             .andWhere('order.customerId = :customerId', { customerId: customer.id })
-            .andWhere('order.status != :cancelled', { cancelled: 'CANCELLED' })
+            .andWhere('order.status != :cancelled', {
+              cancelled: CatalogueOrderStatus.CANCELLED,
+            })
             .getCount();
 
           if (previousClaimsCount + itemDto.quantity > offer.maxClaimsPerCustomer) {
@@ -366,6 +378,18 @@ export class CatalogueOrderService {
       .catch((err) =>
         console.error('Failed to queue order placed email:', err),
       );
+
+    // If this order was claimed from a deal gift, mark the gift accepted
+    if (dto.giftToken && this.catalogueOfferService) {
+      await this.catalogueOfferService
+        .acceptDealGift(dto.giftToken)
+        .catch((err) =>
+          console.warn(
+            'Failed to mark deal gift as accepted:',
+            err?.message || err,
+          ),
+        );
+    }
 
     return savedOrder;
   }

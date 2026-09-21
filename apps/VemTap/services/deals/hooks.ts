@@ -11,6 +11,9 @@ import type {
     ClaimVerifyResponse,
     SendDealGiftPayload,
     SendDealGiftResponse,
+    GiftDealDetails,
+    RejectDealGiftPayload,
+    BranchGiftedDealsResponse,
 } from './types';
 
 export const getPublicOffers = async (params: DealsQueryParams = {}): Promise<PaginatedOffersResponse> => {
@@ -88,6 +91,55 @@ export const sendDealGift = async (data: SendDealGiftPayload): Promise<SendDealG
 export const useSendDealGift = () => {
     return useMutation<SendDealGiftResponse, Error, SendDealGiftPayload>({
         mutationFn: sendDealGift,
+    });
+};
+
+export const getGiftByToken = async (token: string): Promise<GiftDealDetails> => {
+    return api.get(`/catalogue/offers/gift/${encodeURIComponent(token)}`);
+};
+
+export const useGiftByToken = (token: string) => {
+    return useQuery<GiftDealDetails>({
+        queryKey: ['deals', 'gift', token],
+        queryFn: () => getGiftByToken(token),
+        enabled: !!token,
+        retry: false,
+    });
+};
+
+export const rejectDealGift = async (payload: RejectDealGiftPayload): Promise<{ success: boolean; message: string }> => {
+    return api.post(`/catalogue/offers/gift/${encodeURIComponent(payload.token)}/reject`, {
+        reason: payload.reason,
+    });
+};
+
+export const useRejectDealGift = () => {
+    return useMutation<{ success: boolean; message: string }, Error, RejectDealGiftPayload>({
+        mutationFn: rejectDealGift,
+    });
+};
+
+export const getBranchGiftedDeals = async (
+    branchId: string,
+    params: { page?: number; limit?: number; search?: string } = {},
+): Promise<BranchGiftedDealsResponse> => {
+    const qs = new URLSearchParams();
+    if (params.page) qs.set('page', String(params.page));
+    if (params.limit) qs.set('limit', String(params.limit));
+    if (params.search?.trim()) qs.set('search', params.search.trim());
+    const queryStr = qs.toString();
+    return api.get(`/catalogue/offers/gifts/branch/${branchId}${queryStr ? `?${queryStr}` : ''}`);
+};
+
+export const useBranchGiftedDeals = (
+    branchId: string,
+    params: { page?: number; limit?: number; search?: string } = {},
+    options?: { enabled?: boolean },
+) => {
+    return useQuery<BranchGiftedDealsResponse>({
+        queryKey: ['deals', 'branch-gifts', branchId, params],
+        queryFn: () => getBranchGiftedDeals(branchId, params),
+        enabled: (options?.enabled ?? true) && !!branchId,
     });
 };
 

@@ -228,5 +228,62 @@ export interface SendDealGiftPayload {
 export interface SendDealGiftResponse {
     success: boolean;
     message: string;
+    giftToken?: string;
+}
+
+export interface GiftDealDetails {
+    token: string;
+    status: 'pending' | 'accepted' | 'rejected';
+    recipientEmail: string;
+    senderName?: string;
+    senderEmail?: string;
+    note?: string;
+    createdAt: string;
+    offer: {
+        id: string;
+        name: string;
+        description?: string;
+        mainImage?: string;
+        calculatedPrice: number;
+    };
+    business: {
+        name: string;
+        slug?: string;
+    };
+    branch?: {
+        id: string;
+        name?: string;
+    };
+}
+
+export interface RejectDealGiftPayload {
+    token: string;
+    reason: string;
+}
+
+export interface BranchGiftedDeal {
+    id: string;
+    offerId: string;
+    branchId: string;
+    senderName: string;
+    senderEmail: string;
+    recipientEmail: string;
+    note?: string;
+    status: 'pending' | 'accepted';
+    createdAt: string;
+    acceptedAt?: string;
+    offer?: {
+        id: string;
+        name: string;
+        mainImage?: string;
+        calculatedPrice?: number;
+    };
+}
+
+export interface BranchGiftedDealsResponse {
+    data: BranchGiftedDeal[];
+    total: number;
+    page: number;
+    limit: number;
 }
 

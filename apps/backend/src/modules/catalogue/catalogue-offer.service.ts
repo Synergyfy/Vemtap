@@ -3,6 +3,7 @@ import {
   NotFoundException,
   BadRequestException,
   ForbiddenException,
+  UnauthorizedException,
   Inject,
   Logger,
 } from '@nestjs/common';
@@ -32,6 +33,12 @@ import {
   CatalogueOfferClaim,
   CatalogueOfferClaimStatus,
 } from './entities/catalogue-offer-claim.entity';
+import {
+  CatalogueDealGift,
+  DealGiftStatus,
+} from './entities/catalogue-deal-gift.entity';
+import { User } from '../users/entities/user.entity';
+import { v4 as uuidv4 } from 'uuid';
 import { paginateWithCursor } from '../../common/utils/cursor-pagination.util';
 import { Otp } from '../auth/entities/otp.entity';
 import { MailService } from '../mail/mail.service';
@@ -57,6 +64,8 @@ export class CatalogueOfferService {
     private readonly businessRepository: Repository<Business>,
     @InjectRepository(CatalogueOfferClaim)
     private readonly claimRepository: Repository<CatalogueOfferClaim>,
+    @InjectRepository(CatalogueDealGift)
+    private readonly dealGiftRepository: Repository<CatalogueDealGift>,
     @InjectRepository(Otp)
     private readonly otpRepository: Repository<Otp>,
     private readonly subscriptionsService: SubscriptionsService,
@@ -999,6 +1008,14 @@ export class CatalogueOfferService {
 
       await this.clearCache(offer.branchId, offer.id);
 
+      if (dto.giftToken) {
+        await this.acceptDealGift(dto.giftToken).catch((err) => {
+          this.logger.warn(
+            `Failed to mark deal gift as accepted: ${err.message}`,
+          );
+        });
+      }
+
       return {
         message: 'Deal claimed successfully',
         claim: {
@@ -1016,7 +1033,15 @@ export class CatalogueOfferService {
     return await executeSave(this.claimRepository);
   }
 
-  async sendDealGift(dto: SendDealGiftDto, callerOrigin?: string) {
+  async sendDealGift(
+    dto: SendDealGiftDto,
+    user?: User,
+    callerOrigin?: string,
+  ) {
+    if (!user) {
+      throw new UnauthorizedException('You must be signed in to gift deals');
+    }
+
     const offer = await this.offerRepository.findOne({
       where: { id: dto.offerId, status: CatalogueOfferStatus.ACTIVE },
       relations: ['items', 'branch', 'branch.business', 'business'],
@@ -1106,10 +1131,36 @@ export class CatalogueOfferService {
       discountLabel = `Save ₦${saved.toLocaleString('en-NG')} (${pct}% OFF)`;
     }
 
+    const safeSenderName = (
+      dto.senderName?.trim() ||
+      `${user.firstName || ''} ${user.lastName || ''}`.trim() ||
+      user.email
+    ).trim();
+    const safeSenderEmail = user.email;
+    const safeSenderPhone = user.phone || undefined;
+
+    // Create tracking record for this gift
+    const giftToken = uuidv4();
+    const dealGift = this.dealGiftRepository.create({
+      offerId: offer.id,
+      branchId: targetBranch?.id || offer.branchId,
+      businessId: business?.id || offer.businessId,
+      senderId: user.id,
+      senderName: safeSenderName,
+      senderEmail: safeSenderEmail,
+      senderPhone: safeSenderPhone,
+      recipientEmail,
+      note: dto.note?.trim() || null,
+      status: DealGiftStatus.PENDING,
+      token: giftToken,
+    });
+    await this.dealGiftRepository.save(dealGift);
+
     const emailSent = await this.mailService.sendDealGiftEmail({
       recipientEmail,
-      senderName: dto.senderName?.trim(),
-      senderEmail: dto.senderEmail?.trim(),
+      senderName: safeSenderName,
+      senderEmail: safeSenderEmail,
+      giftToken,
       note: dto.note?.trim(),
       frontendBaseUrl: dto.frontendBaseUrl || callerOrigin,
       offer: {
@@ -1143,6 +1194,7 @@ export class CatalogueOfferService {
     });
 
     if (!emailSent) {
+      await this.dealGiftRepository.delete({ id: dealGift.id });
       throw new BadRequestException(
         'Failed to dispatch deal gift email. Please try again.',
       );
@@ -1151,6 +1203,122 @@ export class CatalogueOfferService {
     return {
       success: true,
       message: `Deal invitation and instructions sent successfully to ${recipientEmail}`,
+      giftToken,
+    };
+  }
+
+  async getGiftByToken(token: string) {
+    const gift = await this.dealGiftRepository.findOne({
+      where: { token },
+      relations: ['offer', 'branch', 'business'],
+    });
+
+    if (!gift) {
+      throw new NotFoundException('Gift offer not found or no longer active');
+    }
+
+    return {
+      token: gift.token,
+      status: gift.status,
+      recipientEmail: gift.recipientEmail,
+      senderName: gift.senderName,
+      senderEmail: gift.senderEmail,
+      note: gift.note,
+      createdAt: gift.createdAt,
+      offer: {
+        id: gift.offer?.id,
+        name: gift.offer?.name,
+        description: gift.offer?.description || gift.offer?.longDescription,
+        mainImage: gift.offer?.mainImage,
+        calculatedPrice: gift.offer ? Number(gift.offer.calculatedPrice) : 0,
+      },
+      business: {
+        name: gift.business?.name || 'VemTap Partner',
+        slug: gift.business?.uniqueCode || '',
+      },
+      branch: {
+        id: gift.branch?.id,
+        name: gift.branch?.name,
+      },
+    };
+  }
+
+  async rejectDealGift(token: string, reason: string) {
+    const gift = await this.dealGiftRepository.findOne({
+      where: { token },
+    });
+
+    if (!gift) {
+      throw new NotFoundException('Gift not found or already processed');
+    }
+
+    if (gift.status === DealGiftStatus.REJECTED) {
+      return {
+        success: true,
+        message: 'This gift has already been declined.',
+      };
+    }
+
+    gift.status = DealGiftStatus.REJECTED;
+    gift.rejectionReason = reason?.trim() || 'Declined by recipient';
+    gift.rejectedAt = new Date();
+    await this.dealGiftRepository.save(gift);
+    // Soft remove so recipient details are omitted from branch dashboard queries
+    await this.dealGiftRepository.softRemove(gift);
+
+    return {
+      success: true,
+      message: 'Gift declined successfully. Your details have been removed.',
+    };
+  }
+
+  async acceptDealGift(token: string) {
+    const gift = await this.dealGiftRepository.findOne({
+      where: { token },
+    });
+
+    if (gift && gift.status === DealGiftStatus.PENDING) {
+      gift.status = DealGiftStatus.ACCEPTED;
+      gift.acceptedAt = new Date();
+      await this.dealGiftRepository.save(gift);
+    }
+
+    return gift;
+  }
+
+  async getBranchGiftedDeals(
+    branchId: string,
+    query?: { page?: number; limit?: number; search?: string },
+  ) {
+    const page = Math.max(1, Number(query?.page) || 1);
+    const limit = Math.max(1, Math.min(100, Number(query?.limit) || 20));
+    const skip = (page - 1) * limit;
+
+    const qb = this.dealGiftRepository
+      .createQueryBuilder('gift')
+      .leftJoinAndSelect('gift.offer', 'offer')
+      .leftJoinAndSelect('gift.sender', 'sender')
+      .where('gift.branchId = :branchId', { branchId })
+      .orderBy('gift.createdAt', 'DESC');
+
+    if (query?.search?.trim()) {
+      const s = `%${query.search.trim().toLowerCase()}%`;
+      qb.andWhere(
+        '(LOWER(gift.recipientEmail) LIKE :s OR LOWER(gift.senderName) LIKE :s OR LOWER(offer.name) LIKE :s)',
+        { s },
+      );
+    }
+
+    const [items, total] = await qb.skip(skip).take(limit).getManyAndCount();
+
+    return {
+      data: items,
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
     };
   }
 

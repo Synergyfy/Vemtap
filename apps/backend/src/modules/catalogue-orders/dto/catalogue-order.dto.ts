@@ -121,6 +121,11 @@ export class CreateCatalogueOrderDto {
   @IsOptional()
   @IsString()
   bookingTime?: string;
+
+  @ApiPropertyOptional({ example: 'c67ab160-5895-46aa-b2b5-e6f778a87b28' })
+  @IsOptional()
+  @IsString()
+  giftToken?: string;
 }
 
 export class BulkOrderDto {

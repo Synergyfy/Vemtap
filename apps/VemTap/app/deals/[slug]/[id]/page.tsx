@@ -365,6 +365,22 @@ export default function DealDetailPage() {
             <main className="relative z-10 -mt-6 bg-white rounded-t-xl px-5 pt-6 pb-6 shadow-[0_-4px_16px_rgba(0,0,0,0.05)] max-w-5xl mx-auto">
                 {/* Header Info */}
                 <div className="mb-6">
+                    {effectiveBusiness.name && (
+                        <div className="mb-2">
+                            <Link
+                                href={`/b/${effectiveBusiness.slug || slug}`}
+                                className="inline-flex items-center gap-1.5 text-[15px] font-semibold text-[#0055c4] hover:underline group"
+                            >
+                                <span className="material-symbols-outlined text-[18px] text-[#0055c4] group-hover:scale-110 transition-transform">
+                                    storefront
+                                </span>
+                                <span>{effectiveBusiness.name}</span>
+                                <span className="material-symbols-outlined text-[15px] text-[#0055c4] opacity-70 group-hover:opacity-100 transition-opacity">
+                                    arrow_forward
+                                </span>
+                            </Link>
+                        </div>
+                    )}
                     <div className="flex justify-between items-start mb-2">
                         <h1 className="text-[24px] leading-[32px] font-semibold tracking-tight text-[#191c1e] max-w-[75%]">
                             {effectiveNormalizedOffer.name}
@@ -480,7 +496,15 @@ export default function DealDetailPage() {
                             </div>
                             <div className="flex-grow">
                                 <h3 className="text-[12px] font-medium text-[#424655] uppercase tracking-wider mb-0.5">Location</h3>
-                                <p className="text-[16px] text-[#191c1e]">{effectiveBusiness.name}</p>
+                                <Link
+                                    href={`/b/${effectiveBusiness.slug || slug}`}
+                                    className="text-[16px] font-semibold text-[#191c1e] hover:text-[#0055c4] hover:underline inline-flex items-center gap-1 group"
+                                >
+                                    <span>{effectiveBusiness.name}</span>
+                                    <span className="material-symbols-outlined text-[15px] text-[#0055c4] opacity-0 group-hover:opacity-100 transition-opacity">
+                                        arrow_forward
+                                    </span>
+                                </Link>
                                 <p className="text-[14px] text-[#424655]">{effectiveBusiness.address || ''}</p>
                                 {distance && directionsHref && (
                                     <div className="flex items-center gap-1 mt-1">
