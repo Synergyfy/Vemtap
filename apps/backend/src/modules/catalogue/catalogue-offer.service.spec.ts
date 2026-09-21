@@ -13,6 +13,7 @@ import {
   CatalogueOfferClaim,
   CatalogueOfferClaimStatus,
 } from './entities/catalogue-offer-claim.entity';
+import { CatalogueDealGift } from './entities/catalogue-deal-gift.entity';
 import { Otp } from '../auth/entities/otp.entity';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { MailService } from '../mail/mail.service';
@@ -21,6 +22,7 @@ import {
   NotFoundException,
   BadRequestException,
   ForbiddenException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { In } from 'typeorm';
 
@@ -41,6 +43,7 @@ describe('CatalogueOfferService', () => {
   let aiCreditService: any;
   let openAiClient: any;
   let clustersService: any;
+  let dealGiftRepo: any;
 
   const mockOffer = {
     id: 'offer-1',
@@ -136,6 +139,18 @@ describe('CatalogueOfferService', () => {
     clustersService = {
       invalidateForBranch: jest.fn().mockResolvedValue(undefined),
     };
+    dealGiftRepo = {
+      create: jest.fn().mockImplementation((dto) => dto),
+      save: jest
+        .fn()
+        .mockImplementation((gift) =>
+          Promise.resolve({ id: 'gift-123', ...gift }),
+        ),
+      findOne: jest.fn(),
+      softRemove: jest.fn().mockImplementation((gift) => Promise.resolve(gift)),
+      delete: jest.fn().mockResolvedValue({ affected: 1 }),
+      createQueryBuilder: jest.fn(),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -148,6 +163,7 @@ describe('CatalogueOfferService', () => {
           provide: getRepositoryToken(CatalogueOfferClaim),
           useValue: claimRepo,
         },
+        { provide: getRepositoryToken(CatalogueDealGift), useValue: dealGiftRepo },
         { provide: getRepositoryToken(Otp), useValue: otpRepo },
         { provide: SubscriptionsService, useValue: subscriptionsService },
         { provide: MailService, useValue: mailService },
@@ -788,7 +804,27 @@ describe('CatalogueOfferService', () => {
   });
 
   describe('sendDealGift', () => {
-    it('successfully sends deal gift email to recipient', async () => {
+    const mockSenderUser = {
+      id: 'sender-1',
+      firstName: 'John',
+      lastName: 'Doe',
+      email: 'johndoe@example.com',
+      phone: '+2348000000000',
+    } as any;
+
+    it('throws UnauthorizedException if user is not authenticated', async () => {
+      await expect(
+        service.sendDealGift(
+          {
+            offerId: 'offer-1',
+            recipientEmail: 'friend@example.com',
+          },
+          undefined,
+        ),
+      ).rejects.toThrow(UnauthorizedException);
+    });
+
+    it('successfully sends deal gift email to recipient and stores record', async () => {
       const activeOffer = {
         ...mockOffer,
         status: CatalogueOfferStatus.ACTIVE,
@@ -803,15 +839,20 @@ describe('CatalogueOfferService', () => {
       offerRepo.findOne.mockResolvedValue(activeOffer);
       claimRepo.count.mockResolvedValue(0);
 
-      const result = await service.sendDealGift({
-        offerId: 'offer-1',
-        recipientEmail: 'friend@example.com',
-        senderName: 'John Doe',
-        note: 'Enjoy lunch on me!',
-      });
+      const result = await service.sendDealGift(
+        {
+          offerId: 'offer-1',
+          recipientEmail: 'friend@example.com',
+          senderName: 'John Doe',
+          note: 'Enjoy lunch on me!',
+        },
+        mockSenderUser,
+      );
 
       expect(result.success).toBe(true);
       expect(result.message).toContain('friend@example.com');
+      expect(result.giftToken).toBeDefined();
+      expect(dealGiftRepo.save).toHaveBeenCalled();
       expect(mailService.sendDealGiftEmail).toHaveBeenCalledWith(
         expect.objectContaining({
           recipientEmail: 'friend@example.com',
@@ -842,6 +883,7 @@ describe('CatalogueOfferService', () => {
           recipientEmail: 'coffee@example.com',
           frontendBaseUrl: 'http://localhost:3005',
         },
+        mockSenderUser,
         'http://localhost:3000',
       );
 
@@ -857,10 +899,13 @@ describe('CatalogueOfferService', () => {
       offerRepo.findOne.mockResolvedValue(null);
 
       await expect(
-        service.sendDealGift({
-          offerId: 'non-existent',
-          recipientEmail: 'friend@example.com',
-        }),
+        service.sendDealGift(
+          {
+            offerId: 'non-existent',
+            recipientEmail: 'friend@example.com',
+          },
+          mockSenderUser,
+        ),
       ).rejects.toThrow(NotFoundException);
     });
 
@@ -872,10 +917,13 @@ describe('CatalogueOfferService', () => {
       offerRepo.findOne.mockResolvedValue(expiredOffer);
 
       await expect(
-        service.sendDealGift({
-          offerId: 'offer-1',
-          recipientEmail: 'friend@example.com',
-        }),
+        service.sendDealGift(
+          {
+            offerId: 'offer-1',
+            recipientEmail: 'friend@example.com',
+          },
+          mockSenderUser,
+        ),
       ).rejects.toThrow(BadRequestException);
     });
 
@@ -889,11 +937,33 @@ describe('CatalogueOfferService', () => {
       claimRepo.count.mockResolvedValue(1);
 
       await expect(
-        service.sendDealGift({
-          offerId: 'offer-1',
-          recipientEmail: 'friend@example.com',
-        }),
+        service.sendDealGift(
+          {
+            offerId: 'offer-1',
+            recipientEmail: 'friend@example.com',
+          },
+          mockSenderUser,
+        ),
       ).rejects.toThrow(BadRequestException);
+    });
+
+    it('rejects a deal gift and soft-removes the record', async () => {
+      const gift = {
+        id: 'gift-1',
+        token: 'token-abc',
+        status: 'pending',
+      };
+      dealGiftRepo.findOne.mockResolvedValue(gift);
+
+      const result = await service.rejectDealGift('token-abc', 'Too far away');
+
+      expect(result.success).toBe(true);
+      expect(dealGiftRepo.softRemove).toHaveBeenCalledWith(
+        expect.objectContaining({
+          status: 'rejected',
+          rejectionReason: 'Too far away',
+        }),
+      );
     });
   });
 });

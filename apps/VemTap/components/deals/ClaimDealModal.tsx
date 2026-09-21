@@ -114,6 +114,7 @@ export default function ClaimDealModal({
     const [giftRecipientEmail, setGiftRecipientEmail] = useState('');
     const [giftSenderName, setGiftSenderName] = useState('');
     const [giftNote, setGiftNote] = useState('');
+    const [giftIntent, setGiftIntent] = useState(false);
 
     // Sign up form state
     const [signupEmail, setSignupEmail] = useState(initialEmail || '');
@@ -140,6 +141,15 @@ export default function ClaimDealModal({
     useEffect(() => {
         setMounted(true);
     }, []);
+
+    // Enforce auth requirement on gift view
+    useEffect(() => {
+        if (view === 'gift' && !isAuthenticated) {
+            setGiftIntent(true);
+            setView('login');
+            setError('Please sign in or create an account to gift this deal.');
+        }
+    }, [view, isAuthenticated]);
 
     // Generate simulated redemption code for preview
     useEffect(() => {
@@ -170,11 +180,17 @@ export default function ClaimDealModal({
             setAgreedToTerms(true);
             setGiftRecipientEmail('');
             setGiftNote('');
+            setGiftIntent(initialView === 'gift' && !isAuthenticated);
             const currentName = (user?.name || `${user?.firstName || ''} ${user?.lastName || ''}`).trim();
             setGiftSenderName(currentName);
 
             if (initialView) {
-                setView(initialView);
+                if (initialView === 'gift' && !isAuthenticated) {
+                    setView('login');
+                    setError('Please sign in or create an account to gift this deal.');
+                } else {
+                    setView(initialView);
+                }
             } else if (isAuthenticated && user) {
                 setView('logged-in');
             } else {
@@ -250,6 +266,14 @@ export default function ClaimDealModal({
     const handleSendGiftSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError(null);
+
+        if (!isAuthenticated || !user) {
+            setError("You must be signed in to gift a deal.");
+            setGiftIntent(true);
+            setView('login');
+            return;
+        }
+
         const recipient = giftRecipientEmail.trim().toLowerCase();
         if (!recipient) {
             setError("Please enter the recipient's email address");
@@ -317,8 +341,14 @@ export default function ClaimDealModal({
 
             if (res?.user && res?.access_token) {
                 login(res.user, res.access_token);
-                // Proceed directly to claiming the deal
-                await performRealClaim();
+                if (giftIntent) {
+                    setGiftIntent(false);
+                    setView('gift');
+                    toast.success('Signed in! Enter recipient details to send your gift.');
+                } else {
+                    // Proceed directly to claiming the deal
+                    await performRealClaim();
+                }
             } else {
                 throw new Error('Invalid login response');
             }
@@ -454,8 +484,14 @@ export default function ClaimDealModal({
 
             if (res?.user && res?.access_token) {
                 login(res.user, res.access_token);
-                // Immediately claim the deal with the newly activated account
-                await performRealClaim();
+                if (giftIntent) {
+                    setGiftIntent(false);
+                    setView('gift');
+                    toast.success('Account created! You can now send this deal as a gift.');
+                } else {
+                    // Immediately claim the deal with the newly activated account
+                    await performRealClaim();
+                }
             } else {
                 throw new Error('Registration verification failed');
             }
@@ -475,6 +511,12 @@ export default function ClaimDealModal({
         setIsSubmitting(true);
         setError(null);
         try {
+            if (giftIntent) {
+                setGiftIntent(false);
+                setView('gift');
+                toast.success('Signed in! You can now send this deal as a gift.');
+                return;
+            }
             await performRealClaim();
         } catch (err: any) {
             setError(err?.response?.data?.message || err?.message || 'Failed to claim deal. Please try again.');
@@ -850,7 +892,12 @@ export default function ClaimDealModal({
                                                     type="button"
                                                     onClick={() => {
                                                         setError(null);
-                                                        setView('gift');
+                                                        if (!isAuthenticated) {
+                                                            setGiftIntent(true);
+                                                            setError('Please sign in or create an account to gift this deal. We include your name and details so the recipient knows who sent it.');
+                                                        } else {
+                                                            setView('gift');
+                                                        }
                                                     }}
                                                     className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-purple-700 hover:text-purple-800 transition-colors cursor-pointer"
                                                 >
@@ -1256,6 +1303,25 @@ export default function ClaimDealModal({
                                                     </div>
                                                 </div>
                                             </div>
+
+                                            {/* Authenticated Sender Details Badge */}
+                                            {user && (
+                                                <div className="p-3 bg-purple-50/80 border border-purple-200/70 rounded-xl flex items-center justify-between shadow-xs">
+                                                    <div className="flex items-center gap-2.5 min-w-0">
+                                                        <div className="w-8 h-8 rounded-full bg-purple-600 text-white flex items-center justify-center font-bold text-xs uppercase shrink-0">
+                                                            {effectiveUserName.charAt(0) || 'U'}
+                                                        </div>
+                                                        <div className="min-w-0 text-left">
+                                                            <p className="text-[10px] font-bold uppercase tracking-wider text-purple-700">Sending as</p>
+                                                            <p className="text-[13px] font-bold text-gray-900 truncate">{effectiveUserName}</p>
+                                                            <p className="text-[11px] text-gray-500 truncate">{user.email}</p>
+                                                        </div>
+                                                    </div>
+                                                    <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-purple-700 bg-purple-100 px-2 py-0.5 rounded-full shrink-0">
+                                                        <ShieldCheck size={12} /> Verified
+                                                    </span>
+                                                </div>
+                                            )}
 
                                             <form onSubmit={handleSendGiftSubmit} className="space-y-3.5 text-left">
                                                 {/* Recipient Email */}

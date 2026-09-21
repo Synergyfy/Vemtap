@@ -331,7 +331,7 @@ describe('MailService', () => {
       expect(sendSpy).toHaveBeenCalledWith(
         expect.objectContaining({
           to: 'friend@example.com',
-          subject: '🎁 Tobi Ade sent you a deal: 50% off Mega Burger at Burger Palace!',
+          subject: 'Tobi Ade sent you a deal: 50% off Mega Burger at Burger Palace!',
           html: expect.stringContaining(
             'http://localhost:3002/deals/burger-palace/offer-abc-123?ref=gift&email=friend%40example.com&sender=Tobi%20Ade',
           ),
