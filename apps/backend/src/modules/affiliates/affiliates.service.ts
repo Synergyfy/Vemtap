@@ -1005,7 +1005,7 @@ export class AffiliatesService {
     return this.settingsService.updateSettings({
       affiliateDirectCommission: directRate,
       affiliateIndirectCommission: indirectRate,
-    } as any);
+    });
   }
 
   /**

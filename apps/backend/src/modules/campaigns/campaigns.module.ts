@@ -10,6 +10,7 @@ import { ContactsModule } from '../contacts/contacts.module';
 import { BranchesModule } from '../branches/branches.module';
 import { User } from '../users/entities/user.entity';
 import { Contact } from '../contacts/entities/contact.entity';
+import { BannersModule } from '../banners/banners.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { Contact } from '../contacts/entities/contact.entity';
     forwardRef(() => UsersModule),
     ContactsModule,
     forwardRef(() => BranchesModule),
+    BannersModule,
   ],
   controllers: [CampaignsController],
   providers: [CampaignsService],

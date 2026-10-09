@@ -10,16 +10,30 @@ import {
 import { Transform } from 'class-transformer';
 
 export class RequestCustomerSignupOtpDto {
-  @ApiPropertyOptional({ example: 'John', description: 'Optional first name of the customer' })
+  @ApiPropertyOptional({
+    example: 'John',
+    description: 'Optional first name of the customer',
+  })
   @IsOptional()
   @IsString()
-  @Transform(({ value }) => (typeof value === 'string' && value.trim() === '' ? undefined : value?.trim()))
+  @Transform(({ value }) =>
+    typeof value === 'string' && value.trim() === ''
+      ? undefined
+      : value?.trim(),
+  )
   firstName?: string;
 
-  @ApiPropertyOptional({ example: 'Doe', description: 'Optional last name of the customer' })
+  @ApiPropertyOptional({
+    example: 'Doe',
+    description: 'Optional last name of the customer',
+  })
   @IsOptional()
   @IsString()
-  @Transform(({ value }) => (typeof value === 'string' && value.trim() === '' ? undefined : value?.trim()))
+  @Transform(({ value }) =>
+    typeof value === 'string' && value.trim() === ''
+      ? undefined
+      : value?.trim(),
+  )
   lastName?: string;
 
   @ApiProperty({
@@ -40,7 +54,9 @@ export class RequestCustomerSignupOtpDto {
   @IsOptional()
   @IsString()
   @Transform(({ value }) =>
-    typeof value === 'string' && value.trim() === '' ? undefined : value?.trim(),
+    typeof value === 'string' && value.trim() === ''
+      ? undefined
+      : value?.trim(),
   )
   phone?: string;
 
@@ -51,7 +67,9 @@ export class RequestCustomerSignupOtpDto {
   @IsOptional()
   @IsUUID('4', { message: 'branchId must be a valid UUID v4' })
   @Transform(({ value }) =>
-    typeof value === 'string' && value.trim() === '' ? undefined : value?.trim(),
+    typeof value === 'string' && value.trim() === ''
+      ? undefined
+      : value?.trim(),
   )
   branchId?: string;
 }
@@ -70,7 +88,8 @@ export class ResendCustomerOtpDto {
 
   @ApiPropertyOptional({
     example: 'registration',
-    description: 'Optional purpose of the OTP (registration, pin-reset, verification)',
+    description:
+      'Optional purpose of the OTP (registration, pin-reset, verification)',
   })
   @IsOptional()
   @IsString()
@@ -149,7 +168,9 @@ export class VerifyAndSetCustomerPinDto {
   @IsOptional()
   @IsUUID('4', { message: 'branchId must be a valid UUID v4' })
   @Transform(({ value }) =>
-    typeof value === 'string' && value.trim() === '' ? undefined : value?.trim(),
+    typeof value === 'string' && value.trim() === ''
+      ? undefined
+      : value?.trim(),
   )
   branchId?: string;
 }

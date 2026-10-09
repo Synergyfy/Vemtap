@@ -265,7 +265,10 @@ export class MessagingGateway
     update: any,
   ) {
     // Notify anyone looking at the thread
-    this.server.to(`thread_${threadId}`).emit('messageUpdate', update);
+    this.server.to(`thread_${threadId}`).emit('messageUpdate', {
+      ...update,
+      threadId,
+    });
 
     // Update staff inbox (for last message snippet if it was edited)
     this.server.to(`branch_${branchId}`).emit('inboxUpdate', {
@@ -273,5 +276,22 @@ export class MessagingGateway
       threadId,
       update,
     });
+  }
+
+  /**
+   * Broadcast that a conversation thread was deleted
+   */
+  emitThreadDeleted(threadId: string, branchId: string, customerId: string) {
+    // Notify anyone currently viewing the conversation
+    this.server.to(`thread_${threadId}`).emit('threadDeleted', { threadId });
+
+    // Update staff inbox lists
+    this.server.to(`branch_${branchId}`).emit('inboxUpdate', {
+      type: 'thread_deleted',
+      threadId,
+    });
+
+    // Notify the customer's other devices
+    this.server.to(`user_${customerId}`).emit('threadDeleted', { threadId });
   }
 }

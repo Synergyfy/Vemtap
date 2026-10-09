@@ -10,6 +10,7 @@ import { Branch } from '../branches/entities/branch.entity';
 import { Category } from '../businesses/entities/category.entity';
 import { CatalogueOffer } from '../catalogue/entities/catalogue-offer.entity';
 import { CatalogueOfferClaim } from '../catalogue/entities/catalogue-offer-claim.entity';
+import { CatalogueItem } from '../catalogue/entities/catalogue-item.entity';
 import { CatalogueOfferService } from '../catalogue/catalogue-offer.service';
 
 describe('PublicDiscoveryService', () => {
@@ -23,6 +24,16 @@ describe('PublicDiscoveryService', () => {
   const categoryRepo = { find: jest.fn() };
   const offerRepo = { createQueryBuilder: jest.fn(), count: jest.fn() };
   const claimRepo = { count: jest.fn() };
+  const itemRepo = {
+    createQueryBuilder: jest.fn(() => ({
+      leftJoinAndSelect: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
+      andWhere: jest.fn().mockReturnThis(),
+      orderBy: jest.fn().mockReturnThis(),
+      take: jest.fn().mockReturnThis(),
+      getMany: jest.fn().mockResolvedValue([]),
+    })),
+  };
   const catalogueOfferService = {
     findAllOffersPublicGlobal: jest.fn(),
   };
@@ -59,6 +70,10 @@ describe('PublicDiscoveryService', () => {
         {
           provide: getRepositoryToken(CatalogueOfferClaim),
           useValue: claimRepo,
+        },
+        {
+          provide: getRepositoryToken(CatalogueItem),
+          useValue: itemRepo,
         },
         { provide: CatalogueOfferService, useValue: catalogueOfferService },
         { provide: CACHE_MANAGER, useValue: cacheManager },
@@ -100,7 +115,7 @@ describe('PublicDiscoveryService', () => {
       ]);
       businessRepo.createQueryBuilder.mockReturnValue(qb);
 
-      const result = await service.findBusinesses(undefined, 8);
+      const result = await service.findBusinesses({ limit: 8 });
 
       expect(businessRepo.createQueryBuilder).toHaveBeenCalled();
       expect(qb.where).toHaveBeenCalledWith('business.status = :status', {
@@ -120,10 +135,11 @@ describe('PublicDiscoveryService', () => {
     it('filters by name when a keyword is provided', async () => {
       const qb = makeBusinessQb([]);
       businessRepo.createQueryBuilder.mockReturnValue(qb);
-      await service.findBusinesses('azure', 8);
-      expect(qb.andWhere).toHaveBeenCalledWith('business.name ILIKE :q', {
-        q: '%azure%',
-      });
+      await service.findBusinesses({ search: 'azure', limit: 8 });
+      expect(qb.andWhere).toHaveBeenCalledWith(
+        '(business.name ILIKE :search OR business.description ILIKE :search)',
+        { search: '%azure%' },
+      );
     });
   });
 

@@ -1347,7 +1347,20 @@ export class PosService {
         (paymentBreakdown[method] || 0) + Number(s.total);
     }
 
-    return { revenue, transactionCount, averageSaleValue, paymentBreakdown };
+    // Server-visible pending queue: sales parked with "hold" (soft-deleted
+    // holds are excluded automatically). Unsynced offline sales live on the
+    // device until batch-sync, so they cannot be counted here.
+    const heldSalesCount = await this.heldSaleRepository.count({
+      where: branchId ? { businessId, branchId } : { businessId },
+    });
+
+    return {
+      revenue,
+      transactionCount,
+      averageSaleValue,
+      paymentBreakdown,
+      heldSalesCount,
+    };
   }
 
   async getTopProducts(businessId: string, branchId?: string) {

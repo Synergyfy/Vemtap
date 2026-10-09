@@ -28,7 +28,9 @@ async function run() {
     ALTER TABLE "notifications" ADD COLUMN IF NOT EXISTS "actionUrl" character varying;
   `);
 
-  console.log('2. Adding lastRenewalReminder columns to subscriptions table if not exists...');
+  console.log(
+    '2. Adding lastRenewalReminder columns to subscriptions table if not exists...',
+  );
   await client.query(`
     ALTER TABLE "subscriptions" ADD COLUMN IF NOT EXISTS "lastRenewalReminderAt" TIMESTAMP;
     ALTER TABLE "subscriptions" ADD COLUMN IF NOT EXISTS "lastRenewalReminderStage" integer;
@@ -62,7 +64,9 @@ async function run() {
     CREATE INDEX IF NOT EXISTS "IDX_notification_broadcasts_createdAt" ON "notification_broadcasts" ("createdAt");
   `);
 
-  console.log('4. Creating subscription_reminder_templates table if not exists...');
+  console.log(
+    '4. Creating subscription_reminder_templates table if not exists...',
+  );
   await client.query(`
     CREATE TABLE IF NOT EXISTS "subscription_reminder_templates" (
       "id" uuid NOT NULL DEFAULT uuid_generate_v4(),

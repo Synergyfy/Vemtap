@@ -7,12 +7,14 @@ import {
   UseGuards,
   ParseUUIDPipe,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth, ApiResponse } from '@nestjs/swagger';
-import { CatalogueOfferService } from './catalogue-offer.service';
 import {
-  AdminDealsQueryDto,
-  AdminBusinessesQueryDto,
-} from './dto/offer.dto';
+  ApiTags,
+  ApiOperation,
+  ApiBearerAuth,
+  ApiResponse,
+} from '@nestjs/swagger';
+import { CatalogueOfferService } from './catalogue-offer.service';
+import { AdminDealsQueryDto, AdminBusinessesQueryDto } from './dto/offer.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';

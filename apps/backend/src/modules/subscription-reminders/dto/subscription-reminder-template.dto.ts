@@ -11,7 +11,8 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 export class CreateReminderTemplateDto {
   @ApiProperty({
     example: 14,
-    description: 'Stage in days before expiry (e.g. 14, 7, 3) or 0 for lapsed/expired/inactive',
+    description:
+      'Stage in days before expiry (e.g. 14, 7, 3) or 0 for lapsed/expired/inactive',
   })
   @IsInt()
   @Min(0)
@@ -41,7 +42,8 @@ export class CreateReminderTemplateDto {
   titleTemplate: string;
 
   @ApiProperty({
-    example: '{{people}} people checked deals in {{clusterName}} this month — renew now to stay visible to them.',
+    example:
+      '{{people}} people checked deals in {{clusterName}} this month — renew now to stay visible to them.',
     description: 'Message body template supporting dynamic placeholders',
   })
   @IsString()
@@ -84,7 +86,9 @@ export class CreateReminderTemplateDto {
   @IsOptional()
   sendEmail?: boolean;
 
-  @ApiPropertyOptional({ example: 'Action Required: Your plan expires in {{daysLeft}} days' })
+  @ApiPropertyOptional({
+    example: 'Action Required: Your plan expires in {{daysLeft}} days',
+  })
   @IsString()
   @IsOptional()
   emailSubjectTemplate?: string;
@@ -109,7 +113,8 @@ export class UpdateReminderTemplateDto {
   titleTemplate?: string;
 
   @ApiPropertyOptional({
-    example: '{{people}} people checked deals in {{clusterName}} this month — renew now to stay visible to them.',
+    example:
+      '{{people}} people checked deals in {{clusterName}} this month — renew now to stay visible to them.',
   })
   @IsString()
   @IsOptional()
@@ -145,7 +150,9 @@ export class UpdateReminderTemplateDto {
   @IsOptional()
   sendEmail?: boolean;
 
-  @ApiPropertyOptional({ example: 'Your {{planName}} expires in {{daysLeft}} days' })
+  @ApiPropertyOptional({
+    example: 'Your {{planName}} expires in {{daysLeft}} days',
+  })
   @IsString()
   @IsOptional()
   emailSubjectTemplate?: string;
@@ -161,7 +168,8 @@ export class PreviewReminderTemplateDto {
   titleTemplate: string;
 
   @ApiProperty({
-    example: '{{people}} people checked deals in {{clusterName}} this month — renew now to stay visible to them.',
+    example:
+      '{{people}} people checked deals in {{clusterName}} this month — renew now to stay visible to them.',
     description: 'Message body template string to test',
   })
   @IsString()

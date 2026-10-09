@@ -241,7 +241,10 @@ describe('SubscriptionsService', () => {
         { provide: PaymentsService, useValue: mockPaymentsService },
         { provide: CreditService, useValue: mockCreditService },
         { provide: AddonsService, useValue: mockAddonsService },
-        { provide: SubscriptionTaxService, useValue: mockSubscriptionTaxService },
+        {
+          provide: SubscriptionTaxService,
+          useValue: mockSubscriptionTaxService,
+        },
         { provide: AffiliatesService, useValue: mockAffiliatesService },
         {
           provide: AffiliateSyncService,
@@ -439,7 +442,10 @@ describe('SubscriptionsService', () => {
 
       mockPlansService.findFreePlan = jest.fn().mockResolvedValue(mockFreePlan);
       mockPlansService.findOne = jest.fn().mockResolvedValue(mockFreePlan);
-      mockBusRepository.findOne.mockResolvedValue({ id: 'b1', owner: { id: 'u1' } });
+      mockBusRepository.findOne.mockResolvedValue({
+        id: 'b1',
+        owner: { id: 'u1' },
+      });
       mockSubRepository.create.mockReturnValue({
         ...mockSubscription,
         id: 'new-free-sub',
@@ -473,9 +479,15 @@ describe('SubscriptionsService', () => {
       // 5th findOne: fetch created free sub with relation -> returns created free sub
       mockSubRepository.findOne
         .mockResolvedValueOnce(expiredSub)
-        .mockResolvedValueOnce({ ...expiredSub, status: SubscriptionStatus.EXPIRED })
+        .mockResolvedValueOnce({
+          ...expiredSub,
+          status: SubscriptionStatus.EXPIRED,
+        })
         .mockResolvedValueOnce(null)
-        .mockResolvedValueOnce({ ...expiredSub, status: SubscriptionStatus.EXPIRED })
+        .mockResolvedValueOnce({
+          ...expiredSub,
+          status: SubscriptionStatus.EXPIRED,
+        })
         .mockResolvedValueOnce({
           ...mockSubscription,
           id: 'downgraded-free-sub',
@@ -785,7 +797,7 @@ describe('SubscriptionsService', () => {
       const result = await service.previewPrice({
         planId: 'plan-1',
         billingPeriod: BillingPeriod.MONTHLY,
-        addonIds: [] as any,
+        addonIds: [],
         promoCode: '   ',
       });
 
@@ -814,7 +826,12 @@ describe('SubscriptionsService', () => {
 
       mockCouponEngineService.validatePromotion.mockResolvedValueOnce({
         isValid: true,
-        coupon: { id: 'c1', name: 'SAVE5K Discount', discountType: 'FIXED_AMOUNT', amount: 5000 },
+        coupon: {
+          id: 'c1',
+          name: 'SAVE5K Discount',
+          discountType: 'FIXED_AMOUNT',
+          amount: 5000,
+        },
         promotionCode: { id: 'promo-1', code: 'SAVE5K' },
         originalPlanPrice: 7999,
         discountAmount: 5000,
@@ -823,7 +840,12 @@ describe('SubscriptionsService', () => {
         netSubtotal: 2999,
         taxAmount: 0,
         total: 2999,
-        taxRule: { name: 'VAT', isEnabled: false, rate: 0, taxType: 'percentage' },
+        taxRule: {
+          name: 'VAT',
+          isEnabled: false,
+          rate: 0,
+          taxType: 'percentage',
+        },
       });
 
       mockPaymentsService.initializeTransaction.mockResolvedValueOnce({

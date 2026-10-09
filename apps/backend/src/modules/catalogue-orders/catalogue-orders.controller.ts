@@ -10,13 +10,19 @@ import {
   Req,
   ParseUUIDPipe,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiBearerAuth,
+  ApiResponse,
+} from '@nestjs/swagger';
 import { CatalogueOrderService } from './catalogue-orders.service';
 import {
   CreateCatalogueOrderDto,
   UpdateCatalogueOrderStatusDto,
   CatalogueOrderQueryDto,
   BulkCheckoutDto,
+  MyOrdersQueryDto,
 } from './dto/catalogue-order.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
@@ -60,9 +66,23 @@ export class CatalogueOrdersController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Get('my-orders')
   @Roles(UserRole.CUSTOMER)
-  @ApiOperation({ summary: 'List orders for the authenticated customer' })
-  async getMyOrders(@Req() req: RequestWithUser) {
-    return this.orderService.findAllByCustomer(req.user.id);
+  @ApiOperation({
+    summary: 'List orders for the authenticated customer',
+    description:
+      'Pagination is opt-in: without `page`/`limit` the legacy bare array is ' +
+      'returned (the app resolves order detail from this full list); ' +
+      'supplying either returns `{ data, total, page, limit }`.',
+  })
+  @ApiResponse({
+    status: 200,
+    description:
+      'Customer orders (array, or paginated envelope when requested)',
+  })
+  async getMyOrders(
+    @Req() req: RequestWithUser,
+    @Query() query: MyOrdersQueryDto,
+  ) {
+    return this.orderService.findAllByCustomer(req.user.id, query);
   }
 
   @ApiBearerAuth()

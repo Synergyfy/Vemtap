@@ -1,5 +1,11 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsEmail, IsNotEmpty, IsOptional, IsString, Matches } from 'class-validator';
+import {
+  IsEmail,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  Matches,
+} from 'class-validator';
 
 export class VisitorSignupDto {
   @ApiProperty({ example: 'John' })
@@ -22,7 +28,10 @@ export class VisitorSignupDto {
   @IsOptional()
   phone?: string;
 
-  @ApiPropertyOptional({ example: '123456', description: 'Optional 6-digit PIN' })
+  @ApiPropertyOptional({
+    example: '123456',
+    description: 'Optional 6-digit PIN',
+  })
   @IsString()
   @IsOptional()
   @Matches(/^\d{6}$/, { message: 'PIN must be exactly 6 digits' })

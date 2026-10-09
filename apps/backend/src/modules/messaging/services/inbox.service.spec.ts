@@ -45,6 +45,8 @@ describe('InboxService', () => {
       update: jest.fn().mockResolvedValue({ affected: 1 }),
       increment: jest.fn().mockResolvedValue({ affected: 1 }),
       create: jest.fn().mockImplementation((t) => t),
+      remove: jest.fn().mockImplementation((t) => Promise.resolve(t)),
+      delete: jest.fn().mockResolvedValue({ affected: 1 }),
     };
 
     threadRepoMock.createQueryBuilder = jest.fn(() => ({
@@ -62,6 +64,7 @@ describe('InboxService', () => {
       save: jest
         .fn()
         .mockImplementation((m) => Promise.resolve({ id: 'new-msg-id', ...m })),
+      delete: jest.fn().mockResolvedValue({ affected: 1 }),
     };
 
     userRepoMock = {
@@ -89,6 +92,7 @@ describe('InboxService', () => {
     gatewayMock = {
       emitMessage: jest.fn(),
       emitMessageUpdate: jest.fn(),
+      emitThreadDeleted: jest.fn(),
     };
 
     pushMock = {
@@ -468,6 +472,58 @@ describe('InboxService', () => {
       expect(mockMsg.isDeleted).toBe(true);
       expect(mockMsg.content).toBe('Message deleted');
       expect(gatewayMock.emitMessageUpdate).toHaveBeenCalled();
+    });
+  });
+
+  describe('deleteThread', () => {
+    it('should delete messages and thread, then broadcast (staff context)', async () => {
+      const mockThread = {
+        id: 't1',
+        branchId: 'br1',
+        customerId: 'c1',
+      };
+      threadRepoMock.findOne.mockResolvedValue(mockThread);
+
+      await service.deleteThread('t1', { branchId: 'br1' });
+
+      expect(threadRepoMock.findOne).toHaveBeenCalledWith({
+        where: { id: 't1', branchId: 'br1' },
+      });
+      expect(messageRepoMock.delete).toHaveBeenCalledWith({ threadId: 't1' });
+      expect(threadRepoMock.remove).toHaveBeenCalledWith(mockThread);
+      expect(gatewayMock.emitThreadDeleted).toHaveBeenCalledWith(
+        't1',
+        'br1',
+        'c1',
+      );
+    });
+
+    it('should scope lookup to the customer when in customer context', async () => {
+      const mockThread = {
+        id: 't1',
+        branchId: 'br1',
+        customerId: 'c1',
+      };
+      threadRepoMock.findOne.mockResolvedValue(mockThread);
+
+      await service.deleteThread('t1', { customerId: 'c1' });
+
+      expect(threadRepoMock.findOne).toHaveBeenCalledWith({
+        where: { id: 't1', customerId: 'c1' },
+      });
+      expect(threadRepoMock.remove).toHaveBeenCalled();
+      expect(gatewayMock.emitThreadDeleted).toHaveBeenCalled();
+    });
+
+    it('should throw NotFoundException when thread does not exist', async () => {
+      threadRepoMock.findOne.mockResolvedValue(null);
+
+      await expect(
+        service.deleteThread('missing', { branchId: 'br1' }),
+      ).rejects.toThrow(NotFoundException);
+
+      expect(messageRepoMock.delete).not.toHaveBeenCalled();
+      expect(threadRepoMock.remove).not.toHaveBeenCalled();
     });
   });
 });

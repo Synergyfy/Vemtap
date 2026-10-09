@@ -168,7 +168,9 @@ export class PromotionCodesService {
   /**
    * Query redemptions audit log
    */
-  async findRedemptions(query: QueryRedemptionsDto): Promise<CouponRedemption[]> {
+  async findRedemptions(
+    query: QueryRedemptionsDto,
+  ): Promise<CouponRedemption[]> {
     const qb = this.redemptionRepository
       .createQueryBuilder('redemption')
       .leftJoinAndSelect('redemption.coupon', 'coupon')

@@ -64,19 +64,30 @@ describe('NotificationsController', () => {
     const query = { page: 1, limit: 10, targetAudience: TargetAudience.ALL };
     const result = await controller.getBroadcastHistory(query);
     expect(result).toBeDefined();
-    expect(notificationsService.getBroadcastHistory).toHaveBeenCalledWith(query);
+    expect(notificationsService.getBroadcastHistory).toHaveBeenCalledWith(
+      query,
+    );
   });
 
   it('should get broadcast by ID', async () => {
     const result = await controller.getBroadcastById('broadcast-1');
     expect(result).toBeDefined();
-    expect(notificationsService.getBroadcastById).toHaveBeenCalledWith('broadcast-1');
+    expect(notificationsService.getBroadcastById).toHaveBeenCalledWith(
+      'broadcast-1',
+    );
   });
 
   it('should register push token', async () => {
     const req = { user: { id: 'user-1' } };
-    const result = await controller.registerPushToken({ token: 'tok-123' }, req);
+    const result = await controller.registerPushToken(
+      { token: 'tok-123' },
+      req,
+    );
     expect(result).toEqual({ success: true });
-    expect(pushService.registerToken).toHaveBeenCalledWith('user-1', 'tok-123', true);
+    expect(pushService.registerToken).toHaveBeenCalledWith(
+      'user-1',
+      'tok-123',
+      true,
+    );
   });
 });

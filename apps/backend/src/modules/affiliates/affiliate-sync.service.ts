@@ -25,20 +25,16 @@ export class AffiliateSyncService {
   ) {}
 
   async enqueueRecordReferral(data: RecordReferralJobData): Promise<void> {
-    await this.syncQueue.add(
-      'record-referral',
-      data,
-      { jobId: recordReferralJobId(data.externalReference) },
-    );
+    await this.syncQueue.add('record-referral', data, {
+      jobId: recordReferralJobId(data.externalReference),
+    });
   }
 
   async enqueueProcessWithdrawal(
     data: ProcessWithdrawalJobData,
   ): Promise<void> {
-    await this.syncQueue.add(
-      'process-withdrawal',
-      data,
-      { jobId: processWithdrawalJobId(data.externalReference) },
-    );
+    await this.syncQueue.add('process-withdrawal', data, {
+      jobId: processWithdrawalJobId(data.externalReference),
+    });
   }
 }

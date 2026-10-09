@@ -359,6 +359,28 @@ export class MessagingController {
     return this.inboxService.initBranchConversation(branchId, dto.customerId);
   }
 
+  @Delete('inbox/threads/:threadId')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard, TrialRestrictionGuard)
+  @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF, UserRole.ADMIN)
+  @Permissions('messages')
+  @ApiOperation({
+    summary: 'Delete an in-house conversation thread',
+    description:
+      'Permanently removes a conversation thread and all of its messages. Access: OWNER, MANAGER, STAFF, ADMIN',
+  })
+  @ApiParam({ name: 'threadId', description: 'Conversation thread UUID' })
+  @ApiQuery({ name: 'branchId', required: false })
+  @ApiResponse({ status: 200, description: 'Thread deleted successfully' })
+  async deleteThread(
+    @Param() { threadId }: ThreadIdDto,
+    @Query() filter: BranchFilterDto,
+    @Request() req: { user: User },
+  ) {
+    const branchId = await this.getBranchId(req, filter.branchId);
+    return this.inboxService.deleteThread(threadId, { branchId });
+  }
+
   @Delete('templates/:id')
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard, TrialRestrictionGuard)

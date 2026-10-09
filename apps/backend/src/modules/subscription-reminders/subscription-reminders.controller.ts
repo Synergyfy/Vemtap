@@ -101,7 +101,8 @@ export class SubscriptionRemindersController {
   @Post('admin/run-now')
   @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @ApiOperation({
-    summary: 'Admin: Manually trigger the subscription reminder cycle on-demand',
+    summary:
+      'Admin: Manually trigger the subscription reminder cycle on-demand',
   })
   async runRemindersNow() {
     const result = await this.remindersService.runRenewalReminders();

@@ -129,9 +129,8 @@ export class BusinessesService {
     const savedBusiness = await this.businessesRepository.save(business);
 
     // Automatically create Main Branch
-    const mainBranchUsername = await this.generateUniqueBranchUsername(
-      'Main Branch',
-    );
+    const mainBranchUsername =
+      await this.generateUniqueBranchUsername('Main Branch');
     const mainBranch = this.branchRepository.create({
       name: 'Main Branch',
       username: mainBranchUsername,
@@ -204,6 +203,55 @@ export class BusinessesService {
 
   async findByOwner(ownerId: string): Promise<Business | null> {
     return this.businessesRepository.findOne({ where: { ownerId } });
+  }
+
+  /**
+   * Customer totals for the CRM hub card.
+   *
+   * A customer counts for the business when they have visited any of its
+   * branches (`visits.businessId`) or were registered/imported at one of its
+   * branches (`users.branchId`). "New this week" uses each customer's earliest
+   * link so an older customer with a recent visit is not counted as new.
+   */
+  async getCustomersSummary(
+    businessId: string,
+  ): Promise<{ totalCustomers: number; newThisWeek: number }> {
+    const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+
+    const rows: { total: number; new_this_week: number }[] =
+      await this.visitRepository.manager.query(
+        `
+        WITH branch_ids AS (
+          SELECT id FROM branches WHERE "businessId" = $1
+        ),
+        links AS (
+          SELECT v."customerId" AS user_id, MIN(v."createdAt") AS first_link
+          FROM visits v
+          WHERE v."businessId" = $1
+          GROUP BY v."customerId"
+          UNION ALL
+          SELECT u.id AS user_id, u."createdAt" AS first_link
+          FROM users u
+          WHERE u.role = $3
+            AND u."branchId" IN (SELECT id FROM branch_ids)
+        ),
+        per_user AS (
+          SELECT user_id, MIN(first_link) AS first_link
+          FROM links
+          GROUP BY user_id
+        )
+        SELECT
+          COUNT(*)::int AS total,
+          COUNT(*) FILTER (WHERE first_link >= $2)::int AS new_this_week
+        FROM per_user
+        `,
+        [businessId, since, UserRole.CUSTOMER],
+      );
+
+    return {
+      totalCustomers: Number(rows[0]?.total ?? 0),
+      newThisWeek: Number(rows[0]?.new_this_week ?? 0),
+    };
   }
 
   async findByPhone(phone: string): Promise<Business | null> {

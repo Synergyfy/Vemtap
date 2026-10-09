@@ -30,11 +30,7 @@ import { BranchesModule } from '../branches/branches.module';
     forwardRef(() => BranchesModule),
   ],
   controllers: [CouponsController, AdminCouponsController],
-  providers: [
-    CouponsService,
-    PromotionCodesService,
-    CouponEngineService,
-  ],
+  providers: [CouponsService, PromotionCodesService, CouponEngineService],
   exports: [
     TypeOrmModule,
     CouponsService,

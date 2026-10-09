@@ -134,7 +134,8 @@ export class SubscriptionsService {
       // Auto-assign to Free plan and send email
       if (!lastSub || lastSub.status === SubscriptionStatus.EXPIRED) {
         try {
-          const isExpiredDowngrade = lastSub?.status === SubscriptionStatus.EXPIRED;
+          const isExpiredDowngrade =
+            lastSub?.status === SubscriptionStatus.EXPIRED;
           const freeSubResult = await this.subscribeToFreePlan(
             businessId,
             isExpiredDowngrade,
@@ -382,7 +383,10 @@ export class SubscriptionsService {
             };
           }
 
-          if (paymentData && Math.round(totalAmount * 100) !== paymentData.amount) {
+          if (
+            paymentData &&
+            Math.round(totalAmount * 100) !== paymentData.amount
+          ) {
             throw new BadRequestException(
               'Payment amount does not match the selected plan total.',
             );
@@ -418,7 +422,6 @@ export class SubscriptionsService {
 
           (this as any)._lastPromoValidation = promoValidation;
         }
-
 
         if (billingPeriod === BillingPeriod.MONTHLY)
           endDate.setMonth(endDate.getMonth() + 1);
@@ -467,7 +470,8 @@ export class SubscriptionsService {
     const savedSub = await this.subscriptionRepository.save(newSub);
 
     // Record coupon redemption if promo code was used
-    const promoValidation: PromotionValidationResult | null = (this as any)._lastPromoValidation;
+    const promoValidation: PromotionValidationResult | null = (this as any)
+      ._lastPromoValidation;
     delete (this as any)._lastPromoValidation;
 
     if (promoValidation && paymentReference) {
@@ -840,8 +844,7 @@ export class SubscriptionsService {
         sub.business?.owner?.email ||
         'billing@latap.com';
 
-      const taxConfig =
-        await this.subscriptionTaxService.getActiveConfig();
+      const taxConfig = await this.subscriptionTaxService.getActiveConfig();
       const taxResult = this.subscriptionTaxService.calculateTax(
         amount,
         taxConfig,
@@ -953,8 +956,7 @@ export class SubscriptionsService {
         sub.business?.owner?.email ||
         'billing@latap.com';
 
-      const taxConfig =
-        await this.subscriptionTaxService.getActiveConfig();
+      const taxConfig = await this.subscriptionTaxService.getActiveConfig();
       const taxResult = this.subscriptionTaxService.calculateTax(
         amount,
         taxConfig,
@@ -1700,4 +1702,3 @@ export class SubscriptionsService {
     };
   }
 }
-

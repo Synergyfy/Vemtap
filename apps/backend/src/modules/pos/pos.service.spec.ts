@@ -88,6 +88,7 @@ describe('PosService', () => {
       .mockImplementation((sale) => Promise.resolve({ id: 'held-1', ...sale })),
     findOne: jest.fn(),
     find: jest.fn().mockResolvedValue([]),
+    count: jest.fn().mockResolvedValue(0),
     softDelete: jest.fn().mockResolvedValue({ affected: 1 }),
   };
 

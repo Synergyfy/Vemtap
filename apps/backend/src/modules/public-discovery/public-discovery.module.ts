@@ -7,6 +7,7 @@ import { Branch } from '../branches/entities/branch.entity';
 import { Category } from '../businesses/entities/category.entity';
 import { CatalogueOffer } from '../catalogue/entities/catalogue-offer.entity';
 import { CatalogueOfferClaim } from '../catalogue/entities/catalogue-offer-claim.entity';
+import { CatalogueItem } from '../catalogue/entities/catalogue-item.entity';
 import { CatalogueModule } from '../catalogue/catalogue.module';
 
 @Module({
@@ -17,6 +18,7 @@ import { CatalogueModule } from '../catalogue/catalogue.module';
       Category,
       CatalogueOffer,
       CatalogueOfferClaim,
+      CatalogueItem,
     ]),
     CatalogueModule,
   ],

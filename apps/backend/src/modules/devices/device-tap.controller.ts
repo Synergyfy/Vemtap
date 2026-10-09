@@ -176,9 +176,8 @@ export class DeviceTapController {
   })
   async getContextByUsername(@Param('username') username: string) {
     // 1. Try finding branch by username
-    let branch: Branch | null = await this.branchesService.findByUsername(
-      username,
-    );
+    let branch: Branch | null =
+      await this.branchesService.findByUsername(username);
 
     // 2. Fallback: Try finding branch by uniqueCode (branch code or business code)
     if (!branch) {

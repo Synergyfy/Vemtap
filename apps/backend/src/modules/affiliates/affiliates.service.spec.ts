@@ -293,13 +293,11 @@ describe('AffiliatesService', () => {
       referralRepository.findOne.mockResolvedValue(null);
 
       dataSource.getRepository.mockReturnValue({
-        findOne: jest
-          .fn()
-          .mockResolvedValue({
-            id: 'b1',
-            referralCode: 'VEM-ABC-1234',
-            ownerId: 'u1',
-          }),
+        findOne: jest.fn().mockResolvedValue({
+          id: 'b1',
+          referralCode: 'VEM-ABC-1234',
+          ownerId: 'u1',
+        }),
       });
       profileRepository.findOne.mockResolvedValue({
         id: 'p1',
@@ -329,7 +327,11 @@ describe('AffiliatesService', () => {
         findOne: jest
           .fn()
           .mockResolvedValueOnce({ id: 'b1', referralCode: 'REFBIZ' })
-          .mockResolvedValueOnce({ id: 'b0', uniqueCode: 'REFBIZ', balance: 0 }),
+          .mockResolvedValueOnce({
+            id: 'b0',
+            uniqueCode: 'REFBIZ',
+            balance: 0,
+          }),
       };
       const ledgerRepo = {
         findOne: jest.fn().mockResolvedValue(null),

@@ -51,6 +51,22 @@ import {
 } from './dto/loyalty.dto';
 import { UpdateLoyaltyRuleDto } from './dto/loyalty-rule.dto';
 import { VisitorPointsEarnDto } from './dto/visitor-loyalty.dto';
+import {
+  CatalogueOfferClaim,
+  CatalogueOfferClaimStatus,
+} from '../catalogue/entities/catalogue-offer-claim.entity';
+
+/**
+ * Customer loyalty tiers. Mirrors the app's shipped thresholds
+ * (`src/features/accountHub/data/rewardTiers.ts`) so the server is authoritative.
+ */
+export const LOYALTY_TIER_THRESHOLDS = [
+  { name: 'Bronze', minPoints: 0 },
+  { name: 'Silver', minPoints: 1000 },
+  { name: 'Gold', minPoints: 2000 },
+  { name: 'Platinum', minPoints: 3000 },
+  { name: 'Diamond', minPoints: 6000 },
+] as const;
 
 @Injectable()
 export class LoyaltyService {
@@ -75,6 +91,8 @@ export class LoyaltyService {
     private loyaltyRuleRepo: Repository<LoyaltyRule>,
     @InjectRepository(Business)
     private businessRepo: Repository<Business>,
+    @InjectRepository(CatalogueOfferClaim)
+    private claimRepo: Repository<CatalogueOfferClaim>,
     private dataSource: DataSource,
     @Inject(forwardRef(() => BranchesService))
     private branchesService: BranchesService,
@@ -138,6 +156,39 @@ export class LoyaltyService {
       query.andWhere('transaction.businessId = :businessId', { businessId });
     const result = await query.getRawOne();
     return parseInt(result?.sum || '0', 10);
+  }
+
+  /**
+   * Customer loyalty tier derived from their global points balance.
+   * Thresholds mirror the app's shipped rewardTiers so both stay in sync.
+   */
+  async getCustomerTier(userId: string) {
+    const points = await this.getCustomerPoints(userId);
+    const thresholds = LOYALTY_TIER_THRESHOLDS.map((t) => ({ ...t }));
+
+    let tierIndex = 0;
+    for (let i = 0; i < thresholds.length; i++) {
+      if (points >= thresholds[i].minPoints) tierIndex = i;
+    }
+
+    const tier = thresholds[tierIndex];
+    const nextTier = thresholds[tierIndex + 1] ?? null;
+    const span = nextTier ? nextTier.minPoints - tier.minPoints : 0;
+    const progressPercent = nextTier
+      ? Math.min(100, Math.round(((points - tier.minPoints) / span) * 100))
+      : 100;
+    const pointsToNext = nextTier
+      ? Math.max(0, nextTier.minPoints - points)
+      : 0;
+
+    return {
+      points,
+      tier: tier.name,
+      nextTier: nextTier?.name ?? null,
+      pointsToNext,
+      progressPercent,
+      thresholds,
+    };
   }
 
   async getPointLogs(
@@ -574,19 +625,20 @@ export class LoyaltyService {
       aboutToExpire,
       highestPoints,
       lowestPoints,
+      global,
       page = 1,
       limit = 10,
     } = query;
 
-    if (!branchId && !branchCode && !businessId) {
+    if (!branchId && !branchCode && !businessId && !global) {
       throw new BadRequestException(
-        'Branch ID or Code is required unless Business ID is provided',
+        'Branch ID or Code is required unless Business ID or global=true is provided',
       );
     }
 
     let resolvedBranchId = branchId;
 
-    if (!resolvedBranchId && branchCode) {
+    if (!global && !resolvedBranchId && branchCode) {
       const branch = await this.branchRepo.findOne({
         where: { uniqueCode: branchCode },
       });
@@ -601,8 +653,11 @@ export class LoyaltyService {
       expiryDate: MoreThanOrEqual(new Date()),
     };
 
-    if (resolvedBranchId) where.branchId = resolvedBranchId;
-    else where.businessId = businessId;
+    // `global` intentionally leaves branchId/businessId unset → platform-wide.
+    if (!global) {
+      if (resolvedBranchId) where.branchId = resolvedBranchId;
+      else where.businessId = businessId;
+    }
 
     // If quantity is not -1 (infinity), it must be at least 1
     // Using a more complex where clause for TypeORM to handle OR condition
@@ -629,6 +684,7 @@ export class LoyaltyService {
     const [items, total] = await this.rewardRepo.findAndCount({
       where: finalWhere,
       order,
+      relations: global ? ['branch', 'business'] : [],
       take: limit,
       skip: (page - 1) * limit,
     });
@@ -636,8 +692,13 @@ export class LoyaltyService {
     return {
       data: items.map((item) => {
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        const { redemptionCount, ...rest } = item;
-        return rest;
+        const { redemptionCount, branch, business, ...rest } = item;
+        if (!global) return rest;
+        return {
+          ...rest,
+          branch: branch ? { id: branch.id, name: branch.name } : null,
+          business: business ? { id: business.id, name: business.name } : null,
+        };
       }),
       total,
       page,
@@ -1094,7 +1155,13 @@ export class LoyaltyService {
   }
 
   // --- Analytics ---
-  async getCustomerAnalytics(userId: string, days?: number) {
+  async getCustomerAnalytics(
+    user: { id: string; email?: string; phone?: string | null },
+    options: { days?: number; allTime?: boolean } = {},
+  ) {
+    const userId = user.id;
+    const days = options.allTime ? undefined : options.days;
+
     // 1. Total Visits
     const totalVisitsQuery = this.visitRepo
       .createQueryBuilder('visit')
@@ -1116,14 +1183,40 @@ export class LoyaltyService {
       .getRawOne();
     const currentPointsBalance = parseInt(pointsResult?.sum || '0', 10);
 
-    // 3. Net Savings (Proxy: sum of ABS(amount) for REDEEMED transactions)
+    // 3. Savings from catalogue claims. `netSavings` is real naira (the app
+    // already renders it as currency): original = sum of the offer item prices,
+    // paid = the offer's deal price. The previous points-based proxy is kept
+    // under `redeemedPoints`.
+    const redeemedClaims = await this.getRedeemedClaims(user);
+
+    const netSavings = redeemedClaims.reduce(
+      (acc, claim) => acc + Math.max(claim.originalPrice - claim.paidAmount, 0),
+      0,
+    );
+    const dealsRedeemed = redeemedClaims.length;
+    const avgDiscountPercent =
+      dealsRedeemed > 0
+        ? Math.round(
+            redeemedClaims.reduce(
+              (acc, claim) => acc + claim.discountPercent,
+              0,
+            ) / dealsRedeemed,
+          )
+        : 0;
+
     const savingsResult = await this.pointTransactionRepo
       .createQueryBuilder('t')
       .select('SUM(ABS(t.amount))', 'sum')
       .where('t.customerId = :userId', { userId })
       .andWhere('t.type = :type', { type: PointTransactionType.REDEEMED })
       .getRawOne();
-    const netSavings = parseInt(savingsResult?.sum || '0', 10);
+    const redeemedPoints = parseInt(savingsResult?.sum || '0', 10);
+
+    // Structured growth vs the previous same-length window (null in all-time
+    // mode, and percent is null when the previous window has no redemptions).
+    const growthVsPreviousPeriod = options.allTime
+      ? null
+      : this.computeSavingsGrowth(redeemedClaims, options.days ?? 30);
 
     // 4. Visit Trends (Grouped by month)
     const visitTrendsRaw = await this.visitRepo
@@ -1234,7 +1327,14 @@ export class LoyaltyService {
     return {
       totalVisits,
       currentPointsBalance,
+      /** Real naira saved across redeemed catalogue claims (lifetime). */
       netSavings,
+      /** Previous points-based savings proxy, retained for compatibility. */
+      redeemedPoints,
+      dealsRedeemed,
+      avgDiscountPercent,
+      growthVsPreviousPeriod,
+      allTime: Boolean(options.allTime),
       visitTrends,
       pointsByVenue,
       topVenues,
@@ -1248,6 +1348,103 @@ export class LoyaltyService {
           parseInt(currentMonthSavings?.sum || '0', 10),
           parseInt(prevMonthSavings?.sum || '0', 10),
         ),
+      },
+    };
+  }
+
+  /**
+   * Redeemed catalogue claims belonging to the customer, with the amounts the
+   * savings figures need. Ownership mirrors `GET /me/claims`: linked userId,
+   * or email/phone for claims created before linking. Bounded: one query.
+   */
+  private async getRedeemedClaims(user: {
+    id: string;
+    email?: string;
+    phone?: string | null;
+  }) {
+    const ownership = [
+      'claim.userId = :userId',
+      'LOWER(claim.email) = LOWER(:email)',
+    ];
+    const params: { userId: string; email: string; phone?: string } = {
+      userId: user.id,
+      email: user.email ?? '',
+    };
+    if (user.phone) {
+      ownership.push('claim.phone = :phone');
+      params.phone = user.phone;
+    }
+
+    const claims = await this.claimRepo
+      .createQueryBuilder('claim')
+      .innerJoinAndSelect('claim.offer', 'offer')
+      .leftJoinAndSelect('offer.items', 'offerItem')
+      .where(`(${ownership.join(' OR ')})`, params)
+      .andWhere('claim.status = :status', {
+        status: CatalogueOfferClaimStatus.REDEEMED,
+      })
+      .getMany();
+
+    return claims.map((claim) => {
+      const originalPrice = (claim.offer?.items ?? []).reduce(
+        (acc, item) => acc + Number(item.price || 0),
+        0,
+      );
+      const paidAmount = Number(claim.offer?.calculatedPrice || 0);
+      const discountPercent =
+        originalPrice > 0 && paidAmount < originalPrice
+          ? Math.round(((originalPrice - paidAmount) / originalPrice) * 100)
+          : 0;
+      return {
+        redeemedAt: claim.updatedAt,
+        originalPrice,
+        paidAmount,
+        discountPercent,
+      };
+    });
+  }
+
+  private computeSavingsGrowth(
+    claims: { redeemedAt: Date; originalPrice: number; paidAmount: number }[],
+    periodDays: number,
+  ) {
+    const now = Date.now();
+    const periodMs = periodDays * 24 * 60 * 60 * 1000;
+    const currentStart = now - periodMs;
+    const previousStart = now - 2 * periodMs;
+    const saved = (c: { originalPrice: number; paidAmount: number }) =>
+      Math.max(c.originalPrice - c.paidAmount, 0);
+
+    let currentSavings = 0;
+    let previousSavings = 0;
+    let currentDeals = 0;
+    let previousDeals = 0;
+
+    for (const claim of claims) {
+      const at = new Date(claim.redeemedAt).getTime();
+      if (at >= currentStart) {
+        currentSavings += saved(claim);
+        currentDeals += 1;
+      } else if (at >= previousStart) {
+        previousSavings += saved(claim);
+        previousDeals += 1;
+      }
+    }
+
+    const percent = (curr: number, prev: number): number | null =>
+      prev > 0 ? Math.round(((curr - prev) / prev) * 100) : null;
+
+    return {
+      periodDays,
+      netSavings: {
+        current: currentSavings,
+        previous: previousSavings,
+        percent: percent(currentSavings, previousSavings),
+      },
+      dealsRedeemed: {
+        current: currentDeals,
+        previous: previousDeals,
+        percent: percent(currentDeals, previousDeals),
       },
     };
   }

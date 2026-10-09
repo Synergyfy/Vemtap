@@ -243,23 +243,23 @@ export class SubscriptionRemindersService {
 
         // Web Push Notification
         if (rendered.sendPush) {
-          const pushResult = await this.pushNotificationService.sendNotification(
-            ownerId,
-            rendered.title,
-            rendered.message,
-            {
-              url: rendered.actionUrl,
-              category: 'marketing',
-              stage,
-              clusterId,
-            },
-          );
+          const pushResult =
+            await this.pushNotificationService.sendNotification(
+              ownerId,
+              rendered.title,
+              rendered.message,
+              {
+                url: rendered.actionUrl,
+                category: 'marketing',
+                stage,
+                clusterId,
+              },
+            );
           if (pushResult.queued) sentPush++;
         }
 
         // Email reminder for urgent and lapsed stages (or if enabled in template)
-        const shouldSendEmail =
-          rendered.sendEmail || (stage <= 3 || isLapsed);
+        const shouldSendEmail = rendered.sendEmail || stage <= 3 || isLapsed;
         if (shouldSendEmail && owner.email) {
           const customerName =
             [owner.firstName, owner.lastName].filter(Boolean).join(' ') ||
@@ -449,7 +449,10 @@ export class SubscriptionRemindersService {
   /**
    * Replace {{variableName}} tags in template strings with values from context.
    */
-  private interpolate(template: string, variables: Record<string, any>): string {
+  private interpolate(
+    template: string,
+    variables: Record<string, any>,
+  ): string {
     if (!template) return '';
     return template.replace(/\{\{\s*(\w+)\s*\}\}/g, (match, key) => {
       if (
@@ -480,7 +483,9 @@ export class SubscriptionRemindersService {
 
   private async seedDefaultTemplates(): Promise<void> {
     try {
-      for (const [stageStr, def] of Object.entries(DEFAULT_REMINDER_TEMPLATES)) {
+      for (const [stageStr, def] of Object.entries(
+        DEFAULT_REMINDER_TEMPLATES,
+      )) {
         const stage = Number(stageStr);
         const exists = await this.templateRepository.findOne({
           where: { stage },

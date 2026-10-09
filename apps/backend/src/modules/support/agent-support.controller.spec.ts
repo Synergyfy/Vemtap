@@ -62,7 +62,10 @@ describe('AgentSupportController', () => {
       mockSupportService.findAssigned.mockResolvedValue(result);
 
       expect(
-        await controller.getAssignedChats(mockReq as any, { page: 1, limit: 10 }),
+        await controller.getAssignedChats(mockReq as any, {
+          page: 1,
+          limit: 10,
+        }),
       ).toBe(result);
       expect(mockSupportService.findAssigned).toHaveBeenCalledWith(
         mockAgent.id,
@@ -80,7 +83,10 @@ describe('AgentSupportController', () => {
       mockSupportService.findAssigned.mockResolvedValue(result);
 
       expect(
-        await controller.getAssignedTickets(mockReq as any, { page: 1, limit: 10 }),
+        await controller.getAssignedTickets(mockReq as any, {
+          page: 1,
+          limit: 10,
+        }),
       ).toBe(result);
       expect(mockSupportService.findAssigned).toHaveBeenCalledWith(
         mockAgent.id,

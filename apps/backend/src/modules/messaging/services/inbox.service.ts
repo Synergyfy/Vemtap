@@ -8,10 +8,11 @@ import {
   Inject,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { FindOptionsWhere, Repository } from 'typeorm';
 import {
   ConversationThread,
   ThreadStatus,
+  ThreadSubjectType,
 } from '../entities/conversation-thread.entity';
 import { Message } from '../entities/message.entity';
 import { Channel } from '../enums/channel.enum';
@@ -24,6 +25,22 @@ import { Visit } from '../../visitors/entities/visit.entity';
 import { Branch } from '../../branches/entities/branch.entity';
 import { AutomationService } from './automation.service';
 import { TriggerType } from '../enums/automation.enum';
+
+/** Optional conversation context supplied when a chat is opened. */
+export interface ThreadSubjectInput {
+  subjectType?: ThreadSubjectType;
+  claimId?: string;
+  orderId?: string;
+}
+
+/**
+ * Reply fallback for legacy threads without a stored subject. Mirrors the
+ * keyword rules the app used client-side before this column existed.
+ */
+const DEAL_CATEGORY_RE =
+  /\b(deal|deals|offer|offers|voucher|vouchers|discount|discounts|promo|coupon|coupons|claim|claims|redeem|savings|% off)\b/i;
+const BOOKING_CATEGORY_RE =
+  /\b(book|books|booked|booking|bookings|reserve|reserved|reservation|reservations|table|appointment|appointments|schedule|scheduled|slot|slots|order|orders|ordered)\b/i;
 
 @Injectable()
 export class InboxService {
@@ -320,19 +337,71 @@ export class InboxService {
     );
   }
 
+  async deleteThread(
+    threadId: string,
+    context: { branchId?: string; customerId?: string } = {},
+  ): Promise<void> {
+    const where: FindOptionsWhere<ConversationThread> = { id: threadId };
+    if (context.branchId) where.branchId = context.branchId;
+    if (context.customerId) where.customerId = context.customerId;
+
+    const thread = await this.threadRepo.findOne({ where });
+    if (!thread) {
+      throw new NotFoundException('Thread not found');
+    }
+
+    // Remove the messages first so no orphaned rows remain, then the thread.
+    await this.messageRepo.delete({ threadId: thread.id });
+    await this.threadRepo.remove(thread);
+
+    this.messagingGateway.emitThreadDeleted(
+      thread.id,
+      thread.branchId,
+      thread.customerId,
+    );
+  }
+
   // --- Customer Facing Methods ---
 
   async getCustomerThreads(customerId: string): Promise<ConversationThread[]> {
-    return this.threadRepo.find({
+    const threads = await this.threadRepo.find({
       where: { customerId, channel: Channel.IN_HOUSE },
       relations: ['branch', 'branch.business'],
       order: { lastActivityAt: 'DESC' },
+    });
+
+    // Additive mapping: every entity field is preserved, plus `categories`
+    // derived from the stored subject (falling back to keyword classification
+    // for legacy threads). The app filters its chips on `categories`.
+    return threads.map((thread) => {
+      const categories: string[] = [];
+      if ((thread.customerUnreadCount ?? 0) > 0) categories.push('unread');
+      if (
+        thread.subjectType === ThreadSubjectType.DEAL ||
+        thread.subjectType === ThreadSubjectType.CLAIM
+      ) {
+        categories.push('deals');
+      } else if (
+        thread.subjectType === ThreadSubjectType.BOOKING ||
+        thread.subjectType === ThreadSubjectType.ORDER
+      ) {
+        categories.push('bookings');
+      } else {
+        const text = thread.lastMessageContent ?? '';
+        if (DEAL_CATEGORY_RE.test(text)) categories.push('deals');
+        if (BOOKING_CATEGORY_RE.test(text)) categories.push('bookings');
+      }
+
+      return Object.assign(thread, { categories }) as ConversationThread & {
+        categories: string[];
+      };
     });
   }
 
   async findOrCreateCustomerThread(
     customerId: string,
     branchId: string,
+    subject: ThreadSubjectInput = {},
   ): Promise<ConversationThread> {
     let thread = await this.threadRepo.findOne({
       where: { customerId, branchId, channel: Channel.IN_HOUSE },
@@ -360,10 +429,19 @@ export class InboxService {
         lastActivityAt: new Date(),
         branchUnreadCount: 0,
         customerUnreadCount: 0,
+        subjectType: subject.subjectType ?? ThreadSubjectType.GENERAL,
+        claimId: subject.claimId ?? null,
+        orderId: subject.orderId ?? null,
       });
       thread = await this.threadRepo.save(thread);
       thread.branch = branch;
       thread.customer = customer;
+    } else if (subject.subjectType || subject.claimId || subject.orderId) {
+      // Latest-context wins: one thread per branch+customer+channel.
+      thread.subjectType = subject.subjectType ?? thread.subjectType;
+      thread.claimId = subject.claimId ?? thread.claimId;
+      thread.orderId = subject.orderId ?? thread.orderId;
+      await this.threadRepo.save(thread);
     }
 
     return thread;
@@ -481,6 +559,7 @@ export class InboxService {
     customerId: string,
     branchId: string,
     content: string,
+    subject: ThreadSubjectInput = {},
   ): Promise<Message> {
     // 1. Ensure branch exists and load it (needed for businessId + customer lookup)
     const branch = await this.branchRepo.findOne({ where: { id: branchId } });
@@ -529,15 +608,22 @@ export class InboxService {
         lastMessageContent: content,
         branchUnreadCount: 1,
         customerUnreadCount: 0,
+        subjectType: subject.subjectType ?? ThreadSubjectType.GENERAL,
+        claimId: subject.claimId ?? null,
+        orderId: subject.orderId ?? null,
       });
       thread = await this.threadRepo.save(thread);
       thread.customer = customer;
     } else {
-      // Thread already exists — update activity and increment unread counter
+      // Thread already exists — update activity, subject context and increment
+      // the unread counter.
       await this.threadRepo.update(thread.id, {
         lastActivityAt: new Date(),
         lastMessageContent: content,
         status: ThreadStatus.OPEN,
+        ...(subject.subjectType ? { subjectType: subject.subjectType } : {}),
+        ...(subject.claimId ? { claimId: subject.claimId } : {}),
+        ...(subject.orderId ? { orderId: subject.orderId } : {}),
       });
       await this.threadRepo.increment(
         { id: thread.id },

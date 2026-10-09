@@ -45,7 +45,11 @@ export class CustomerMessagingController {
     summary:
       'Get all in-house messaging threads for the customer (Newest to Oldest)',
     description:
-      'Retrieves all active conversations between the customer and various business branches. Access: CUSTOMER',
+      'Retrieves all active conversations between the customer and various ' +
+      'business branches. Each thread includes `subjectType` ' +
+      '(GENERAL|DEAL|CLAIM|ORDER|BOOKING) and a `categories` array ' +
+      '(`deals`/`bookings`, keyword-derived for legacy threads) for the ' +
+      'Messages filters. Access: CUSTOMER',
   })
   @ApiResponse({
     status: 200,
@@ -56,7 +60,10 @@ export class CustomerMessagingController {
     @Query() filter?: BranchFilterDto,
   ) {
     if (filter?.branchId) {
-      await this.inboxService.findOrCreateCustomerThread(req.user.id, filter.branchId);
+      await this.inboxService.findOrCreateCustomerThread(
+        req.user.id,
+        filter.branchId,
+      );
     }
     return this.inboxService.getCustomerThreads(req.user.id);
   }
@@ -67,7 +74,10 @@ export class CustomerMessagingController {
   @ApiOperation({
     summary: 'Start a new conversation with a branch',
     description:
-      'Initiates a new chat thread with a specific business branch and sends the first message. Access: CUSTOMER',
+      'Initiates a new chat thread with a specific business branch and sends ' +
+      'the first message. Optional `subjectType`/`claimId`/`orderId` classify ' +
+      'the thread (e.g. opened from a deal or an order) so the customer’s ' +
+      'Messages filters can group it. Access: CUSTOMER',
   })
   @ApiBody({ type: StartConversationDto })
   @ApiResponse({
@@ -82,6 +92,11 @@ export class CustomerMessagingController {
       req.user.id,
       dto.branchId,
       dto.content,
+      {
+        subjectType: dto.subjectType,
+        claimId: dto.claimId,
+        orderId: dto.orderId,
+      },
     );
   }
 
@@ -131,6 +146,25 @@ export class CustomerMessagingController {
       dto.replyToId,
       dto.metadata,
     );
+  }
+
+  @Delete('threads/:threadId')
+  @ApiBearerAuth()
+  @Roles(UserRole.CUSTOMER)
+  @ApiOperation({
+    summary: 'Delete an in-house conversation thread',
+    description:
+      'Permanently removes one of the customer’s conversation threads and all of its messages. Access: CUSTOMER',
+  })
+  @ApiParam({ name: 'threadId', description: 'Conversation thread UUID' })
+  @ApiResponse({ status: 200, description: 'Thread deleted successfully' })
+  async deleteThread(
+    @Param() { threadId }: ThreadIdDto,
+    @Request() req: { user: User },
+  ) {
+    return this.inboxService.deleteThread(threadId, {
+      customerId: req.user.id,
+    });
   }
 
   @Patch('messages/:id')

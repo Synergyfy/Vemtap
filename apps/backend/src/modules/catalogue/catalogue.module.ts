@@ -18,6 +18,11 @@ import { MailModule } from '../mail/mail.module';
 import { AiCopilotModule } from '../ai-copilot/ai-copilot.module';
 import { Business } from '../businesses/entities/business.entity';
 import { ClustersModule } from '../clusters/clusters.module';
+import { User } from '../users/entities/user.entity';
+import { MeClaimsController } from './me-claims.controller';
+import { MeSavingsController } from './me-savings.controller';
+import { RecommendationsController } from './recommendations.controller';
+import { SavingsService } from './savings.service';
 
 @Module({
   imports: [
@@ -30,6 +35,7 @@ import { ClustersModule } from '../clusters/clusters.module';
       Branch,
       Business,
       Otp,
+      User,
     ]),
     SubscriptionsModule,
     MailModule,
@@ -41,8 +47,11 @@ import { ClustersModule } from '../clusters/clusters.module';
     PublicCatalogueController,
     CatalogueOfferController,
     AdminDealsController,
+    MeClaimsController,
+    MeSavingsController,
+    RecommendationsController,
   ],
-  providers: [CatalogueService, CatalogueOfferService],
+  providers: [CatalogueService, CatalogueOfferService, SavingsService],
   exports: [CatalogueService, CatalogueOfferService],
 })
 export class CatalogueModule {}

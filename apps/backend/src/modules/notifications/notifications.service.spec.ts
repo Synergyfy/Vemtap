@@ -60,7 +60,9 @@ describe('NotificationsService', () => {
 
   beforeEach(async () => {
     notifRepo = {
-      create: jest.fn().mockImplementation((dto) => ({ ...dto, id: 'notif-1' })),
+      create: jest
+        .fn()
+        .mockImplementation((dto) => ({ ...dto, id: 'notif-1' })),
       save: jest.fn().mockImplementation((item) => Promise.resolve(item)),
       find: jest.fn().mockResolvedValue([mockNotification]),
       findOne: jest.fn().mockResolvedValue(mockNotification),
@@ -70,7 +72,9 @@ describe('NotificationsService', () => {
     };
 
     broadcastRepo = {
-      create: jest.fn().mockImplementation((dto) => ({ ...dto, id: 'broadcast-1' })),
+      create: jest
+        .fn()
+        .mockImplementation((dto) => ({ ...dto, id: 'broadcast-1' })),
       save: jest.fn().mockImplementation((item) => Promise.resolve(item)),
       findOne: jest.fn().mockResolvedValue(mockBroadcast),
       createQueryBuilder: jest.fn(),
@@ -109,7 +113,13 @@ describe('NotificationsService', () => {
 
   describe('create & read operations', () => {
     it('should create a notification', async () => {
-      const result = await service.create('user-1', 'Title', 'Msg', 'info', '/link');
+      const result = await service.create(
+        'user-1',
+        'Title',
+        'Msg',
+        'info',
+        '/link',
+      );
       expect(result).toBeDefined();
       expect(notifRepo.save).toHaveBeenCalled();
     });

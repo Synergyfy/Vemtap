@@ -133,7 +133,10 @@ export class SupportController {
     @Request() req: AuthRequest,
     @Query() query: SupportSessionQueryDto,
   ) {
-    return this.conversationContextService.getContext(req.user.id, query.sessionId);
+    return this.conversationContextService.getContext(
+      req.user.id,
+      query.sessionId,
+    );
   }
 
   @Delete('bot/context')
@@ -150,7 +153,10 @@ export class SupportController {
     @Request() req: AuthRequest,
     @Query() query: SupportSessionQueryDto,
   ) {
-    await this.conversationContextService.clearContext(req.user.id, query.sessionId);
+    await this.conversationContextService.clearContext(
+      req.user.id,
+      query.sessionId,
+    );
     return { success: true, message: 'Context cleared' };
   }
 
@@ -171,7 +177,12 @@ export class SupportController {
     @Request() req: AuthRequest,
     @Query() query: PaginationQueryDto,
   ) {
-    return this.supportService.findAll(req.user.id, query.page, query.limit, query.cursor);
+    return this.supportService.findAll(
+      req.user.id,
+      query.page,
+      query.limit,
+      query.cursor,
+    );
   }
 
   @Get('tickets/:id')

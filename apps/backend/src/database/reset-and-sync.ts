@@ -15,6 +15,7 @@ async function resetAndSync() {
   await ds.query('DROP SCHEMA public CASCADE');
   await ds.query('CREATE SCHEMA public');
   await ds.query('CREATE EXTENSION IF NOT EXISTS "uuid-ossp"');
+  await ds.query('CREATE EXTENSION IF NOT EXISTS "postgis"');
 
   console.log('Synchronizing entities...');
   await ds.synchronize();

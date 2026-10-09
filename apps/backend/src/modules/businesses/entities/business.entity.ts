@@ -93,6 +93,12 @@ export class Business extends AbstractBaseEntity {
   logoUrl: string;
 
   @Column({ nullable: true })
+  coverImage: string;
+
+  @Column({ type: 'json', nullable: true })
+  gallery: string[];
+
+  @Column({ nullable: true })
   address: string;
 
   @Column({ nullable: true })
@@ -103,6 +109,13 @@ export class Business extends AbstractBaseEntity {
 
   @Column({ type: 'json', nullable: true })
   socials: Record<string, string>;
+
+  /**
+   * Store features / amenities shown on the Business hub (Outdoor Seating,
+   * Free Wi-Fi, …). Free-form strings; no catalogue table yet.
+   */
+  @Column({ type: 'json', nullable: true })
+  amenities: string[];
 
   @Column({ type: 'json', nullable: true })
   openingHours: Record<string, any>;

@@ -1,8 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class CreateSubscriptionTaxConfigsTable1786920000000
-  implements MigrationInterface
-{
+export class CreateSubscriptionTaxConfigsTable1786920000000 implements MigrationInterface {
   name = 'CreateSubscriptionTaxConfigsTable1786920000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {

@@ -671,7 +671,10 @@ describe('AuthService', () => {
       });
 
       expect(result.access_token).toBe('mock_token');
-      expect(mockSubscriptionsService.subscribeToFreePlan).toHaveBeenCalledWith('biz-1', true);
+      expect(mockSubscriptionsService.subscribeToFreePlan).toHaveBeenCalledWith(
+        'biz-1',
+        true,
+      );
     });
 
     it('should throw for non-existent user', async () => {
@@ -952,6 +955,50 @@ describe('AuthService', () => {
       expect(result.user.role).toBe(UserRole.CUSTOMER);
     });
 
+    it('should issue a CUSTOMER token with an explicit null business context', async () => {
+      const user = {
+        id: 'owner-1',
+        email: 'owner@example.com',
+        role: UserRole.OWNER,
+        branchId: 'br-1',
+      } as any;
+      usersService.findOne.mockResolvedValue(user);
+      businessesService.findByOwner.mockResolvedValue({ id: 'biz-1' });
+
+      const result = await service.switchRole(user, UserRole.CUSTOMER);
+
+      expect(jwtService.sign).toHaveBeenCalledWith(
+        expect.objectContaining({
+          role: UserRole.CUSTOMER,
+          businessId: null,
+          branchId: null,
+        }),
+      );
+      expect(result.user.businessId).toBeNull();
+      expect(result.user.password).toBeUndefined();
+    });
+
+    it('should let a dual-role user switch back to Owner with their business context', async () => {
+      const user = {
+        id: 'owner-1',
+        email: 'owner@example.com',
+        role: UserRole.CUSTOMER,
+        branchId: null,
+      } as any;
+      usersService.findOne.mockResolvedValue({
+        id: 'owner-1',
+        email: 'owner@example.com',
+        role: UserRole.OWNER,
+        branchId: 'br-1',
+      });
+      businessesService.findByOwner.mockResolvedValue({ id: 'biz-1' });
+
+      const result = await service.switchRole(user, UserRole.OWNER);
+
+      expect(result.user.role).toBe(UserRole.OWNER);
+      expect(result.user.businessId).toBe('biz-1');
+    });
+
     it('should throw if Owner tries to switch to non-Customer', async () => {
       const user = {
         id: 'owner-1',
@@ -961,6 +1008,130 @@ describe('AuthService', () => {
       await expect(service.switchRole(user, UserRole.ADMIN)).rejects.toThrow(
         BadRequestException,
       );
+    });
+
+    it('should throw if an owner without a business tries to switch to Owner', async () => {
+      const user = { id: 'owner-1', role: UserRole.OWNER } as any;
+      usersService.findOne.mockResolvedValue({
+        id: 'owner-1',
+        role: UserRole.OWNER,
+      });
+      businessesService.findByOwner.mockResolvedValue(null);
+
+      await expect(service.switchRole(user, UserRole.OWNER)).rejects.toThrow(
+        BadRequestException,
+      );
+    });
+  });
+
+  // ==================== upgradeToOwner ====================
+  describe('upgradeToOwner', () => {
+    const dto = {
+      password: 'SecurePass123!',
+      businessName: 'Cust Biz',
+      businessAddress: '1 Main St',
+      state: 'Lagos',
+      city: 'Ikeja',
+    };
+
+    const customer = {
+      id: 'cust-1',
+      email: 'cust@example.com',
+      role: UserRole.CUSTOMER,
+      status: UserStatus.ACTIVE,
+      password: 'hashed_password',
+      branchId: null,
+    };
+
+    it('should upgrade a customer after password confirmation', async () => {
+      (bcrypt.compare as jest.Mock).mockResolvedValue(true);
+      usersService.findOne
+        .mockResolvedValueOnce({ ...customer })
+        .mockResolvedValueOnce({
+          ...customer,
+          role: UserRole.OWNER,
+          businessId: 'biz-1',
+          branchId: 'br-1',
+        });
+      businessesService.findByOwner.mockResolvedValue(null);
+
+      const result = await service.upgradeToOwner({ id: 'cust-1' }, dto);
+
+      expect(bcrypt.compare).toHaveBeenCalledWith(
+        dto.password,
+        customer.password,
+      );
+      expect(usersService.create).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'cust-1', role: UserRole.OWNER }),
+      );
+      expect(businessesService.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: dto.businessName,
+          ownerId: 'cust-1',
+        }),
+      );
+      expect(result.access_token).toBe('mock_token');
+      expect(result.isNewUser).toBe(false);
+    });
+
+    it('should reject a wrong password', async () => {
+      usersService.findOne.mockResolvedValueOnce({ ...customer });
+      (bcrypt.compare as jest.Mock).mockResolvedValue(false);
+
+      await expect(
+        service.upgradeToOwner({ id: 'cust-1' }, dto),
+      ).rejects.toThrow(UnauthorizedException);
+      expect(businessesService.create).not.toHaveBeenCalled();
+    });
+
+    it('should require a password for local-auth accounts', async () => {
+      usersService.findOne.mockResolvedValueOnce({ ...customer });
+
+      await expect(
+        service.upgradeToOwner({ id: 'cust-1' }, { businessName: 'X' }),
+      ).rejects.toThrow(UnauthorizedException);
+    });
+
+    it('should allow Google-only accounts without a password check', async () => {
+      usersService.findOne
+        .mockResolvedValueOnce({ ...customer, password: null })
+        .mockResolvedValueOnce({
+          ...customer,
+          password: null,
+          role: UserRole.OWNER,
+          businessId: 'biz-1',
+        });
+      businessesService.findByOwner.mockResolvedValue(null);
+
+      const result = await service.upgradeToOwner(
+        { id: 'cust-1' },
+        { businessName: 'Cust Biz' },
+      );
+
+      expect(bcrypt.compare).not.toHaveBeenCalled();
+      expect(result.access_token).toBe('mock_token');
+    });
+
+    it('should reject an account that is already an owner', async () => {
+      usersService.findOne.mockResolvedValueOnce({
+        ...customer,
+        role: UserRole.OWNER,
+      });
+
+      await expect(
+        service.upgradeToOwner({ id: 'cust-1' }, dto),
+      ).rejects.toThrow(ConflictException);
+    });
+
+    it('should reject a customer who already has a business', async () => {
+      (bcrypt.compare as jest.Mock).mockResolvedValue(true);
+      usersService.findOne.mockResolvedValueOnce({ ...customer });
+      businessesService.findByOwner.mockResolvedValue({ id: 'biz-9' });
+
+      await expect(
+        service.upgradeToOwner({ id: 'cust-1' }, dto),
+      ).rejects.toThrow(ConflictException);
+      expect(businessesService.create).not.toHaveBeenCalled();
     });
   });
 
@@ -1123,7 +1294,9 @@ describe('AuthService', () => {
           }),
         );
         expect(mailService.sendOtp).toHaveBeenCalled();
-        expect(result).toEqual({ message: 'A new OTP has been sent to your email' });
+        expect(result).toEqual({
+          message: 'A new OTP has been sent to your email',
+        });
       });
     });
 
@@ -1133,7 +1306,11 @@ describe('AuthService', () => {
           email: 'jane@example.com',
           code: '123456',
           expiresAt: new Date(Date.now() + 60000),
-          metadata: { firstName: 'Jane', lastName: 'Doe', phone: '+2348012345678' },
+          metadata: {
+            firstName: 'Jane',
+            lastName: 'Doe',
+            phone: '+2348012345678',
+          },
         });
         usersService.findByEmail.mockResolvedValue(null);
         usersService.create.mockResolvedValue({

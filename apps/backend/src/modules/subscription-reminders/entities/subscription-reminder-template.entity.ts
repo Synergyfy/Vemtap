@@ -6,7 +6,8 @@ import { ApiProperty } from '@nestjs/swagger';
 export class SubscriptionReminderTemplate extends AbstractBaseEntity {
   @ApiProperty({
     example: 14,
-    description: 'Stage in days before expiry (e.g. 14, 7, 3) or 0 for lapsed/expired/inactive',
+    description:
+      'Stage in days before expiry (e.g. 14, 7, 3) or 0 for lapsed/expired/inactive',
   })
   @Column({ type: 'int', unique: true })
   stage: number;
@@ -33,7 +34,8 @@ export class SubscriptionReminderTemplate extends AbstractBaseEntity {
   titleTemplate: string;
 
   @ApiProperty({
-    example: '{{people}} people checked deals in {{clusterName}} this month — renew now to stay visible to them.',
+    example:
+      '{{people}} people checked deals in {{clusterName}} this month — renew now to stay visible to them.',
     description: 'Body message template supporting {{variable}} tags',
   })
   @Column({ type: 'text' })

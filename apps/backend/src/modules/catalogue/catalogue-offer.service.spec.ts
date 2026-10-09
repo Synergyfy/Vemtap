@@ -15,6 +15,7 @@ import {
 } from './entities/catalogue-offer-claim.entity';
 import { CatalogueDealGift } from './entities/catalogue-deal-gift.entity';
 import { Otp } from '../auth/entities/otp.entity';
+import { User } from '../users/entities/user.entity';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { MailService } from '../mail/mail.service';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
@@ -88,11 +89,16 @@ describe('CatalogueOfferService', () => {
     offerRepo = {
       findOne: jest.fn(),
       increment: jest.fn(),
-      save: jest.fn().mockImplementation((dto) => Promise.resolve({ id: 'offer-saved', ...dto })),
+      save: jest
+        .fn()
+        .mockImplementation((dto) =>
+          Promise.resolve({ id: 'offer-saved', ...dto }),
+        ),
       create: jest.fn().mockImplementation((dto) => dto),
     };
     claimRepo = {
       count: jest.fn(),
+      find: jest.fn().mockResolvedValue([]),
       create: jest.fn().mockImplementation((dto) => dto),
       save: jest
         .fn()
@@ -163,8 +169,15 @@ describe('CatalogueOfferService', () => {
           provide: getRepositoryToken(CatalogueOfferClaim),
           useValue: claimRepo,
         },
-        { provide: getRepositoryToken(CatalogueDealGift), useValue: dealGiftRepo },
+        {
+          provide: getRepositoryToken(CatalogueDealGift),
+          useValue: dealGiftRepo,
+        },
         { provide: getRepositoryToken(Otp), useValue: otpRepo },
+        {
+          provide: getRepositoryToken(User),
+          useValue: { findOne: jest.fn().mockResolvedValue(null) },
+        },
         { provide: SubscriptionsService, useValue: subscriptionsService },
         { provide: MailService, useValue: mailService },
         {
@@ -238,12 +251,21 @@ describe('CatalogueOfferService', () => {
         businessId: 'biz-1',
       });
       itemRepo.find.mockResolvedValue([
-        { id: 'prod-123', name: 'Nike Shoes', branches: [{ id: 'branch-1' }], price: 2000 },
+        {
+          id: 'prod-123',
+          name: 'Nike Shoes',
+          branches: [{ id: 'branch-1' }],
+          price: 2000,
+        },
       ]);
       offerRepo.create = jest.fn().mockImplementation((dto) => dto);
-      offerRepo.save = jest.fn().mockImplementation((dto) => Promise.resolve({ id: 'deal-created', ...dto }));
+      offerRepo.save = jest
+        .fn()
+        .mockImplementation((dto) =>
+          Promise.resolve({ id: 'deal-created', ...dto }),
+        );
 
-      const result = await service.createOffer(createDto as any, 'biz-1');
+      const result = await service.createOffer(createDto, 'biz-1');
       expect(result.sourceProductId).toBe('prod-123');
       expect(result.calculatedPrice).toBe(1500);
       expect(result.description).toBe('');
@@ -263,12 +285,21 @@ describe('CatalogueOfferService', () => {
         businessId: 'biz-1',
       });
       itemRepo.find.mockResolvedValue([
-        { id: 'item-1', name: 'Meal', branches: [{ id: 'branch-1' }], price: 2000 },
+        {
+          id: 'item-1',
+          name: 'Meal',
+          branches: [{ id: 'branch-1' }],
+          price: 2000,
+        },
       ]);
       offerRepo.create = jest.fn().mockImplementation((dto) => dto);
-      offerRepo.save = jest.fn().mockImplementation((dto) => Promise.resolve({ id: 'deal-created', ...dto }));
+      offerRepo.save = jest
+        .fn()
+        .mockImplementation((dto) =>
+          Promise.resolve({ id: 'deal-created', ...dto }),
+        );
 
-      const result = await service.createOffer(createDto as any, 'biz-1');
+      const result = await service.createOffer(createDto, 'biz-1');
       expect(result.calculatedPrice).toBe(1200);
     });
 
@@ -286,12 +317,21 @@ describe('CatalogueOfferService', () => {
         businessId: 'biz-1',
       });
       itemRepo.find.mockResolvedValue([
-        { id: 'item-1', name: 'Meal', branches: [{ id: 'branch-1' }], price: 2000 },
+        {
+          id: 'item-1',
+          name: 'Meal',
+          branches: [{ id: 'branch-1' }],
+          price: 2000,
+        },
       ]);
       offerRepo.create = jest.fn().mockImplementation((dto) => dto);
-      offerRepo.save = jest.fn().mockImplementation((dto) => Promise.resolve({ id: 'deal-created', ...dto }));
+      offerRepo.save = jest
+        .fn()
+        .mockImplementation((dto) =>
+          Promise.resolve({ id: 'deal-created', ...dto }),
+        );
 
-      const result = await service.createOffer(createDto as any, 'biz-1');
+      const result = await service.createOffer(createDto, 'biz-1');
       expect(result.calculatedPrice).toBe(1600);
     });
 
@@ -309,12 +349,21 @@ describe('CatalogueOfferService', () => {
         businessId: 'biz-1',
       });
       itemRepo.find.mockResolvedValue([
-        { id: 'item-1', name: 'Item', branches: [{ id: 'branch-1' }], price: 2000 },
+        {
+          id: 'item-1',
+          name: 'Item',
+          branches: [{ id: 'branch-1' }],
+          price: 2000,
+        },
       ]);
       offerRepo.create = jest.fn().mockImplementation((dto) => dto);
-      offerRepo.save = jest.fn().mockImplementation((dto) => Promise.resolve({ id: 'deal-created', ...dto }));
+      offerRepo.save = jest
+        .fn()
+        .mockImplementation((dto) =>
+          Promise.resolve({ id: 'deal-created', ...dto }),
+        );
 
-      const resultNormal = await service.createOffer(normalPercentDto as any, 'biz-1');
+      const resultNormal = await service.createOffer(normalPercentDto, 'biz-1');
       expect(resultNormal.calculatedPrice).toBe(1600);
 
       // Defensively test flat Naira amount (e.g. ₦500) mistakenly sent under percentage_discount
@@ -325,7 +374,10 @@ describe('CatalogueOfferService', () => {
         branchId: 'branch-1',
         itemIds: ['item-1'],
       };
-      const resultFlat = await service.createOffer(flatAmountMistakeDto as any, 'biz-1');
+      const resultFlat = await service.createOffer(
+        flatAmountMistakeDto,
+        'biz-1',
+      );
       expect(resultFlat.calculatedPrice).toBe(1500); // 2000 - 500, never -8000
     });
 
@@ -550,6 +602,7 @@ describe('CatalogueOfferService', () => {
       where: jest.fn().mockReturnThis(),
       andWhere: jest.fn().mockReturnThis(),
       setParameter: jest.fn().mockReturnThis(),
+      addSelect: jest.fn().mockReturnThis(),
       orderBy: jest.fn().mockReturnThis(),
       skip: jest.fn().mockReturnThis(),
       take: jest.fn().mockReturnThis(),
@@ -586,7 +639,9 @@ describe('CatalogueOfferService', () => {
     it('orders by claim count for sortBy=popular and returns claimedCount', async () => {
       const qb = makeOfferQb();
       offerRepo.createQueryBuilder = jest.fn().mockReturnValue(qb);
-      claimRepo.count.mockResolvedValue(5);
+      claimRepo.find.mockResolvedValue(
+        Array.from({ length: 5 }, () => ({ offerId: 'offer-1' })),
+      );
 
       const result = await service.findAllOffersPublicGlobal({
         sortBy: 'popular',
@@ -594,10 +649,11 @@ describe('CatalogueOfferService', () => {
         limit: 10,
       });
 
-      expect(qb.orderBy).toHaveBeenCalledWith(
+      expect(qb.addSelect).toHaveBeenCalledWith(
         expect.stringContaining('catalogue_offer_claims'),
-        'DESC',
+        'popularityscore',
       );
+      expect(qb.orderBy).toHaveBeenCalledWith('popularityscore', 'DESC');
       expect(qb.skip).toHaveBeenCalledWith(0);
       expect(qb.take).toHaveBeenCalledWith(10);
       expect(result.data[0].claimedCount).toBe(5);
@@ -608,7 +664,10 @@ describe('CatalogueOfferService', () => {
     it('orders by a weighted views+claims score for sortBy=featured', async () => {
       const qb = makeOfferQb();
       offerRepo.createQueryBuilder = jest.fn().mockReturnValue(qb);
-      claimRepo.count.mockResolvedValue(2);
+      claimRepo.find.mockResolvedValue([
+        { offerId: 'offer-1' },
+        { offerId: 'offer-1' },
+      ]);
 
       const result = await service.findAllOffersPublicGlobal({
         sortBy: 'featured',
@@ -616,10 +675,11 @@ describe('CatalogueOfferService', () => {
         limit: 10,
       });
 
-      expect(qb.orderBy).toHaveBeenCalledWith(
+      expect(qb.addSelect).toHaveBeenCalledWith(
         expect.stringContaining('offer.views'),
-        'DESC',
+        'featuredscore',
       );
+      expect(qb.orderBy).toHaveBeenCalledWith('featuredscore', 'DESC');
       expect(result.data[0].claimedCount).toBe(2);
     });
   });
@@ -629,12 +689,24 @@ describe('CatalogueOfferService', () => {
       subscriptionsService.activeSubscription = jest.fn().mockResolvedValue({
         plan: { autoFeatureDeals: true },
       });
-      branchRepo.findOne.mockResolvedValue({ id: 'branch-1', businessId: 'biz-1' });
+      branchRepo.findOne.mockResolvedValue({
+        id: 'branch-1',
+        businessId: 'biz-1',
+      });
       itemRepo.find.mockResolvedValue([
-        { id: 'item-1', name: 'Burger', price: 50, branches: [{ id: 'branch-1' }] },
+        {
+          id: 'item-1',
+          name: 'Burger',
+          price: 50,
+          branches: [{ id: 'branch-1' }],
+        },
       ]);
       offerRepo.create = jest.fn().mockImplementation((d) => ({ ...d }));
-      offerRepo.save = jest.fn().mockImplementation((d) => Promise.resolve({ id: 'offer-auto-1', ...d }));
+      offerRepo.save = jest
+        .fn()
+        .mockImplementation((d) =>
+          Promise.resolve({ id: 'offer-auto-1', ...d }),
+        );
 
       const result = await service.createOffer(
         {
@@ -654,12 +726,24 @@ describe('CatalogueOfferService', () => {
       subscriptionsService.activeSubscription = jest.fn().mockResolvedValue({
         plan: { autoFeatureDeals: false },
       });
-      branchRepo.findOne.mockResolvedValue({ id: 'branch-1', businessId: 'biz-1' });
+      branchRepo.findOne.mockResolvedValue({
+        id: 'branch-1',
+        businessId: 'biz-1',
+      });
       itemRepo.find.mockResolvedValue([
-        { id: 'item-1', name: 'Burger', price: 50, branches: [{ id: 'branch-1' }] },
+        {
+          id: 'item-1',
+          name: 'Burger',
+          price: 50,
+          branches: [{ id: 'branch-1' }],
+        },
       ]);
       offerRepo.create = jest.fn().mockImplementation((d) => ({ ...d }));
-      offerRepo.save = jest.fn().mockImplementation((d) => Promise.resolve({ id: 'offer-normal-1', ...d }));
+      offerRepo.save = jest
+        .fn()
+        .mockImplementation((d) =>
+          Promise.resolve({ id: 'offer-normal-1', ...d }),
+        );
 
       const result = await service.createOffer(
         {
@@ -717,7 +801,9 @@ describe('CatalogueOfferService', () => {
         addSelect: jest.fn().mockReturnThis(),
         where: jest.fn().mockReturnThis(),
         groupBy: jest.fn().mockReturnThis(),
-        getRawMany: jest.fn().mockResolvedValue([{ offerId: 'offer-admin-1', count: '7' }]),
+        getRawMany: jest
+          .fn()
+          .mockResolvedValue([{ offerId: 'offer-admin-1', count: '7' }]),
       };
       claimRepo.createQueryBuilder = jest.fn().mockReturnValue(claimQb);
 
@@ -967,4 +1053,3 @@ describe('CatalogueOfferService', () => {
     });
   });
 });
-

@@ -1,8 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class AddDealFeaturedAndPlanAutoFeature1788000000000
-  implements MigrationInterface
-{
+export class AddDealFeaturedAndPlanAutoFeature1788000000000 implements MigrationInterface {
   name = 'AddDealFeaturedAndPlanAutoFeature1788000000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {

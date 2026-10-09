@@ -47,7 +47,12 @@ describe('PaymentsService', () => {
         of({
           data: {
             status: true,
-            data: { status: 'success', amount: 5000, currency: 'NGN', channel: 'card' },
+            data: {
+              status: 'success',
+              amount: 5000,
+              currency: 'NGN',
+              channel: 'card',
+            },
           },
         }),
       );

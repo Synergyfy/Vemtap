@@ -1,10 +1,4 @@
-import {
-  IsEnum,
-  IsOptional,
-  IsString,
-  IsUUID,
-  IsArray,
-} from 'class-validator';
+import { IsEnum, IsOptional, IsString, IsUUID, IsArray } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { BillingPeriod } from '../../entities/subscription.entity';
 import { Transform } from 'class-transformer';
@@ -67,7 +61,9 @@ export class PricePreviewDto {
     }
     if (Array.isArray(value)) {
       const mapped = value
-        .map((v) => (typeof v === 'number' ? v : parseInt(String(v).trim(), 10)))
+        .map((v) =>
+          typeof v === 'number' ? v : parseInt(String(v).trim(), 10),
+        )
         .filter((n) => !isNaN(n));
       return mapped.length > 0 ? mapped : undefined;
     }
@@ -76,7 +72,8 @@ export class PricePreviewDto {
   addonQuantities?: number[];
 
   @ApiPropertyOptional({
-    description: 'Optional promotion or coupon code to apply discount in preview',
+    description:
+      'Optional promotion or coupon code to apply discount in preview',
     example: 'SAVE50',
   })
   @IsOptional()
@@ -90,4 +87,3 @@ export class PricePreviewDto {
   })
   promoCode?: string;
 }
-

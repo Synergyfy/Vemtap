@@ -1,9 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
-import {
-  SubscriptionTaxService,
-} from './subscription-tax.service';
+import { SubscriptionTaxService } from './subscription-tax.service';
 import {
   SubscriptionTaxConfig,
   TaxType,
@@ -31,17 +29,27 @@ describe('SubscriptionTaxService', () => {
     findOne: jest.fn(),
     find: jest.fn(),
     create: jest.fn().mockImplementation((dto) => dto),
-    save: jest.fn().mockImplementation((dto) => Promise.resolve({ id: 'tax-config-saved', ...dto })),
+    save: jest
+      .fn()
+      .mockImplementation((dto) =>
+        Promise.resolve({ id: 'tax-config-saved', ...dto }),
+      ),
   };
 
   const mockEntityManager = {
     update: jest.fn().mockResolvedValue({ affected: 1 }),
     create: jest.fn().mockImplementation((entityClass, dto) => dto),
-    save: jest.fn().mockImplementation((entityClass, dto) => Promise.resolve({ id: 'tax-config-new', ...dto })),
+    save: jest
+      .fn()
+      .mockImplementation((entityClass, dto) =>
+        Promise.resolve({ id: 'tax-config-new', ...dto }),
+      ),
   };
 
   const mockDataSource = {
-    transaction: jest.fn().mockImplementation(async (cb) => cb(mockEntityManager)),
+    transaction: jest
+      .fn()
+      .mockImplementation(async (cb) => cb(mockEntityManager)),
   };
 
   beforeEach(async () => {

@@ -17,6 +17,7 @@ import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { VerifyOtpDto, SendOtpDto } from './dto/otp.dto';
 import { RegisterOwnerDto } from './dto/register-owner.dto';
+import { UpgradeToOwnerDto } from './dto/upgrade-to-owner.dto';
 import { RegisterAdminDto } from './dto/register-admin.dto';
 import { RequestOtpDto } from './dto/request-otp.dto';
 import { PasswordResetOtpDto } from './dto/password-reset-otp.dto';
@@ -224,6 +225,29 @@ export class AuthController {
     return this.authService.registerOwner(registerOwnerDto);
   }
 
+  @UseGuards(JwtAuthGuard)
+  @Roles(UserRole.CUSTOMER)
+  @Post('upgrade-to-owner')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary:
+      'Upgrade the current customer account to a business owner (keeps both sides)',
+    description:
+      'Creates the business for the authenticated customer, flips the account to Owner and returns a new session. Local-auth accounts must confirm their password.',
+  })
+  @ApiBody({ type: UpgradeToOwnerDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Upgraded successfully, returns a new access token',
+    type: AuthResponseDto,
+  })
+  async upgradeToOwner(
+    @Request() req: { user: User },
+    @Body() dto: UpgradeToOwnerDto,
+  ) {
+    return this.authService.upgradeToOwner(req.user, dto);
+  }
+
   @Public()
   @Post('customer/register/request-otp')
   @HttpCode(HttpStatus.OK)
@@ -263,9 +287,7 @@ export class AuthController {
     description: 'Customer verified and PIN set successfully',
     type: AuthResponseDto,
   })
-  async verifyAndSetCustomerPin(
-    @Body() dto: VerifyAndSetCustomerPinDto,
-  ) {
+  async verifyAndSetCustomerPin(@Body() dto: VerifyAndSetCustomerPinDto) {
     return this.authService.verifyOtpAndSetCustomerPin(dto);
   }
 
@@ -279,9 +301,7 @@ export class AuthController {
     description: 'Reset OTP sent successfully',
     type: MessageResponseDto,
   })
-  async requestCustomerPinReset(
-    @Body() dto: RequestCustomerPinResetDto,
-  ) {
+  async requestCustomerPinReset(@Body() dto: RequestCustomerPinResetDto) {
     return this.authService.requestCustomerPinReset(dto);
   }
 

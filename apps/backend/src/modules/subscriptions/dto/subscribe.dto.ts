@@ -68,4 +68,3 @@ export class SubscribeDto {
   @IsOptional()
   promoCode?: string;
 }
-
