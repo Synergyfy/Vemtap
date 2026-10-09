@@ -6,7 +6,11 @@ import {
   ApiResponse,
 } from '@nestjs/swagger';
 import { SavedService } from '../saved.service';
-import { SavedPageDto, SavedQueryDto } from '../dto/saved.dto';
+import {
+  SavedPageDto,
+  SavedQueryDto,
+  SavedUnifiedPageDto,
+} from '../dto/saved.dto';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../../common/guards/roles.guard';
 import { Roles } from '../../../common/decorators/roles.decorator';
@@ -29,9 +33,12 @@ export class MeSavedController {
     summary: 'Unified saved feed (deals, businesses, services)',
     description:
       'Returns the customer’s saved items across all three stores, newest ' +
-      'first, merged and paginated. Filter with `type`. Access: CUSTOMER',
+      'first, merged and paginated. Filter with `type`. Unfiltered, the ' +
+      'response also carries `totals` (per-store counts for the tab badges); ' +
+      'omit it for a `type` read, which skips the other stores. ' +
+      'Access: CUSTOMER',
   })
-  @ApiResponse({ status: 200, type: SavedPageDto })
+  @ApiResponse({ status: 200, type: SavedUnifiedPageDto })
   @ApiResponse({ status: 401, description: 'Missing or invalid token' })
   @ApiResponse({
     status: 403,
@@ -40,7 +47,7 @@ export class MeSavedController {
   async listAll(
     @Req() req: RequestWithUser,
     @Query() query: SavedQueryDto,
-  ): Promise<SavedPageDto> {
+  ): Promise<SavedUnifiedPageDto> {
     return this.savedService.getUnifiedSaved(req.user.id, query);
   }
 
