@@ -65,6 +65,66 @@ export class ListReviewsQueryDto {
   limit?: number = 10;
 }
 
+export class UpdateDealReviewDto {
+  @ApiPropertyOptional({ description: 'Updated review comment' })
+  @IsOptional()
+  @IsString()
+  @MinLength(1)
+  @MaxLength(1000)
+  @Transform(({ value }: { value: unknown }): unknown =>
+    typeof value === 'string' ? value.trim() : value,
+  )
+  comment?: string;
+
+  @ApiPropertyOptional({
+    description: 'Updated rating score from 1 to 5',
+    example: 4,
+    minimum: 1,
+    maximum: 5,
+  })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(5)
+  rating?: number;
+}
+
+export class DealReviewDetailDto {
+  @ApiProperty({ example: 'uuid-of-review' })
+  id: string;
+
+  @ApiProperty({ example: 'uuid-of-offer' })
+  offerId: string;
+
+  @ApiProperty({ example: 'Chidi O.' })
+  reviewerName: string;
+
+  @ApiProperty({ example: 'Great deal!' })
+  comment: string;
+
+  @ApiProperty({ example: 5, nullable: true })
+  rating: number | null;
+
+  @ApiProperty({ example: 3 })
+  likesCount: number;
+
+  @ApiProperty({ enum: DealReviewStatus, example: DealReviewStatus.APPROVED })
+  status: DealReviewStatus;
+
+  @ApiProperty({
+    example: false,
+    description: 'True when the request was authenticated as the review author',
+  })
+  isAuthor: boolean;
+
+  @ApiProperty({ example: '2026-10-08T10:00:00.000Z' })
+  createdAt: Date;
+
+  @ApiProperty({ example: '2026-10-08T10:00:00.000Z' })
+  updatedAt: Date;
+}
+
 export class ReviewsAdminQueryDto {
   @ApiPropertyOptional({ enum: DealReviewStatus })
   @IsOptional()

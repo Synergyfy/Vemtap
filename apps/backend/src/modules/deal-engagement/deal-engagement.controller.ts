@@ -8,16 +8,25 @@ import {
   HttpStatus,
   Param,
   ParseUUIDPipe,
+  Patch,
   Post,
   Query,
   Request,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiOperation,
+  ApiParam,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 import { DealEngagementService } from './deal-engagement.service';
 import {
   BusinessReviewsQueryDto,
   CreateDealReviewDto,
+  DealReviewDetailDto,
   ListReviewsQueryDto,
+  UpdateDealReviewDto,
 } from './dto/deal-review.dto';
 import { DealReactionDto } from './dto/deal-reaction.dto';
 import { Public } from '../../common/decorators/public.decorator';
@@ -58,6 +67,20 @@ export class DealEngagementController {
     return this.engagementService.findReviewsForBusiness(
       this.getBusinessIdOrThrow(req),
       query,
+    );
+  }
+
+  @ApiBearerAuth()
+  @Roles(UserRole.OWNER, UserRole.MANAGER)
+  @Get('business/reviews/summary')
+  @ApiOperation({
+    summary: 'Rating summary for the current business (Merchant)',
+    description:
+      'Average and total of APPROVED deal reviews plus the pending moderation count.',
+  })
+  async getBusinessReviewsSummary(@Request() req: DealEngagementRequest) {
+    return this.engagementService.getReviewsSummaryForBusiness(
+      this.getBusinessIdOrThrow(req),
     );
   }
 
@@ -154,6 +177,81 @@ export class DealEngagementController {
   @ApiOperation({ summary: 'Top 3 approved reviews for a deal (Public)' })
   async previewReviews(@Param('offerId', ParseUUIDPipe) offerId: string) {
     return this.engagementService.previewReviews(offerId);
+  }
+
+  @Public()
+  @Get(':offerId/reviews/:reviewId')
+  @ApiOperation({
+    summary: 'Get a single review (Public)',
+    description:
+      'Approved reviews are public. A pending or rejected review is only ' +
+      'visible to its author when the request carries the author’s token; ' +
+      'everyone else receives 404 so moderation state is not leaked.',
+  })
+  @ApiParam({ name: 'offerId', format: 'uuid' })
+  @ApiParam({ name: 'reviewId', format: 'uuid' })
+  @ApiResponse({ status: 200, type: DealReviewDetailDto })
+  @ApiResponse({ status: 404, description: 'Review not found' })
+  async findReview(
+    @Request() req: DealEngagementRequest,
+    @Param('offerId', ParseUUIDPipe) offerId: string,
+    @Param('reviewId', ParseUUIDPipe) reviewId: string,
+  ) {
+    return this.engagementService.findReviewById(offerId, reviewId, req.user);
+  }
+
+  @ApiBearerAuth()
+  @Patch(':offerId/reviews/:reviewId')
+  @ApiOperation({
+    summary: "Update the authenticated author's own review",
+    description:
+      'Only the user who created the review can edit it (403 otherwise). ' +
+      'Anonymous reviews cannot be edited. When the business requires review ' +
+      'approval the edit re-enters PENDING moderation. Access: authenticated author',
+  })
+  @ApiParam({ name: 'offerId', format: 'uuid' })
+  @ApiParam({ name: 'reviewId', format: 'uuid' })
+  @ApiResponse({ status: 200, type: DealReviewDetailDto })
+  @ApiResponse({ status: 403, description: 'Review belongs to another user' })
+  @ApiResponse({ status: 404, description: 'Review not found' })
+  async updateReview(
+    @Request() req: DealEngagementRequest,
+    @Param('offerId', ParseUUIDPipe) offerId: string,
+    @Param('reviewId', ParseUUIDPipe) reviewId: string,
+    @Body() dto: UpdateDealReviewDto,
+  ) {
+    return this.engagementService.updateOwnReview(
+      offerId,
+      reviewId,
+      req.user!.id,
+      dto,
+    );
+  }
+
+  @ApiBearerAuth()
+  @Delete(':offerId/reviews/:reviewId')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({
+    summary: "Delete the authenticated author's own review",
+    description:
+      'Soft-deletes the review and re-syncs the offer rating aggregates. ' +
+      'Only the author can delete it (403 otherwise). Access: authenticated author',
+  })
+  @ApiParam({ name: 'offerId', format: 'uuid' })
+  @ApiParam({ name: 'reviewId', format: 'uuid' })
+  @ApiResponse({ status: 204, description: 'Review deleted' })
+  @ApiResponse({ status: 403, description: 'Review belongs to another user' })
+  @ApiResponse({ status: 404, description: 'Review not found' })
+  async deleteReview(
+    @Request() req: DealEngagementRequest,
+    @Param('offerId', ParseUUIDPipe) offerId: string,
+    @Param('reviewId', ParseUUIDPipe) reviewId: string,
+  ) {
+    await this.engagementService.deleteOwnReview(
+      offerId,
+      reviewId,
+      req.user!.id,
+    );
   }
 
   @ApiBearerAuth()

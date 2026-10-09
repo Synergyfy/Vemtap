@@ -23,4 +23,16 @@ export class BranchFilterDto {
   @IsBoolean()
   @Transform(({ value }) => value === 'true' || value === true)
   allBranches?: boolean;
+
+  @ApiPropertyOptional({
+    description:
+      'Business ID used by platform admins to resolve context across businesses',
+    example: 'd290f1ee-6c54-4b01-90e6-d701748f0852',
+  })
+  @IsOptional()
+  @Transform(({ value }) =>
+    typeof value === 'string' && value.trim() === '' ? undefined : value,
+  )
+  @IsUUID('4', { message: 'businessId must be a valid UUID v4' })
+  businessId?: string;
 }

@@ -658,4 +658,43 @@ describe('DealEngagementService', () => {
       );
     });
   });
+
+  describe('getReviewsSummaryForBusiness', () => {
+    const summaryQb = (raw: Record<string, unknown>) => ({
+      innerJoin: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
+      andWhere: jest.fn().mockReturnThis(),
+      select: jest.fn().mockReturnThis(),
+      addSelect: jest.fn().mockReturnThis(),
+      getRawOne: jest.fn().mockResolvedValue(raw),
+    });
+
+    it('averages approved reviews and counts pending separately', async () => {
+      mockReviewRepository.createQueryBuilder
+        .mockReturnValueOnce(summaryQb({ count: '128', average: '4.87' }))
+        .mockReturnValueOnce(summaryQb({ count: '2' }));
+
+      const result = await service.getReviewsSummaryForBusiness('biz-1');
+
+      expect(result).toEqual({
+        totalReviews: 128,
+        averageRating: 4.9,
+        pendingReviews: 2,
+      });
+    });
+
+    it('returns a null rating when nothing is approved', async () => {
+      mockReviewRepository.createQueryBuilder
+        .mockReturnValueOnce(summaryQb({ count: '0', average: null }))
+        .mockReturnValueOnce(summaryQb({ count: '0' }));
+
+      const result = await service.getReviewsSummaryForBusiness('biz-1');
+
+      expect(result).toEqual({
+        totalReviews: 0,
+        averageRating: null,
+        pendingReviews: 0,
+      });
+    });
+  });
 });

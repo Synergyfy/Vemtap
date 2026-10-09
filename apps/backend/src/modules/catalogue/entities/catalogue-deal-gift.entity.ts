@@ -76,7 +76,11 @@ export class CatalogueDealGift extends AbstractBaseEntity {
   @Column({ type: 'varchar', nullable: true })
   recipientPhone?: string | null;
 
-  @ApiProperty({ example: 'Hope you enjoy this lunch deal!', required: false, nullable: true })
+  @ApiProperty({
+    example: 'Hope you enjoy this lunch deal!',
+    required: false,
+    nullable: true,
+  })
   @Column({ type: 'text', nullable: true })
   note?: string | null;
 

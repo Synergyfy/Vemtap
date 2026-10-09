@@ -152,9 +152,7 @@ describe('SubscriptionRemindersService', () => {
     };
 
     businessRepo = {
-      find: jest
-        .fn()
-        .mockResolvedValue([{ id: 'biz-1', ownerId: 'owner-1' }]),
+      find: jest.fn().mockResolvedValue([{ id: 'biz-1', ownerId: 'owner-1' }]),
     };
 
     userRepo = {
@@ -221,7 +219,8 @@ describe('SubscriptionRemindersService', () => {
             get: jest.fn((key: string, defaultValue?: unknown) => {
               if (key === 'SUBSCRIPTION_REMINDER_STAGES') return '14,7,3';
               if (key === 'SUBSCRIPTION_REMINDER_LAPSED_DAYS') return 7;
-              if (key === 'SUBSCRIPTION_REMINDER_CUSTOMER_LOOKBACK_DAYS') return 30;
+              if (key === 'SUBSCRIPTION_REMINDER_CUSTOMER_LOOKBACK_DAYS')
+                return 30;
               return defaultValue;
             }),
           },
@@ -409,8 +408,10 @@ describe('SubscriptionRemindersService', () => {
         id: 'tmpl-7',
         stage: 7,
         name: 'Custom 7-Day',
-        titleTemplate: 'Attention {{businessName}}: {{clusterName}} expires in {{daysLeft}} days',
-        messageTemplate: 'Hello {{ownerName}}, you have {{daysText}} to renew your {{planName}}.',
+        titleTemplate:
+          'Attention {{businessName}}: {{clusterName}} expires in {{daysLeft}} days',
+        messageTemplate:
+          'Hello {{ownerName}}, you have {{daysText}} to renew your {{planName}}.',
         type: 'warning',
         actionUrl: '/custom-renew',
         isEnabled: true,
@@ -425,9 +426,12 @@ describe('SubscriptionRemindersService', () => {
 
       await service.runRenewalReminders();
 
-      const { title, message, actionUrl } = lastCreateCall(notificationsService);
+      const { title, message, actionUrl } =
+        lastCreateCall(notificationsService);
       expect(title).toContain('Attention Ikeja Store: Ikeja expires in 5 days');
-      expect(message).toContain('Hello John Doe, you have 5 days to renew your Pro.');
+      expect(message).toContain(
+        'Hello John Doe, you have 5 days to renew your Pro.',
+      );
       expect(actionUrl).toBe('/custom-renew');
     });
 
@@ -458,13 +462,15 @@ describe('SubscriptionRemindersService', () => {
       const placeholders = await service.getPlaceholders();
       expect(placeholders).toBeDefined();
       expect(placeholders.length).toBeGreaterThan(0);
-      expect(placeholders.some((p) => p.placeholder === '{{clusterName}}')).toBe(true);
+      expect(
+        placeholders.some((p) => p.placeholder === '{{clusterName}}'),
+      ).toBe(true);
     });
 
     it('gets templates with default seeding if empty', async () => {
-      templateRepo.find.mockResolvedValueOnce([]).mockResolvedValueOnce([
-        { stage: 14, name: '14-Day' },
-      ]);
+      templateRepo.find
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([{ stage: 14, name: '14-Day' }]);
 
       const list = await service.getTemplates();
       expect(list).toBeDefined();
@@ -533,8 +539,10 @@ describe('SubscriptionRemindersService', () => {
 
     it('previews template rendering with sample variables', async () => {
       const preview = await service.previewTemplate({
-        titleTemplate: 'Hello {{ownerName}}, your {{planName}} at {{businessName}} ends in {{daysLeft}} days!',
-        messageTemplate: 'Reach {{people}} shoppers in {{clusterName}} by renewing at {{renewalUrl}}.',
+        titleTemplate:
+          'Hello {{ownerName}}, your {{planName}} at {{businessName}} ends in {{daysLeft}} days!',
+        messageTemplate:
+          'Reach {{people}} shoppers in {{clusterName}} by renewing at {{renewalUrl}}.',
         variables: {
           businessName: 'My Awesome Mart',
           ownerName: 'Sarah Connor',
@@ -546,7 +554,9 @@ describe('SubscriptionRemindersService', () => {
       expect(preview.title).toBe(
         'Hello Sarah Connor, your VIP Growth at My Awesome Mart ends in 10 days!',
       );
-      expect(preview.message).toContain('Reach 1,840 shoppers in Ikeja Tech Hub');
+      expect(preview.message).toContain(
+        'Reach 1,840 shoppers in Ikeja Tech Hub',
+      );
     });
   });
 });

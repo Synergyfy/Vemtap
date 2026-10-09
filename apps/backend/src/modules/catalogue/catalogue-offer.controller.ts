@@ -28,6 +28,7 @@ import {
   GenerateOfferTermsDto,
 } from './dto/offer.dto';
 import { RequestClaimOtpDto, VerifyClaimDto } from './dto/claim.dto';
+import { BusinessClaimsQueryDto } from './dto/my-claims.dto';
 import { SendDealGiftDto } from './dto/send-deal-gift.dto';
 import { RejectDealGiftDto } from './dto/reject-deal-gift.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -105,6 +106,10 @@ export class CatalogueOfferController {
   @Get('public')
   @ApiOperation({
     summary: 'List active promotions across all branches (Public)',
+    description:
+      'Each offer carries its branch and business context. `business.uniqueCode` ' +
+      'is the business 9-character code used by `GET /public/businesses/code/:code` ' +
+      'for merchant profile links.',
   })
   async listAllOffersPublic(@Query() query: PublicCatalogueOffersQueryDto) {
     return this.offerService.findAllOffersPublicGlobal(query);
@@ -122,7 +127,14 @@ export class CatalogueOfferController {
 
   @Public()
   @Get('public/details/:id')
-  @ApiOperation({ summary: 'Get offer details (Public)' })
+  @ApiOperation({
+    summary: 'Get offer details (Public)',
+    description:
+      'Returns the full offer payload. `business.slug` keeps the branch code ' +
+      '(branch username or uniqueCode) for branch deep links while ' +
+      '`business.uniqueCode` is the business 9-character code used by ' +
+      '`GET /public/businesses/code/:code` for the merchant profile link.',
+  })
   async getOfferPublic(@Param('id', ParseUUIDPipe) id: string) {
     return this.offerService.findOneOffer(id);
   }
@@ -218,8 +230,20 @@ export class CatalogueOfferController {
   @Permissions('inventory')
   @ApiOperation({
     summary: 'Get all promotion claims for the business (Admin)',
+    description:
+      'Claim rows carry `status` (`claimed` | `redeemed` | `expired`), ' +
+      '`claimCode`, `expiresAt` and nested offer. Pagination is opt-in: ' +
+      'without `page`/`limit` the legacy bare array is returned; supplying ' +
+      'either returns `{ data, total, page, limit }`.',
   })
-  async getBusinessClaims(@Req() req: any) {
-    return this.offerService.getBusinessClaims(req.user.businessId);
+  @ApiResponse({
+    status: 200,
+    description: 'Business claims (array, or paginated envelope when requested)',
+  })
+  async getBusinessClaims(
+    @Req() req: any,
+    @Query() query: BusinessClaimsQueryDto,
+  ) {
+    return this.offerService.getBusinessClaims(req.user.businessId, query);
   }
 }

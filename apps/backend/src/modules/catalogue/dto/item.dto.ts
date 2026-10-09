@@ -533,3 +533,25 @@ export class BulkImportItemsDto {
   @Type(() => BulkImportItemRowDto)
   items: BulkImportItemRowDto[];
 }
+
+export enum PublicProductSortOrder {
+  ASC = 'ASC',
+  DESC = 'DESC',
+}
+
+/**
+ * Query for the app-facing published products feed (`GET /api/v1/products`),
+ * backed by catalogue items. Mirrors the app's `CatalogueItemQuery`
+ * plus the legacy `sortOrder` alias.
+ */
+export class PublicProductsQueryDto extends CatalogueQueryDto {
+  @ApiPropertyOptional({
+    enum: PublicProductSortOrder,
+    default: PublicProductSortOrder.DESC,
+    description:
+      'Legacy alias for sort direction used when `sortBy` is not sent: ASC maps to oldest-first, DESC to newest-first.',
+  })
+  @IsOptional()
+  @IsEnum(PublicProductSortOrder)
+  sortOrder?: PublicProductSortOrder = PublicProductSortOrder.DESC;
+}

@@ -3,7 +3,11 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { PromotionCodesService } from './promotion-codes.service';
 import { PromotionCode } from '../entities/promotion-code.entity';
-import { Coupon, DiscountType, CouponDuration } from '../entities/coupon.entity';
+import {
+  Coupon,
+  DiscountType,
+  CouponDuration,
+} from '../entities/coupon.entity';
 import { CouponRedemption } from '../entities/coupon-redemption.entity';
 
 describe('PromotionCodesService', () => {
@@ -58,7 +62,9 @@ describe('PromotionCodesService', () => {
   beforeEach(async () => {
     promoRepo = {
       findOne: jest.fn().mockResolvedValue(null),
-      create: jest.fn().mockImplementation((dto) => ({ id: 'promo-1', ...dto })),
+      create: jest
+        .fn()
+        .mockImplementation((dto) => ({ id: 'promo-1', ...dto })),
       save: jest.fn().mockImplementation(async (entity) => entity),
       count: jest.fn().mockResolvedValue(1),
       createQueryBuilder: jest.fn(() => ({
@@ -95,7 +101,10 @@ describe('PromotionCodesService', () => {
         PromotionCodesService,
         { provide: getRepositoryToken(PromotionCode), useValue: promoRepo },
         { provide: getRepositoryToken(Coupon), useValue: couponRepo },
-        { provide: getRepositoryToken(CouponRedemption), useValue: redemptionRepo },
+        {
+          provide: getRepositoryToken(CouponRedemption),
+          useValue: redemptionRepo,
+        },
       ],
     }).compile();
 

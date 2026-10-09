@@ -285,13 +285,18 @@ export class CatalogueOrderService {
             .createQueryBuilder('item')
             .innerJoin('item.order', 'order')
             .where('item.offerId = :offerId', { offerId: offer.id })
-            .andWhere('order.customerId = :customerId', { customerId: customer.id })
+            .andWhere('order.customerId = :customerId', {
+              customerId: customer.id,
+            })
             .andWhere('order.status != :cancelled', {
               cancelled: CatalogueOrderStatus.CANCELLED,
             })
             .getCount();
 
-          if (previousClaimsCount + itemDto.quantity > offer.maxClaimsPerCustomer) {
+          if (
+            previousClaimsCount + itemDto.quantity >
+            offer.maxClaimsPerCustomer
+          ) {
             throw new BadRequestException(
               `You have reached the maximum number of claims (${offer.maxClaimsPerCustomer}) for this deal.`,
             );
@@ -411,6 +416,8 @@ export class CatalogueOrderService {
       (order.status === CatalogueOrderStatus.NEW &&
         status === CatalogueOrderStatus.PROCESSING) ||
       (order.status === CatalogueOrderStatus.PROCESSING &&
+        status === CatalogueOrderStatus.READY) ||
+      (order.status === CatalogueOrderStatus.READY &&
         status === CatalogueOrderStatus.COMPLETED)
     ) {
       order.attendedById = staff.id;
@@ -723,19 +730,41 @@ export class CatalogueOrderService {
     return { data, total, page, limit };
   }
 
-  async findAllByCustomer(customerId: string) {
-    return this.orderRepository.find({
+  async findAllByCustomer(
+    customerId: string,
+    query: { page?: number; limit?: number } = {},
+  ) {
+    const relations = [
+      'items',
+      'items.item',
+      'items.offer',
+      'branch',
+      'branch.business',
+      'attendedByUser',
+    ];
+    const order = { createdAt: 'DESC' } as const;
+
+    // Opt-in pagination: legacy callers (and the app's order-detail lookup)
+    // get the full bare array; page/limit callers get an envelope.
+    if (query.page === undefined && query.limit === undefined) {
+      return this.orderRepository.find({
+        where: { customerId },
+        relations,
+        order,
+      });
+    }
+
+    const page = query.page ?? 1;
+    const limit = query.limit ?? 10;
+    const [data, total] = await this.orderRepository.findAndCount({
       where: { customerId },
-      relations: [
-        'items',
-        'items.item',
-        'items.offer',
-        'branch',
-        'branch.business',
-        'attendedByUser',
-      ],
-      order: { createdAt: 'DESC' },
+      relations,
+      order,
+      skip: (page - 1) * limit,
+      take: limit,
     });
+
+    return { data, total, page, limit };
   }
 
   async findOneOrder(orderId: string, businessId: string) {

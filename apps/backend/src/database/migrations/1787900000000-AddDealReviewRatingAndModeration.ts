@@ -1,14 +1,10 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class AddDealReviewRatingAndModeration1787900000000
-  implements MigrationInterface
-{
+export class AddDealReviewRatingAndModeration1787900000000 implements MigrationInterface {
   name = 'AddDealReviewRatingAndModeration1787900000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(
-      `ALTER TABLE "deal_reviews" ADD "rating" integer`,
-    );
+    await queryRunner.query(`ALTER TABLE "deal_reviews" ADD "rating" integer`);
     await queryRunner.query(
       `ALTER TABLE "businesses" ADD "requireReviewApproval" boolean NOT NULL DEFAULT false`,
     );
@@ -24,8 +20,6 @@ export class AddDealReviewRatingAndModeration1787900000000
     await queryRunner.query(
       `ALTER TABLE "businesses" DROP COLUMN "requireReviewApproval"`,
     );
-    await queryRunner.query(
-      `ALTER TABLE "deal_reviews" DROP COLUMN "rating"`,
-    );
+    await queryRunner.query(`ALTER TABLE "deal_reviews" DROP COLUMN "rating"`);
   }
 }

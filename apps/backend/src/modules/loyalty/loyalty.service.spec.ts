@@ -13,6 +13,7 @@ import { LoyaltyRule } from './entities/loyalty-rule.entity';
 import { BranchesService } from '../branches/branches.service';
 import { DataSource } from 'typeorm';
 import { Business } from '../businesses/entities/business.entity';
+import { CatalogueOfferClaim } from '../catalogue/entities/catalogue-offer-claim.entity';
 
 describe('LoyaltyService', () => {
   let service: LoyaltyService;
@@ -83,6 +84,10 @@ describe('LoyaltyService', () => {
         },
         {
           provide: getRepositoryToken(Business),
+          useValue: mockRepository,
+        },
+        {
+          provide: getRepositoryToken(CatalogueOfferClaim),
           useValue: mockRepository,
         },
         {

@@ -25,6 +25,15 @@ export class RewardQueryDto {
   @IsUUID()
   businessId?: string;
 
+  @ApiPropertyOptional({
+    description:
+      'Platform-wide listing: returns active, unexpired rewards across all businesses. Ignores branchId/branchCode/businessId.',
+  })
+  @IsOptional()
+  @Transform(({ value }) => value === 'true' || value === true || value === '1')
+  @IsBoolean()
+  global?: boolean;
+
   @ApiPropertyOptional({ description: 'Search term for reward name' })
   @IsOptional()
   @IsString()
@@ -97,6 +106,15 @@ export class CustomerAnalyticsQueryDto {
   @IsInt()
   @Min(1)
   days?: number = 30;
+
+  @ApiPropertyOptional({
+    description:
+      'All-time mode: suppresses the `days` window for visit totals and returns growthVsPreviousPeriod: null (savings/points totals are already lifetime).',
+  })
+  @IsOptional()
+  @Transform(({ value }) => value === 'true' || value === true || value === '1')
+  @IsBoolean()
+  allTime?: boolean;
 }
 
 export class PointLogsQueryDto {

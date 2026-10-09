@@ -32,6 +32,10 @@ import { SubscriptionTaxService } from './services/subscription-tax.service';
 import { UpdateSubscriptionTaxDto } from './dto/tax/update-subscription-tax.dto';
 import { ToggleSubscriptionTaxDto } from './dto/tax/toggle-subscription-tax.dto';
 import { PricePreviewDto } from './dto/tax/price-preview.dto';
+import {
+  ActiveSubscriptionDto,
+  toActiveSubscriptionDto,
+} from './dto/active-subscription.dto';
 
 @ApiTags('Subscriptions (Owner / Capabilities)')
 @Controller('subscriptions')
@@ -146,13 +150,20 @@ export class SubscriptionsController {
   @Roles(UserRole.OWNER, UserRole.ADMIN, UserRole.MANAGER, UserRole.STAFF)
   @ApiOperation({
     summary: "Get current active plan for the branch's business",
+    description:
+      'Returns the active/trial subscription with every stored field plus ' +
+      '`isTrial`, `trialEndsAt` and a plan summary. Returns null when no ' +
+      'active subscription or free plan exists.',
   })
   @ApiOkResponse({
-    description: 'Return current active plan details',
+    description: 'Current active plan details',
+    type: ActiveSubscriptionDto,
   })
   async getActivePlan(@Request() req) {
     const businessId = await this.getBusinessId(req);
-    return this.subscriptionsService.activeSubscription(businessId);
+    const subscription =
+      await this.subscriptionsService.activeSubscription(businessId);
+    return toActiveSubscriptionDto(subscription);
   }
 
   @Post('cancel/:businessId')
@@ -218,7 +229,8 @@ export class SubscriptionsController {
   })
   @ApiResponse({
     status: 200,
-    description: 'Calculated breakdown of subtotal, discount, tax amount, and total',
+    description:
+      'Calculated breakdown of subtotal, discount, tax amount, and total',
   })
   async previewPrice(@Query() dto: PricePreviewDto, @Request() req: any) {
     let businessId: string | undefined;
@@ -229,7 +241,6 @@ export class SubscriptionsController {
     }
     return this.subscriptionsService.previewPrice(dto, businessId);
   }
-
 
   // --- Admin Tax Endpoints ---
 
@@ -266,16 +277,14 @@ export class SubscriptionsController {
   @Patch('admin/tax-config/toggle')
   @Roles(UserRole.ADMIN)
   @ApiOperation({
-    summary: 'Admin: Quick toggle to enable or disable VAT/Tax for subscriptions',
+    summary:
+      'Admin: Quick toggle to enable or disable VAT/Tax for subscriptions',
   })
   @ApiResponse({
     status: 200,
     description: 'Tax status toggled successfully and recorded in history',
   })
-  async toggleTax(
-    @Request() req: any,
-    @Body() dto: ToggleSubscriptionTaxDto,
-  ) {
+  async toggleTax(@Request() req: any, @Body() dto: ToggleSubscriptionTaxDto) {
     return this.subscriptionTaxService.toggleTax(req.user.id, dto);
   }
 

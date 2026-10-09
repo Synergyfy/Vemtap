@@ -69,8 +69,7 @@ export class PaymentsController {
       throw new BadRequestException('Missing signature');
     }
 
-    const rawBody =
-      (req as any).rawBody ?? (req as any).raw?.rawBody ?? undefined;
+    const rawBody = req.rawBody ?? req.raw?.rawBody ?? undefined;
 
     const isValid = this.paymentsService.verifyWebhookSignature(
       signature,

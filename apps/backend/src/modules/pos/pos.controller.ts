@@ -75,7 +75,10 @@ export class PosController {
     @Query() filter: BranchFilterDto,
     @Req() req: RequestWithUser,
   ) {
-    return this.posService.findAllHeldSales(req.user.businessId, filter.branchId);
+    return this.posService.findAllHeldSales(
+      req.user.businessId,
+      filter.branchId,
+    );
   }
 
   @Get('sales/held/:id')
@@ -181,7 +184,13 @@ export class PosController {
 
   @Get('dashboard')
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.ADMIN, UserRole.STAFF)
-  @ApiOperation({ summary: 'Get POS dashboard stats' })
+  @ApiOperation({
+    summary: "Today's POS dashboard stats",
+    description:
+      'Completed sales for today plus `heldSalesCount` — the server-visible ' +
+      'pending queue of parked (held) sales. Unsynced offline sales live on ' +
+      'the device until batch-sync, so they are not counted here.',
+  })
   async getDashboard(
     @Query() filter: BranchFilterDto,
     @Req() req: RequestWithUser,

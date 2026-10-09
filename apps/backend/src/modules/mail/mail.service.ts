@@ -928,7 +928,9 @@ export class MailService {
       const frontendUrl = this.resolveFrontendBaseUrl(params.frontendBaseUrl);
 
       const businessSlug = business.slug || 'deal';
-      const tokenQuery = giftToken ? `&giftToken=${encodeURIComponent(giftToken)}` : '';
+      const tokenQuery = giftToken
+        ? `&giftToken=${encodeURIComponent(giftToken)}`
+        : '';
       const claimUrl = `${frontendUrl}/deals/${businessSlug}/${offer.id}?ref=gift&email=${encodeURIComponent(recipientEmail)}&sender=${encodeURIComponent(safeSender)}${tokenQuery}`;
       const rejectUrl = giftToken
         ? `${frontendUrl}/deals/gift-reject?token=${encodeURIComponent(giftToken)}`

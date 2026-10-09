@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Inject,
   Injectable,
   Logger,
@@ -29,6 +30,7 @@ import {
   BusinessReviewsQueryDto,
   CreateDealReviewDto,
   ListReviewsQueryDto,
+  UpdateDealReviewDto,
 } from './dto/deal-review.dto';
 
 @Injectable()
@@ -305,6 +307,107 @@ export class DealEngagementService {
     };
   }
 
+  /**
+   * Single review detail. Approved reviews are public; a non-approved review is
+   * only visible to its author (who must be authenticated), and everyone else
+   * gets a 404 so moderation state is never leaked.
+   */
+  async findReviewById(
+    offerId: string,
+    reviewId: string,
+    user?: { id: string },
+  ) {
+    await this.getOfferOrThrow(offerId);
+    const review = await this.reviewRepository.findOne({
+      where: { id: reviewId, offerId },
+    });
+    if (!review) throw new NotFoundException('Review not found');
+
+    const isAuthor = Boolean(
+      user?.id && review.userId && review.userId === user.id,
+    );
+    if (review.status !== DealReviewStatus.APPROVED && !isAuthor) {
+      throw new NotFoundException('Review not found');
+    }
+
+    return {
+      id: review.id,
+      offerId: review.offerId,
+      reviewerName: review.reviewerName,
+      comment: review.comment,
+      rating: review.rating,
+      likesCount: review.likesCount,
+      status: review.status,
+      isAuthor,
+      createdAt: review.createdAt,
+      updatedAt: review.updatedAt,
+    };
+  }
+
+  /**
+   * Update the authenticated author's own review. Editing re-enters moderation
+   * when the business requires review approval, and counters/caches are
+   * re-synced so the offer aggregate stays accurate.
+   */
+  async updateOwnReview(
+    offerId: string,
+    reviewId: string,
+    userId: string,
+    dto: UpdateDealReviewDto,
+  ) {
+    const offer = await this.getOfferOrThrow(offerId);
+    const review = await this.reviewRepository.findOne({
+      where: { id: reviewId, offerId },
+    });
+    if (!review) throw new NotFoundException('Review not found');
+    if (!review.userId || review.userId !== userId) {
+      throw new ForbiddenException('You can only edit your own review');
+    }
+
+    if (dto.comment !== undefined) review.comment = dto.comment;
+    if (dto.rating !== undefined) review.rating = dto.rating;
+
+    const requireApproval = Boolean(offer.business?.requireReviewApproval);
+    review.status = requireApproval
+      ? DealReviewStatus.PENDING
+      : DealReviewStatus.APPROVED;
+
+    const saved = await this.reviewRepository.save(review);
+    await this.syncReviewsCount(offerId);
+    await this.syncAverageRating(offerId);
+    await this.clearOfferCaches(offer.id, offer.branchId);
+
+    return {
+      id: saved.id,
+      offerId: saved.offerId,
+      reviewerName: saved.reviewerName,
+      comment: saved.comment,
+      rating: saved.rating,
+      likesCount: saved.likesCount,
+      status: saved.status,
+      isAuthor: true,
+      createdAt: saved.createdAt,
+      updatedAt: saved.updatedAt,
+    };
+  }
+
+  /** Soft-delete the authenticated author's own review and re-sync aggregates. */
+  async deleteOwnReview(offerId: string, reviewId: string, userId: string) {
+    const offer = await this.getOfferOrThrow(offerId);
+    const review = await this.reviewRepository.findOne({
+      where: { id: reviewId, offerId },
+    });
+    if (!review) throw new NotFoundException('Review not found');
+    if (!review.userId || review.userId !== userId) {
+      throw new ForbiddenException('You can only delete your own review');
+    }
+
+    await this.reviewRepository.softDelete(reviewId);
+    await this.syncReviewsCount(offerId);
+    await this.syncAverageRating(offerId);
+    await this.clearOfferCaches(offer.id, offer.branchId);
+  }
+
   async toggleReviewLike(userId: string, offerId: string, reviewId: string) {
     return this.dataSource.transaction(async (manager) => {
       const review = await manager.findOne(DealReview, {
@@ -471,6 +574,45 @@ export class DealEngagementService {
       total,
       page,
       limit,
+    };
+  }
+
+  /**
+   * Rating summary for the merchant's reviews: APPROVED only feeds the average
+   * and total (that is what customers see), pending is a moderation counter.
+   */
+  async getReviewsSummaryForBusiness(businessId: string) {
+    const approved = await this.reviewRepository
+      .createQueryBuilder('review')
+      .innerJoin('review.offer', 'offer')
+      .where('offer.businessId = :businessId', { businessId })
+      .andWhere('review.status = :status', {
+        status: DealReviewStatus.APPROVED,
+      })
+      .select('COUNT(review.id)', 'count')
+      .addSelect('AVG(review.rating)', 'average')
+      .getRawOne<{ count: string; average: string | null }>();
+
+    const pending = await this.reviewRepository
+      .createQueryBuilder('review')
+      .innerJoin('review.offer', 'offer')
+      .where('offer.businessId = :businessId', { businessId })
+      .andWhere('review.status = :status', {
+        status: DealReviewStatus.PENDING,
+      })
+      .select('COUNT(review.id)', 'count')
+      .getRawOne<{ count: string }>();
+
+    const totalReviews = parseInt(approved?.count ?? '0', 10) || 0;
+    const average = approved?.average != null ? Number(approved.average) : null;
+
+    return {
+      totalReviews,
+      averageRating:
+        totalReviews > 0 && average !== null && Number.isFinite(average)
+          ? Math.round(average * 10) / 10
+          : null,
+      pendingReviews: parseInt(pending?.count ?? '0', 10) || 0,
     };
   }
 

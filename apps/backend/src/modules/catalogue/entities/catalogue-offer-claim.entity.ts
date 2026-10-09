@@ -1,6 +1,7 @@
 import { Entity, Column, ManyToOne, JoinColumn, Index } from 'typeorm';
 import { AbstractBaseEntity } from '../../../common/entities/base.entity';
 import { CatalogueOffer } from './catalogue-offer.entity';
+import { User } from '../../users/entities/user.entity';
 import { ApiProperty } from '@nestjs/swagger';
 
 export enum CatalogueOfferClaimStatus {
@@ -21,6 +22,20 @@ export class CatalogueOfferClaim extends AbstractBaseEntity {
   @ManyToOne(() => CatalogueOffer, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'offerId' })
   offer: CatalogueOffer;
+
+  @ApiProperty({
+    example: 'uuid-of-user',
+    nullable: true,
+    description:
+      'Linked customer account, resolved from the claimant email/phone when one exists. Nullable because claims are anonymous (OTP-verified email only).',
+  })
+  @ManyToOne(() => User, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'userId' })
+  user: User | null;
+
+  @Column({ type: 'uuid', nullable: true })
+  @Index()
+  userId: string | null;
 
   @ApiProperty({ example: 'Chidi' })
   @Column()

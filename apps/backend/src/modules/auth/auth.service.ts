@@ -21,6 +21,7 @@ import * as bcrypt from 'bcrypt';
 import { User, UserRole, UserStatus } from '../users/entities/user.entity';
 import { Otp } from './entities/otp.entity';
 import { RegisterOwnerDto } from './dto/register-owner.dto';
+import { UpgradeToOwnerDto } from './dto/upgrade-to-owner.dto';
 import { RegisterAdminDto } from './dto/register-admin.dto';
 import { RequestOtpDto } from './dto/request-otp.dto';
 import { PasswordResetOtpDto } from './dto/password-reset-otp.dto';
@@ -58,9 +59,7 @@ function isValidReferralCode(value: string | null | undefined): boolean {
   if (!value) return false;
   const trimmed = value.trim();
   return (
-    trimmed.length > 0 &&
-    trimmed === value &&
-    /^[A-Za-z0-9-]+$/.test(trimmed)
+    trimmed.length > 0 && trimmed === value && /^[A-Za-z0-9-]+$/.test(trimmed)
   );
 }
 
@@ -997,6 +996,126 @@ export class AuthService {
     return this.generateAuthResponse(updatedUser, isNewUser);
   }
 
+  /**
+   * Upgrade an already-authenticated CUSTOMER to a business owner without
+   * creating a second account. The user keeps their customer history (visits,
+   * loyalty, claims are keyed by userId) and can later flip between the two
+   * modes via `switchRole`.
+   *
+   * Local-auth accounts must confirm their password; Google-only accounts
+   * (no password hash) upgrade on the strength of their session alone.
+   */
+  async upgradeToOwner(userRef: Partial<User>, dto: UpgradeToOwnerDto) {
+    const dbUser = await this.usersService.findOne(userRef.id as string);
+    if (!dbUser) {
+      throw new NotFoundException('User not found');
+    }
+
+    if (dbUser.role === UserRole.OWNER) {
+      throw new ConflictException(
+        'This account is already a business owner. Switch to business mode instead.',
+      );
+    }
+    if (dbUser.role !== UserRole.CUSTOMER) {
+      throw new BadRequestException(
+        'Only customer accounts can be upgraded to a business owner.',
+      );
+    }
+
+    if (dbUser.password) {
+      if (!dto.password) {
+        throw new UnauthorizedException(
+          'Password confirmation is required to add a business to this account.',
+        );
+      }
+      const passwordMatches = await bcrypt.compare(
+        dto.password,
+        dbUser.password,
+      );
+      if (!passwordMatches) {
+        throw new UnauthorizedException('Incorrect password');
+      }
+    }
+
+    const existingBusiness = await this.businessesService.findByOwner(
+      dbUser.id,
+    );
+    if (existingBusiness) {
+      throw new ConflictException('Owner already has a business');
+    }
+
+    const referralCode = isValidReferralCode(dto.referralCode)
+      ? dto.referralCode
+      : undefined;
+    const goalString = Array.isArray(dto.goals)
+      ? dto.goals.join(', ')
+      : dto.goals;
+
+    const business = await this.businessesService.create({
+      name: dto.businessName.trim(),
+      categoryId: dto.categoryId,
+      subcategoryId: dto.subcategoryId,
+      otherSubcategoryName: dto.otherSubcategoryName,
+      monthlyVisitors: dto.visitors,
+      goal: goalString,
+      logoUrl: dto.businessLogo,
+      ownerId: dbUser.id,
+      address: dto.businessAddress,
+      website: dto.businessWebsite,
+      state: dto.state,
+      city: dto.city,
+      latitude: dto.latitude,
+      longitude: dto.longitude,
+      whatsappNumber: dto.whatsappNumber,
+      officialEmail: dto.officialEmail,
+      phone: dto.businessNumber,
+      isRegistered: dto.isRegistered,
+      engagement: dto.engagement,
+    });
+
+    // Flip the account to owner; customer-side data is untouched.
+    dbUser.role = UserRole.OWNER;
+    if (referralCode && !dbUser.referralCode) {
+      dbUser.referralCode = referralCode;
+    }
+    const upgradedUser = await this.usersService.create(dbUser);
+
+    // Match registration behaviour: land the business on the free plan until
+    // the owner picks a paid plan.
+    try {
+      await this.subscriptionsService.subscribeToFreePlan(business.id);
+    } catch (error) {
+      console.error(
+        'Failed to auto-subscribe upgraded business to free plan:',
+        error,
+      );
+    }
+
+    if (referralCode) {
+      const affiliate =
+        await this.affiliatesService.findByReferralCode(referralCode);
+      if (affiliate) {
+        await this.affiliatesService.recordReferral(
+          affiliate.id,
+          business.id,
+          upgradedUser.id,
+        );
+      } else {
+        await this.handleB2BReferralAndPartnership(
+          referralCode,
+          upgradedUser.id,
+        );
+      }
+    }
+
+    const freshUser = await this.usersService.findOne(upgradedUser.id);
+    if (!freshUser) {
+      throw new NotFoundException('User not found after upgrade');
+    }
+
+    return this.generateAuthResponse(freshUser, false);
+  }
+
   // --- Dedicated Customer Registration & PIN Management ---
 
   async requestCustomerRegistrationOtp(dto: RequestCustomerSignupOtpDto) {
@@ -1343,12 +1462,14 @@ export class AuthService {
   }
 
   async switchRole(user: User, targetRole: UserRole) {
-    // Only Owners can switch to Customer
-    if (user.role === UserRole.OWNER && targetRole !== UserRole.CUSTOMER) {
-      throw new BadRequestException('Owners can only switch to Customer role');
+    // Only the two sides of a dual-role account are switchable — never
+    // Manager/Staff/Admin, which are assigned, not self-selected.
+    if (targetRole !== UserRole.OWNER && targetRole !== UserRole.CUSTOMER) {
+      throw new BadRequestException(
+        'Only Owner and Customer roles can be switched',
+      );
     }
 
-    // A user who is currently a CUSTOMER in their JWT but is an OWNER in DB can switch back
     const dbUser = await this.usersService.findOne(user.id);
     if (!dbUser) throw new NotFoundException('User not found');
 
@@ -1356,24 +1477,33 @@ export class AuthService {
       throw new BadRequestException('You are not an owner');
     }
 
-    // Generate new token with target role
+    const business =
+      targetRole === UserRole.OWNER
+        ? await this.businessesService.findByOwner(dbUser.id)
+        : null;
+    if (targetRole === UserRole.OWNER && !business) {
+      throw new BadRequestException('No business is linked to this account');
+    }
+
+    // Explicit nulls matter: JwtStrategy treats an explicit null claim as
+    // "no business context" (customer mode) and only falls back to the DB
+    // businessId when the claim is absent (legacy tokens).
     const payload = {
       email: dbUser.email,
       sub: dbUser.id,
       role: targetRole,
-      branchId: dbUser.branchId,
-      // If switching to OWNER, we need businessId
-      businessId:
-        targetRole === UserRole.OWNER
-          ? (await this.businessesService.findByOwner(dbUser.id))?.id
-          : undefined,
+      branchId: targetRole === UserRole.OWNER ? dbUser.branchId : null,
+      businessId: targetRole === UserRole.OWNER ? business?.id : null,
     };
 
+    delete (dbUser as Partial<User>).password;
     return {
       access_token: this.jwtService.sign(payload),
       user: {
         ...dbUser,
         role: targetRole,
+        businessId: payload.businessId,
+        branchId: payload.branchId,
       },
     };
   }

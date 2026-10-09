@@ -25,6 +25,9 @@ import {
   AdminDealsSortBy,
   AdminDealsStatusFilter,
   AdminBusinessesQueryDto,
+  BranchOffersSortBy,
+  OfferAudience,
+  PublicOffersSortBy,
 } from './dto/offer.dto';
 import { Branch } from '../branches/entities/branch.entity';
 import { Business } from '../businesses/entities/business.entity';
@@ -44,6 +47,12 @@ import { Otp } from '../auth/entities/otp.entity';
 import { MailService } from '../mail/mail.service';
 import { RequestClaimOtpDto, VerifyClaimDto } from './dto/claim.dto';
 import { SendDealGiftDto } from './dto/send-deal-gift.dto';
+import {
+  MyClaimDto,
+  MyClaimStatus,
+  MyClaimsPageDto,
+  MyClaimsQueryDto,
+} from './dto/my-claims.dto';
 import { CACHE_MANAGER, type Cache } from '@nestjs/cache-manager';
 import { AiCreditService } from '../ai-copilot/services/ai-credit.service';
 import { OpenAIClient } from '../ai-copilot/openai/openai.client';
@@ -68,6 +77,8 @@ export class CatalogueOfferService {
     private readonly dealGiftRepository: Repository<CatalogueDealGift>,
     @InjectRepository(Otp)
     private readonly otpRepository: Repository<Otp>,
+    @InjectRepository(User)
+    private readonly usersRepository: Repository<User>,
     private readonly subscriptionsService: SubscriptionsService,
     private readonly mailService: MailService,
     @Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
@@ -141,9 +152,8 @@ export class CatalogueOfferService {
     });
 
     // Check active subscription plan to determine default isFeatured status
-    const activeSub = await this.subscriptionsService.activeSubscription(
-      businessId,
-    );
+    const activeSub =
+      await this.subscriptionsService.activeSubscription(businessId);
     const autoFeatureDeals = Boolean(activeSub?.plan?.autoFeatureDeals);
     offer.isFeatured =
       dto.isFeatured !== undefined ? dto.isFeatured : autoFeatureDeals;
@@ -309,22 +319,26 @@ export class CatalogueOfferService {
     let sortOrder: 'ASC' | 'DESC' = 'DESC';
 
     switch (sortBy) {
-      case 'price_asc':
+      case BranchOffersSortBy.PRICE_ASC:
         sortField = 'calculatedPrice';
         sortOrder = 'ASC';
         break;
-      case 'price_desc':
+      case BranchOffersSortBy.PRICE_DESC:
         sortField = 'calculatedPrice';
         sortOrder = 'DESC';
         break;
-      case 'newest':
+      case BranchOffersSortBy.OLDEST:
+        sortField = 'createdAt';
+        sortOrder = 'ASC';
+        break;
+      case BranchOffersSortBy.NEWEST:
       default:
         sortField = 'createdAt';
         sortOrder = 'DESC';
         break;
     }
 
-    const cursorStr = (query as any).cursor || (query as any).nextCursor;
+    const cursorStr = query.cursor || query.nextCursor;
 
     const paginated = await paginateWithCursor({
       queryBuilder: qb,
@@ -367,6 +381,9 @@ export class CatalogueOfferService {
       lng,
       radius,
       audience,
+      minPrice,
+      maxPrice,
+      minDiscount,
     } = query;
 
     const skip = (page - 1) * limit;
@@ -395,8 +412,31 @@ export class CatalogueOfferService {
       qb.andWhere('business.categoryId = :categoryId', { categoryId });
     }
 
-    if (audience) {
-      qb.andWhere('offer.audience = :audience', { audience });
+    // `everyone_nearby`/`all` mean "no audience restriction"; the eligibility
+    // values filter on the same field enforced at claim time.
+    if (
+      audience === OfferAudience.NEW_CUSTOMERS ||
+      audience === OfferAudience.RETURNING_CUSTOMERS
+    ) {
+      qb.andWhere('offer.audienceTarget = :audienceTarget', {
+        audienceTarget: audience,
+      });
+    }
+
+    if (minPrice !== undefined) {
+      qb.andWhere('offer.calculatedPrice >= :minPrice', { minPrice });
+    }
+
+    if (maxPrice !== undefined) {
+      qb.andWhere('offer.calculatedPrice <= :maxPrice', { maxPrice });
+    }
+
+    if (minDiscount !== undefined && minDiscount > 0) {
+      const originalPriceSql = `(SELECT COALESCE(SUM(i.price), 0) FROM catalogue_offer_items oi JOIN catalogue_items i ON i.id = oi."itemId" WHERE oi."offerId" = offer.id)`;
+      qb.andWhere(
+        `(${originalPriceSql} > 0 AND (1 - offer.calculatedPrice / ${originalPriceSql}) * 100 >= :minDiscount)`,
+        { minDiscount },
+      );
     }
 
     if (lat !== undefined && lng !== undefined) {
@@ -421,15 +461,18 @@ export class CatalogueOfferService {
     let sortField = 'createdAt';
     let sortOrder: 'ASC' | 'DESC' = 'DESC';
 
-    if (sortBy === 'price_asc') {
+    if (sortBy === PublicOffersSortBy.PRICE_ASC) {
       sortField = 'calculatedPrice';
       sortOrder = 'ASC';
-    } else if (sortBy === 'price_desc') {
+    } else if (sortBy === PublicOffersSortBy.PRICE_DESC) {
       sortField = 'calculatedPrice';
       sortOrder = 'DESC';
-    } else if (sortBy === 'trending') {
+    } else if (sortBy === PublicOffersSortBy.TRENDING) {
       sortField = 'views';
       sortOrder = 'DESC';
+    } else if (sortBy === PublicOffersSortBy.OLDEST) {
+      sortField = 'createdAt';
+      sortOrder = 'ASC';
     } else {
       sortField = 'createdAt';
       sortOrder = 'DESC';
@@ -437,7 +480,13 @@ export class CatalogueOfferService {
 
     // `popular` / `featured` order by a computed claim count, which cannot be
     // expressed through cursor pagination — use offset pagination instead.
-    if (sortBy === 'popular' || sortBy === 'featured') {
+    // The score is added as a SELECT alias and ordered by that alias: ordering
+    // by the raw subquery string breaks TypeORM's alias resolution when
+    // `take()` embeds the query in a DISTINCT subquery.
+    if (
+      sortBy === PublicOffersSortBy.POPULAR ||
+      sortBy === PublicOffersSortBy.FEATURED
+    ) {
       const claimStatuses = [
         CatalogueOfferClaimStatus.CLAIMED,
         CatalogueOfferClaimStatus.REDEEMED,
@@ -445,11 +494,13 @@ export class CatalogueOfferService {
       const claimCountSql = `(SELECT COUNT(*) FROM "catalogue_offer_claims" "claim" WHERE "claim"."offerId" = "offer"."id" AND "claim"."status" IN (:...claimStatuses))`;
       qb.setParameter('claimStatuses', claimStatuses);
 
-      if (sortBy === 'popular') {
-        qb.orderBy(claimCountSql, 'DESC');
+      if (sortBy === PublicOffersSortBy.POPULAR) {
+        qb.addSelect(claimCountSql, 'popularityscore');
+        qb.orderBy('popularityscore', 'DESC');
       } else {
         // Featured: rank by a weighted score of engagement (views + claims).
-        qb.orderBy(`(offer.views + ${claimCountSql} * 10)`, 'DESC');
+        qb.addSelect(`(offer.views + ${claimCountSql} * 10)`, 'featuredscore');
+        qb.orderBy('featuredscore', 'DESC');
       }
 
       qb.skip(skip).take(limit);
@@ -458,7 +509,7 @@ export class CatalogueOfferService {
       return { data: mappedOffers, total, page, limit };
     }
 
-    const cursorStr = (query as any).cursor || (query as any).nextCursor;
+    const cursorStr = query.cursor || query.nextCursor;
 
     const paginated = await paginateWithCursor({
       queryBuilder: qb,
@@ -487,6 +538,88 @@ export class CatalogueOfferService {
     };
   }
 
+  /**
+   * Personalised recommendations: active nearby offers ranked featured-first,
+   * then by engagement (claim count), then newest. Offers the customer already
+   * claimed (by linked userId or email/phone) are excluded. Bounded queries:
+   * one ranking query + the shared batched claim-count mapping.
+   */
+  async findRecommendedOffers(
+    user: { id: string; email?: string; phone?: string | null },
+    query: { lat?: number; lng?: number; radius?: number; limit?: number },
+  ) {
+    const limit = query.limit ?? 10;
+    const claimStatuses = [
+      CatalogueOfferClaimStatus.CLAIMED,
+      CatalogueOfferClaimStatus.REDEEMED,
+    ];
+
+    const ownedByClaim = [
+      '"existing"."userId" = :userId',
+      'LOWER("existing"."email") = LOWER(:email)',
+    ];
+    const params: { userId: string; email: string; phone?: string } = {
+      userId: user.id,
+      email: user.email ?? '',
+    };
+    if (user.phone) {
+      ownedByClaim.push('"existing"."phone" = :phone');
+      params.phone = user.phone;
+    }
+
+    const popularitySql = `(SELECT COUNT(*) FROM "catalogue_offer_claims" "claim" WHERE "claim"."offerId" = offer.id AND "claim"."status" IN (:...claimStatuses))`;
+    const rankingSql = `((CASE WHEN offer."isFeatured" THEN 1 ELSE 0 END) * 1000000 + ${popularitySql} * 1000)`;
+
+    const qb = this.offerRepository
+      .createQueryBuilder('offer')
+      .leftJoinAndSelect('offer.items', 'item')
+      .leftJoinAndSelect('offer.branch', 'branch')
+      .leftJoinAndSelect('branch.business', 'business')
+      .leftJoinAndSelect('business.category', 'category')
+      .where('offer.status = :status', { status: CatalogueOfferStatus.ACTIVE })
+      .andWhere('(offer.endDate IS NULL OR offer.endDate >= NOW())')
+      .andWhere('branch.joinDiscoveryNetwork = :joinDiscoveryNetwork', {
+        joinDiscoveryNetwork: true,
+      })
+      .andWhere('branch.isActive = :branchActive', { branchActive: true })
+      .andWhere(
+        `NOT EXISTS (SELECT 1 FROM "catalogue_offer_claims" "existing" WHERE "existing"."offerId" = offer.id AND (${ownedByClaim.join(' OR ')}))`,
+        params,
+      )
+      .addSelect(rankingSql, 'rankingscore')
+      .setParameter('claimStatuses', claimStatuses);
+
+    if (
+      query.lat !== undefined &&
+      query.lng !== undefined &&
+      query.radius !== undefined &&
+      query.radius > 0
+    ) {
+      const earthRadius = 6371; // km
+      const distanceFormula = `${earthRadius} * acos(
+        LEAST(1.0, GREATEST(-1.0,
+          cos(radians(:lat)) * cos(radians(branch.latitude)) *
+          cos(radians(branch.longitude) - radians(:lng)) +
+          sin(radians(:lat)) * sin(radians(branch.latitude))
+        ))
+      )`;
+
+      qb.setParameter('lat', query.lat);
+      qb.setParameter('lng', query.lng);
+      qb.andWhere(`${distanceFormula} <= :radius`, { radius: query.radius });
+    }
+
+    qb.orderBy('rankingscore', 'DESC')
+      .addOrderBy('offer.createdAt', 'DESC')
+      .addOrderBy('offer.id', 'ASC')
+      .take(limit);
+
+    const rawOffers = await qb.getMany();
+    const data = await this.mapPublicOffers(rawOffers);
+
+    return { data, total: data.length };
+  }
+
   private async mapPublicOffers(rawOffers: CatalogueOffer[]) {
     if (!rawOffers || rawOffers.length === 0) return [];
 
@@ -509,23 +642,31 @@ export class CatalogueOfferService {
         .getRawMany();
 
       claimCountMap = new Map<string, number>(
-        claimCountsRaw.map((row) => [row.offerId, parseInt(row.count, 10) || 0]),
+        claimCountsRaw.map((row) => [
+          row.offerId,
+          parseInt(row.count, 10) || 0,
+        ]),
       );
-    } else {
-      await Promise.all(
-        rawOffers.map(async (offer) => {
-          const count = await this.claimRepository.count({
-            where: {
-              offerId: offer.id,
-              status: In([
-                CatalogueOfferClaimStatus.CLAIMED,
-                CatalogueOfferClaimStatus.REDEEMED,
-              ]),
-            },
-          });
-          claimCountMap.set(offer.id, count);
-        }),
-      );
+    } else if (typeof this.claimRepository.find === 'function') {
+      // Batched fallback for repository adapters/mocks without a query
+      // builder: one query for all offers instead of one count per offer.
+      const claims = await this.claimRepository.find({
+        where: {
+          offerId: In(offerIds),
+          status: In([
+            CatalogueOfferClaimStatus.CLAIMED,
+            CatalogueOfferClaimStatus.REDEEMED,
+          ]),
+        },
+        select: ['offerId'],
+      });
+
+      for (const claim of claims) {
+        claimCountMap.set(
+          claim.offerId,
+          (claimCountMap.get(claim.offerId) || 0) + 1,
+        );
+      }
     }
 
     return rawOffers.map((offer) => {
@@ -562,6 +703,7 @@ export class CatalogueOfferService {
               id: offer.branch.business.id,
               name: offer.branch.business.name,
               slug: offer.branch.business.uniqueCode,
+              uniqueCode: offer.branch.business.uniqueCode,
               logo: offer.branch.business.logoUrl ?? undefined,
               categoryId: offer.branch.business.categoryId ?? undefined,
               categoryName: offer.branch?.business?.category?.name ?? undefined,
@@ -589,9 +731,7 @@ export class CatalogueOfferService {
             : null,
         startDate: offer.startDate,
         endDate: offer.endDate,
-        isExpired: offer.endDate
-          ? new Date() > new Date(offer.endDate)
-          : false,
+        isExpired: offer.endDate ? new Date() > new Date(offer.endDate) : false,
         maxClaimsPerCustomer: offer.maxClaimsPerCustomer,
         audienceTarget: offer.audienceTarget,
         terms: offer.terms,
@@ -621,6 +761,7 @@ export class CatalogueOfferService {
         'reward',
         'branch',
         'branch.business',
+        'branch.business.category',
         'sourceProduct',
       ],
     });
@@ -690,6 +831,7 @@ export class CatalogueOfferService {
               offer.branch.uniqueCode ||
               offer.branch.username ||
               offer.branch.business.uniqueCode,
+            uniqueCode: offer.branch.business.uniqueCode,
             logo: offer.branch.business.logoUrl ?? undefined,
             categoryId: offer.branch.business.categoryId ?? undefined,
             categoryName:
@@ -940,25 +1082,26 @@ export class CatalogueOfferService {
       if (offer.quantity !== null && offer.quantity !== undefined) {
         let claimedCount = 0;
         if (typeof managerOrRepo.count === 'function') {
-          claimedCount = managerOrRepo.count.length === 2
-            ? await managerOrRepo.count(CatalogueOfferClaim, {
-                where: {
-                  offerId: offer.id,
-                  status: In([
-                    CatalogueOfferClaimStatus.CLAIMED,
-                    CatalogueOfferClaimStatus.REDEEMED,
-                  ]),
-                },
-              })
-            : await managerOrRepo.count({
-                where: {
-                  offerId: offer.id,
-                  status: In([
-                    CatalogueOfferClaimStatus.CLAIMED,
-                    CatalogueOfferClaimStatus.REDEEMED,
-                  ]),
-                },
-              });
+          claimedCount =
+            managerOrRepo.count.length === 2
+              ? await managerOrRepo.count(CatalogueOfferClaim, {
+                  where: {
+                    offerId: offer.id,
+                    status: In([
+                      CatalogueOfferClaimStatus.CLAIMED,
+                      CatalogueOfferClaimStatus.REDEEMED,
+                    ]),
+                  },
+                })
+              : await managerOrRepo.count({
+                  where: {
+                    offerId: offer.id,
+                    status: In([
+                      CatalogueOfferClaimStatus.CLAIMED,
+                      CatalogueOfferClaimStatus.REDEEMED,
+                    ]),
+                  },
+                });
         }
         if (claimedCount >= offer.quantity) {
           throw new BadRequestException(
@@ -985,12 +1128,30 @@ export class CatalogueOfferService {
       const expiresAt = new Date();
       expiresAt.setDate(expiresAt.getDate() + 7);
 
+      // Claims are anonymous (OTP on email/phone). When the claimant already has
+      // an account, link it so `GET /me/claims` can list the claim reliably.
+      const meta = (otpRecord.metadata ?? {}) as {
+        email: string;
+        phone: string;
+        firstName: string;
+        lastName?: string;
+      };
+      const claimEmail = (meta.email || '').toLowerCase();
+      const claimPhone = meta.phone;
+      const linkedUser = await this.usersRepository.findOne({
+        where: [
+          ...(claimEmail ? [{ email: claimEmail }] : []),
+          ...(claimPhone ? [{ phone: claimPhone }] : []),
+        ],
+      });
+
       const claimData = {
         offerId: offer.id,
-        firstName: otpRecord.metadata.firstName,
-        lastName: otpRecord.metadata.lastName || null,
-        email: otpRecord.metadata.email,
-        phone: otpRecord.metadata.phone,
+        userId: linkedUser?.id ?? null,
+        firstName: meta.firstName,
+        lastName: meta.lastName || undefined,
+        email: meta.email,
+        phone: meta.phone,
         claimCode,
         status: CatalogueOfferClaimStatus.CLAIMED,
         expiresAt,
@@ -1002,9 +1163,10 @@ export class CatalogueOfferService {
           : managerOrRepo.create(claimData)
         : this.claimRepository.create(claimData);
 
-      const savedClaim = managerOrRepo.save && managerOrRepo.save.length === 2
-        ? await managerOrRepo.save(CatalogueOfferClaim, claim)
-        : await this.claimRepository.save(claim);
+      const savedClaim =
+        managerOrRepo.save && managerOrRepo.save.length === 2
+          ? await managerOrRepo.save(CatalogueOfferClaim, claim)
+          : await this.claimRepository.save(claim);
 
       await this.clearCache(offer.branchId, offer.id);
 
@@ -1033,11 +1195,7 @@ export class CatalogueOfferService {
     return await executeSave(this.claimRepository);
   }
 
-  async sendDealGift(
-    dto: SendDealGiftDto,
-    user?: User,
-    callerOrigin?: string,
-  ) {
+  async sendDealGift(dto: SendDealGiftDto, user?: User, callerOrigin?: string) {
     if (!user) {
       throw new UnauthorizedException('You must be signed in to gift deals');
     }
@@ -1397,12 +1555,166 @@ export class CatalogueOfferService {
     };
   }
 
-  async getBusinessClaims(businessId: string) {
-    return this.claimRepository.find({
+  async getBusinessClaims(
+    businessId: string,
+    query: { page?: number; limit?: number } = {},
+  ) {
+    const relations = ['offer', 'offer.items'];
+    const order = { createdAt: 'DESC' } as const;
+
+    // Opt-in pagination: legacy callers get the bare array, paginated callers
+    // (page/limit supplied) get { data, total, page, limit }.
+    if (query.page === undefined && query.limit === undefined) {
+      return this.claimRepository.find({
+        where: { offer: { businessId } },
+        relations,
+        order,
+      });
+    }
+
+    const page = query.page ?? 1;
+    const limit = query.limit ?? 20;
+    const [data, total] = await this.claimRepository.findAndCount({
       where: { offer: { businessId } },
-      relations: ['offer', 'offer.items'],
-      order: { createdAt: 'DESC' },
+      relations,
+      order,
+      skip: (page - 1) * limit,
+      take: limit,
     });
+
+    return { data, total, page, limit };
+  }
+
+  /**
+   * Customer-facing list of the authenticated user's own claimed deal passes.
+   * Claims are created anonymously (OTP on email/phone) so a claim is matched
+   * by `userId` when it was linked at claim time, or by the account's email /
+   * phone for older claims that predate the link.
+   */
+  async findMyClaims(
+    user: User,
+    query: MyClaimsQueryDto,
+  ): Promise<MyClaimDto[] | MyClaimsPageDto> {
+    const now = new Date();
+
+    const qb = this.claimRepository
+      .createQueryBuilder('claim')
+      .innerJoinAndSelect('claim.offer', 'offer')
+      .leftJoinAndSelect('offer.items', 'offerItem')
+      .leftJoinAndSelect('offer.branch', 'branch')
+      .leftJoinAndSelect('branch.business', 'business');
+
+    const ownership = [
+      'claim.userId = :userId',
+      'LOWER(claim.email) = LOWER(:email)',
+    ];
+    const ownershipParams: { userId: string; email: string; phone?: string } = {
+      userId: user.id,
+      email: user.email,
+    };
+    if (user.phone) {
+      ownership.push('claim.phone = :phone');
+      ownershipParams.phone = user.phone;
+    }
+    qb.where(`(${ownership.join(' OR ')})`, ownershipParams);
+
+    if (query.status === MyClaimStatus.REDEEMED) {
+      qb.andWhere('claim.status = :redeemed', {
+        redeemed: CatalogueOfferClaimStatus.REDEEMED,
+      });
+    } else if (query.status === MyClaimStatus.EXPIRED) {
+      qb.andWhere(
+        '(claim.status = :expired OR (claim.status = :claimed AND claim.expiresAt < :now))',
+        {
+          expired: CatalogueOfferClaimStatus.EXPIRED,
+          claimed: CatalogueOfferClaimStatus.CLAIMED,
+          now,
+        },
+      );
+    } else if (query.status === MyClaimStatus.ACTIVE) {
+      qb.andWhere('claim.status = :claimed AND claim.expiresAt >= :now', {
+        claimed: CatalogueOfferClaimStatus.CLAIMED,
+        now,
+      });
+    }
+
+    // Opt-in pagination: legacy callers get the bare array, paginated callers
+    // (page/limit supplied) get { data, total, page, limit }.
+    const wantsPaging = query.page !== undefined || query.limit !== undefined;
+    const page = query.page ?? 1;
+    const limit = query.limit ?? 10;
+
+    qb.orderBy('claim.createdAt', 'DESC');
+    if (wantsPaging) {
+      qb.skip((page - 1) * limit).take(limit);
+    }
+
+    if (!wantsPaging) {
+      const claims = await qb.getMany();
+      return claims.map((claim) => this.toMyClaim(claim, now));
+    }
+
+    const [claims, total] = await qb.getManyAndCount();
+
+    return {
+      data: claims.map((claim) => this.toMyClaim(claim, now)),
+      total,
+      page,
+      limit,
+    };
+  }
+
+  private toMyClaim(claim: CatalogueOfferClaim, now: Date): MyClaimDto {
+    const offer = claim.offer;
+    const originalPrice = (offer.items ?? []).reduce(
+      (acc, item) => acc + Number(item.price || 0),
+      0,
+    );
+    const calculatedPrice = Number(offer.calculatedPrice || 0);
+    const discountPercent =
+      originalPrice > 0 && calculatedPrice < originalPrice
+        ? Math.round(((originalPrice - calculatedPrice) / originalPrice) * 100)
+        : 0;
+
+    const status =
+      claim.status === CatalogueOfferClaimStatus.REDEEMED
+        ? MyClaimStatus.REDEEMED
+        : claim.status === CatalogueOfferClaimStatus.EXPIRED ||
+            claim.expiresAt < now
+          ? MyClaimStatus.EXPIRED
+          : MyClaimStatus.ACTIVE;
+
+    const branch = offer.branch;
+    const business = branch?.business;
+
+    return {
+      id: claim.id,
+      claimCode: claim.claimCode,
+      status,
+      expiresAt: claim.expiresAt,
+      claimedAt: claim.createdAt,
+      redeemedAt:
+        claim.status === CatalogueOfferClaimStatus.REDEEMED
+          ? claim.updatedAt
+          : null,
+      offer: {
+        id: offer.id,
+        name: offer.name,
+        mainImage: offer.mainImage || offer.items?.[0]?.mainImage || null,
+        calculatedPrice,
+        originalPrice,
+        discountPercent,
+        pricingType: offer.pricingType,
+        discountValue: offer.discountValue ?? null,
+        businessId: business?.id ?? offer.branch?.businessId ?? '',
+        businessName: business?.name ?? '',
+        businessLogo: business?.logoUrl ?? null,
+        branchId: branch?.id ?? offer.branchId,
+        branchName: branch?.name ?? '',
+        branchAddress: branch?.address ?? business?.address ?? null,
+        endDate: offer.endDate,
+      },
+    };
   }
 
   private async clearCache(branchId: string, offerId?: string) {
@@ -1673,7 +1985,9 @@ export class CatalogueOfferService {
           originalPrice: originalPrice > 0 ? originalPrice : dealPrice,
           dealPrice,
           discount,
-          discountValue: offer.discountValue ? Number(offer.discountValue) : null,
+          discountValue: offer.discountValue
+            ? Number(offer.discountValue)
+            : null,
           fixedPrice: offer.fixedPrice ? Number(offer.fixedPrice) : null,
         },
         dates: {

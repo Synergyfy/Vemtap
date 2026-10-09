@@ -24,16 +24,22 @@ import {
   ApiOperation,
   ApiBearerAuth,
   ApiQuery,
+  ApiResponse,
 } from '@nestjs/swagger';
 import { PermissionsGuard } from '../../common/guards/permissions.guard';
 import { Permissions } from '../../common/decorators/permissions.decorator';
+import { BannersService } from '../banners/banners.service';
+import { Banner } from '../banners/entities/banner.entity';
 
 @ApiTags('Campaigns')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
 @Controller('campaigns')
 export class CampaignsController {
-  constructor(private readonly campaignsService: CampaignsService) {}
+  constructor(
+    private readonly campaignsService: CampaignsService,
+    private readonly bannersService: BannersService,
+  ) {}
 
   @Post()
   @Roles(UserRole.OWNER, UserRole.MANAGER)
@@ -59,6 +65,23 @@ export class CampaignsController {
       query.status,
       req.user.businessId,
     );
+  }
+
+  @Get('featured')
+  @ApiOperation({
+    summary: 'Featured campaign banners for the customer app',
+    description:
+      'Active banners for the `customer` placement, ordered by sort order. ' +
+      'Backed by the banners module; no role restriction (any authenticated ' +
+      'user). Declared before `:id` so the static path is not shadowed.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Active customer banners',
+    type: [Banner],
+  })
+  async getFeaturedCampaigns(): Promise<Banner[]> {
+    return this.bannersService.findActive('customer');
   }
 
   @Get(':id')

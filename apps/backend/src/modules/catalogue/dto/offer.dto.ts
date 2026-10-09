@@ -8,6 +8,7 @@ import {
   IsEnum,
   IsArray,
   IsBoolean,
+  Max,
   Min,
 } from 'class-validator';
 import { Type, Transform } from 'class-transformer';
@@ -16,13 +17,51 @@ import {
   CatalogueOfferStatus,
 } from '../entities/catalogue-offer.entity';
 
+/**
+ * Sort values supported by the global public offers feed.
+ * Unknown values are rejected with 400 (nothing silently falls back).
+ */
+export enum PublicOffersSortBy {
+  NEWEST = 'newest',
+  OLDEST = 'oldest',
+  PRICE_ASC = 'price_asc',
+  PRICE_DESC = 'price_desc',
+  TRENDING = 'trending',
+  POPULAR = 'popular',
+  FEATURED = 'featured',
+}
+
+/** Sort values supported by the branch-scoped public offers feed. */
+export enum BranchOffersSortBy {
+  NEWEST = 'newest',
+  OLDEST = 'oldest',
+  PRICE_ASC = 'price_asc',
+  PRICE_DESC = 'price_desc',
+}
+
+/**
+ * Audience values accepted by the public offers feed:
+ * - `everyone_nearby` / `all` → no audience filter (everyone sees it)
+ * - `new_customers` / `returning_customers` → filters on the offer's
+ *   `audienceTarget` eligibility (the same field enforced at claim time)
+ */
+export enum OfferAudience {
+  EVERYONE_NEARBY = 'everyone_nearby',
+  ALL = 'all',
+  NEW_CUSTOMERS = 'new_customers',
+  RETURNING_CUSTOMERS = 'returning_customers',
+}
+
 export class CreateCatalogueOfferDto {
   @ApiProperty({ example: 'Summer Deal' })
   @IsNotEmpty()
   @IsString()
   name: string;
 
-  @ApiPropertyOptional({ example: 'Get 2 burgers and a drink for less!', default: '' })
+  @ApiPropertyOptional({
+    example: 'Get 2 burgers and a drink for less!',
+    default: '',
+  })
   @IsOptional()
   @IsString()
   @Transform(({ value }) => (typeof value === 'string' ? value : ''))
@@ -34,7 +73,9 @@ export class CreateCatalogueOfferDto {
   })
   @IsOptional()
   @Transform(({ value }) =>
-    typeof value === 'string' && value.trim() === '' ? undefined : value?.trim(),
+    typeof value === 'string' && value.trim() === ''
+      ? undefined
+      : value?.trim(),
   )
   @IsUUID('4', { message: 'sourceProductId must be a valid UUID v4' })
   sourceProductId?: string;
@@ -186,7 +227,10 @@ export class CreateCatalogueOfferDto {
   @IsString()
   longDescription?: string;
 
-  @ApiPropertyOptional({ description: 'Whether the offer is featured', example: false })
+  @ApiPropertyOptional({
+    description: 'Whether the offer is featured',
+    example: false,
+  })
   @IsOptional()
   @IsBoolean()
   isFeatured?: boolean;
@@ -198,7 +242,10 @@ export class UpdateCatalogueOfferDto {
   @IsString()
   name?: string;
 
-  @ApiPropertyOptional({ description: 'Whether the offer is featured', example: false })
+  @ApiPropertyOptional({
+    description: 'Whether the offer is featured',
+    example: false,
+  })
   @IsOptional()
   @IsBoolean()
   isFeatured?: boolean;
@@ -209,7 +256,9 @@ export class UpdateCatalogueOfferDto {
   })
   @IsOptional()
   @Transform(({ value }) =>
-    typeof value === 'string' && value.trim() === '' ? undefined : value?.trim(),
+    typeof value === 'string' && value.trim() === ''
+      ? undefined
+      : value?.trim(),
   )
   @IsUUID('4', { message: 'sourceProductId must be a valid UUID v4' })
   sourceProductId?: string;
@@ -398,15 +447,33 @@ export class CatalogueOfferQueryDto {
   @IsString()
   search?: string;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({
+    enum: BranchOffersSortBy,
+    default: BranchOffersSortBy.NEWEST,
+    description: 'Sort order: newest | oldest | price_asc | price_desc',
+  })
   @IsOptional()
-  @IsString()
-  sortBy?: string;
+  @IsEnum(BranchOffersSortBy)
+  sortBy?: BranchOffersSortBy = BranchOffersSortBy.NEWEST;
 
   @ApiPropertyOptional()
   @IsOptional()
   @IsUUID()
   branchId?: string;
+
+  @ApiPropertyOptional({
+    description: 'Opaque cursor from a previous page (or `nextCursor`)',
+  })
+  @IsOptional()
+  @IsString()
+  cursor?: string;
+
+  @ApiPropertyOptional({
+    description: 'Alias of `cursor` accepted for convenience',
+  })
+  @IsOptional()
+  @IsString()
+  nextCursor?: string;
 }
 
 export class PublicCatalogueOffersQueryDto {
@@ -429,15 +496,47 @@ export class PublicCatalogueOffersQueryDto {
   @IsString()
   search?: string;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({
+    enum: PublicOffersSortBy,
+    default: PublicOffersSortBy.NEWEST,
+    description:
+      'Sort order: newest | oldest | price_asc | price_desc | trending | popular | featured. Invalid values return 400. `popular`/`featured` use offset pagination (no cursor).',
+  })
   @IsOptional()
-  @IsString()
-  sortBy?: string;
+  @IsEnum(PublicOffersSortBy)
+  sortBy?: PublicOffersSortBy = PublicOffersSortBy.NEWEST;
 
   @ApiPropertyOptional()
   @IsOptional()
   @IsUUID()
   categoryId?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  minPrice?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  maxPrice?: number;
+
+  @ApiPropertyOptional({
+    description:
+      'Minimum effective discount percent (0–100), computed from the sum of the offer item prices vs the deal price. 0 disables the filter.',
+    minimum: 0,
+    maximum: 100,
+  })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  @Max(100)
+  minDiscount?: number;
 
   @ApiPropertyOptional()
   @IsOptional()
@@ -458,10 +557,28 @@ export class PublicCatalogueOffersQueryDto {
   @Min(0)
   radius?: number;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({
+    enum: OfferAudience,
+    description:
+      'Audience filter. `everyone_nearby`/`all` apply no filter; `new_customers`/`returning_customers` filter on the claim-time eligibility (`audienceTarget`).',
+  })
+  @IsOptional()
+  @IsEnum(OfferAudience)
+  audience?: OfferAudience;
+
+  @ApiPropertyOptional({
+    description: 'Opaque cursor from a previous page (or `nextCursor`)',
+  })
   @IsOptional()
   @IsString()
-  audience?: string;
+  cursor?: string;
+
+  @ApiPropertyOptional({
+    description: 'Alias of `cursor` accepted for convenience',
+  })
+  @IsOptional()
+  @IsString()
+  nextCursor?: string;
 }
 
 export enum AdminDealsSortBy {

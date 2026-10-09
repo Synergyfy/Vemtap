@@ -10,6 +10,7 @@ import { Device } from '../../devices/entities/device.entity';
 export enum CatalogueOrderStatus {
   NEW = 'new',
   PROCESSING = 'processing',
+  READY = 'ready',
   COMPLETED = 'completed',
   CANCELLED = 'cancelled',
   REJECTED = 'rejected',

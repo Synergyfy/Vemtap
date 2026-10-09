@@ -1,4 +1,11 @@
-import { Entity, Column, ManyToOne, OneToMany, JoinColumn, Index } from 'typeorm';
+import {
+  Entity,
+  Column,
+  ManyToOne,
+  OneToMany,
+  JoinColumn,
+  Index,
+} from 'typeorm';
 import { AbstractBaseEntity } from '../../../common/entities/base.entity';
 import { Coupon } from './coupon.entity';
 import { User } from '../../users/entities/user.entity';

@@ -8,11 +8,35 @@ import {
   IsArray,
   ValidateNested,
   Min,
+  Max,
   IsEmail,
   IsEnum,
+  IsInt,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { CatalogueOrderStatus } from '../entities/catalogue-order.entity';
+
+/**
+ * Customer order list. Pagination is opt-in: without `page`/`limit` the
+ * endpoint keeps returning the legacy bare array; supplying either returns
+ * `{ data, total, page, limit }`.
+ */
+export class MyOrdersQueryDto {
+  @ApiPropertyOptional({ example: 1, minimum: 1 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  page?: number;
+
+  @ApiPropertyOptional({ example: 10, minimum: 1, maximum: 50 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(50)
+  limit?: number;
+}
 
 export class CreateQuickItemDto {
   @ApiProperty({ example: 'New Item' })

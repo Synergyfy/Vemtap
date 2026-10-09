@@ -186,22 +186,98 @@ export class DashboardDeviceDto {
 }
 
 export class DashboardStatsDto {
-  @ApiProperty()
+  @ApiProperty({ description: 'Lifetime visitors for the business/branch' })
   totalVisitors: number;
 
-  @ApiProperty()
+  @ApiProperty({ description: 'First-time visitors (status "new")' })
   newVisitors: number;
 
-  @ApiProperty()
+  @ApiProperty({ description: 'Returning visitors (status "returning")' })
   repeatVisitors: number;
 
-  @ApiProperty()
+  @ApiProperty({ description: 'Visits recorded today' })
   todaysVisits: number;
+
+  @ApiProperty({
+    description:
+      'Lifetime offer views (sum of offer.view counters; no delta because views are not event-tracked)',
+  })
+  totalViews: number;
+
+  @ApiProperty({
+    description: 'Lifetime deal claims (claimed + redeemed)',
+  })
+  totalClaims: number;
+
+  @ApiProperty({
+    nullable: true,
+    description:
+      'Visitors change %, last 7 days vs the previous 7 days (null when the previous window was empty)',
+    example: 14,
+  })
+  visitorsDelta: number | null;
+
+  @ApiProperty({
+    nullable: true,
+    description: 'Claims change %, last 7 days vs the previous 7 days',
+    example: 8,
+  })
+  claimsDelta: number | null;
+
+  @ApiProperty({
+    nullable: true,
+    description:
+      'Completed POS revenue change %, last 7 days vs the previous 7 days',
+    example: 22,
+  })
+  revenueDelta: number | null;
+}
+
+export class DashboardWeeklyDto {
+  @ApiProperty({ description: 'Visits in the last 7 days', example: 42 })
+  visits: number;
+
+  @ApiProperty({ description: 'Deal claims in the last 7 days', example: 7 })
+  claims: number;
+
+  @ApiProperty({
+    description: 'Completed POS revenue in the last 7 days (naira)',
+    example: 125000,
+  })
+  revenue: number;
+}
+
+export class DashboardInsightDto {
+  @ApiProperty({ example: 'convert-visitors' })
+  id: string;
+
+  @ApiProperty({ example: 'Turn visitors into claims' })
+  title: string;
+
+  @ApiProperty({
+    example: 'Publish a promotion so visitors can claim a pass.',
+  })
+  message: string;
+
+  @ApiProperty({ enum: ['high', 'medium', 'low'], example: 'high' })
+  priority: 'high' | 'medium' | 'low';
 }
 
 export class BusinessDashboardResponseDto {
+  @ApiProperty({
+    description: 'When this payload was generated (ISO)',
+    example: '2026-10-08T21:00:00.000Z',
+  })
+  generatedAt: string;
+
   @ApiProperty({ type: DashboardStatsDto })
   stats: DashboardStatsDto;
+
+  @ApiProperty({ type: DashboardWeeklyDto })
+  weekly: DashboardWeeklyDto;
+
+  @ApiProperty({ type: [DashboardInsightDto] })
+  insights: DashboardInsightDto[];
 
   @ApiProperty({ type: [DashboardVisitorDto] })
   recentVisitors: DashboardVisitorDto[];

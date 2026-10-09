@@ -62,6 +62,19 @@ export class UpdateBusinessDto {
   @IsString()
   logoUrl?: string;
 
+  @ApiPropertyOptional({ example: 'https://example.com/cover.png' })
+  @IsOptional()
+  @IsString()
+  coverImage?: string;
+
+  @ApiPropertyOptional({
+    example: ['https://example.com/shop-1.png'],
+    description: 'Gallery image URLs (Interior & Product Photos)',
+  })
+  @IsOptional()
+  @IsString({ each: true })
+  gallery?: string[];
+
   @ApiPropertyOptional({ example: '123 Business Ave, Lagos' })
   @IsOptional()
   @IsString()
@@ -112,6 +125,14 @@ export class UpdateBusinessDto {
   @IsOptional()
   @IsObject()
   socials?: Record<string, string>;
+
+  @ApiPropertyOptional({
+    example: ['Outdoor Seating', 'Free Wi-Fi', 'POS Ready'],
+    description: 'Store features / amenities shown on the business hub',
+  })
+  @IsOptional()
+  @IsString({ each: true })
+  amenities?: string[];
 
   @ApiPropertyOptional({ example: 'https://facebook.com/mybusiness' })
   @IsOptional()

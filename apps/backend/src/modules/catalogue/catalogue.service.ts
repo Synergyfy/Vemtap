@@ -22,6 +22,8 @@ import {
   UpdateCatalogueItemDto,
   CatalogueQueryDto,
   BulkImportItemsDto,
+  PublicProductsQueryDto,
+  PublicProductSortOrder,
 } from './dto/item.dto';
 import { Branch } from '../branches/entities/branch.entity';
 import { Business } from '../businesses/entities/business.entity';
@@ -473,10 +475,13 @@ export class CatalogueService {
         .getMany();
 
       if (unassociatedItems.length > 0) {
-        for (const item of unassociatedItems) {
-          item.branches = [branch];
-          await this.itemRepository.save(item);
-        }
+        // Single bulk insert into the join table instead of saving each item
+        // (which would issue one UPDATE + one join insert per row).
+        await this.itemRepository
+          .createQueryBuilder()
+          .relation(CatalogueItem, 'branches')
+          .of(unassociatedItems.map((item) => item.id))
+          .add(branch.id);
       }
     } catch {
       // Non-blocking best-effort association
@@ -537,9 +542,7 @@ export class CatalogueService {
       if (mainBranch) return mainBranch.id;
     }
 
-    throw new NotFoundException(
-      `Branch with code ${branchIdOrCode} not found`,
-    );
+    throw new NotFoundException(`Branch with code ${branchIdOrCode} not found`);
   }
 
   // --- Public Listing ---
@@ -636,6 +639,100 @@ export class CatalogueService {
       nextCursor: result.nextCursor,
       prevCursor: result.prevCursor,
       hasNextPage: result.hasNextPage,
+    };
+  }
+
+  /**
+   * App-facing published products feed (`GET /api/v1/products`): active,
+   * non-suspended catalogue items across every branch, in the envelope the app
+   * expects (`{ data, total, page, limit, totalPages, hasNextPage,
+   * hasPrevPage }`). Replaces the legacy empty products feed for consumers
+   * while the legacy module keeps its admin/quote/order endpoints.
+   */
+  async findPublishedItemsPublic(query: PublicProductsQueryDto) {
+    const page = query.page ?? 1;
+    const limit = query.limit ?? 10;
+
+    const qb = this.itemRepository
+      .createQueryBuilder('item')
+      .leftJoinAndSelect('item.category', 'category')
+      .leftJoinAndSelect('item.business', 'business')
+      .where('item.status = :status', { status: CatalogueItemStatus.ACTIVE })
+      .andWhere('item.isSuspended = :isSuspended', { isSuspended: false });
+
+    if (query.search) {
+      qb.andWhere(
+        new Brackets((inner) => {
+          inner
+            .where('item.name ILIKE :search', { search: `%${query.search}%` })
+            .orWhere('item.shortDescription ILIKE :search', {
+              search: `%${query.search}%`,
+            })
+            .orWhere('item.description ILIKE :search', {
+              search: `%${query.search}%`,
+            });
+        }),
+      );
+    }
+
+    if (query.categoryId) {
+      qb.andWhere('item.categoryId = :categoryId', {
+        categoryId: query.categoryId,
+      });
+    }
+
+    if (query.itemType) {
+      qb.andWhere('item.itemType = :itemType', { itemType: query.itemType });
+    }
+
+    if (query.minPrice !== undefined) {
+      qb.andWhere('item.price >= :minPrice', { minPrice: query.minPrice });
+    }
+
+    if (query.maxPrice !== undefined) {
+      qb.andWhere('item.price <= :maxPrice', { maxPrice: query.maxPrice });
+    }
+
+    let sortField = 'createdAt';
+    let sortOrder: 'ASC' | 'DESC' =
+      query.sortOrder === PublicProductSortOrder.ASC ? 'ASC' : 'DESC';
+
+    switch (query.sortBy) {
+      case 'oldest':
+        sortField = 'createdAt';
+        sortOrder = 'ASC';
+        break;
+      case 'price_asc':
+        sortField = 'price';
+        sortOrder = 'ASC';
+        break;
+      case 'price_desc':
+        sortField = 'price';
+        sortOrder = 'DESC';
+        break;
+      case 'newest':
+      case 'most_popular':
+      default:
+        sortField = 'createdAt';
+        sortOrder = 'DESC';
+        break;
+    }
+
+    qb.orderBy(`item.${sortField}`, sortOrder)
+      .skip((page - 1) * limit)
+      .take(limit);
+
+    const [data, total] = await qb.getManyAndCount();
+    const totalPages = limit > 0 ? Math.ceil(total / limit) : 0;
+
+    return {
+      data,
+      total,
+      page,
+      limit,
+      totalPages,
+      hasNextPage: page < totalPages,
+      hasPrevPage: page > 1,
     };
   }
 

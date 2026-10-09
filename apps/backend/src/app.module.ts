@@ -42,6 +42,7 @@ import { ImpersonationGuard } from './modules/administration/impersonation.guard
 import { CustomerImpersonationGuard } from './modules/administration/customer-impersonation.guard';
 import { ScheduleModule } from '@nestjs/schedule';
 import { CatalogueModule } from './modules/catalogue/catalogue.module';
+import { UploadsModule } from './modules/uploads/uploads.module';
 import { CatalogueOrderModule } from './modules/catalogue-orders/catalogue-orders.module';
 import { BusinessProfilingModule } from './modules/business-profiling/business-profiling.module';
 import { AffiliatesModule } from './modules/affiliates/affiliates.module';
@@ -49,6 +50,8 @@ import { TrainingModule } from './modules/training/training.module';
 import { DiscoveryModule } from './modules/discovery/discovery.module';
 import { QrThriveModule } from './modules/qr-thrive/qr-thrive.module';
 import { BannersModule } from './modules/banners/banners.module';
+import { SavedModule } from './modules/saved/saved.module';
+import { BookingsModule } from './modules/bookings/bookings.module';
 import { BusinessDashboardModule } from './modules/business-dashboard/business-dashboard.module';
 import { MarketingAssetsModule } from './modules/marketing-assets/marketing-assets.module';
 import { FosCoreModule } from './modules/fos-core/fos-core.module';
@@ -195,6 +198,7 @@ import { PublicDiscoveryModule } from './modules/public-discovery/public-discove
     ObservabilityModule,
     AdministrationModule,
     CatalogueModule,
+    UploadsModule,
     CatalogueOrderModule,
     CatalogueCartModule,
     BusinessProfilingModule,
@@ -234,6 +238,8 @@ import { PublicDiscoveryModule } from './modules/public-discovery/public-discove
     SubscriptionRemindersModule,
     DealEngagementModule,
     PublicDiscoveryModule,
+    SavedModule,
+    BookingsModule,
     StatusModule,
     ScheduleModule.forRoot(),
   ],

@@ -14,6 +14,7 @@ describe('CustomerMessagingController', () => {
     getCustomerThreadMessages: jest.fn(),
     sendCustomerReply: jest.fn(),
     startCustomerConversation: jest.fn(),
+    deleteThread: jest.fn(),
   };
 
   const mockUser = { id: 'user-1' } as User;
@@ -54,6 +55,11 @@ describe('CustomerMessagingController', () => {
         mockUser.id,
         dto.branchId,
         dto.content,
+        {
+          subjectType: undefined,
+          claimId: undefined,
+          orderId: undefined,
+        },
       );
     });
   });
@@ -84,6 +90,16 @@ describe('CustomerMessagingController', () => {
         dto.replyToId,
         undefined,
       );
+    });
+  });
+
+  describe('deleteThread', () => {
+    it('should call inboxService.deleteThread scoped to the customer', async () => {
+      await controller.deleteThread({ threadId: 't-1' }, { user: mockUser });
+
+      expect(inboxService.deleteThread).toHaveBeenCalledWith('t-1', {
+        customerId: mockUser.id,
+      });
     });
   });
 });
