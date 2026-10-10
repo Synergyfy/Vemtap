@@ -3,6 +3,7 @@ import {
   ApiTags,
   ApiOperation,
   ApiBearerAuth,
+  ApiExtraModels,
   ApiOkResponse,
   ApiResponse,
 } from '@nestjs/swagger';
@@ -23,6 +24,7 @@ interface RequestWithUser extends Request {
 
 @ApiTags('Customer Claims')
 @ApiBearerAuth()
+@ApiExtraModels(MyClaimDto, MyClaimsPageDto)
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('me/claims')
 export class MeClaimsController {
@@ -38,7 +40,8 @@ export class MeClaimsController {
       'for `{ data, total, page, limit }`. Each row carries the claim code, ' +
       'effective status (`ACTIVE` = claimed and not expired, `REDEEMED`, ' +
       '`EXPIRED`), the claim expiry and the offer/business/branch details ' +
-      'needed to render the pass. Access: CUSTOMER',
+      'needed to render the pass. `q` narrows the result (and `total`) by ' +
+      'offer name, business name, branch name or claim code. Access: CUSTOMER',
   })
   @ApiOkResponse({
     description:

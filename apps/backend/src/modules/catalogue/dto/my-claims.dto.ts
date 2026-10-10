@@ -1,6 +1,14 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { IsEnum, IsInt, IsOptional, Max, Min } from 'class-validator';
+import {
+  IsEnum,
+  IsInt,
+  IsOptional,
+  IsString,
+  Max,
+  MaxLength,
+  Min,
+} from 'class-validator';
 import { CatalogueOfferPricingType } from '../entities/catalogue-offer.entity';
 
 /**
@@ -50,6 +58,19 @@ export class MyClaimsQueryDto {
   @IsOptional()
   @IsEnum(MyClaimStatus)
   status?: MyClaimStatus;
+
+  @ApiPropertyOptional({
+    example: 'apo lunch',
+    maxLength: 100,
+    description:
+      'Case-insensitive match against the offer name, business name, branch ' +
+      'name or claim code. Combined with `status` and pagination, and it also ' +
+      'narrows `total` so the two never disagree.',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  q?: string;
 }
 
 export class MyClaimOfferDto {

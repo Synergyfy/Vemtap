@@ -1638,6 +1638,17 @@ export class CatalogueOfferService {
       });
     }
 
+    // Search runs on the same builder as the count, so `total` reflects the
+    // same rows the page shows. Every column is case-folded rather than
+    // ILIKE-only because `claim.claimCode` is stored uppercase while the offer
+    // and business names are not, and one helper keeps them consistent.
+    if (query.q?.trim()) {
+      qb.andWhere(
+        '(LOWER(offer.name) LIKE :q OR LOWER(business.name) LIKE :q OR LOWER(branch.name) LIKE :q OR LOWER(claim.claimCode) LIKE :q)',
+        { q: `%${query.q.trim().toLowerCase()}%` },
+      );
+    }
+
     // Opt-in pagination: legacy callers get the bare array, paginated callers
     // (page/limit supplied) get { data, total, page, limit }.
     const wantsPaging = query.page !== undefined || query.limit !== undefined;
