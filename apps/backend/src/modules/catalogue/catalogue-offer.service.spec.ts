@@ -157,7 +157,6 @@ describe('CatalogueOfferService', () => {
       delete: jest.fn().mockResolvedValue({ affected: 1 }),
       createQueryBuilder: jest.fn(),
     };
-
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         CatalogueOfferService,
@@ -1050,6 +1049,364 @@ describe('CatalogueOfferService', () => {
           rejectionReason: 'Too far away',
         }),
       );
+    });
+  });
+
+  describe('findMyClaims', () => {
+    const customer = {
+      id: 'user-1',
+      email: 'Customer@Example.com',
+      phone: '+2348000000000',
+    } as any;
+
+    /** A claim row in the shape `toMyClaim` consumes. */
+    const claimRow = (overrides: Record<string, unknown> = {}) => ({
+      id: 'claim-1',
+      claimCode: 'VEM1-APO1LUNCH-7F2A',
+      status: CatalogueOfferClaimStatus.CLAIMED,
+      expiresAt: new Date('2026-12-01T00:00:00Z'),
+      createdAt: new Date('2026-10-08T00:00:00Z'),
+      updatedAt: new Date('2026-10-08T00:00:00Z'),
+      userId: 'user-1',
+      email: 'customer@example.com',
+      phone: '+2348000000000',
+      offer: {
+        id: 'offer-1',
+        name: 'Apo Lunch Combo',
+        mainImage: null,
+        calculatedPrice: 8500,
+        pricingType: CatalogueOfferPricingType.PERCENTAGE_DISCOUNT,
+        discountValue: 15,
+        branchId: 'branch-1',
+        items: [{ price: 10000 }],
+        branch: {
+          id: 'branch-1',
+          name: 'Apo Branch',
+          address: 'Apo Roundabout',
+          business: { name: 'Patrick Ventures', logoUrl: null },
+        },
+      },
+      ...overrides,
+    });
+
+    /**
+     * Captures the query as the builder methods receive it, then hands back
+     * `rows` from `getManyAndCount`. `where` is flattened for assertions.
+     */
+    const mockClaimQb = (rows: any[]) => {
+      const calls: Record<string, any[][]> = {
+        where: [],
+        andWhere: [],
+        orderBy: [],
+        take: [],
+        skip: [],
+      };
+      const qb: any = {
+        innerJoinAndSelect: jest.fn().mockReturnThis(),
+        leftJoinAndSelect: jest.fn().mockReturnThis(),
+        where: jest.fn((...args: any[]) => {
+          calls.where.push(args);
+          return qb;
+        }),
+        andWhere: jest.fn((...args: any[]) => {
+          calls.andWhere.push(args);
+          return qb;
+        }),
+        orderBy: jest.fn((...args: any[]) => {
+          calls.orderBy.push(args);
+          return qb;
+        }),
+        take: jest.fn((...args: any[]) => {
+          calls.take.push(args);
+          return qb;
+        }),
+        skip: jest.fn((...args: any[]) => {
+          calls.skip.push(args);
+          return qb;
+        }),
+        getMany: jest.fn().mockResolvedValue(rows),
+        getManyAndCount: jest.fn().mockResolvedValue([rows, rows.length]),
+      };
+      claimRepo.createQueryBuilder = jest.fn().mockReturnValue(qb);
+      return { qb, calls };
+    };
+
+    it('scopes rows to the caller by id or email or phone', async () => {
+      const { calls } = mockClaimQb([claimRow()]);
+
+      await service.findMyClaims(customer, {});
+
+      const [condition, params] = calls.where[0];
+      expect(condition).toContain('claim.userId = :userId');
+      expect(condition).toContain('LOWER(claim.email) = LOWER(:email)');
+      expect(condition).toContain('claim.phone = :phone');
+      // The email is compared case-folded in SQL, so the raw account value is
+      // passed as-is — matching how the claim was recorded, not a normalised
+      // copy of it.
+      expect(params).toEqual({
+        userId: 'user-1',
+        email: 'Customer@Example.com',
+        phone: '+2348000000000',
+      });
+    });
+
+    it('maps a claimed pass to the ACTIVE response shape', async () => {
+      mockClaimQb([claimRow()]);
+
+      const result = (await service.findMyClaims(customer, {
+        page: 1,
+        limit: 10,
+      })) as any;
+
+      expect(result.total).toBe(1);
+      expect(result.page).toBe(1);
+      expect(result.limit).toBe(10);
+      expect(result.data[0].status).toBe('ACTIVE');
+      // Value, not reference: the mapped row is not the same Date instance.
+      expect(result.data[0].claimedAt).toEqual(new Date('2026-10-08T00:00:00Z'));
+      expect(result.data[0].offer.businessName).toBe('Patrick Ventures');
+      expect(result.data[0].offer.originalPrice).toBe(10000);
+      expect(result.data[0].offer.calculatedPrice).toBe(8500);
+      expect(result.data[0].offer.discountPercent).toBe(15);
+    });
+
+    it('returns the legacy bare array when pagination is omitted', async () => {
+      mockClaimQb([claimRow()]);
+
+      const result = (await service.findMyClaims(customer, {})) as any[];
+
+      expect(Array.isArray(result)).toBe(true);
+      expect(result).toHaveLength(1);
+      expect(result[0].id).toBe('claim-1');
+    });
+
+    it('filters ACTIVE by not-yet-expired claimed rows', async () => {
+      const { calls } = mockClaimQb([claimRow()]);
+
+      await service.findMyClaims(customer, { status: 'ACTIVE' as any });
+
+      const joined = calls.andWhere.map(([sql]) => sql).join(' ');
+      expect(joined).toContain('claim.status = :claimed');
+      expect(joined).toContain('claim.expiresAt >= :now');
+    });
+
+    it('treats a claimed pass past its expiry as EXPIRED', async () => {
+      const expired = claimRow({
+        expiresAt: new Date('2026-10-07T00:00:00Z'),
+      });
+      mockClaimQb([expired]);
+
+      const result = (await service.findMyClaims(customer, {
+        page: 1,
+        limit: 10,
+      })) as any;
+
+      expect(result.data[0].status).toBe('EXPIRED');
+    });
+
+    it('reports redeemed passes with their redeemedAt timestamp', async () => {
+      const redeemed = claimRow({
+        status: CatalogueOfferClaimStatus.REDEEMED,
+        updatedAt: new Date('2026-10-09T12:00:00Z'),
+      });
+      mockClaimQb([redeemed]);
+
+      const result = (await service.findMyClaims(customer, {
+        page: 1,
+        limit: 10,
+      })) as any;
+
+      expect(result.data[0].status).toBe('REDEEMED');
+      expect(result.data[0].redeemedAt).toEqual(
+        new Date('2026-10-09T12:00:00Z'),
+      );
+    });
+
+    it('matches q against offer, business, branch and claim code', async () => {
+      const { calls } = mockClaimQb([claimRow()]);
+
+      await service.findMyClaims(customer, { q: '  APO LUNCH  ' } as any);
+
+      const [sql, params] = calls.andWhere[0];
+      expect(sql).toContain('LOWER(offer.name) LIKE :q');
+      expect(sql).toContain('LOWER(business.name) LIKE :q');
+      expect(sql).toContain('LOWER(branch.name) LIKE :q');
+      expect(sql).toContain('LOWER(claim.claimCode) LIKE :q');
+      // Trimmed and case-folded so the caller's casing never decides a match.
+      expect(params.q).toBe('%apo lunch%');
+    });
+
+    it('does not filter on an empty q', async () => {
+      const { calls } = mockClaimQb([claimRow()]);
+
+      await service.findMyClaims(customer, { q: '   ' } as any);
+
+      const joined = calls.andWhere.map(([sql]) => sql).join(' ');
+      expect(joined).not.toContain('LIKE :q');
+    });
+
+    it('applies q before counting so total matches the page', async () => {
+      const { qb, calls } = mockClaimQb([claimRow()]);
+
+      await service.findMyClaims(customer, { q: 'apo', page: 2, limit: 5 });
+
+      expect(calls.andWhere.length).toBe(1);
+      // Page 2 of 5 skips 5, and the order is applied before either.
+      expect(calls.skip[0][0]).toBe(5);
+      expect(calls.take[0][0]).toBe(5);
+      expect(calls.orderBy[0]).toEqual(['claim.createdAt', 'DESC']);
+      expect(qb.getManyAndCount).toHaveBeenCalled();
+    });
+  });
+
+  describe('findMyGifts', () => {
+    const customer = { id: 'user-1', email: 'customer@example.com' } as any;
+
+    const giftRow = (overrides: Record<string, unknown> = {}) => ({
+      id: 'gift-1',
+      recipientEmail: 'friend@example.com',
+      recipientName: 'Sam Taylor',
+      note: 'Enjoy lunch on me!',
+      status: 'pending',
+      createdAt: new Date('2026-10-08T00:00:00Z'),
+      acceptedAt: null,
+      rejectedAt: null,
+      rejectionReason: null,
+      offerId: 'offer-1',
+      branchId: 'branch-1',
+      offer: {
+        id: 'offer-1',
+        name: 'Apo Lunch Combo',
+        mainImage: null,
+        calculatedPrice: 8500,
+        items: [{ price: 10000 }],
+      },
+      branch: { id: 'branch-1', name: 'Apo Branch' },
+      business: { id: 'biz-1', name: 'Patrick Ventures' },
+      ...overrides,
+    });
+
+    const mockGiftQb = (rows: any[]) => {
+      const calls: Record<string, any[][]> = { where: [], andWhere: [] };
+      const qb: any = {
+        leftJoinAndSelect: jest.fn().mockReturnThis(),
+        where: jest.fn((...args: any[]) => {
+          calls.where.push(args);
+          return qb;
+        }),
+        andWhere: jest.fn((...args: any[]) => {
+          calls.andWhere.push(args);
+          return qb;
+        }),
+        withDeleted: jest.fn().mockReturnThis(),
+        orderBy: jest.fn().mockReturnThis(),
+        take: jest.fn().mockReturnThis(),
+        skip: jest.fn().mockReturnThis(),
+        getMany: jest.fn().mockResolvedValue(rows),
+        getManyAndCount: jest.fn().mockResolvedValue([rows, rows.length]),
+      };
+      dealGiftRepo.createQueryBuilder = jest.fn().mockReturnValue(qb);
+      return { qb, calls };
+    };
+
+    it('scopes gifts to the caller as the sender', async () => {
+      const { calls } = mockGiftQb([giftRow()]);
+
+      await service.findMyGifts(customer, {});
+
+      expect(calls.where[0][0]).toBe('gift.senderId = :senderId');
+      expect(calls.where[0][1]).toEqual({ senderId: 'user-1' });
+    });
+
+    it('opts soft-deleted rows back in so declined gifts still show', async () => {
+      const { qb } = mockGiftQb([giftRow()]);
+
+      await service.findMyGifts(customer, {});
+
+      expect(qb.withDeleted).toHaveBeenCalled();
+    });
+
+    it('returns the legacy bare array when pagination is omitted', async () => {
+      mockGiftQb([giftRow()]);
+
+      const result = (await service.findMyGifts(customer, {})) as any[];
+
+      expect(Array.isArray(result)).toBe(true);
+      expect(result[0].recipientEmail).toBe('friend@example.com');
+      expect(result[0].status).toBe('pending');
+      expect(result[0].offer.name).toBe('Apo Lunch Combo');
+      expect(result[0].offer.originalPrice).toBe(10000);
+      expect(result[0].businessName).toBe('Patrick Ventures');
+    });
+
+    it('surfaces a declined gift with its reason and date', async () => {
+      mockGiftQb([
+        giftRow({
+          status: 'rejected',
+          rejectedAt: new Date('2026-10-09T10:00:00Z'),
+          rejectionReason: 'Location is too far',
+        }),
+      ]);
+
+      const result = (await service.findMyGifts(customer, {
+        page: 1,
+        limit: 10,
+      })) as any;
+
+      expect(result.data[0].status).toBe('rejected');
+      expect(result.data[0].rejectionReason).toBe('Location is too far');
+      expect(result.data[0].rejectedAt).toEqual(
+        new Date('2026-10-09T10:00:00Z'),
+      );
+    });
+
+    it('stays sendable without an offer relation attached', async () => {
+      // A deleted offer cascades the relation away, so the row must still map.
+      mockGiftQb([giftRow({ offer: null })]);
+
+      const result = (await service.findMyGifts(customer, {
+        page: 1,
+        limit: 10,
+      })) as any;
+
+      expect(result.data[0].offer.id).toBe('offer-1');
+      expect(result.data[0].offer.name).toBe('');
+      expect(result.data[0].offer.calculatedPrice).toBe(0);
+    });
+
+    it('filters by recipient outcome', async () => {
+      const { calls } = mockGiftQb([giftRow()]);
+
+      await service.findMyGifts(customer, { status: 'accepted' as any });
+
+      expect(calls.andWhere[0][0]).toBe('gift.status = :status');
+      expect(calls.andWhere[0][1]).toEqual({ status: 'accepted' });
+    });
+
+    it('matches q against recipient, sender and offer name', async () => {
+      const { calls } = mockGiftQb([giftRow()]);
+
+      await service.findMyGifts(customer, { q: ' SAM ' } as any);
+
+      const [sql, params] = calls.andWhere[0];
+      expect(sql).toContain('LOWER(gift.recipientEmail) LIKE :q');
+      expect(sql).toContain('LOWER(gift.recipientName) LIKE :q');
+      expect(sql).toContain('LOWER(gift.senderName) LIKE :q');
+      expect(sql).toContain('LOWER(offer.name) LIKE :q');
+      expect(params.q).toBe('%sam%');
+    });
+
+    it('paginates and counts on the same query', async () => {
+      const { qb } = mockGiftQb([giftRow()]);
+
+      const result = (await service.findMyGifts(customer, {
+        page: 3,
+        limit: 5,
+      })) as any;
+
+      expect(result.page).toBe(3);
+      expect(result.limit).toBe(5);
+      expect(qb.getManyAndCount).toHaveBeenCalled();
     });
   });
 });

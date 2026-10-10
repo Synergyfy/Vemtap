@@ -53,6 +53,11 @@ import {
   MyClaimsPageDto,
   MyClaimsQueryDto,
 } from './dto/my-claims.dto';
+import {
+  MyGiftDto,
+  MyGiftsPageDto,
+  MyGiftsQueryDto,
+} from './dto/my-gifts.dto';
 import { CACHE_MANAGER, type Cache } from '@nestjs/cache-manager';
 import { AiCreditService } from '../ai-copilot/services/ai-credit.service';
 import { OpenAIClient } from '../ai-copilot/openai/openai.client';
@@ -1725,6 +1730,102 @@ export class CatalogueOfferService {
         branchAddress: branch?.address ?? business?.address ?? null,
         endDate: offer.endDate,
       },
+    };
+  }
+
+  /**
+   * Deals the authenticated customer has gifted away — the sender's side of
+   * `sendDealGift`.
+   *
+   * Declining a gift soft-removes the row so the branch dashboard stops seeing
+   * the recipient, so this query opts back in with `withDeleted()`. That is
+   * safe only because the scope is the caller's own `senderId`: the sender is
+   * the one party the row is not being hidden from.
+   */
+  async findMyGifts(
+    user: User,
+    query: MyGiftsQueryDto,
+  ): Promise<MyGiftDto[] | MyGiftsPageDto> {
+    const qb = this.dealGiftRepository
+      .createQueryBuilder('gift')
+      .leftJoinAndSelect('gift.offer', 'offer')
+      .leftJoinAndSelect('offer.items', 'offerItem')
+      .leftJoinAndSelect('gift.branch', 'branch')
+      .leftJoinAndSelect('gift.business', 'business')
+      .where('gift.senderId = :senderId', { senderId: user.id })
+      .withDeleted();
+
+    if (query.status) {
+      qb.andWhere('gift.status = :status', { status: query.status });
+    }
+
+    if (query.q?.trim()) {
+      qb.andWhere(
+        '(LOWER(gift.recipientEmail) LIKE :q OR LOWER(gift.recipientName) LIKE :q OR LOWER(gift.senderName) LIKE :q OR LOWER(offer.name) LIKE :q)',
+        { q: `%${query.q.trim().toLowerCase()}%` },
+      );
+    }
+
+    const wantsPaging = query.page !== undefined || query.limit !== undefined;
+    const page = query.page ?? 1;
+    const limit = query.limit ?? 10;
+
+    qb.orderBy('gift.createdAt', 'DESC');
+    if (wantsPaging) {
+      qb.skip((page - 1) * limit).take(limit);
+    }
+
+    if (!wantsPaging) {
+      const gifts = await qb.getMany();
+      return gifts.map((gift) => this.toMyGift(gift));
+    }
+
+    const [gifts, total] = await qb.getManyAndCount();
+
+    return {
+      data: gifts.map((gift) => this.toMyGift(gift)),
+      total,
+      page,
+      limit,
+    };
+  }
+
+  private toMyGift(gift: CatalogueDealGift): MyGiftDto {
+    const offer = gift.offer;
+    // `originalPrice` is not a column: it is the sum of the offer's item
+    // prices, derived the same way `toMyClaim` does it so a gift row and a
+    // claim row for the same deal report the same figures.
+    const originalPrice = offer
+      ? (offer.items ?? []).reduce((acc, item) => acc + Number(item.price || 0), 0)
+      : null;
+
+    return {
+      id: gift.id,
+      recipientEmail: gift.recipientEmail,
+      recipientName: gift.recipientName ?? null,
+      note: gift.note ?? null,
+      status: gift.status,
+      createdAt: gift.createdAt,
+      acceptedAt: gift.acceptedAt ?? null,
+      rejectedAt: gift.rejectedAt ?? null,
+      rejectionReason: gift.rejectionReason ?? null,
+      offer: offer
+        ? {
+            id: offer.id,
+            name: offer.name,
+            mainImage: offer.mainImage ?? null,
+            calculatedPrice: Number(offer.calculatedPrice || 0),
+            originalPrice: originalPrice === 0 ? null : originalPrice,
+          }
+        : {
+            id: gift.offerId,
+            name: '',
+            mainImage: null,
+            calculatedPrice: 0,
+            originalPrice: null,
+          },
+      businessName: gift.business?.name ?? null,
+      branchName: gift.branch?.name ?? null,
     };
   }
 

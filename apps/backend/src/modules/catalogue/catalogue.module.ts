@@ -20,6 +20,7 @@ import { Business } from '../businesses/entities/business.entity';
 import { ClustersModule } from '../clusters/clusters.module';
 import { User } from '../users/entities/user.entity';
 import { MeClaimsController } from './me-claims.controller';
+import { MeGiftsController } from './me-gifts.controller';
 import { MeSavingsController } from './me-savings.controller';
 import { RecommendationsController } from './recommendations.controller';
 import { SavingsService } from './savings.service';
@@ -48,6 +49,7 @@ import { SavingsService } from './savings.service';
     CatalogueOfferController,
     AdminDealsController,
     MeClaimsController,
+    MeGiftsController,
     MeSavingsController,
     RecommendationsController,
   ],
