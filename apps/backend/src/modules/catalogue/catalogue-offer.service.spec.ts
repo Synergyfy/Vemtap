@@ -596,7 +596,31 @@ describe('CatalogueOfferService', () => {
   });
 
   describe('findAllOffersPublicGlobal', () => {
-    const makeOfferQb = () => ({
+    const basePublicOffer = {
+      id: 'offer-1',
+      name: 'Deal',
+      description: 'desc',
+      pricingType: 'sum',
+      fixedPrice: null,
+      discountValue: null,
+      calculatedPrice: 100,
+      status: 'active',
+      branchId: 'branch-1',
+      branch: {
+        name: 'Branch',
+        business: { category: { name: 'Food' } },
+      },
+      items: [{ price: 100 }],
+      quantity: 10,
+      startDate: null,
+      endDate: null,
+      maxClaimsPerCustomer: 1,
+      audienceTarget: 'all',
+      terms: [],
+      claimCodePrefix: 'VEM',
+    };
+
+    const makeOfferQb = (offerOverrides: Record<string, unknown> = {}) => ({
       leftJoinAndSelect: jest.fn().mockReturnThis(),
       where: jest.fn().mockReturnThis(),
       andWhere: jest.fn().mockReturnThis(),
@@ -605,34 +629,9 @@ describe('CatalogueOfferService', () => {
       orderBy: jest.fn().mockReturnThis(),
       skip: jest.fn().mockReturnThis(),
       take: jest.fn().mockReturnThis(),
-      getManyAndCount: jest.fn().mockResolvedValue([
-        [
-          {
-            id: 'offer-1',
-            name: 'Deal',
-            description: 'desc',
-            pricingType: 'sum',
-            fixedPrice: null,
-            discountValue: null,
-            calculatedPrice: 100,
-            status: 'active',
-            branchId: 'branch-1',
-            branch: {
-              name: 'Branch',
-              business: { category: { name: 'Food' } },
-            },
-            items: [{ price: 100 }],
-            quantity: 10,
-            startDate: null,
-            endDate: null,
-            maxClaimsPerCustomer: 1,
-            audienceTarget: 'all',
-            terms: [],
-            claimCodePrefix: 'VEM',
-          },
-        ],
-        1,
-      ]),
+      getManyAndCount: jest
+        .fn()
+        .mockResolvedValue([[{ ...basePublicOffer, ...offerOverrides }], 1]),
     });
 
     it('orders by claim count for sortBy=popular and returns claimedCount', async () => {
@@ -680,6 +679,30 @@ describe('CatalogueOfferService', () => {
       );
       expect(qb.orderBy).toHaveBeenCalledWith('featuredscore', 'DESC');
       expect(result.data[0].claimedCount).toBe(2);
+    });
+
+    it('coerces numeric-column strings to numbers in the feed payload', async () => {
+      const qb = makeOfferQb({
+        calculatedPrice: '8500.00',
+        fixedPrice: '6500.00',
+        discountValue: '450.00',
+        items: [{ price: 10000 }],
+      });
+      offerRepo.createQueryBuilder = jest.fn().mockReturnValue(qb);
+      claimRepo.find.mockResolvedValue([]);
+
+      const result = await service.findAllOffersPublicGlobal({
+        page: 1,
+        limit: 10,
+      });
+
+      expect(result.data[0].calculatedPrice).toBe(8500);
+      expect(result.data[0].fixedPrice).toBe(6500);
+      expect(result.data[0].percentageOff).toBe(450);
+      expect(typeof result.data[0].calculatedPrice).toBe('number');
+      // discountPercent must be computed from the coerced number, not from
+      // string comparison: 10000 → 8500 is 15% off.
+      expect(result.data[0].discountPercent).toBe(15);
     });
   });
 
@@ -1168,6 +1191,26 @@ describe('CatalogueOfferService', () => {
       expect(result.data[0].offer.originalPrice).toBe(10000);
       expect(result.data[0].offer.calculatedPrice).toBe(8500);
       expect(result.data[0].offer.discountPercent).toBe(15);
+    });
+
+    it('coerces the offer discountValue the driver returns as a string', async () => {
+      const row = claimRow();
+      mockClaimQb([
+        claimRow({
+          offer: { ...row.offer, discountValue: '450.00' },
+        }),
+      ]);
+
+      const result = (await service.findMyClaims(customer, {
+        page: 1,
+        limit: 10,
+      })) as any;
+
+      // catalogue_offers.discountValue is a numeric column with no
+      // transformer, so the driver hands it over as "450.00" while
+      // MyClaimDto promises number | null.
+      expect(result.data[0].offer.discountValue).toBe(450);
+      expect(typeof result.data[0].offer.discountValue).toBe('number');
     });
 
     it('returns the legacy bare array when pagination is omitted', async () => {

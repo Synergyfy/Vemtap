@@ -679,11 +679,19 @@ export class CatalogueOfferService {
         (acc, it) => acc + Number(it.price || 0),
         0,
       );
+      // The numeric columns come back from the driver as strings, so they are
+      // coerced once here: the discountPercent maths and the response payload
+      // both need real numbers.
+      const calculatedPrice = Number(offer.calculatedPrice || 0);
+      const fixedPrice =
+        offer.fixedPrice == null ? null : Number(offer.fixedPrice);
+      const rawPercentageOff =
+        (offer as any).percentageOff ?? offer.discountValue;
 
       let discountPercent = 0;
-      if (originalPrice > 0 && offer.calculatedPrice < originalPrice) {
+      if (originalPrice > 0 && calculatedPrice < originalPrice) {
         discountPercent = Math.round(
-          ((originalPrice - offer.calculatedPrice) / originalPrice) * 100,
+          ((originalPrice - calculatedPrice) / originalPrice) * 100,
         );
       }
 
@@ -694,9 +702,10 @@ export class CatalogueOfferService {
         name: offer.name,
         description: offer.description,
         pricingType: offer.pricingType,
-        fixedPrice: offer.fixedPrice,
-        percentageOff: (offer as any).percentageOff ?? offer.discountValue,
-        calculatedPrice: offer.calculatedPrice,
+        fixedPrice,
+        percentageOff:
+          rawPercentageOff == null ? rawPercentageOff : Number(rawPercentageOff),
+        calculatedPrice,
         originalPrice,
         discountPercent,
         status: offer.status,
@@ -1721,7 +1730,10 @@ export class CatalogueOfferService {
         originalPrice,
         discountPercent,
         pricingType: offer.pricingType,
-        discountValue: offer.discountValue ?? null,
+        // numeric columns reach JS as strings ("1500.00"); the DTO promises
+        // number | null, so coerce at the boundary — null stays null.
+        discountValue:
+          offer.discountValue == null ? null : Number(offer.discountValue),
         businessId: business?.id ?? offer.branch?.businessId ?? '',
         businessName: business?.name ?? '',
         businessLogo: business?.logoUrl ?? null,

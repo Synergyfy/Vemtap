@@ -376,6 +376,32 @@ describe('ClustersService', () => {
       expect(qb.andWhere).toHaveBeenCalled();
     });
 
+    it('coerces driver string decimals on the mapped deal', async () => {
+      const qb = buildQb();
+      qb.getMany.mockResolvedValue([
+        {
+          ...makeOffer('o1', 'b1', '2026-01-05'),
+          discountValue: '450.00',
+          fixedPrice: '6500.00',
+          calculatedPrice: '100.00',
+        },
+      ]);
+      offerRepo.createQueryBuilder.mockReturnValue(qb);
+
+      const result = await service.getClusterDeals('CL-ABC123DEF', {
+        page: 1,
+        limit: 10,
+      });
+
+      // ClusterDealView promises numbers, but catalogue_offers numeric
+      // columns reach the mapper as strings ("450.00").
+      const deal = result.data[0];
+      expect(deal.discountValue).toBe(450);
+      expect(deal.fixedPrice).toBe(6500);
+      expect(deal.calculatedPrice).toBe(100);
+      expect(deal.dealPrice).toBe(100);
+    });
+
     it('filters by category and search', async () => {
       const qb = buildQb();
       qb.getMany.mockResolvedValue([]);
