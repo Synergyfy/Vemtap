@@ -7,6 +7,7 @@ import { Notification } from './entities/notification.entity';
 import { NotificationBroadcast } from './entities/notification-broadcast.entity';
 import { PushToken } from './entities/push-token.entity';
 import { NotificationsService } from './notifications.service';
+import { DealVelocityService } from './deal-velocity.service';
 import { NotificationsController } from './notifications.controller';
 import { NotificationsGateway } from './notifications.gateway';
 import { PushNotificationService } from './push-notification.service';
@@ -16,6 +17,7 @@ import {
 } from './push-notification.processor';
 import { User } from '../users/entities/user.entity';
 import { Contact } from '../contacts/entities/contact.entity';
+import { CatalogueOfferClaim } from '../catalogue/entities/catalogue-offer-claim.entity';
 
 @Module({
   imports: [
@@ -25,6 +27,10 @@ import { Contact } from '../contacts/entities/contact.entity';
       PushToken,
       User,
       Contact,
+      // Read-only: the velocity detector counts claims written by the
+      // catalogue module. Injected here rather than imported so the
+      // notifications module does not depend on the catalogue module.
+      CatalogueOfferClaim,
     ]),
     // BullMQ root connection (Redis) — re-uses the same env vars as MessagingModule.
     // forRoot is idempotent; if MessagingModule already registered it in the same
@@ -73,6 +79,7 @@ import { Contact } from '../contacts/entities/contact.entity';
   ],
   providers: [
     NotificationsService,
+    DealVelocityService,
     PushNotificationService,
     PushNotificationProcessor,
     NotificationsGateway,

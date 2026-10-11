@@ -59,6 +59,14 @@ describe('PublicDiscoveryService', () => {
 
   beforeEach(async () => {
     jest.resetAllMocks();
+    itemRepo.createQueryBuilder.mockImplementation(() => ({
+      leftJoinAndSelect: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
+      andWhere: jest.fn().mockReturnThis(),
+      orderBy: jest.fn().mockReturnThis(),
+      take: jest.fn().mockReturnThis(),
+      getMany: jest.fn().mockResolvedValue([]),
+    }));
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -146,7 +154,12 @@ describe('PublicDiscoveryService', () => {
   describe('search', () => {
     it('returns empty result groups for an empty query', async () => {
       const result = await service.search(undefined, 8);
-      expect(result).toEqual({ deals: [], businesses: [], categories: [] });
+      expect(result).toEqual({
+        deals: [],
+        businesses: [],
+        categories: [],
+        products: [],
+      });
       expect(
         catalogueOfferService.findAllOffersPublicGlobal,
       ).not.toHaveBeenCalled();

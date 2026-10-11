@@ -121,6 +121,9 @@ export class NotificationsGateway
         type: notification.type,
         isRead: notification.isRead,
         actionUrl: notification.actionUrl,
+        // Same payload the row carries, so a client that prepends this emit
+        // shows the stat block without a second fetch.
+        metadata: notification.metadata,
         createdAt: notification.createdAt,
       },
     });

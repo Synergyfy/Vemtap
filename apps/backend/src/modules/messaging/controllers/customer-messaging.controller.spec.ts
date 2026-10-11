@@ -89,6 +89,8 @@ describe('CustomerMessagingController', () => {
         mockUser.id,
         dto.replyToId,
         undefined,
+        // `media` is forwarded as-is; this DTO carries none.
+        { mimeType: undefined, url: undefined },
       );
     });
   });

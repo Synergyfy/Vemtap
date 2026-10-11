@@ -11,6 +11,9 @@ import { v2 as cloudinary, type UploadApiResponse } from 'cloudinary';
  * Cloudinary-backed image uploads for the business wizard (logo, cover,
  * gallery). Mirrors the web app's `/api/upload` route, but behind JWT so the
  * mobile client uploads with the owner's session.
+ *
+ * `folderOverride` lets a non-business caller (chat media) keep its uploads
+ * out of the business and onboarding folders.
  */
 @Injectable()
 export class UploadsService {
@@ -35,6 +38,7 @@ export class UploadsService {
   async uploadImage(
     file: Express.Multer.File | undefined,
     businessId?: string,
+    folderOverride?: string,
   ): Promise<{ url: string }> {
     if (!file) {
       throw new BadRequestException('No file provided');
@@ -45,9 +49,9 @@ export class UploadsService {
       );
     }
 
-    const folder = businessId
-      ? `vemtap/businesses/${businessId}`
-      : 'vemtap_onboarding';
+    const folder =
+      folderOverride ??
+      (businessId ? `vemtap/businesses/${businessId}` : 'vemtap_onboarding');
 
     try {
       const uploaded = await new Promise<UploadApiResponse>(

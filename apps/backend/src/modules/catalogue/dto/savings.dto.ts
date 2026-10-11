@@ -141,15 +141,19 @@ export class SavingsCategoriesQueryDto {
   days?: number;
 }
 
+export enum SavingsExportFormat {
+  CSV = 'csv',
+}
+
 export class SavingsExportQueryDto {
   @ApiPropertyOptional({
-    enum: ['csv'],
-    default: 'csv',
+    enum: SavingsExportFormat,
+    default: SavingsExportFormat.CSV,
     description: 'Export format (only csv is supported)',
   })
   @IsOptional()
-  @IsIn(['csv'])
-  format?: 'csv' = 'csv';
+  @IsIn([SavingsExportFormat.CSV])
+  format?: SavingsExportFormat = SavingsExportFormat.CSV;
 
   @ApiPropertyOptional({
     description: 'Only include redemptions from the past N days',

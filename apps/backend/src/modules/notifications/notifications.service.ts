@@ -197,6 +197,7 @@ export class NotificationsService {
     message: string,
     type: string = 'info',
     actionUrl?: string | null,
+    metadata?: Record<string, any> | null,
   ) {
     const notification = this.notificationsRepository.create({
       userId,
@@ -204,6 +205,7 @@ export class NotificationsService {
       message,
       type,
       actionUrl: actionUrl ?? null,
+      metadata: metadata ?? null,
     });
     const saved = await this.notificationsRepository.save(notification);
     this.notificationsGateway.emitNotificationCreated(userId, saved);
@@ -223,6 +225,7 @@ export class NotificationsService {
     message: string,
     type: string = 'info',
     actionUrl?: string | null,
+    metadata?: Record<string, any> | null,
   ) {
     const unique = [...new Set(userIds)].filter(Boolean);
     if (unique.length === 0) return [];
@@ -234,6 +237,7 @@ export class NotificationsService {
         message,
         type,
         actionUrl: actionUrl ?? null,
+        metadata: metadata ?? null,
       }),
     );
 
@@ -258,6 +262,7 @@ export class NotificationsService {
     message: string,
     type: string = 'info',
     actionUrl?: string | null,
+    metadata?: Record<string, any> | null,
   ) {
     const staff = await this.userRepository.find({
       where: [{ branchId }, ...(businessId ? [{ businessId }] : [])],
@@ -270,6 +275,7 @@ export class NotificationsService {
       message,
       type,
       actionUrl,
+      metadata,
     );
   }
 
@@ -306,6 +312,62 @@ export class NotificationsService {
 
     const rows = await qb.getMany();
     return rows;
+  }
+
+  /**
+   * Lists a business's notifications across everyone who works there.
+   *
+   * Rows are addressed to a user, but the ones a venue cares about — an order,
+   * a closed shift, a rating — are events in the business, and the person who
+   * happens to hold the row is incidental. Reading them per-user is how a bell
+   * ends up empty while something is happening: the owner receives a review
+   * only if the review was written for the owner.
+   *
+   * `businessId` comes from the token, never the query — accepting it would
+   * let any signed-in user read any business's rows.
+   *
+   * The unread total rides along rather than on its own route so the bell and
+   * the list that fills it cannot disagree: both come off one query set.
+   */
+  async findByBusiness(
+    businessId: string,
+    options: { page?: number; limit?: number } = {},
+  ) {
+    const DEFAULT_LIMIT = 20;
+    const MAX_LIMIT = 100;
+    const page = Math.max(1, Number(options.page) || 1);
+    const limit = Math.min(
+      Math.max(1, Number(options.limit) || DEFAULT_LIMIT),
+      MAX_LIMIT,
+    );
+    const envelope = { data: [], total: 0, unreadCount: 0, page, limit };
+
+    // A customer carries no businessId, so this is their empty state rather
+    // than an error: the route is shared, and a 500 here would break the bell
+    // for every customer account on the shared endpoint.
+    const staff = await this.userRepository.find({
+      where: { businessId },
+      select: ['id'],
+    });
+    const userIds = staff.map((s) => s.id);
+    if (userIds.length === 0) return envelope;
+
+    // Two counts off the scan instead of loading rows twice. `data` and
+    // `total` are the same result set; `unreadCount` is the same set filtered.
+    const [pageRows, total, unreadCount] = await Promise.all([
+      this.notificationsRepository.find({
+        where: { userId: In(userIds) },
+        order: { createdAt: 'DESC' },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      this.notificationsRepository.count({ where: { userId: In(userIds) } }),
+      this.notificationsRepository.count({
+        where: { userId: In(userIds), isRead: false },
+      }),
+    ]);
+
+    return { data: pageRows, total, unreadCount, page, limit };
   }
 
   async markAsRead(id: string, userId: string) {

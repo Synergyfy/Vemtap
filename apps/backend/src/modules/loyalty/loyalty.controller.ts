@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Controller,
   Get,
   Post,
@@ -306,9 +307,7 @@ export class LoyaltyController {
     @Request() req: { user: User },
     @Query('branchId') branchId?: string,
   ) {
-    const user = req.user as any;
-    const businessId =
-      user?.businessId || user?.business?.id || user?.branch?.businessId;
+    const businessId = this.resolveBusinessId(req.user);
     return this.loyaltyService.getBusinessLoyaltyStats(businessId, branchId);
   }
 
@@ -320,8 +319,7 @@ export class LoyaltyController {
     @Request() req: { user: User },
     @Query('branchId') branchId?: string,
   ) {
-    const user = req.user as any;
-    const businessId = user?.businessId || user?.business?.id;
+    const businessId = this.resolveBusinessId(req.user);
     return this.loyaltyService.getRules(businessId, branchId);
   }
 
@@ -334,8 +332,7 @@ export class LoyaltyController {
     @Body() dto: UpdateLoyaltyRuleDto,
     @Query('branchId') branchId?: string,
   ) {
-    const user = req.user as any;
-    const businessId = user?.businessId || user?.business?.id;
+    const businessId = this.resolveBusinessId(req.user);
     return this.loyaltyService.upsertRules(businessId, dto, branchId);
   }
 
@@ -794,5 +791,18 @@ export class LoyaltyController {
       days: query.days,
       allTime: query.allTime,
     });
+  }
+
+  /**
+   * Staff users may carry the business either directly on the user row, on the
+   * loaded business relation, or (rarely) only via their branch.
+   */
+  private resolveBusinessId(user: User): string {
+    const businessId =
+      user?.businessId ?? user?.business?.id ?? user?.branch?.businessId;
+    if (!businessId) {
+      throw new BadRequestException('User is not associated with a business');
+    }
+    return businessId;
   }
 }

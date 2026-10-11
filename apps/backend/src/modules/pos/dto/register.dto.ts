@@ -17,6 +17,26 @@ export class OpenRegisterDto {
   openingCash: number;
 }
 
+/**
+ * Cash counted in the drawer at close.
+ *
+ * Optional so a shift can still be closed without reading the till, but
+ * supplying it is the point: without it `variance` cannot be computed, and the
+ * closing notification would be reporting a balanced drawer it never counted.
+ */
+export class CloseRegisterDto {
+  @ApiPropertyOptional({
+    description:
+      'Physical cash counted in the drawer at close. Omit to close without reconciling.',
+    example: 342850,
+  })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  @Type(() => Number)
+  countedCash?: number;
+}
+
 export class RegisterHistoryQueryDto extends PaginationQueryDto {
   @ApiPropertyOptional()
   @IsOptional()

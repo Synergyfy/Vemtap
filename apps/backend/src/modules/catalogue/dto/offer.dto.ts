@@ -682,6 +682,136 @@ export class AdminDealsQueryDto {
   sortBy?: AdminDealsSortBy = AdminDealsSortBy.NEWEST;
 }
 
+/**
+ * Admin-facing offer response DTO — explicit contract for `GET /catalogue/offers/admin`.
+ * Exposes discount/voucher fields for the business hub; hides internal columns.
+ */
+export class AdminCatalogueOfferDto {
+  @ApiProperty()
+  @IsUUID()
+  id: string;
+
+  @ApiProperty()
+  @IsString()
+  name: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  description?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  mainImage?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  galleryImages?: string[];
+
+  @ApiProperty({ enum: CatalogueOfferPricingType })
+  @IsEnum(CatalogueOfferPricingType)
+  pricingType: CatalogueOfferPricingType;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  @Min(0)
+  discountValue?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  @Min(0)
+  fixedPrice?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  @Min(0)
+  calculatedPrice?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  @Min(0)
+  quantity?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsArray()
+  @IsUUID(undefined, { each: true })
+  itemIds?: string[];
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  startDate?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  endDate?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  terms?: string[];
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  @Min(0)
+  maxClaimsPerCustomer?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  offerType?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  @Min(0)
+  loyaltyPoints?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsUUID()
+  rewardId?: string;
+
+  @ApiProperty({ example: 'uuid-of-branch' })
+  @IsUUID()
+  branchId: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  branchName?: string;
+
+  @ApiPropertyOptional({ enum: CatalogueOfferStatus })
+  @IsOptional()
+  @IsEnum(CatalogueOfferStatus)
+  status?: CatalogueOfferStatus;
+
+  @ApiProperty()
+  @IsString()
+  createdAt: string;
+
+  @ApiProperty()
+  @IsString()
+  updatedAt: string;
+}
+
 export class AdminBusinessesQueryDto {
   @ApiPropertyOptional({ description: 'Search businesses by name' })
   @IsOptional()

@@ -5,6 +5,7 @@ import { Feedback } from './entities/feedback.entity';
 import { CreateFeedbackDto } from './dto/create-feedback.dto';
 import { User } from '../users/entities/user.entity';
 import { Branch } from '../branches/entities/branch.entity';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
 export class FeedbackService {
@@ -13,6 +14,7 @@ export class FeedbackService {
   constructor(
     @InjectRepository(Feedback)
     private readonly feedbackRepository: Repository<Feedback>,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   async create(dto: CreateFeedbackDto, customer: User) {
@@ -34,7 +36,31 @@ export class FeedbackService {
       sentiment:
         dto.rating >= 4 ? 'positive' : dto.rating <= 2 ? 'negative' : 'neutral',
     });
-    return this.feedbackRepository.save(feedback);
+    const saved = await this.feedbackRepository.save(feedback);
+
+    // A rating is the one thing a venue owner will open an app for. Fire it to
+    // the branch and the business so it lands in the same bell as everything
+    // else, rather than only in the review list nobody watches.
+    const author = feedback.customerName || 'A customer';
+    this.notificationsService
+      .createForBranchStaff(
+        branch.id,
+        branch.businessId,
+        `New ${dto.rating}★ Rating`,
+        `${author} left a ${dto.rating}-star rating${dto.comment.trim() ? `: "${dto.comment.trim()}"` : ''}`,
+        dto.rating >= 4 ? 'success' : dto.rating <= 2 ? 'error' : 'info',
+        '/feedback/reviews',
+        {
+          stat: { label: 'Rating', value: `${dto.rating}/5` },
+          footnote: author,
+          cta: 'Read Review',
+        },
+      )
+      .catch((err) =>
+        this.logger.error(`Failed to notify staff of feedback: ${err.message}`),
+      );
+
+    return saved;
   }
 
   async getStats(branchId?: string) {

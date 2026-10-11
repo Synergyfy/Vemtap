@@ -63,6 +63,7 @@ Staff can initiate a conversation by sending a direct message to a customer or t
 | `POST` | `/threads/start` | Start/Initiate a conversation with a branch. |
 | `GET` | `/threads/:threadId` | Fetch message history for a thread (Newest first). |
 | `POST` | `/threads/:threadId/reply` | Send a reply to an existing thread. |
+| `DELETE` | `/threads/:threadId` | Delete one of the customer's conversation threads and all of its messages. |
 | `PATCH` | `/messages/:id` | Edit a previously sent message. |
 | `DELETE` | `/messages/:id` | Delete a previously sent message. |
 
@@ -75,6 +76,7 @@ Staff can initiate a conversation by sending a direct message to a customer or t
 | `GET` | `/inbox/threads/:threadId` | Fetch message history for a specific thread. |
 | `POST` | `/inbox/threads/:threadId/reply` | Send a reply to a customer. |
 | `POST` | `/inbox/threads/:threadId/read` | Manually mark a thread as read for the branch. |
+| `DELETE` | `/inbox/threads/:threadId` | Delete a branch conversation thread and all of its messages. |
 | `POST` | `/send` | Send a single message or start a campaign. |
 | `PATCH` | `/messages/:id` | Edit a previously sent outbound message. |
 | `DELETE` | `/messages/:id` | Delete a previously sent outbound message. |
@@ -108,9 +110,10 @@ Staff can initiate a conversation by sending a direct message to a customer or t
 | Event | Payload | Description |
 | :--- | :--- | :--- |
 | `newMessage` | `Message` | Broadcast to `thread_{threadId}` when a new message arrives. |
-| `inboxUpdate` | `{ type: string, threadId: uuid, message: Message }` | Sent to `branch_{branchId}` to update the staff inbox list. |
+| `inboxUpdate` | `{ type: string, threadId: uuid, message?: Message }` | Sent to `branch_{branchId}` to update the staff inbox list. `type` is `new_message`, `message_update`, or `thread_deleted`. |
 | `userTyping` | `{ userId: uuid, threadId: uuid, isTyping: boolean }` | Broadcast to others in the thread room. |
-| `messageUpdate` | `{ id: uuid, content?: string, isEdited?: boolean, isDeleted?: boolean, type: 'EDIT' \| 'DELETE' }` | Sent to the thread room when a message is modified. |
+| `messageUpdate` | `{ id: uuid, threadId: uuid, content?: string, isEdited?: boolean, isDeleted?: boolean, type: 'EDIT' \| 'DELETE' }` | Sent to the thread room when a message is modified. |
+| `threadDeleted` | `{ threadId: uuid }` | Sent to `thread_{threadId}` and `user_{userId}` when a conversation thread is deleted. |
 | `notification` | `{ type: string, title: string, body: string, threadId: uuid }` | Sent to `user_{userId}` or `branch_{branchId}` for background alerts. |
 
 ---
@@ -273,6 +276,7 @@ export interface Segment {
 - **Marking as Read**: When a staff member fetches `GET /inbox/threads/:threadId`, the `branchUnreadCount` is automatically reset to `0`. Similarly, `getCustomerThreadMessages` resets the `customerUnreadCount`.
 - **Message Permissions**: Only the literal sender of a message (the specific customer or staff member) has permission to edit or delete it.
 - **Soft Deletion**: When a message is deleted, it is not removed from the database for audit purposes. Instead, the `isDeleted` flag is set to `true`, and the `content` is overwritten with "Message deleted".
+- **Thread Deletion**: Deleting a conversation (`DELETE /inbox/threads/:threadId` or `DELETE /customer/messaging/threads/:threadId`) is permanent: the thread row and all of its messages are removed, and the deletion is broadcast via the `threadDeleted` event. Thread lookups are scoped to the caller's branch (staff) or customer ID, so users can only delete their own conversations.
 - **System Automation**: Inbound messages can trigger automated replies (Welcome messages, Off-hours alerts, or FAQ keywords) if configured in **Chat Settings**.
 
 

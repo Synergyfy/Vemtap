@@ -145,6 +145,7 @@ export class CustomerMessagingController {
       req.user.id,
       dto.replyToId,
       dto.metadata,
+      { url: dto.mediaUrl, mimeType: dto.mediaMimeType },
     );
   }
 

@@ -86,8 +86,9 @@ describe('BookingsService business endpoints', () => {
       to: '2026-10-31',
     });
 
-    const { where } = bookingRepository.findAndCount.mock.calls[0][0];
-    expect(where.date).toBeDefined();
+    const findArgs = bookingRepository.findAndCount.mock
+      .calls[0] as unknown as [{ where: { date?: unknown } }];
+    expect(findArgs[0].where.date).toBeDefined();
   });
 
   it('rejects a status change for another business', async () => {
@@ -155,7 +156,14 @@ describe('BookingsService business endpoints', () => {
       { status: BookingStatus.CANCELLED, cancellationReason: 'No-show' },
     );
 
-    const saved = bookingRepository.save.mock.calls[0][0];
+    const saveArgs = bookingRepository.save.mock.calls[0] as unknown as [
+      {
+        status: BookingStatus;
+        cancelledAt: Date;
+        cancellationReason: string | null;
+      },
+    ];
+    const saved = saveArgs[0];
     expect(saved.status).toBe(BookingStatus.CANCELLED);
     expect(saved.cancelledAt).toBeInstanceOf(Date);
     expect(saved.cancellationReason).toBe('No-show');

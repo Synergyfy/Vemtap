@@ -26,6 +26,7 @@ import { Visit } from '../visitors/entities/visit.entity';
 import { Device } from '../devices/entities/device.entity';
 import { LoyaltyService } from '../loyalty/loyalty.service';
 import { PushNotificationService } from '../notifications/push-notification.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import {
   CreateCatalogueOrderDto,
   CatalogueOrderQueryDto,
@@ -62,6 +63,7 @@ export class CatalogueOrderService {
     private readonly deviceRepository: Repository<Device>,
     private readonly loyaltyService: LoyaltyService,
     private readonly pushNotificationService: PushNotificationService,
+    private readonly notificationsService: NotificationsService,
     private readonly visitorsService: VisitorsService,
     private readonly mailService: MailService,
     private readonly catalogueService: CatalogueService,
@@ -349,9 +351,25 @@ export class CatalogueOrderService {
         branch.id,
         'New Order Received',
         `A new order (#${savedOrder.id.slice(0, 8)}) has been placed by ${dto.firstName} ${dto.lastName}.`,
-        { orderId: savedOrder.id, type: 'NEW_ORDER' },
+        { orderId: savedOrder.id, type: 'NEW_ORDER', category: 'orderUpdates' },
       )
       .catch((err) => console.error('Failed to send staff notification:', err));
+
+    // Staff also get an in-app row, not just a push: a push is missed
+    // whenever the device has no token or is offline, and the order would
+    // then leave no trace at all.
+    this.notificationsService
+      .createForBranchStaff(
+        branch.id,
+        branch.businessId,
+        'New Order Received',
+        `A new order (#${savedOrder.id.slice(0, 8)}) has been placed by ${dto.firstName} ${dto.lastName}.`,
+        'new_order',
+        `/orders/${savedOrder.id}`,
+      )
+      .catch((err) =>
+        console.error('Failed to create staff notification row:', err),
+      );
 
     // 5. Deduct stock IMMEDIATELY (locking the spot)
     for (const orderItem of order.items) {
@@ -412,13 +430,18 @@ export class CatalogueOrderService {
     });
     if (!order) throw new NotFoundException('Order not found');
 
+    // Record who handled the order. Forward steps of the fulfilment flow always
+    // attribute the order, and any transition *into* completed attributes the
+    // staff member who closed it (staff may complete without marking ready).
     if (
       (order.status === CatalogueOrderStatus.NEW &&
         status === CatalogueOrderStatus.PROCESSING) ||
       (order.status === CatalogueOrderStatus.PROCESSING &&
         status === CatalogueOrderStatus.READY) ||
       (order.status === CatalogueOrderStatus.READY &&
-        status === CatalogueOrderStatus.COMPLETED)
+        status === CatalogueOrderStatus.COMPLETED) ||
+      (status === CatalogueOrderStatus.COMPLETED &&
+        order.status !== CatalogueOrderStatus.COMPLETED)
     ) {
       order.attendedById = staff.id;
     }
@@ -563,78 +586,64 @@ export class CatalogueOrderService {
 
     const updatedOrder = await this.orderRepository.save(order);
 
-    // Trigger notification to customer on status change
-    let title = '';
-    let body = '';
-
-    if (status === CatalogueOrderStatus.PROCESSING) {
-      title = 'Order Processing';
-      body = `Your order (#${order.id.slice(0, 8)}) is now being prepared.`;
-    } else if (status === CatalogueOrderStatus.COMPLETED) {
-      title = 'Order Completed';
-      body = `Your order (#${order.id.slice(0, 8)}) has been completed. Thank you!`;
-    } else if (status === CatalogueOrderStatus.CANCELLED) {
-      title = 'Order Cancelled';
-      body = `Your order (#${order.id.slice(0, 8)}) has been cancelled.`;
-    } else if (status === CatalogueOrderStatus.REJECTED) {
-      title = 'Order Rejected';
-      body = `Your order (#${order.id.slice(0, 8)}) has been rejected.`;
-    }
-
-    if (title && body) {
-      this.pushNotificationService
-        .sendNotification(
-          order.customerId,
-          title,
-          body,
-          { orderId: order.id, status, type: 'ORDER_STATUS_UPDATE' },
-          true,
-        )
-        .catch((err) =>
-          console.error('Failed to send customer notification:', err),
-        );
-    }
-
-    // Queue order status email
-    if (status === CatalogueOrderStatus.PROCESSING) {
+    // The queued 'send-order-email' job owns the customer's side of a status
+    // change: it writes the in-app row, sends the push and sends the email,
+    // in that one place. Sending a push here as well would deliver the same
+    // message twice.
+    const statusCopy = this.describeStatus(updatedOrder, status);
+    if (statusCopy) {
       this.orderNotificationQueue
         .add('send-order-email', {
           orderId: order.id,
-          status: 'processing',
+          status,
+          title: statusCopy.title,
+          body: statusCopy.body,
         })
         .catch((err) =>
-          console.error('Failed to queue order processing email:', err),
-        );
-    } else if (status === CatalogueOrderStatus.COMPLETED) {
-      this.orderNotificationQueue
-        .add('send-order-email', {
-          orderId: order.id,
-          status: 'completed',
-        })
-        .catch((err) =>
-          console.error('Failed to queue order completed email:', err),
-        );
-    } else if (status === CatalogueOrderStatus.CANCELLED) {
-      this.orderNotificationQueue
-        .add('send-order-email', {
-          orderId: order.id,
-          status: 'cancelled',
-        })
-        .catch((err) =>
-          console.error('Failed to queue order cancelled email:', err),
-        );
-    } else if (status === CatalogueOrderStatus.REJECTED) {
-      this.orderNotificationQueue
-        .add('send-order-email', {
-          orderId: order.id,
-          status: 'rejected',
-        })
-        .catch((err) =>
-          console.error('Failed to queue order rejected email:', err),
+          console.error(`Failed to queue ${status} notification:`, err),
         );
     }
 
     return updatedOrder;
+  }
+
+  /**
+   * Customer-facing copy for a status change, or null when there is nothing
+   * worth sending.
+   *
+   * Kept here so the queue is told what to say rather than deriving it again:
+   * the job writes the in-app row, the push and the email from this one copy,
+   * so the wording exists once instead of being rebuilt per channel.
+   */
+  private describeStatus(
+    order: CatalogueOrder,
+    status: CatalogueOrderStatus,
+  ): { title: string; body: string } | null {
+    const short = order.id.slice(0, 8);
+    switch (status) {
+      case CatalogueOrderStatus.PROCESSING:
+        return {
+          title: 'Order Processing',
+          body: `Your order (#${short}) is now being prepared.`,
+        };
+      case CatalogueOrderStatus.COMPLETED:
+        return {
+          title: 'Order Completed',
+          body: `Your order (#${short}) has been completed. Thank you!`,
+        };
+      case CatalogueOrderStatus.CANCELLED:
+        return {
+          title: 'Order Cancelled',
+          body: `Your order (#${short}) has been cancelled.`,
+        };
+      case CatalogueOrderStatus.REJECTED:
+        return {
+          title: 'Order Rejected',
+          body: `Your order (#${short}) has been rejected.`,
+        };
+      default:
+        return null;
+    }
   }
 
   private async deductStock(item: CatalogueItem, quantity: number) {

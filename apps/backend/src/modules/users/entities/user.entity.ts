@@ -80,6 +80,14 @@ export class User extends AbstractBaseEntity {
   @Column()
   lastName: string;
 
+  /**
+   * Free-form so the profile screen can save the option it was given without
+   * this enum forcing a product decision on the values themselves.
+   */
+  @ApiProperty({ example: 'Female', nullable: true })
+  @Column({ nullable: true })
+  gender?: string;
+
   @ApiProperty({ enum: UserRole, example: UserRole.OWNER })
   @Column({
     type: 'simple-enum',

@@ -284,11 +284,33 @@ export class CatalogueOfferService {
       relations: ['items', 'branch', 'reward', 'sourceProduct'],
       order: { createdAt: 'DESC' },
     });
-    // Map offers to include computed fields
+    // Map offers to explicit admin DTO with discount/voucher fields
     return offers.map((offer) => ({
-      ...offer,
+      id: offer.id,
+      name: offer.name,
+      description: offer.description,
+      mainImage: offer.mainImage,
+      galleryImages: offer.galleryImages,
+      pricingType: offer.pricingType,
+      discountValue: offer.discountValue,
+      fixedPrice: offer.fixedPrice,
+      calculatedPrice: offer.calculatedPrice,
+      quantity: offer.quantity,
+      itemIds: offer.items?.map((item) => item.id) ?? [],
+      startDate: offer.startDate?.toISOString(),
+      endDate: offer.endDate?.toISOString(),
+      terms: offer.terms ?? [],
+      maxClaimsPerCustomer: offer.maxClaimsPerCustomer,
+      offerType: offer.offerType,
+      loyaltyPoints: offer.loyaltyPoints,
+      rewardId: offer.rewardId,
+      branchId: offer.branchId,
+      branchName: offer.branch?.name,
+      status: offer.status,
+      createdAt: offer.createdAt?.toISOString(),
+      updatedAt: offer.updatedAt?.toISOString(),
       maxClaims: offer.quantity,
-      claimedCount: 0, // Could be computed but skip for perf
+      claimedCount: 0,
     }));
   }
 

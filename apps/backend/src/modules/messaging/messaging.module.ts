@@ -55,6 +55,8 @@ import { MessagingHelperService } from './services/messaging-helper.service';
 
 import { MessagingController } from './controllers/messaging.controller';
 import { CustomerMessagingController } from './controllers/customer-messaging.controller';
+import { CustomerMessagingMediaController } from './controllers/customer-messaging-media.controller';
+import { UploadsModule } from '../uploads/uploads.module';
 import { ChatSettingsController } from './controllers/chat-settings.controller';
 import { FlowController } from './controllers/flow.controller';
 import { AdminFlowEngineController } from './controllers/admin-flow-engine.controller';
@@ -119,6 +121,7 @@ import { ChannelSettingsController } from './controllers/channel-settings.contro
     MailModule,
     forwardRef(() => BranchesModule),
     NotificationsModule,
+    UploadsModule,
     forwardRef(() => LoyaltyModule),
     JwtModule.registerAsync({
       imports: [ConfigModule],
@@ -208,6 +211,7 @@ import { ChannelSettingsController } from './controllers/channel-settings.contro
   controllers: [
     MessagingController,
     CustomerMessagingController,
+    CustomerMessagingMediaController,
     ChatSettingsController,
     ChannelSettingsController,
     FlowController,

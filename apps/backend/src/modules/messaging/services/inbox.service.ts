@@ -21,6 +21,7 @@ import { MessageDirection, MessageStatus } from '../enums/message.enum';
 import { User } from '../../users/entities/user.entity';
 import { MessagingGateway } from '../messaging.gateway';
 import { PushNotificationService } from '../../notifications/push-notification.service';
+import { NotificationsService } from '../../notifications/notifications.service';
 import { Visit } from '../../visitors/entities/visit.entity';
 import { Branch } from '../../branches/entities/branch.entity';
 import { AutomationService } from './automation.service';
@@ -59,6 +60,7 @@ export class InboxService {
     private readonly messagingEngine: MessagingEngineService,
     private readonly messagingGateway: MessagingGateway,
     private readonly pushNotificationService: PushNotificationService,
+    private readonly notificationsService: NotificationsService,
     private readonly automationService: AutomationService,
   ) {}
 
@@ -136,6 +138,7 @@ export class InboxService {
     branchId: string,
     replyToId?: string,
     metadata?: any,
+    media?: { url?: string; mimeType?: string },
   ): Promise<Message | null> {
     const thread = await this.threadRepo.findOne({
       where: { id: threadId, branchId },
@@ -151,6 +154,7 @@ export class InboxService {
       content,
       replyToId,
       metadata,
+      media,
     );
     if (!messageId) {
       throw new InternalServerErrorException('Failed to send reply');
@@ -193,10 +197,22 @@ export class InboxService {
         thread.customerId,
         'New Message from Business',
         content,
-        { threadId: thread.id, channel: thread.channel },
+        { threadId: thread.id, channel: thread.channel, category: 'support' },
         true, // Is User (Customer is a User now)
       )
       .catch((e) => console.error('Push error:', e.message));
+
+    // The in-app row is what keeps the message in the bell after the push
+    // is dismissed, and it links straight back to the thread.
+    this.notificationsService
+      .create(
+        thread.customerId,
+        'New Message from Business',
+        content,
+        'new_message',
+        `/messages/${thread.id}`,
+      )
+      .catch((e) => console.error('Notification row error:', e.message));
 
     return savedMessage;
   }
@@ -477,6 +493,7 @@ export class InboxService {
     customerId: string,
     replyToId?: string,
     metadata?: any,
+    media?: { url?: string; mimeType?: string },
   ): Promise<Message> {
     const thread = await this.threadRepo.findOne({
       where: { id: threadId, customerId },
@@ -503,6 +520,8 @@ export class InboxService {
       to: thread.branchId,
       replyToId,
       metadata: metadata || {},
+      mediaUrl: media?.url ?? null,
+      mediaMimeType: media?.mimeType ?? null,
       timestamp: new Date(),
     } as any) as unknown as Message;
 
@@ -666,9 +685,21 @@ export class InboxService {
         thread.branchId,
         `New Message from ${thread.customer.firstName || 'Visitor'}`,
         content,
-        { threadId: thread.id, channel: thread.channel },
+        { threadId: thread.id, channel: thread.channel, category: 'support' },
       )
       .catch((e) => console.error('Push error:', e.message));
+
+    // 6b. In-app row for the same alert, so it survives a missed push.
+    this.notificationsService
+      .createForBranchStaff(
+        thread.branchId,
+        undefined,
+        `New Message from ${thread.customer.firstName || 'Visitor'}`,
+        content,
+        'new_message',
+        `/messages/${thread.id}`,
+      )
+      .catch((e) => console.error('Notification row error:', e.message));
 
     // 7. Automation triggers — always fires since this creates the first message
     await this.automationService.trigger(TriggerType.WELCOME_MESSAGE, {

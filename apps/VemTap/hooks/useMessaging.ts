@@ -171,13 +171,14 @@ export const useDeleteThread = (isCustomer: boolean = false) => {
 export const useDeleteMessage = (isCustomer: boolean = false) => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ messageId, threadId, branchId }: { messageId: string; threadId: string; branchId?: string }) => {
-      // Mock deletion as requested: just delay 300ms to simulate network request
-      await new Promise(resolve => setTimeout(resolve, 300));
-      return { success: true };
+    mutationFn: ({ messageId, branchId }: { messageId: string; threadId: string; branchId?: string }) => {
+      const endpoint = isCustomer
+        ? `/customer/messaging/messages/${messageId}`
+        : `/messaging/messages/${messageId}${branchId ? `?branchId=${branchId}` : ''}`;
+      return api.delete(endpoint);
     },
     onSuccess: (_, variables) => {
-      // Optimistically update the query cache to remove the message from the UI instantly
+      // Optimistically remove the message from the cache immediately
       queryClient.setQueryData(
         ['chat-messages', variables.threadId, variables.branchId, isCustomer], 
         (oldData: any) => {
@@ -185,6 +186,7 @@ export const useDeleteMessage = (isCustomer: boolean = false) => {
           return oldData.filter((msg: any) => msg.id !== variables.messageId);
         }
       );
+      queryClient.invalidateQueries({ queryKey: ['chat-threads'] });
     },
   });
 };

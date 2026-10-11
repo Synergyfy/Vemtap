@@ -144,6 +144,34 @@ export class NotificationsController {
     return this.notificationsService.getUnreadCount(req.user.id);
   }
 
+  /**
+   * The venue's notification centre.
+   *
+   * Distinct from `GET /notifications`, which returns only the caller's own
+   * rows: a business needs the events that happened at the business, whoever
+   * the row was addressed to. Unread travels with the page so the bell and the
+   * list are populated from the same read.
+   */
+  @Get('business')
+  @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.ADMIN, UserRole.STAFF)
+  @ApiOperation({
+    summary: "List a business's notifications, newest first",
+    description:
+      'Union of every row written for anyone at the caller\'s business. Access: OWNER, MANAGER, ADMIN, STAFF.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Paginated notification page with the unread total',
+  })
+  @ApiResponse({ status: 401, description: 'Not authenticated' })
+  @ApiResponse({ status: 403, description: 'Role cannot view business rows' })
+  async findForBusiness(@Request() req, @Query() query: ListNotificationsDto) {
+    return this.notificationsService.findByBusiness(req.user.businessId, {
+      page: query.page,
+      limit: query.limit,
+    });
+  }
+
   @Post('mark-all-read')
   @Patch('mark-all-read')
   @ApiOperation({ summary: 'Mark all notifications as read for current user' })

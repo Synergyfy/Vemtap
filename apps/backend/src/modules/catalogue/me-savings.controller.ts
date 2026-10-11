@@ -20,6 +20,7 @@ import {
   MySavingsQueryDto,
   SavingsBreakdownDto,
   SavingsCategoriesQueryDto,
+  SavingsExportFormat,
   SavingsExportQueryDto,
 } from './dto/savings.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -93,7 +94,7 @@ export class MeSavingsController {
     @Query() query: SavingsExportQueryDto,
     @Res() res: Response,
   ): Promise<void> {
-    if (query.format && query.format !== 'csv') {
+    if (query.format && query.format !== SavingsExportFormat.CSV) {
       throw new BadRequestException('Only csv export is supported');
     }
 

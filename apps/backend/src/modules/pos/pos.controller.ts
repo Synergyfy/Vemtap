@@ -19,7 +19,11 @@ import { ProcessPosOrderPaymentDto } from './dto/process-pos-order-payment.dto';
 import { PosSaleQueryDto } from './dto/pos-sale-query.dto';
 import { UpdatePosSaleStatusDto } from './dto/update-pos-sale-status.dto';
 import { HoldPosSaleDto } from './dto/hold-pos-sale.dto';
-import { OpenRegisterDto, RegisterHistoryQueryDto } from './dto/register.dto';
+import {
+  OpenRegisterDto,
+  CloseRegisterDto,
+  RegisterHistoryQueryDto,
+} from './dto/register.dto';
 import { PosCustomerQueryDto } from './dto/pos-customer-query.dto';
 import { CashDropDto } from './dto/cash-drop.dto';
 import { Public } from '../../common/decorators/public.decorator';
@@ -146,9 +150,16 @@ export class PosController {
 
   @Post('register/close')
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.ADMIN, UserRole.STAFF)
-  @ApiOperation({ summary: 'Close cash register' })
-  async closeRegister(@Req() req: RequestWithUser) {
-    return this.posService.closeRegister(req.user);
+  @ApiOperation({
+    summary: 'Close cash register',
+    description:
+      'Freezes the open session, totals its sales and notifies branch staff. Pass countedCash to reconcile the drawer and report the variance. Access: OWNER, MANAGER, ADMIN, STAFF.',
+  })
+  async closeRegister(
+    @Body() dto: CloseRegisterDto,
+    @Req() req: RequestWithUser,
+  ) {
+    return this.posService.closeRegister(req.user, dto);
   }
 
   @Get('register/status')
