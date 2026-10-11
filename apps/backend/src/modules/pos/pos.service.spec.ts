@@ -33,6 +33,7 @@ import {
 } from '../fos-core/entities/financial-transaction.entity';
 import { NotFoundException, BadRequestException } from '@nestjs/common';
 import { PushNotificationService } from '../notifications/push-notification.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { CatalogueOrderService } from '../catalogue-orders/catalogue-orders.service';
 import { LoyaltyService } from '../loyalty/loyalty.service';
 import { StockMovementService } from '../inventory-counting/stock-movement.service';
@@ -336,6 +337,12 @@ describe('PosService', () => {
         {
           provide: PushNotificationService,
           useValue: mockPushNotificationService,
+        },
+        {
+          provide: NotificationsService,
+          useValue: {
+            createForBranchStaff: jest.fn().mockResolvedValue([]),
+          },
         },
         { provide: CatalogueOrderService, useValue: mockCatalogueOrderService },
         { provide: LoyaltyService, useValue: mockLoyaltyService },

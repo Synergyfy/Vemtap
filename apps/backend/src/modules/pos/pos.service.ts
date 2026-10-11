@@ -50,6 +50,7 @@ import {
   FosPlatform,
 } from '../fos-core/entities/financial-transaction.entity';
 import { PushNotificationService } from '../notifications/push-notification.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { LoyaltyService } from '../loyalty/loyalty.service';
 import { PosRefund } from './entities/pos-refund.entity';
 import { PosRefundItem } from './entities/pos-refund-item.entity';
@@ -97,6 +98,7 @@ export class PosService {
     private readonly fosTransactionRepository: Repository<FinancialTransaction>,
     private readonly dataSource: DataSource,
     private readonly pushNotificationService: PushNotificationService,
+    private readonly notificationsService: NotificationsService,
     private readonly catalogueOrderService: CatalogueOrderService,
     @Inject(forwardRef(() => LoyaltyService))
     private readonly loyaltyService: LoyaltyService,
@@ -634,9 +636,24 @@ export class PosService {
         branch.id,
         'New POS Order',
         `A new POS order (#${savedOrder.id.slice(0, 8)}) has been placed by ${staffName}.`,
-        { orderId: savedOrder.id, type: 'NEW_POS_ORDER' },
+        { orderId: savedOrder.id, type: 'NEW_POS_ORDER', category: 'orderUpdates' },
       )
       .catch((err) => console.error('Failed to send staff notification:', err));
+
+    // Same reason as the catalogue path: a push alone leaves nothing behind
+    // if the device is offline or has no token.
+    this.notificationsService
+      .createForBranchStaff(
+        branch.id,
+        branch.businessId,
+        'New POS Order',
+        `A new POS order (#${savedOrder.id.slice(0, 8)}) has been placed by ${staffName}.`,
+        'new_pos_order',
+        `/orders/${savedOrder.id}`,
+      )
+      .catch((err) =>
+        console.error('Failed to create staff notification row:', err),
+      );
 
     const result = await this.orderRepository.findOne({
       where: { id: savedOrder.id },

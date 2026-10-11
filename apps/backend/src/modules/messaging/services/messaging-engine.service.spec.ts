@@ -22,6 +22,7 @@ import { Branch } from '../../branches/entities/branch.entity';
 import { Channel } from '../enums/channel.enum';
 import { MessagingGateway } from '../messaging.gateway';
 import { PushNotificationService } from '../../notifications/push-notification.service';
+import { NotificationsService } from '../../notifications/notifications.service';
 import { LoyaltyService } from '../../loyalty/loyalty.service';
 
 describe('MessagingEngineService', () => {
@@ -155,6 +156,7 @@ describe('MessagingEngineService', () => {
         { provide: ConfigService, useValue: { get: jest.fn() } },
         { provide: MessagingGateway, useValue: mockGateway },
         { provide: PushNotificationService, useValue: mockPush },
+        { provide: NotificationsService, useValue: {} },
       ],
     }).compile();
 

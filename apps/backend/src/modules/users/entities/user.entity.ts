@@ -13,6 +13,7 @@ import { Exclude } from 'class-transformer';
 import { AbstractBaseEntity } from '../../../common/entities/base.entity';
 import { Business } from '../../businesses/entities/business.entity';
 import { Notification } from '../../notifications/entities/notification.entity';
+import { PushToken } from '../../notifications/entities/push-token.entity';
 import { Visit } from '../../visitors/entities/visit.entity';
 import { Branch } from '../../branches/entities/branch.entity';
 import { Message } from '../../messaging/entities/message.entity';
@@ -153,6 +154,9 @@ export class User extends AbstractBaseEntity {
 
   @OneToMany(() => Notification, (notification) => notification.user)
   notifications: Notification[];
+
+  @OneToMany(() => PushToken, (token) => token.user)
+  pushTokens: PushToken[];
 
   @OneToMany(() => UserSession, (session) => session.user)
   sessions: UserSession[];

@@ -9,7 +9,23 @@ import {
 } from './entities/notification-broadcast.entity';
 import { User, UserRole, UserStatus } from '../users/entities/user.entity';
 import { PushNotificationService } from './push-notification.service';
+import { NotificationsGateway } from './notifications.gateway';
 import { NotFoundException } from '@nestjs/common';
+
+/** A query-builder double that records the clauses it is told to apply. */
+function queryBuilderDouble(rows: any[]) {
+  return {
+    where: jest.fn().mockReturnThis(),
+    orderBy: jest.fn().mockReturnThis(),
+    andWhere: jest.fn().mockReturnThis(),
+    take: jest.fn().mockReturnThis(),
+    skip: jest.fn().mockReturnThis(),
+    setParameter: jest.fn().mockReturnThis(),
+    getMany: jest.fn().mockResolvedValue(rows),
+    getManyAndCount: jest.fn().mockResolvedValue([rows, rows.length]),
+    getCount: jest.fn().mockResolvedValue(rows.length),
+  };
+}
 
 describe('NotificationsService', () => {
   let service: NotificationsService;
@@ -17,6 +33,7 @@ describe('NotificationsService', () => {
   let broadcastRepo: any;
   let userRepo: any;
   let pushService: any;
+  let gateway: any;
 
   const mockNotification = {
     id: 'notif-1',
@@ -26,6 +43,7 @@ describe('NotificationsService', () => {
     isRead: false,
     type: 'info',
     actionUrl: null,
+    createdAt: new Date(),
   };
 
   const mockBroadcast = {
@@ -91,6 +109,12 @@ describe('NotificationsService', () => {
       registerToken: jest.fn().mockResolvedValue({ success: true }),
     };
 
+    gateway = {
+      emitNotificationCreated: jest.fn(),
+      emitNotificationsReadAll: jest.fn(),
+      emitBroadcastCreated: jest.fn(),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         NotificationsService,
@@ -101,6 +125,7 @@ describe('NotificationsService', () => {
         },
         { provide: getRepositoryToken(User), useValue: userRepo },
         { provide: PushNotificationService, useValue: pushService },
+        { provide: NotificationsGateway, useValue: gateway },
       ],
     }).compile();
 
@@ -124,13 +149,79 @@ describe('NotificationsService', () => {
       expect(notifRepo.save).toHaveBeenCalled();
     });
 
-    it('should find notifications by user', async () => {
+    it('should emit a created notification so live clients see it', async () => {
+      const saved = await service.create('user-1', 'Title', 'Msg', 'info');
+      expect(gateway.emitNotificationCreated).toHaveBeenCalledWith(
+        'user-1',
+        saved,
+      );
+    });
+
+    it('should emit a batched event when many notifications are created', async () => {
+      await service.createMany(['user-1', 'user-2'], 'T', 'M', 'new_order');
+      expect(notifRepo.save).toHaveBeenCalled();
+      expect(gateway.emitBroadcastCreated).toHaveBeenCalledWith(
+        ['user-1', 'user-2'],
+        2,
+      );
+    });
+
+    it('should emit nothing when createMany has no recipients', async () => {
+      await service.createMany([], 'T', 'M');
+      expect(notifRepo.save).not.toHaveBeenCalled();
+      expect(gateway.emitBroadcastCreated).not.toHaveBeenCalled();
+    });
+
+    it('should de-duplicate recipients in createMany', async () => {
+      await service.createMany(['user-1', 'user-1'], 'T', 'M');
+      expect(gateway.emitBroadcastCreated).toHaveBeenCalledWith(['user-1'], 1);
+    });
+
+    it('should find notifications by user with pagination', async () => {
+      const qb = queryBuilderDouble([mockNotification]);
+      notifRepo.createQueryBuilder.mockReturnValue(qb);
+
       const result = await service.findByUser('user-1');
+
       expect(result).toHaveLength(1);
-      expect(notifRepo.find).toHaveBeenCalledWith({
-        where: { userId: 'user-1' },
-        order: { createdAt: 'DESC' },
+      expect(qb.where).toHaveBeenCalledWith('n."userId" = :userId', {
+        userId: 'user-1',
       });
+      expect(qb.orderBy).toHaveBeenCalledWith('n."createdAt"', 'DESC');
+      // Fetches one extra row to detect whether a next page exists.
+      expect(qb.take).toHaveBeenCalledWith(51);
+    });
+
+    it('should cap the limit at 200', async () => {
+      const qb = queryBuilderDouble([]);
+      notifRepo.createQueryBuilder.mockReturnValue(qb);
+
+      await service.findByUser('user-1', { limit: 5000 });
+
+      expect(qb.take).toHaveBeenCalledWith(201);
+    });
+
+    it('should apply the before cursor when given a parseable date', async () => {
+      const qb = queryBuilderDouble([]);
+      notifRepo.createQueryBuilder.mockReturnValue(qb);
+      const before = new Date('2026-01-01T00:00:00.000Z');
+
+      await service.findByUser('user-1', { before });
+
+      expect(qb.andWhere).toHaveBeenCalledWith('n."createdAt" < :before', {
+        before,
+      });
+    });
+
+    it('should ignore an unparseable before value', async () => {
+      const qb = queryBuilderDouble([]);
+      notifRepo.createQueryBuilder.mockReturnValue(qb);
+
+      await service.findByUser('user-1', {
+        before: new Date('not-a-date'),
+      });
+
+      expect(qb.andWhere).not.toHaveBeenCalled();
     });
 
     it('should get unread count', async () => {
@@ -139,25 +230,86 @@ describe('NotificationsService', () => {
     });
 
     it('should mark a notification as read', async () => {
-      const result = await service.markAsRead('notif-1');
+      const result = await service.markAsRead('notif-1', 'user-1');
       expect(result.isRead).toBe(true);
       expect(notifRepo.save).toHaveBeenCalled();
     });
 
-    it('should throw NotFoundException when marking non-existent notification as read', async () => {
-      notifRepo.findOne.mockResolvedValue(null);
-      await expect(service.markAsRead('bad-id')).rejects.toThrow(
-        NotFoundException,
-      );
+    it('should scope markAsRead to the owning user', async () => {
+      await service.markAsRead('notif-1', 'user-1');
+
+      // Without the userId in the lookup, any user could read anyone's row.
+      expect(notifRepo.findOne).toHaveBeenCalledWith({
+        where: { id: 'notif-1', userId: 'user-1' },
+      });
     });
 
-    it('should mark all notifications as read for a user', async () => {
-      const result = await service.markAllAsRead('user-1');
-      expect(result).toBeDefined();
+    it("should throw NotFoundException when marking another user's notification", async () => {
+      notifRepo.findOne.mockResolvedValue(null);
+
+      await expect(
+        service.markAsRead('notif-1', 'some-other-user'),
+      ).rejects.toThrow(NotFoundException);
+      expect(notifRepo.save).not.toHaveBeenCalled();
+    });
+
+    it('should not re-save a notification that is already read', async () => {
+      notifRepo.findOne.mockResolvedValue({ ...mockNotification, isRead: true });
+
+      await service.markAsRead('notif-1', 'user-1');
+
+      expect(notifRepo.save).not.toHaveBeenCalled();
+    });
+
+    it('should emit read-all on markAllAsRead', async () => {
+      await service.markAllAsRead('user-1');
+
       expect(notifRepo.update).toHaveBeenCalledWith(
         { userId: 'user-1', isRead: false },
         { isRead: true },
       );
+      expect(gateway.emitNotificationsReadAll).toHaveBeenCalledWith(
+        'user-1',
+        0,
+      );
+    });
+  });
+
+  describe('staff notifications', () => {
+    it('should write one row per staff member of a branch', async () => {
+      userRepo.find.mockResolvedValue([{ id: 'staff-1' }, { id: 'owner-1' }]);
+
+      const rows = await service.createForBranchStaff(
+        'branch-1',
+        'business-1',
+        'New Order',
+        'An order arrived',
+        'new_order',
+        '/orders/1',
+      );
+
+      expect(rows).toHaveLength(2);
+      // Both the direct branch member and anyone attached to the business,
+      // because owners and managers often hold no branchId of their own.
+      expect(userRepo.find).toHaveBeenCalledWith({
+        where: [{ branchId: 'branch-1' }, { businessId: 'business-1' }],
+        select: ['id'],
+      });
+      expect(gateway.emitBroadcastCreated).toHaveBeenCalledWith(
+        ['staff-1', 'owner-1'],
+        2,
+      );
+    });
+
+    it('should query only the branch when no businessId is supplied', async () => {
+      userRepo.find.mockResolvedValue([{ id: 'staff-1' }]);
+
+      await service.createForBranchStaff('branch-1', null, 'T', 'M');
+
+      expect(userRepo.find).toHaveBeenCalledWith({
+        where: [{ branchId: 'branch-1' }],
+        select: ['id'],
+      });
     });
   });
 

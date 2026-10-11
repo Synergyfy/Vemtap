@@ -24,6 +24,7 @@ describe('NotificationsController', () => {
 
     pushService = {
       registerToken: jest.fn().mockResolvedValue({ success: true }),
+      clearToken: jest.fn().mockResolvedValue({ success: true }),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -88,6 +89,72 @@ describe('NotificationsController', () => {
       'user-1',
       'tok-123',
       true,
+      undefined,
+      undefined,
+    );
+  });
+
+  it('should pass the transport and platform through to the registry', async () => {
+    const req = { user: { id: 'user-1' } };
+
+    await controller.registerPushToken(
+      { token: 'ExponentPushToken[abc]', transport: 'EXPO', platform: 'ios' },
+      req,
+    );
+
+    expect(pushService.registerToken).toHaveBeenCalledWith(
+      'user-1',
+      'ExponentPushToken[abc]',
+      true,
+      'EXPO',
+      'ios',
+    );
+  });
+
+  it('should clear every device when unregistering without a token', async () => {
+    const req = { user: { id: 'user-1' } };
+
+    await controller.clearPushToken({}, req);
+
+    expect(pushService.clearToken).toHaveBeenCalledWith(
+      'user-1',
+      true,
+      undefined,
+    );
+  });
+
+  it('should clear only the named device when a token is given', async () => {
+    const req = { user: { id: 'user-1' } };
+
+    await controller.clearPushToken({ token: 'ExponentPushToken[abc]' }, req);
+
+    expect(pushService.clearToken).toHaveBeenCalledWith(
+      'user-1',
+      true,
+      'ExponentPushToken[abc]',
+    );
+  });
+
+  it('should pass the pagination cursor through to the service', async () => {
+    const req = { user: { id: 'user-1' } };
+    notificationsService.findByUser.mockResolvedValue([]);
+
+    await controller.findAll(req, { limit: 20, before: '2026-01-01T00:00:00Z' });
+
+    expect(notificationsService.findByUser).toHaveBeenCalledWith('user-1', {
+      limit: 20,
+      before: new Date('2026-01-01T00:00:00Z'),
+    });
+  });
+
+  it('should scope markAsRead to the requesting user', async () => {
+    const req = { user: { id: 'user-1' } };
+
+    await controller.markAsRead('notif-1', req);
+
+    expect(notificationsService.markAsRead).toHaveBeenCalledWith(
+      'notif-1',
+      'user-1',
     );
   });
 });

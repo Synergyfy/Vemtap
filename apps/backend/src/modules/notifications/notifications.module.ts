@@ -2,10 +2,13 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { BullModule } from '@nestjs/bullmq';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { JwtModule } from '@nestjs/jwt';
 import { Notification } from './entities/notification.entity';
 import { NotificationBroadcast } from './entities/notification-broadcast.entity';
+import { PushToken } from './entities/push-token.entity';
 import { NotificationsService } from './notifications.service';
 import { NotificationsController } from './notifications.controller';
+import { NotificationsGateway } from './notifications.gateway';
 import { PushNotificationService } from './push-notification.service';
 import {
   PushNotificationProcessor,
@@ -19,6 +22,7 @@ import { Contact } from '../contacts/entities/contact.entity';
     TypeOrmModule.forFeature([
       Notification,
       NotificationBroadcast,
+      PushToken,
       User,
       Contact,
     ]),
@@ -55,11 +59,23 @@ import { Contact } from '../contacts/entities/contact.entity';
     BullModule.registerQueue({
       name: PUSH_NOTIFICATION_QUEUE,
     }),
+    // The gateway verifies handshake tokens, exactly as MessagingGateway does.
+    JwtModule.registerAsync({
+      imports: [ConfigModule],
+      useFactory: async (configService: ConfigService) => ({
+        secret: configService.get<string>('JWT_SECRET'),
+        signOptions: {
+          expiresIn: configService.get<string>('JWT_EXPIRATION') as any,
+        },
+      }),
+      inject: [ConfigService],
+    }),
   ],
   providers: [
     NotificationsService,
     PushNotificationService,
     PushNotificationProcessor,
+    NotificationsGateway,
   ],
   controllers: [NotificationsController],
   exports: [NotificationsService, PushNotificationService],
