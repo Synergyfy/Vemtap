@@ -50,6 +50,7 @@ describe('CatalogueService', () => {
     findOne: jest.fn(),
     createQueryBuilder: jest.fn(() => mockQueryBuilder),
     remove: jest.fn(),
+    update: jest.fn().mockResolvedValue({ affected: 1 }),
   };
 
   const mockBranchRepo = {
@@ -124,6 +125,29 @@ describe('CatalogueService', () => {
       await expect(
         service.updateCategory('1', { name: 'X' }, 'B'),
       ).rejects.toThrow(NotFoundException);
+    });
+
+    it('should detach items before removing a category', async () => {
+      mockCategoryRepo.findOne.mockResolvedValue({ id: 'cat-1', name: 'Old' });
+      mockCategoryRepo.remove.mockResolvedValue({ id: 'cat-1' });
+
+      await service.deleteCategory('cat-1', 'bus-1');
+
+      expect(mockItemRepo.update).toHaveBeenCalledWith(
+        { categoryId: 'cat-1' },
+        { categoryId: null },
+      );
+      expect(mockCategoryRepo.remove).toHaveBeenCalledWith({
+        id: 'cat-1',
+        name: 'Old',
+      });
+    });
+
+    it('should throw NotFound if category not found on delete', async () => {
+      mockCategoryRepo.findOne.mockResolvedValue(null);
+      await expect(service.deleteCategory('1', 'B')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 

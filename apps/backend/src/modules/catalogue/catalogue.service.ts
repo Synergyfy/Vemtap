@@ -80,6 +80,13 @@ export class CatalogueService {
       where: { id, businessId },
     });
     if (!category) throw new NotFoundException('Category not found');
+
+    // Items reference a category by nullable FK; detach them first so deleting
+    // a category that still holds items doesn't blow up on the constraint.
+    await this.itemRepository.update(
+      { categoryId: id },
+      { categoryId: null as unknown as string },
+    );
     return this.categoryRepository.remove(category);
   }
 
