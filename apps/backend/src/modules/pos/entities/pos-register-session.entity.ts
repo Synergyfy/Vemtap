@@ -72,14 +72,39 @@ export class PosRegisterSession extends AbstractBaseEntity {
   @Column({ type: 'int', default: 0 })
   transactionCount: number;
 
-  @ApiProperty({
-    enum: RegisterSessionStatus,
-    default: RegisterSessionStatus.OPEN,
-  })
+  @ApiProperty({ enum: RegisterSessionStatus, default: RegisterSessionStatus.OPEN })
   @Column({
     type: 'enum',
     enum: RegisterSessionStatus,
     default: RegisterSessionStatus.OPEN,
   })
   status: RegisterSessionStatus;
+
+  /**
+   * Physical cash counted out of the drawer at close, and how far that landed
+   * from `expectedCash` (counted minus expected, so negative is a shortfall).
+   *
+   * Both nullable: a shift closed without reading the till was never
+   * reconciled, and a default of 0 would report a perfectly balanced drawer
+   * that nobody counted.
+   */
+  @ApiProperty({ example: 342850, nullable: true })
+  @Column({
+    type: 'decimal',
+    precision: 12,
+    scale: 2,
+    nullable: true,
+    transformer: { to: (v: number) => v, from: (v: string) => parseFloat(v) },
+  })
+  countedCash: number | null;
+
+  @ApiProperty({ example: 0, nullable: true })
+  @Column({
+    type: 'decimal',
+    precision: 12,
+    scale: 2,
+    nullable: true,
+    transformer: { to: (v: number) => v, from: (v: string) => parseFloat(v) },
+  })
+  variance: number | null;
 }

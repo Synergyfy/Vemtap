@@ -111,6 +111,17 @@ export class Message extends AbstractBaseEntity {
   @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
   timestamp: Date;
 
+  @ApiPropertyOptional({
+    example: 'https://res.cloudinary.com/vemtap/image/upload/vemtap/messaging/photo.jpg',
+    description: 'Hosted image sent with this message, for in-house chats',
+  })
+  @Column({ type: 'character varying', nullable: true })
+  mediaUrl?: string | null;
+
+  @ApiPropertyOptional({ example: 'image/jpeg' })
+  @Column({ type: 'character varying', nullable: true })
+  mediaMimeType?: string | null;
+
   @ApiProperty({ example: false })
   @Column({ default: false })
   isEdited: boolean;

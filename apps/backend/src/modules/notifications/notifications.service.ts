@@ -1,10 +1,4 @@
-import {
-  Injectable,
-  NotFoundException,
-  Logger,
-  Inject,
-  forwardRef,
-} from '@nestjs/common';
+import { Injectable, NotFoundException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In, ILike } from 'typeorm';
 import { Notification } from './entities/notification.entity';
@@ -15,10 +9,12 @@ import {
 } from './entities/notification-broadcast.entity';
 import { User, UserRole, UserStatus } from '../users/entities/user.entity';
 import { PushNotificationService } from './push-notification.service';
+import { NotificationsGateway } from './notifications.gateway';
 import {
   AdminBroadcastDto,
   BroadcastQueryDto,
 } from './dto/admin-broadcast.dto';
+import { ListNotificationsDto } from './dto/list-notifications.dto';
 
 @Injectable()
 export class NotificationsService {
@@ -31,8 +27,8 @@ export class NotificationsService {
     private broadcastRepository: Repository<NotificationBroadcast>,
     @InjectRepository(User)
     private userRepository: Repository<User>,
-    @Inject(forwardRef(() => PushNotificationService))
     private pushNotificationService: PushNotificationService,
+    private readonly notificationsGateway: NotificationsGateway,
   ) {}
 
   async getPreferences(userId: string) {
@@ -122,7 +118,16 @@ export class NotificationsService {
           isRead: false,
         }),
       );
-      await this.notificationsRepository.save(notifications, { chunk: 500 });
+      const saved = await this.notificationsRepository.save(notifications, {
+        chunk: 500,
+      });
+
+      // A broadcast can target thousands of users; one batched emit reaches
+      // all of them without a socket message per row.
+      this.notificationsGateway.emitBroadcastCreated(
+        saved.map((n) => n.userId),
+        saved.length,
+      );
     }
 
     // 2. Dispatch Web Push Notifications
@@ -179,30 +184,20 @@ export class NotificationsService {
     return savedBroadcast;
   }
 
-  async broadcastToRole(
-    role: UserRole,
-    title: string,
-    message: string,
-    type: string = 'broadcast',
-  ) {
-    const users = await this.userRepository.find({ where: { role } });
-    const notifications = users.map((user) =>
-      this.notificationsRepository.create({
-        userId: user.id,
-        title,
-        message,
-        type,
-      }),
-    );
-    return this.notificationsRepository.save(notifications);
-  }
-
+  /**
+   * Writes one in-app notification and tells the recipient's sockets.
+   *
+   * The emit is the point of this service being the only writer of the table:
+   * a row can appear through the bell refetching, but a live client sees it
+   * the moment it lands.
+   */
   async create(
     userId: string,
     title: string,
     message: string,
     type: string = 'info',
     actionUrl?: string | null,
+    metadata?: Record<string, any> | null,
   ) {
     const notification = this.notificationsRepository.create({
       userId,
@@ -210,33 +205,191 @@ export class NotificationsService {
       message,
       type,
       actionUrl: actionUrl ?? null,
+      metadata: metadata ?? null,
     });
-    return this.notificationsRepository.save(notification);
+    const saved = await this.notificationsRepository.save(notification);
+    this.notificationsGateway.emitNotificationCreated(userId, saved);
+    return saved;
   }
 
-  async findByUser(userId: string) {
-    return this.notificationsRepository.find({
-      where: { userId },
-      order: { createdAt: 'DESC' },
+  /**
+   * Writes one notification per recipient.
+   *
+   * Used for staff alerts, which target a whole branch's worth of users at
+   * once. Saved in one statement so a fan-out of N recipients is one round
+   * trip, and emitted as a single batch rather than N socket messages.
+   */
+  async createMany(
+    userIds: string[],
+    title: string,
+    message: string,
+    type: string = 'info',
+    actionUrl?: string | null,
+    metadata?: Record<string, any> | null,
+  ) {
+    const unique = [...new Set(userIds)].filter(Boolean);
+    if (unique.length === 0) return [];
+
+    const rows = unique.map((userId) =>
+      this.notificationsRepository.create({
+        userId,
+        title,
+        message,
+        type,
+        actionUrl: actionUrl ?? null,
+        metadata: metadata ?? null,
+      }),
+    );
+
+    const saved = await this.notificationsRepository.save(rows, {
+      chunk: 200,
     });
+    this.notificationsGateway.emitBroadcastCreated(unique, saved.length);
+    return saved;
   }
 
-  async markAsRead(id: string) {
+  /**
+   * Writes one notification per staff member of a branch.
+   *
+   * Staff covers both a direct `branchId` and everyone attached to the
+   * business — owners and managers often hold no `branchId` of their own, and
+   * they are the people most likely to be watching for an order.
+   */
+  async createForBranchStaff(
+    branchId: string,
+    businessId: string | null | undefined,
+    title: string,
+    message: string,
+    type: string = 'info',
+    actionUrl?: string | null,
+    metadata?: Record<string, any> | null,
+  ) {
+    const staff = await this.userRepository.find({
+      where: [{ branchId }, ...(businessId ? [{ businessId }] : [])],
+      select: ['id'],
+    });
+
+    return this.createMany(
+      staff.map((s) => s.id),
+      title,
+      message,
+      type,
+      actionUrl,
+      metadata,
+    );
+  }
+
+  /**
+   * Lists a user's notifications, newest first, with a cursor on createdAt.
+   *
+   * The list is paginated: the bell and the inbox both fetch it on every focus
+   * or socket event, and an unbounded fetch turns a long-lived account's inbox
+   * into a growing payload. `limit` defaults to 50 (matching the UI's page
+   * size) and is capped at 200, and `before` takes the `createdAt` of the last
+   * row to continue from.
+   */
+  async findByUser(
+    userId: string,
+    options: { limit?: number; before?: Date } = {},
+  ) {
+    const DEFAULT_LIMIT = 50;
+    const MAX_LIMIT = 200;
+
+    const take = Math.min(
+      Math.max(1, Number(options.limit) || DEFAULT_LIMIT),
+      MAX_LIMIT,
+    );
+
+    const qb = this.notificationsRepository
+      .createQueryBuilder('n')
+      .where('n."userId" = :userId', { userId })
+      .orderBy('n."createdAt"', 'DESC')
+      .take(take + 1);
+
+    if (options.before && !Number.isNaN(options.before.getTime())) {
+      qb.andWhere('n."createdAt" < :before', { before: options.before });
+    }
+
+    const rows = await qb.getMany();
+    return rows;
+  }
+
+  /**
+   * Lists a business's notifications across everyone who works there.
+   *
+   * Rows are addressed to a user, but the ones a venue cares about — an order,
+   * a closed shift, a rating — are events in the business, and the person who
+   * happens to hold the row is incidental. Reading them per-user is how a bell
+   * ends up empty while something is happening: the owner receives a review
+   * only if the review was written for the owner.
+   *
+   * `businessId` comes from the token, never the query — accepting it would
+   * let any signed-in user read any business's rows.
+   *
+   * The unread total rides along rather than on its own route so the bell and
+   * the list that fills it cannot disagree: both come off one query set.
+   */
+  async findByBusiness(
+    businessId: string,
+    options: { page?: number; limit?: number } = {},
+  ) {
+    const DEFAULT_LIMIT = 20;
+    const MAX_LIMIT = 100;
+    const page = Math.max(1, Number(options.page) || 1);
+    const limit = Math.min(
+      Math.max(1, Number(options.limit) || DEFAULT_LIMIT),
+      MAX_LIMIT,
+    );
+    const envelope = { data: [], total: 0, unreadCount: 0, page, limit };
+
+    // A customer carries no businessId, so this is their empty state rather
+    // than an error: the route is shared, and a 500 here would break the bell
+    // for every customer account on the shared endpoint.
+    const staff = await this.userRepository.find({
+      where: { businessId },
+      select: ['id'],
+    });
+    const userIds = staff.map((s) => s.id);
+    if (userIds.length === 0) return envelope;
+
+    // Two counts off the scan instead of loading rows twice. `data` and
+    // `total` are the same result set; `unreadCount` is the same set filtered.
+    const [pageRows, total, unreadCount] = await Promise.all([
+      this.notificationsRepository.find({
+        where: { userId: In(userIds) },
+        order: { createdAt: 'DESC' },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      this.notificationsRepository.count({ where: { userId: In(userIds) } }),
+      this.notificationsRepository.count({
+        where: { userId: In(userIds), isRead: false },
+      }),
+    ]);
+
+    return { data: pageRows, total, unreadCount, page, limit };
+  }
+
+  async markAsRead(id: string, userId: string) {
+    // Scoped by userId: without it any authenticated user could mark any
+    // other user's notifications read by guessing ids.
     const notification = await this.notificationsRepository.findOne({
-      where: { id },
+      where: { id, userId },
     });
     if (!notification) {
       throw new NotFoundException(`Notification with id ${id} not found`);
     }
+    if (notification.isRead) return notification;
     notification.isRead = true;
     return this.notificationsRepository.save(notification);
   }
 
   async markAllAsRead(userId: string) {
-    return this.notificationsRepository.update(
+    await this.notificationsRepository.update(
       { userId, isRead: false },
       { isRead: true },
     );
+    this.notificationsGateway.emitNotificationsReadAll(userId, 0);
   }
 
   async getUnreadCount(userId: string) {

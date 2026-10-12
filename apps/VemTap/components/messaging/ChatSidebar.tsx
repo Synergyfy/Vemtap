@@ -769,13 +769,27 @@ function ConversationItem({
 }) {
     const isTyping = useChatStore(s => s.typingByThread[conversation.id]);
     const draftText = useChatStore(s => s.drafts[conversation.id]);
+    const setActiveConversation = useChatStore(s => s.setActiveConversation);
+    const removePendingThread = useChatStore(s => s.removePendingThread);
+    const clearDraft = useChatStore(s => s.clearDraft);
     const { mutate: deleteThread, isPending: isDeleting } = useDeleteThread(isCustomer);
     const { branchId } = useMessagingBranch();
     
     const handleDelete = (e: React.MouseEvent) => {
         e.stopPropagation();
         if (window.confirm('Are you sure you want to delete this conversation?')) {
-            deleteThread({ threadId: conversation.id, branchId: branchId || undefined });
+            deleteThread(
+                { threadId: conversation.id, branchId: branchId || undefined },
+                {
+                    onSuccess: () => {
+                        removePendingThread(conversation.id);
+                        clearDraft(conversation.id);
+                        if (useChatStore.getState().activeConversationId === conversation.id) {
+                            setActiveConversation(null);
+                        }
+                    },
+                },
+            );
         }
     };
 

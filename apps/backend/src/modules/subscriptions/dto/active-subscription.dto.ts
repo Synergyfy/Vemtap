@@ -1,5 +1,8 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { Subscription } from '../entities/subscription.entity';
+import {
+  Subscription,
+  SubscriptionStatus,
+} from '../entities/subscription.entity';
 
 export class SubscriptionPlanSummaryDto {
   @ApiProperty({ example: 'uuid-of-plan' })
@@ -89,7 +92,7 @@ export function toActiveSubscriptionDto(
     endDate: subscription.endDate ?? null,
     trialEndsAt: subscription.trialEndDate ?? null,
     status: subscription.status,
-    isTrial: subscription.status === 'trial',
+    isTrial: subscription.status === SubscriptionStatus.TRIAL,
     paystackReference: subscription.paystackReference ?? null,
     paystackAuthorizationCode: subscription.paystackAuthorizationCode ?? null,
     createdAt: subscription.createdAt,

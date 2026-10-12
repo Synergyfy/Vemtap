@@ -33,6 +33,7 @@ import { formatPhoneNumber } from '../../../common/utils/phone.util';
 import { MessagingGateway } from '../messaging.gateway';
 import { ThreadStatus } from '../entities/conversation-thread.entity';
 import { PushNotificationService } from '../../notifications/push-notification.service';
+import { NotificationsService } from '../../notifications/notifications.service';
 import { Visit } from '../../visitors/entities/visit.entity';
 import { LoyaltyService } from '../../loyalty/loyalty.service';
 import { Segment } from '../../contacts/entities/segment.entity';
@@ -78,6 +79,7 @@ export class MessagingEngineService {
     private readonly configService: ConfigService,
     private readonly messagingGateway: MessagingGateway,
     private readonly pushNotificationService: PushNotificationService,
+    private readonly notificationsService: NotificationsService,
     private readonly loyaltyService: LoyaltyService,
   ) {}
 
@@ -400,6 +402,7 @@ export class MessagingEngineService {
     campaignId?: string,
     metadata?: any,
     messageId?: string,
+    media?: { url?: string; mimeType?: string },
   ): Promise<Message> {
     const customer = await this.userRepo.findOneBy({ id: customerId });
     if (!customer) throw new NotFoundException('Customer not found');
@@ -458,6 +461,8 @@ export class MessagingEngineService {
           channel === Channel.EMAIL
             ? customer.email || ''
             : formatPhoneNumber(customer.phone || ''),
+        mediaUrl: media?.url ?? null,
+        mediaMimeType: media?.mimeType ?? null,
         timestamp: new Date(),
         metadata: metadata || {},
       } as any) as unknown as Message;
@@ -492,11 +497,27 @@ export class MessagingEngineService {
           customerId,
           `New Message from ${branch.business?.name || branch.name}`,
           resolvedContent,
-          { threadId: savedMessage.threadId, channel: Channel.IN_HOUSE },
+          {
+            threadId: savedMessage.threadId,
+            channel: Channel.IN_HOUSE,
+            category: 'support',
+          },
           true,
         )
         .catch((e) =>
           this.logger.error(`Push notification failed: ${e.message}`),
+        );
+
+      this.notificationsService
+        .create(
+          customerId,
+          `New Message from ${branch.business?.name || branch.name}`,
+          resolvedContent,
+          'new_message',
+          `/messages/${savedMessage.threadId}`,
+        )
+        .catch((e) =>
+          this.logger.error(`Notification row failed: ${e.message}`),
         );
     } else {
       // Actually call the provider
@@ -736,6 +757,7 @@ export class MessagingEngineService {
     content: string,
     replyToId?: string,
     metadata?: any,
+    media?: { url?: string; mimeType?: string },
   ) {
     const branch = await this.branchRepo.findOne({
       where: { id: thread.branchId },
@@ -776,16 +798,24 @@ export class MessagingEngineService {
       from,
       undefined,
       metadata,
+      undefined,
+      media,
     );
 
-    // Only save again if we need to update threadId or replyToId that wasn't
-    // set correctly by sendIndividualMessage
+    // Only save again if we need to update threadId, replyToId or the media
+    // columns that weren't set correctly by sendIndividualMessage.
     const needsUpdate =
-      msg.threadId !== thread.id || (replyToId && msg.replyToId !== replyToId);
+      msg.threadId !== thread.id ||
+      (replyToId && msg.replyToId !== replyToId) ||
+      (media?.url != null && msg.mediaUrl !== media.url);
     if (needsUpdate) {
       msg.threadId = thread.id;
       if (replyToId) {
         msg.replyToId = replyToId;
+      }
+      if (media?.url) {
+        msg.mediaUrl = media.url;
+        msg.mediaMimeType = media.mimeType ?? null;
       }
       await this.messageRepo.save(msg);
     }

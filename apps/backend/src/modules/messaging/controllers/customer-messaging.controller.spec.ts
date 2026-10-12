@@ -4,6 +4,7 @@ import { InboxService } from '../services/inbox.service';
 import { User } from '../../users/entities/user.entity';
 import { StartConversationDto } from '../dto/start-conversation.dto';
 import { ReplyDto } from '../dto/reply.dto';
+import { NotFoundException } from '@nestjs/common';
 
 describe('CustomerMessagingController', () => {
   let controller: CustomerMessagingController;
@@ -15,6 +16,7 @@ describe('CustomerMessagingController', () => {
     sendCustomerReply: jest.fn(),
     startCustomerConversation: jest.fn(),
     deleteThread: jest.fn(),
+    markAsRead: jest.fn(),
   };
 
   const mockUser = { id: 'user-1' } as User;
@@ -89,7 +91,32 @@ describe('CustomerMessagingController', () => {
         mockUser.id,
         dto.replyToId,
         undefined,
+        // `media` is forwarded as-is; this DTO carries none.
+        { mimeType: undefined, url: undefined },
       );
+    });
+  });
+
+  describe('markThreadAsRead', () => {
+    it('should scope the clear to the calling customer', async () => {
+      await controller.markThreadAsRead({ threadId: 'th-1' }, { user: mockUser });
+      // The third argument is the customer scope: without it the service would
+      // take the branch branch of the method and zero the wrong counter.
+      expect(inboxService.markAsRead).toHaveBeenCalledWith(
+        'th-1',
+        undefined,
+        mockUser.id,
+      );
+    });
+
+    it('should reject a thread belonging to another customer', async () => {
+      mockInboxService.markAsRead.mockRejectedValueOnce(
+        new NotFoundException('Thread not found'),
+      );
+
+      await expect(
+        controller.markThreadAsRead({ threadId: 'other' }, { user: mockUser }),
+      ).rejects.toThrow('Thread not found');
     });
   });
 

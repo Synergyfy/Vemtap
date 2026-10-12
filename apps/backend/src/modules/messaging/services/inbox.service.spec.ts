@@ -16,6 +16,7 @@ import { User } from '../../users/entities/user.entity';
 import { Channel } from '../enums/channel.enum';
 import { MessagingGateway } from '../messaging.gateway';
 import { PushNotificationService } from '../../notifications/push-notification.service';
+import { NotificationsService } from '../../notifications/notifications.service';
 import { Visit } from '../../visitors/entities/visit.entity';
 import { Branch } from '../../branches/entities/branch.entity';
 import { MessageDirection } from '../enums/message.enum';
@@ -31,6 +32,7 @@ describe('InboxService', () => {
   let engineMock: any;
   let gatewayMock: any;
   let pushMock: any;
+  let notificationsMock: any;
   let automationMock: any;
 
   beforeEach(async () => {
@@ -100,6 +102,12 @@ describe('InboxService', () => {
       sendToBranchStaff: jest.fn().mockResolvedValue({ success: true }),
     };
 
+    notificationsMock = {
+      create: jest.fn().mockResolvedValue({}),
+      createMany: jest.fn().mockResolvedValue([]),
+      createForBranchStaff: jest.fn().mockResolvedValue([]),
+    };
+
     automationMock = {
       handleEvent: jest.fn().mockResolvedValue({}),
       trigger: jest.fn().mockResolvedValue({}),
@@ -140,6 +148,7 @@ describe('InboxService', () => {
           provide: PushNotificationService,
           useValue: pushMock,
         },
+        { provide: NotificationsService, useValue: notificationsMock },
         {
           provide: AutomationService,
           useValue: automationMock,
@@ -347,6 +356,8 @@ describe('InboxService', () => {
         'hello',
         undefined,
         undefined,
+        // `media` is forwarded as-is; this call carries none.
+        undefined,
       );
       expect(threadRepoMock.update).toHaveBeenCalledWith(
         't1',
@@ -421,6 +432,34 @@ describe('InboxService', () => {
       // Push notification is now handled via Automation trigger
       expect(automationMock.trigger).toHaveBeenCalled();
       expect(result.content).toBe('reply content');
+    });
+
+    it('should persist an attached image onto the saved message', async () => {
+      const mockThread = {
+        id: 't1',
+        branchId: 'br1',
+        customerId: 'c1',
+        channel: Channel.IN_HOUSE,
+        status: ThreadStatus.OPEN,
+        branchUnreadCount: 0,
+        customer: { firstName: 'Visitor', phone: '+123' },
+      } as any;
+      threadRepoMock.findOne.mockResolvedValue(mockThread);
+      messageRepoMock.create.mockImplementation((m: any) => m);
+      messageRepoMock.save.mockImplementation((m: any) => Promise.resolve(m));
+
+      const result = await service.sendCustomerReply(
+        't1',
+        '',
+        'c1',
+        undefined,
+        undefined,
+        { url: 'https://cdn.test/photo.jpg', mimeType: 'image/jpeg' },
+      );
+
+      // An image may travel on its own, so the saved row must carry the media.
+      expect(result.mediaUrl).toBe('https://cdn.test/photo.jpg');
+      expect(result.mediaMimeType).toBe('image/jpeg');
     });
   });
 

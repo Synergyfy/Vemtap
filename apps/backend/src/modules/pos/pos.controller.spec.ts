@@ -162,9 +162,20 @@ describe('PosController', () => {
 
   describe('closeRegister', () => {
     it('should call service.closeRegister', async () => {
-      await controller.closeRegister(mockReq);
+      await controller.closeRegister({}, mockReq);
 
-      expect(mockPosService.closeRegister).toHaveBeenCalledWith(mockUser);
+      expect(mockPosService.closeRegister).toHaveBeenCalledWith(
+        mockUser,
+        {},
+      );
+    });
+
+    it('should forward the counted cash so the drawer can be reconciled', async () => {
+      const dto = { countedCash: 342850 };
+
+      await controller.closeRegister(dto, mockReq);
+
+      expect(mockPosService.closeRegister).toHaveBeenCalledWith(mockUser, dto);
     });
   });
 

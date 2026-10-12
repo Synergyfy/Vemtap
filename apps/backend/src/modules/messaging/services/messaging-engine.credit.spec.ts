@@ -25,6 +25,7 @@ import { CreditPlanService } from './credit-plan.service';
 import { PaymentsService } from '../../payments/payments.service';
 import { MessagingGateway } from '../messaging.gateway';
 import { PushNotificationService } from '../../notifications/push-notification.service';
+import { NotificationsService } from '../../notifications/notifications.service';
 import { LoyaltyService } from '../../loyalty/loyalty.service';
 
 describe('MessagingEngineService Credit Logic', () => {
@@ -115,6 +116,7 @@ describe('MessagingEngineService Credit Logic', () => {
         { provide: 'CreditPlanRepository', useValue: { findOne: jest.fn() } },
         { provide: MessagingGateway, useValue: {} },
         { provide: PushNotificationService, useValue: {} },
+        { provide: NotificationsService, useValue: {} },
       ],
     }).compile();
 

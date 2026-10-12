@@ -25,4 +25,17 @@ export class Notification extends AbstractBaseEntity {
 
   @Column({ type: 'varchar', nullable: true })
   actionUrl: string | null;
+
+  /**
+   * Optional payload the row was written with — a shifted till total, a
+   * rating, a deal's claim velocity. The notification title and message are
+   * prose, and prose is what the customer reads; this is the structured part
+   * the row should have carried in the first place, so a screen can show the
+   * figure without re-deriving it.
+   *
+   * Nullable because the rows written before this existed have none, and
+   * nullable-by-default keeps an absent payload from being an empty object.
+   */
+  @Column({ type: 'jsonb', nullable: true })
+  metadata: Record<string, any> | null;
 }

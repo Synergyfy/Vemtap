@@ -145,7 +145,30 @@ export class CustomerMessagingController {
       req.user.id,
       dto.replyToId,
       dto.metadata,
+      { url: dto.mediaUrl, mimeType: dto.mediaMimeType },
     );
+  }
+
+  @Post('threads/:threadId/read')
+  @ApiBearerAuth()
+  @Roles(UserRole.CUSTOMER)
+  @ApiOperation({
+    summary: 'Mark a conversation thread as read for the customer',
+    description:
+      "Clears the thread's `customerUnreadCount`, which is what the Messages " +
+      'hub badge and the "Unread" filter read. The socket `markRead` event ' +
+      'only advances individual message statuses, so it leaves this counter ' +
+      'stale and the thread keeps appearing unread after it has been opened. ' +
+      'Scoped by the caller so a customer can only clear their own thread. ' +
+      'Access: CUSTOMER',
+  })
+  @ApiParam({ name: 'threadId', description: 'Conversation thread UUID' })
+  @ApiResponse({ status: 200, description: 'Thread marked as read' })
+  async markThreadAsRead(
+    @Param() { threadId }: ThreadIdDto,
+    @Request() req: { user: User },
+  ) {
+    return this.inboxService.markAsRead(threadId, undefined, req.user.id);
   }
 
   @Delete('threads/:threadId')

@@ -7,6 +7,9 @@ import { ConfigService } from '@nestjs/config';
 import * as webpush from 'web-push';
 import { User } from '../users/entities/user.entity';
 import { Contact } from '../contacts/entities/contact.entity';
+import { PushToken, PushTransport } from './entities/push-token.entity';
+import { webPushConfig } from './web-push-config';
+import { blockedByPreference } from './notification-preferences';
 import {
   PUSH_NOTIFICATION_QUEUE,
   PushNotificationJobData,
@@ -17,13 +20,13 @@ import {
  * PushNotificationService — the public API for triggering push notifications.
  *
  * All methods now enqueue a BullMQ job and return immediately.
- * The actual web-push delivery happens asynchronously in PushNotificationProcessor,
+ * The actual delivery happens asynchronously in PushNotificationProcessor,
  * with automatic retries on failure and no impact on the calling HTTP request's latency.
  */
 @Injectable()
 export class PushNotificationService {
   private readonly logger = new Logger(PushNotificationService.name);
-  private isConfigured = false;
+  private isWebConfigured = false;
 
   constructor(
     @InjectQueue(PUSH_NOTIFICATION_QUEUE)
@@ -34,6 +37,8 @@ export class PushNotificationService {
     private readonly userRepo: Repository<User>,
     @InjectRepository(Contact)
     private readonly contactRepo: Repository<Contact>,
+    @InjectRepository(PushToken)
+    private readonly pushTokenRepo: Repository<PushToken>,
     private readonly configService: ConfigService,
   ) {
     const publicKey = this.configService.get<string>('VAPID_PUBLIC_KEY');
@@ -43,38 +48,87 @@ export class PushNotificationService {
       'mailto:admin@vemtap.com',
     );
 
+    // Web Push is browser-only; Expo push needs no credentials, so this gate
+    // must not stop Expo deliveries.
     if (publicKey && privateKey) {
       try {
         webpush.setVapidDetails(email, publicKey, privateKey);
-        this.isConfigured = true;
+        webPushConfig.markConfigured(true);
+        this.isWebConfigured = true;
         const fingerprint = publicKey.replace(/[_-]/g, '').slice(0, 12);
         this.logger.log(
           `Web Push (VAPID) configured successfully (public key ${fingerprint}…)`,
         );
       } catch (error: any) {
+        webPushConfig.markConfigured(false);
         this.logger.error(
-          `Failed to configure Web Push (VAPID): ${error.message}. Push notifications will be disabled.`,
+          `Failed to configure Web Push (VAPID): ${error.message}. Web push notifications will be disabled.`,
         );
       }
     } else {
+      webPushConfig.markConfigured(false);
       this.logger.warn(
-        'Web Push (VAPID) keys missing (VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY). Push notifications will be disabled.',
+        'Web Push (VAPID) keys missing (VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY). Browser push will be disabled — Expo push is unaffected.',
       );
     }
   }
 
-  /** Persist the push subscription token for a user or contact. */
-  async registerToken(userId: string, token: string, isUser = true) {
-    if (isUser) {
-      await this.userRepo.update(userId, { pushToken: token });
-    } else {
-      await this.contactRepo.update(userId, { pushToken: token });
+  /**
+   * Register a push token for a user.
+   *
+   * Expo tokens land in `push_tokens`, which is per-device: a user may hold
+   * several, and re-registering the same token upserts rather than duplicating.
+   *
+   * A Web Push subscription is stored as-is and, if the caller is the browser
+   * client, also mirrors onto `users.pushToken` so the legacy reader keeps
+   * working until it is retired.
+   */
+  async registerToken(
+    userId: string,
+    token: string,
+    isUser = true,
+    transport: PushTransport | string = PushTransport.EXPO,
+    platform?: string,
+  ) {
+    const normalised = this.normaliseTransport(transport, token);
+
+    if (normalised === PushTransport.WEB) {
+      // Existing browser behaviour: a single slot on the user row.
+      if (isUser) {
+        await this.userRepo.update(userId, { pushToken: token });
+      } else {
+        await this.contactRepo.update(userId, { pushToken: token });
+      }
+      return { success: true, transport: PushTransport.WEB };
     }
-    return { success: true };
+
+    // Expo: per-device rows. `token` is unique, so this is an upsert and a
+    // device re-registering itself refreshes its row rather than adding one.
+    await this.pushTokenRepo
+      .createQueryBuilder()
+      .insert()
+      .into(PushToken)
+      .values({
+        userId,
+        token,
+        transport: PushTransport.EXPO,
+        platform: platform ?? null,
+      })
+      .orIgnore()
+      .execute();
+
+    return { success: true, transport: PushTransport.EXPO };
   }
 
-  /** Clear the push subscription token for a user or contact. */
-  async clearToken(userId: string, isUser = true) {
+  /**
+   * Drop one token, or every token for the user when none is given.
+   *
+   * Logging out should revoke all devices rather than whichever token the
+   * client happened to send, so a stolen session's notification stop is
+   * still complete.
+   */
+  async clearToken(userId: string, isUser = true, token?: string) {
+    await this.pushTokenRepo.softDelete(token ? { userId, token } : { userId });
     if (isUser) {
       await this.userRepo.update(userId, { pushToken: null });
     } else {
@@ -101,21 +155,10 @@ export class PushNotificationService {
         where: { id: targetId },
         select: ['id', 'notificationPreferences'],
       });
-      const preferenceKey = data.category || data.type;
-      if (
-        preferenceKey &&
-        user?.notificationPreferences &&
-        user.notificationPreferences[preferenceKey] === false
-      ) {
+
+      if (blockedByPreference(user?.notificationPreferences, data)) {
         return { queued: false, reason: 'disabled-by-user-preference' };
       }
-    }
-
-    if (!this.isConfigured) {
-      this.logger.debug(
-        'Push notifications disabled (VAPID not configured) — skipping',
-      );
-      return { queued: false, reason: 'vapid-not-configured' };
     }
 
     await this.pushQueue.add(
@@ -140,6 +183,10 @@ export class PushNotificationService {
    *
    * Uses a single 'fanout' job that resolves tokens and delivers in the worker,
    * so the HTTP request doesn't block on N DB lookups + N HTTP calls.
+   *
+   * Unlike `sendNotification`, this has no single recipient to read
+   * preferences from, so each staff member's own preference is resolved during
+   * delivery instead of here.
    */
   async sendToBranchStaff(
     branchId: string,
@@ -147,13 +194,6 @@ export class PushNotificationService {
     body: string,
     data: Record<string, any> = {},
   ): Promise<{ queued: true } | { queued: false; reason: string }> {
-    if (!this.isConfigured) {
-      this.logger.debug(
-        'Push notifications disabled (VAPID not configured) — skipping fan-out',
-      );
-      return { queued: false, reason: 'vapid-not-configured' };
-    }
-
     // Resolve the list of user IDs now (cheap indexed query), then let
     // the worker handle the per-user token lookups and deliveries.
     const staff = await this.userRepo.find({
@@ -185,5 +225,28 @@ export class PushNotificationService {
       `Push fan-out job queued for branch ${branchId} (${userIds.length} staff)`,
     );
     return { queued: true };
+  }
+
+  // ---------------------------------------------------------------------------
+  // Helpers
+  // ---------------------------------------------------------------------------
+
+  private normaliseTransport(
+    transport: PushTransport | string,
+    token: string,
+  ): PushTransport {
+    // A transport the caller named explicitly wins; anything else is sniffed.
+    // Expo tokens are `ExponentPushToken[…]`, which is not JSON, whereas a
+    // Web Push subscription is a serialised object.
+    const known = Object.values(PushTransport) as string[];
+    if (known.includes(transport)) {
+      return transport as PushTransport;
+    }
+    try {
+      JSON.parse(token);
+      return PushTransport.WEB;
+    } catch {
+      return PushTransport.EXPO;
+    }
   }
 }

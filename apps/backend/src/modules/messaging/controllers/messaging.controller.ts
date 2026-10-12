@@ -318,6 +318,7 @@ export class MessagingController {
       branchId,
       dto.replyToId,
       dto.metadata,
+      { url: dto.mediaUrl, mimeType: dto.mediaMimeType },
     );
   }
 

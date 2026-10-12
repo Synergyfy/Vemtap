@@ -14,6 +14,7 @@ import { Logger, UseGuards } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In } from 'typeorm';
 import { User, UserRole } from '../users/entities/user.entity';
+import { Branch } from '../branches/entities/branch.entity';
 import { Message } from './entities/message.entity';
 import { ConversationThread } from './entities/conversation-thread.entity';
 import { MessageDirection, MessageStatus } from './enums/message.enum';
@@ -34,6 +35,8 @@ export class MessagingGateway
     private readonly jwtService: JwtService,
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
+    @InjectRepository(Branch)
+    private readonly branchRepo: Repository<Branch>,
     @InjectRepository(Message)
     private readonly messageRepo: Repository<Message>,
     @InjectRepository(ConversationThread)
@@ -74,12 +77,37 @@ export class MessagingGateway
       // Join personal room for targeted events (like notifications)
       client.join(`user_${user.id}`);
 
-      // If they belong to a branch, join branch room
+      // Join every branch the user can see, not just the one on their row.
+      // An owner or manager often holds no `branchId` of their own — it is
+      // null for anyone who heads the business rather than a single branch —
+      // so widening by `businessId` is what stops them missing every
+      // branch-scoped message event.
+      const branchIds = new Set<string>();
       if (user.branchId) {
-        client.join(`branch_${user.branchId}`);
+        branchIds.add(user.branchId);
+      }
+      if (user.businessId) {
+        const businessBranches = await this.branchRepo.find({
+          where: { businessId: user.businessId },
+          select: ['id'],
+        });
+        for (const branch of businessBranches) {
+          branchIds.add(branch.id);
+        }
+      }
+      for (const branchId of branchIds) {
+        client.join(`branch_${branchId}`);
+      }
+      if (branchIds.size > 0) {
+        client.data.branchIds = [...branchIds];
       }
 
-      this.logger.log(`Client connected: ${user.id} (${user.role})`);
+      this.logger.log(
+        `Client connected: ${user.id} (${user.role})` +
+          (branchIds.size > 0
+            ? ` — joined ${branchIds.size} branch room(s)`
+            : ''),
+      );
 
       // Update last active
       await this.userRepo.update(user.id, { lastActive: new Date() });

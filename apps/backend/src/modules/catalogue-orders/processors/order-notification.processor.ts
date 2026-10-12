@@ -10,6 +10,20 @@ import { Logger } from '@nestjs/common';
 import { NotificationsService } from '../../notifications/notifications.service';
 import { PushNotificationService } from '../../notifications/push-notification.service';
 
+/** The statuses `MailService.sendOrderNotification` knows how to word. */
+const MAILABLE_STATUSES = [
+  'placed',
+  'processing',
+  'completed',
+  'cancelled',
+  'rejected',
+] as const;
+
+type MailableStatus = (typeof MAILABLE_STATUSES)[number];
+
+const isMailableStatus = (value: string): value is MailableStatus =>
+  (MAILABLE_STATUSES as readonly string[]).includes(value);
+
 @Processor('order-notifications')
 export class OrderNotificationProcessor extends WorkerHost {
   private readonly logger = new Logger(OrderNotificationProcessor.name);
@@ -28,8 +42,8 @@ export class OrderNotificationProcessor extends WorkerHost {
     super();
   }
 
-  async process(job: Job<any, any, string>): Promise<any> {
-    const { orderId, status } = job.data;
+  async process(job: Job<{ orderId: string; status: string; title?: string; body?: string }, any, string>): Promise<any> {
+    const { orderId, status, title, body } = job.data;
     this.logger.log(`Processing ${status} notifications for order ${orderId}`);
 
     try {
@@ -43,28 +57,47 @@ export class OrderNotificationProcessor extends WorkerHost {
         return;
       }
 
-      // 1. Send internal/push notifications
-      if (order.customerId) {
-        const pushTitle = `Order Update: ${status.replace(/_/g, ' ').toLowerCase()}`;
-        const pushBody = `Your order #${order.id} status is now ${status.replace(/_/g, ' ').toLowerCase()}.`;
-        const notificationType = 'order_status';
+      // The caller supplies customer-facing copy when a status change has
+      // something specific to say; fall back to the generic form for the
+      // initial 'placed' notification, which carries no copy of its own.
+      const pushTitle =
+        title || `Order Update: ${status.replace(/_/g, ' ').toLowerCase()}`;
+      const pushBody =
+        body ||
+        `Your order #${order.id} status is now ${status
+          .replace(/_/g, ' ')
+          .toLowerCase()}.`;
 
-        // Save to database notification
+      // 1. Write the in-app row
+      if (order.customerId) {
         await this.notificationsService
-          .create(order.customerId, pushTitle, pushBody, notificationType)
+          .create(
+            order.customerId,
+            pushTitle,
+            pushBody,
+            'order_status',
+            `/orders/${order.id}`,
+          )
           .catch((err) =>
             this.logger.error(
               `Failed to create database notification: ${err.message}`,
             ),
           );
 
-        // Send real-time push notification
+        // 2. Send real-time push notification
+        // `category` is what the preference check matches on — the raw
+        // `type` string does not correspond to any stored preference key.
         await this.pushNotificationService
           .sendNotification(
             order.customerId,
             pushTitle,
             pushBody,
-            { orderId: order.id, status, type: 'ORDER_STATUS_UPDATE' },
+            {
+              orderId: order.id,
+              status,
+              type: 'ORDER_STATUS_UPDATE',
+              category: 'orderUpdates',
+            },
             true,
           )
           .catch((err) =>
@@ -97,6 +130,10 @@ export class OrderNotificationProcessor extends WorkerHost {
           const business = branch.business;
           if (!business) {
             this.logger.error(`Business for branch ${branch.id} not found`);
+          } else if (!isMailableStatus(status)) {
+            this.logger.warn(
+              `Order ${orderId} has status "${status}" with no email wording — skipping email`,
+            );
           } else {
             await this.mailService.sendOrderNotification(
               order.customer.email,

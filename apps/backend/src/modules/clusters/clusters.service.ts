@@ -727,8 +727,11 @@ export class ClustersService {
       longDescription: offer.longDescription || offer.description,
       terms: offer.terms || [],
       pricingType: offer.pricingType,
-      discountValue: offer.discountValue,
-      fixedPrice: offer.fixedPrice,
+      // numeric columns arrive as strings from the driver; ClusterDealView
+      // promises numbers, so coerce — null stays null.
+      discountValue:
+        offer.discountValue == null ? null : Number(offer.discountValue),
+      fixedPrice: offer.fixedPrice == null ? null : Number(offer.fixedPrice),
       calculatedPrice: Number(offer.calculatedPrice),
       originalPrice,
       dealPrice: Number(offer.calculatedPrice),

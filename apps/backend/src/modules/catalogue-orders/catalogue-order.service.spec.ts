@@ -14,6 +14,7 @@ import { CatalogueOffer } from '../catalogue/entities/catalogue-offer.entity';
 import { User, UserRole } from '../users/entities/user.entity';
 import { Branch } from '../branches/entities/branch.entity';
 import { PushNotificationService } from '../notifications/push-notification.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { Device } from '../devices/entities/device.entity';
 import { Visit } from '../visitors/entities/visit.entity';
 import { LoyaltyService } from '../loyalty/loyalty.service';
@@ -91,6 +92,12 @@ describe('CatalogueOrderService', () => {
           useValue: {
             sendToBranchStaff: jest.fn().mockResolvedValue({}),
             sendNotification: jest.fn().mockResolvedValue({}),
+          },
+        },
+        {
+          provide: NotificationsService,
+          useValue: {
+            createForBranchStaff: jest.fn().mockResolvedValue([]),
           },
         },
         { provide: getRepositoryToken(Device), useValue: {} },

@@ -22,6 +22,7 @@ import {
   SavedPageDto,
   SavedQueryDto,
   SavedServiceItemDto,
+  SavedUnifiedPageDto,
 } from './dto/saved.dto';
 
 @Injectable()
@@ -209,7 +210,7 @@ export class SavedService {
   async getUnifiedSaved(
     userId: string,
     query: SavedQueryDto,
-  ): Promise<SavedPageDto> {
+  ): Promise<SavedUnifiedPageDto> {
     const page = query.page ?? 1;
     const limit = query.limit ?? 10;
     const fetchPerStore = page * limit;
@@ -235,6 +236,19 @@ export class SavedService {
       total: deals.total + businesses.total + services.total,
       page,
       limit,
+      // Both store counts are already in scope, so the tab badges cost nothing.
+      // Skipped for a `type` read: the skipped stores resolve to total 0, and
+      // reporting that as a real count would be worse than omitting it.
+      ...(query.type
+        ? {}
+        : {
+            totals: {
+              all: deals.total + businesses.total + services.total,
+              deals: deals.total,
+              businesses: businesses.total,
+              services: services.total,
+            },
+          }),
     };
   }
 

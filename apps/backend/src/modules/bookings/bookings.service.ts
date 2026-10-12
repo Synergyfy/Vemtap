@@ -17,7 +17,10 @@ import {
 import { randomBytes } from 'crypto';
 import { Booking, BookingStatus } from './entities/booking.entity';
 import { Branch } from '../branches/entities/branch.entity';
-import { CatalogueItem } from '../catalogue/entities/catalogue-item.entity';
+import {
+  CatalogueItem,
+  ServiceBookingMethod,
+} from '../catalogue/entities/catalogue-item.entity';
 import { User, UserRole } from '../users/entities/user.entity';
 import { normalizeOpeningHours } from '../../common/utils/business-hours.util';
 import {
@@ -398,7 +401,10 @@ export class BookingsService {
     if (!item.isBookable) {
       throw new BadRequestException('This service is not bookable');
     }
-    if (item.bookingMethod && item.bookingMethod !== 'vemtap') {
+    if (
+      item.bookingMethod &&
+      item.bookingMethod !== ServiceBookingMethod.VEMTAP
+    ) {
       throw new BadRequestException(
         'This service is booked directly with the business, not in-app',
       );

@@ -38,7 +38,11 @@ import { ProcessPosOrderPaymentDto } from './dto/process-pos-order-payment.dto';
 import { PosSaleQueryDto } from './dto/pos-sale-query.dto';
 import { UpdatePosSaleStatusDto } from './dto/update-pos-sale-status.dto';
 import { HoldPosSaleDto } from './dto/hold-pos-sale.dto';
-import { OpenRegisterDto, RegisterHistoryQueryDto } from './dto/register.dto';
+import {
+  OpenRegisterDto,
+  CloseRegisterDto,
+  RegisterHistoryQueryDto,
+} from './dto/register.dto';
 import { paginateWithCursor } from '../../common/utils/cursor-pagination.util';
 import { PosCustomerQueryDto } from './dto/pos-customer-query.dto';
 import { Branch } from '../branches/entities/branch.entity';
@@ -50,6 +54,7 @@ import {
   FosPlatform,
 } from '../fos-core/entities/financial-transaction.entity';
 import { PushNotificationService } from '../notifications/push-notification.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { LoyaltyService } from '../loyalty/loyalty.service';
 import { PosRefund } from './entities/pos-refund.entity';
 import { PosRefundItem } from './entities/pos-refund-item.entity';
@@ -97,6 +102,7 @@ export class PosService {
     private readonly fosTransactionRepository: Repository<FinancialTransaction>,
     private readonly dataSource: DataSource,
     private readonly pushNotificationService: PushNotificationService,
+    private readonly notificationsService: NotificationsService,
     private readonly catalogueOrderService: CatalogueOrderService,
     @Inject(forwardRef(() => LoyaltyService))
     private readonly loyaltyService: LoyaltyService,
@@ -634,9 +640,24 @@ export class PosService {
         branch.id,
         'New POS Order',
         `A new POS order (#${savedOrder.id.slice(0, 8)}) has been placed by ${staffName}.`,
-        { orderId: savedOrder.id, type: 'NEW_POS_ORDER' },
+        { orderId: savedOrder.id, type: 'NEW_POS_ORDER', category: 'orderUpdates' },
       )
       .catch((err) => console.error('Failed to send staff notification:', err));
+
+    // Same reason as the catalogue path: a push alone leaves nothing behind
+    // if the device is offline or has no token.
+    this.notificationsService
+      .createForBranchStaff(
+        branch.id,
+        branch.businessId,
+        'New POS Order',
+        `A new POS order (#${savedOrder.id.slice(0, 8)}) has been placed by ${staffName}.`,
+        'new_pos_order',
+        `/orders/${savedOrder.id}`,
+      )
+      .catch((err) =>
+        console.error('Failed to create staff notification row:', err),
+      );
 
     const result = await this.orderRepository.findOne({
       where: { id: savedOrder.id },
@@ -1177,7 +1198,7 @@ export class PosService {
     return this.registerSessionRepository.save(session);
   }
 
-  async closeRegister(cashier: User) {
+  async closeRegister(cashier: User, dto: CloseRegisterDto = {}) {
     const session = await this.registerSessionRepository.findOne({
       where: { cashierId: cashier.id, status: RegisterSessionStatus.OPEN },
     });
@@ -1214,7 +1235,54 @@ export class PosService {
     session.status = RegisterSessionStatus.CLOSED;
     session.closedAt = new Date();
 
-    return this.registerSessionRepository.save(session);
+    // Counting the drawer is a separate act from closing the shift, and the
+    // two columns stay null when it did not happen. The Z-report then reports a
+    // variance of "not counted" instead of a zero that reads as balanced.
+    const countedCash = dto.countedCash;
+    session.countedCash = countedCash ?? null;
+    session.variance = countedCash != null ? countedCash - expectedCash : null;
+
+    const saved = await this.registerSessionRepository.save(session);
+
+    // The shift total is a fact worth telling the people who were on it and
+    // the owner watching the till, and a drawer that closed out of balance is
+    // the one they most need to hear about.
+    this.notificationsService
+      .createForBranchStaff(
+        session.branchId,
+        session.businessId,
+        'Shift Closed',
+        `Closed with ${this.formatNaira(totalSales)} in gross sales across ${todaySales.length} transaction${todaySales.length === 1 ? '' : 's'}${
+          session.variance != null
+            ? `, ${this.formatNaira(Math.abs(session.variance))} ${
+                session.variance === 0 ? 'exactly on' : session.variance > 0 ? 'over' : 'under'
+              } expected cash`
+            : ''
+        }.`,
+        'info',
+        '/pos/register/z-report',
+        {
+          stat: {
+            label: 'Gross sales',
+            value: this.formatNaira(totalSales),
+            ...(session.variance != null
+              ? {
+                  trend:
+                    session.variance === 0
+                      ? 'balanced to the naira'
+                      : `${this.formatNaira(Math.abs(session.variance))} ${session.variance > 0 ? 'over' : 'short'}`,
+                }
+              : {}),
+          },
+          footnote: `${todaySales.length} transaction${todaySales.length === 1 ? '' : 's'}`,
+          cta: 'View Z-Report',
+        },
+      )
+      .catch((err) =>
+        console.error('Failed to create shift-close notification row:', err),
+      );
+
+    return saved;
   }
 
   async getRegisterStatus(cashier: User) {
@@ -1286,6 +1354,10 @@ export class PosService {
       cashSales,
       cashDrops,
       expectedCash: Number(session.openingCash) + cashSales - cashDrops,
+      // Null when the drawer was never counted, so a consumer can tell
+      // "balanced" from "never reconciled" without reading a 0 as truth.
+      countedCash: session.countedCash != null ? Number(session.countedCash) : null,
+      variance: session.variance != null ? Number(session.variance) : null,
       paymentBreakdown: sales.reduce<Record<string, number>>((result, sale) => {
         result[sale.paymentMethod] =
           (result[sale.paymentMethod] || 0) + Number(sale.total);
@@ -1630,5 +1702,13 @@ export class PosService {
     ) {
       item.status = CatalogueItemStatus.ACTIVE;
     }
+  }
+
+  /** Money for a sentence or a stat block. Scoped: nothing else needs it yet. */
+  private formatNaira(amount: number): string {
+    return `₦${amount.toLocaleString('en-NG', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })}`;
   }
 }

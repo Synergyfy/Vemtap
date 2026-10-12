@@ -218,3 +218,33 @@ export class SavedPageDto {
   @ApiProperty({ example: 10 })
   limit: number;
 }
+
+/** Per-store counts behind the saved feed's tab badges. */
+export class SavedTotalsDto {
+  @ApiProperty({ example: 9, description: 'Sum of every store' })
+  all: number;
+
+  @ApiProperty({ example: 4 })
+  deals: number;
+
+  @ApiProperty({ example: 3 })
+  businesses: number;
+
+  @ApiProperty({ example: 2 })
+  services: number;
+}
+
+/**
+ * The unified feed's response. It carries the per-store breakdown that
+ * `SavedPageDto` cannot: only this route reads all three stores, and only it
+ * knows each one's count.
+ */
+export class SavedUnifiedPageDto extends SavedPageDto {
+  @ApiPropertyOptional({
+    type: SavedTotalsDto,
+    description:
+      'Per-store counts, free with this response. Omitted when `type` is sent, ' +
+      'because a filtered read skips the other stores and cannot count them.',
+  })
+  totals?: SavedTotalsDto;
+}

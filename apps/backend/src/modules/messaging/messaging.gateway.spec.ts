@@ -3,6 +3,7 @@ import { MessagingGateway } from './messaging.gateway';
 import { JwtService } from '@nestjs/jwt';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { User } from '../users/entities/user.entity';
+import { Branch } from '../branches/entities/branch.entity';
 import { Message } from './entities/message.entity';
 import { ConversationThread } from './entities/conversation-thread.entity';
 import { Server, Socket } from 'socket.io';
@@ -11,29 +12,37 @@ describe('MessagingGateway', () => {
   let gateway: MessagingGateway;
   let jwtService: JwtService;
   let userRepo: any;
+  let branchRepo: any;
 
   const mockServer = {
     to: jest.fn().mockReturnThis(),
     emit: jest.fn(),
   };
 
-  const mockSocket = {
-    handshake: {
-      auth: { token: 'valid-token' },
-      headers: {},
-    },
-    disconnect: jest.fn(),
-    join: jest.fn(),
-    leave: jest.fn(),
-    to: jest.fn().mockReturnThis(),
-    emit: jest.fn(),
-    data: {},
-  } as any as Socket;
+  /** A socket whose recorded calls are not shared with any other test. */
+  const freshSocket = () =>
+    ({
+      handshake: { auth: { token: 'valid-token' }, headers: {} },
+      disconnect: jest.fn(),
+      join: jest.fn(),
+      leave: jest.fn(),
+      to: jest.fn().mockReturnThis(),
+      emit: jest.fn(),
+      data: {},
+    }) as any as Socket;
+
+  const mockSocket = freshSocket();
 
   beforeEach(async () => {
     userRepo = {
       findOne: jest.fn(),
       update: jest.fn(),
+    };
+
+    // An owner or manager holds a businessId but no branchId, so the gateway
+    // widens their rooms by business and must be able to list its branches.
+    branchRepo = {
+      find: jest.fn().mockResolvedValue([]),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -48,6 +57,10 @@ describe('MessagingGateway', () => {
         {
           provide: getRepositoryToken(User),
           useValue: userRepo,
+        },
+        {
+          provide: getRepositoryToken(Branch),
+          useValue: branchRepo,
         },
         { provide: getRepositoryToken(Message), useValue: {} },
         { provide: getRepositoryToken(ConversationThread), useValue: {} },
@@ -88,6 +101,51 @@ describe('MessagingGateway', () => {
       await gateway.handleConnection(socketWithoutToken);
 
       expect(socketWithoutToken.disconnect).toHaveBeenCalled();
+    });
+
+    it('should join every branch of the business when the user has no branchId', async () => {
+      // An owner or manager heads the business rather than one branch, so
+      // their branchId is null. Scoping by business is the only way they see
+      // branch-scoped events at all.
+      const socket = freshSocket();
+      userRepo.findOne.mockResolvedValue({
+        id: 'owner-1',
+        role: 'Owner',
+        branchId: null,
+        businessId: 'business-1',
+      });
+      branchRepo.find.mockResolvedValue([
+        { id: 'branch-a' },
+        { id: 'branch-b' },
+      ]);
+
+      await gateway.handleConnection(socket);
+
+      expect(branchRepo.find).toHaveBeenCalledWith({
+        where: { businessId: 'business-1' },
+        select: ['id'],
+      });
+      expect(socket.join).toHaveBeenCalledWith('branch_branch-a');
+      expect(socket.join).toHaveBeenCalledWith('branch_branch-b');
+    });
+
+    it('should join one room for a branch that is both direct and a sibling', async () => {
+      const socket = freshSocket();
+      userRepo.findOne.mockResolvedValue({
+        id: 'staff-1',
+        role: 'Staff',
+        branchId: 'branch-a',
+        businessId: 'business-1',
+      });
+      branchRepo.find.mockResolvedValue([{ id: 'branch-a' }]);
+
+      await gateway.handleConnection(socket);
+
+      // De-duplicated by the set, so one room, not two.
+      const branchJoins = socket.join.mock.calls.filter((c: any[]) =>
+        c[0] === 'branch_branch-a',
+      );
+      expect(branchJoins).toHaveLength(1);
     });
   });
 
