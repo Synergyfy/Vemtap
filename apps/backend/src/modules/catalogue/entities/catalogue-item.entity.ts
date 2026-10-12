@@ -73,8 +73,8 @@ export class CatalogueItem extends AbstractBaseEntity {
   price: number;
 
   @ApiProperty({ example: 'Delicious cheeseburger with bacon' })
-  @Column({ type: 'text' })
-  shortDescription: string;
+  @Column({ type: 'text', nullable: true })
+  shortDescription?: string | null;
 
   @ApiProperty({ example: 'Full description of the cheeseburger...' })
   @Column({ type: 'text' })
