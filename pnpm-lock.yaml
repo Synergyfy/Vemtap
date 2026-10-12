@@ -346,6 +346,9 @@ importers:
       ioredis:
         specifier: ^5.10.0
         version: 5.11.1
+      multer:
+        specifier: ^2.2.0
+        version: 2.2.0
       nodemailer:
         specifier: ^8.0.0
         version: 8.0.11
