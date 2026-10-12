@@ -16,6 +16,7 @@ import { CatalogueService } from './catalogue.service';
 import {
   CreateCatalogueCategoryDto,
   UpdateCatalogueCategoryDto,
+  ReorderCatalogueCategoryDto,
 } from './dto/category.dto';
 import {
   CreateCatalogueItemDto,
@@ -55,6 +56,21 @@ export class AdminCatalogueController {
   @ApiOperation({ summary: 'List all catalogue categories' })
   async listCategories(@Req() req: any) {
     return this.catalogueService.findAllCategories(req.user.businessId);
+  }
+
+  // Declared before categories/:id so the literal path wins over the param.
+  @Patch('categories/reorder')
+  @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.ADMIN)
+  @Permissions('inventory')
+  @ApiOperation({ summary: 'Reorder catalogue categories' })
+  async reorderCategories(
+    @Body() dto: ReorderCatalogueCategoryDto,
+    @Req() req: any,
+  ) {
+    return this.catalogueService.reorderCategories(
+      req.user.businessId,
+      dto.orderedIds,
+    );
   }
 
   @Patch('categories/:id')

@@ -93,8 +93,38 @@ export class CatalogueService {
   async findAllCategories(businessId: string) {
     return this.categoryRepository.find({
       where: { businessId },
-      order: { name: 'ASC' },
+      order: { sortOrder: 'ASC', name: 'ASC' },
     });
+  }
+
+  /**
+   * Persists a full re-order: the client sends every category id in its new
+   * sequence and each id's index becomes its sortOrder. Lists must be complete
+   * so a stale client can't silently drop a category's position.
+   */
+  async reorderCategories(businessId: string, orderedIds: string[]) {
+    const categories = await this.categoryRepository.find({
+      where: { businessId },
+    });
+    const byId = new Map(categories.map((category) => [category.id, category]));
+
+    const unknown = orderedIds.filter((id) => !byId.has(id));
+    if (unknown.length > 0) {
+      throw new BadRequestException(
+        'Reorder list contains a category that does not exist',
+      );
+    }
+    const missing = categories.filter((category) => !orderedIds.includes(category.id));
+    if (missing.length > 0) {
+      throw new BadRequestException('Reorder list must include every category');
+    }
+
+    orderedIds.forEach((id, index) => {
+      byId.get(id)!.sortOrder = index;
+    });
+    await this.categoryRepository.save(categories);
+
+    return this.findAllCategories(businessId);
   }
 
   // --- Items ---
@@ -756,8 +786,10 @@ export class CatalogueService {
       })
       .where('item.status = :status', { status: CatalogueItemStatus.ACTIVE })
       .andWhere('item.isSuspended = :isSuspended', { isSuspended: false })
-      .select(['category.id', 'category.name'])
+      .select(['category.id', 'category.name', 'category.sortOrder'])
       .distinct(true)
+      .orderBy('category.sortOrder', 'ASC')
+      .addOrderBy('category.name', 'ASC')
       .getMany();
 
     return categories;
