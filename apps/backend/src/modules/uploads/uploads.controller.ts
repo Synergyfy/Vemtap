@@ -24,8 +24,11 @@ import { UserRole } from '../users/entities/user.entity';
 import { SkipSubscriptionCheck } from '../subscriptions/decorators/skip-subscription-check.decorator';
 import { UploadsService } from './uploads.service';
 
-const MAX_UPLOAD_BYTES = 10 * 1024 * 1024; // 10MB, matching the web route
-const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+// Vercel caps serverless request bodies at ~4.5MB, so anything larger is
+// rejected by the platform before multer ever sees it. 4MB keeps the in-code
+// limit under that cliff instead of advertising a size the deploy can't take.
+const MAX_UPLOAD_BYTES = 4 * 1024 * 1024; // 4MB, under the Vercel body cap
+const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
 
 @ApiTags('uploads')
 @ApiBearerAuth()
@@ -36,7 +39,7 @@ export class UploadsController {
 
   @Post()
   @SkipSubscriptionCheck()
-  @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.ADMIN)
+  @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.ADMIN, UserRole.CUSTOMER)
   @UseInterceptors(
     FileInterceptor('file', {
       storage: memoryStorage(),
@@ -61,9 +64,13 @@ export class UploadsController {
     },
   })
   @ApiOperation({
-    summary: 'Upload a business image (logo, cover or gallery)',
+    summary: 'Upload an image (business logo/cover/gallery, or user avatar)',
     description:
-      'Accepts multipart/form-data `file` (JPG/PNG/WebP, max 10MB) and returns the hosted URL.',
+      'Accepts multipart/form-data `file` (JPG/PNG/WebP, max 4MB — kept under ' +
+      "the serverless body cap) and returns the hosted URL. Owners, managers " +
+      'and admins land in `vemtap/businesses/{businessId}`; customers with no ' +
+      'business context land in `vemtap/users/{userId}`, which is where the ' +
+      'profile-picture flow puts avatars before PATCHing them onto the user.',
   })
   @ApiResponse({
     status: 201,
@@ -72,8 +79,17 @@ export class UploadsController {
   })
   upload(
     @UploadedFile() file: Express.Multer.File,
-    @Request() req: { user?: { businessId?: string } },
+    @Request() req: { user?: { id?: string; businessId?: string }; body?: { folderOverride?: string } },
   ) {
-    return this.uploadsService.uploadImage(file, req.user?.businessId);
+    const user = req.user;
+    const folderOverride = req.body?.folderOverride;
+    const folder = folderOverride
+      ? folderOverride
+      : user?.businessId
+        ? undefined
+        : user?.id
+          ? `vemtap/users/${user.id}`
+          : undefined;
+    return this.uploadsService.uploadImage(file, user?.businessId, folder);
   }
 }
