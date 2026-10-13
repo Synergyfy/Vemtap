@@ -18,6 +18,12 @@ import { Branch } from '../branches/entities/branch.entity';
 import { Message } from './entities/message.entity';
 import { ConversationThread } from './entities/conversation-thread.entity';
 import { MessageDirection, MessageStatus } from './enums/message.enum';
+import { PresenceService, type PresenceKind } from './services/presence.service';
+
+/** Room a subscriber joins to hear about one presence channel. */
+function presenceRoom(kind: PresenceKind, id: string): string {
+  return `presence:${kind}:${id}`;
+}
 
 @WebSocketGateway({
   cors: {
@@ -41,6 +47,7 @@ export class MessagingGateway
     private readonly messageRepo: Repository<Message>,
     @InjectRepository(ConversationThread)
     private readonly threadRepo: Repository<ConversationThread>,
+    private readonly presenceService: PresenceService,
   ) {}
 
   afterInit(server: Server) {
@@ -102,6 +109,26 @@ export class MessagingGateway
         client.data.branchIds = [...branchIds];
       }
 
+      // Presence: the customer-facing channel is the business, not the staff
+      // member — a thread knows the business, never which staffer is holding
+      // the phone — so both keys are tracked and announced.
+      const userStatus = this.presenceService.setOnline('user', user.id, client.id);
+      this.emitPresence('user', user.id, userStatus);
+      if (user.businessId) {
+        client.data.businessId = user.businessId;
+        const businessStatus = this.presenceService.setOnline(
+          'business',
+          user.businessId,
+          client.id,
+        );
+        this.emitPresence('business', user.businessId, businessStatus);
+      }
+
+      await this.userRepo.update(user.id, {
+        isOnline: true,
+        lastSeen: new Date(),
+      });
+
       this.logger.log(
         `Client connected: ${user.id} (${user.role})` +
           (branchIds.size > 0
@@ -117,8 +144,46 @@ export class MessagingGateway
     }
   }
 
-  handleDisconnect(client: Socket) {
+  async handleDisconnect(client: Socket) {
+    const userId = client.data.userId;
+    if (userId) {
+      const status = this.presenceService.setOffline('user', userId, client.id);
+      this.emitPresence('user', userId, status);
+      // One of several sockets of the same user may still be connected, so the
+      // durable column follows the computed status rather than assuming the
+      // user is gone.
+      await this.userRepo.update(userId, {
+        isOnline: status.isOnline,
+        lastSeen: new Date(),
+      });
+    }
+
+    const businessId = client.data.businessId;
+    if (businessId) {
+      const status = this.presenceService.setOffline(
+        'business',
+        businessId,
+        client.id,
+      );
+      this.emitPresence('business', businessId, status);
+    }
+
     this.logger.log(`Client disconnected: ${client.id}`);
+  }
+
+  /**
+   * Announce a presence change to whoever subscribed to this channel. Only
+   * subscribers care, so it goes to the channel's room rather than every
+   * socket on the server.
+   */
+  private emitPresence(
+    kind: PresenceKind,
+    id: string,
+    status: { isOnline: boolean; lastSeen: string | null },
+  ): void {
+    this.server
+      .to(presenceRoom(kind, id))
+      .emit('presence:update', { kind, id, ...status });
   }
 
   @SubscribeMessage('joinThread')
@@ -143,6 +208,64 @@ export class MessagingGateway
     );
     client.leave(`thread_${data.threadId}`);
     return { status: 'left', threadId: data.threadId };
+  }
+
+  /**
+   * Snapshot + live updates for the channels a screen renders. Rooms are
+   * joined *before* the snapshot is read so a connect landing in between is
+   * delivered as an event and the snapshot cannot go stale on arrival.
+   *
+   * The ack is plain objects (not a `Map`) so it survives JSON, and covers
+   * both kinds: `userIds` is how staff follow a customer, `businessIds` is how
+   * a customer follows a business.
+   */
+  @SubscribeMessage('presence:subscribe')
+  async handlePresenceSubscribe(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() data: { userIds?: string[]; businessIds?: string[] },
+  ) {
+    const userIds = this.cleanIds(data?.userIds);
+    const businessIds = this.cleanIds(data?.businessIds);
+    for (const id of userIds) await client.join(presenceRoom('user', id));
+    for (const id of businessIds)
+      await client.join(presenceRoom('business', id));
+    return this.presenceSnapshot(userIds, businessIds);
+  }
+
+  @SubscribeMessage('presence:unsubscribe')
+  async handlePresenceUnsubscribe(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() data: { userIds?: string[]; businessIds?: string[] },
+  ) {
+    for (const id of this.cleanIds(data?.userIds)) {
+      await client.leave(presenceRoom('user', id));
+    }
+    for (const id of this.cleanIds(data?.businessIds)) {
+      await client.leave(presenceRoom('business', id));
+    }
+    return { ok: true };
+  }
+
+  /** Read-only snapshot; does not join any room. */
+  @SubscribeMessage('presence:get')
+  async handlePresenceGet(
+    @MessageBody() data: { userIds?: string[]; businessIds?: string[] },
+  ) {
+    return this.presenceSnapshot(
+      this.cleanIds(data?.userIds),
+      this.cleanIds(data?.businessIds),
+    );
+  }
+
+  private cleanIds(ids: string[] | undefined): string[] {
+    return [...new Set((ids ?? []).filter((id): id is string => !!id))];
+  }
+
+  private presenceSnapshot(userIds: string[], businessIds: string[]) {
+    return {
+      users: this.presenceService.getStatuses('user', userIds),
+      businesses: this.presenceService.getStatuses('business', businessIds),
+    };
   }
 
   @SubscribeMessage('typing')

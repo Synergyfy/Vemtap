@@ -77,6 +77,7 @@ import { AutomationProcessor } from './processors/automation.processor';
 import { TwilioWebhookController } from './controllers/twilio.controller';
 
 import { MessagingGateway } from './messaging.gateway';
+import { PresenceService } from './services/presence.service';
 import { JwtModule } from '@nestjs/jwt';
 
 import { MessagingChannelSetting } from './entities/messaging-channel-setting.entity';
@@ -206,6 +207,7 @@ import { ChannelSettingsController } from './controllers/channel-settings.contro
     ChatSettingsService,
     ChannelSettingsService,
     MessagingHelperService,
+    PresenceService,
     MessagingGateway,
   ],
   controllers: [

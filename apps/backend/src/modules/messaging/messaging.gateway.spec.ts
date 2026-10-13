@@ -1,5 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { MessagingGateway } from './messaging.gateway';
+import { PresenceService } from './services/presence.service';
 import { JwtService } from '@nestjs/jwt';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { User } from '../users/entities/user.entity';
@@ -64,6 +65,21 @@ describe('MessagingGateway', () => {
         },
         { provide: getRepositoryToken(Message), useValue: {} },
         { provide: getRepositoryToken(ConversationThread), useValue: {} },
+        {
+          provide: PresenceService,
+          useValue: {
+            setOnline: jest
+              .fn()
+              .mockReturnValue({ isOnline: true, lastSeen: '2026-01-01T00:00:00.000Z' }),
+            setOffline: jest
+              .fn()
+              .mockReturnValue({ isOnline: false, lastSeen: '2026-01-01T00:00:00.000Z' }),
+            getStatus: jest
+              .fn()
+              .mockReturnValue({ isOnline: false, lastSeen: null }),
+            getStatuses: jest.fn().mockReturnValue({}),
+          },
+        },
       ],
     }).compile();
 
@@ -142,8 +158,8 @@ describe('MessagingGateway', () => {
       await gateway.handleConnection(socket);
 
       // De-duplicated by the set, so one room, not two.
-      const branchJoins = socket.join.mock.calls.filter((c: any[]) =>
-        c[0] === 'branch_branch-a',
+      const branchJoins = (socket.join as jest.Mock).mock.calls.filter(
+        (c: any[]) => c[0] === 'branch_branch-a',
       );
       expect(branchJoins).toHaveLength(1);
     });
@@ -224,6 +240,102 @@ describe('MessagingGateway', () => {
         threadId: 'thread-1',
         isTyping: true,
       });
+    });
+  });
+
+  describe('presence', () => {
+    it('joins one room per channel and snapshots both kinds on subscribe', async () => {
+      const socket = freshSocket();
+
+      const res = await gateway.handlePresenceSubscribe(socket, {
+        userIds: ['customer-1', 'customer-1'],
+        businessIds: ['business-9'],
+      });
+
+      // Duplicated ids collapse to a single room join.
+      expect(socket.join).toHaveBeenCalledTimes(2);
+      expect(socket.join).toHaveBeenCalledWith('presence:user:customer-1');
+      expect(socket.join).toHaveBeenCalledWith('presence:business:business-9');
+      expect(res).toEqual({ users: {}, businesses: {} });
+    });
+
+    it('leaves the rooms again on unsubscribe', async () => {
+      const socket = freshSocket();
+
+      await gateway.handlePresenceUnsubscribe(socket, {
+        userIds: ['customer-1'],
+        businessIds: ['business-9'],
+      });
+
+      expect(socket.leave).toHaveBeenCalledWith('presence:user:customer-1');
+      expect(socket.leave).toHaveBeenCalledWith('presence:business:business-9');
+    });
+
+    it('returns a plain-object snapshot on presence:get', async () => {
+      const res = await gateway.handlePresenceGet({
+        userIds: ['customer-1'],
+      });
+
+      expect(res).toEqual({ users: {}, businesses: {} });
+    });
+
+    it('marks both the user and their business online on connect', async () => {
+      const socket = freshSocket();
+      userRepo.findOne.mockResolvedValue({
+        id: 'staff-1',
+        role: 'Staff',
+        branchId: 'branch-1',
+        businessId: 'business-1',
+      });
+
+      await gateway.handleConnection(socket);
+
+      const { presenceService } = gateway as any;
+      expect(presenceService.setOnline).toHaveBeenCalledWith(
+        'user',
+        'staff-1',
+        socket.id,
+      );
+      expect(presenceService.setOnline).toHaveBeenCalledWith(
+        'business',
+        'business-1',
+        socket.id,
+      );
+      // Announced to subscribers of the channel only, not broadcast.
+      expect(mockServer.to).toHaveBeenCalledWith('presence:user:staff-1');
+      expect(mockServer.to).toHaveBeenCalledWith(
+        'presence:business:business-1',
+      );
+    });
+
+    it('drops both channels on disconnect', async () => {
+      const socket = freshSocket();
+      userRepo.findOne.mockResolvedValue({
+        id: 'staff-1',
+        role: 'Staff',
+        branchId: 'branch-1',
+        businessId: 'business-1',
+      });
+      await gateway.handleConnection(socket);
+      mockServer.to.mockClear();
+
+      await gateway.handleDisconnect(socket);
+
+      const { presenceService } = gateway as any;
+      expect(presenceService.setOffline).toHaveBeenCalledWith(
+        'user',
+        'staff-1',
+        socket.id,
+      );
+      expect(presenceService.setOffline).toHaveBeenCalledWith(
+        'business',
+        'business-1',
+        socket.id,
+      );
+      expect(mockServer.to).toHaveBeenCalledWith('presence:user:staff-1');
+      expect(mockServer.to).toHaveBeenCalledWith(
+        'presence:business:business-1',
+      );
     });
   });
 });

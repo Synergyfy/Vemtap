@@ -206,6 +206,13 @@ export class User extends AbstractBaseEntity {
   @Column({ default: false })
   twoFactorEnabled: boolean;
 
+  @ApiProperty({ example: false })
+  @Column({ default: false })
+  isOnline: boolean;
+
+  @Column({ type: 'timestamp', nullable: true })
+  lastSeen: Date;
+
   @Column({ type: 'text', nullable: true, select: false })
   twoFactorSecret: string | null;
 
