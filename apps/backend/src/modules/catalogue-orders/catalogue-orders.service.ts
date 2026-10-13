@@ -346,12 +346,20 @@ export class CatalogueOrderService {
     const savedOrder = await this.orderRepository.save(order);
 
     // Trigger notification to branch staff
+    // Shared with the in-app row below so the push tap and the bell entry for
+    // the same order resolve to the same destination.
+    const orderUrl = `/orders/${savedOrder.id}`;
     this.pushNotificationService
       .sendToBranchStaff(
         branch.id,
         'New Order Received',
         `A new order (#${savedOrder.id.slice(0, 8)}) has been placed by ${dto.firstName} ${dto.lastName}.`,
-        { orderId: savedOrder.id, type: 'NEW_ORDER', category: 'orderUpdates' },
+        {
+          orderId: savedOrder.id,
+          url: orderUrl,
+          type: 'NEW_ORDER',
+          category: 'orderUpdates',
+        },
       )
       .catch((err) => console.error('Failed to send staff notification:', err));
 
@@ -365,7 +373,7 @@ export class CatalogueOrderService {
         'New Order Received',
         `A new order (#${savedOrder.id.slice(0, 8)}) has been placed by ${dto.firstName} ${dto.lastName}.`,
         'new_order',
-        `/orders/${savedOrder.id}`,
+        orderUrl,
       )
       .catch((err) =>
         console.error('Failed to create staff notification row:', err),

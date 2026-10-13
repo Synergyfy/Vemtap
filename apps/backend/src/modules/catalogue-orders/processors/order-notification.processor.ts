@@ -42,7 +42,13 @@ export class OrderNotificationProcessor extends WorkerHost {
     super();
   }
 
-  async process(job: Job<{ orderId: string; status: string; title?: string; body?: string }, any, string>): Promise<any> {
+  async process(
+    job: Job<
+      { orderId: string; status: string; title?: string; body?: string },
+      any,
+      string
+    >,
+  ): Promise<any> {
     const { orderId, status, title, body } = job.data;
     this.logger.log(`Processing ${status} notifications for order ${orderId}`);
 
@@ -70,13 +76,20 @@ export class OrderNotificationProcessor extends WorkerHost {
 
       // 1. Write the in-app row
       if (order.customerId) {
+        // One source for the destination, shared by the in-app row and the push.
+        // They used to be written separately: the row got an `actionUrl`, the
+        // push got none, and a push tap then had no URL to resolve and opened
+        // the app on its home screen. Deriving both from this keeps the two
+        // copies from drifting apart again.
+        const orderUrl = `/orders/${order.id}`;
+
         await this.notificationsService
           .create(
             order.customerId,
             pushTitle,
             pushBody,
             'order_status',
-            `/orders/${order.id}`,
+            orderUrl,
           )
           .catch((err) =>
             this.logger.error(
@@ -94,6 +107,10 @@ export class OrderNotificationProcessor extends WorkerHost {
             pushBody,
             {
               orderId: order.id,
+              // What the tap opens. Without it the worker finds no `url` and no
+              // `threadId`, so the deep link resolves to undefined and the
+              // notification can only ever launch the app.
+              url: orderUrl,
               status,
               type: 'ORDER_STATUS_UPDATE',
               category: 'orderUpdates',
