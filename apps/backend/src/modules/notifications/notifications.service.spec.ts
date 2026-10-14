@@ -15,11 +15,13 @@ import { NotFoundException } from '@nestjs/common';
 /** A query-builder double that records the clauses it is told to apply. */
 function queryBuilderDouble(rows: any[]) {
   return {
+    select: jest.fn().mockReturnThis(),
     where: jest.fn().mockReturnThis(),
     orderBy: jest.fn().mockReturnThis(),
     andWhere: jest.fn().mockReturnThis(),
     take: jest.fn().mockReturnThis(),
     skip: jest.fn().mockReturnThis(),
+    limit: jest.fn().mockReturnThis(),
     setParameter: jest.fn().mockReturnThis(),
     getMany: jest.fn().mockResolvedValue(rows),
     getManyAndCount: jest.fn().mockResolvedValue([rows, rows.length]),
@@ -187,7 +189,9 @@ describe('NotificationsService', () => {
       expect(qb.where).toHaveBeenCalledWith('n."userId" = :userId', {
         userId: 'user-1',
       });
-      expect(qb.orderBy).toHaveBeenCalledWith('n."createdAt"', 'DESC');
+      // Ordered on updatedAt, not createdAt: a batch that just took another
+      // event must rise to the top rather than sit where it was first written.
+      expect(qb.orderBy).toHaveBeenCalledWith('n."updatedAt"', 'DESC');
       // Fetches one extra row to detect whether a next page exists.
       expect(qb.take).toHaveBeenCalledWith(51);
     });
@@ -208,7 +212,8 @@ describe('NotificationsService', () => {
 
       await service.findByUser('user-1', { before });
 
-      expect(qb.andWhere).toHaveBeenCalledWith('n."createdAt" < :before', {
+      // The cursor rides the same column the list is ordered on.
+      expect(qb.andWhere).toHaveBeenCalledWith('n."updatedAt" < :before', {
         before,
       });
     });
@@ -221,7 +226,13 @@ describe('NotificationsService', () => {
         before: new Date('not-a-date'),
       });
 
-      expect(qb.andWhere).not.toHaveBeenCalled();
+      // No cursor clause — the expiry sweep shares this builder and uses
+      // andWhere for its own filter, so this asserts on the cursor clause
+      // specifically rather than on the method being untouched.
+      expect(qb.andWhere).not.toHaveBeenCalledWith(
+        'n."updatedAt" < :before',
+        expect.anything(),
+      );
     });
 
     it('should get unread count', async () => {

@@ -41,6 +41,10 @@ describe('DealVelocityService', () => {
 
   beforeEach(async () => {
     const arrays = freshData();
+    // Which query builder is being built: the service asks for the current
+    // window first, then the same hour last week. Reset per test so each one
+    // gets the same pair in the same order.
+    callCount = 0;
 
     claimRepo = {
       createQueryBuilder: jest.fn().mockImplementation(() => {
