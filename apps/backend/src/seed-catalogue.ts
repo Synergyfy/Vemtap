@@ -16,6 +16,7 @@ import {
   ServiceBookingMethod,
 } from './modules/catalogue/entities/catalogue-item.entity';
 import { CatalogueCategory } from './modules/catalogue/entities/catalogue-category.entity';
+import { normalizeVariants } from './modules/catalogue/utils/catalogue-item.utils';
 import {
   CatalogueOffer,
   CatalogueOfferPricingType,
@@ -1046,7 +1047,7 @@ async function seedBusiness(
         brand: item.brand,
         weight: item.weight,
         dimensions: item.dimensions,
-        variants: item.variants,
+        variants: normalizeVariants(item.variants, item.price) ?? undefined,
         tags: item.tags,
         allowBackOrder: true,
         enableLoyaltyPoints: item.loyaltyPoints != null,

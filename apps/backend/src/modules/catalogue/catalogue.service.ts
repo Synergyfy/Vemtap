@@ -30,6 +30,10 @@ import { Business } from '../businesses/entities/business.entity';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { paginateWithCursor } from '../../common/utils/cursor-pagination.util';
 
+import {
+  assertCompareAtPrice,
+  normalizeVariants,
+} from './utils/catalogue-item.utils';
 @Injectable()
 export class CatalogueService {
   constructor(
@@ -114,7 +118,9 @@ export class CatalogueService {
         'Reorder list contains a category that does not exist',
       );
     }
-    const missing = categories.filter((category) => !orderedIds.includes(category.id));
+    const missing = categories.filter(
+      (category) => !orderedIds.includes(category.id),
+    );
     if (missing.length > 0) {
       throw new BadRequestException('Reorder list must include every category');
     }
@@ -179,8 +185,11 @@ export class CatalogueService {
       dto.sku = `SKU-${randomPart}`;
     }
 
+    assertCompareAtPrice(dto.price, dto.compareAtPrice);
+    const { variants, ...fields } = dto;
     const item = this.itemRepository.create({
-      ...dto,
+      ...fields,
+      variants: normalizeVariants(variants, dto.price) ?? null,
       businessId,
       branches: [branch],
     });
@@ -198,6 +207,17 @@ export class CatalogueService {
       relations: ['branches'],
     });
     if (!item) throw new NotFoundException('Item not found');
+
+    assertCompareAtPrice(
+      dto.price ?? item.price,
+      dto.compareAtPrice !== undefined
+        ? dto.compareAtPrice
+        : item.compareAtPrice,
+    );
+    const normalizedVariants = normalizeVariants(
+      dto.variants,
+      dto.price ?? item.price,
+    );
 
     // cloning logic
     if (!dto.applyGlobally && dto.branchId && item.branches.length > 1) {
@@ -219,15 +239,18 @@ export class CatalogueService {
       delete (newItem as any).updatedAt;
 
       // Apply updates to the new instance
-      const { branchId, applyGlobally, ...updates } = dto;
+      const { branchId, applyGlobally, variants, ...updates } = dto;
       Object.assign(newItem, updates);
+      if (normalizedVariants !== undefined)
+        newItem.variants = normalizedVariants;
 
       return this.itemRepository.save(newItem);
     }
 
     // Global update or single-branch item update
-    const { branchId, applyGlobally, ...updates } = dto;
+    const { branchId, applyGlobally, variants, ...updates } = dto;
     Object.assign(item, updates);
+    if (normalizedVariants !== undefined) item.variants = normalizedVariants;
     return this.itemRepository.save(item);
   }
 

@@ -26,6 +26,9 @@ import {
   CatalogueOfferQueryDto,
   PublicCatalogueOffersQueryDto,
   GenerateOfferTermsDto,
+  OwnerOffersQueryDto,
+  UpdateOfferGroupDto,
+  UpdateOfferGroupStatusDto,
 } from './dto/offer.dto';
 import { RequestClaimOtpDto, VerifyClaimDto } from './dto/claim.dto';
 import { BusinessClaimsQueryDto } from './dto/my-claims.dto';
@@ -97,9 +100,52 @@ export class CatalogueOfferController {
   @Get('admin')
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.ADMIN, UserRole.STAFF)
   @Permissions('inventory')
-  @ApiOperation({ summary: 'List all offers for the business (Admin)' })
-  async listOffersAdmin(@Query('branchId') branchId: string, @Req() req: any) {
-    return this.offerService.findAllOffersAdmin(req.user.businessId, branchId);
+  @ApiOperation({
+    summary: "List the business's own offers (any status)",
+    description:
+      'Always a bare array. Optional filters: branchId, status, search, sortBy; ' +
+      '`groupBy=deal` collapses multi-branch deals; `page`/`limit` slice the list.',
+  })
+  async listOffersAdmin(@Query() query: OwnerOffersQueryDto, @Req() req: any) {
+    return this.offerService.findAllOffersAdmin(req.user.businessId, query);
+  }
+
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
+  @Patch('groups/:dealGroupId')
+  @Roles(UserRole.OWNER, UserRole.MANAGER)
+  @Permissions('inventory')
+  @ApiOperation({
+    summary: 'Apply the same edit to every branch of a multi-branch deal',
+  })
+  async updateOfferGroup(
+    @Param('dealGroupId', ParseUUIDPipe) dealGroupId: string,
+    @Body() dto: UpdateOfferGroupDto,
+    @Req() req: any,
+  ) {
+    return this.offerService.updateOfferGroup(
+      dealGroupId,
+      dto,
+      req.user.businessId,
+    );
+  }
+
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
+  @Patch('groups/:dealGroupId/status')
+  @Roles(UserRole.OWNER, UserRole.MANAGER)
+  @Permissions('inventory')
+  @ApiOperation({ summary: 'Activate or deactivate a deal at every branch' })
+  async updateOfferGroupStatus(
+    @Param('dealGroupId', ParseUUIDPipe) dealGroupId: string,
+    @Body() dto: UpdateOfferGroupStatusDto,
+    @Req() req: any,
+  ) {
+    return this.offerService.updateOfferGroupStatus(
+      dealGroupId,
+      dto.status,
+      req.user.businessId,
+    );
   }
 
   @Public()
@@ -238,7 +284,8 @@ export class CatalogueOfferController {
   })
   @ApiResponse({
     status: 200,
-    description: 'Business claims (array, or paginated envelope when requested)',
+    description:
+      'Business claims (array, or paginated envelope when requested)',
   })
   async getBusinessClaims(
     @Req() req: any,
