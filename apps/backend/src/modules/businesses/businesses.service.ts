@@ -12,7 +12,11 @@ import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { Repository, In, IsNull, Not } from 'typeorm';
 import { Cron } from '@nestjs/schedule';
-import { Business, BusinessStatus } from './entities/business.entity';
+import {
+  Business,
+  BusinessStatus,
+  BusinessVerificationStatus,
+} from './entities/business.entity';
 import { UpdateBusinessDto } from './dto/update-business.dto';
 import { AdminCreateBusinessDto } from './dto/admin-create-business.dto';
 import { User, UserRole, UserStatus } from '../users/entities/user.entity';
@@ -1047,6 +1051,7 @@ export class BusinessesService {
     const business = await this.findById(id);
     business.isVerified = true;
     business.verifiedAt = new Date();
+    business.verificationStatus = BusinessVerificationStatus.VERIFIED;
     return this.businessesRepository.save(business);
   }
 
@@ -1054,6 +1059,7 @@ export class BusinessesService {
     const business = await this.findById(id);
     business.isVerified = false;
     business.verifiedAt = null;
+    business.verificationStatus = BusinessVerificationStatus.UNVERIFIED;
     return this.businessesRepository.save(business);
   }
 
