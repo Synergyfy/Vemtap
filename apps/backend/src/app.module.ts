@@ -49,6 +49,7 @@ import { BusinessProfilingModule } from './modules/business-profiling/business-p
 import { AffiliatesModule } from './modules/affiliates/affiliates.module';
 import { TrainingModule } from './modules/training/training.module';
 import { DiscoveryModule } from './modules/discovery/discovery.module';
+import { AdWalletModule } from './modules/ad-wallet/ad-wallet.module';
 import { QrThriveModule } from './modules/qr-thrive/qr-thrive.module';
 import { BannersModule } from './modules/banners/banners.module';
 import { SavedModule } from './modules/saved/saved.module';
@@ -207,6 +208,7 @@ import { PublicDiscoveryModule } from './modules/public-discovery/public-discove
     AffiliatesModule,
     TrainingModule,
     DiscoveryModule,
+    AdWalletModule,
     QrThriveModule,
     BannersModule,
     BusinessDashboardModule,

@@ -2,7 +2,11 @@ import { Injectable, ConflictException, Logger } from '@nestjs/common';
 import * as crypto from 'crypto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Payment, PaymentStatus } from './entities/payment.entity';
+import {
+  Payment,
+  PaymentPurpose,
+  PaymentStatus,
+} from './entities/payment.entity';
 import { CreatePaymentDto } from './dto/create-payment.dto';
 import { HttpService } from '@nestjs/axios';
 import { firstValueFrom } from 'rxjs';
@@ -142,6 +146,31 @@ export class PaymentsService {
       default:
         return 'failed';
     }
+  }
+
+  /**
+   * Feature modules that own a payment purpose (e.g. the ad wallet) register a
+   * handler here instead of the payments module importing them, which would
+   * be circular. The webhook dispatches successful charges to it.
+   */
+  private readonly purposeHandlers = new Map<
+    PaymentPurpose,
+    (payment: Payment) => Promise<void>
+  >();
+
+  registerPurposeHandler(
+    purpose: PaymentPurpose,
+    handler: (payment: Payment) => Promise<void>,
+  ): void {
+    this.purposeHandlers.set(purpose, handler);
+  }
+
+  /** Run the registered handler for a confirmed payment. False when none. */
+  async dispatchSuccessfulPayment(payment: Payment): Promise<boolean> {
+    const handler = this.purposeHandlers.get(payment.purpose);
+    if (!handler) return false;
+    await handler(payment);
+    return true;
   }
 
   /**
