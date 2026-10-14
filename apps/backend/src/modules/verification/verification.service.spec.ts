@@ -1,6 +1,7 @@
 import { Test } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { ModuleRef } from '@nestjs/core';
+import { ConfigService } from '@nestjs/config';
 import { ServiceUnavailableException } from '@nestjs/common';
 import { VerificationService } from './verification.service';
 import { BytidClient } from './bytid/bytid.client';
@@ -16,6 +17,7 @@ import {
 import { User } from '../users/entities/user.entity';
 
 describe('VerificationService', () => {
+  let config: Record<string, string>;
   let service: VerificationService;
   let checks: any[];
   let checkRepo: any;
@@ -93,7 +95,13 @@ describe('VerificationService', () => {
     };
     userRepo = { findOne: jest.fn(async () => owner) };
     bytid = {
-      createLivenessSession: jest.fn(),
+      createLivenessSession: jest.fn(async (reference: string) => ({
+        id: 'sess-1',
+        reference,
+        url: 'https://bytid.com/liveness/sess-1',
+        status: 'pending',
+      })),
+      getLivenessSession: jest.fn(),
       verifyIdentity: jest.fn(async () => ninResult()),
       verifyDocument: jest.fn(),
       lookupCac: jest.fn(async () => cacResult()),
@@ -101,6 +109,7 @@ describe('VerificationService', () => {
       findByReference: jest.fn(),
     };
     notifications = { create: jest.fn(), sendNotification: jest.fn() };
+    config = {};
 
     const module = await Test.createTestingModule({
       providers: [
@@ -110,6 +119,10 @@ describe('VerificationService', () => {
         { provide: getRepositoryToken(Business), useValue: businessRepo },
         { provide: getRepositoryToken(User), useValue: userRepo },
         { provide: ModuleRef, useValue: { get: () => notifications } },
+        {
+          provide: ConfigService,
+          useValue: { get: (key: string) => config[key] },
+        },
       ],
     }).compile();
     service = module.get(VerificationService);
@@ -122,6 +135,51 @@ describe('VerificationService', () => {
     lastName: 'Okafor',
     livenessSessionId: 'liv_1',
   };
+
+  describe('selfie (liveness)', () => {
+    it('never sends bytID a non-https redirect', async () => {
+      await service.startLiveness('b1', 'vemtap://verification/liveness');
+      expect(bytid.createLivenessSession).toHaveBeenLastCalledWith(
+        expect.stringMatching(/^liv_b1_/),
+        undefined,
+      );
+    });
+
+    it('routes the app link through our https return page when configured', async () => {
+      config.API_PUBLIC_URL = 'https://api.vemtap.com/';
+      await service.startLiveness('b1', 'vemtap://verification/liveness');
+      expect(bytid.createLivenessSession).toHaveBeenLastCalledWith(
+        expect.any(String),
+        'https://api.vemtap.com/api/v1/verification/liveness/return',
+      );
+    });
+
+    it("only reports the business's own sessions", async () => {
+      bytid.getLivenessSession.mockResolvedValueOnce({
+        id: 'sess-1',
+        reference: 'liv_b1_abc',
+        status: 'passed',
+        usable_for_face_match: true,
+        reasons: [],
+      });
+      await expect(
+        service.livenessStatus('b1', 'sess-1'),
+      ).resolves.toMatchObject({
+        status: 'passed',
+        usableForFaceMatch: true,
+      });
+
+      bytid.getLivenessSession.mockResolvedValueOnce({
+        id: 'sess-2',
+        reference: 'liv_otherbusiness_abc',
+        status: 'passed',
+        usable_for_face_match: true,
+      });
+      await expect(service.livenessStatus('b1', 'sess-2')).rejects.toThrow(
+        'Selfie check not found',
+      );
+    });
+  });
 
   describe('identity', () => {
     it('passes a matching NIN with a matching selfie, storing only the masked number', async () => {

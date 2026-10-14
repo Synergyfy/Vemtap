@@ -1,3 +1,4 @@
+import { ConfigService } from '@nestjs/config';
 import {
   BadRequestException,
   Injectable,
@@ -66,6 +67,11 @@ export interface CheckView {
  * business itself (CAC). Both passing with matching names verifies the
  * business on the spot; anything uncertain waits for a person at VEMTAP.
  */
+/** Selfie sessions are referenced per business so status checks stay scoped. */
+function livenessPrefix(businessId: string): string {
+  return `liv_${businessId.replace(/-/g, '')}_`;
+}
+
 @Injectable()
 export class VerificationService {
   private readonly logger = new Logger(VerificationService.name);
@@ -79,6 +85,7 @@ export class VerificationService {
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
     private readonly moduleRef: ModuleRef,
+    private readonly config: ConfigService,
   ) {}
 
   // ─── selfie ──────────────────────────────────────────────────────────
@@ -86,13 +93,45 @@ export class VerificationService {
   async startLiveness(businessId: string, redirectUrl?: string) {
     await this.business(businessId);
     const session = await this.bytid.createLivenessSession(
-      `liv_${uuidv4()}`,
-      redirectUrl,
+      `${livenessPrefix(businessId)}${uuidv4().replace(/-/g, '')}`,
+      this.livenessRedirect(redirectUrl),
     );
     return {
       sessionId: session.id,
       url: session.url,
       status: session.status,
+      expiresAt: session.expires_at ?? null,
+    };
+  }
+
+  /**
+   * bytID only redirects to https. An https URL from the client is used as
+   * is; an app link (vemtap://…) goes through our https return page
+   * (`GET /verification/liveness/return`), which needs `API_PUBLIC_URL`.
+   * Without it there is no redirect: the person closes the page and the app
+   * asks for the session status instead.
+   */
+  private livenessRedirect(requested?: string): string | undefined {
+    if (requested?.startsWith('https://')) return requested;
+    const base = this.config
+      .get<string>('API_PUBLIC_URL')
+      ?.trim()
+      .replace(/\/+$/, '');
+    if (!requested || !base?.startsWith('https://')) return undefined;
+    return `${base}/api/v1/verification/liveness/return`;
+  }
+
+  /** Whether a selfie session finished and can be used with an ID check. */
+  async livenessStatus(businessId: string, sessionId: string) {
+    const session = await this.bytid.getLivenessSession(sessionId);
+    if (!session.reference?.startsWith(livenessPrefix(businessId))) {
+      throw new NotFoundException('Selfie check not found');
+    }
+    return {
+      sessionId: session.id,
+      status: session.status,
+      usableForFaceMatch: session.usable_for_face_match,
+      reasons: session.reasons ?? [],
       expiresAt: session.expires_at ?? null,
     };
   }

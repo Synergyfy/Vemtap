@@ -73,6 +73,11 @@ Body: `{ "redirectUrl": "vemtap://verification/liveness" }` (optional).
 Response: `{ sessionId, url, status: "pending", expiresAt }`.
 Open `url` with `WebBrowser.openAuthSessionAsync(url, redirectUrl)`. The person gets 3 tries. Then submit the ID with `livenessSessionId: sessionId`. A session can be used once, within an hour.
 
+bytID only redirects to `https://` URLs. An app link like `vemtap://…` is sent through our return page `GET /verification/liveness/return` (which redirects to `vemtap://verification/liveness`) when `API_PUBLIC_URL` is an https address; otherwise bytID gets no redirect and the person closes the page themselves. Either way, check the result after the browser closes:
+
+#### `GET /verification/liveness-sessions/:id`
+Response: `{ sessionId, status: "pending" | "passed" | "failed" | "expired", usableForFaceMatch, reasons, expiresAt }`. Submit the ID only when `usableForFaceMatch` is true. Sessions of other businesses return 404.
+
 #### `POST /verification/identity`
 ```json
 {
@@ -115,6 +120,7 @@ Body: `{ "checkId": "…", "note": "My NIN has my maiden name" }`. `checkId` def
 | `BYTID_API_KEY` | `uvk_test_…` (sandbox) / `uvk_live_…` (live) |
 | `BYTID_WEBHOOK_SECRET` | `whsec_…` from the bytID webhook endpoint |
 | `BYTID_BASE_URL` | optional, default `https://api.bytid.com/v1` |
+| `API_PUBLIC_URL` | optional, public https address of this API (e.g. `https://api.vemtap.com`); lets bytID send people back to the app after the selfie |
 
 Without `BYTID_API_KEY`, identity and CAC checks return 503 `Identity verification is not configured`.
 

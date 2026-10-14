@@ -10,6 +10,7 @@ import {
   Param,
   ParseUUIDPipe,
   Post,
+  Redirect,
   Req,
   UnauthorizedException,
   UseGuards,
@@ -77,6 +78,32 @@ export class VerificationController {
       businessOf(req),
       dto.redirectUrl,
     );
+  }
+
+  @Get('liveness-sessions/:id')
+  @Roles(UserRole.OWNER, UserRole.MANAGER)
+  @Permissions('verification')
+  @ApiOperation({
+    summary:
+      'Status of a selfie check: `passed` with `usableForFaceMatch` means it can be submitted',
+  })
+  livenessStatus(@Req() req: AuthedRequest, @Param('id') id: string) {
+    return this.verificationService.livenessStatus(businessOf(req), id);
+  }
+
+  /**
+   * bytID only redirects to https, so the hosted selfie page returns here and
+   * this sends the browser on to the app. The target is fixed (no open redirect).
+   */
+  @Get('liveness/return')
+  @Public()
+  @SkipSubscriptionCheck()
+  @Redirect('vemtap://verification/liveness', HttpStatus.FOUND)
+  @ApiOperation({
+    summary: 'Return page for the hosted selfie check (redirects to the app)',
+  })
+  livenessReturn() {
+    return undefined;
   }
 
   @Post('identity')
