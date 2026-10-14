@@ -1888,7 +1888,7 @@ function PlanConfirmation({ data, onNext, onBack, isSubscribingFree }: { data: P
                 </h1>
                 <p className="text-sm text-text-secondary font-medium max-w-sm mx-auto leading-relaxed">
                     {isTrial
-                        ? `You are starting a ${trialDays}-day free trial. You won't be charged the subscription fee until your trial expires.`
+                        ? `You are starting a ${trialDays}-day free trial. No card is needed and you will never be charged automatically.`
                         : 'Review your selected plan and pick how you want to pay.'}
                 </p>
             </div>
@@ -1959,10 +1959,10 @@ function PlanConfirmation({ data, onNext, onBack, isSubscribingFree }: { data: P
                 {isTrial && (
                     <div className="p-4 rounded-xl bg-amber-50 border border-amber-200/60 space-y-2">
                         <p className="text-xs font-bold text-amber-900 flex items-center gap-2">
-                            <Shield size={14} className="text-amber-600" /> Bank Details & Card Verification Notice
+                            <Shield size={14} className="text-amber-600" /> No Card Required
                         </p>
                         <p className="text-[11px] font-medium text-amber-800 leading-relaxed">
-                            A ₦100 refundable bank verification deposit is required via Paystack to authorize your payment card. Your free trial is active for {trialDays} days. Auto-deduction will begin when your free trial ends unless cancelled.
+                            Your free trial is active for {trialDays} days. When it ends your business moves to the free plan, and you can subscribe any time to keep these features. Nothing is charged automatically.
                         </p>
                     </div>
                 )}
@@ -1992,7 +1992,7 @@ function PlanConfirmation({ data, onNext, onBack, isSubscribingFree }: { data: P
                             <span className="size-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                             Activating Plan...
                         </>
-                    ) : plan?.isFree ? 'Complete Free Setup' : isTrial ? 'Proceed to Bank Verification (₦100)' : 'Proceed to Payment'}
+                    ) : plan?.isFree ? 'Complete Free Setup' : isTrial ? 'Continue to Start Trial' : 'Proceed to Payment'}
                     {!isSubscribingFree && <ArrowRight size={16} />}
                 </Button>
                 <button
@@ -2035,7 +2035,7 @@ function PaymentStep({ data, onNext }: { data: Partial<OnboardingData>, onNext: 
             ? (plan?.quarterlyPrice || (plan?.monthlyPrice || 0) * 3)
             : (plan?.monthlyPrice || 0);
 
-    const subtotal = isTrialMode ? 100 : (discount?.originalPlanPrice ?? planPrice);
+    const subtotal = isTrialMode ? 0 : (discount?.originalPlanPrice ?? planPrice);
     const total = chargedAmount ?? subtotal;
 
     const clearPoll = () => {
@@ -2077,7 +2077,7 @@ function PaymentStep({ data, onNext }: { data: Partial<OnboardingData>, onNext: 
     }, [plan]);
 
     // Fetch the exact server-computed total (plan + tax + promo) so the summary
-    // matches what will actually be charged. The trial deposit is a flat ₦100.
+    // matches what will actually be charged. Trials cost nothing.
     useEffect(() => {
         if (!plan || plan.isFree || isTrialMode) return;
         let cancelled = false;
@@ -2217,6 +2217,27 @@ function PaymentStep({ data, onNext }: { data: Partial<OnboardingData>, onNext: 
             return;
         }
 
+        // Free trials need no card and no payment: start it directly.
+        if (isTrialMode) {
+            payingRef.current = true;
+            setIsProcessing(true);
+            try {
+                await api.post('/subscriptions/trial', {
+                    planId: plan.id,
+                    billingPeriod: billingCycle,
+                });
+                payingRef.current = false;
+                setIsProcessing(false);
+                setIsSuccess(true);
+                setTimeout(() => onNext({}), 2000);
+            } catch (err) {
+                payingRef.current = false;
+                toast.error(getErrorMessage(err, 'Could not start your free trial'));
+                setIsProcessing(false);
+            }
+            return;
+        }
+
         // Flag the payment as in-flight so the auto-advance effect above cannot
         // unmount this component (and skip the Paystack popup) mid-checkout.
         payingRef.current = true;
@@ -2285,9 +2306,11 @@ function PaymentStep({ data, onNext }: { data: Partial<OnboardingData>, onNext: 
                 <div className="size-24 border-8 border-primary/20 border-t-primary rounded-full animate-spin" />
                 <div className="space-y-2">
                     <h1 className="text-2xl md:text-3xl font-bold text-text-main tracking-tight">
-                        {isTrialMode ? 'Verifying Bank Card...' : 'Processing Payment...'}
+                        {isTrialMode ? 'Starting Your Trial...' : 'Processing Payment...'}
                     </h1>
-                    <p className="text-text-secondary font-medium">Please complete the Paystack transaction. Do not close this page.</p>
+                    <p className="text-text-secondary font-medium">
+                        {isTrialMode ? 'This only takes a moment.' : 'Please complete the Paystack transaction. Do not close this page.'}
+                    </p>
                 </div>
             </motion.div>
         );
@@ -2326,11 +2349,11 @@ function PaymentStep({ data, onNext }: { data: Partial<OnboardingData>, onNext: 
                 </div>
                 <div className="space-y-2">
                     <h1 className="text-2xl md:text-3xl font-bold text-text-main tracking-tight">
-                        {isTrialMode ? 'Bank Verified & Trial Activated! 🎉' : 'Payment Successful! 🎉'}
+                        {isTrialMode ? 'Trial Activated! 🎉' : 'Payment Successful! 🎉'}
                     </h1>
                     <p className="text-text-secondary font-medium max-w-sm">
                         {isTrialMode
-                            ? 'Your bank details have been verified and your free trial is now active.'
+                            ? 'Your free trial is now active.'
                             : 'Your subscription has been activated successfully.'}
                     </p>
                 </div>
@@ -2351,11 +2374,11 @@ function PaymentStep({ data, onNext }: { data: Partial<OnboardingData>, onNext: 
                     <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-primary">Secure Payment Gateway</span>
                 </span>
                 <h1 className="text-2xl md:text-3xl font-bold text-text-main tracking-tight">
-                    {isTrialMode ? 'Bank Details & Verification Deposit' : 'Complete Your Subscription'}
+                    {isTrialMode ? 'Start Your Free Trial' : 'Complete Your Subscription'}
                 </h1>
                 <p className="text-sm text-text-secondary font-normal max-w-md mx-auto leading-relaxed">
                     {isTrialMode
-                        ? 'Authorize your bank card for auto-deduction after your free trial ends.'
+                        ? 'No card, no payment. You choose whether to subscribe when the trial ends.'
                         : 'Secure checkout powered by Paystack.'}
                 </p>
             </div>
@@ -2373,21 +2396,17 @@ function PaymentStep({ data, onNext }: { data: Partial<OnboardingData>, onNext: 
                             <span>Plan Trial ({plan?.name})</span>
                             <span className="text-emerald-600 font-bold">Free Trial</span>
                         </div>
-                        <div className="flex justify-between text-sm font-semibold text-text-main">
-                            <span>Bank Card Verification Deposit</span>
-                            <span>₦100</span>
-                        </div>
                         <div className="p-4 rounded-xl bg-gray-50 border border-gray-100 text-xs space-y-1.5">
                             <p className="font-bold text-text-main flex items-center gap-1.5">
-                                <Shield size={14} className="text-primary" /> Auto-Renewal Schedule
+                                <Shield size={14} className="text-primary" /> After Your Trial
                             </p>
                             <p className="text-text-secondary text-[11px] leading-relaxed">
-                                After your trial expires, ₦{planPrice.toLocaleString()} will be automatically charged {billingCycle === 'yearly' ? 'annually' : billingCycle === 'quarterly' ? 'quarterly' : 'monthly'}.
+                                Your business moves to the free plan. To keep {plan?.name}, subscribe for ₦{planPrice.toLocaleString()} {billingCycle === 'yearly' ? 'a year' : billingCycle === 'quarterly' ? 'a quarter' : 'a month'}. You are never charged automatically.
                             </p>
                         </div>
                         <div className="pt-3 border-t border-gray-200 flex justify-between text-lg font-bold text-primary">
-                            <span>Deposit Amount</span>
-                            <span>₦100</span>
+                            <span>Due Today</span>
+                            <span>₦0</span>
                         </div>
                     </div>
                 ) : (
@@ -2481,7 +2500,7 @@ function PaymentStep({ data, onNext }: { data: Partial<OnboardingData>, onNext: 
                     disabled={isProcessing}
                     className="w-full rounded-xl bg-primary px-6 py-3.5 text-[10px] font-bold uppercase tracking-wider text-white shadow-md shadow-primary/20 hover:bg-primary-hover transition-all active:scale-[0.98] flex items-center justify-center gap-3 cursor-pointer disabled:opacity-60"
                 >
-                    {plan?.isFree ? 'Activate Free Plan' : isTrialMode ? 'Pay ₦100 & Start Free Trial' : 'Pay Now & Activate Subscription'} <ArrowRight size={16} />
+                    {plan?.isFree ? 'Activate Free Plan' : isTrialMode ? 'Start Free Trial' : 'Pay Now & Activate Subscription'} <ArrowRight size={16} />
                 </Button>
             </div>
         </motion.div>
@@ -2567,7 +2586,7 @@ function CompleteStep({ data, onNext }: { data: Partial<OnboardingData>, onNext:
                             </div>
                             <p className="text-lg font-black text-text-main capitalize">{plan?.name || data.planId || 'Standard'}</p>
                             <p className="text-xs font-semibold text-primary">
-                                {isTrial ? '14-Day Free Trial Active' : 'Paid Subscription Active'}
+                                {isTrial ? 'Free Trial Active' : 'Paid Subscription Active'}
                             </p>
                         </div>
                         <div className="p-5 rounded-2xl bg-gray-50 border border-gray-100 space-y-2">
