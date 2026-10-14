@@ -130,6 +130,15 @@ export class InboxService {
     }
 
     await this.threadRepo.save(thread);
+
+    // Opening the chat is the read receipt too: staff read what the customer
+    // wrote (INBOUND), the customer reads the business's replies (OUTBOUND).
+    if (branchId || customerId) {
+      await this.messagingGateway.markThreadRead(
+        thread,
+        branchId ? MessageDirection.INBOUND : MessageDirection.OUTBOUND,
+      );
+    }
   }
 
   async sendReply(

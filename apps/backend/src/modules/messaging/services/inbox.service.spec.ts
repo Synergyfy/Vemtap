@@ -95,6 +95,7 @@ describe('InboxService', () => {
       emitMessage: jest.fn(),
       emitMessageUpdate: jest.fn(),
       emitThreadDeleted: jest.fn(),
+      markThreadRead: jest.fn().mockResolvedValue(undefined),
     };
 
     pushMock = {
@@ -563,6 +564,38 @@ describe('InboxService', () => {
 
       expect(messageRepoMock.delete).not.toHaveBeenCalled();
       expect(threadRepoMock.remove).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('markAsRead', () => {
+    const thread = { id: 'thread-1', branchId: 'branch-1', customerId: 'cust-1' };
+
+    it('clears the staff counter and marks the customer messages read', async () => {
+      threadRepoMock.findOne.mockResolvedValue({ ...thread, branchUnreadCount: 3 });
+
+      await service.markAsRead('thread-1', 'branch-1');
+
+      expect(threadRepoMock.save).toHaveBeenCalledWith(
+        expect.objectContaining({ branchUnreadCount: 0 }),
+      );
+      expect(gatewayMock.markThreadRead).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'thread-1' }),
+        'INBOUND',
+      );
+    });
+
+    it('clears the customer counter and marks the business replies read', async () => {
+      threadRepoMock.findOne.mockResolvedValue({ ...thread, customerUnreadCount: 2 });
+
+      await service.markAsRead('thread-1', undefined, 'cust-1');
+
+      expect(threadRepoMock.save).toHaveBeenCalledWith(
+        expect.objectContaining({ customerUnreadCount: 0 }),
+      );
+      expect(gatewayMock.markThreadRead).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'thread-1' }),
+        'OUTBOUND',
+      );
     });
   });
 });
