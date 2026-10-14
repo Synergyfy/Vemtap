@@ -210,6 +210,20 @@ export class DashboardStatsDto {
   totalClaims: number;
 
   @ApiProperty({
+    description:
+      'Lifetime order volume in naira — gross totalAmount, excluding cancelled/rejected/refunded orders',
+    example: 482000,
+  })
+  ordersRevenue: number;
+
+  @ApiProperty({
+    description:
+      'Lifetime bookings — orders carrying a bookingDate (same exclusions as ordersRevenue)',
+    example: 128,
+  })
+  bookingsCount: number;
+
+  @ApiProperty({
     nullable: true,
     description:
       'Visitors change %, last 7 days vs the previous 7 days (null when the previous window was empty)',
@@ -293,6 +307,13 @@ export class BusinessDashboardResponseDto {
 
   @ApiProperty({ type: [DashboardMessageDto] })
   messages: DashboardMessageDto[];
+
+  @ApiProperty({
+    description:
+      'Conversation messages the branch has not opened yet (sum of branchUnreadCount)',
+    example: 3,
+  })
+  unreadMessages: number;
 
   @ApiProperty({ type: [DashboardStaffDto] })
   staffMembers: DashboardStaffDto[];

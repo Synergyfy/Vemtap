@@ -37,6 +37,10 @@ const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'applicatio
 export class UploadsController {
   constructor(private readonly uploadsService: UploadsService) {}
 
+const ALLOWED_FOLDER = /^vemtap\/(avatars|users|messaging|businesses)\/[a-z0-9-]+$/i;
+
+// ... existing constants
+
   @Post()
   @SkipSubscriptionCheck()
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.ADMIN, UserRole.CUSTOMER)
@@ -46,13 +50,21 @@ export class UploadsController {
       limits: { fileSize: MAX_UPLOAD_BYTES },
       fileFilter: (_req, file, callback) => {
         if (!ALLOWED_MIME_TYPES.includes(file.mimetype)) {
-          callback(
-            new BadRequestException('Only JPG, PNG or WebP images are allowed'),
-            false,
+callback(
+      new BadRequestException('Only JPG, PNG, WebP or PDF images are allowed'),
           );
-          return;
+        } else if (
+          folderOverride &&
+          !ALLOWED_FOLDER.test(folderOverride)
+        ) {
+          callback(
+            new BadRequestException(
+              'Invalid folder override. Allowed prefixes: vemtap/avatars, vemtap/users, vemtap/messaging, vemtap/businesses',
+            ),
+          );
+        } else {
+          callback(null);
         }
-        callback(null, true);
       },
     }),
   )
