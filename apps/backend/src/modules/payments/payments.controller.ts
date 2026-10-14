@@ -103,6 +103,11 @@ export class PaymentsController {
           return;
         }
 
+        // Purposes owned by another module (ad wallet top-ups, …).
+        if (await this.paymentsService.dispatchSuccessfulPayment(payment)) {
+          return;
+        }
+
         const isSubscriptionIntent =
           payment.purpose === PaymentPurpose.SUBSCRIPTION ||
           payment.purpose === PaymentPurpose.PLAN_WITH_ADDONS;
