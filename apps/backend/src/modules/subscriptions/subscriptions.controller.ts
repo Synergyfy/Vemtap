@@ -145,6 +145,7 @@ export class SubscriptionsController {
       promoCode: subscribeDto.promoCode,
       addonIds: subscribeDto.addonIds,
       addonQuantities: subscribeDto.addonQuantities,
+      callbackUrl: subscribeDto.callbackUrl,
     });
   }
 

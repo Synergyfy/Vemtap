@@ -141,7 +141,7 @@ Each plan has `id`, `name`, `monthlyPrice`, `quarterlyPrice`, `yearlyPrice` (+ t
 | `GET /subscriptions/trial/eligibility` | | `{ eligible, trialUsedAt }` |
 | `POST /subscriptions/trial` | `{ planId, billingPeriod?: 'monthly'\|'quarterly'\|'yearly' }` | Same shape as `/active` (status `trial`). 400 `already used its free trial` / `does not offer a free trial` / `free plan has no trial`. |
 | `GET /subscriptions/price-preview` | `planId`, `billingPeriod`, `promoCode?`, `addonIds?` | Subtotal, tax, total |
-| `POST /subscriptions/initialize-payment` | `{ planId, billingPeriod, promoCode?, addonIds?, addonQuantities? }` | Paystack `{ reference, access_code, authorization_url, … }`. With `isTrial: true` → 400 `Free trials need no payment. Start one with POST /subscriptions/trial.` |
+| `POST /subscriptions/initialize-payment` | `{ planId, billingPeriod, promoCode?, addonIds?, addonQuantities?, callbackUrl? }` | Paystack `{ reference, access_code, authorization_url, … }`. With `isTrial: true` → 400 `Free trials need no payment. Start one with POST /subscriptions/trial.` |
 | `GET /payments/verify/:reference` (Owner/Admin) | | `{ success, status, amount }` |
 | `GET /subscriptions/billing-history` | `page`, `limit` | `{ data: [{ id, reference, amount, currency, status, purpose, planId, billingPeriod, subtotal, taxAmount, createdAt }], total, page, limit, hasNextPage }` |
 | `GET /subscriptions/payment-method` | | `{ hasCard, card: { brand, last4, expMonth, expYear, bank } \| null, autoRenews }` |
@@ -150,7 +150,7 @@ Each plan has `id`, `name`, `monthlyPrice`, `quarterlyPrice`, `yearlyPrice` (+ t
 | `GET /addons`, `GET /addons/my`, `POST /addons/purchase`, `DELETE /addons/:businessAddonId/cancel` | | Add-ons |
 
 ### 2.4 Paying from the app
-1. `POST /subscriptions/initialize-payment` → open `authorization_url` with `WebBrowser.openAuthSessionAsync(url, 'vemtap://payments/return')`.
+1. `POST /subscriptions/initialize-payment` with `callbackUrl: 'vemtap://payments/return'` (http, https or `vemtap` only) → open `authorization_url` with `WebBrowser.openAuthSessionAsync(url, 'vemtap://payments/return')`.
 2. When the browser closes, poll `GET /subscriptions/active` every 2–3 s (up to ~30 s) until `plan.id` is the chosen plan and `status === 'active'`. `GET /payments/verify/:reference` shows the payment state meanwhile.
 3. The Paystack webhook activates the subscription even if the app was closed.
 

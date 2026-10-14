@@ -641,6 +641,7 @@ export class SubscriptionsService {
     promoCode?: string;
     addonIds?: string[];
     addonQuantities?: number[];
+    callbackUrl?: string;
   }): Promise<{
     reference: string;
     access_code: string;
@@ -655,6 +656,7 @@ export class SubscriptionsService {
       promoCode,
       addonIds,
       addonQuantities,
+      callbackUrl,
     } = input;
 
     const plan = await this.plansService.findOne(planId);
@@ -758,6 +760,7 @@ export class SubscriptionsService {
       amount: Math.round(amount * 100),
       reference,
       currency: plan.currency || 'NGN',
+      callbackUrl,
       metadata: {
         businessId,
         planId,
