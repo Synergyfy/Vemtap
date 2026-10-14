@@ -77,3 +77,31 @@ describe('assertCompareAtPrice', () => {
     expect(() => assertCompareAtPrice(1000, 900)).toThrow(BadRequestException);
   });
 });
+
+describe('CatalogueItem legacy variants on load', () => {
+  // Imported here so the entity's @AfterLoad hook is exercised directly.
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { CatalogueItem } = require('../entities/catalogue-item.entity');
+
+  it('presents stored legacy variants in the current shape with stable ids', () => {
+    const item = Object.assign(new CatalogueItem(), {
+      price: 6500,
+      variants: [
+        { type: 'size', value: '12 inch' },
+        { type: 'Large', value: '7,500' },
+      ],
+    });
+    item.normalizeStoredVariants();
+    expect(item.variants).toEqual([
+      expect.objectContaining({ id: 'v1', name: '12 inch', price: 6500 }),
+      expect.objectContaining({ id: 'v2', name: 'Large', price: 7500 }),
+    ]);
+  });
+
+  it('leaves current-shape variants untouched', () => {
+    const variants = [{ id: 'a', name: 'Small', price: 100 }];
+    const item = Object.assign(new CatalogueItem(), { price: 100, variants });
+    item.normalizeStoredVariants();
+    expect(item.variants).toBe(variants);
+  });
+});
