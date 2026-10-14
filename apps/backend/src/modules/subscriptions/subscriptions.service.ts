@@ -14,7 +14,7 @@ import {
   BillingPeriod,
 } from './entities/subscription.entity';
 import { Plan } from './entities/plan.entity';
-import { In, LessThanOrEqual, Repository } from 'typeorm';
+import { In, IsNull, LessThanOrEqual, Not, Repository } from 'typeorm';
 import { PlansService } from './plans.service';
 import { SubscribeDto } from './dto/subscribe.dto';
 import { Business } from '../businesses/entities/business.entity';
@@ -93,6 +93,18 @@ export class SubscriptionsService {
     private readonly couponEngineService: CouponEngineService,
     private readonly mailService: MailService,
   ) {}
+
+  /** Whether the business has ever started a trial, and when. */
+  async trialUsage(
+    businessId: string,
+  ): Promise<{ used: boolean; usedAt: Date | null }> {
+    const first = await this.subscriptionRepository.findOne({
+      where: { businessId, trialEndDate: Not(IsNull()) },
+      order: { createdAt: 'ASC' },
+      withDeleted: true,
+    });
+    return { used: Boolean(first), usedAt: first?.startDate ?? null };
+  }
 
   async activeSubscription(
     businessId?: string,
@@ -292,17 +304,21 @@ export class SubscriptionsService {
             'This plan does not offer a trial period.',
           );
         }
-        if (paymentData && paymentData.amount !== 10000) {
-          throw new BadRequestException(
-            'Payment amount does not match the ₦100 verification deposit.',
-          );
+        // Trials are free and limited to one per business. No deposit is
+        // taken; a reference sent by an older client is recorded for its
+        // books but nothing is charged when the trial ends.
+        if (!isAdminOverride) {
+          const usage = await this.trialUsage(businessId as string);
+          if (usage.used) {
+            throw new BadRequestException(
+              'This business has already used its free trial. Subscribe to continue.',
+            );
+          }
         }
-        if (paymentReference) {
-          // Record the ₦100 verification deposit so the pending intent created
-          // at initialize-payment is upgraded to Success (data consistency).
+        if (paymentReference && paymentData) {
           await this.paymentsService.recordPayment({
             reference: paymentReference,
-            amount: 100,
+            amount: Number(paymentData.amount || 0) / 100,
             purpose: PaymentPurpose.SUBSCRIPTION,
             status: PaymentStatus.SUCCESS,
             metadata: { planId, billingPeriod, isTrial: true },
@@ -465,6 +481,19 @@ export class SubscriptionsService {
       status,
       paystackReference: paymentReference,
       paystackAuthorizationCode: authCode,
+      cardSummary:
+        paymentData?.authorization?.last4 && !isTrial
+          ? {
+              brand:
+                paymentData.authorization.brand ??
+                paymentData.authorization.card_type ??
+                null,
+              last4: paymentData.authorization.last4,
+              expMonth: paymentData.authorization.exp_month ?? null,
+              expYear: paymentData.authorization.exp_year ?? null,
+              bank: paymentData.authorization.bank ?? null,
+            }
+          : null,
     });
 
     const savedSub = await this.subscriptionRepository.save(newSub);
@@ -649,8 +678,9 @@ export class SubscriptionsService {
     if (plan.isFree) {
       amount = 0;
     } else if (isTrial) {
-      amount = 100;
-      paymentMetadata = { isTrial: true };
+      throw new BadRequestException(
+        'Free trials need no payment. Start one with POST /subscriptions/trial.',
+      );
     } else {
       let planPrice = Number(plan.monthlyPrice || 0);
       if (billingPeriod === BillingPeriod.QUARTERLY)
@@ -805,6 +835,24 @@ export class SubscriptionsService {
     await this.processRenewals();
   }
 
+  /**
+   * Listeners for a trial that just ended (e.g. the trial service notifying the
+   * owner). Registered rather than injected to avoid a circular dependency.
+   */
+  private readonly trialExpiredListeners: ((
+    sub: Subscription,
+  ) => Promise<void>)[] = [];
+
+  onTrialExpired(listener: (sub: Subscription) => Promise<void>): void {
+    this.trialExpiredListeners.push(listener);
+  }
+
+  /**
+   * Trials are free and are never charged — not even when an older trial
+   * saved a card. When one ends the business goes back to the free plan (which
+   * also emails the downgrade), so the subscription guard never finds it
+   * without a plan, and listeners tell the owner how to subscribe.
+   */
   async processExpiredTrials() {
     const now = new Date();
     const expiredTrials = await this.subscriptionRepository.find({
@@ -818,99 +866,23 @@ export class SubscriptionsService {
     this.logger.log(`Found ${expiredTrials.length} expired trials to process.`);
 
     for (const sub of expiredTrials) {
-      if (!sub.paystackAuthorizationCode) {
-        this.logger.warn(
-          `Subscription ${sub.id} has no auth code. Expiring...`,
+      sub.status = SubscriptionStatus.EXPIRED;
+      await this.subscriptionRepository.save(sub);
+
+      try {
+        await this.subscribeToFreePlan(sub.businessId, true);
+      } catch (err) {
+        this.logger.error(
+          `Trial ${sub.id} ended but moving business ${sub.businessId} to the free plan failed: ${(err as Error).message}`,
         );
-        sub.status = SubscriptionStatus.EXPIRED;
-        await this.subscriptionRepository.save(sub);
-        continue;
       }
 
-      let amount = sub.plan.monthlyPrice;
-      if (sub.billingPeriod === BillingPeriod.QUARTERLY)
-        amount = sub.plan.quarterlyPrice;
-      if (sub.billingPeriod === BillingPeriod.YEARLY)
-        amount = sub.plan.yearlyPrice;
-
-      if (amount <= 0) {
-        await this.activateSubscription(sub);
-        await this.subscriptionRepository.save(sub);
-        continue;
-      }
-
-      const ownerEmail =
-        sub.business?.officialEmail ||
-        sub.business?.owner?.email ||
-        'billing@latap.com';
-
-      const taxConfig = await this.subscriptionTaxService.getActiveConfig();
-      const taxResult = this.subscriptionTaxService.calculateTax(
-        amount,
-        taxConfig,
-      );
-      const chargeAmount = taxResult.total;
-
-      const charge: any = await this.paymentsService.chargeAuthorization(
-        chargeAmount,
-        ownerEmail,
-        sub.paystackAuthorizationCode,
-      );
-
-      if (charge && charge.status === 'success') {
-        this.logger.log(
-          `Successfully charged subscription ${sub.id}. Upgrading to ACTIVE.`,
+      for (const listener of this.trialExpiredListeners) {
+        await listener(sub).catch((err: Error) =>
+          this.logger.warn(
+            `Trial-expired listener failed for ${sub.id}: ${err.message}`,
+          ),
         );
-
-        await this.paymentsService.recordPayment({
-          reference: charge.reference,
-          amount: chargeAmount,
-          purpose: PaymentPurpose.SUBSCRIPTION,
-          status: PaymentStatus.SUCCESS,
-          metadata: {
-            subscriptionId: sub.id,
-            planId: sub.planId,
-            subtotal: taxResult.subtotal,
-            taxAmount: taxResult.taxAmount,
-            taxRate: taxResult.taxRule.rate,
-            taxType: taxResult.taxRule.taxType,
-            taxName: taxResult.taxRule.name,
-            taxEnabled: taxResult.taxRule.isEnabled,
-            total: chargeAmount,
-          },
-          businessId: sub.businessId,
-          userId: sub.business?.ownerId,
-        });
-
-        await this.activateSubscription(sub);
-        await this.subscriptionRepository.save(sub);
-
-        // Trigger affiliate commission (on base amount)
-        if (sub.business) {
-          await this.reportCommission(
-            sub.business,
-            sub.plan,
-            charge.reference,
-            amount,
-          );
-        }
-
-        if (sub.businessId) {
-          const branches = await this.branchRepository.find({
-            where: { businessId: sub.businessId },
-          });
-          const branchIds = branches.map((b) => b.id);
-          if (branchIds.length > 0) {
-            await this.userRepository.update(
-              { branchId: In(branchIds) },
-              { status: UserStatus.ACTIVE },
-            );
-          }
-        }
-      } else {
-        this.logger.error(`Failed to charge subscription ${sub.id}. Expiring.`);
-        sub.status = SubscriptionStatus.EXPIRED;
-        await this.subscriptionRepository.save(sub);
       }
     }
   }

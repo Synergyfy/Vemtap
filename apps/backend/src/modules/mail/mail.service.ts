@@ -709,6 +709,87 @@ export class MailService {
     return { subject, html };
   }
 
+  /**
+   * Free-trial reminder: a few days before the trial ends, or on the day it
+   * ended. Trials are never charged, so the email asks the owner to subscribe
+   * rather than warning about a payment.
+   */
+  async sendTrialEndingReminder(params: {
+    email: string;
+    customerName: string;
+    businessName: string;
+    planName: string;
+    /** 0 means the trial has ended. */
+    daysLeft: number;
+    subscribeUrl?: string;
+  }) {
+    const { subject, html } = this.generateTrialEndingReminderHtml(params);
+    try {
+      const { data } = await this.resend.emails.send({
+        from: this.fromEmail,
+        to: params.email,
+        subject,
+        html,
+      });
+      this.logger.log(
+        `Trial reminder email sent to ${params.email}, id: ${data?.id}`,
+      );
+      return true;
+    } catch (error) {
+      this.logger.error(
+        `Error sending trial reminder email to ${params.email}:`,
+        error,
+      );
+      return false;
+    }
+  }
+
+  public generateTrialEndingReminderHtml(params: {
+    customerName: string;
+    businessName: string;
+    planName: string;
+    daysLeft: number;
+    subscribeUrl?: string;
+  }): { subject: string; html: string } {
+    const esc = (value: string) =>
+      value.replace(/[&<>"']/g, (ch) => `&#${ch.charCodeAt(0)};`);
+    const name = esc(params.customerName || 'there');
+    const business = esc(params.businessName);
+    const plan = esc(params.planName);
+    const ended = params.daysLeft <= 0;
+    const daysText = `${params.daysLeft} ${params.daysLeft === 1 ? 'day' : 'days'}`;
+    const subject = ended
+      ? `Your ${params.planName} trial has ended`
+      : `Your ${params.planName} trial ends in ${daysText}`;
+    const title = ended
+      ? 'Your free trial has ended'
+      : `Trial ends in ${daysText}`;
+    const body = ended
+      ? `Your free <strong>${plan}</strong> trial for <strong>${business}</strong> has ended and your account is back on the free plan. Nothing was charged. Subscribe to get your ${plan} features back.`
+      : `Your free <strong>${plan}</strong> trial for <strong>${business}</strong> ends in <strong>${daysText}</strong>. You will not be charged automatically — subscribe before it ends to keep your ${plan} features without interruption.`;
+    const button = params.subscribeUrl
+      ? `<tr><td style="padding: 0 32px 36px; text-align: center;"><a href="${esc(params.subscribeUrl)}" style="display: inline-block; background: #066CF4; color: #ffffff; text-decoration: none; font-weight: 700; padding: 14px 28px; border-radius: 12px;">Subscribe now</a></td></tr>`
+      : '';
+    const html = `
+      <!DOCTYPE html>
+      <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>${esc(subject)}</title></head>
+      <body style="margin: 0; padding: 0; background-color: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #0f172a;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color: #f8fafc; padding: 40px 12px;"><tr><td align="center">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width: 600px; background-color: #ffffff; border-radius: 24px; overflow: hidden; border: 1px solid #e2e8f0;">
+            <tr><td style="background: ${ended ? 'linear-gradient(135deg, #DC2626 0%, #F87171 100%)' : 'linear-gradient(135deg, #066CF4 0%, #60A5FA 100%)'}; padding: 40px 32px; text-align: center;">
+              <h1 style="color: #ffffff; margin: 0; font-size: 24px; font-weight: 800;">${title}</h1>
+            </td></tr>
+            <tr><td style="padding: 32px; font-size: 15px; line-height: 1.6;">
+              <p style="margin: 0 0 16px;">Hi ${name},</p>
+              <p style="margin: 0;">${body}</p>
+            </td></tr>
+            ${button}
+          </table>
+        </td></tr></table>
+      </body></html>`;
+    return { subject, html };
+  }
+
   async sendSubscriptionRenewalReminder(params: {
     email: string;
     customerName: string;

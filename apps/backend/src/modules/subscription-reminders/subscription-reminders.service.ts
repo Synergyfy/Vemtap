@@ -617,12 +617,14 @@ export class SubscriptionRemindersService {
     const maxStage = Math.max(...this.stages);
     const windowEnd = this.addDays(now, maxStage);
 
+    // Paid subscriptions only: a free trial is never renewed, and its
+    // "ends soon" notices come from the trial service.
     return this.subscriptionRepository
       .createQueryBuilder('sub')
       .innerJoinAndSelect('sub.plan', 'plan')
       .leftJoinAndSelect('sub.business', 'business')
       .where('sub.status IN (:...statuses)', {
-        statuses: [SubscriptionStatus.ACTIVE, SubscriptionStatus.TRIAL],
+        statuses: [SubscriptionStatus.ACTIVE],
       })
       .andWhere('sub.deletedAt IS NULL')
       .andWhere('plan.discoveryEnabled = :discovery', { discovery: true })

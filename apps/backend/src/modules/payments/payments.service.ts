@@ -1,7 +1,7 @@
 import { Injectable, ConflictException, Logger } from '@nestjs/common';
 import * as crypto from 'crypto';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import {
   Payment,
   PaymentPurpose,
@@ -26,6 +26,13 @@ export interface VerifiedTransaction {
     authorization_code?: string;
     reusable?: boolean;
     channel?: string;
+    // Card details Paystack returns with the authorization.
+    last4?: string;
+    exp_month?: string;
+    exp_year?: string;
+    card_type?: string;
+    brand?: string;
+    bank?: string;
   } | null;
   paidAt?: string;
 }
@@ -265,6 +272,32 @@ export class PaymentsService {
       this.logger.error(`Paystack Charge Error: ${error.message}`, error.stack);
       return null;
     }
+  }
+
+  /**
+   * A business's payments, newest first, optionally limited to some purposes
+   * (e.g. the subscription billing screen).
+   */
+  async listForBusiness(
+    businessId: string,
+    options: {
+      purposes?: PaymentPurpose[];
+      page?: number;
+      limit?: number;
+    } = {},
+  ): Promise<{ data: Payment[]; total: number; page: number; limit: number }> {
+    const page = Math.max(1, options.page ?? 1);
+    const limit = Math.min(100, Math.max(1, options.limit ?? 20));
+    const [data, total] = await this.paymentRepository.findAndCount({
+      where: {
+        businessId,
+        ...(options.purposes?.length && { purpose: In(options.purposes) }),
+      },
+      order: { createdAt: 'DESC' },
+      skip: (page - 1) * limit,
+      take: limit,
+    });
+    return { data, total, page, limit };
   }
 
   async findByReference(reference: string): Promise<Payment | null> {
