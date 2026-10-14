@@ -54,6 +54,13 @@ export class AdWalletService implements OnModuleInit {
     private readonly paymentsService: PaymentsService,
   ) {}
 
+  /** Called after a top-up is credited (e.g. to launch the campaign it funds). */
+  private readonly topUpListeners: ((payment: Payment) => Promise<void>)[] = [];
+
+  onTopUpCredited(listener: (payment: Payment) => Promise<void>): void {
+    this.topUpListeners.push(listener);
+  }
+
   onModuleInit() {
     // Paystack webhooks for wallet top-ups are routed here.
     this.paymentsService.registerPurposeHandler(
@@ -150,6 +157,7 @@ export class AdWalletService implements OnModuleInit {
     businessId: string,
     user: { id: string; email?: string | null },
     dto: AdWalletTopUpDto,
+    extraMetadata: Record<string, unknown> = {},
   ) {
     if (!dto.prepackId && dto.amount === undefined) {
       throw new BadRequestException('Give a prepackId or an amount');
@@ -168,6 +176,7 @@ export class AdWalletService implements OnModuleInit {
     const wallet = await this.getOrCreate(businessId);
     const reference = `ADW-${uuidv4()}`;
     const metadata = {
+      ...extraMetadata,
       businessId,
       walletId: wallet.id,
       prepackId: pack?.id ?? null,
@@ -288,6 +297,15 @@ export class AdWalletService implements OnModuleInit {
     this.logger.log(
       `Ad wallet top-up ${payment.reference} credited for ${businessId}`,
     );
+    for (const listener of this.topUpListeners) {
+      // A listener failing (e.g. a campaign that can no longer launch) must
+      // not undo or fail the credit itself.
+      await listener(payment).catch((err: Error) =>
+        this.logger.warn(
+          `Top-up listener failed for ${payment.reference}: ${err.message}`,
+        ),
+      );
+    }
     return true;
   }
 
