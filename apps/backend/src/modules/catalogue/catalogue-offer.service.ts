@@ -234,7 +234,14 @@ export class CatalogueOfferService {
         );
     await Promise.all(branchIds.map((branchId) => this.clearCache(branchId)));
 
-    return Object.assign(saved[0], { dealGroupId, groupOffers: saved });
+    // Plain copies: putting the rows on the first row itself would make the
+    // response circular (it is one of them) and break serialization.
+    const [first] = saved;
+    return {
+      ...first,
+      dealGroupId,
+      groupOffers: saved.map((offer) => ({ ...offer })),
+    };
   }
 
   /**
