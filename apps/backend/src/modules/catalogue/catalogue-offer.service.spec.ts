@@ -1504,6 +1504,8 @@ describe('CatalogueOfferService', () => {
       expect(second.discountValue).toBe(30);
       expect(second.quantity).toBe(5);
       expect(second.calculatedPrice).toBe(7000);
+      // The response must serialize: no row may contain itself.
+      expect(() => JSON.stringify(result)).not.toThrow();
       // Request-only fields never reach the entity.
       expect(offerRepo.create.mock.calls[0][0]).not.toHaveProperty('branchIds');
       expect(offerRepo.create.mock.calls[0][0]).not.toHaveProperty(
