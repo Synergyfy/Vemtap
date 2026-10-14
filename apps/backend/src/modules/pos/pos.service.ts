@@ -1292,7 +1292,6 @@ export class PosService {
           footnote: `${todaySales.length} transaction${todaySales.length === 1 ? '' : 's'}`,
           cta: 'View Z-Report',
         },
-        null,
         'shift_closed',
       )
       .catch((err) =>
