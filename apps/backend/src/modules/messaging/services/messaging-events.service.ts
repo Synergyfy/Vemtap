@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, In } from 'typeorm';
 import { Message } from '../entities/message.entity';
 import { ConversationThread } from '../entities/conversation-thread.entity';
 import { MessageDirection, MessageStatus } from '../enums/message.enum';
