@@ -6,12 +6,14 @@ import {
   ManyToMany,
   JoinTable,
   Index,
+  AfterLoad,
 } from 'typeorm';
 import { AbstractBaseEntity } from '../../../common/entities/base.entity';
 import { Business } from '../../businesses/entities/business.entity';
 import { Branch } from '../../branches/entities/branch.entity';
 import { CatalogueCategory } from './catalogue-category.entity';
 import { ApiProperty } from '@nestjs/swagger';
+import { normalizeVariants } from '../utils/catalogue-item.utils';
 
 export enum CatalogueItemStatus {
   ACTIVE = 'active',
@@ -388,4 +390,28 @@ export class CatalogueItem extends AbstractBaseEntity {
     inverseJoinColumn: { name: 'branchId', referencedColumnName: 'id' },
   })
   branches: Branch[];
+
+  /**
+   * Items saved before variants had a shape still hold `{ type, value }`.
+   * Present them in the current shape so every read looks the same; the row
+   * itself is rewritten the next time the item is saved.
+   */
+  @AfterLoad()
+  normalizeStoredVariants() {
+    if (!Array.isArray(this.variants) || this.variants.length === 0) return;
+    const legacy = this.variants.some(
+      (variant) =>
+        (variant as unknown as { name?: unknown }).name === undefined,
+    );
+    if (!legacy) return;
+    try {
+      // Stable ids, so the same variant has the same id on every read.
+      const withIds = (
+        this.variants as unknown as Record<string, unknown>[]
+      ).map((variant, index) => ({ id: `v${index + 1}`, ...variant }));
+      this.variants = normalizeVariants(withIds, this.price) ?? null;
+    } catch {
+      // Leave unreadable legacy data as stored rather than failing the read.
+    }
+  }
 }
