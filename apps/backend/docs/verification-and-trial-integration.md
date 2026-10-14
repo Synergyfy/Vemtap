@@ -146,7 +146,7 @@ Each plan has `id`, `name`, `monthlyPrice`, `quarterlyPrice`, `yearlyPrice` (+ t
 | `GET /subscriptions/billing-history` | `page`, `limit` | `{ data: [{ id, reference, amount, currency, status, purpose, planId, billingPeriod, subtotal, taxAmount, createdAt }], total, page, limit, hasNextPage }` |
 | `GET /subscriptions/payment-method` | | `{ hasCard, card: { brand, last4, expMonth, expYear, bank } \| null, autoRenews }` |
 | `GET /subscriptions/capabilities` | | What the current plan allows |
-| `POST /subscriptions/cancel` | | Cancels the current subscription |
+| `POST /subscriptions/cancel` | | Cancels the paid plan or trial; the business moves to the free plan. 400 `The free plan cannot be cancelled`. |
 | `GET /addons`, `GET /addons/my`, `POST /addons/purchase`, `DELETE /addons/:businessAddonId/cancel` | | Add-ons |
 
 ### 2.4 Paying from the app

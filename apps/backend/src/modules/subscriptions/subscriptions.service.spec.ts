@@ -779,9 +779,27 @@ describe('SubscriptionsService', () => {
         Promise.resolve(sub),
       );
 
+      const freePlan = jest
+        .spyOn(service, 'subscribeToFreePlan')
+        .mockResolvedValueOnce(null);
+
       const result = await service.cancelSubscription('b1');
       expect(result.message).toBe('Subscription cancelled successfully');
       expect(result.subscription.status).toBe(SubscriptionStatus.CANCELED);
+      expect(freePlan).toHaveBeenCalledWith('b1');
+    });
+
+    it('refuses to cancel the free plan', async () => {
+      mockSubRepository.findOne.mockResolvedValueOnce({
+        ...mockSubscription,
+        plan: { ...(mockSubscription as any).plan, isFree: true },
+      });
+      await expect(service.cancelSubscription('b1')).rejects.toThrow(
+        'The free plan cannot be cancelled',
+      );
+      expect(mockSubRepository.save).not.toHaveBeenCalledWith(
+        expect.objectContaining({ status: SubscriptionStatus.CANCELED }),
+      );
     });
   });
 

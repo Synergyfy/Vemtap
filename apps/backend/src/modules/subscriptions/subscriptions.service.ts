@@ -205,6 +205,9 @@ export class SubscriptionsService {
         'No active or trial subscription found for this business',
       );
     }
+    if (sub.plan?.isFree) {
+      throw new BadRequestException('The free plan cannot be cancelled');
+    }
 
     sub.status = SubscriptionStatus.CANCELED;
     const updatedSub = await this.subscriptionRepository.save(sub);
@@ -212,6 +215,16 @@ export class SubscriptionsService {
     this.logger.log(
       `Subscription ${sub.id} for business ${businessId} has been cancelled`,
     );
+
+    // Back to the free plan, so the subscription guard never locks the
+    // business out of its own account.
+    try {
+      await this.subscribeToFreePlan(businessId);
+    } catch (err) {
+      this.logger.error(
+        `Free plan fallback failed after cancelling ${sub.id}: ${(err as Error).message}`,
+      );
+    }
 
     return {
       message: 'Subscription cancelled successfully',
