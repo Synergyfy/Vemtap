@@ -79,11 +79,16 @@ export class UploadsService {
       folderOverride ??
       (businessId ? `vemtap/businesses/${businessId}` : 'vemtap_onboarding');
 
+    // Cloudinary rejects a PDF under `resource_type: 'image'`; verification
+    // documents need `raw`. The controller has already whitelisted the mime,
+    // so this is a pure mapping rather than a second gate.
+    const resourceType = file.mimetype === 'application/pdf' ? 'raw' : 'image';
+
     try {
       const uploaded = await new Promise<UploadApiResponse>(
         (resolve, reject) => {
           const stream = cloudinary.uploader.upload_stream(
-            { folder, resource_type: 'image' },
+            { folder, resource_type: resourceType as 'image' | 'raw' },
             (error, result) => {
               if (error || !result) {
                 // Keep Cloudinary's error intact — replacing non-Error values

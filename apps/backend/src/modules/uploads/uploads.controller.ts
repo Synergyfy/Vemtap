@@ -30,16 +30,33 @@ import { UploadsService } from './uploads.service';
 const MAX_UPLOAD_BYTES = 4 * 1024 * 1024; // 4MB, under the Vercel body cap
 const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
 
+/**
+ * Cloudinary folders a caller may route to. The override exists so avatars,
+ * chat media and verification documents do not land under a business folder;
+ * without a boundary a caller could write anywhere in the account.
+ */
+const ALLOWED_FOLDER_PREFIXES = [
+  'vemtap/avatars/',
+  'vemtap/users/',
+  'vemtap/messaging/',
+  'vemtap/businesses/',
+  'vemtap/verification/',
+];
+
+function isAllowedFolder(folder: string): boolean {
+  // A prefix plus at least one path segment — `vemtap/avatars/` alone is a
+  // folder-less path and Cloudinary would flatten it into the parent.
+  return ALLOWED_FOLDER_PREFIXES.some(
+    prefix => folder.startsWith(prefix) && folder.length > prefix.length,
+  );
+}
+
 @ApiTags('uploads')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('uploads')
 export class UploadsController {
   constructor(private readonly uploadsService: UploadsService) {}
-
-const ALLOWED_FOLDER = /^vemtap\/(avatars|users|messaging|businesses)\/[a-z0-9-]+$/i;
-
-// ... existing constants
 
   @Post()
   @SkipSubscriptionCheck()
@@ -48,23 +65,21 @@ const ALLOWED_FOLDER = /^vemtap\/(avatars|users|messaging|businesses)\/[a-z0-9-]
     FileInterceptor('file', {
       storage: memoryStorage(),
       limits: { fileSize: MAX_UPLOAD_BYTES },
+      // Only the file is validated here: multer parses non-file fields after
+      // this callback, so anything derived from `req.body` (the folder
+      // override) cannot be checked at this stage — it is validated in the
+      // handler below.
       fileFilter: (_req, file, callback) => {
         if (!ALLOWED_MIME_TYPES.includes(file.mimetype)) {
-callback(
-      new BadRequestException('Only JPG, PNG, WebP or PDF images are allowed'),
-          );
-        } else if (
-          folderOverride &&
-          !ALLOWED_FOLDER.test(folderOverride)
-        ) {
           callback(
             new BadRequestException(
-              'Invalid folder override. Allowed prefixes: vemtap/avatars, vemtap/users, vemtap/messaging, vemtap/businesses',
+              'Only JPG, PNG, WebP or PDF images are allowed',
             ),
+            false,
           );
-        } else {
-          callback(null);
+          return;
         }
+        callback(null, true);
       },
     }),
   )
@@ -95,6 +110,15 @@ callback(
   ) {
     const user = req.user;
     const folderOverride = req.body?.folderOverride;
+
+    // Rejected here rather than in `fileFilter`: multer has not parsed the
+    // non-file fields yet when the filter runs.
+    if (folderOverride !== undefined && !isAllowedFolder(folderOverride)) {
+      throw new BadRequestException(
+        'Invalid folder override. Allowed prefixes: vemtap/avatars, vemtap/users, vemtap/messaging, vemtap/businesses, vemtap/verification',
+      );
+    }
+
     const folder = folderOverride
       ? folderOverride
       : user?.businessId
