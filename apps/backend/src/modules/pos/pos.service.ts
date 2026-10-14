@@ -663,6 +663,8 @@ export class PosService {
         `A new POS order (#${savedOrder.id.slice(0, 8)}) has been placed by ${staffName}.`,
         'new_pos_order',
         orderUrl,
+        null,
+        'new_pos_order',
       )
       .catch((err) =>
         console.error('Failed to create staff notification row:', err),
@@ -1290,6 +1292,8 @@ export class PosService {
           footnote: `${todaySales.length} transaction${todaySales.length === 1 ? '' : 's'}`,
           cta: 'View Z-Report',
         },
+        null,
+        'shift_closed',
       )
       .catch((err) =>
         console.error('Failed to create shift-close notification row:', err),

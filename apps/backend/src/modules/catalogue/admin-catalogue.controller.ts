@@ -10,6 +10,7 @@ import {
   UseGuards,
   Req,
   ParseUUIDPipe,
+  ParseBoolPipe,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { CatalogueService } from './catalogue.service';
@@ -147,7 +148,7 @@ export class AdminCatalogueController {
   async deleteItem(
     @Param('id', ParseUUIDPipe) id: string,
     @Query('branchId') branchId: string,
-    @Query('applyGlobally') applyGlobally: boolean,
+    @Query('applyGlobally', ParseBoolPipe) applyGlobally: boolean,
     @Req() req: any,
   ) {
     return this.catalogueService.deleteItem(

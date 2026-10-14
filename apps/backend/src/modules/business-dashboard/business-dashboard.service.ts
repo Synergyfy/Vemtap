@@ -124,20 +124,22 @@ export class BusinessDashboardService {
     businessId: string,
     branchId?: string,
   ): Promise<DashboardStatsDto> {
-    const where: any = branchId ? { branchId } : { businessId };
+    // `scoped` pins all queries to the caller's businessId even when a
+    // foreign branchId arrives, so they can never read another tenant (IDOR fix).
+    const scoped = { ...(branchId ? { branchId } : {}), businessId };
 
-    const totalVisitors = await this.visitRepo.count({ where });
+    const totalVisitors = await this.visitRepo.count({ where: scoped });
     const newVisitors = await this.visitRepo.count({
-      where: { ...where, status: 'new' },
+      where: { ...scoped, status: 'new' },
     });
     const repeatVisitors = await this.visitRepo.count({
-      where: { ...where, status: 'returning' },
+      where: { ...scoped, status: 'returning' },
     });
 
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
     const todaysVisits = await this.visitRepo.count({
-      where: { ...where, createdAt: Between(todayStart, new Date()) },
+      where: { ...scoped, createdAt: Between(todayStart, new Date()) },
     });
 
     // Lifetime catalogue figures. `views` is a lifetime counter on the offer
@@ -157,13 +159,6 @@ export class BusinessDashboardService {
       .getRawOne();
     const totalViews = parseInt(totalViewsRaw?.sum || '0', 10);
     const totalClaims = await this.countClaims(businessId, branchId);
-
-    // Order volume for the "Orders & Bookings" tile. Lifetime gross for
-    // everything the customer was actually charged for: cancelled, rejected
-    // and fully refunded orders drop out, partial refunds stay gross.
-    // `scoped` pins new queries to the caller's businessId even when a
-    // foreign branchId arrives, so they can never read another tenant.
-    const scoped = { ...where, businessId };
     const excludedOrderStatuses = [
       CatalogueOrderStatus.CANCELLED,
       CatalogueOrderStatus.REJECTED,
@@ -188,10 +183,10 @@ export class BusinessDashboardService {
     const prevWeekStart = new Date(now.getTime() - 2 * WEEK_MS);
 
     const visitorsCurrent = await this.visitRepo.count({
-      where: { ...where, createdAt: Between(weekStart, now) },
+      where: { ...scoped, createdAt: Between(weekStart, now) },
     });
     const visitorsPrevious = await this.visitRepo.count({
-      where: { ...where, createdAt: Between(prevWeekStart, weekStart) },
+      where: { ...scoped, createdAt: Between(prevWeekStart, weekStart) },
     });
     const claimsCurrent = await this.countClaims(
       businessId,
@@ -239,10 +234,10 @@ export class BusinessDashboardService {
   ): Promise<DashboardWeeklyDto> {
     const now = new Date();
     const weekStart = new Date(now.getTime() - WEEK_MS);
-    const where: any = branchId ? { branchId } : { businessId };
+    const scoped = { ...(branchId ? { branchId } : {}), businessId };
 
     const visits = await this.visitRepo.count({
-      where: { ...where, createdAt: Between(weekStart, now) },
+      where: { ...scoped, createdAt: Between(weekStart, now) },
     });
     const claims = await this.countClaims(businessId, branchId, weekStart, now);
     const revenue = await this.sumPosRevenue(
@@ -388,9 +383,9 @@ export class BusinessDashboardService {
   }
 
   private async getRecentVisitors(businessId: string, branchId?: string) {
-    const where: any = branchId ? { branchId } : { businessId };
+    const scoped = { ...(branchId ? { branchId } : {}), businessId };
     const visits = await this.visitRepo.find({
-      where,
+      where: scoped,
       relations: ['customer'],
       order: { createdAt: 'DESC' },
       take: 10,
@@ -419,11 +414,11 @@ export class BusinessDashboardService {
    * a Mon–Sun axis, so the app always fell back to its design copy.
    */
   private async getActivityData(businessId: string, branchId?: string) {
-    const where: any = branchId ? { branchId } : { businessId };
+    const scoped = { ...(branchId ? { branchId } : {}), businessId };
     const weekAgo = new Date(Date.now() - WEEK_MS);
 
     const visits = await this.visitRepo.find({
-      where: { ...where, createdAt: Between(weekAgo, new Date()) },
+      where: { ...scoped, createdAt: Between(weekAgo, new Date()) },
     });
 
     const bucketFor = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -436,7 +431,7 @@ export class BusinessDashboardService {
 
     const weekOrder = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
     return weekOrder.map(day => ({
-      day,
+      hour: day,
       visits: counts[day] || 0,
       branchId: branchId || undefined,
     }));

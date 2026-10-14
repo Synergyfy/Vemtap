@@ -237,6 +237,8 @@ export class SubscriptionRemindersService {
             rendered.message,
             rendered.type,
             rendered.actionUrl,
+            null,
+            'subscription_reminder',
           );
           sentInApp++;
         }

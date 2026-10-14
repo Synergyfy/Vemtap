@@ -90,6 +90,8 @@ export class OrderNotificationProcessor extends WorkerHost {
             pushBody,
             'order_status',
             orderUrl,
+            null,
+            'order_status',
           )
           .catch((err) =>
             this.logger.error(

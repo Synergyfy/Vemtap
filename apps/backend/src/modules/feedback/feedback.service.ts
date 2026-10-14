@@ -55,6 +55,10 @@ export class FeedbackService {
           footnote: author,
           cta: 'Read Review',
         },
+        // `type` above is the tone, which changes with the star count; this is
+        // the stable event identity the batching key and the merged copy are
+        // built on, so five ratings in a rush collapse into one row.
+        'new_rating',
       )
       .catch((err) =>
         this.logger.error(`Failed to notify staff of feedback: ${err.message}`),

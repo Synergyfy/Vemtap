@@ -374,6 +374,8 @@ export class CatalogueOrderService {
         `A new order (#${savedOrder.id.slice(0, 8)}) has been placed by ${dto.firstName} ${dto.lastName}.`,
         'new_order',
         orderUrl,
+        null,
+        'new_order',
       )
       .catch((err) =>
         console.error('Failed to create staff notification row:', err),

@@ -211,6 +211,8 @@ export class InboxService {
         content,
         'new_message',
         `/messages/${thread.id}`,
+        null,
+        'new_message',
       )
       .catch((e) => console.error('Notification row error:', e.message));
 
@@ -698,6 +700,8 @@ export class InboxService {
         content,
         'new_message',
         `/messages/${thread.id}`,
+        null,
+        'new_message',
       )
       .catch((e) => console.error('Notification row error:', e.message));
 

@@ -149,7 +149,7 @@ describe('BusinessDashboardService', () => {
 
       const dashboard = await service.getDashboard('biz-1', 'branch-1');
 
-      expect(dashboard.activityData.map(point => point.day)).toEqual([
+      expect(dashboard.activityData.map(point => point.hour)).toEqual([
         'Mon',
         'Tue',
         'Wed',
