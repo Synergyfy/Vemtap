@@ -27,6 +27,8 @@ import { SavingsService } from './savings.service';
 import { CatalogueItemBranchPricing } from './entities/catalogue-item-branch-pricing.entity';
 import { CatalogueBranchPricingService } from './catalogue-branch-pricing.service';
 import { CatalogueBranchPricingController } from './catalogue-branch-pricing.controller';
+import { CatalogueOfferStatsService } from './catalogue-offer-stats.service';
+import { CatalogueOfferStatsController } from './catalogue-offer-stats.controller';
 
 @Module({
   imports: [
@@ -50,6 +52,7 @@ import { CatalogueBranchPricingController } from './catalogue-branch-pricing.con
   controllers: [
     AdminCatalogueController,
     CatalogueBranchPricingController,
+    CatalogueOfferStatsController,
     PublicCatalogueController,
     CatalogueOfferController,
     AdminDealsController,
@@ -62,6 +65,7 @@ import { CatalogueBranchPricingController } from './catalogue-branch-pricing.con
     CatalogueService,
     CatalogueOfferService,
     CatalogueBranchPricingService,
+    CatalogueOfferStatsService,
     SavingsService,
   ],
   exports: [
