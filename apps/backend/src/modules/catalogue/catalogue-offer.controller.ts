@@ -4,6 +4,7 @@ import {
   Post,
   Body,
   Patch,
+  Put,
   Param,
   Delete,
   Query,
@@ -33,6 +34,7 @@ import {
 import { RequestClaimOtpDto, VerifyClaimDto } from './dto/claim.dto';
 import { BusinessClaimsQueryDto } from './dto/my-claims.dto';
 import { SendDealGiftDto } from './dto/send-deal-gift.dto';
+import { SetOfferBranchPricingDto } from './dto/branch-pricing.dto';
 import { RejectDealGiftDto } from './dto/reject-deal-gift.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
@@ -124,6 +126,45 @@ export class CatalogueOfferController {
     @Req() req: any,
   ) {
     return this.offerService.updateOfferGroup(
+      dealGroupId,
+      dto,
+      req.user.businessId,
+    );
+  }
+
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
+  @Get('groups/:dealGroupId/branch-pricing')
+  @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.ADMIN, UserRole.STAFF)
+  @Permissions('inventory')
+  @ApiOperation({
+    summary: 'Each branch of a deal: price, vouchers, status and claims',
+  })
+  async getOfferGroupBranchPricing(
+    @Param('dealGroupId', ParseUUIDPipe) dealGroupId: string,
+    @Req() req: any,
+  ) {
+    return this.offerService.getOfferGroupBranchPricing(
+      dealGroupId,
+      req.user.businessId,
+    );
+  }
+
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
+  @Put('groups/:dealGroupId/branch-pricing')
+  @Roles(UserRole.OWNER, UserRole.MANAGER)
+  @Permissions('inventory')
+  @ApiOperation({
+    summary:
+      'Set per-branch price/vouchers and turn branches on or off for a deal',
+  })
+  async setOfferGroupBranchPricing(
+    @Param('dealGroupId', ParseUUIDPipe) dealGroupId: string,
+    @Body() dto: SetOfferBranchPricingDto,
+    @Req() req: any,
+  ) {
+    return this.offerService.setOfferGroupBranchPricing(
       dealGroupId,
       dto,
       req.user.businessId,

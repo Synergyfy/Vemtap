@@ -50,6 +50,7 @@ import { Otp } from '../auth/entities/otp.entity';
 import { MailService } from '../mail/mail.service';
 import { RequestClaimOtpDto, VerifyClaimDto } from './dto/claim.dto';
 import { SendDealGiftDto } from './dto/send-deal-gift.dto';
+import { SetOfferBranchPricingDto } from './dto/branch-pricing.dto';
 import {
   MyClaimDto,
   MyClaimStatus,
@@ -608,6 +609,164 @@ export class CatalogueOfferService {
       updated.push(await this.updateOffer(offer.id, dto, businessId));
     }
     return { dealGroupId, offers: updated };
+  }
+
+  /** Each branch of a deal with its own price, vouchers, status and claims. */
+  async getOfferGroupBranchPricing(dealGroupId: string, businessId: string) {
+    const offers = await this.findGroupOffers(dealGroupId, businessId);
+    const [branches, counts] = await Promise.all([
+      this.branchRepository.find({
+        where: { id: In(offers.map((offer) => offer.branchId)) },
+      }),
+      this.claimCountsByOffer(offers.map((offer) => offer.id)),
+    ]);
+    const nameOf = new Map(branches.map((branch) => [branch.id, branch.name]));
+    const template = offers[0];
+    return {
+      dealGroupId: template.dealGroupId ?? template.id,
+      name: template.name,
+      pricingType: template.pricingType,
+      branches: offers.map((offer) => ({
+        offerId: offer.id,
+        branchId: offer.branchId,
+        branchName: nameOf.get(offer.branchId) ?? null,
+        isActive: offer.status === CatalogueOfferStatus.ACTIVE,
+        fixedPrice: offer.fixedPrice ?? null,
+        discountValue: offer.discountValue ?? null,
+        calculatedPrice: Number(offer.calculatedPrice),
+        quantity: offer.quantity,
+        claimedCount: counts.get(offer.id)?.claimed ?? 0,
+        redeemedCount: counts.get(offer.id)?.redeemed ?? 0,
+      })),
+    };
+  }
+
+  /**
+   * Set each branch's price, vouchers and on/off state for a deal. Turning a
+   * branch off pauses its row (claims are kept); turning on a branch that is
+   * not in the deal yet adds it as a copy of the deal. Branches left out are
+   * not touched.
+   */
+  async setOfferGroupBranchPricing(
+    dealGroupId: string,
+    dto: SetOfferBranchPricingDto,
+    businessId: string,
+  ) {
+    const offers = await this.findGroupOffers(dealGroupId, businessId);
+    const template = offers[0];
+    const groupId = template.dealGroupId ?? template.id;
+    // New branches copy the deal as it was before this request: edits below to
+    // an existing branch's price or status must not leak into them.
+    const snapshot = { ...template };
+
+    const branchIds = [...new Set(dto.branches.map((entry) => entry.branchId))];
+    if (branchIds.length !== dto.branches.length) {
+      throw new BadRequestException('Each branch may appear only once');
+    }
+    const branches = await this.branchRepository.find({
+      where: { id: In(branchIds), businessId },
+    });
+    if (branches.length !== branchIds.length) {
+      throw new BadRequestException('Branch not found or unauthorized');
+    }
+
+    const byBranch = new Map(offers.map((offer) => [offer.branchId, offer]));
+    const additions = dto.branches.filter(
+      (entry) => entry.isActive && !byBranch.has(entry.branchId),
+    );
+
+    if (additions.length) {
+      const caps = await this.subscriptionsService.getCapabilities(businessId);
+      const offerCaps = caps.capabilities.catalogueOffers;
+      if (
+        offerCaps.limit !== 'unlimited' &&
+        typeof offerCaps.remaining === 'number' &&
+        offerCaps.remaining < additions.length
+      ) {
+        throw new ForbiddenException(
+          `Your plan allows ${offerCaps.remaining} more offer(s); adding ${additions.length} branch(es) needs one each.`,
+        );
+      }
+      for (const entry of additions) {
+        for (const item of template.items ?? []) {
+          if (!item.branches?.some((branch) => branch.id === entry.branchId)) {
+            throw new BadRequestException(
+              `Item ${item.name} is not available in branch ${entry.branchId}`,
+            );
+          }
+        }
+      }
+    }
+
+    const toSave: CatalogueOffer[] = [];
+    if (!template.dealGroupId) {
+      // A deal created before grouping becomes the group's first row.
+      template.dealGroupId = groupId;
+      toSave.push(template);
+    }
+
+    for (const entry of dto.branches) {
+      const existing = byBranch.get(entry.branchId);
+      if (existing) {
+        if (entry.fixedPrice !== undefined)
+          existing.fixedPrice = entry.fixedPrice;
+        if (entry.discountValue !== undefined) {
+          existing.discountValue = entry.discountValue;
+        }
+        if (entry.quantity !== undefined) existing.quantity = entry.quantity;
+        existing.status = entry.isActive
+          ? CatalogueOfferStatus.ACTIVE
+          : CatalogueOfferStatus.INACTIVE;
+        existing.calculatedPrice = this.calculatePrice(
+          existing,
+          existing.items,
+        );
+        if (!toSave.includes(existing)) toSave.push(existing);
+      } else if (entry.isActive) {
+        const {
+          id: _id,
+          createdAt: _createdAt,
+          updatedAt: _updatedAt,
+          branch: _branch,
+          ...fields
+        } = snapshot as CatalogueOffer & { createdAt?: Date; updatedAt?: Date };
+        void [_id, _createdAt, _updatedAt, _branch];
+        const copy = this.offerRepository.create({
+          ...fields,
+          branchId: entry.branchId,
+          dealGroupId: groupId,
+          status: CatalogueOfferStatus.ACTIVE,
+          ...(entry.fixedPrice !== undefined && {
+            fixedPrice: entry.fixedPrice,
+          }),
+          ...(entry.discountValue !== undefined && {
+            discountValue: entry.discountValue,
+          }),
+          ...(entry.quantity !== undefined && { quantity: entry.quantity }),
+          // A new branch starts with its own engagement history.
+          views: 0,
+          visits: 0,
+          revenue: 0,
+          likesCount: 0,
+          dislikesCount: 0,
+          reviewsCount: 0,
+          averageRating: null,
+        });
+        copy.calculatedPrice = this.calculatePrice(copy, template.items);
+        toSave.push(copy);
+      }
+    }
+
+    if (toSave.length) {
+      await this.offerRepository.manager.transaction((manager) =>
+        manager.save(CatalogueOffer, toSave),
+      );
+      await Promise.all(
+        toSave.map((offer) => this.clearCache(offer.branchId, offer.id)),
+      );
+    }
+
+    return this.getOfferGroupBranchPricing(groupId, businessId);
   }
 
   async updateOfferGroupStatus(
