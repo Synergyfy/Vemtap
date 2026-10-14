@@ -9,10 +9,14 @@ import {
   IsArray,
   IsBoolean,
   Min,
+  MaxLength,
   ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import {
+  CatalogueFulfillmentMode,
+  CatalogueItemCondition,
+  CatalogueItemPricingMode,
   CatalogueItemStatus,
   CatalogueItemType,
   DiscountType,
@@ -126,9 +130,50 @@ export class CreateCatalogueItemDto {
   @IsString()
   dimensions?: string;
 
-  @ApiPropertyOptional({ example: [{ type: 'size', value: 'large' }] })
+  @ApiPropertyOptional({
+    description:
+      'Purchasable variants: `{ id?, name, price, compareAtPrice?, sku?, stockQuantity? }`. ' +
+      'The legacy `{ type, value }` shape is still accepted and converted.',
+    example: [{ name: 'Large', price: 4500, stockQuantity: 12 }],
+  })
   @IsOptional()
-  variants?: { type: string; value: string }[];
+  @IsArray()
+  variants?: Record<string, unknown>[];
+
+  @ApiPropertyOptional({
+    example: 18000,
+    description:
+      'Original "was" price. Must be greater than or equal to `price`.',
+  })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  compareAtPrice?: number | null;
+
+  @ApiPropertyOptional({ enum: CatalogueItemCondition })
+  @IsOptional()
+  @IsEnum(CatalogueItemCondition)
+  condition?: CatalogueItemCondition | null;
+
+  @ApiPropertyOptional({ enum: CatalogueFulfillmentMode, isArray: true })
+  @IsOptional()
+  @IsArray()
+  @IsEnum(CatalogueFulfillmentMode, { each: true })
+  fulfillmentModes?: CatalogueFulfillmentMode[];
+
+  @ApiPropertyOptional({ enum: CatalogueItemPricingMode, default: 'uniform' })
+  @IsOptional()
+  @IsEnum(CatalogueItemPricingMode)
+  pricingMode?: CatalogueItemPricingMode;
+
+  @ApiPropertyOptional({
+    example: 'women',
+    description: 'Who a service is for',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(40)
+  audience?: string | null;
 
   @ApiPropertyOptional({ example: ['burger', 'beef'] })
   @IsOptional()
@@ -323,9 +368,50 @@ export class UpdateCatalogueItemDto {
   @IsString()
   dimensions?: string;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({
+    description:
+      'Purchasable variants: `{ id?, name, price, compareAtPrice?, sku?, stockQuantity? }`. ' +
+      'The legacy `{ type, value }` shape is still accepted and converted.',
+    example: [{ name: 'Large', price: 4500, stockQuantity: 12 }],
+  })
   @IsOptional()
-  variants?: { type: string; value: string }[];
+  @IsArray()
+  variants?: Record<string, unknown>[];
+
+  @ApiPropertyOptional({
+    example: 18000,
+    description:
+      'Original "was" price. Must be greater than or equal to `price`.',
+  })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  compareAtPrice?: number | null;
+
+  @ApiPropertyOptional({ enum: CatalogueItemCondition })
+  @IsOptional()
+  @IsEnum(CatalogueItemCondition)
+  condition?: CatalogueItemCondition | null;
+
+  @ApiPropertyOptional({ enum: CatalogueFulfillmentMode, isArray: true })
+  @IsOptional()
+  @IsArray()
+  @IsEnum(CatalogueFulfillmentMode, { each: true })
+  fulfillmentModes?: CatalogueFulfillmentMode[];
+
+  @ApiPropertyOptional({ enum: CatalogueItemPricingMode, default: 'uniform' })
+  @IsOptional()
+  @IsEnum(CatalogueItemPricingMode)
+  pricingMode?: CatalogueItemPricingMode;
+
+  @ApiPropertyOptional({
+    example: 'women',
+    description: 'Who a service is for',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(40)
+  audience?: string | null;
 
   @ApiPropertyOptional()
   @IsOptional()

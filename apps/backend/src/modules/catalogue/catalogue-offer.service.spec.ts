@@ -1186,7 +1186,9 @@ describe('CatalogueOfferService', () => {
       expect(result.limit).toBe(10);
       expect(result.data[0].status).toBe('ACTIVE');
       // Value, not reference: the mapped row is not the same Date instance.
-      expect(result.data[0].claimedAt).toEqual(new Date('2026-10-08T00:00:00Z'));
+      expect(result.data[0].claimedAt).toEqual(
+        new Date('2026-10-08T00:00:00Z'),
+      );
       expect(result.data[0].offer.businessName).toBe('Patrick Ventures');
       expect(result.data[0].offer.originalPrice).toBe(10000);
       expect(result.data[0].offer.calculatedPrice).toBe(8500);
@@ -1450,6 +1452,303 @@ describe('CatalogueOfferService', () => {
       expect(result.page).toBe(3);
       expect(result.limit).toBe(5);
       expect(qb.getManyAndCount).toHaveBeenCalled();
+    });
+  });
+  describe('section 4: multi-branch deals and deal rules', () => {
+    const itemAt = (...branchIds: string[]) => ({
+      id: 'item-1',
+      name: 'Burger',
+      price: 10000,
+      branches: branchIds.map((id) => ({ id })),
+    });
+
+    beforeEach(() => {
+      branchRepo.find = jest.fn().mockResolvedValue([
+        { id: 'branch-1', businessId: 'biz-1' },
+        { id: 'branch-2', businessId: 'biz-1' },
+      ]);
+      offerRepo.create = jest.fn().mockImplementation((dto) => ({ ...dto }));
+      offerRepo.save = jest
+        .fn()
+        .mockImplementation((dto) =>
+          Promise.resolve({ id: `offer-${dto.branchId}`, ...dto }),
+        );
+    });
+
+    it('publishes one offer per branch sharing a dealGroupId, with per-branch overrides', async () => {
+      itemRepo.find.mockResolvedValue([itemAt('branch-1', 'branch-2')]);
+
+      const result: any = await service.createOffer(
+        {
+          name: 'Lunch deal',
+          pricingType: CatalogueOfferPricingType.PERCENTAGE_DISCOUNT,
+          discountValue: 20,
+          branchId: 'branch-1',
+          branchIds: ['branch-1', 'branch-2'],
+          itemIds: ['item-1'],
+          branchOverrides: [
+            { branchId: 'branch-2', discountValue: 30, quantity: 5 },
+          ],
+        } as any,
+        'biz-1',
+      );
+
+      expect(offerRepo.save).toHaveBeenCalledTimes(2);
+      expect(result.groupOffers).toHaveLength(2);
+      const [first, second] = result.groupOffers;
+      expect(first.dealGroupId).toBe(result.dealGroupId);
+      expect(second.dealGroupId).toBe(result.dealGroupId);
+      expect(first.branchId).toBe('branch-1');
+      expect(first.calculatedPrice).toBe(8000);
+      // Override applies to its branch only.
+      expect(second.discountValue).toBe(30);
+      expect(second.quantity).toBe(5);
+      expect(second.calculatedPrice).toBe(7000);
+      // Request-only fields never reach the entity.
+      expect(offerRepo.create.mock.calls[0][0]).not.toHaveProperty('branchIds');
+      expect(offerRepo.create.mock.calls[0][0]).not.toHaveProperty(
+        'branchOverrides',
+      );
+    });
+
+    it('rejects a multi-branch deal when an item is not stocked at every branch', async () => {
+      itemRepo.find.mockResolvedValue([itemAt('branch-1')]);
+
+      await expect(
+        service.createOffer(
+          {
+            name: 'Lunch deal',
+            pricingType: CatalogueOfferPricingType.SUM,
+            branchId: 'branch-1',
+            branchIds: ['branch-1', 'branch-2'],
+            itemIds: ['item-1'],
+          } as any,
+          'biz-1',
+        ),
+      ).rejects.toThrow(/not available in branch branch-2/);
+      expect(offerRepo.save).not.toHaveBeenCalled();
+    });
+
+    it('refuses a group that would exceed the plan offer limit', async () => {
+      subscriptionsService.getCapabilities.mockResolvedValue({
+        capabilities: {
+          catalogueOffers: { enabled: true, limit: 5, remaining: 1 },
+        },
+      });
+
+      await expect(
+        service.createOffer(
+          {
+            name: 'Lunch deal',
+            pricingType: CatalogueOfferPricingType.SUM,
+            branchId: 'branch-1',
+            branchIds: ['branch-1', 'branch-2'],
+            itemIds: ['item-1'],
+          } as any,
+          'biz-1',
+        ),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('prices combo deals at fixedPrice and requires one', async () => {
+      branchRepo.findOne.mockResolvedValue({
+        id: 'branch-1',
+        businessId: 'biz-1',
+      });
+      itemRepo.find.mockResolvedValue([itemAt('branch-1')]);
+
+      await expect(
+        service.createOffer(
+          {
+            name: 'Combo',
+            pricingType: CatalogueOfferPricingType.COMBO,
+            branchId: 'branch-1',
+            itemIds: ['item-1'],
+          } as any,
+          'biz-1',
+        ),
+      ).rejects.toThrow(/fixedPrice/);
+
+      const combo: any = await service.createOffer(
+        {
+          name: 'Combo',
+          pricingType: CatalogueOfferPricingType.COMBO,
+          fixedPrice: 7500,
+          branchId: 'branch-1',
+          itemIds: ['item-1'],
+        } as any,
+        'biz-1',
+      );
+      expect(combo.calculatedPrice).toBe(7500);
+    });
+
+    it('lists tiered deals at their entry tier', async () => {
+      branchRepo.findOne.mockResolvedValue({
+        id: 'branch-1',
+        businessId: 'biz-1',
+      });
+      itemRepo.find.mockResolvedValue([itemAt('branch-1')]);
+
+      const tiered: any = await service.createOffer(
+        {
+          name: 'Buy more save more',
+          pricingType: CatalogueOfferPricingType.TIERED,
+          tiers: [
+            { minQuantity: 4, discountValue: 20 },
+            { minQuantity: 2, discountValue: 10 },
+          ],
+          branchId: 'branch-1',
+          itemIds: ['item-1'],
+        } as any,
+        'biz-1',
+      );
+      expect(tiered.calculatedPrice).toBe(9000);
+    });
+
+    it('returns real claim counts and can group per-branch rows', async () => {
+      offerRepo.find = jest.fn().mockResolvedValue([
+        {
+          id: 'o1',
+          dealGroupId: 'g1',
+          branchId: 'branch-1',
+          branch: { name: 'Wuse' },
+          status: CatalogueOfferStatus.ACTIVE,
+          calculatedPrice: 8000,
+          quantity: 10,
+          views: 5,
+          items: [],
+        },
+        {
+          id: 'o2',
+          dealGroupId: 'g1',
+          branchId: 'branch-2',
+          branch: { name: 'Garki' },
+          status: CatalogueOfferStatus.INACTIVE,
+          calculatedPrice: 7000,
+          quantity: 5,
+          views: 3,
+          items: [],
+        },
+      ]);
+      const qb: any = {
+        select: jest.fn().mockReturnThis(),
+        addSelect: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        groupBy: jest.fn().mockReturnThis(),
+        addGroupBy: jest.fn().mockReturnThis(),
+        getRawMany: jest.fn().mockResolvedValue([
+          { offerId: 'o1', status: 'claimed', count: '3' },
+          { offerId: 'o1', status: 'redeemed', count: '2' },
+          { offerId: 'o2', status: 'claimed', count: '1' },
+        ]),
+      };
+      claimRepo.createQueryBuilder = jest.fn().mockReturnValue(qb);
+
+      const flat: any[] = (await service.findAllOffersAdmin(
+        'biz-1',
+        {},
+      )) as any[];
+      expect(flat).toHaveLength(2);
+      expect(flat[0]).toMatchObject({
+        id: 'o1',
+        claimedCount: 5,
+        redeemedCount: 2,
+      });
+
+      const grouped: any[] = (await service.findAllOffersAdmin('biz-1', {
+        groupBy: 'deal',
+      })) as any[];
+      expect(grouped).toHaveLength(1);
+      expect(grouped[0]).toMatchObject({
+        dealGroupId: 'g1',
+        claimedCount: 6,
+        redeemedCount: 2,
+        views: 8,
+        status: CatalogueOfferStatus.ACTIVE,
+      });
+      expect(grouped[0].branches.map((b: any) => b.branchName)).toEqual([
+        'Wuse',
+        'Garki',
+      ]);
+    });
+
+    it('still accepts a bare branch id for the owner list', async () => {
+      offerRepo.find = jest.fn().mockResolvedValue([]);
+      await service.findAllOffersAdmin('biz-1', 'branch-9');
+      expect(offerRepo.find).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { businessId: 'biz-1', branchId: 'branch-9' },
+        }),
+      );
+    });
+
+    it('blocks gifting when the deal does not allow it', async () => {
+      offerRepo.findOne.mockResolvedValue({
+        ...mockOffer,
+        allowGifting: false,
+      });
+
+      await expect(
+        service.sendDealGift(
+          {
+            offerId: 'offer-123',
+            recipientEmail: 'friend@example.com',
+            recipientName: 'Ada',
+          } as any,
+          { id: 'user-1', email: 'me@example.com' } as any,
+        ),
+      ).rejects.toThrow('This deal cannot be gifted');
+    });
+
+    describe('redemption windows', () => {
+      afterEach(() => jest.useRealTimers());
+
+      const claimFor = (windows: any) => ({
+        id: 'claim-1',
+        claimCode: 'VEM-ABCDE-WXYZ',
+        status: CatalogueOfferClaimStatus.CLAIMED,
+        expiresAt: new Date('2030-01-01T00:00:00Z'),
+        offerId: 'offer-123',
+        offer: {
+          ...mockOffer,
+          businessId: 'biz-1',
+          endDate: null,
+          redemptionWindows: windows,
+        },
+      });
+
+      it('rejects redemption outside the windows (Lagos time)', async () => {
+        // Wed 2026-10-14 09:00 UTC = 10:00 WAT, before a 12:00–16:30 window.
+        jest.useFakeTimers().setSystemTime(new Date('2026-10-14T09:00:00Z'));
+        claimRepo.findOne.mockResolvedValue(
+          claimFor([
+            { weekdays: [1, 2, 3, 4, 5], start: '12:00', end: '16:30' },
+          ]),
+        );
+
+        await expect(
+          service.redeemClaim('VEM-ABCDE-WXYZ', 'biz-1'),
+        ).rejects.toThrow(/Mon, Tue, Wed, Thu, Fri 12:00–16:30/);
+        expect(claimRepo.save).not.toHaveBeenCalled();
+      });
+
+      it('redeems inside a window and stamps redeemedAt', async () => {
+        // 12:30 UTC = 13:30 WAT on a Wednesday.
+        jest.useFakeTimers().setSystemTime(new Date('2026-10-14T12:30:00Z'));
+        const claim = claimFor([
+          { weekdays: [3], start: '12:00', end: '16:30' },
+        ]);
+        claimRepo.findOne.mockResolvedValue(claim);
+
+        await service.redeemClaim('VEM-ABCDE-WXYZ', 'biz-1');
+
+        expect(claimRepo.save).toHaveBeenCalledWith(
+          expect.objectContaining({
+            status: CatalogueOfferClaimStatus.REDEEMED,
+            redeemedAt: expect.any(Date),
+          }),
+        );
+      });
     });
   });
 });

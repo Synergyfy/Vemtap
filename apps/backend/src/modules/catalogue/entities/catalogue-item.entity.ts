@@ -48,6 +48,35 @@ export enum ServiceBookingMethod {
   EXTERNAL = 'external',
 }
 
+export enum CatalogueItemCondition {
+  NEW = 'new',
+  REFURBISHED = 'refurbished',
+  USED = 'used',
+}
+
+export enum CatalogueFulfillmentMode {
+  PICKUP = 'pickup',
+  DELIVERY = 'delivery',
+  DINE_IN = 'dine_in',
+}
+
+export enum CatalogueItemPricingMode {
+  /** One price for every branch that carries the item. */
+  UNIFORM = 'uniform',
+  /** Branches may override price/stock via `catalogue_item_branch_pricing`. */
+  PER_BRANCH = 'per_branch',
+}
+
+/** One purchasable variant of an item (size, flavour, …). */
+export interface CatalogueItemVariant {
+  id: string;
+  name: string;
+  price: number;
+  compareAtPrice?: number | null;
+  sku?: string | null;
+  stockQuantity?: number | null;
+}
+
 export enum DiscountType {
   PERCENTAGE = 'percentage',
   FIXED = 'fixed',
@@ -196,9 +225,58 @@ export class CatalogueItem extends AbstractBaseEntity {
   @Column({ nullable: true })
   dimensions: string;
 
-  @ApiProperty({ example: [{ type: 'size', value: 'large' }], nullable: true })
+  @ApiProperty({
+    example: [{ id: 'v1', name: 'Large', price: 4500, stockQuantity: 12 }],
+    nullable: true,
+  })
   @Column({ type: 'jsonb', nullable: true })
-  variants: { type: string; value: string }[];
+  variants: CatalogueItemVariant[] | null;
+
+  @ApiProperty({
+    example: 18000,
+    nullable: true,
+    description: 'Original "was" price shown struck through next to `price`',
+  })
+  @Column({
+    type: 'decimal',
+    precision: 12,
+    scale: 2,
+    nullable: true,
+    transformer: {
+      to: (value: number | null) => value,
+      from: (value: string | null) =>
+        value == null ? null : parseFloat(value),
+    },
+  })
+  compareAtPrice: number | null;
+
+  @ApiProperty({ enum: CatalogueItemCondition, nullable: true })
+  @Column({ type: 'varchar', length: 20, nullable: true })
+  condition: CatalogueItemCondition | null;
+
+  @ApiProperty({
+    enum: CatalogueFulfillmentMode,
+    isArray: true,
+    nullable: true,
+  })
+  @Column({ type: 'text', array: true, nullable: true })
+  fulfillmentModes: CatalogueFulfillmentMode[] | null;
+
+  @ApiProperty({ enum: CatalogueItemPricingMode, example: 'uniform' })
+  @Column({
+    type: 'varchar',
+    length: 20,
+    default: CatalogueItemPricingMode.UNIFORM,
+  })
+  pricingMode: CatalogueItemPricingMode;
+
+  @ApiProperty({
+    example: 'women',
+    nullable: true,
+    description: 'Who a service is for (e.g. women, men, kids, all)',
+  })
+  @Column({ type: 'varchar', length: 40, nullable: true })
+  audience: string | null;
 
   @ApiProperty({ example: ['burger', 'beef'], nullable: true })
   @Column({ type: 'simple-array', nullable: true })

@@ -8,7 +8,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, ILike, In } from 'typeorm';
+import { EntityManager, Repository, ILike, In, MoreThanOrEqual } from 'typeorm';
 import {
   CatalogueOffer,
   CatalogueOfferPricingType,
@@ -26,6 +26,9 @@ import {
   AdminDealsStatusFilter,
   AdminBusinessesQueryDto,
   BranchOffersSortBy,
+  OwnerOffersQueryDto,
+  OwnerOffersSortBy,
+  UpdateOfferGroupDto,
   OfferAudience,
   PublicOffersSortBy,
 } from './dto/offer.dto';
@@ -53,15 +56,16 @@ import {
   MyClaimsPageDto,
   MyClaimsQueryDto,
 } from './dto/my-claims.dto';
-import {
-  MyGiftDto,
-  MyGiftsPageDto,
-  MyGiftsQueryDto,
-} from './dto/my-gifts.dto';
+import { MyGiftDto, MyGiftsPageDto, MyGiftsQueryDto } from './dto/my-gifts.dto';
 import { CACHE_MANAGER, type Cache } from '@nestjs/cache-manager';
 import { AiCreditService } from '../ai-copilot/services/ai-credit.service';
 import { OpenAIClient } from '../ai-copilot/openai/openai.client';
 import { ClustersService } from '../clusters/clusters.service';
+import {
+  claimLimitWindowStart,
+  describeRedemptionWindows,
+  isWithinRedemptionWindows,
+} from './utils/offer-rules.utils';
 
 @Injectable()
 export class CatalogueOfferService {
@@ -93,7 +97,20 @@ export class CatalogueOfferService {
     private readonly clustersService: ClustersService,
   ) {}
 
+  /**
+   * Create a deal. With `branchIds` it is published to every listed branch as
+   * one offer row per branch sharing a `dealGroupId` — so each branch keeps its
+   * own claims, voucher count and price, and every existing branch-scoped query
+   * keeps working unchanged. A single-branch deal still gets a `dealGroupId` so
+   * it can be extended to more branches later.
+   *
+   * Returns the first branch's offer (the historical response shape) with the
+   * group id and every created row attached.
+   */
   async createOffer(dto: CreateCatalogueOfferDto, businessId: string) {
+    const branchIds = [
+      ...new Set(dto.branchIds?.length ? dto.branchIds : [dto.branchId]),
+    ].filter(Boolean);
     const caps = await this.subscriptionsService.getCapabilities(businessId);
     if (!caps.capabilities.catalogueOffers.enabled) {
       throw new ForbiddenException(
@@ -104,18 +121,33 @@ export class CatalogueOfferService {
     if (
       caps.capabilities.catalogueOffers.limit !== 'unlimited' &&
       typeof caps.capabilities.catalogueOffers.remaining === 'number' &&
-      caps.capabilities.catalogueOffers.remaining <= 0
+      caps.capabilities.catalogueOffers.remaining < branchIds.length
     ) {
       throw new ForbiddenException(
-        'You have reached the limit for catalogue offers',
+        branchIds.length > 1
+          ? `Your plan allows ${caps.capabilities.catalogueOffers.remaining} more offer(s); this deal needs one per branch (${branchIds.length}).`
+          : 'You have reached the limit for catalogue offers',
       );
     }
 
-    const branch = await this.branchRepository.findOne({
-      where: { id: dto.branchId, businessId },
-    });
-    if (!branch)
+    if (branchIds.length === 0) {
+      throw new BadRequestException('branchId or branchIds is required');
+    }
+    this.assertPricingShape(dto);
+
+    const branches =
+      branchIds.length === 1
+        ? [
+            await this.branchRepository.findOne({
+              where: { id: branchIds[0], businessId },
+            }),
+          ].filter(Boolean)
+        : await this.branchRepository.find({
+            where: { id: In(branchIds), businessId },
+          });
+    if (branches.length !== branchIds.length) {
       throw new BadRequestException('Branch not found or unauthorized');
+    }
 
     const itemIds =
       dto.itemIds && dto.itemIds.length > 0
@@ -139,35 +171,124 @@ export class CatalogueOfferService {
       throw new BadRequestException('Some items not found');
     }
 
-    // Verify items belong to the branch
-    for (const item of items) {
-      if (!item.branches.some((b) => b.id === dto.branchId)) {
-        throw new BadRequestException(
-          `Item ${item.name} is not available in branch ${dto.branchId}`,
-        );
+    // Every item must be stocked at every branch the deal goes live at.
+    for (const branchId of branchIds) {
+      for (const item of items) {
+        if (!item.branches.some((b) => b.id === branchId)) {
+          throw new BadRequestException(
+            `Item ${item.name} is not available in branch ${branchId}`,
+          );
+        }
       }
     }
-
-    const offer = this.offerRepository.create({
-      ...dto,
-      sourceProductId:
-        dto.sourceProductId || (items.length === 1 ? items[0].id : null),
-      businessId,
-      items,
-    });
 
     // Check active subscription plan to determine default isFeatured status
     const activeSub =
       await this.subscriptionsService.activeSubscription(businessId);
     const autoFeatureDeals = Boolean(activeSub?.plan?.autoFeatureDeals);
-    offer.isFeatured =
-      dto.isFeatured !== undefined ? dto.isFeatured : autoFeatureDeals;
 
-    offer.calculatedPrice = this.calculatePrice(offer, items);
+    // `branchIds` / `branchOverrides` are request-only; every row gets its own
+    // single `branchId` below.
+    const { branchIds: _requestedBranches, branchOverrides, ...fields } = dto;
+    void _requestedBranches;
+    const overrides = new Map(
+      (branchOverrides ?? []).map((override) => [override.branchId, override]),
+    );
+    const dealGroupId = uuidv4();
 
-    const saved = await this.offerRepository.save(offer);
-    await this.clearCache(dto.branchId);
-    return saved;
+    const offers = branchIds.map((branchId) => {
+      const override = overrides.get(branchId);
+      const offer = this.offerRepository.create({
+        ...fields,
+        branchId,
+        dealGroupId,
+        ...(override?.fixedPrice !== undefined && {
+          fixedPrice: override.fixedPrice,
+        }),
+        ...(override?.discountValue !== undefined && {
+          discountValue: override.discountValue,
+        }),
+        ...(override?.quantity !== undefined && {
+          quantity: override.quantity,
+        }),
+        sourceProductId:
+          dto.sourceProductId || (items.length === 1 ? items[0].id : null),
+        businessId,
+        items,
+      });
+      offer.isFeatured =
+        dto.isFeatured !== undefined ? dto.isFeatured : autoFeatureDeals;
+      offer.calculatedPrice = this.calculatePrice(offer, items);
+      return offer;
+    });
+
+    // All branches or none: a half-published group would show the deal at some
+    // branches the owner chose and silently not at others.
+    const saved: CatalogueOffer[] = this.offerRepository.manager?.transaction
+      ? await this.offerRepository.manager.transaction((manager) =>
+          manager.save(CatalogueOffer, offers),
+        )
+      : await Promise.all(
+          offers.map((offer) => this.offerRepository.save(offer)),
+        );
+    await Promise.all(branchIds.map((branchId) => this.clearCache(branchId)));
+
+    return Object.assign(saved[0], { dealGroupId, groupOffers: saved });
+  }
+
+  /**
+   * Deactivate a deal once its last voucher is claimed, when the owner asked
+   * for that (`autoPauseWhenSoldOut`, on by default). Runs on the same manager
+   * as the claim so the count includes it.
+   */
+  private async pauseIfSoldOut(offer: CatalogueOffer, managerOrRepo: unknown) {
+    if (
+      offer.quantity === null ||
+      offer.quantity === undefined ||
+      offer.autoPauseWhenSoldOut === false
+    ) {
+      return;
+    }
+    const where = {
+      offerId: offer.id,
+      status: In([
+        CatalogueOfferClaimStatus.CLAIMED,
+        CatalogueOfferClaimStatus.REDEEMED,
+      ]),
+    };
+    const claimed =
+      managerOrRepo instanceof EntityManager
+        ? await managerOrRepo.count(CatalogueOfferClaim, { where })
+        : await this.claimRepository.count({ where });
+    if (claimed >= offer.quantity) {
+      await this.offerRepository.update(
+        { id: offer.id },
+        { status: CatalogueOfferStatus.INACTIVE },
+      );
+      this.logger.log(
+        `Offer ${offer.id} sold out (${claimed}/${offer.quantity}); paused`,
+      );
+    }
+  }
+
+  /** Reject pricing types whose required fields are missing. */
+  private assertPricingShape(dto: {
+    pricingType?: CatalogueOfferPricingType;
+    fixedPrice?: number;
+    tiers?: { minQuantity: number; discountValue: number }[];
+  }): void {
+    if (
+      dto.pricingType === CatalogueOfferPricingType.COMBO &&
+      (dto.fixedPrice === undefined || dto.fixedPrice === null)
+    ) {
+      throw new BadRequestException('A combo deal needs a fixedPrice');
+    }
+    if (
+      dto.pricingType === CatalogueOfferPricingType.TIERED &&
+      !dto.tiers?.length
+    ) {
+      throw new BadRequestException('A tiered deal needs at least one tier');
+    }
   }
 
   async updateOffer(
@@ -206,6 +327,12 @@ export class CatalogueOfferService {
 
     if (dto.mainImage) offer.mainImage = dto.mainImage;
     if (dto.galleryImages) offer.galleryImages = dto.galleryImages;
+
+    this.assertPricingShape({
+      pricingType: dto.pricingType ?? offer.pricingType,
+      fixedPrice: dto.fixedPrice ?? offer.fixedPrice,
+      tiers: dto.tiers ?? offer.tiers ?? undefined,
+    });
 
     Object.assign(offer, dto);
     offer.calculatedPrice = this.calculatePrice(offer, offer.items);
@@ -276,42 +403,231 @@ export class CatalogueOfferService {
     return { terms };
   }
 
-  async findAllOffersAdmin(businessId: string, branchId?: string) {
-    const where: any = { businessId };
-    if (branchId) where.branchId = branchId;
+  /**
+   * The business's own deals, any status. Always a bare array (the mobile hub
+   * validates it as one); filters, sort, paging and grouping are opt-in.
+   * Accepts a bare branch id for callers written before the query object.
+   */
+  async findAllOffersAdmin(
+    businessId: string,
+    queryOrBranchId: OwnerOffersQueryDto | string = {},
+  ) {
+    const query: OwnerOffersQueryDto =
+      typeof queryOrBranchId === 'string'
+        ? { branchId: queryOrBranchId }
+        : (queryOrBranchId ?? {});
+
+    const where: Record<string, unknown> = { businessId };
+    if (query.branchId) where.branchId = query.branchId;
+    if (query.status) where.status = query.status;
+    if (query.search?.trim()) where.name = ILike(`%${query.search.trim()}%`);
+
     const offers = await this.offerRepository.find({
       where,
       relations: ['items', 'branch', 'reward', 'sourceProduct'],
-      order: { createdAt: 'DESC' },
+      order: {
+        createdAt: query.sortBy === OwnerOffersSortBy.OLDEST ? 'ASC' : 'DESC',
+      },
     });
-    // Map offers to explicit admin DTO with discount/voucher fields
-    return offers.map((offer) => ({
-      id: offer.id,
-      name: offer.name,
-      description: offer.description,
-      mainImage: offer.mainImage,
-      galleryImages: offer.galleryImages,
-      pricingType: offer.pricingType,
-      discountValue: offer.discountValue,
-      fixedPrice: offer.fixedPrice,
-      calculatedPrice: offer.calculatedPrice,
-      quantity: offer.quantity,
-      itemIds: offer.items?.map((item) => item.id) ?? [],
-      startDate: offer.startDate?.toISOString(),
-      endDate: offer.endDate?.toISOString(),
-      terms: offer.terms ?? [],
-      maxClaimsPerCustomer: offer.maxClaimsPerCustomer,
-      offerType: offer.offerType,
-      loyaltyPoints: offer.loyaltyPoints,
-      rewardId: offer.rewardId,
-      branchId: offer.branchId,
-      branchName: offer.branch?.name,
-      status: offer.status,
-      createdAt: offer.createdAt?.toISOString(),
-      updatedAt: offer.updatedAt?.toISOString(),
-      maxClaims: offer.quantity,
-      claimedCount: 0,
+
+    const counts = await this.claimCountsByOffer(
+      offers.map((offer) => offer.id),
+    );
+
+    const rows = offers.map((offer) => {
+      const tally = counts.get(offer.id) ?? { claimed: 0, redeemed: 0 };
+      return {
+        id: offer.id,
+        dealGroupId: offer.dealGroupId,
+        name: offer.name,
+        description: offer.description,
+        mainImage: offer.mainImage,
+        galleryImages: offer.galleryImages,
+        pricingType: offer.pricingType,
+        discountValue: offer.discountValue,
+        fixedPrice: offer.fixedPrice,
+        calculatedPrice: offer.calculatedPrice,
+        tiers: offer.tiers ?? null,
+        quantity: offer.quantity,
+        itemIds: offer.items?.map((item) => item.id) ?? [],
+        startDate: offer.startDate?.toISOString(),
+        endDate: offer.endDate?.toISOString(),
+        terms: offer.terms ?? [],
+        claimSteps: offer.claimSteps ?? [],
+        maxClaimsPerCustomer: offer.maxClaimsPerCustomer,
+        claimLimitPeriod: offer.claimLimitPeriod,
+        allowGifting: offer.allowGifting,
+        requireGiftRecipientVerification:
+          offer.requireGiftRecipientVerification,
+        socialSharingBonus: offer.socialSharingBonus,
+        autoPauseWhenSoldOut: offer.autoPauseWhenSoldOut,
+        redemptionChannels: offer.redemptionChannels ?? [],
+        redemptionWindows: offer.redemptionWindows ?? [],
+        offerType: offer.offerType,
+        loyaltyPoints: offer.loyaltyPoints,
+        rewardId: offer.rewardId,
+        branchId: offer.branchId,
+        branchName: offer.branch?.name,
+        status: offer.status,
+        createdAt: offer.createdAt?.toISOString(),
+        updatedAt: offer.updatedAt?.toISOString(),
+        maxClaims: offer.quantity,
+        claimedCount: tally.claimed,
+        redeemedCount: tally.redeemed,
+        views: offer.views ?? 0,
+        likesCount: offer.likesCount ?? 0,
+      };
+    });
+
+    if (query.sortBy === OwnerOffersSortBy.MOST_CLAIMED) {
+      rows.sort((a, b) => b.claimedCount - a.claimedCount);
+    } else if (query.sortBy === OwnerOffersSortBy.ENDING_SOON) {
+      const endOf = (row: { endDate?: string }) =>
+        row.endDate ? Date.parse(row.endDate) : Number.POSITIVE_INFINITY;
+      rows.sort((a, b) => endOf(a) - endOf(b));
+    }
+
+    let result: unknown[] = rows;
+    if (query.groupBy === 'deal') {
+      result = this.groupOfferRows(rows);
+    }
+
+    if (query.page) {
+      const limit = query.limit ?? 20;
+      result = result.slice((query.page - 1) * limit, query.page * limit);
+    }
+    return result;
+  }
+
+  /**
+   * Collapse the per-branch rows of each deal group into one entry. Shared
+   * fields come from the first row; counts are summed; `branches` lists each
+   * branch's own offer id, status, price and counts.
+   */
+  private groupOfferRows<
+    T extends {
+      id: string;
+      dealGroupId: string | null;
+      branchId: string;
+      branchName?: string;
+      status: CatalogueOfferStatus;
+      calculatedPrice: number;
+      quantity: number | null;
+      claimedCount: number;
+      redeemedCount: number;
+      views: number;
+    },
+  >(rows: T[]) {
+    const groups = new Map<string, T[]>();
+    for (const row of rows) {
+      const key = row.dealGroupId ?? row.id;
+      groups.set(key, [...(groups.get(key) ?? []), row]);
+    }
+    return [...groups.entries()].map(([key, members]) => ({
+      ...members[0],
+      dealGroupId: key,
+      claimedCount: members.reduce((sum, row) => sum + row.claimedCount, 0),
+      redeemedCount: members.reduce((sum, row) => sum + row.redeemedCount, 0),
+      views: members.reduce((sum, row) => sum + row.views, 0),
+      status: members.some((row) => row.status === CatalogueOfferStatus.ACTIVE)
+        ? CatalogueOfferStatus.ACTIVE
+        : CatalogueOfferStatus.INACTIVE,
+      branches: members.map((row) => ({
+        offerId: row.id,
+        branchId: row.branchId,
+        branchName: row.branchName,
+        status: row.status,
+        calculatedPrice: row.calculatedPrice,
+        quantity: row.quantity,
+        claimedCount: row.claimedCount,
+        redeemedCount: row.redeemedCount,
+      })),
     }));
+  }
+
+  /** Claimed (claimed + redeemed) and redeemed counts per offer, one query. */
+  private async claimCountsByOffer(
+    offerIds: string[],
+  ): Promise<Map<string, { claimed: number; redeemed: number }>> {
+    const counts = new Map<string, { claimed: number; redeemed: number }>();
+    if (offerIds.length === 0) return counts;
+    const raw: {
+      offerId: string;
+      status: CatalogueOfferClaimStatus;
+      count: string;
+    }[] = await this.claimRepository
+      .createQueryBuilder('claim')
+      .select('claim.offerId', 'offerId')
+      .addSelect('claim.status', 'status')
+      .addSelect('COUNT(*)', 'count')
+      .where('claim.offerId IN (:...offerIds)', { offerIds })
+      .groupBy('claim.offerId')
+      .addGroupBy('claim.status')
+      .getRawMany();
+    for (const row of raw) {
+      const tally = counts.get(row.offerId) ?? { claimed: 0, redeemed: 0 };
+      const n = Number(row.count) || 0;
+      if (row.status === CatalogueOfferClaimStatus.REDEEMED) {
+        tally.redeemed += n;
+        tally.claimed += n;
+      } else if (row.status === CatalogueOfferClaimStatus.CLAIMED) {
+        tally.claimed += n;
+      }
+      counts.set(row.offerId, tally);
+    }
+    return counts;
+  }
+
+  /** Every row of a deal group owned by this business; 404 when none. */
+  private async findGroupOffers(dealGroupId: string, businessId: string) {
+    const offers = await this.offerRepository.find({
+      where: [
+        { dealGroupId, businessId },
+        // A deal created before grouping existed is its own one-row group.
+        { id: dealGroupId, businessId },
+      ],
+      relations: ['items', 'items.branches', 'sourceProduct'],
+    });
+    if (offers.length === 0) throw new NotFoundException('Deal not found');
+    return offers;
+  }
+
+  /**
+   * Apply the same edit to every branch of a deal. Per-branch price and
+   * voucher count are left to the branch-pricing endpoint, so `fixedPrice`,
+   * `discountValue` and `quantity` here overwrite every branch alike.
+   */
+  async updateOfferGroup(
+    dealGroupId: string,
+    dto: UpdateOfferGroupDto,
+    businessId: string,
+  ) {
+    const offers = await this.findGroupOffers(dealGroupId, businessId);
+    const updated: CatalogueOffer[] = [];
+    for (const offer of offers) {
+      updated.push(await this.updateOffer(offer.id, dto, businessId));
+    }
+    return { dealGroupId, offers: updated };
+  }
+
+  async updateOfferGroupStatus(
+    dealGroupId: string,
+    status: CatalogueOfferStatus,
+    businessId: string,
+  ) {
+    const offers = await this.findGroupOffers(dealGroupId, businessId);
+    await this.offerRepository.update(
+      { id: In(offers.map((offer) => offer.id)) },
+      { status },
+    );
+    await Promise.all(
+      offers.map((offer) => this.clearCache(offer.branchId, offer.id)),
+    );
+    return {
+      dealGroupId,
+      status,
+      offerIds: offers.map((offer) => offer.id),
+    };
   }
 
   async findAllOffersPublic(branchId: string, query: CatalogueOfferQueryDto) {
@@ -726,7 +1042,9 @@ export class CatalogueOfferService {
         pricingType: offer.pricingType,
         fixedPrice,
         percentageOff:
-          rawPercentageOff == null ? rawPercentageOff : Number(rawPercentageOff),
+          rawPercentageOff == null
+            ? rawPercentageOff
+            : Number(rawPercentageOff),
         calculatedPrice,
         originalPrice,
         discountPercent,
@@ -930,6 +1248,26 @@ export class CatalogueOfferService {
         const discountValue = Number(offer.discountValue || 0);
         return Math.max(0, sum - discountValue);
       }
+      case CatalogueOfferPricingType.COMBO:
+        // The bundle sells at its own price; without one it is just the sum.
+        return Math.max(
+          0,
+          offer.fixedPrice !== null && offer.fixedPrice !== undefined
+            ? Number(offer.fixedPrice)
+            : sum,
+        );
+      case CatalogueOfferPricingType.TIERED: {
+        // Listed at the entry tier — what a customer pays for the minimum
+        // quantity. Deeper tiers apply at checkout.
+        const entry = [...(offer.tiers ?? [])].sort(
+          (a, b) => a.minQuantity - b.minQuantity,
+        )[0];
+        const percent = Math.min(
+          100,
+          Math.max(0, Number(entry?.discountValue ?? 0)),
+        );
+        return Math.max(0, sum * (1 - percent / 100));
+      }
       case CatalogueOfferPricingType.FIXED_DISCOUNT_PRICE: {
         if (offer.fixedPrice !== null && offer.fixedPrice !== undefined) {
           return Math.max(0, Number(offer.fixedPrice));
@@ -1096,6 +1434,7 @@ export class CatalogueOfferService {
       offer.maxClaimsPerCustomer !== null &&
       offer.maxClaimsPerCustomer !== undefined
     ) {
+      const windowStart = claimLimitWindowStart(offer.claimLimitPeriod);
       const customerClaimsCount = await this.claimRepository.count({
         where: {
           offerId: offer.id,
@@ -1104,11 +1443,14 @@ export class CatalogueOfferService {
             CatalogueOfferClaimStatus.CLAIMED,
             CatalogueOfferClaimStatus.REDEEMED,
           ]),
+          ...(windowStart && { createdAt: MoreThanOrEqual(windowStart) }),
         },
       });
       if (customerClaimsCount >= offer.maxClaimsPerCustomer) {
         throw new BadRequestException(
-          `You have reached the maximum number of claims (${offer.maxClaimsPerCustomer}) for this deal.`,
+          windowStart
+            ? `You have reached the maximum number of claims (${offer.maxClaimsPerCustomer}) for this deal this ${offer.claimLimitPeriod}.`
+            : `You have reached the maximum number of claims (${offer.maxClaimsPerCustomer}) for this deal.`,
         );
       }
     }
@@ -1204,6 +1546,8 @@ export class CatalogueOfferService {
           ? await managerOrRepo.save(CatalogueOfferClaim, claim)
           : await this.claimRepository.save(claim);
 
+      await this.pauseIfSoldOut(offer, managerOrRepo);
+
       await this.clearCache(offer.branchId, offer.id);
 
       if (dto.giftToken) {
@@ -1245,6 +1589,10 @@ export class CatalogueOfferService {
       throw new NotFoundException('Promotion not found or inactive');
     }
 
+    if (offer.allowGifting === false) {
+      throw new ForbiddenException('This deal cannot be gifted');
+    }
+
     const now = new Date();
     if (offer.startDate && now < new Date(offer.startDate)) {
       throw new BadRequestException('This promotion has not started yet');
@@ -1277,6 +1625,7 @@ export class CatalogueOfferService {
       offer.maxClaimsPerCustomer !== null &&
       offer.maxClaimsPerCustomer !== undefined
     ) {
+      const windowStart = claimLimitWindowStart(offer.claimLimitPeriod);
       const recipientClaimsCount = await this.claimRepository.count({
         where: {
           offerId: offer.id,
@@ -1285,6 +1634,7 @@ export class CatalogueOfferService {
             CatalogueOfferClaimStatus.CLAIMED,
             CatalogueOfferClaimStatus.REDEEMED,
           ]),
+          ...(windowStart && { createdAt: MoreThanOrEqual(windowStart) }),
         },
       });
       if (recipientClaimsCount >= offer.maxClaimsPerCustomer) {
@@ -1570,7 +1920,16 @@ export class CatalogueOfferService {
       );
     }
 
+    if (!isWithinRedemptionWindows(claim.offer.redemptionWindows)) {
+      throw new BadRequestException(
+        `This deal can only be redeemed during: ${describeRedemptionWindows(
+          claim.offer.redemptionWindows ?? [],
+        )} (WAT).`,
+      );
+    }
+
     claim.status = CatalogueOfferClaimStatus.REDEEMED;
+    claim.redeemedAt = new Date();
     await this.claimRepository.save(claim);
 
     await this.offerRepository.increment({ id: claim.offerId }, 'visits', 1);
@@ -1830,7 +2189,10 @@ export class CatalogueOfferService {
     // prices, derived the same way `toMyClaim` does it so a gift row and a
     // claim row for the same deal report the same figures.
     const originalPrice = offer
-      ? (offer.items ?? []).reduce((acc, item) => acc + Number(item.price || 0), 0)
+      ? (offer.items ?? []).reduce(
+          (acc, item) => acc + Number(item.price || 0),
+          0,
+        )
       : null;
 
     return {
