@@ -9,6 +9,9 @@ import {
   UseGuards,
   Query,
   Request,
+  HttpCode,
+  HttpStatus,
+  ParseUUIDPipe,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -23,6 +26,7 @@ import {
   UpdateSegmentDto,
   SegmentMemberDto,
 } from '../dto/segment.dto';
+import { SegmentPreviewDto } from '../dto/segment-criteria.dto';
 import { User, UserRole } from '../../users/entities/user.entity';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../../common/guards/roles.guard';
@@ -56,7 +60,44 @@ export class SegmentsController {
     @Request() req: { user: User },
   ) {
     const branchId = filter.branchId || req.user.branchId;
-    return this.segmentsService.getSegments(branchId);
+    return this.segmentsService.getSegments(branchId, req.user.businessId);
+  }
+
+  @Post('preview')
+  @HttpCode(HttpStatus.OK)
+  @Roles(UserRole.OWNER, UserRole.MANAGER)
+  @ApiOperation({
+    summary: 'Live size and channel reach for a rule set (nothing is saved)',
+  })
+  async preview(
+    @Body() dto: SegmentPreviewDto,
+    @Request() req: { user: User },
+  ) {
+    return this.segmentsService.preview(req.user.businessId, dto.criteria);
+  }
+
+  @Get('criteria-options')
+  @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF)
+  @ApiOperation({
+    summary: 'Deals, menu items, branches and presets for the criteria builder',
+  })
+  async criteriaOptions(@Request() req: { user: User }) {
+    return this.segmentsService.criteriaOptions(req.user.businessId);
+  }
+
+  @Get(':id/insights')
+  @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF)
+  @ApiOperation({
+    summary: 'Spend, frequency, branch mix, favourites and sample patrons',
+  })
+  @ApiParam({ name: 'id', description: 'Segment UUID' })
+  async insights(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Query() filter: BranchFilterDto,
+    @Request() req: { user: User },
+  ) {
+    const branchId = filter.branchId || req.user.branchId;
+    return this.segmentsService.insights(id, branchId, req.user.businessId);
   }
 
   @Get(':id')
@@ -70,7 +111,11 @@ export class SegmentsController {
     @Request() req: { user: User },
   ) {
     const branchId = filter.branchId || req.user.branchId;
-    return this.segmentsService.getSegmentWithMembers(id, branchId);
+    return this.segmentsService.getSegmentWithMembers(
+      id,
+      branchId,
+      req.user.businessId,
+    );
   }
 
   @Patch(':id')
@@ -85,7 +130,12 @@ export class SegmentsController {
     @Request() req: { user: User },
   ) {
     const branchId = filter.branchId || req.user.branchId;
-    return this.segmentsService.updateSegment(id, dto, branchId);
+    return this.segmentsService.updateSegment(
+      id,
+      dto,
+      branchId,
+      req.user.businessId,
+    );
   }
 
   @Delete(':id')
@@ -99,7 +149,11 @@ export class SegmentsController {
     @Request() req: { user: User },
   ) {
     const branchId = filter.branchId || req.user.branchId;
-    return this.segmentsService.deleteSegment(id, branchId);
+    return this.segmentsService.deleteSegment(
+      id,
+      branchId,
+      req.user.businessId,
+    );
   }
 
   @Post(':id/members')
@@ -114,7 +168,12 @@ export class SegmentsController {
     @Request() req: { user: User },
   ) {
     const branchId = filter.branchId || req.user.branchId;
-    return this.segmentsService.addMembers(id, dto.userIds, branchId);
+    return this.segmentsService.addMembers(
+      id,
+      dto.userIds,
+      branchId,
+      req.user.businessId,
+    );
   }
 
   @Delete(':id/members')
@@ -129,6 +188,11 @@ export class SegmentsController {
     @Request() req: { user: User },
   ) {
     const branchId = filter.branchId || req.user.branchId;
-    return this.segmentsService.removeMembers(id, dto.userIds, branchId);
+    return this.segmentsService.removeMembers(
+      id,
+      dto.userIds,
+      branchId,
+      req.user.businessId,
+    );
   }
 }

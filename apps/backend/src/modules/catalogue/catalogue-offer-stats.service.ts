@@ -226,10 +226,10 @@ export class CatalogueOfferStatsService {
           'expiresAt',
         ],
       }),
-      this.claimRepository.manager.query(
+      this.claimRepository.manager.query<{ count: number }[]>(
         `SELECT COUNT(*)::int AS "count" FROM "deal_saves" WHERE "offerId" = ANY($1)`,
         [offerIds],
-      ) as Promise<{ count: number }[]>,
+      ),
     ]);
 
     const perOffer = new Map(
