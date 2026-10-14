@@ -1751,4 +1751,126 @@ describe('CatalogueOfferService', () => {
       });
     });
   });
+  describe('deal group branch pricing', () => {
+    let txSave: jest.Mock;
+    const template = () => ({
+      id: 'o1',
+      dealGroupId: 'g1',
+      businessId: 'biz-1',
+      branchId: 'b1',
+      name: 'Lunch deal',
+      status: CatalogueOfferStatus.ACTIVE,
+      pricingType: CatalogueOfferPricingType.PERCENTAGE_DISCOUNT,
+      discountValue: 20,
+      quantity: 10,
+      views: 40,
+      calculatedPrice: 8000,
+      items: [
+        {
+          id: 'item-1',
+          name: 'Burger',
+          price: 10000,
+          branches: [{ id: 'b1' }, { id: 'b2' }],
+        },
+      ],
+    });
+
+    beforeEach(() => {
+      txSave = jest.fn().mockResolvedValue(undefined);
+      offerRepo.manager = {
+        transaction: jest.fn((cb) => cb({ save: txSave })),
+      };
+      offerRepo.create = jest.fn().mockImplementation((dto) => ({ ...dto }));
+      branchRepo.find = jest.fn().mockResolvedValue([
+        { id: 'b1', name: 'Wuse' },
+        { id: 'b2', name: 'Garki' },
+      ]);
+      claimRepo.createQueryBuilder = jest.fn().mockReturnValue({
+        select: jest.fn().mockReturnThis(),
+        addSelect: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        groupBy: jest.fn().mockReturnThis(),
+        addGroupBy: jest.fn().mockReturnThis(),
+        getRawMany: jest.fn().mockResolvedValue([]),
+      });
+    });
+
+    it('updates an existing branch and adds a new one as a fresh copy', async () => {
+      offerRepo.find = jest.fn().mockResolvedValue([template()]);
+
+      await service.setOfferGroupBranchPricing(
+        'g1',
+        {
+          branches: [
+            { branchId: 'b1', isActive: false, discountValue: 30 },
+            { branchId: 'b2', isActive: true, quantity: 4 },
+          ],
+        },
+        'biz-1',
+      );
+
+      const saved = txSave.mock.calls[0][1];
+      expect(saved).toHaveLength(2);
+      const [existing, added] = saved;
+      expect(existing).toMatchObject({
+        id: 'o1',
+        status: CatalogueOfferStatus.INACTIVE,
+        discountValue: 30,
+        calculatedPrice: 7000,
+      });
+      expect(added).toMatchObject({
+        branchId: 'b2',
+        dealGroupId: 'g1',
+        status: CatalogueOfferStatus.ACTIVE,
+        quantity: 4,
+        views: 0,
+        calculatedPrice: 8000,
+      });
+      expect(added).not.toHaveProperty('id');
+    });
+
+    it('refuses to add a branch where the deal items are not stocked', async () => {
+      const offer = template();
+      offer.items[0].branches = [{ id: 'b1' }];
+      offerRepo.find = jest.fn().mockResolvedValue([offer]);
+      branchRepo.find = jest
+        .fn()
+        .mockResolvedValue([{ id: 'b2', name: 'Garki' }]);
+
+      await expect(
+        service.setOfferGroupBranchPricing(
+          'g1',
+          { branches: [{ branchId: 'b2', isActive: true }] },
+          'biz-1',
+        ),
+      ).rejects.toThrow(/not available in branch b2/);
+      expect(txSave).not.toHaveBeenCalled();
+    });
+
+    it('turns a pre-grouping deal into the first row of its group', async () => {
+      offerRepo.find = jest
+        .fn()
+        .mockResolvedValue([{ ...template(), dealGroupId: null }]);
+      branchRepo.find = jest
+        .fn()
+        .mockResolvedValue([{ id: 'b2', name: 'Garki' }]);
+
+      await service.setOfferGroupBranchPricing(
+        'o1',
+        { branches: [{ branchId: 'b2', isActive: true }] },
+        'biz-1',
+      );
+
+      const saved = txSave.mock.calls[0][1];
+      expect(saved[0]).toMatchObject({ id: 'o1', dealGroupId: 'o1' });
+      expect(saved[1]).toMatchObject({ branchId: 'b2', dealGroupId: 'o1' });
+    });
+
+    it('404s for a deal of another business', async () => {
+      offerRepo.find = jest.fn().mockResolvedValue([]);
+      await expect(
+        service.getOfferGroupBranchPricing('g1', 'biz-2'),
+      ).rejects.toThrow('Deal not found');
+    });
+  });
 });

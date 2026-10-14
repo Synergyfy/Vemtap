@@ -548,6 +548,11 @@ export class CatalogueService {
     }
   }
 
+  /** The branch id public routes resolve a branch id / code / business id to. */
+  resolvePublicBranchId(branchIdOrCode: string): Promise<string> {
+    return this.resolveBranchId(branchIdOrCode);
+  }
+
   private async resolveBranchId(branchIdOrCode: string): Promise<string> {
     const isUuid =
       /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
