@@ -89,6 +89,22 @@ const PUBLISHED_ITEM_PARAMS = {
   publishedItemStatus: CatalogueItemStatus.ACTIVE,
 };
 
+/**
+ * A deal's items in a fixed order (oldest first, id as tiebreak). The joins
+ * that load them have no ORDER BY, so Postgres could return them in a different
+ * order per query — and clients that fall back to "the first item's photo" then
+ * showed one picture on a feed card and another on the deal page.
+ */
+function sortOfferItems<
+  T extends { id: string; createdAt?: Date | string | null },
+>(items: T[] | null | undefined): T[] {
+  return [...(items ?? [])].sort((a, b) => {
+    const at = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+    const bt = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+    return at - bt || a.id.localeCompare(b.id);
+  });
+}
+
 function isPublishedItem(item: CatalogueItem): boolean {
   return item.status === CatalogueItemStatus.ACTIVE && !item.isSuspended;
 }
@@ -918,7 +934,10 @@ export class CatalogueOfferService {
     });
 
     const result = {
-      data: paginated.data,
+      data: paginated.data.map((offer) => ({
+        ...offer,
+        items: sortOfferItems(offer.items),
+      })),
       total: paginated.total,
       page: paginated.page,
       limit: paginated.limit,
@@ -1265,6 +1284,10 @@ export class CatalogueOfferService {
         id: offer.id,
         name: offer.name,
         description: offer.description,
+        // The deal's own photo: the image a card should show. Without it the
+        // app fell back to an item photo picked by arbitrary join order.
+        mainImage: offer.mainImage ?? null,
+        galleryImages: offer.galleryImages ?? [],
         pricingType: offer.pricingType,
         fixedPrice,
         percentageOff:
@@ -1299,7 +1322,7 @@ export class CatalogueOfferService {
                 undefined,
             }
           : undefined,
-        items: offer.items,
+        items: sortOfferItems(offer.items),
         claimedCount,
         totalLimit: (offer as any).totalLimit ?? offer.quantity,
         remainingLimit:
@@ -1392,6 +1415,7 @@ export class CatalogueOfferService {
 
     const mappedOffer = {
       ...offer,
+      items: sortOfferItems(offer.items),
       originalPrice,
       dealPrice: offer.calculatedPrice,
       discountPercent,

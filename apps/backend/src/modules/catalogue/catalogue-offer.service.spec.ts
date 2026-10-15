@@ -758,6 +758,46 @@ describe('CatalogueOfferService', () => {
       expect(result.data[0].discountPercent).toBe(15);
     });
 
+    it('gives each row the deal photo and its items in a fixed order', async () => {
+      const older = {
+        id: 'b-item',
+        price: 60,
+        mainImage: 'pasta.jpg',
+        createdAt: new Date('2026-01-01'),
+      };
+      const newer = {
+        id: 'a-item',
+        price: 40,
+        mainImage: 'wings.jpg',
+        createdAt: new Date('2026-02-01'),
+      };
+      const read = async (items: unknown[]) => {
+        offerRepo.createQueryBuilder = jest
+          .fn()
+          .mockReturnValue(makeOfferQb({ mainImage: 'deal.jpg', items }));
+        claimRepo.find.mockResolvedValue([]);
+        const result = await service.findAllOffersPublicGlobal({
+          page: 1,
+          limit: 10,
+        });
+        return result.data[0];
+      };
+
+      const first = await read([newer, older]);
+      const second = await read([older, newer]);
+
+      expect(first.mainImage).toBe('deal.jpg');
+      // Same order whichever way the join returned them.
+      expect(first.items.map((item: any) => item.id)).toEqual([
+        'b-item',
+        'a-item',
+      ]);
+      expect(second.items.map((item: any) => item.id)).toEqual([
+        'b-item',
+        'a-item',
+      ]);
+    });
+
     it('only lists deals whose items are all published', async () => {
       const qb = makeOfferQb();
       offerRepo.createQueryBuilder = jest.fn().mockReturnValue(qb);
