@@ -1,7 +1,13 @@
 import { Test } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { NotFoundException } from '@nestjs/common';
-import { CatalogueOfferStatsService } from './catalogue-offer-stats.service';
+import {
+  CatalogueOfferStatsService,
+  effectiveLedgerStatus,
+  ledgerCustomerName,
+  maskLedgerContact,
+} from './catalogue-offer-stats.service';
+import { OfferLedgerStatus } from './dto/offer-ledger.dto';
 import {
   CatalogueOffer,
   CatalogueOfferStatus,
@@ -222,6 +228,167 @@ describe('CatalogueOfferStatsService', () => {
       redeemedToday: 1,
       netRevenue30d: 16000,
       discountGiven30d: 4000,
+    });
+  });
+
+  describe('redemption ledger', () => {
+    /** A chainable query builder that records its filters and returns fixtures. */
+    const ledgerQb = (result: {
+      many?: unknown[];
+      count?: number;
+      raw?: Record<string, unknown>;
+    }) => {
+      const qb: any = { wheres: [] as string[] };
+      for (const method of [
+        'innerJoinAndSelect',
+        'leftJoinAndSelect',
+        'innerJoin',
+        'setParameters',
+        'orderBy',
+        'addOrderBy',
+        'offset',
+        'limit',
+        'select',
+        'addSelect',
+      ]) {
+        qb[method] = jest.fn().mockReturnValue(qb);
+      }
+      qb.where = jest.fn((sql: string) => {
+        qb.wheres.push(sql);
+        return qb;
+      });
+      qb.andWhere = jest.fn((sql: string) => {
+        qb.wheres.push(sql);
+        return qb;
+      });
+      qb.getMany = jest.fn().mockResolvedValue(result.many ?? []);
+      qb.getCount = jest.fn().mockResolvedValue(result.count ?? 0);
+      qb.getRawOne = jest.fn().mockResolvedValue(result.raw ?? {});
+      return qb;
+    };
+
+    const ledgerClaim = (extra: Record<string, unknown> = {}) => ({
+      id: 'c1',
+      offerId: 'o1',
+      claimCode: 'VEM-ABC',
+      status: CatalogueOfferClaimStatus.CLAIMED,
+      firstName: 'Ada',
+      lastName: 'Obi',
+      email: 'ada@mail.com',
+      phone: '+2348012345678',
+      createdAt: new Date('2026-10-13T10:00:00Z'),
+      expiresAt: new Date('2026-10-12T00:00:00Z'),
+      redeemedAt: null,
+      offer: offer(),
+      ...extra,
+    });
+
+    it('treats a claimed voucher past expiry as expired', () => {
+      expect(
+        effectiveLedgerStatus(
+          CatalogueOfferClaimStatus.CLAIMED,
+          new Date('2026-10-12T00:00:00Z'),
+          NOW,
+        ),
+      ).toBe(OfferLedgerStatus.EXPIRED);
+      expect(
+        effectiveLedgerStatus(
+          CatalogueOfferClaimStatus.CLAIMED,
+          new Date('2026-10-20T00:00:00Z'),
+          NOW,
+        ),
+      ).toBe(OfferLedgerStatus.CLAIMED);
+      expect(
+        effectiveLedgerStatus(CatalogueOfferClaimStatus.REDEEMED, null, NOW),
+      ).toBe(OfferLedgerStatus.REDEEMED);
+    });
+
+    it('never exposes a full name or contact', () => {
+      expect(ledgerCustomerName('Ada', 'Obi')).toBe('Ada O.');
+      expect(ledgerCustomerName('', '')).toBe('Customer');
+      expect(maskLedgerContact('ada.lovelace@mail.com', null)).toBe(
+        'ad***@mail.com',
+      );
+      expect(maskLedgerContact('', '+234 801 234 5678')).toBe('•••• 5678');
+      expect(maskLedgerContact(null, '12')).toBeNull();
+    });
+
+    it('builds rows with effective status, masked contact and per-row discount', async () => {
+      const rows = ledgerQb({ many: [ledgerClaim()] });
+      const count = ledgerQb({ count: 1 });
+      const totals = ledgerQb({
+        raw: {
+          claims: '3',
+          redeemed: '1',
+          expired: '1',
+          netRevenue: '8000.00',
+          discountGiven: '2000',
+        },
+      });
+      claimRepo.createQueryBuilder = jest
+        .fn()
+        .mockReturnValueOnce(rows)
+        .mockReturnValueOnce(count)
+        .mockReturnValueOnce(totals);
+      offerRepo.find.mockResolvedValue([offer()]);
+
+      const page = await service.getLedger('biz-1', { page: 1, limit: 20 });
+
+      expect(page.total).toBe(1);
+      expect(page.totals).toEqual({
+        claims: 3,
+        redeemed: 1,
+        expired: 1,
+        netRevenue: 8000,
+        discountGiven: 2000,
+      });
+      expect(page.data[0]).toMatchObject({
+        claimCode: 'VEM-ABC',
+        status: OfferLedgerStatus.EXPIRED,
+        customerName: 'Ada O.',
+        contact: 'ad***@mail.com',
+        dealName: 'Lunch deal',
+        dealGroupId: 'g1',
+        branchName: 'Wuse',
+        amount: 8000,
+        discountGiven: 2000,
+        activityAt: '2026-10-13T10:00:00.000Z',
+      });
+      expect(rows.offset).toHaveBeenCalledWith(0);
+      expect(rows.limit).toHaveBeenCalledWith(20);
+    });
+
+    it('applies status to the page but not to the totals', async () => {
+      const rows = ledgerQb({});
+      const count = ledgerQb({});
+      const totals = ledgerQb({});
+      claimRepo.createQueryBuilder = jest
+        .fn()
+        .mockReturnValueOnce(rows)
+        .mockReturnValueOnce(count)
+        .mockReturnValueOnce(totals);
+
+      await service.getLedger('biz-1', {
+        status: OfferLedgerStatus.REDEEMED,
+        branchId: 'b1',
+        dealGroupId: 'g1',
+        from: '2026-10-01T00:00:00Z',
+      });
+
+      for (const qb of [rows, count, totals]) {
+        expect(qb.wheres).toEqual(
+          expect.arrayContaining([
+            'offer.businessId = :businessId',
+            'offer.branchId = :branchId',
+            '(offer.dealGroupId = :dealGroupId OR offer.id = :dealGroupId)',
+            expect.stringContaining('>= :from'),
+          ]),
+        );
+      }
+      const statusClause = '"claim"."status" = :redeemedStatus';
+      expect(rows.wheres).toContain(statusClause);
+      expect(count.wheres).toContain(statusClause);
+      expect(totals.wheres).not.toContain(statusClause);
     });
   });
 });

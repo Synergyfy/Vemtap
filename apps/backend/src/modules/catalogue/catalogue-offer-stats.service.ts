@@ -11,6 +11,7 @@ import {
   CatalogueOfferClaimStatus,
 } from './entities/catalogue-offer-claim.entity';
 import { claimLimitWindowStart } from './utils/offer-rules.utils';
+import { OfferLedgerQueryDto, OfferLedgerStatus } from './dto/offer-ledger.dto';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 /** Default chart range when the caller gives none. */
@@ -67,6 +68,100 @@ export interface OfferStats {
   range: { from: string; to: string };
   series: OfferSeriesPoint[];
   byBranch: OfferBranchStats[];
+}
+
+export interface OfferLedgerRow {
+  id: string;
+  claimCode: string;
+  status: OfferLedgerStatus;
+  customerName: string;
+  /** Masked email or phone; never the full value. */
+  contact: string | null;
+  dealName: string;
+  dealGroupId: string;
+  offerId: string;
+  branchId: string;
+  branchName: string | null;
+  /** The deal price the customer pays (the offer's `calculatedPrice`). */
+  amount: number;
+  /** Item prices minus the deal price, floored at 0. */
+  discountGiven: number;
+  claimedAt: string;
+  redeemedAt: string | null;
+  expiresAt: string | null;
+  /** Redemption time when redeemed, otherwise claim time. Rows sort on it. */
+  activityAt: string;
+}
+
+export interface OfferLedgerPage {
+  data: OfferLedgerRow[];
+  total: number;
+  page: number;
+  limit: number;
+  /** Over every row matching branch/deal/date, regardless of `status`. */
+  totals: {
+    claims: number;
+    redeemed: number;
+    expired: number;
+    netRevenue: number;
+    discountGiven: number;
+  };
+}
+
+/** When a ledger row happened: redemption if redeemed, otherwise the claim. */
+const LEDGER_ACTIVITY_SQL =
+  'COALESCE("claim"."redeemedAt", "claim"."createdAt")';
+const LEDGER_EXPIRED_SQL =
+  '("claim"."status" = :expiredStatus OR ("claim"."status" = :claimedStatus AND "claim"."expiresAt" < :now))';
+const LEDGER_STATUS_SQL: Record<OfferLedgerStatus, string> = {
+  [OfferLedgerStatus.REDEEMED]: '"claim"."status" = :redeemedStatus',
+  [OfferLedgerStatus.EXPIRED]: LEDGER_EXPIRED_SQL,
+  [OfferLedgerStatus.CLAIMED]:
+    '("claim"."status" = :claimedStatus AND ("claim"."expiresAt" IS NULL OR "claim"."expiresAt" >= :now))',
+};
+/** Sum of the offer's item prices — what the customer would have paid. */
+const LEDGER_ORIGINAL_PRICE_SQL = `(SELECT COALESCE(SUM("ledgerItem"."price"), 0) FROM "catalogue_offer_items" "ledgerLink" JOIN "catalogue_items" "ledgerItem" ON "ledgerItem"."id" = "ledgerLink"."itemId" WHERE "ledgerLink"."offerId" = "offer"."id")`;
+
+/** A claimed voucher past `expiresAt` is shown as expired. */
+export function effectiveLedgerStatus(
+  status: CatalogueOfferClaimStatus,
+  expiresAt: Date | null,
+  now: Date,
+): OfferLedgerStatus {
+  if (status === CatalogueOfferClaimStatus.REDEEMED) {
+    return OfferLedgerStatus.REDEEMED;
+  }
+  if (status === CatalogueOfferClaimStatus.EXPIRED) {
+    return OfferLedgerStatus.EXPIRED;
+  }
+  return expiresAt && expiresAt < now
+    ? OfferLedgerStatus.EXPIRED
+    : OfferLedgerStatus.CLAIMED;
+}
+
+/** "Ada O." — enough for staff to recognise a customer, no more. */
+export function ledgerCustomerName(
+  firstName?: string | null,
+  lastName?: string | null,
+): string {
+  const first = (firstName ?? '').trim();
+  const initial = (lastName ?? '').trim().charAt(0).toUpperCase();
+  if (!first && !initial) return 'Customer';
+  return initial ? `${first} ${initial}.`.trim() : first;
+}
+
+/** `ad***@mail.com` or `•••• 5678`; the ledger never shows full contact details. */
+export function maskLedgerContact(
+  email?: string | null,
+  phone?: string | null,
+): string | null {
+  const trimmedEmail = (email ?? '').trim();
+  const at = trimmedEmail.indexOf('@');
+  if (at > 0) {
+    return `${trimmedEmail.slice(0, Math.min(2, at))}***${trimmedEmail.slice(at)}`;
+  }
+  const digits = (phone ?? '').replace(/\D/g, '');
+  return digits.length >= 4 ? `•••• ${digits.slice(-4)}` : null;
 }
 
 /** `YYYY-MM-DD` of the Lagos calendar day `at` falls on. */
@@ -177,6 +272,150 @@ export class CatalogueOfferStatsService {
       redeemedToday,
       netRevenue30d: round2(netRevenue30d),
       discountGiven30d: round2(discountGiven30d),
+    };
+  }
+
+  /**
+   * The owner's deal redemption ledger: one row per claim, newest activity
+   * first, filtered by effective status, branch, deal and date. Totals cover
+   * every row the branch/deal/date filters match, so the summary stays put
+   * while the owner flips between status tabs.
+   */
+  async getLedger(
+    businessId: string,
+    query: OfferLedgerQueryDto = {},
+  ): Promise<OfferLedgerPage> {
+    const now = new Date();
+    const page = query.page ?? 1;
+    const limit = query.limit ?? 20;
+
+    const scoped = (select: boolean) => {
+      const qb = this.claimRepository.createQueryBuilder('claim');
+      if (select) {
+        qb.innerJoinAndSelect('claim.offer', 'offer').leftJoinAndSelect(
+          'offer.branch',
+          'branch',
+        );
+      } else {
+        qb.innerJoin('claim.offer', 'offer');
+      }
+      qb.where('offer.businessId = :businessId', { businessId }).setParameters({
+        now,
+        claimedStatus: CatalogueOfferClaimStatus.CLAIMED,
+        redeemedStatus: CatalogueOfferClaimStatus.REDEEMED,
+        expiredStatus: CatalogueOfferClaimStatus.EXPIRED,
+      });
+      if (query.branchId) {
+        qb.andWhere('offer.branchId = :branchId', { branchId: query.branchId });
+      }
+      if (query.dealGroupId) {
+        qb.andWhere(
+          '(offer.dealGroupId = :dealGroupId OR offer.id = :dealGroupId)',
+          {
+            dealGroupId: query.dealGroupId,
+          },
+        );
+      }
+      if (query.from) {
+        qb.andWhere(`${LEDGER_ACTIVITY_SQL} >= :from`, {
+          from: new Date(query.from),
+        });
+      }
+      if (query.to) {
+        qb.andWhere(`${LEDGER_ACTIVITY_SQL} <= :to`, {
+          to: new Date(query.to),
+        });
+      }
+      return qb;
+    };
+
+    const filtered = (select: boolean) => {
+      const qb = scoped(select);
+      if (query.status) qb.andWhere(LEDGER_STATUS_SQL[query.status]);
+      return qb;
+    };
+
+    const [claims, total, rawTotals] = await Promise.all([
+      filtered(true)
+        .orderBy(LEDGER_ACTIVITY_SQL, 'DESC')
+        .addOrderBy('claim.id', 'DESC')
+        .offset((page - 1) * limit)
+        .limit(limit)
+        .getMany(),
+      filtered(false).getCount(),
+      scoped(false)
+        .select('COUNT(*)', 'claims')
+        .addSelect(
+          `COUNT(*) FILTER (WHERE ${LEDGER_STATUS_SQL[OfferLedgerStatus.REDEEMED]})`,
+          'redeemed',
+        )
+        .addSelect(`COUNT(*) FILTER (WHERE ${LEDGER_EXPIRED_SQL})`, 'expired')
+        .addSelect(
+          `COALESCE(SUM("offer"."calculatedPrice") FILTER (WHERE ${LEDGER_STATUS_SQL[OfferLedgerStatus.REDEEMED]}), 0)`,
+          'netRevenue',
+        )
+        .addSelect(
+          `COALESCE(SUM(GREATEST(0, ${LEDGER_ORIGINAL_PRICE_SQL} - "offer"."calculatedPrice")) FILTER (WHERE ${LEDGER_STATUS_SQL[OfferLedgerStatus.REDEEMED]}), 0)`,
+          'discountGiven',
+        )
+        .getRawOne<Record<string, string | number | null>>(),
+    ]);
+
+    // Item prices for just this page's offers, in one query.
+    const offerIds = [...new Set(claims.map((claim) => claim.offerId))];
+    const offersWithItems = offerIds.length
+      ? await this.offerRepository.find({
+          where: { id: In(offerIds) },
+          relations: ['items'],
+        })
+      : [];
+    const originalPriceOf = new Map(
+      offersWithItems.map((offer) => [
+        offer.id,
+        (offer.items ?? []).reduce(
+          (sum, item) => sum + (Number(item.price) || 0),
+          0,
+        ),
+      ]),
+    );
+
+    const data = claims.map((claim): OfferLedgerRow => {
+      const offer = claim.offer;
+      const amount = Number(offer.calculatedPrice) || 0;
+      const original = originalPriceOf.get(offer.id) ?? 0;
+      return {
+        id: claim.id,
+        claimCode: claim.claimCode,
+        status: effectiveLedgerStatus(claim.status, claim.expiresAt, now),
+        customerName: ledgerCustomerName(claim.firstName, claim.lastName),
+        contact: maskLedgerContact(claim.email, claim.phone),
+        dealName: offer.name,
+        dealGroupId: offer.dealGroupId ?? offer.id,
+        offerId: offer.id,
+        branchId: offer.branchId,
+        branchName: offer.branch?.name ?? null,
+        amount: round2(amount),
+        discountGiven: round2(Math.max(0, original - amount)),
+        claimedAt: claim.createdAt.toISOString(),
+        redeemedAt: claim.redeemedAt?.toISOString() ?? null,
+        expiresAt: claim.expiresAt?.toISOString() ?? null,
+        activityAt: (claim.redeemedAt ?? claim.createdAt).toISOString(),
+      };
+    });
+
+    const count = (key: string) => Number(rawTotals?.[key] ?? 0) || 0;
+    return {
+      data,
+      total,
+      page,
+      limit,
+      totals: {
+        claims: count('claims'),
+        redeemed: count('redeemed'),
+        expired: count('expired'),
+        netRevenue: round2(count('netRevenue')),
+        discountGiven: round2(count('discountGiven')),
+      },
     };
   }
 

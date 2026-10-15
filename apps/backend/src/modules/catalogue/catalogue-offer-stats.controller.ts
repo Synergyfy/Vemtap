@@ -20,6 +20,7 @@ import { Roles } from '../../common/decorators/roles.decorator';
 import { Permissions } from '../../common/decorators/permissions.decorator';
 import { UserRole } from '../users/entities/user.entity';
 import { CatalogueOfferStatsService } from './catalogue-offer-stats.service';
+import { OfferLedgerQueryDto } from './dto/offer-ledger.dto';
 
 const RANGE_DOC = {
   from: {
@@ -49,6 +50,20 @@ export class CatalogueOfferStatsController {
       req.user.businessId,
       branchId || undefined,
     );
+  }
+
+  @Get('ledger')
+  @Roles(UserRole.OWNER, UserRole.MANAGER)
+  @ApiOperation({
+    summary: 'Deal redemption ledger: one row per claim, with totals',
+    description:
+      'Newest activity first (redemption time when redeemed, else claim time). ' +
+      '`status` is effective: a claimed voucher past its expiry is `expired`. ' +
+      'Totals cover every claim matching branch/deal/date, ignoring `status`. ' +
+      'Customer contact is masked.',
+  })
+  async ledger(@Req() req: any, @Query() query: OfferLedgerQueryDto) {
+    return this.statsService.getLedger(req.user.businessId, query);
   }
 
   @Get('groups/:dealGroupId/stats')

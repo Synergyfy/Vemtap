@@ -499,6 +499,22 @@ export class CatalogueOfferService {
         tiers: offer.tiers ?? null,
         quantity: offer.quantity,
         itemIds: offer.items?.map((item) => item.id) ?? [],
+        // Names and prices let the owner's deal card and detail screen show
+        // what the deal bundles and its pre-discount price without a second
+        // round-trip per deal.
+        items: (offer.items ?? []).map((item) => ({
+          id: item.id,
+          name: item.name,
+          price: Number(item.price) || 0,
+          mainImage: item.mainImage ?? null,
+        })),
+        originalPrice:
+          Math.round(
+            (offer.items ?? []).reduce(
+              (sum, item) => sum + (Number(item.price) || 0),
+              0,
+            ) * 100,
+          ) / 100,
         startDate: offer.startDate?.toISOString(),
         endDate: offer.endDate?.toISOString(),
         terms: offer.terms ?? [],

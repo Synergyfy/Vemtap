@@ -1759,6 +1759,43 @@ describe('CatalogueOfferService', () => {
       ]);
     });
 
+    it("lists each deal's items and its pre-discount price", async () => {
+      offerRepo.find = jest.fn().mockResolvedValue([
+        {
+          id: 'o1',
+          dealGroupId: 'g1',
+          branchId: 'branch-1',
+          branch: { name: 'Wuse' },
+          status: CatalogueOfferStatus.ACTIVE,
+          calculatedPrice: 8000,
+          quantity: 10,
+          views: 0,
+          items: [
+            { id: 'i1', name: 'Burger', price: '6000.00', mainImage: 'b.jpg' },
+            { id: 'i2', name: 'Drink', price: '4000.50', mainImage: null },
+          ],
+        },
+      ]);
+      claimRepo.createQueryBuilder = jest.fn().mockReturnValue({
+        select: jest.fn().mockReturnThis(),
+        addSelect: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        groupBy: jest.fn().mockReturnThis(),
+        addGroupBy: jest.fn().mockReturnThis(),
+        getRawMany: jest.fn().mockResolvedValue([]),
+      });
+
+      const [row]: any[] = (await service.findAllOffersAdmin('biz-1', {
+        groupBy: 'deal',
+      })) as any[];
+
+      expect(row.items).toEqual([
+        { id: 'i1', name: 'Burger', price: 6000, mainImage: 'b.jpg' },
+        { id: 'i2', name: 'Drink', price: 4000.5, mainImage: null },
+      ]);
+      expect(row.originalPrice).toBe(10000.5);
+    });
+
     it('still accepts a bare branch id for the owner list', async () => {
       offerRepo.find = jest.fn().mockResolvedValue([]);
       await service.findAllOffersAdmin('biz-1', 'branch-9');
