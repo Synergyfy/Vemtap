@@ -8,6 +8,7 @@ import {
   Index,
 } from 'typeorm';
 import { AbstractBaseEntity } from '../../../common/entities/base.entity';
+import { numericTransformer } from '../../../common/transformers/numeric.transformer';
 import { Business } from '../../businesses/entities/business.entity';
 import { Branch } from '../../branches/entities/branch.entity';
 import { CatalogueItem } from './catalogue-item.entity';
@@ -90,15 +91,33 @@ export class CatalogueOffer extends AbstractBaseEntity {
   pricingType: CatalogueOfferPricingType;
 
   @ApiProperty({ example: 10, nullable: true })
-  @Column({ type: 'decimal', precision: 12, scale: 2, nullable: true })
+  @Column({
+    type: 'decimal',
+    precision: 12,
+    scale: 2,
+    nullable: true,
+    transformer: numericTransformer,
+  })
   discountValue: number;
 
   @ApiProperty({ example: 25.0, nullable: true })
-  @Column({ type: 'decimal', precision: 12, scale: 2, nullable: true })
+  @Column({
+    type: 'decimal',
+    precision: 12,
+    scale: 2,
+    nullable: true,
+    transformer: numericTransformer,
+  })
   fixedPrice: number;
 
   @ApiProperty({ example: 22.5 })
-  @Column({ type: 'decimal', precision: 12, scale: 2, default: 0 })
+  @Column({
+    type: 'decimal',
+    precision: 12,
+    scale: 2,
+    default: 0,
+    transformer: numericTransformer,
+  })
   calculatedPrice: number;
 
   @ApiProperty({ example: 50, nullable: true })
