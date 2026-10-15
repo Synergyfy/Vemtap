@@ -25,10 +25,16 @@ export class UpgradeToOwnerDto {
   @IsString()
   password?: string;
 
-  @ApiProperty({ example: 'Green Terrace Cafe' })
+  @ApiPropertyOptional({
+    example: 'Green Terrace Cafe',
+    description:
+      'Omit to upgrade the account only; the business is created later via ' +
+      'PATCH /businesses/my-business (as with register/owner).',
+  })
+  @IsOptional()
   @IsString()
   @IsNotEmpty()
-  businessName: string;
+  businessName?: string;
 
   @ApiPropertyOptional({ example: 'https://cdn.example.com/logo.png' })
   @IsOptional()

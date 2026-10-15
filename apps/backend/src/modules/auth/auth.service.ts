@@ -1004,6 +1004,10 @@ export class AuthService {
    *
    * Local-auth accounts must confirm their password; Google-only accounts
    * (no password hash) upgrade on the strength of their session alone.
+   *
+   * `businessName` is optional, as in `registerOwner`: without it only the
+   * account is upgraded, and the business is created later by
+   * `PATCH /businesses/my-business` once the setup wizard has its details.
    */
   async upgradeToOwner(userRef: Partial<User>, dto: UpgradeToOwnerDto) {
     const dbUser = await this.usersService.findOne(userRef.id as string);
@@ -1051,27 +1055,30 @@ export class AuthService {
       ? dto.goals.join(', ')
       : dto.goals;
 
-    const business = await this.businessesService.create({
-      name: dto.businessName.trim(),
-      categoryId: dto.categoryId,
-      subcategoryId: dto.subcategoryId,
-      otherSubcategoryName: dto.otherSubcategoryName,
-      monthlyVisitors: dto.visitors,
-      goal: goalString,
-      logoUrl: dto.businessLogo,
-      ownerId: dbUser.id,
-      address: dto.businessAddress,
-      website: dto.businessWebsite,
-      state: dto.state,
-      city: dto.city,
-      latitude: dto.latitude,
-      longitude: dto.longitude,
-      whatsappNumber: dto.whatsappNumber,
-      officialEmail: dto.officialEmail,
-      phone: dto.businessNumber,
-      isRegistered: dto.isRegistered,
-      engagement: dto.engagement,
-    });
+    const businessName = dto.businessName?.trim();
+    const business = businessName
+      ? await this.businessesService.create({
+          name: businessName,
+          categoryId: dto.categoryId,
+          subcategoryId: dto.subcategoryId,
+          otherSubcategoryName: dto.otherSubcategoryName,
+          monthlyVisitors: dto.visitors,
+          goal: goalString,
+          logoUrl: dto.businessLogo,
+          ownerId: dbUser.id,
+          address: dto.businessAddress,
+          website: dto.businessWebsite,
+          state: dto.state,
+          city: dto.city,
+          latitude: dto.latitude,
+          longitude: dto.longitude,
+          whatsappNumber: dto.whatsappNumber,
+          officialEmail: dto.officialEmail,
+          phone: dto.businessNumber,
+          isRegistered: dto.isRegistered,
+          engagement: dto.engagement,
+        })
+      : null;
 
     // Flip the account to owner; customer-side data is untouched.
     dbUser.role = UserRole.OWNER;
@@ -1082,24 +1089,32 @@ export class AuthService {
 
     // Match registration behaviour: land the business on the free plan until
     // the owner picks a paid plan.
-    try {
-      await this.subscriptionsService.subscribeToFreePlan(business.id);
-    } catch (error) {
-      console.error(
-        'Failed to auto-subscribe upgraded business to free plan:',
-        error,
-      );
+    // An account-only upgrade has no business yet; the plan is assigned when
+    // the business exists (login auto-subscribes a business with no plan).
+    if (business) {
+      try {
+        await this.subscriptionsService.subscribeToFreePlan(business.id);
+      } catch (error) {
+        console.error(
+          'Failed to auto-subscribe upgraded business to free plan:',
+          error,
+        );
+      }
     }
 
     if (referralCode) {
       const affiliate =
         await this.affiliatesService.findByReferralCode(referralCode);
       if (affiliate) {
-        await this.affiliatesService.recordReferral(
-          affiliate.id,
-          business.id,
-          upgradedUser.id,
-        );
+        // An affiliate referral is recorded against a business; with none yet,
+        // the code stays on the user (set above) for when it is created.
+        if (business) {
+          await this.affiliatesService.recordReferral(
+            affiliate.id,
+            business.id,
+            upgradedUser.id,
+          );
+        }
       } else {
         await this.handleB2BReferralAndPartnership(
           referralCode,

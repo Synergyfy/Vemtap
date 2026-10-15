@@ -1074,6 +1074,27 @@ describe('AuthService', () => {
       expect(result.isNewUser).toBe(false);
     });
 
+    it('upgrades the account only when no business name is sent', async () => {
+      // The setup wizard upgrades at its entry gate, before it has the
+      // business details; the business is created later via PATCH my-business.
+      (bcrypt.compare as jest.Mock).mockResolvedValue(true);
+      usersService.findOne
+        .mockResolvedValueOnce({ ...customer })
+        .mockResolvedValueOnce({ ...customer, role: UserRole.OWNER });
+      businessesService.findByOwner.mockResolvedValue(null);
+
+      const result = await service.upgradeToOwner(
+        { id: 'cust-1' },
+        { password: dto.password },
+      );
+
+      expect(usersService.create).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'cust-1', role: UserRole.OWNER }),
+      );
+      expect(businessesService.create).not.toHaveBeenCalled();
+      expect(result.access_token).toBe('mock_token');
+    });
+
     it('should reject a wrong password', async () => {
       usersService.findOne.mockResolvedValueOnce({ ...customer });
       (bcrypt.compare as jest.Mock).mockResolvedValue(false);
