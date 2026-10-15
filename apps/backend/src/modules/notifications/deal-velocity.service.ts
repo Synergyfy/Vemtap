@@ -174,6 +174,7 @@ export class DealVelocityService {
         },
         cta: 'View Deals',
       },
+      'deal_spike',
     );
 
     return true;

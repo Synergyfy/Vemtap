@@ -10,6 +10,10 @@ export class CatalogueCategory extends AbstractBaseEntity {
   @Column()
   name: string;
 
+  @ApiProperty({ example: 0 })
+  @Column({ type: 'int', default: 0 })
+  sortOrder: number;
+
   @ManyToOne(() => Business, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'businessId' })
   business: Business;

@@ -163,9 +163,9 @@
     "transform": {
       "^.+\\.(t|j)s$": "ts-jest"
     },
-    "transformIgnorePatterns": [
-      "node_modules/(?!(expo-server-sdk)/)"
-    ],
+  "transformIgnorePatterns": [
+    "node_modules/(?!([.]pnpm|expo-server-sdk)/)"
+  ],
     "collectCoverageFrom": [
       "**/*.(t|j)s"
     ],

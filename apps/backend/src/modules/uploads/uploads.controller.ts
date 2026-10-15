@@ -24,8 +24,32 @@ import { UserRole } from '../users/entities/user.entity';
 import { SkipSubscriptionCheck } from '../subscriptions/decorators/skip-subscription-check.decorator';
 import { UploadsService } from './uploads.service';
 
-const MAX_UPLOAD_BYTES = 10 * 1024 * 1024; // 10MB, matching the web route
-const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+// Vercel caps serverless request bodies at ~4.5MB, so anything larger is
+// rejected by the platform before multer ever sees it. 4MB keeps the in-code
+// limit under that cliff instead of advertising a size the deploy can't take.
+const MAX_UPLOAD_BYTES = 4 * 1024 * 1024; // 4MB, under the Vercel body cap
+const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
+
+/**
+ * Cloudinary folders a caller may route to. The override exists so avatars,
+ * chat media and verification documents do not land under a business folder;
+ * without a boundary a caller could write anywhere in the account.
+ */
+const ALLOWED_FOLDER_PREFIXES = [
+  'vemtap/avatars/',
+  'vemtap/users/',
+  'vemtap/messaging/',
+  'vemtap/businesses/',
+  'vemtap/verification/',
+];
+
+function isAllowedFolder(folder: string): boolean {
+  // A prefix plus at least one path segment — `vemtap/avatars/` alone is a
+  // folder-less path and Cloudinary would flatten it into the parent.
+  return ALLOWED_FOLDER_PREFIXES.some(
+    prefix => folder.startsWith(prefix) && folder.length > prefix.length,
+  );
+}
 
 @ApiTags('uploads')
 @ApiBearerAuth()
@@ -36,15 +60,21 @@ export class UploadsController {
 
   @Post()
   @SkipSubscriptionCheck()
-  @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.ADMIN)
+  @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.ADMIN, UserRole.CUSTOMER)
   @UseInterceptors(
     FileInterceptor('file', {
       storage: memoryStorage(),
       limits: { fileSize: MAX_UPLOAD_BYTES },
+      // Only the file is validated here: multer parses non-file fields after
+      // this callback, so anything derived from `req.body` (the folder
+      // override) cannot be checked at this stage — it is validated in the
+      // handler below.
       fileFilter: (_req, file, callback) => {
         if (!ALLOWED_MIME_TYPES.includes(file.mimetype)) {
           callback(
-            new BadRequestException('Only JPG, PNG or WebP images are allowed'),
+            new BadRequestException(
+              'Only JPG, PNG, WebP or PDF images are allowed',
+            ),
             false,
           );
           return;
@@ -61,9 +91,13 @@ export class UploadsController {
     },
   })
   @ApiOperation({
-    summary: 'Upload a business image (logo, cover or gallery)',
+    summary: 'Upload an image (business logo/cover/gallery, or user avatar)',
     description:
-      'Accepts multipart/form-data `file` (JPG/PNG/WebP, max 10MB) and returns the hosted URL.',
+      'Accepts multipart/form-data `file` (JPG/PNG/WebP, max 4MB — kept under ' +
+      "the serverless body cap) and returns the hosted URL. Owners, managers " +
+      'and admins land in `vemtap/businesses/{businessId}`; customers with no ' +
+      'business context land in `vemtap/users/{userId}`, which is where the ' +
+      'profile-picture flow puts avatars before PATCHing them onto the user.',
   })
   @ApiResponse({
     status: 201,
@@ -72,8 +106,26 @@ export class UploadsController {
   })
   upload(
     @UploadedFile() file: Express.Multer.File,
-    @Request() req: { user?: { businessId?: string } },
+    @Request() req: { user?: { id?: string; businessId?: string }; body?: { folderOverride?: string } },
   ) {
-    return this.uploadsService.uploadImage(file, req.user?.businessId);
+    const user = req.user;
+    const folderOverride = req.body?.folderOverride;
+
+    // Rejected here rather than in `fileFilter`: multer has not parsed the
+    // non-file fields yet when the filter runs.
+    if (folderOverride !== undefined && !isAllowedFolder(folderOverride)) {
+      throw new BadRequestException(
+        'Invalid folder override. Allowed prefixes: vemtap/avatars, vemtap/users, vemtap/messaging, vemtap/businesses, vemtap/verification',
+      );
+    }
+
+    const folder = folderOverride
+      ? folderOverride
+      : user?.businessId
+        ? undefined
+        : user?.id
+          ? `vemtap/users/${user.id}`
+          : undefined;
+    return this.uploadsService.uploadImage(file, user?.businessId, folder);
   }
 }

@@ -16,6 +16,16 @@ import { Subcategory } from './subcategory.entity';
 import { ApiProperty } from '@nestjs/swagger';
 import { generateUniqueCode } from '../../../common/utils/random.util';
 
+export enum BusinessVerificationStatus {
+  UNVERIFIED = 'unverified',
+  /** Checks started but not finished. */
+  IN_PROGRESS = 'in_progress',
+  /** Waiting for a person at VEMTAP. */
+  NEEDS_REVIEW = 'needs_review',
+  VERIFIED = 'verified',
+  REJECTED = 'rejected',
+}
+
 export enum BusinessStatus {
   ACTIVE = 'active',
   PENDING = 'pending',
@@ -161,6 +171,17 @@ export class Business extends AbstractBaseEntity {
   @ApiProperty({ example: '2026-03-21T18:00:00Z', nullable: true })
   @Column({ type: 'timestamp', nullable: true })
   verifiedAt: Date | null;
+
+  @ApiProperty({
+    enum: BusinessVerificationStatus,
+    description: 'Where the business is in identity + CAC verification',
+  })
+  @Column({
+    type: 'varchar',
+    length: 20,
+    default: BusinessVerificationStatus.UNVERIFIED,
+  })
+  verificationStatus: BusinessVerificationStatus;
 
   @ApiProperty({
     example: false,

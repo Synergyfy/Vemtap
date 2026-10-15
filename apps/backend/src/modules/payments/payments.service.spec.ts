@@ -138,4 +138,29 @@ describe('PaymentsService', () => {
       );
     });
   });
+
+  describe('purpose handlers', () => {
+    const payment = (purpose: PaymentPurpose) =>
+      ({ reference: 'REF-1', purpose }) as any;
+
+    it('reports no handler for purposes nobody registered', async () => {
+      expect(
+        await service.dispatchSuccessfulPayment(payment(PaymentPurpose.ORDER)),
+      ).toBe(false);
+    });
+
+    it('runs the handler registered for the payment purpose', async () => {
+      const handler = jest.fn().mockResolvedValue(undefined);
+      service.registerPurposeHandler(PaymentPurpose.AD_WALLET_TOPUP, handler);
+
+      const handled = await service.dispatchSuccessfulPayment(
+        payment(PaymentPurpose.AD_WALLET_TOPUP),
+      );
+
+      expect(handled).toBe(true);
+      expect(handler).toHaveBeenCalledWith(
+        expect.objectContaining({ reference: 'REF-1' }),
+      );
+    });
+  });
 });

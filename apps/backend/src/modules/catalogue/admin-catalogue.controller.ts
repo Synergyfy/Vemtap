@@ -10,12 +10,14 @@ import {
   UseGuards,
   Req,
   ParseUUIDPipe,
+  ParseBoolPipe,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { CatalogueService } from './catalogue.service';
 import {
   CreateCatalogueCategoryDto,
   UpdateCatalogueCategoryDto,
+  ReorderCatalogueCategoryDto,
 } from './dto/category.dto';
 import {
   CreateCatalogueItemDto,
@@ -55,6 +57,21 @@ export class AdminCatalogueController {
   @ApiOperation({ summary: 'List all catalogue categories' })
   async listCategories(@Req() req: any) {
     return this.catalogueService.findAllCategories(req.user.businessId);
+  }
+
+  // Declared before categories/:id so the literal path wins over the param.
+  @Patch('categories/reorder')
+  @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.ADMIN)
+  @Permissions('inventory')
+  @ApiOperation({ summary: 'Reorder catalogue categories' })
+  async reorderCategories(
+    @Body() dto: ReorderCatalogueCategoryDto,
+    @Req() req: any,
+  ) {
+    return this.catalogueService.reorderCategories(
+      req.user.businessId,
+      dto.orderedIds,
+    );
   }
 
   @Patch('categories/:id')
@@ -131,7 +148,7 @@ export class AdminCatalogueController {
   async deleteItem(
     @Param('id', ParseUUIDPipe) id: string,
     @Query('branchId') branchId: string,
-    @Query('applyGlobally') applyGlobally: boolean,
+    @Query('applyGlobally', ParseBoolPipe) applyGlobally: boolean,
     @Req() req: any,
   ) {
     return this.catalogueService.deleteItem(

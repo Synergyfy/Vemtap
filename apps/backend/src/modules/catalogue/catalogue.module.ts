@@ -24,12 +24,18 @@ import { MeGiftsController } from './me-gifts.controller';
 import { MeSavingsController } from './me-savings.controller';
 import { RecommendationsController } from './recommendations.controller';
 import { SavingsService } from './savings.service';
+import { CatalogueItemBranchPricing } from './entities/catalogue-item-branch-pricing.entity';
+import { CatalogueBranchPricingService } from './catalogue-branch-pricing.service';
+import { CatalogueBranchPricingController } from './catalogue-branch-pricing.controller';
+import { CatalogueOfferStatsService } from './catalogue-offer-stats.service';
+import { CatalogueOfferStatsController } from './catalogue-offer-stats.controller';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([
       CatalogueCategory,
       CatalogueItem,
+      CatalogueItemBranchPricing,
       CatalogueOffer,
       CatalogueOfferClaim,
       CatalogueDealGift,
@@ -45,6 +51,8 @@ import { SavingsService } from './savings.service';
   ],
   controllers: [
     AdminCatalogueController,
+    CatalogueBranchPricingController,
+    CatalogueOfferStatsController,
     PublicCatalogueController,
     CatalogueOfferController,
     AdminDealsController,
@@ -53,7 +61,17 @@ import { SavingsService } from './savings.service';
     MeSavingsController,
     RecommendationsController,
   ],
-  providers: [CatalogueService, CatalogueOfferService, SavingsService],
-  exports: [CatalogueService, CatalogueOfferService],
+  providers: [
+    CatalogueService,
+    CatalogueOfferService,
+    CatalogueBranchPricingService,
+    CatalogueOfferStatsService,
+    SavingsService,
+  ],
+  exports: [
+    CatalogueService,
+    CatalogueOfferService,
+    CatalogueBranchPricingService,
+  ],
 })
 export class CatalogueModule {}

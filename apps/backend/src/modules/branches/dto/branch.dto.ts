@@ -286,6 +286,16 @@ export class UpdateBranchDto {
   isMainBranch?: boolean;
 
   @ApiPropertyOptional({
+    example: true,
+    description:
+      'Pause (false) or reactivate (true) the location. Pausing hides the ' +
+      'branch from consumer discovery while preserving its ledger.',
+  })
+  @IsBoolean()
+  @IsOptional()
+  isActive?: boolean;
+
+  @ApiPropertyOptional({
     example: {
       instagram: 'https://instagram.com/branch',
     },

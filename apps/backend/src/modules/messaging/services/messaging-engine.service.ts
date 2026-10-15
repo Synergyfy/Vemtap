@@ -515,6 +515,8 @@ export class MessagingEngineService {
           resolvedContent,
           'new_message',
           `/messages/${savedMessage.threadId}`,
+          null,
+          'new_message',
         )
         .catch((e) =>
           this.logger.error(`Notification row failed: ${e.message}`),

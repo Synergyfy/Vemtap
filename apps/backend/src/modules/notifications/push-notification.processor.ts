@@ -13,8 +13,18 @@ import { blockedByPreference } from './notification-preferences';
 
 export const PUSH_NOTIFICATION_QUEUE = 'notifications-push';
 
-/** Deep link prefix for chat threads, matching the app's route. */
-const MESSAGING_PATH = '/messaging';
+/**
+ * Deep link prefix for chat threads, matching the app's route.
+ *
+ * `/messages`, not `/messaging` — the app resolves a tap through a single
+ * allowlist (`notificationRoutes.ts`, consumed by both the notification centre
+ * and the push-tap handler) and it matches the `/messages/<id>` segment that the
+ * notification *rows* already carry. The namespace on the socket is
+ * `/messaging`; the deep link a push carries is a path, and those are two
+ * different things. Sending the namespace name here produced a URL no resolver
+ * recognised, so every messaging push tap silently did nothing.
+ */
+const MESSAGING_PATH = '/messages';
 
 /** Deep link prefix for the web dashboard's messaging view. */
 const WEB_MESSAGING_PATH = '/dashboard/messaging';
@@ -351,18 +361,32 @@ export class PushNotificationProcessor extends WorkerHost {
       .orderBy('t."updatedAt"', 'DESC')
       .getMany();
 
-    // Most recently updated token per user, so a re-registered device wins
-    // without dropping the user's other devices.
-    const byUser = new Map<string, PushToken>();
-    const seen = new Set<string>();
+    // Every registered device is notified, not just the newest one. A user with
+    // a phone and a tablet has two rows here, and collapsing them to a single
+    // deliverable silently dropped the notification from whichever device was
+    // not the most recently registered — the one holding the app in a pocket.
+    //
+    // Ordering is still useful, so it is kept for the legacy fallback below:
+    // the first row seen for a user is that user's most recent token.
+    const out: Deliverable[] = [];
+    const covered = new Set<string>();
+
     for (const row of tokens) {
-      if (!row.userId || seen.has(row.userId)) continue;
-      seen.add(row.userId);
-      byUser.set(row.userId, row);
+      if (!row.userId) continue;
+      covered.add(row.userId);
+      out.push({
+        targetId: row.userId,
+        isUser: true,
+        token: row.token,
+        transport: row.transport,
+        pushTokenId: row.id,
+      });
     }
 
-    // Users with no push_tokens row still reach us through the legacy column.
-    const missing = userIds.filter((id) => !byUser.has(id));
+    // Users with no push_tokens row at all still reach us through the legacy
+    // column, which is a single slot by schema — so this is genuinely one
+    // deliverable per user, unlike the table above.
+    const missing = userIds.filter((id) => !covered.has(id));
 
     const legacy = new Map<string, string | null>();
     if (missing.length > 0) {
@@ -376,16 +400,6 @@ export class PushNotificationProcessor extends WorkerHost {
       }
     }
 
-    const out: Deliverable[] = [];
-    for (const row of byUser.values()) {
-      out.push({
-        targetId: row.userId,
-        isUser: true,
-        token: row.token,
-        transport: row.transport,
-        pushTokenId: row.id,
-      });
-    }
     for (const userId of missing) {
       const token = legacy.get(userId);
       if (!token) continue;

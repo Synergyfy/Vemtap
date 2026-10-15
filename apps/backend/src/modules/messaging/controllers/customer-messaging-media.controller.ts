@@ -27,10 +27,10 @@ import { InboxService } from '../services/inbox.service';
 /**
  * Media for customer-side chats.
  *
- * Deliberately not `POST /uploads`: that route is business-only and files into
- * a business's Cloudinary folder, so a customer has neither the role nor the
- * folder. Same size and type limits as that route, so an image a merchant can
- * send, a customer can too.
+ * Shares the same size and type limits as `POST /uploads`, which now accepts
+ * `UserRole.CUSTOMER` (added in a previous release).  Customers upload to a
+ * dedicated `vemtap/messaging` folder; businesses use `vemtap/businesses/{id}`
+ * or the root `vemtap/avatars/{id}`.
  */
 const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
 const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp'];

@@ -1,5 +1,5 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsArray, IsString, IsOptional, IsNumber } from 'class-validator';
+import { IsArray, IsString, IsOptional, IsNumber, IsUrl } from 'class-validator';
 import { Transform } from 'class-transformer';
 import { SubscribeDto } from '../subscribe.dto';
 
@@ -61,4 +61,17 @@ export class SubscribeWithAddonsDto extends SubscribeDto {
     return undefined;
   })
   addonQuantities?: number[];
+
+  @ApiPropertyOptional({
+    description:
+      'Where Paystack returns the customer after paying (web URL or the app link vemtap://payments/return)',
+    example: 'vemtap://payments/return',
+  })
+  @IsOptional()
+  @IsUrl({
+    require_tld: false,
+    require_protocol: true,
+    protocols: ['http', 'https', 'vemtap'],
+  })
+  callbackUrl?: string;
 }

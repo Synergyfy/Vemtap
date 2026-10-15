@@ -1,11 +1,13 @@
 import {
   ForbiddenException,
+  HttpStatus,
   Injectable,
   NotFoundException,
   Inject,
   forwardRef,
   BadRequestException,
 } from '@nestjs/common';
+import { PLAN_ERRORS } from '../../common/enums/plan-errors.enum';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Not } from 'typeorm';
 import { Branch } from './entities/branch.entity';
@@ -118,19 +120,27 @@ export class BranchesService {
       business.id,
     );
 
+    // Plan limits. These carry a machine-readable `error` slug alongside the
+    // human message: `AllExceptionsFilter` passes `message.error` straight
+    // through, so the client can tell "your plan does not include this" from a
+    // generic 403 without matching on the wording of the sentence.
     if (capabilities.capabilities.branches.enabled === false) {
-      throw new ForbiddenException(
-        'The branches feature is not included in your current plan.',
-      );
+      throw new ForbiddenException({
+        statusCode: HttpStatus.FORBIDDEN,
+        error: PLAN_ERRORS.FEATURE_NOT_INCLUDED,
+        message: 'The branches feature is not included in your current plan.',
+      });
     }
 
     const branchLimit = capabilities.capabilities.branches.limit;
     const currentBranches = capabilities.capabilities.branches.used;
 
     if (typeof branchLimit === 'number' && currentBranches >= branchLimit) {
-      throw new ForbiddenException(
-        `You have reached the branch limit for your plan (${branchLimit} branches)`,
-      );
+      throw new ForbiddenException({
+        statusCode: HttpStatus.FORBIDDEN,
+        error: PLAN_ERRORS.LIMIT_REACHED,
+        message: `You have reached the branch limit for your plan (${branchLimit} branches)`,
+      });
     }
 
     // Find main branch to inherit settings
@@ -317,6 +327,20 @@ export class BranchesService {
       throw new ForbiddenException(
         'A business must have at least one main branch',
       );
+    }
+
+    // Pausing the last trading location would leave the business with nowhere
+    // customers can order from, so the flip is rejected rather than silently
+    // producing that state. Reactiving an already-active branch is a no-op.
+    if (updateBranchDto.isActive === false && branch.isActive) {
+      const remaining = await this.branchesRepository.count({
+        where: { businessId: branch.businessId, isActive: true },
+      });
+      if (remaining <= 1) {
+        throw new ForbiddenException(
+          'A business must have at least one active location. Reactivate another location first.',
+        );
+      }
     }
 
     // Validate username if being updated

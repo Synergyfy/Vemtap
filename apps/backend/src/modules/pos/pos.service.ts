@@ -635,12 +635,21 @@ export class PosService {
     const staffName = staff
       ? `${staff.firstName} ${staff.lastName}`.trim()
       : `${customer.firstName} ${customer.lastName}`.trim();
+    // Shared with the in-app row below, so the push tap and the bell entry for
+    // the same order can never point at different places. Without a `url` the
+    // push resolves to no destination and a staff tap only opens the app.
+    const orderUrl = `/orders/${savedOrder.id}`;
     this.pushNotificationService
       .sendToBranchStaff(
         branch.id,
         'New POS Order',
         `A new POS order (#${savedOrder.id.slice(0, 8)}) has been placed by ${staffName}.`,
-        { orderId: savedOrder.id, type: 'NEW_POS_ORDER', category: 'orderUpdates' },
+        {
+          orderId: savedOrder.id,
+          url: orderUrl,
+          type: 'NEW_POS_ORDER',
+          category: 'orderUpdates',
+        },
       )
       .catch((err) => console.error('Failed to send staff notification:', err));
 
@@ -653,7 +662,9 @@ export class PosService {
         'New POS Order',
         `A new POS order (#${savedOrder.id.slice(0, 8)}) has been placed by ${staffName}.`,
         'new_pos_order',
-        `/orders/${savedOrder.id}`,
+        orderUrl,
+        null,
+        'new_pos_order',
       )
       .catch((err) =>
         console.error('Failed to create staff notification row:', err),
@@ -1255,7 +1266,11 @@ export class PosService {
         `Closed with ${this.formatNaira(totalSales)} in gross sales across ${todaySales.length} transaction${todaySales.length === 1 ? '' : 's'}${
           session.variance != null
             ? `, ${this.formatNaira(Math.abs(session.variance))} ${
-                session.variance === 0 ? 'exactly on' : session.variance > 0 ? 'over' : 'under'
+                session.variance === 0
+                  ? 'exactly on'
+                  : session.variance > 0
+                    ? 'over'
+                    : 'under'
               } expected cash`
             : ''
         }.`,
@@ -1277,6 +1292,7 @@ export class PosService {
           footnote: `${todaySales.length} transaction${todaySales.length === 1 ? '' : 's'}`,
           cta: 'View Z-Report',
         },
+        'shift_closed',
       )
       .catch((err) =>
         console.error('Failed to create shift-close notification row:', err),
@@ -1356,7 +1372,8 @@ export class PosService {
       expectedCash: Number(session.openingCash) + cashSales - cashDrops,
       // Null when the drawer was never counted, so a consumer can tell
       // "balanced" from "never reconciled" without reading a 0 as truth.
-      countedCash: session.countedCash != null ? Number(session.countedCash) : null,
+      countedCash:
+        session.countedCash != null ? Number(session.countedCash) : null,
       variance: session.variance != null ? Number(session.variance) : null,
       paymentBreakdown: sales.reduce<Record<string, number>>((result, sale) => {
         result[sale.paymentMethod] =

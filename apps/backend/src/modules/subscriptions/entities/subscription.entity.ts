@@ -68,4 +68,22 @@ export class Subscription extends AbstractBaseEntity {
 
   @Column({ type: 'int', nullable: true })
   lastRenewalReminderStage: number | null;
+
+  /**
+   * The card a paid subscription was bought with, for the billing screen.
+   * Display fields only — the reusable authorization code stays in
+   * `paystackAuthorizationCode`.
+   */
+  @Column({ type: 'jsonb', nullable: true })
+  cardSummary: {
+    brand: string | null;
+    last4: string | null;
+    expMonth: string | null;
+    expYear: string | null;
+    bank: string | null;
+  } | null;
+
+  /** Last trial reminder sent, in days before the end (3, then 1). */
+  @Column({ type: 'int', nullable: true })
+  trialReminderStage: number | null;
 }

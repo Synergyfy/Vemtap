@@ -522,6 +522,59 @@ describe('CatalogueOfferService', () => {
     });
   });
 
+  describe('claiming a deal whose product was unpublished', () => {
+    const pausedOffer = () => ({
+      ...mockOffer,
+      items: [
+        { price: 100, status: 'active', isSuspended: false },
+        { price: 50, status: 'inactive', isSuspended: false },
+      ],
+    });
+    const unavailable = 'This deal is no longer available';
+
+    it('refuses to send a claim OTP', async () => {
+      offerRepo.findOne.mockResolvedValue(pausedOffer());
+
+      await expect(
+        service.requestClaimOtp({
+          offerId: 'offer-1',
+          firstName: 'Chidi',
+          email: 'chidi@example.com',
+          phone: '+2348012345678',
+        }),
+      ).rejects.toThrow(unavailable);
+      expect(mailService.sendOtp).not.toHaveBeenCalled();
+    });
+
+    it('refuses to issue the claim when the product is paused after the OTP was sent', async () => {
+      otpRepo.findOne.mockResolvedValue(mockOtpRecord);
+      offerRepo.findOne.mockResolvedValue(pausedOffer());
+
+      await expect(
+        service.verifyClaim({
+          email: 'chidi@example.com',
+          code: '1234',
+          offerId: 'offer-1',
+        }),
+      ).rejects.toThrow(unavailable);
+      expect(claimRepo.save).not.toHaveBeenCalled();
+    });
+
+    it('refuses to gift it', async () => {
+      offerRepo.findOne.mockResolvedValue({
+        ...pausedOffer(),
+        items: [{ price: 100, status: 'active', isSuspended: true }],
+      });
+
+      await expect(
+        service.sendDealGift(
+          { offerId: 'offer-1', recipientEmail: 'friend@example.com' },
+          { id: 'sender-1', email: 'john@example.com' } as any,
+        ),
+      ).rejects.toThrow(unavailable);
+    });
+  });
+
   describe('redeemClaim', () => {
     it('should redeem claim successfully and increment offer visits', async () => {
       claimRepo.findOne.mockResolvedValue(mockClaim);
@@ -703,6 +756,38 @@ describe('CatalogueOfferService', () => {
       // discountPercent must be computed from the coerced number, not from
       // string comparison: 10000 → 8500 is 15% off.
       expect(result.data[0].discountPercent).toBe(15);
+    });
+
+    it('only lists deals whose items are all published', async () => {
+      const qb = makeOfferQb();
+      offerRepo.createQueryBuilder = jest.fn().mockReturnValue(qb);
+      claimRepo.find.mockResolvedValue([]);
+
+      await service.findAllOffersPublicGlobal({ page: 1, limit: 10 });
+
+      expect(qb.andWhere).toHaveBeenCalledWith(
+        expect.stringContaining(
+          '"publishedItem"."status" <> :publishedItemStatus',
+        ),
+        { publishedItemStatus: 'active' },
+      );
+    });
+  });
+
+  describe('findOneOffer (public details)', () => {
+    it('hides a deal whose product the owner has unpublished', async () => {
+      offerRepo.findOne = jest.fn().mockResolvedValue({
+        id: 'offer-1',
+        calculatedPrice: 100,
+        items: [
+          { price: 100, status: 'active', isSuspended: false },
+          { price: 50, status: 'inactive', isSuspended: false },
+        ],
+      });
+
+      await expect(service.findOneOffer('offer-1')).rejects.toThrow(
+        'Offer not found',
+      );
     });
   });
 
@@ -936,7 +1021,7 @@ describe('CatalogueOfferService', () => {
       const activeOffer = {
         ...mockOffer,
         status: CatalogueOfferStatus.ACTIVE,
-        items: [{ price: '100' }],
+        items: [{ price: '100', status: 'active', isSuspended: false }],
         calculatedPrice: 80,
         branch: {
           name: 'Main Branch',
@@ -1186,7 +1271,9 @@ describe('CatalogueOfferService', () => {
       expect(result.limit).toBe(10);
       expect(result.data[0].status).toBe('ACTIVE');
       // Value, not reference: the mapped row is not the same Date instance.
-      expect(result.data[0].claimedAt).toEqual(new Date('2026-10-08T00:00:00Z'));
+      expect(result.data[0].claimedAt).toEqual(
+        new Date('2026-10-08T00:00:00Z'),
+      );
       expect(result.data[0].offer.businessName).toBe('Patrick Ventures');
       expect(result.data[0].offer.originalPrice).toBe(10000);
       expect(result.data[0].offer.calculatedPrice).toBe(8500);
@@ -1450,6 +1537,464 @@ describe('CatalogueOfferService', () => {
       expect(result.page).toBe(3);
       expect(result.limit).toBe(5);
       expect(qb.getManyAndCount).toHaveBeenCalled();
+    });
+  });
+  describe('section 4: multi-branch deals and deal rules', () => {
+    const itemAt = (...branchIds: string[]) => ({
+      id: 'item-1',
+      name: 'Burger',
+      price: 10000,
+      branches: branchIds.map((id) => ({ id })),
+    });
+
+    beforeEach(() => {
+      branchRepo.find = jest.fn().mockResolvedValue([
+        { id: 'branch-1', businessId: 'biz-1' },
+        { id: 'branch-2', businessId: 'biz-1' },
+      ]);
+      offerRepo.create = jest.fn().mockImplementation((dto) => ({ ...dto }));
+      offerRepo.save = jest
+        .fn()
+        .mockImplementation((dto) =>
+          Promise.resolve({ id: `offer-${dto.branchId}`, ...dto }),
+        );
+    });
+
+    it('publishes one offer per branch sharing a dealGroupId, with per-branch overrides', async () => {
+      itemRepo.find.mockResolvedValue([itemAt('branch-1', 'branch-2')]);
+
+      const result: any = await service.createOffer(
+        {
+          name: 'Lunch deal',
+          pricingType: CatalogueOfferPricingType.PERCENTAGE_DISCOUNT,
+          discountValue: 20,
+          branchId: 'branch-1',
+          branchIds: ['branch-1', 'branch-2'],
+          itemIds: ['item-1'],
+          branchOverrides: [
+            { branchId: 'branch-2', discountValue: 30, quantity: 5 },
+          ],
+        } as any,
+        'biz-1',
+      );
+
+      expect(offerRepo.save).toHaveBeenCalledTimes(2);
+      expect(result.groupOffers).toHaveLength(2);
+      const [first, second] = result.groupOffers;
+      expect(first.dealGroupId).toBe(result.dealGroupId);
+      expect(second.dealGroupId).toBe(result.dealGroupId);
+      expect(first.branchId).toBe('branch-1');
+      expect(first.calculatedPrice).toBe(8000);
+      // Override applies to its branch only.
+      expect(second.discountValue).toBe(30);
+      expect(second.quantity).toBe(5);
+      expect(second.calculatedPrice).toBe(7000);
+      // The response must serialize: no row may contain itself.
+      expect(() => JSON.stringify(result)).not.toThrow();
+      // Request-only fields never reach the entity.
+      expect(offerRepo.create.mock.calls[0][0]).not.toHaveProperty('branchIds');
+      expect(offerRepo.create.mock.calls[0][0]).not.toHaveProperty(
+        'branchOverrides',
+      );
+    });
+
+    it('rejects a multi-branch deal when an item is not stocked at every branch', async () => {
+      itemRepo.find.mockResolvedValue([itemAt('branch-1')]);
+
+      await expect(
+        service.createOffer(
+          {
+            name: 'Lunch deal',
+            pricingType: CatalogueOfferPricingType.SUM,
+            branchId: 'branch-1',
+            branchIds: ['branch-1', 'branch-2'],
+            itemIds: ['item-1'],
+          } as any,
+          'biz-1',
+        ),
+      ).rejects.toThrow(/not available in branch branch-2/);
+      expect(offerRepo.save).not.toHaveBeenCalled();
+    });
+
+    it('refuses a group that would exceed the plan offer limit', async () => {
+      subscriptionsService.getCapabilities.mockResolvedValue({
+        capabilities: {
+          catalogueOffers: { enabled: true, limit: 5, remaining: 1 },
+        },
+      });
+
+      await expect(
+        service.createOffer(
+          {
+            name: 'Lunch deal',
+            pricingType: CatalogueOfferPricingType.SUM,
+            branchId: 'branch-1',
+            branchIds: ['branch-1', 'branch-2'],
+            itemIds: ['item-1'],
+          } as any,
+          'biz-1',
+        ),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('prices combo deals at fixedPrice and requires one', async () => {
+      branchRepo.findOne.mockResolvedValue({
+        id: 'branch-1',
+        businessId: 'biz-1',
+      });
+      itemRepo.find.mockResolvedValue([itemAt('branch-1')]);
+
+      await expect(
+        service.createOffer(
+          {
+            name: 'Combo',
+            pricingType: CatalogueOfferPricingType.COMBO,
+            branchId: 'branch-1',
+            itemIds: ['item-1'],
+          } as any,
+          'biz-1',
+        ),
+      ).rejects.toThrow(/fixedPrice/);
+
+      const combo: any = await service.createOffer(
+        {
+          name: 'Combo',
+          pricingType: CatalogueOfferPricingType.COMBO,
+          fixedPrice: 7500,
+          branchId: 'branch-1',
+          itemIds: ['item-1'],
+        } as any,
+        'biz-1',
+      );
+      expect(combo.calculatedPrice).toBe(7500);
+    });
+
+    it('lists tiered deals at their entry tier', async () => {
+      branchRepo.findOne.mockResolvedValue({
+        id: 'branch-1',
+        businessId: 'biz-1',
+      });
+      itemRepo.find.mockResolvedValue([itemAt('branch-1')]);
+
+      const tiered: any = await service.createOffer(
+        {
+          name: 'Buy more save more',
+          pricingType: CatalogueOfferPricingType.TIERED,
+          tiers: [
+            { minQuantity: 4, discountValue: 20 },
+            { minQuantity: 2, discountValue: 10 },
+          ],
+          branchId: 'branch-1',
+          itemIds: ['item-1'],
+        } as any,
+        'biz-1',
+      );
+      expect(tiered.calculatedPrice).toBe(9000);
+    });
+
+    it('returns real claim counts and can group per-branch rows', async () => {
+      offerRepo.find = jest.fn().mockResolvedValue([
+        {
+          id: 'o1',
+          dealGroupId: 'g1',
+          branchId: 'branch-1',
+          branch: { name: 'Wuse' },
+          status: CatalogueOfferStatus.ACTIVE,
+          calculatedPrice: 8000,
+          quantity: 10,
+          views: 5,
+          items: [],
+        },
+        {
+          id: 'o2',
+          dealGroupId: 'g1',
+          branchId: 'branch-2',
+          branch: { name: 'Garki' },
+          status: CatalogueOfferStatus.INACTIVE,
+          calculatedPrice: 7000,
+          quantity: 5,
+          views: 3,
+          items: [],
+        },
+      ]);
+      const qb: any = {
+        select: jest.fn().mockReturnThis(),
+        addSelect: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        groupBy: jest.fn().mockReturnThis(),
+        addGroupBy: jest.fn().mockReturnThis(),
+        getRawMany: jest.fn().mockResolvedValue([
+          { offerId: 'o1', status: 'claimed', count: '3' },
+          { offerId: 'o1', status: 'redeemed', count: '2' },
+          { offerId: 'o2', status: 'claimed', count: '1' },
+        ]),
+      };
+      claimRepo.createQueryBuilder = jest.fn().mockReturnValue(qb);
+
+      const flat: any[] = (await service.findAllOffersAdmin(
+        'biz-1',
+        {},
+      )) as any[];
+      expect(flat).toHaveLength(2);
+      expect(flat[0]).toMatchObject({
+        id: 'o1',
+        claimedCount: 5,
+        redeemedCount: 2,
+      });
+
+      const grouped: any[] = (await service.findAllOffersAdmin('biz-1', {
+        groupBy: 'deal',
+      })) as any[];
+      expect(grouped).toHaveLength(1);
+      expect(grouped[0]).toMatchObject({
+        dealGroupId: 'g1',
+        claimedCount: 6,
+        redeemedCount: 2,
+        views: 8,
+        status: CatalogueOfferStatus.ACTIVE,
+      });
+      expect(grouped[0].branches.map((b: any) => b.branchName)).toEqual([
+        'Wuse',
+        'Garki',
+      ]);
+    });
+
+    it("lists each deal's items and its pre-discount price", async () => {
+      offerRepo.find = jest.fn().mockResolvedValue([
+        {
+          id: 'o1',
+          dealGroupId: 'g1',
+          branchId: 'branch-1',
+          branch: { name: 'Wuse' },
+          status: CatalogueOfferStatus.ACTIVE,
+          calculatedPrice: 8000,
+          quantity: 10,
+          views: 0,
+          items: [
+            { id: 'i1', name: 'Burger', price: '6000.00', mainImage: 'b.jpg' },
+            { id: 'i2', name: 'Drink', price: '4000.50', mainImage: null },
+          ],
+        },
+      ]);
+      claimRepo.createQueryBuilder = jest.fn().mockReturnValue({
+        select: jest.fn().mockReturnThis(),
+        addSelect: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        groupBy: jest.fn().mockReturnThis(),
+        addGroupBy: jest.fn().mockReturnThis(),
+        getRawMany: jest.fn().mockResolvedValue([]),
+      });
+
+      const [row]: any[] = (await service.findAllOffersAdmin('biz-1', {
+        groupBy: 'deal',
+      })) as any[];
+
+      expect(row.items).toEqual([
+        { id: 'i1', name: 'Burger', price: 6000, mainImage: 'b.jpg' },
+        { id: 'i2', name: 'Drink', price: 4000.5, mainImage: null },
+      ]);
+      expect(row.originalPrice).toBe(10000.5);
+    });
+
+    it('still accepts a bare branch id for the owner list', async () => {
+      offerRepo.find = jest.fn().mockResolvedValue([]);
+      await service.findAllOffersAdmin('biz-1', 'branch-9');
+      expect(offerRepo.find).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { businessId: 'biz-1', branchId: 'branch-9' },
+        }),
+      );
+    });
+
+    it('blocks gifting when the deal does not allow it', async () => {
+      offerRepo.findOne.mockResolvedValue({
+        ...mockOffer,
+        allowGifting: false,
+      });
+
+      await expect(
+        service.sendDealGift(
+          {
+            offerId: 'offer-123',
+            recipientEmail: 'friend@example.com',
+            recipientName: 'Ada',
+          } as any,
+          { id: 'user-1', email: 'me@example.com' } as any,
+        ),
+      ).rejects.toThrow('This deal cannot be gifted');
+    });
+
+    describe('redemption windows', () => {
+      afterEach(() => jest.useRealTimers());
+
+      const claimFor = (windows: any) => ({
+        id: 'claim-1',
+        claimCode: 'VEM-ABCDE-WXYZ',
+        status: CatalogueOfferClaimStatus.CLAIMED,
+        expiresAt: new Date('2030-01-01T00:00:00Z'),
+        offerId: 'offer-123',
+        offer: {
+          ...mockOffer,
+          businessId: 'biz-1',
+          endDate: null,
+          redemptionWindows: windows,
+        },
+      });
+
+      it('rejects redemption outside the windows (Lagos time)', async () => {
+        // Wed 2026-10-14 09:00 UTC = 10:00 WAT, before a 12:00–16:30 window.
+        jest.useFakeTimers().setSystemTime(new Date('2026-10-14T09:00:00Z'));
+        claimRepo.findOne.mockResolvedValue(
+          claimFor([
+            { weekdays: [1, 2, 3, 4, 5], start: '12:00', end: '16:30' },
+          ]),
+        );
+
+        await expect(
+          service.redeemClaim('VEM-ABCDE-WXYZ', 'biz-1'),
+        ).rejects.toThrow(/Mon, Tue, Wed, Thu, Fri 12:00–16:30/);
+        expect(claimRepo.save).not.toHaveBeenCalled();
+      });
+
+      it('redeems inside a window and stamps redeemedAt', async () => {
+        // 12:30 UTC = 13:30 WAT on a Wednesday.
+        jest.useFakeTimers().setSystemTime(new Date('2026-10-14T12:30:00Z'));
+        const claim = claimFor([
+          { weekdays: [3], start: '12:00', end: '16:30' },
+        ]);
+        claimRepo.findOne.mockResolvedValue(claim);
+
+        await service.redeemClaim('VEM-ABCDE-WXYZ', 'biz-1');
+
+        expect(claimRepo.save).toHaveBeenCalledWith(
+          expect.objectContaining({
+            status: CatalogueOfferClaimStatus.REDEEMED,
+            redeemedAt: expect.any(Date),
+          }),
+        );
+      });
+    });
+  });
+  describe('deal group branch pricing', () => {
+    let txSave: jest.Mock;
+    const template = () => ({
+      id: 'o1',
+      dealGroupId: 'g1',
+      businessId: 'biz-1',
+      branchId: 'b1',
+      name: 'Lunch deal',
+      status: CatalogueOfferStatus.ACTIVE,
+      pricingType: CatalogueOfferPricingType.PERCENTAGE_DISCOUNT,
+      discountValue: 20,
+      quantity: 10,
+      views: 40,
+      calculatedPrice: 8000,
+      items: [
+        {
+          id: 'item-1',
+          name: 'Burger',
+          price: 10000,
+          branches: [{ id: 'b1' }, { id: 'b2' }],
+        },
+      ],
+    });
+
+    beforeEach(() => {
+      txSave = jest.fn().mockResolvedValue(undefined);
+      offerRepo.manager = {
+        transaction: jest.fn((cb) => cb({ save: txSave })),
+      };
+      offerRepo.create = jest.fn().mockImplementation((dto) => ({ ...dto }));
+      branchRepo.find = jest.fn().mockResolvedValue([
+        { id: 'b1', name: 'Wuse' },
+        { id: 'b2', name: 'Garki' },
+      ]);
+      claimRepo.createQueryBuilder = jest.fn().mockReturnValue({
+        select: jest.fn().mockReturnThis(),
+        addSelect: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        groupBy: jest.fn().mockReturnThis(),
+        addGroupBy: jest.fn().mockReturnThis(),
+        getRawMany: jest.fn().mockResolvedValue([]),
+      });
+    });
+
+    it('updates an existing branch and adds a new one as a fresh copy', async () => {
+      offerRepo.find = jest.fn().mockResolvedValue([template()]);
+
+      await service.setOfferGroupBranchPricing(
+        'g1',
+        {
+          branches: [
+            { branchId: 'b1', isActive: false, discountValue: 30 },
+            { branchId: 'b2', isActive: true, quantity: 4 },
+          ],
+        },
+        'biz-1',
+      );
+
+      const saved = txSave.mock.calls[0][1];
+      expect(saved).toHaveLength(2);
+      const [existing, added] = saved;
+      expect(existing).toMatchObject({
+        id: 'o1',
+        status: CatalogueOfferStatus.INACTIVE,
+        discountValue: 30,
+        calculatedPrice: 7000,
+      });
+      expect(added).toMatchObject({
+        branchId: 'b2',
+        dealGroupId: 'g1',
+        status: CatalogueOfferStatus.ACTIVE,
+        quantity: 4,
+        views: 0,
+        calculatedPrice: 8000,
+      });
+      expect(added).not.toHaveProperty('id');
+    });
+
+    it('refuses to add a branch where the deal items are not stocked', async () => {
+      const offer = template();
+      offer.items[0].branches = [{ id: 'b1' }];
+      offerRepo.find = jest.fn().mockResolvedValue([offer]);
+      branchRepo.find = jest
+        .fn()
+        .mockResolvedValue([{ id: 'b2', name: 'Garki' }]);
+
+      await expect(
+        service.setOfferGroupBranchPricing(
+          'g1',
+          { branches: [{ branchId: 'b2', isActive: true }] },
+          'biz-1',
+        ),
+      ).rejects.toThrow(/not available in branch b2/);
+      expect(txSave).not.toHaveBeenCalled();
+    });
+
+    it('turns a pre-grouping deal into the first row of its group', async () => {
+      offerRepo.find = jest
+        .fn()
+        .mockResolvedValue([{ ...template(), dealGroupId: null }]);
+      branchRepo.find = jest
+        .fn()
+        .mockResolvedValue([{ id: 'b2', name: 'Garki' }]);
+
+      await service.setOfferGroupBranchPricing(
+        'o1',
+        { branches: [{ branchId: 'b2', isActive: true }] },
+        'biz-1',
+      );
+
+      const saved = txSave.mock.calls[0][1];
+      expect(saved[0]).toMatchObject({ id: 'o1', dealGroupId: 'o1' });
+      expect(saved[1]).toMatchObject({ branchId: 'b2', dealGroupId: 'o1' });
+    });
+
+    it('404s for a deal of another business', async () => {
+      offerRepo.find = jest.fn().mockResolvedValue([]);
+      await expect(
+        service.getOfferGroupBranchPricing('g1', 'biz-2'),
+      ).rejects.toThrow('Deal not found');
     });
   });
 });

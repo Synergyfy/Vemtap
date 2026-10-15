@@ -2,6 +2,9 @@
 
 This document outlines the API endpoints for the Vemtap Catalogue and QR Ordering system, following the lifecycle of a business setting up its menu and a customer placing an order.
 
+> **Section 4 additions** (multi-branch deals, per-branch pricing, deal stats, dynamic segments, ad wallet, boosts and promotions): see [`docs/section-4-integration.md`](../../../docs/section-4-integration.md).
+
+
 ---
 
 ## 🏗️ Phase 1: Business Setup (Admin)

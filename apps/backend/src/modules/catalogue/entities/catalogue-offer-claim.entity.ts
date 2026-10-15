@@ -72,4 +72,8 @@ export class CatalogueOfferClaim extends AbstractBaseEntity {
   @ApiProperty({ example: '2026-07-07T10:00:00.000Z' })
   @Column({ type: 'timestamp' })
   expiresAt: Date;
+
+  @ApiProperty({ example: '2026-07-03T12:40:00.000Z', nullable: true })
+  @Column({ type: 'timestamp', nullable: true })
+  redeemedAt: Date | null;
 }

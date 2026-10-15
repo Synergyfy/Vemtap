@@ -1,5 +1,11 @@
-import { HttpStatus, HttpException, BadRequestException } from '@nestjs/common';
+import {
+  HttpStatus,
+  HttpException,
+  BadRequestException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { AllExceptionsFilter } from './http-exception.filter';
+import { PLAN_ERRORS } from '../enums/plan-errors.enum';
 import { QueryFailedError } from 'typeorm';
 
 describe('AllExceptionsFilter', () => {
@@ -27,6 +33,27 @@ describe('AllExceptionsFilter', () => {
         getRequest: () => mockRequest,
       }),
     };
+  });
+
+  it('forwards a plan error slug so clients need not match on wording', () => {
+    // The client tells "your plan does not include this" apart from a generic
+    // forbidden by this slug, so the filter has to pass it through untouched
+    // while still sending the human sentence in `message`.
+    const error = new ForbiddenException({
+      statusCode: HttpStatus.FORBIDDEN,
+      error: PLAN_ERRORS.FEATURE_NOT_INCLUDED,
+      message: 'The branches feature is not included in your current plan.',
+    });
+    filter.catch(error, mockHost);
+
+    expect(mockStatus).toHaveBeenCalledWith(HttpStatus.FORBIDDEN);
+    expect(mockJson).toHaveBeenCalledWith(
+      expect.objectContaining({
+        statusCode: HttpStatus.FORBIDDEN,
+        error: PLAN_ERRORS.FEATURE_NOT_INCLUDED,
+        message: 'The branches feature is not included in your current plan.',
+      }),
+    );
   });
 
   it('should handle standard HttpException with original status', () => {

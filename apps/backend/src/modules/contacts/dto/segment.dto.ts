@@ -5,7 +5,12 @@ import {
   IsString,
   IsUUID,
   IsArray,
+  IsEnum,
+  ValidateNested,
 } from 'class-validator';
+import { Type } from 'class-transformer';
+import { SegmentType } from '../entities/segment.entity';
+import { SegmentCriteriaDto } from './segment-criteria.dto';
 
 export class CreateSegmentDto {
   @ApiProperty({ example: 'VIP Customers' })
@@ -22,6 +27,19 @@ export class CreateSegmentDto {
   @IsUUID()
   @IsOptional()
   branchId?: string;
+  @ApiPropertyOptional({ enum: SegmentType, default: SegmentType.STATIC })
+  @IsOptional()
+  @IsEnum(SegmentType)
+  type?: SegmentType;
+
+  @ApiPropertyOptional({
+    type: SegmentCriteriaDto,
+    description: 'Required for dynamic segments',
+  })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => SegmentCriteriaDto)
+  criteria?: SegmentCriteriaDto;
 }
 
 export class UpdateSegmentDto {
@@ -34,6 +52,19 @@ export class UpdateSegmentDto {
   @IsString()
   @IsOptional()
   description?: string;
+  @ApiPropertyOptional({ enum: SegmentType, default: SegmentType.STATIC })
+  @IsOptional()
+  @IsEnum(SegmentType)
+  type?: SegmentType;
+
+  @ApiPropertyOptional({
+    type: SegmentCriteriaDto,
+    description: 'Required for dynamic segments',
+  })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => SegmentCriteriaDto)
+  criteria?: SegmentCriteriaDto;
 }
 
 export class SegmentMemberDto {

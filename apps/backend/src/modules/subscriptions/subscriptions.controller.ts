@@ -29,6 +29,8 @@ import { Public } from '../../common/decorators/public.decorator';
 import { BranchesService } from '../branches/branches.service';
 import { SubscribeWithAddonsDto } from './dto/addons/subscribe-with-addons.dto';
 import { SubscriptionTaxService } from './services/subscription-tax.service';
+import { TrialService } from './services/trial.service';
+import { StartTrialDto } from './dto/start-trial.dto';
 import { UpdateSubscriptionTaxDto } from './dto/tax/update-subscription-tax.dto';
 import { ToggleSubscriptionTaxDto } from './dto/tax/toggle-subscription-tax.dto';
 import { PricePreviewDto } from './dto/tax/price-preview.dto';
@@ -46,6 +48,7 @@ export class SubscriptionsController {
     private readonly subscriptionsService: SubscriptionsService,
     private readonly branchesService: BranchesService,
     private readonly subscriptionTaxService: SubscriptionTaxService,
+    private readonly trialService: TrialService,
   ) {}
 
   private async getBusinessId(req: any): Promise<string> {
@@ -142,6 +145,7 @@ export class SubscriptionsController {
       promoCode: subscribeDto.promoCode,
       addonIds: subscribeDto.addonIds,
       addonQuantities: subscribeDto.addonQuantities,
+      callbackUrl: subscribeDto.callbackUrl,
     });
   }
 
@@ -163,7 +167,72 @@ export class SubscriptionsController {
     const businessId = await this.getBusinessId(req);
     const subscription =
       await this.subscriptionsService.activeSubscription(businessId);
-    return toActiveSubscriptionDto(subscription);
+    const dto = toActiveSubscriptionDto(subscription);
+    if (!dto) return dto;
+    const trial = await this.trialService.eligibility(businessId);
+    return {
+      ...dto,
+      daysRemaining: TrialService.daysRemaining(
+        dto.isTrial ? dto.trialEndsAt : dto.endDate,
+      ),
+      trialEligible: trial.eligible,
+      trialUsedAt: trial.trialUsedAt,
+    };
+  }
+
+  @Post('trial')
+  @SkipSubscriptionCheck()
+  @Roles(UserRole.OWNER, UserRole.MANAGER)
+  @ApiOperation({
+    summary: 'Start the free trial of a paid plan (no card, never charged)',
+    description:
+      'One trial per business. When it ends the business returns to the free plan. ' +
+      'Returns the new subscription in the GET /subscriptions/active shape.',
+  })
+  async startTrial(@Body() dto: StartTrialDto, @Request() req) {
+    const businessId = await this.getBusinessId(req);
+    await this.trialService.startTrial(
+      businessId,
+      dto.planId,
+      dto.billingPeriod,
+    );
+    return this.getActivePlan(req);
+  }
+
+  @Get('trial/eligibility')
+  @SkipSubscriptionCheck()
+  @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF)
+  @ApiOperation({
+    summary: 'Whether this business can still start a free trial',
+  })
+  async trialEligibility(@Request() req) {
+    return this.trialService.eligibility(await this.getBusinessId(req));
+  }
+
+  @Get('billing-history')
+  @SkipSubscriptionCheck()
+  @Roles(UserRole.OWNER, UserRole.MANAGER)
+  @ApiOperation({ summary: 'Subscription and add-on payments, newest first' })
+  async billingHistory(
+    @Request() req,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.trialService.billingHistory(
+      await this.getBusinessId(req),
+      Number(page) || 1,
+      Number(limit) || 20,
+    );
+  }
+
+  @Get('payment-method')
+  @SkipSubscriptionCheck()
+  @Roles(UserRole.OWNER, UserRole.MANAGER)
+  @ApiOperation({
+    summary: 'Card on file for the current subscription (display only)',
+  })
+  async paymentMethod(@Request() req) {
+    return this.trialService.paymentMethod(await this.getBusinessId(req));
   }
 
   @Post('cancel/:businessId')

@@ -149,6 +149,48 @@ describe('CatalogueService', () => {
         NotFoundException,
       );
     });
+
+    it('should persist the submitted order as sortOrder', async () => {
+      const categories = [
+        { id: 'a', name: 'A', sortOrder: 0 },
+        { id: 'b', name: 'B', sortOrder: 0 },
+        { id: 'c', name: 'C', sortOrder: 0 },
+      ];
+      mockCategoryRepo.find
+        .mockResolvedValueOnce(categories)
+        .mockResolvedValueOnce([{ id: 'c', sortOrder: 2 }]);
+
+      const result = await service.reorderCategories('bus-1', ['c', 'a', 'b']);
+
+      expect(categories.map((category) => category.sortOrder)).toEqual([
+        1, 2, 0,
+      ]);
+      expect(mockCategoryRepo.save).toHaveBeenCalledWith(categories);
+      expect(result).toEqual([{ id: 'c', sortOrder: 2 }]);
+    });
+
+    it('should reject a reorder list containing an unknown category', async () => {
+      mockCategoryRepo.find.mockResolvedValueOnce([
+        { id: 'a', name: 'A', sortOrder: 0 },
+      ]);
+
+      await expect(
+        service.reorderCategories('bus-1', ['a', 'someone-elses']),
+      ).rejects.toThrow(BadRequestException);
+      expect(mockCategoryRepo.save).not.toHaveBeenCalled();
+    });
+
+    it('should reject a reorder list that omits a category', async () => {
+      mockCategoryRepo.find.mockResolvedValueOnce([
+        { id: 'a', name: 'A', sortOrder: 0 },
+        { id: 'b', name: 'B', sortOrder: 0 },
+      ]);
+
+      await expect(service.reorderCategories('bus-1', ['a'])).rejects.toThrow(
+        BadRequestException,
+      );
+      expect(mockCategoryRepo.save).not.toHaveBeenCalled();
+    });
   });
 
   describe('Items', () => {

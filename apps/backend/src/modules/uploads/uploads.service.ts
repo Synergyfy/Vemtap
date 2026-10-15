@@ -8,6 +8,32 @@ import { ConfigService } from '@nestjs/config';
 import { v2 as cloudinary, type UploadApiResponse } from 'cloudinary';
 
 /**
+ * The upload callback's error is frequently a plain `{ message, http_code }`
+ * object rather than an `Error` instance. Flattened for the log so the real
+ * Cloudinary reason (e.g. "missing permissions") survives instead of being
+ * replaced by a generic string.
+ */
+function describeUploadError(error: unknown): string {
+  if (error instanceof Error) {
+    return error.stack ?? error.message;
+  }
+  try {
+    return JSON.stringify(error);
+  } catch {
+    return String(error);
+  }
+}
+
+/** Cloudinary's transport/permission status, if the error carries one. */
+function uploadErrorHttpCode(error: unknown): number | undefined {
+  if (error && typeof error === 'object' && 'http_code' in error) {
+    const code = (error as { http_code?: unknown }).http_code;
+    return typeof code === 'number' ? code : undefined;
+  }
+  return undefined;
+}
+
+/**
  * Cloudinary-backed image uploads for the business wizard (logo, cover,
  * gallery). Mirrors the web app's `/api/upload` route, but behind JWT so the
  * mobile client uploads with the owner's session.
@@ -53,18 +79,22 @@ export class UploadsService {
       folderOverride ??
       (businessId ? `vemtap/businesses/${businessId}` : 'vemtap_onboarding');
 
+    // Cloudinary rejects a PDF under `resource_type: 'image'`; verification
+    // documents need `raw`. The controller has already whitelisted the mime,
+    // so this is a pure mapping rather than a second gate.
+    const resourceType = file.mimetype === 'application/pdf' ? 'raw' : 'image';
+
     try {
       const uploaded = await new Promise<UploadApiResponse>(
         (resolve, reject) => {
           const stream = cloudinary.uploader.upload_stream(
-            { folder, resource_type: 'image' },
+            { folder, resource_type: resourceType as 'image' | 'raw' },
             (error, result) => {
               if (error || !result) {
-                reject(
-                  error instanceof Error
-                    ? error
-                    : new Error('Cloudinary returned no result'),
-                );
+                // Keep Cloudinary's error intact — replacing non-Error values
+                // with a generic message is what hid the restricted-key
+                // "missing permissions" outage behind "returned no result".
+                reject(error ?? new Error('Cloudinary returned no result'));
                 return;
               }
               resolve(result);
@@ -78,8 +108,17 @@ export class UploadsService {
     } catch (error) {
       this.logger.error(
         'Cloudinary upload failed',
-        error instanceof Error ? error.stack : String(error),
+        describeUploadError(error),
       );
+
+      const httpCode = uploadErrorHttpCode(error);
+      if (httpCode === 401 || httpCode === 403) {
+        // Credentials or role permissions, not the file: retrying the same
+        // request can never succeed, so say what an operator must fix.
+        throw new ServiceUnavailableException(
+          'Media storage rejected the upload credentials or permissions',
+        );
+      }
       throw new BadRequestException('Image upload failed');
     }
   }

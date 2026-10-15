@@ -137,6 +137,22 @@ export class NotificationsGateway
   }
 
   /**
+   * A batch absorbed another event, so an existing row changed rather than a
+   * new one appearing.
+   *
+   * Deliberately distinct from `notification_created`: a client shows a
+   * banner for the latter and would show a second one for each event that
+   * joined an open batch, announcing the same thing repeatedly. This event
+   * carries just enough that a live client can refetch the row.
+   */
+  emitNotificationUpdated(userId: string, notificationId: string, groupCount: number) {
+    this.server.to(roomFor(userId)).emit('notification_updated', {
+      id: notificationId,
+      groupCount,
+    });
+  }
+
+  /**
    * A broadcast was written for many users at once.
    *
    * Emitted as one batch rather than per row: a broadcast to thousands of

@@ -15,6 +15,8 @@ import {
   PushNotificationProcessor,
   PUSH_NOTIFICATION_QUEUE,
 } from './push-notification.processor';
+import { BatchCloseProcessor } from './batch-close.processor';
+import { NOTIFICATION_BATCH_QUEUE } from './notifications.service';
 import { User } from '../users/entities/user.entity';
 import { Contact } from '../contacts/entities/contact.entity';
 import { CatalogueOfferClaim } from '../catalogue/entities/catalogue-offer-claim.entity';
@@ -65,6 +67,9 @@ import { CatalogueOfferClaim } from '../catalogue/entities/catalogue-offer-claim
     BullModule.registerQueue({
       name: PUSH_NOTIFICATION_QUEUE,
     }),
+    BullModule.registerQueue({
+      name: NOTIFICATION_BATCH_QUEUE,
+    }),
     // The gateway verifies handshake tokens, exactly as MessagingGateway does.
     JwtModule.registerAsync({
       imports: [ConfigModule],
@@ -82,6 +87,7 @@ import { CatalogueOfferClaim } from '../catalogue/entities/catalogue-offer-claim
     DealVelocityService,
     PushNotificationService,
     PushNotificationProcessor,
+    BatchCloseProcessor,
     NotificationsGateway,
   ],
   controllers: [NotificationsController],

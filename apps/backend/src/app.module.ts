@@ -43,11 +43,14 @@ import { CustomerImpersonationGuard } from './modules/administration/customer-im
 import { ScheduleModule } from '@nestjs/schedule';
 import { CatalogueModule } from './modules/catalogue/catalogue.module';
 import { UploadsModule } from './modules/uploads/uploads.module';
+import { VerificationModule } from './modules/verification/verification.module';
 import { CatalogueOrderModule } from './modules/catalogue-orders/catalogue-orders.module';
 import { BusinessProfilingModule } from './modules/business-profiling/business-profiling.module';
 import { AffiliatesModule } from './modules/affiliates/affiliates.module';
 import { TrainingModule } from './modules/training/training.module';
 import { DiscoveryModule } from './modules/discovery/discovery.module';
+import { AdWalletModule } from './modules/ad-wallet/ad-wallet.module';
+import { PromotionsModule } from './modules/promotions/promotions.module';
 import { QrThriveModule } from './modules/qr-thrive/qr-thrive.module';
 import { BannersModule } from './modules/banners/banners.module';
 import { SavedModule } from './modules/saved/saved.module';
@@ -199,12 +202,15 @@ import { PublicDiscoveryModule } from './modules/public-discovery/public-discove
     AdministrationModule,
     CatalogueModule,
     UploadsModule,
+    VerificationModule,
     CatalogueOrderModule,
     CatalogueCartModule,
     BusinessProfilingModule,
     AffiliatesModule,
     TrainingModule,
     DiscoveryModule,
+    AdWalletModule,
+    PromotionsModule,
     QrThriveModule,
     BannersModule,
     BusinessDashboardModule,
