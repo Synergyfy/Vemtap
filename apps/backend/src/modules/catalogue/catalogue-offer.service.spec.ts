@@ -522,6 +522,59 @@ describe('CatalogueOfferService', () => {
     });
   });
 
+  describe('claiming a deal whose product was unpublished', () => {
+    const pausedOffer = () => ({
+      ...mockOffer,
+      items: [
+        { price: 100, status: 'active', isSuspended: false },
+        { price: 50, status: 'inactive', isSuspended: false },
+      ],
+    });
+    const unavailable = 'This deal is no longer available';
+
+    it('refuses to send a claim OTP', async () => {
+      offerRepo.findOne.mockResolvedValue(pausedOffer());
+
+      await expect(
+        service.requestClaimOtp({
+          offerId: 'offer-1',
+          firstName: 'Chidi',
+          email: 'chidi@example.com',
+          phone: '+2348012345678',
+        }),
+      ).rejects.toThrow(unavailable);
+      expect(mailService.sendOtp).not.toHaveBeenCalled();
+    });
+
+    it('refuses to issue the claim when the product is paused after the OTP was sent', async () => {
+      otpRepo.findOne.mockResolvedValue(mockOtpRecord);
+      offerRepo.findOne.mockResolvedValue(pausedOffer());
+
+      await expect(
+        service.verifyClaim({
+          email: 'chidi@example.com',
+          code: '1234',
+          offerId: 'offer-1',
+        }),
+      ).rejects.toThrow(unavailable);
+      expect(claimRepo.save).not.toHaveBeenCalled();
+    });
+
+    it('refuses to gift it', async () => {
+      offerRepo.findOne.mockResolvedValue({
+        ...pausedOffer(),
+        items: [{ price: 100, status: 'active', isSuspended: true }],
+      });
+
+      await expect(
+        service.sendDealGift(
+          { offerId: 'offer-1', recipientEmail: 'friend@example.com' },
+          { id: 'sender-1', email: 'john@example.com' } as any,
+        ),
+      ).rejects.toThrow(unavailable);
+    });
+  });
+
   describe('redeemClaim', () => {
     it('should redeem claim successfully and increment offer visits', async () => {
       claimRepo.findOne.mockResolvedValue(mockClaim);
@@ -703,6 +756,38 @@ describe('CatalogueOfferService', () => {
       // discountPercent must be computed from the coerced number, not from
       // string comparison: 10000 → 8500 is 15% off.
       expect(result.data[0].discountPercent).toBe(15);
+    });
+
+    it('only lists deals whose items are all published', async () => {
+      const qb = makeOfferQb();
+      offerRepo.createQueryBuilder = jest.fn().mockReturnValue(qb);
+      claimRepo.find.mockResolvedValue([]);
+
+      await service.findAllOffersPublicGlobal({ page: 1, limit: 10 });
+
+      expect(qb.andWhere).toHaveBeenCalledWith(
+        expect.stringContaining(
+          '"publishedItem"."status" <> :publishedItemStatus',
+        ),
+        { publishedItemStatus: 'active' },
+      );
+    });
+  });
+
+  describe('findOneOffer (public details)', () => {
+    it('hides a deal whose product the owner has unpublished', async () => {
+      offerRepo.findOne = jest.fn().mockResolvedValue({
+        id: 'offer-1',
+        calculatedPrice: 100,
+        items: [
+          { price: 100, status: 'active', isSuspended: false },
+          { price: 50, status: 'inactive', isSuspended: false },
+        ],
+      });
+
+      await expect(service.findOneOffer('offer-1')).rejects.toThrow(
+        'Offer not found',
+      );
     });
   });
 
@@ -936,7 +1021,7 @@ describe('CatalogueOfferService', () => {
       const activeOffer = {
         ...mockOffer,
         status: CatalogueOfferStatus.ACTIVE,
-        items: [{ price: '100' }],
+        items: [{ price: '100', status: 'active', isSuspended: false }],
         calculatedPrice: 80,
         branch: {
           name: 'Main Branch',

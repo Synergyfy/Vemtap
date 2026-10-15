@@ -14,7 +14,10 @@ import {
   CatalogueOfferPricingType,
   CatalogueOfferStatus,
 } from './entities/catalogue-offer.entity';
-import { CatalogueItem } from './entities/catalogue-item.entity';
+import {
+  CatalogueItem,
+  CatalogueItemStatus,
+} from './entities/catalogue-item.entity';
 import {
   CreateCatalogueOfferDto,
   UpdateCatalogueOfferDto,
@@ -67,6 +70,44 @@ import {
   describeRedemptionWindows,
   isWithinRedemptionWindows,
 } from './utils/offer-rules.utils';
+
+/**
+ * A deal is only sellable while every item in it is published: when an owner
+ * pauses, archives, deletes or has a product suspended, every deal built on it
+ * drops out of the customer feeds instead of advertising something they cannot
+ * buy. Shared by every public offer query so they cannot disagree.
+ */
+const ALL_OFFER_ITEMS_PUBLISHED_SQL = `NOT EXISTS (
+  SELECT 1 FROM "catalogue_offer_items" "publishedCheck"
+  JOIN "catalogue_items" "publishedItem" ON "publishedItem"."id" = "publishedCheck"."itemId"
+  WHERE "publishedCheck"."offerId" = offer.id
+    AND ("publishedItem"."status" <> :publishedItemStatus
+      OR "publishedItem"."isSuspended" = true
+      OR "publishedItem"."deletedAt" IS NOT NULL)
+)`;
+const PUBLISHED_ITEM_PARAMS = {
+  publishedItemStatus: CatalogueItemStatus.ACTIVE,
+};
+
+function isPublishedItem(item: CatalogueItem): boolean {
+  return item.status === CatalogueItemStatus.ACTIVE && !item.isSuspended;
+}
+
+const UNPUBLISHED_ITEM_CLAIM_MESSAGE =
+  'This deal is no longer available. The business has paused an item in it.';
+
+/**
+ * Claim-time twin of the feed rule: a customer who still has the deal open (or
+ * a saved link) must not be issued a voucher for a product the owner has since
+ * unpublished. `offer.items` must be loaded; soft-deleted items never are, so a
+ * deal whose product was deleted simply has fewer items and the remaining ones
+ * are checked.
+ */
+function assertOfferItemsPublished(offer: CatalogueOffer): void {
+  if (!(offer.items ?? []).every(isPublishedItem)) {
+    throw new BadRequestException(UNPUBLISHED_ITEM_CLAIM_MESSAGE);
+  }
+}
 
 @Injectable()
 export class CatalogueOfferService {
@@ -818,7 +859,8 @@ export class CatalogueOfferService {
       .andWhere('offer.status = :status', {
         status: CatalogueOfferStatus.ACTIVE,
       })
-      .andWhere('(offer.endDate IS NULL OR offer.endDate >= NOW())');
+      .andWhere('(offer.endDate IS NULL OR offer.endDate >= NOW())')
+      .andWhere(ALL_OFFER_ITEMS_PUBLISHED_SQL, PUBLISHED_ITEM_PARAMS);
 
     if (search) {
       qb.andWhere('offer.name ILIKE :search', { search: `%${search}%` });
@@ -908,7 +950,8 @@ export class CatalogueOfferService {
       .andWhere('branch.joinDiscoveryNetwork = :joinDiscoveryNetwork', {
         joinDiscoveryNetwork: true,
       })
-      .andWhere('branch.isActive = :branchActive', { branchActive: true });
+      .andWhere('branch.isActive = :branchActive', { branchActive: true })
+      .andWhere(ALL_OFFER_ITEMS_PUBLISHED_SQL, PUBLISHED_ITEM_PARAMS);
 
     if (search) {
       qb.andWhere(
@@ -1091,6 +1134,7 @@ export class CatalogueOfferService {
         joinDiscoveryNetwork: true,
       })
       .andWhere('branch.isActive = :branchActive', { branchActive: true })
+      .andWhere(ALL_OFFER_ITEMS_PUBLISHED_SQL, PUBLISHED_ITEM_PARAMS)
       .andWhere(
         `NOT EXISTS (SELECT 1 FROM "catalogue_offer_claims" "existing" WHERE "existing"."offerId" = offer.id AND (${ownedByClaim.join(' OR ')}))`,
         params,
@@ -1286,6 +1330,11 @@ export class CatalogueOfferService {
       ],
     });
     if (!offer) throw new NotFoundException('Offer not found');
+    // Same rule as the feeds: a deep link must not resurrect a deal whose
+    // product the owner has unpublished. (`items` loads non-deleted rows only.)
+    if (!offer.items.every(isPublishedItem)) {
+      throw new NotFoundException('Offer not found');
+    }
 
     const originalPrice = offer.items.reduce(
       (acc, it) => acc + Number(it.price || 0),
@@ -1455,10 +1504,12 @@ export class CatalogueOfferService {
   async requestClaimOtp(dto: RequestClaimOtpDto) {
     const offer = await this.offerRepository.findOne({
       where: { id: dto.offerId, status: CatalogueOfferStatus.ACTIVE },
+      relations: ['items'],
     });
     if (!offer) {
       throw new NotFoundException('Promotion not found or inactive');
     }
+    assertOfferItemsPublished(offer);
 
     const now = new Date();
     if (offer.startDate && now < new Date(offer.startDate)) {
@@ -1531,11 +1582,14 @@ export class CatalogueOfferService {
 
     const offer = await this.offerRepository.findOne({
       where: { id: dto.offerId, status: CatalogueOfferStatus.ACTIVE },
-      relations: ['branch', 'branch.business'],
+      relations: ['items', 'branch', 'branch.business'],
     });
     if (!offer) {
       throw new NotFoundException('Promotion not found or inactive');
     }
+    // Re-checked here, not only at OTP request: the owner can pause the
+    // product in the ten minutes between the two steps.
+    assertOfferItemsPublished(offer);
 
     // Check offer expiration by endDate
     if (offer.endDate && new Date() > new Date(offer.endDate)) {
@@ -1754,6 +1808,7 @@ export class CatalogueOfferService {
     if (!offer) {
       throw new NotFoundException('Promotion not found or inactive');
     }
+    assertOfferItemsPublished(offer);
 
     if (offer.allowGifting === false) {
       throw new ForbiddenException('This deal cannot be gifted');
