@@ -39,6 +39,7 @@ import {
   DURATION_OPTIONS_DAYS,
   FORECAST,
   MAX_RUN_DAYS,
+  WALKIN_RADIUS_KM,
   MIN_CAMPAIGN_BUDGET,
   PLACEMENTS,
   PROMOTION_BUDGET_TIERS,
@@ -63,6 +64,28 @@ export interface CampaignBenchmark {
   campaigns: number;
 }
 const num = (value: unknown) => Number(value ?? 0) || 0;
+
+/**
+ * People within `radiusKm`, interpolated between `FORECAST.populationByRadiusKm`
+ * points (0 at the centre, flat past 10 km's share as before).
+ */
+export function populationWithin(radiusKm: number): number {
+  const table = FORECAST.populationByRadiusKm;
+  if (table[radiusKm] !== undefined) return table[radiusKm];
+  const points = [
+    [0, 0],
+    ...Object.keys(table)
+      .map(Number)
+      .sort((a, b) => a - b)
+      .map((km) => [km, table[km]]),
+  ];
+  const last = points[points.length - 1];
+  if (radiusKm >= last[0]) return last[1];
+  const upper = points.findIndex(([km]) => km > radiusKm);
+  const [x0, y0] = points[upper - 1];
+  const [x1, y1] = points[upper];
+  return Math.round(y0 + ((radiusKm - x0) / (x1 - x0)) * (y1 - y0));
+}
 
 /** A district or cluster a campaign can target. */
 export interface TargetArea {
@@ -1268,15 +1291,34 @@ export class PromotionsService implements OnModuleInit {
   }
 
   /** Reach and claims estimate for a budget (see FORECAST for the model). */
-  forecast(dto: ForecastDto) {
+  async forecast(dto: ForecastDto, businessId?: string) {
     const durationDays = dto.durationDays ?? 7;
     const budget =
       dto.budget ??
       (dto.dailyBudget !== undefined ? dto.dailyBudget * durationDays : 0);
     const radius = dto.radiusKm ?? 3;
-    const cap =
-      FORECAST.populationByRadiusKm[radius] ??
-      Math.round(FORECAST.populationByRadiusKm[10] * Math.min(1, radius / 10));
+    // Where: the chosen areas' populations, else the radius's (as served).
+    let cap = populationWithin(radius);
+    if (dto.clusterIds?.length) {
+      const areas = await this.dataSource.query<{ radiusMeters: number }[]>(
+        `SELECT "radiusMeters" FROM "clusters"
+         WHERE "id" = ANY($1::uuid[]) AND "isActive" = true AND "deletedAt" IS NULL`,
+        [dto.clusterIds],
+      );
+      cap = Math.min(
+        FORECAST.populationByRadiusKm[10],
+        areas.reduce(
+          (sum, area) => sum + populationWithin(num(area.radiusMeters) / 1000),
+          0,
+        ),
+      );
+    }
+    // Who: walk-ins are within 1 km; past customers are the business's own.
+    if (dto.audienceType === 'walkins') {
+      cap = Math.min(cap, populationWithin(WALKIN_RADIUS_KM));
+    } else if (dto.audienceType === 'regulars' && businessId) {
+      cap = Math.min(cap, await this.customerCount(businessId));
+    }
     const reachMin = Math.min(
       cap,
       Math.round(budget * FORECAST.reachPerNairaMin),
@@ -1295,10 +1337,34 @@ export class PromotionsService implements OnModuleInit {
       claimsMin: Math.round(reachMin * FORECAST.claimRateMin),
       claimsMax: Math.round(reachMax * FORECAST.claimRateMax),
       audienceCapped: budget * FORECAST.reachPerNairaMax > cap,
-      /** People within the radius: the most any budget can reach. */
+      /** People in the radius, areas and audience: the most any budget can reach. */
       audiencePopulation: cap,
       isEstimate: true,
     };
+  }
+
+  /** Customers the business has served: a claim, visit, order or POS sale. */
+  private async customerCount(businessId: string): Promise<number> {
+    const [row] = await this.dataSource.query<{ count: string }[]>(
+      `SELECT COUNT(*) AS count FROM (
+         SELECT ps."customerId" AS uid FROM "pos_sales" ps
+         WHERE ps."businessId" = $1 AND ps."customerId" IS NOT NULL
+           AND ps."deletedAt" IS NULL AND ps."status" <> 'refunded'
+         UNION
+         SELECT co."customerId" FROM "catalogue_orders" co
+         WHERE co."businessId" = $1 AND co."customerId" IS NOT NULL
+           AND co."deletedAt" IS NULL AND co."status" NOT IN ('cancelled', 'rejected', 'refunded')
+         UNION
+         SELECT v."customerId" FROM "visits" v
+         WHERE v."businessId" = $1 AND v."customerId" IS NOT NULL AND v."deletedAt" IS NULL
+         UNION
+         SELECT c."userId" FROM "catalogue_offer_claims" c
+         JOIN "catalogue_offers" o ON o."id" = c."offerId"
+         WHERE o."businessId" = $1 AND c."userId" IS NOT NULL AND c."deletedAt" IS NULL
+       ) customers`,
+      [businessId],
+    );
+    return num(row?.count);
   }
 
   /** Listings a campaign can feature, for the content step. */

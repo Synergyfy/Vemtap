@@ -340,4 +340,22 @@ export class ForecastDto {
   @Min(0.5)
   @Max(50)
   radiusKm?: number;
+
+  @ApiPropertyOptional({
+    type: [String],
+    description:
+      'Districts or clusters the run is limited to; their populations replace the radius',
+  })
+  @IsOptional()
+  @IsArray()
+  @IsUUID('4', { each: true })
+  clusterIds?: string[];
+
+  @ApiPropertyOptional({
+    enum: ids(BOOST_AUDIENCE_TYPES),
+    description: 'Boost audience; narrows the population the budget can reach',
+  })
+  @IsOptional()
+  @IsIn(ids(BOOST_AUDIENCE_TYPES))
+  audienceType?: string;
 }

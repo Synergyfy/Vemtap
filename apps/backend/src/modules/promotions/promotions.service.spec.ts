@@ -1,7 +1,7 @@
 import { Test } from '@nestjs/testing';
 import { getDataSourceToken, getRepositoryToken } from '@nestjs/typeorm';
 import { ConflictException } from '@nestjs/common';
-import { PromotionsService } from './promotions.service';
+import { PromotionsService, populationWithin } from './promotions.service';
 import {
   SponsoredCampaign,
   SponsoredCampaignKind,
@@ -798,9 +798,9 @@ describe('PromotionsService', () => {
     );
   });
 
-  it('forecasts within the radius audience and flags estimates', () => {
+  it('forecasts within the radius audience and flags estimates', async () => {
     expect(
-      service.forecast({ budget: 10000, durationDays: 5, radiusKm: 3 }),
+      await service.forecast({ budget: 10000, durationDays: 5, radiusKm: 3 }),
     ).toMatchObject({
       reachMin: 4200,
       reachMax: 6600,
@@ -811,11 +811,51 @@ describe('PromotionsService', () => {
       audienceCapped: false,
       audiencePopulation: 40000,
     });
-    expect(service.forecast({ budget: 1_000_000, radiusKm: 1 })).toMatchObject({
+    expect(
+      await service.forecast({ budget: 1_000_000, radiusKm: 1 }),
+    ).toMatchObject({
       reachMax: 8000,
       audienceCapped: true,
       audiencePopulation: 8000,
     });
+  });
+
+  it('interpolates the population between radius steps, rising with the radius', () => {
+    expect(populationWithin(2)).toBe(24_000);
+    expect(populationWithin(2.5)).toBe(32_000);
+    expect(populationWithin(0.5)).toBe(4_000);
+    expect(populationWithin(40)).toBe(250_000);
+  });
+
+  it('forecasts the chosen districts in place of the radius', async () => {
+    dataSource.query.mockResolvedValue([
+      { radiusMeters: 2500 },
+      { radiusMeters: 500 },
+    ]);
+    const forecast = await service.forecast(
+      { budget: 1_000_000, radiusKm: 10, clusterIds: ['d-1', 'd-2'] },
+      'biz-1',
+    );
+    // 32,000 within 2.5 km plus 4,000 within 0.5 km — not 10 km's 250,000.
+    expect(forecast.audiencePopulation).toBe(36_000);
+    expect(forecast.reachMax).toBe(36_000);
+  });
+
+  it('narrows the forecast to walk-ins or the business’s past customers', async () => {
+    const walkins = await service.forecast({
+      budget: 1_000_000,
+      radiusKm: 5,
+      audienceType: 'walkins',
+    });
+    expect(walkins.audiencePopulation).toBe(8_000);
+
+    dataSource.query.mockResolvedValue([{ count: '312' }]);
+    const regulars = await service.forecast(
+      { budget: 1_000_000, radiusKm: 5, audienceType: 'regulars' },
+      'biz-1',
+    );
+    expect(regulars.audiencePopulation).toBe(312);
+    expect(dataSource.query.mock.calls[0][1]).toEqual(['biz-1']);
   });
 
   it('totals a daily budget over the schedule', () => {

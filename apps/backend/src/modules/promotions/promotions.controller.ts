@@ -83,8 +83,8 @@ function campaignController(
     @Post('forecast')
     @HttpCode(HttpStatus.OK)
     @ApiOperation({ summary: 'Estimated reach and claims for a budget' })
-    forecast(@Body() dto: ForecastDto) {
-      return this.service.forecast(dto);
+    forecast(@Req() req: AuthedRequest, @Body() dto: ForecastDto) {
+      return this.service.forecast(dto, req.user.businessId);
     }
 
     @Post()
