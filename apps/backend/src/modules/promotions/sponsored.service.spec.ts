@@ -27,6 +27,13 @@ describe('SponsoredService', () => {
   let campaignRepo: { find: jest.Mock };
   let dataSource: { query: jest.Mock };
   let catalogue: { findPublicOffersByIds: jest.Mock };
+  let areaRows: {
+    id: string;
+    lat: string;
+    lng: string;
+    radiusMeters: number;
+  }[];
+  let customerOfRows: { businessId: string }[];
 
   const campaign = (overrides: Partial<SponsoredCampaign> = {}) =>
     ({
@@ -46,6 +53,8 @@ describe('SponsoredService', () => {
   beforeEach(async () => {
     campaigns = [campaign()];
     offerRows = [{ assetId: 'deal-1', offerId: 'deal-1', ...NEAR }];
+    areaRows = [];
+    customerOfRows = [];
     campaignRepo = {
       find: jest.fn(() =>
         Promise.resolve(
@@ -57,6 +66,10 @@ describe('SponsoredService', () => {
       query: jest.fn((sql: string) => {
         if (sql.includes('FROM "catalogue_offers" a')) {
           return Promise.resolve(offerRows);
+        }
+        if (sql.includes('FROM "clusters"')) return Promise.resolve(areaRows);
+        if (sql.includes('FROM "pos_sales" ps')) {
+          return Promise.resolve(customerOfRows);
         }
         if (sql.includes('INSERT INTO "sponsored_campaign_events"')) {
           return Promise.resolve([]);
@@ -167,6 +180,105 @@ describe('SponsoredService', () => {
       expect(result.data[0].offer).toMatchObject({ id: 'deal-1b' });
       // The bigger remaining budget wins the weighted draw.
       expect(result.data[0].campaignId).toBe('c-2');
+    });
+  });
+
+  describe('serve by area and audience', () => {
+    const serve = (overrides = {}) =>
+      service.serve({
+        placement: 'home',
+        ...VIEWER,
+        now: LUNCHTIME,
+        ...overrides,
+      });
+    // A district round the viewer, and one ~20 km north.
+    const HERE = {
+      id: 'd-here',
+      lat: '9.0765',
+      lng: '7.3986',
+      radiusMeters: 2500,
+    };
+    const THERE = {
+      id: 'd-there',
+      lat: '9.2565',
+      lng: '7.3986',
+      radiusMeters: 2500,
+    };
+
+    it('serves a district-targeted deal only to viewers inside the district', async () => {
+      areaRows = [HERE, THERE];
+      // The branch is far away: inside the area, the radius no longer applies.
+      offerRows = [{ assetId: 'deal-1', offerId: 'deal-1', ...FAR }];
+      campaigns = [
+        campaign({
+          audience: { strategy: 'districts', clusterIds: ['d-here'] },
+        }),
+      ];
+      expect((await serve()).data).toHaveLength(1);
+
+      campaigns = [
+        campaign({
+          audience: { strategy: 'districts', clusterIds: ['d-there'] },
+        }),
+      ];
+      expect((await serve()).data).toEqual([]);
+    });
+
+    it('treats a missing or inactive area as not matching', async () => {
+      areaRows = [];
+      campaigns = [
+        campaign({ audience: { strategy: 'clusters', clusterIds: ['gone'] } }),
+      ];
+      expect((await serve()).data).toEqual([]);
+    });
+
+    it('keeps the radius rule for campaigns without areas', async () => {
+      campaigns = [campaign({ audience: { strategy: 'nearby', radiusKm: 3 } })];
+      expect((await serve()).data).toHaveLength(1);
+      expect(dataSource.query).not.toHaveBeenCalledWith(
+        expect.stringContaining('FROM "clusters"'),
+        expect.anything(),
+      );
+    });
+
+    it('shows a past-customers boost only to signed-in customers of the business', async () => {
+      campaigns = [
+        campaign({ audience: { radiusKm: 3, audienceType: 'regulars' } }),
+      ];
+
+      expect((await serve()).data).toEqual([]); // signed out
+
+      customerOfRows = [];
+      expect((await serve({ customerId: 'u-new' })).data).toEqual([]);
+
+      customerOfRows = [{ businessId: 'biz-1' }];
+      expect((await serve({ customerId: 'u-regular' })).data).toHaveLength(1);
+      const lookup = dataSource.query.mock.calls
+        .filter(([sql]: [string]) => sql.includes('FROM "pos_sales" ps'))
+        .pop();
+      expect(lookup[1]).toEqual(['u-regular', ['biz-1']]);
+    });
+
+    it('shows a walk-ins boost to non-customers within 1 km only', async () => {
+      campaigns = [
+        campaign({ audience: { radiusKm: 3, audienceType: 'walkins' } }),
+      ];
+
+      offerRows = [
+        { assetId: 'deal-1', offerId: 'deal-1', lat: '9.0837', lng: '7.3986' },
+      ];
+      expect((await serve()).data).toHaveLength(1); // ~0.8 km, anonymous
+
+      offerRows = [
+        { assetId: 'deal-1', offerId: 'deal-1', lat: '9.0900', lng: '7.3986' },
+      ];
+      expect((await serve()).data).toEqual([]); // ~1.5 km
+
+      offerRows = [
+        { assetId: 'deal-1', offerId: 'deal-1', lat: '9.0837', lng: '7.3986' },
+      ];
+      customerOfRows = [{ businessId: 'biz-1' }];
+      expect((await serve({ customerId: 'u-regular' })).data).toEqual([]);
     });
   });
 

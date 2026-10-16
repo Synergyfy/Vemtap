@@ -14,9 +14,15 @@ import { MailModule } from '../mail/mail.module';
 import { QrThriveModule } from '../qr-thrive/qr-thrive.module';
 import { EventsModule } from '../../common/gateways/events.module';
 
+import { Cluster } from '../clusters/entities/cluster.entity';
 @Module({
   imports: [
-    TypeOrmModule.forFeature([User, UserSession, PasswordResetHistory]),
+    TypeOrmModule.forFeature([
+      User,
+      UserSession,
+      PasswordResetHistory,
+      Cluster,
+    ]),
     BusinessesModule,
     BranchesModule,
     MailModule,

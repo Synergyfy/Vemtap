@@ -189,6 +189,14 @@ export class User extends AbstractBaseEntity {
   @Column({ default: false })
   optOut: boolean;
 
+  @ApiProperty({
+    nullable: true,
+    description:
+      'District (a `district` cluster) the customer chose as their area; segments target it',
+  })
+  @Column({ type: 'uuid', nullable: true })
+  homeDistrictId: string | null;
+
   @Column({ type: 'jsonb', nullable: true })
   notificationPreferences: Record<string, boolean> | null;
 

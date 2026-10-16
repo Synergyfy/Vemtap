@@ -107,6 +107,282 @@ describe('PromotionsService', () => {
     expect(wallet.onTopUpCredited).toHaveBeenCalledWith(expect.any(Function));
   });
 
+  describe('add budget', () => {
+    const NOW = new Date('2026-10-16T12:00:00Z');
+    // A 5-day ₦10,000 run, two days in: ₦2,000 a day.
+    const live = (overrides: Record<string, unknown> = {}) =>
+      boost({
+        status: SponsoredCampaignStatus.ACTIVE,
+        launchedAt: new Date(NOW.getTime() - 2 * DAY),
+        startDate: new Date(NOW.getTime() - 2 * DAY),
+        endDate: new Date(NOW.getTime() + 3 * DAY),
+        budget: '10000.00',
+        spent: '4000.00',
+        ...overrides,
+      });
+
+    beforeEach(() => {
+      jest.useFakeTimers().setSystemTime(NOW);
+      wallet.getSummary.mockResolvedValue({ spendable: 50000 });
+      wallet.topUpWithSavedCard = jest
+        .fn()
+        .mockResolvedValue({ status: 'completed', reference: 'ADW-1' });
+    });
+
+    it('extends the run at the same daily spend and reserves the money', async () => {
+      store.set('c-1', live());
+
+      const view = await service.addBudget(
+        BOOST,
+        'c-1',
+        'biz-1',
+        { id: 'u-1' },
+        {
+          amount: 4000,
+        },
+      );
+
+      const saved = store.get('c-1');
+      expect(saved.budget).toBe(14000);
+      expect(saved.endDate).toEqual(new Date(NOW.getTime() + 5 * DAY));
+      expect(saved.schedule.durationDays).toBe(7);
+      expect(wallet.reserve).toHaveBeenCalledWith(
+        'biz-1',
+        'c-1',
+        4000,
+        expect.stringContaining('added budget'),
+      );
+      expect(invoiceRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'Budget top-up', amount: 4000 }),
+      );
+      expect(view).toMatchObject({ budget: 14000 });
+
+      // The next hour costs exactly one hour at ₦2,000 a day.
+      wallet.spend.mockClear();
+      await service.settle(new Date(NOW.getTime() + 60 * 60 * 1000));
+      expect(wallet.spend.mock.calls[0][2]).toBeCloseTo(2000 / 24, 1);
+    });
+
+    it('spends what is due at the old pace first', async () => {
+      store.set('c-1', live({ spent: '3000.00' }));
+      await service.addBudget(
+        BOOST,
+        'c-1',
+        'biz-1',
+        { id: 'u-1' },
+        { amount: 4000 },
+      );
+      expect(wallet.spend.mock.calls[0][2]).toBe(1000);
+    });
+
+    it('refuses to run past 90 days', async () => {
+      store.set('c-1', live());
+      await expect(
+        service.addBudget(
+          BOOST,
+          'c-1',
+          'biz-1',
+          { id: 'u-1' },
+          { amount: 200000 },
+        ),
+      ).rejects.toThrow(/at most 90 days/);
+      expect(wallet.reserve).not.toHaveBeenCalled();
+    });
+
+    it('charges a wallet shortfall to the saved card only when allowed', async () => {
+      store.set('c-1', live());
+      wallet.getSummary.mockResolvedValue({ spendable: 1000 });
+
+      await expect(
+        service.addBudget(
+          BOOST,
+          'c-1',
+          'biz-1',
+          { id: 'u-1' },
+          { amount: 4000 },
+        ),
+      ).rejects.toThrow(/Top up your Boost Wallet/);
+      expect(wallet.topUpWithSavedCard).not.toHaveBeenCalled();
+
+      await service.addBudget(
+        BOOST,
+        'c-1',
+        'biz-1',
+        { id: 'u-1' },
+        {
+          amount: 4000,
+          useSavedCard: true,
+        },
+      );
+      expect(wallet.topUpWithSavedCard).toHaveBeenCalledWith(
+        'biz-1',
+        'u-1',
+        { amount: 3000 },
+        { forCampaignId: 'c-1', campaignKind: BOOST },
+      );
+      expect(wallet.reserve).toHaveBeenCalled();
+    });
+
+    it('adds nothing when the saved card is declined', async () => {
+      store.set('c-1', live());
+      wallet.getSummary.mockResolvedValue({ spendable: 0 });
+      wallet.topUpWithSavedCard.mockResolvedValue({
+        status: 'failed',
+        reason: 'Insufficient funds',
+      });
+      await expect(
+        service.addBudget(
+          BOOST,
+          'c-1',
+          'biz-1',
+          { id: 'u-1' },
+          {
+            amount: 4000,
+            useSavedCard: true,
+          },
+        ),
+      ).rejects.toThrow('Insufficient funds');
+      expect(wallet.reserve).not.toHaveBeenCalled();
+      expect(store.get('c-1').budget).toBe('10000.00');
+    });
+
+    it('refuses an ended or never-launched run', async () => {
+      store.set('c-1', live({ status: SponsoredCampaignStatus.ENDED }));
+      await expect(
+        service.addBudget(
+          BOOST,
+          'c-1',
+          'biz-1',
+          { id: 'u-1' },
+          { amount: 4000 },
+        ),
+      ).rejects.toThrow(ConflictException);
+
+      store.set('c-1', boost());
+      await expect(
+        service.addBudget(
+          BOOST,
+          'c-1',
+          'biz-1',
+          { id: 'u-1' },
+          { amount: 4000 },
+        ),
+      ).rejects.toThrow(ConflictException);
+    });
+  });
+
+  describe('targeting', () => {
+    const DISTRICTS = [
+      {
+        id: 'd-wuse',
+        name: 'Wuse 2',
+        latitude: 9.087,
+        longitude: 7.48,
+        radiusMeters: 2500,
+      },
+    ];
+    const CLUSTERS = [
+      {
+        id: 'cl-banex',
+        name: 'Banex Plaza',
+        latitude: 9.07,
+        longitude: 7.47,
+        radiusMeters: 500,
+      },
+    ];
+    beforeEach(() => {
+      dataSource.query.mockImplementation((sql: string) =>
+        Promise.resolve(
+          sql.includes(`"type" = 'district'`)
+            ? DISTRICTS
+            : sql.includes(`c."type" <> 'district'`)
+              ? CLUSTERS
+              : [{ ok: 1 }],
+        ),
+      );
+    });
+
+    it('offers districts, the business clusters and the two audiences for boosts', async () => {
+      const options = await service.options(BOOST, 'biz-1');
+      expect(options).toMatchObject({
+        districts: DISTRICTS,
+        clusters: CLUSTERS,
+        audienceTypes: [{ id: 'regulars' }, { id: 'walkins' }],
+      });
+      const clusterCall = dataSource.query.mock.calls.find(([sql]: [string]) =>
+        sql.includes(`c."type" <> 'district'`),
+      );
+      expect(clusterCall[1]).toEqual(['biz-1']);
+    });
+
+    it('offers campaigns districts but no clusters or audience types', async () => {
+      const options = await service.options(PROMO, 'biz-1');
+      expect(options).toMatchObject({ districts: DISTRICTS });
+      expect(options).not.toHaveProperty('clusters');
+      expect(options).not.toHaveProperty('audienceTypes');
+    });
+
+    it('keeps the districts of a district-scoped boost', async () => {
+      const draft = await service.create(BOOST, 'biz-1', {
+        audience: { strategy: 'districts', clusterIds: ['d-wuse', 'd-wuse'] },
+      });
+      expect(store.get(draft.id).audience.clusterIds).toEqual(['d-wuse']);
+    });
+
+    it('rejects an unknown district', async () => {
+      await expect(
+        service.create(BOOST, 'biz-1', {
+          audience: { strategy: 'districts', clusterIds: ['cl-banex'] },
+        }),
+      ).rejects.toThrow('District not found');
+    });
+
+    it('only accepts clusters the business has a branch in', async () => {
+      const draft = await service.create(BOOST, 'biz-1', {
+        audience: { strategy: 'clusters', clusterIds: ['cl-banex'] },
+      });
+      expect(store.get(draft.id).audience.clusterIds).toEqual(['cl-banex']);
+      await expect(
+        service.create(BOOST, 'biz-1', {
+          audience: { strategy: 'clusters', clusterIds: ['d-wuse'] },
+        }),
+      ).rejects.toThrow(/none of your branches/);
+    });
+
+    it('drops areas from a nearby boost and audience types from campaigns', async () => {
+      const nearby = await service.create(BOOST, 'biz-1', {
+        audience: {
+          strategy: 'nearby',
+          clusterIds: ['d-wuse'],
+          audienceType: 'walkins',
+        },
+      });
+      expect(store.get(nearby.id).audience).toEqual({
+        strategy: 'nearby',
+        audienceType: 'walkins',
+      });
+
+      const campaign = await service.create(PROMO, 'biz-1', {
+        audience: {
+          strategy: 'nearby',
+          clusterIds: ['d-wuse'],
+          audienceType: 'regulars',
+        },
+      });
+      expect(store.get(campaign.id).audience).toEqual({
+        strategy: 'nearby',
+        clusterIds: ['d-wuse'],
+      });
+    });
+
+    it('will not launch a district-scoped boost with no district', async () => {
+      store.set('c-1', boost({ audience: { strategy: 'districts' } }));
+      await expect(
+        service.launch(BOOST, 'c-1', 'biz-1', { id: 'u-1' }, {}),
+      ).rejects.toThrow(/at least one district/);
+    });
+  });
+
   describe('drafts', () => {
     it('creates a draft and keeps budget as the total for daily mode', async () => {
       const draft = await service.create(PROMO, 'biz-1', {

@@ -25,17 +25,20 @@ import { AD_WALLET_MIN_TOPUP } from '../ad-wallet/ad-wallet.constants';
 import type { Payment } from '../payments/entities/payment.entity';
 import {
   ForecastDto,
+  AddBudgetDto,
   LaunchCampaignDto,
   ListCampaignsQueryDto,
   SaveCampaignDto,
 } from './dto/promotion.dto';
 import {
   AUDIENCE_SCOPES,
+  BOOST_AUDIENCE_TYPES,
   BOOST_BUDGET_TIERS,
   BOOST_GOALS,
   DAYPART_WINDOWS,
   DURATION_OPTIONS_DAYS,
   FORECAST,
+  MAX_RUN_DAYS,
   MIN_CAMPAIGN_BUDGET,
   PLACEMENTS,
   PROMOTION_BUDGET_TIERS,
@@ -60,6 +63,15 @@ export interface CampaignBenchmark {
   campaigns: number;
 }
 const num = (value: unknown) => Number(value ?? 0) || 0;
+
+/** A district or cluster a campaign can target. */
+export interface TargetArea {
+  id: string;
+  name: string;
+  latitude: number | null;
+  longitude: number | null;
+  radiusMeters: number;
+}
 
 interface CampaignUser {
   id: string;
@@ -258,6 +270,74 @@ export class PromotionsService implements OnModuleInit {
     }
   }
 
+  /**
+   * Checks the audience's areas and drops what does not apply to it: a boost
+   * scoped to `districts` or `clusters` keeps `clusterIds`, a `nearby` boost
+   * loses them; campaigns target districts only and never carry an audience
+   * type. Unknown districts, and clusters none of the business's branches
+   * belong to, are rejected.
+   */
+  private async normalizeAudience(
+    kind: SponsoredCampaignKind,
+    businessId: string,
+    dto: SaveCampaignDto,
+  ): Promise<SaveCampaignDto> {
+    if (!dto.audience) return dto;
+    const audience = { ...dto.audience };
+    let area: 'districts' | 'clusters' | null = 'districts';
+    if (kind === SponsoredCampaignKind.BOOST) {
+      area =
+        audience.strategy === 'districts' || audience.strategy === 'clusters'
+          ? audience.strategy
+          : null;
+    } else {
+      delete audience.audienceType;
+    }
+    if (!area) delete audience.clusterIds;
+
+    const ids = [...new Set(audience.clusterIds ?? [])];
+    if (area && ids.length) {
+      const allowed = new Set(
+        (area === 'districts'
+          ? await this.districts()
+          : await this.businessClusters(businessId)
+        ).map((row) => row.id),
+      );
+      if (ids.some((id) => !allowed.has(id))) {
+        throw new BadRequestException(
+          area === 'districts'
+            ? 'District not found'
+            : 'Cluster not found or none of your branches are in it',
+        );
+      }
+      audience.clusterIds = ids;
+    }
+    return { ...dto, audience };
+  }
+
+  /** Active districts (`clusters` of type `district`). */
+  private districts() {
+    return this.dataSource.query<TargetArea[]>(
+      `SELECT "id", "name", "latitude"::float8 AS "latitude", "longitude"::float8 AS "longitude", "radiusMeters"
+       FROM "clusters"
+       WHERE "type" = 'district' AND "isActive" = true AND "deletedAt" IS NULL
+       ORDER BY "name"`,
+    );
+  }
+
+  /** Active non-district clusters holding at least one of the business's branches. */
+  private businessClusters(businessId: string) {
+    return this.dataSource.query<TargetArea[]>(
+      `SELECT DISTINCT c."id", c."name", c."latitude"::float8 AS "latitude", c."longitude"::float8 AS "longitude", c."radiusMeters"
+       FROM "clusters" c
+       JOIN "branches" b ON b."clusterId" = c."id" AND b."deletedAt" IS NULL
+       WHERE b."businessId" = $1 AND c."type" <> 'district'
+         AND c."isActive" = true AND c."deletedAt" IS NULL
+       ORDER BY c."name"`,
+      [businessId],
+    );
+  }
+
   private apply(campaign: SponsoredCampaign, dto: SaveCampaignDto) {
     if (dto.name !== undefined) campaign.name = dto.name;
     if (dto.objective !== undefined) campaign.objective = dto.objective;
@@ -288,6 +368,7 @@ export class PromotionsService implements OnModuleInit {
     dto: SaveCampaignDto,
   ) {
     await this.assertAssetsOwned(businessId, dto);
+    dto = await this.normalizeAudience(kind, businessId, dto);
     const campaign = this.campaignRepo.create({
       businessId,
       kind,
@@ -331,7 +412,7 @@ export class PromotionsService implements OnModuleInit {
       }
     }
     await this.assertAssetsOwned(businessId, dto);
-    this.apply(campaign, dto);
+    this.apply(campaign, await this.normalizeAudience(kind, businessId, dto));
     return this.view(await this.campaignRepo.save(campaign));
   }
 
@@ -363,6 +444,18 @@ export class PromotionsService implements OnModuleInit {
     }
     if (!campaign.schedule?.durationDays)
       problems.push('schedule.durationDays');
+    const scope = campaign.audience?.strategy;
+    if (
+      campaign.kind === SponsoredCampaignKind.BOOST &&
+      (scope === 'districts' || scope === 'clusters') &&
+      !campaign.audience?.clusterIds?.length
+    ) {
+      problems.push(
+        scope === 'districts'
+          ? 'at least one district'
+          : 'at least one cluster',
+      );
+    }
     if (this.totalBudget(campaign) < MIN_CAMPAIGN_BUDGET) {
       problems.push(
         `a budget of at least ₦${MIN_CAMPAIGN_BUDGET.toLocaleString()}`,
@@ -437,6 +530,109 @@ export class PromotionsService implements OnModuleInit {
     }
 
     return this.view(await this.launchFromWallet(campaign, funding));
+  }
+
+  /**
+   * Adds budget to a launched run and moves its end out by amount ÷ the
+   * current daily spend. Pacing spends budget × elapsed ÷ run length, so the
+   * daily spend stays the same and nothing already spent changes. The money
+   * comes from the wallet; a shortfall is charged to the saved card when the
+   * owner allows it, and refused otherwise.
+   */
+  async addBudget(
+    kind: SponsoredCampaignKind,
+    id: string,
+    businessId: string,
+    user: CampaignUser,
+    dto: AddBudgetDto,
+  ) {
+    const campaign = await this.findOwned(kind, id, businessId);
+    const live = [
+      SponsoredCampaignStatus.ACTIVE,
+      SponsoredCampaignStatus.PAUSED,
+      SponsoredCampaignStatus.PENDING,
+    ].includes(campaign.status);
+    if (
+      !campaign.launchedAt ||
+      !live ||
+      !campaign.startDate ||
+      !campaign.endDate
+    ) {
+      throw new ConflictException(
+        `Budget can only be added to a live, paused or scheduled ${this.label(kind).toLowerCase()}`,
+      );
+    }
+
+    const now = new Date();
+    // Spend what is due at the old pace before the pace's inputs change.
+    if (campaign.status === SponsoredCampaignStatus.ACTIVE) {
+      await this.settleOne(campaign, now);
+    }
+    const start = campaign.startDate.getTime();
+    const runMs = campaign.endDate.getTime() - start;
+    const budget = num(campaign.budget);
+    if (runMs <= 0 || budget <= 0) {
+      throw new ConflictException('This run has no daily spend to extend');
+    }
+    const amount = round2(dto.amount);
+    const extendMs = (amount / budget) * runMs;
+    if (runMs + extendMs > MAX_RUN_DAYS * DAY_MS + 60_000) {
+      throw new BadRequestException(
+        `A run can last at most ${MAX_RUN_DAYS} days; add less budget`,
+      );
+    }
+
+    const wallet = await this.walletService.getSummary(businessId);
+    const shortfall = round2(amount - wallet.spendable);
+    let invoiceType = 'Budget top-up';
+    if (shortfall > 0) {
+      if (!dto.useSavedCard) {
+        throw new HttpException(
+          `Top up your Boost Wallet: ₦${shortfall.toLocaleString()} more is needed`,
+          HttpStatus.PAYMENT_REQUIRED,
+        );
+      }
+      // No `campaignId` in the metadata: the top-up listener must not try to
+      // launch this (already launched) run.
+      const charge = await this.walletService.topUpWithSavedCard(
+        businessId,
+        user.id,
+        { amount: Math.max(shortfall, AD_WALLET_MIN_TOPUP) },
+        { forCampaignId: campaign.id, campaignKind: kind },
+      );
+      if (charge.status !== 'completed') {
+        throw new HttpException(
+          charge.reason ?? 'Your saved card was declined',
+          HttpStatus.PAYMENT_REQUIRED,
+        );
+      }
+      invoiceType = 'Budget top-up (saved card)';
+    }
+
+    await this.walletService.reserve(
+      businessId,
+      campaign.id,
+      amount,
+      `${this.label(kind)}: ${campaign.name} (added budget)`,
+    );
+    campaign.budget = round2(budget + amount);
+    campaign.endDate = new Date(campaign.endDate.getTime() + extendMs);
+    const days = Math.round((runMs + extendMs) / DAY_MS);
+    if (campaign.schedule) campaign.schedule.durationDays = days;
+    campaign.duration = `${days} Days`;
+    const saved = await this.campaignRepo.save(campaign);
+
+    await this.invoiceRepo.save(
+      this.invoiceRepo.create({
+        campaignId: campaign.id,
+        invoiceNo: `INV-${kind === SponsoredCampaignKind.BOOST ? 'B' : 'C'}-${campaign.id.slice(0, 8).toUpperCase()}-${now.getTime().toString(36).toUpperCase()}`,
+        type: invoiceType,
+        amount,
+        status: CampaignTransactionStatus.PAID,
+        date: now,
+      }),
+    );
+    return this.view(saved);
   }
 
   /** Reserve the budget and go live (or scheduled). */
@@ -1042,7 +1238,8 @@ export class PromotionsService implements OnModuleInit {
 
   // ─── helpers for the wizards ──────────────────────────────────────────
 
-  options(kind: SponsoredCampaignKind) {
+  async options(kind: SponsoredCampaignKind, businessId: string) {
+    const districts = await this.districts();
     const common = {
       radiusKm: RADIUS_OPTIONS_KM,
       placements: PLACEMENTS,
@@ -1050,12 +1247,15 @@ export class PromotionsService implements OnModuleInit {
       durationsDays: DURATION_OPTIONS_DAYS,
       budgetModes: ['total', 'daily'],
       minBudget: MIN_CAMPAIGN_BUDGET,
+      districts,
     };
     return kind === SponsoredCampaignKind.BOOST
       ? {
           ...common,
           goals: BOOST_GOALS,
           audienceScopes: AUDIENCE_SCOPES,
+          audienceTypes: BOOST_AUDIENCE_TYPES,
+          clusters: await this.businessClusters(businessId),
           budgetTiers: BOOST_BUDGET_TIERS,
         }
       : {

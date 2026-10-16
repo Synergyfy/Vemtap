@@ -19,6 +19,7 @@ import { paginateWithCursor } from '../../common/utils/cursor-pagination.util';
 import { Branch } from '../branches/entities/branch.entity';
 import { Business } from '../businesses/entities/business.entity';
 
+import { Cluster, ClusterType } from '../clusters/entities/cluster.entity';
 @Injectable()
 export class UsersService {
   constructor(
@@ -28,6 +29,8 @@ export class UsersService {
     private passwordResetHistoryRepository: Repository<PasswordResetHistory>,
     @InjectRepository(UserSession)
     private userSessionRepository: Repository<UserSession>,
+    @InjectRepository(Cluster)
+    private clusterRepository: Repository<Cluster>,
     private readonly mailService: MailService,
     private readonly eventsGateway: EventsGateway,
   ) {}
@@ -243,6 +246,17 @@ export class UsersService {
   }
 
   async updateProfile(id: string, updates: Partial<User>): Promise<User> {
+    if (updates.homeDistrictId) {
+      const district = await this.clusterRepository.findOne({
+        where: {
+          id: updates.homeDistrictId,
+          type: ClusterType.DISTRICT,
+          isActive: true,
+        },
+        select: ['id'],
+      });
+      if (!district) throw new BadRequestException('Unknown district');
+    }
     const {
       branch,
       business,

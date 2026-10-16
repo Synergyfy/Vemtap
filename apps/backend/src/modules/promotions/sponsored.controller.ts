@@ -24,6 +24,10 @@ interface MaybeAuthedRequest {
   user?: { id?: string; role?: string };
 }
 
+/** The signed-in consumer, if any; staff browsing do not count as viewers. */
+const customerOf = (req: MaybeAuthedRequest) =>
+  req.user?.id && req.user.role === UserRole.CUSTOMER ? req.user.id : null;
+
 /**
  * Consumer side of boosts and promotion campaigns: what to show, and what was
  * seen. Public (signed-out browsing counts), with the user attached when the
@@ -38,8 +42,8 @@ export class SponsoredController {
 
   @Get()
   @ApiOperation({ summary: 'Promoted deals for a placement near the viewer' })
-  serve(@Query() query: SponsoredQueryDto) {
-    return this.sponsored.serve(query);
+  serve(@Req() req: MaybeAuthedRequest, @Query() query: SponsoredQueryDto) {
+    return this.sponsored.serve({ ...query, customerId: customerOf(req) });
   }
 
   @Post('events')
@@ -50,8 +54,10 @@ export class SponsoredController {
     @Req() req: MaybeAuthedRequest,
     @Body() dto: RecordSponsoredEventsDto,
   ) {
-    const customerId =
-      req.user?.id && req.user.role === UserRole.CUSTOMER ? req.user.id : null;
-    return this.sponsored.recordEvents(dto.viewerKey, customerId, dto.events);
+    return this.sponsored.recordEvents(
+      dto.viewerKey,
+      customerOf(req),
+      dto.events,
+    );
   }
 }

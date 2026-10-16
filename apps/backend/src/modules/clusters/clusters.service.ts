@@ -3,6 +3,7 @@ import {
   Logger,
   NotFoundException,
   BadRequestException,
+  OnApplicationBootstrap,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In } from 'typeorm';
@@ -12,6 +13,10 @@ import { Queue } from 'bullmq';
 import { Cron } from '@nestjs/schedule';
 import { Cluster, ClusterType } from './entities/cluster.entity';
 import { ClusterOffer } from './entities/cluster-offer.entity';
+import {
+  DEFAULT_DISTRICTS,
+  DEFAULT_DISTRICT_RADIUS_METERS,
+} from './districts.constants';
 import { Branch } from '../branches/entities/branch.entity';
 import { BusinessStatus } from '../businesses/entities/business.entity';
 import {
@@ -184,8 +189,26 @@ function haversineMeters(
   return 2 * R * Math.asin(Math.sqrt(a));
 }
 
+export interface DistrictView {
+  id: string;
+  name: string;
+  latitude: number | null;
+  longitude: number | null;
+  radiusMeters: number;
+}
+
+export function toDistrictView(cluster: Cluster): DistrictView {
+  return {
+    id: cluster.id,
+    name: cluster.name,
+    latitude: cluster.latitude == null ? null : Number(cluster.latitude),
+    longitude: cluster.longitude == null ? null : Number(cluster.longitude),
+    radiusMeters: cluster.radiusMeters,
+  };
+}
+
 @Injectable()
-export class ClustersService {
+export class ClustersService implements OnApplicationBootstrap {
   private readonly logger = new Logger(ClustersService.name);
 
   constructor(
@@ -207,6 +230,52 @@ export class ClustersService {
     private readonly rotatorAnalytics: RotatorAnalyticsService,
     private readonly rotatorInvalidation: RotatorInvalidationService,
   ) {}
+
+  async onApplicationBootstrap(): Promise<void> {
+    try {
+      await this.ensureDefaultDistricts();
+    } catch (error) {
+      this.logger.warn(`Could not seed districts: ${(error as Error).message}`);
+    }
+  }
+
+  /**
+   * Seeds `DEFAULT_DISTRICTS` on a database with no district at all. Done here
+   * rather than in the migration that adds the `district` type: Postgres will
+   * not use a new enum value in the transaction that added it. A district an
+   * admin later deletes is not brought back.
+   */
+  async ensureDefaultDistricts(): Promise<number> {
+    const existing = await this.clusterRepository.count({
+      where: { type: ClusterType.DISTRICT },
+      withDeleted: true,
+    });
+    if (existing > 0) return 0;
+    await this.clusterRepository.save(
+      DEFAULT_DISTRICTS.map((district) =>
+        this.clusterRepository.create({
+          ...district,
+          type: ClusterType.DISTRICT,
+          country: 'Nigeria',
+          state: 'FCT',
+          city: 'Abuja',
+          radiusMeters: DEFAULT_DISTRICT_RADIUS_METERS,
+          isActive: true,
+          qrIsActive: false,
+        }),
+      ),
+    );
+    return DEFAULT_DISTRICTS.length;
+  }
+
+  /** Active districts, for area pickers and targeting. */
+  async listDistricts(): Promise<DistrictView[]> {
+    const rows = await this.clusterRepository.find({
+      where: { type: ClusterType.DISTRICT, isActive: true },
+      order: { name: 'ASC' },
+    });
+    return rows.map(toDistrictView);
+  }
 
   // ------------------------------------------------------------------
   // Public: scan context
@@ -1148,6 +1217,11 @@ export class ClustersService {
       where: { id: clusterId },
     });
     if (!cluster) throw new NotFoundException('Cluster not found');
+    if (cluster.type === ClusterType.DISTRICT) {
+      throw new BadRequestException(
+        'Districts are targeting areas; branches cannot be added to them',
+      );
+    }
 
     const branch = await this.branchRepository.findOne({
       where: { id: branchId },
@@ -1272,6 +1346,8 @@ export class ClustersService {
         SELECT c2."id", c2."location", c2."longitude", c2."latitude"
         FROM "clusters" c2
         WHERE c2."isActive" = true
+          -- Districts are targeting areas, never a branch's cluster.
+          AND c2."type" <> 'district'
           AND c2."latitude" IS NOT NULL
           AND c2."longitude" IS NOT NULL
           AND ST_DWithin(

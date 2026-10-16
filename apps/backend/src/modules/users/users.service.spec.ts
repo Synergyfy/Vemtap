@@ -7,6 +7,7 @@ import { UserSession } from './entities/user-session.entity';
 import { NotFoundException, BadRequestException } from '@nestjs/common';
 import { MailService } from '../mail/mail.service';
 import { EventsGateway } from '../../common/gateways/events.gateway';
+import { Cluster, ClusterType } from '../clusters/entities/cluster.entity';
 import * as bcrypt from 'bcrypt';
 
 jest.mock('bcrypt', () => ({
@@ -17,6 +18,7 @@ describe('UsersService', () => {
   let service: UsersService;
   let userRepository: any;
   let mailService: any;
+  let clusterRepository: { findOne: jest.Mock };
 
   beforeEach(async () => {
     userRepository = {
@@ -44,11 +46,13 @@ describe('UsersService', () => {
     mailService = {
       sendWelcomeEmail: jest.fn().mockResolvedValue(true),
     };
+    clusterRepository = { findOne: jest.fn() };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         UsersService,
         { provide: getRepositoryToken(User), useValue: userRepository },
+        { provide: getRepositoryToken(Cluster), useValue: clusterRepository },
         {
           provide: getRepositoryToken(PasswordResetHistory),
           useValue: {
@@ -303,6 +307,46 @@ describe('UsersService', () => {
       await expect(service.remove('1', 'br-1')).rejects.toThrow(
         BadRequestException,
       );
+    });
+  });
+
+  describe('updateProfile home district', () => {
+    beforeEach(() => {
+      userRepository.update = jest.fn().mockResolvedValue(undefined);
+      userRepository.findOne.mockResolvedValue({ id: 'u-1' });
+    });
+
+    it('saves an active district', async () => {
+      clusterRepository.findOne.mockResolvedValue({ id: 'd-1' });
+
+      await service.updateProfile('u-1', { homeDistrictId: 'd-1' });
+
+      expect(clusterRepository.findOne).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'd-1', type: ClusterType.DISTRICT, isActive: true },
+        }),
+      );
+      expect(userRepository.update).toHaveBeenCalledWith('u-1', {
+        homeDistrictId: 'd-1',
+      });
+    });
+
+    it('rejects a cluster that is not an active district', async () => {
+      clusterRepository.findOne.mockResolvedValue(null);
+
+      await expect(
+        service.updateProfile('u-1', { homeDistrictId: 'market-1' }),
+      ).rejects.toThrow(BadRequestException);
+      expect(userRepository.update).not.toHaveBeenCalled();
+    });
+
+    it('clears the district with null without a lookup', async () => {
+      await service.updateProfile('u-1', { homeDistrictId: null });
+
+      expect(clusterRepository.findOne).not.toHaveBeenCalled();
+      expect(userRepository.update).toHaveBeenCalledWith('u-1', {
+        homeDistrictId: null,
+      });
     });
   });
 });
