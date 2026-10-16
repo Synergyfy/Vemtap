@@ -58,6 +58,98 @@ describe('SegmentCriteriaService.buildMemberQuery', () => {
   });
 });
 
+describe('SegmentCriteriaService new criteria', () => {
+  const service = new SegmentCriteriaService({ query: jest.fn() } as any);
+  const placeholdersMatch = (sql: string, params: unknown[]) => {
+    const used = new Set(
+      [...sql.matchAll(/\$(\d+)/g)].map((m) => Number(m[1])),
+    );
+    expect(Math.max(...used)).toBe(params.length);
+  };
+
+  it('leaves saves and chats out of a segment that does not ask about them', () => {
+    const { sql } = service.buildMemberQuery('biz-1', {
+      recency: { visitedWithinDays: 30 },
+    });
+    expect(sql).not.toContain('"deal_saves"');
+    expect(sql).not.toContain('"conversation_threads"');
+  });
+
+  it('matches customers whose home district is one of those chosen', () => {
+    const { sql, params } = service.buildMemberQuery('biz-1', {
+      location: { homeDistrictIds: ['d-wuse'] },
+    });
+    expect(sql).toMatch(/u\."homeDistrictId" = ANY\(\$2::uuid\[\]\)/);
+    expect(params).toEqual(['biz-1', ['d-wuse']]);
+  });
+
+  it('matches savers who never redeemed, without also requiring a claim', () => {
+    const { sql, params } = service.buildMemberQuery('biz-1', {
+      deals: { savedNotRedeemed: true },
+    });
+    // Savers count as customers for this segment only.
+    expect(sql).toMatch(/UNION ALL\s+SELECT s\."userId"/);
+    expect(sql).toMatch(
+      /NOT EXISTS \(\s+SELECT 1 FROM "catalogue_offer_claims" rc/,
+    );
+    expect(sql).not.toMatch(/SELECT COUNT\(\*\) FROM "catalogue_offer_claims"/);
+    expect(params).toEqual(['biz-1']);
+  });
+
+  it('keeps "claimed the chosen deal" alongside saved-not-redeemed', () => {
+    const { sql, params } = service.buildMemberQuery('biz-1', {
+      deals: { savedNotRedeemed: true, offerIds: ['o-1'] },
+    });
+    // The saved rule covers any deal; the chosen deal is still a claim rule.
+    expect(sql).toMatch(/SELECT COUNT\(\*\) FROM "catalogue_offer_claims"/);
+    expect(sql).toMatch(/c\."offerId" = ANY\(\$2::uuid\[\]\)/);
+    expect(params).toEqual(['biz-1', ['o-1'], 1]);
+    placeholdersMatch(sql, params);
+  });
+
+  it('matches a QR visit or chat within the window, adding chats as touches', () => {
+    const { sql, params } = service.buildMemberQuery('biz-1', {
+      recency: { interactedWithinDays: 14 },
+    });
+    expect(sql).toContain(`'chat'`);
+    expect(sql).toMatch(
+      /FROM "visits" v[\s\S]+OR EXISTS \([\s\S]+"conversation_threads" ct/,
+    );
+    expect(params).toEqual(['biz-1', 14]);
+  });
+
+  it('matches unspent points as earned minus redeemed', () => {
+    const { sql, params } = service.buildMemberQuery('biz-1', {
+      loyalty: { minPoints: 500 },
+    });
+    expect(sql).toMatch(
+      /CASE WHEN pt\."type" = 'earned' THEN pt\."amount" ELSE -pt\."amount" END/,
+    );
+    expect(params).toEqual(['biz-1', 500]);
+  });
+
+  it('keeps last activity to visits, orders, sales and claims', () => {
+    const { sql } = service.buildMemberQuery('biz-1', {
+      deals: { savedNotRedeemed: true },
+      recency: { notVisitedForDays: 60 },
+    });
+    expect(sql).toContain(
+      `MAX(at) FILTER (WHERE kind NOT IN ('save', 'chat'))`,
+    );
+  });
+
+  it('parameterises all four criteria together', () => {
+    const { sql, params } = service.buildMemberQuery('biz-1', {
+      location: { homeDistrictIds: ['d-1'] },
+      deals: { savedNotRedeemed: true, offerIds: ['o-1'] },
+      recency: { interactedWithinDays: 14 },
+      loyalty: { minPoints: 500 },
+    });
+    expect(params).toEqual(['biz-1', 14, ['d-1'], 500, ['o-1'], 1]);
+    placeholdersMatch(sql, params);
+  });
+});
+
 describe('SegmentCriteriaService.reach', () => {
   it('counts nobody when the segment is empty', async () => {
     const query = jest.fn();

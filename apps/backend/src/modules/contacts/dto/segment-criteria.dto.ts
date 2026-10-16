@@ -1,6 +1,7 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsArray,
+  IsBoolean,
   IsInt,
   IsOptional,
   IsUUID,
@@ -39,6 +40,15 @@ export class DealCriteriaDto {
   @Min(1)
   @Max(3650)
   withinDays?: number;
+
+  @ApiPropertyOptional({
+    example: true,
+    description:
+      "Saved one of the business's deals and never redeemed it. Independent of `offerIds`, which still means claimed; on its own it does not require a claim.",
+  })
+  @IsOptional()
+  @IsBoolean()
+  savedNotRedeemed?: boolean;
 }
 
 export class MenuCriteriaDto {
@@ -66,9 +76,20 @@ export class LocationCriteriaDto {
     example: ['uuid-branch'],
     description: 'Visited / bought at any of these branches',
   })
+  @IsOptional()
   @IsArray()
   @IsUUID('4', { each: true })
-  branchIds: string[];
+  branchIds?: string[];
+
+  @ApiPropertyOptional({
+    example: ['uuid-district'],
+    description:
+      'Customers whose home district (the area they chose in the app) is one of these (`GET /clusters/districts`)',
+  })
+  @IsOptional()
+  @IsArray()
+  @IsUUID('4', { each: true })
+  homeDistrictIds?: string[];
 }
 
 export class RecencyCriteriaDto {
@@ -100,6 +121,27 @@ export class RecencyCriteriaDto {
   @IsInt()
   @Min(1)
   minVisits?: number;
+
+  @ApiPropertyOptional({
+    example: 14,
+    description:
+      'Scanned a table QR or chatted with the business within N days',
+  })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(3650)
+  interactedWithinDays?: number;
+}
+
+export class LoyaltyCriteriaDto {
+  @ApiPropertyOptional({
+    example: 500,
+    description: 'Unspent loyalty points at the business (earned − redeemed)',
+  })
+  @IsInt()
+  @Min(1)
+  minPoints: number;
 }
 
 export class SpendCriteriaDto {
@@ -151,6 +193,12 @@ export class SegmentCriteriaDto {
   @ValidateNested()
   @Type(() => SpendCriteriaDto)
   spend?: SpendCriteriaDto;
+
+  @ApiPropertyOptional({ type: LoyaltyCriteriaDto })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => LoyaltyCriteriaDto)
+  loyalty?: LoyaltyCriteriaDto;
 }
 
 export class SegmentPreviewDto {
