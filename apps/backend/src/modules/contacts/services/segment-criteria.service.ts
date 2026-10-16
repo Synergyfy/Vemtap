@@ -14,6 +14,8 @@ export interface SegmentReach {
   reachableByPush: number;
   reachableBySms: number;
   reachableByEmail: number;
+  /** Members who opted out of promotions (all channels, or marketing). */
+  excludedFromPromotions: number;
 }
 
 export interface SegmentInsights extends SegmentReach {
@@ -60,6 +62,48 @@ const TOUCHES_SQL = `
   FROM "catalogue_offer_claims" c
   JOIN "catalogue_offers" o ON o."id" = c."offerId"
   WHERE o."businessId" = $1 AND c."userId" IS NOT NULL AND c."deletedAt" IS NULL
+`;
+
+/**
+ * Who a promotion can reach, by the same consent rules messages are sent
+ * under (`ComplianceService`, notification preferences):
+ *
+ * - out of promotions: opted out of everything, or turned marketing off;
+ * - push: a device token and push not turned off;
+ * - SMS / email: a phone / email, the channel not turned off, and (when the
+ *   customer keeps an opt-in list) the channel on it.
+ */
+const REACH_SQL = `
+  WITH m AS (
+    SELECT u.*,
+           (COALESCE(u."optOut", false)
+             OR COALESCE(u."notificationPreferences"->>'marketing', '') = 'false') AS "isOut",
+           NULLIF(COALESCE(u."optInChannels", ''), '') AS channels
+    FROM "users" u
+    WHERE u."id" = ANY($1::uuid[])
+  )
+  SELECT
+    COUNT(*) FILTER (WHERE "isOut")::int AS excluded,
+    COUNT(*) FILTER (
+      WHERE NOT "isOut"
+        AND COALESCE(m."notificationPreferences"->>'push', '') <> 'false'
+        AND (EXISTS (
+               SELECT 1 FROM "push_tokens" t WHERE t."userId" = m."id" AND t."deletedAt" IS NULL
+             ) OR m."pushToken" IS NOT NULL)
+    )::int AS push,
+    COUNT(*) FILTER (
+      WHERE NOT "isOut"
+        AND COALESCE(m."phone", '') <> ''
+        AND COALESCE(m."notificationPreferences"->>'sms', '') <> 'false'
+        AND (channels IS NULL OR 'SMS' = ANY(string_to_array(channels, ',')))
+    )::int AS sms,
+    COUNT(*) FILTER (
+      WHERE NOT "isOut"
+        AND COALESCE(m."email", '') <> ''
+        AND COALESCE(m."notificationPreferences"->>'email', '') <> 'false'
+        AND (channels IS NULL OR 'EMAIL' = ANY(string_to_array(channels, ',')))
+    )::int AS email
+  FROM m
 `;
 
 /** Per-customer roll-up of their touches. */
@@ -207,26 +251,18 @@ export class SegmentCriteriaService {
         reachableByPush: 0,
         reachableBySms: 0,
         reachableByEmail: 0,
+        excludedFromPromotions: 0,
       };
     }
     const [row] = await this.dataSource.query<
-      { push: number; sms: number; email: number }[]
-    >(
-      `SELECT
-         COUNT(*) FILTER (WHERE EXISTS (
-           SELECT 1 FROM "push_tokens" t WHERE t."userId" = u."id" AND t."deletedAt" IS NULL
-         ) OR u."pushToken" IS NOT NULL)::int AS push,
-         COUNT(*) FILTER (WHERE COALESCE(u."phone", '') <> '')::int AS sms,
-         COUNT(*) FILTER (WHERE COALESCE(u."email", '') <> '')::int AS email
-       FROM "users" u
-       WHERE u."id" = ANY($1::uuid[])`,
-      [userIds],
-    );
+      { push: number; sms: number; email: number; excluded: number }[]
+    >(REACH_SQL, [userIds]);
     return {
       size: userIds.length,
       reachableByPush: Number(row?.push ?? 0),
       reachableBySms: Number(row?.sms ?? 0),
       reachableByEmail: Number(row?.email ?? 0),
+      excludedFromPromotions: Number(row?.excluded ?? 0),
     };
   }
 

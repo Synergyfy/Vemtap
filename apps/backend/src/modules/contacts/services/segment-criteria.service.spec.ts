@@ -57,3 +57,53 @@ describe('SegmentCriteriaService.buildMemberQuery', () => {
     expect(params).toEqual(['biz-1', 1, ['i-1'], 1]);
   });
 });
+
+describe('SegmentCriteriaService.reach', () => {
+  it('counts nobody when the segment is empty', async () => {
+    const query = jest.fn();
+    const service = new SegmentCriteriaService({ query } as any);
+    await expect(service.reach([])).resolves.toEqual({
+      size: 0,
+      reachableByPush: 0,
+      reachableBySms: 0,
+      reachableByEmail: 0,
+      excludedFromPromotions: 0,
+    });
+    expect(query).not.toHaveBeenCalled();
+  });
+
+  it('reaches only consenting members and reports the opted-out', async () => {
+    const query = jest
+      .fn()
+      .mockResolvedValue([{ push: 3, sms: 2, email: 1, excluded: 4 }]);
+    const service = new SegmentCriteriaService({ query } as any);
+
+    const reach = await service.reach([
+      'u1',
+      'u2',
+      'u3',
+      'u4',
+      'u5',
+      'u6',
+      'u7',
+    ]);
+
+    expect(reach).toEqual({
+      size: 7,
+      reachableByPush: 3,
+      reachableBySms: 2,
+      reachableByEmail: 1,
+      excludedFromPromotions: 4,
+    });
+    const [sql, params] = query.mock.calls[0];
+    expect(params).toEqual([['u1', 'u2', 'u3', 'u4', 'u5', 'u6', 'u7']]);
+    // Opted out of everything, or marketing turned off, means out.
+    expect(sql).toMatch(/"optOut"/);
+    expect(sql).toMatch(/->>'marketing', ''\) = 'false'/);
+    // Each channel respects its own preference and the opt-in list.
+    expect(sql).toMatch(/->>'push', ''\) <> 'false'/);
+    expect(sql).toMatch(/'SMS' = ANY/);
+    expect(sql).toMatch(/'EMAIL' = ANY/);
+    expect((sql.match(/NOT "isOut"/g) ?? []).length).toBe(3);
+  });
+});
