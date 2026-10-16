@@ -904,6 +904,8 @@ export class PromotionsService implements OnModuleInit {
       claimsMin: Math.round(reachMin * FORECAST.claimRateMin),
       claimsMax: Math.round(reachMax * FORECAST.claimRateMax),
       audienceCapped: budget * FORECAST.reachPerNairaMax > cap,
+      /** People within the radius: the most any budget can reach. */
+      audiencePopulation: cap,
       isEstimate: true,
     };
   }

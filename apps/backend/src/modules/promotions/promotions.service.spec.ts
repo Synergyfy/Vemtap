@@ -363,7 +363,14 @@ describe('PromotionsService', () => {
       );
       store.delete('c-1');
       wallet.spend.mockClear();
-      await service.end(BOOST, 'c-2', 'biz-1');
+      // Ended mid-run (day 2 of 5), so most of the reserve is left. `end`
+      // settles up to the real clock, so pin it inside the run.
+      jest.useFakeTimers({ now: new Date(start.getTime() + 2 * DAY) });
+      try {
+        await service.end(BOOST, 'c-2', 'biz-1');
+      } finally {
+        jest.useRealTimers();
+      }
       expect(wallet.release).toHaveBeenCalled();
     });
 
@@ -448,10 +455,12 @@ describe('PromotionsService', () => {
       dailyPace: 2000,
       isEstimate: true,
       audienceCapped: false,
+      audiencePopulation: 40000,
     });
     expect(service.forecast({ budget: 1_000_000, radiusKm: 1 })).toMatchObject({
       reachMax: 8000,
       audienceCapped: true,
+      audiencePopulation: 8000,
     });
   });
 
