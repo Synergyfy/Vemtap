@@ -320,3 +320,103 @@ describe('BookingsService service booking rules', () => {
     );
   });
 });
+
+describe('BookingsService blocked dates and branch schedules', () => {
+  const NOW = new Date('2026-10-21T08:00:00');
+  const branch = {
+    id: 'br-1',
+    name: 'Main',
+    businessId: 'biz-1',
+    businessHours: null,
+  };
+
+  function withRules(rules: Record<string, unknown>) {
+    const item = {
+      id: 'svc-1',
+      name: 'Facial',
+      isBookable: true,
+      bookingMethod: null,
+      duration: '60 mins',
+      branches: [{ id: 'br-1' }],
+      bookingRules: rules,
+    };
+    return new BookingsService(
+      { find: jest.fn().mockResolvedValue([]) } as never,
+      { findOne: jest.fn().mockResolvedValue(branch) } as never,
+      { findOne: jest.fn().mockResolvedValue(item) } as never,
+      {
+        transaction: (run: (m: unknown) => unknown) =>
+          run({
+            find: jest.fn().mockResolvedValue([]),
+            create: jest.fn((_e, row) => row),
+            save: jest.fn(async (row) => ({
+              ...row,
+              id: 'bk',
+              createdAt: NOW,
+            })),
+          }),
+      } as never,
+    );
+  }
+  const ask = (service: BookingsService, date: string) =>
+    service.getAvailability({
+      branchId: 'br-1',
+      itemId: 'svc-1',
+      date,
+    } as never);
+
+  beforeEach(() => jest.useFakeTimers({ now: NOW }));
+  afterEach(() => jest.useRealTimers());
+
+  it('closes a blocked date and explains a rejected booking', async () => {
+    const service = withRules({
+      blockouts: [{ date: '2026-10-23', reason: 'Staff training' }],
+    });
+    expect((await ask(service, '2026-10-23')).isClosed).toBe(true);
+    expect((await ask(service, '2026-10-22')).isClosed).toBe(false);
+    await expect(
+      service.createBooking(
+        { id: 'cust-1' } as never,
+        {
+          branchId: 'br-1',
+          itemId: 'svc-1',
+          date: '2026-10-23',
+          time: '12:00',
+        } as never,
+      ),
+    ).rejects.toThrow('Not bookable on this day: Staff training');
+  });
+
+  it("uses a branch's own days and hours there", async () => {
+    const service = withRules({
+      days: [1, 2, 3, 4, 5],
+      from: '09:00',
+      to: '17:00',
+      branchSchedules: [
+        { branchId: 'br-1', days: [4], from: '14:00', to: '16:00' },
+      ],
+    });
+    // Wednesday: the service is open, but this branch only runs Thursdays.
+    expect((await ask(service, '2026-10-21')).isClosed).toBe(true);
+    const thursday = await ask(service, '2026-10-22');
+    expect(thursday.slots.map((slot) => slot.time)).toEqual([
+      '14:00',
+      '14:30',
+      '15:00',
+    ]);
+  });
+
+  it('keeps service-wide hours at branches without their own schedule', async () => {
+    const service = withRules({
+      from: '09:00',
+      to: '11:00',
+      branchSchedules: [{ branchId: 'br-other', from: '14:00', to: '16:00' }],
+    });
+    const day = await ask(service, '2026-10-22');
+    expect(day.slots.map((slot) => slot.time)).toEqual([
+      '09:00',
+      '09:30',
+      '10:00',
+    ]);
+  });
+});

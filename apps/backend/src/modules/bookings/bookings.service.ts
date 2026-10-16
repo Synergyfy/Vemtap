@@ -173,6 +173,14 @@ export class BookingsService {
         `This service can be booked up to ${rules?.horizonDays} days ahead`,
       );
     }
+    const blocked = this.blockout(dto.date, rules);
+    if (blocked) {
+      throw new BadRequestException(
+        blocked.reason
+          ? `Not bookable on this day: ${blocked.reason}`
+          : 'Not bookable on this day',
+      );
+    }
     const window = this.serviceWindow(branch, dto.date, rules);
     if (!window) {
       throw new BadRequestException('Not bookable on this day');
@@ -482,19 +490,29 @@ export class BookingsService {
   ): { from: string; to: string } | null {
     const window = this.dayWindow(branch, date);
     if (!window || !rules) return window;
+    if (this.blockout(date, rules)) return null;
+    // A branch with its own schedule replaces the service-wide days/hours.
+    const schedule =
+      rules.branchSchedules?.find((entry) => entry.branchId === branch.id) ??
+      rules;
     const weekday = new Date(`${date}T00:00:00`).getDay();
-    if (rules.days?.length && !rules.days.includes(weekday)) return null;
+    if (schedule.days?.length && !schedule.days.includes(weekday)) return null;
     if (this.beyondHorizon(date, rules)) return null;
     const from = Math.max(
       this.minutesFromTime(window.from),
-      rules.from ? this.minutesFromTime(rules.from) : 0,
+      schedule.from ? this.minutesFromTime(schedule.from) : 0,
     );
     const to = Math.min(
       this.minutesFromTime(window.to),
-      rules.to ? this.minutesFromTime(rules.to) : 24 * 60,
+      schedule.to ? this.minutesFromTime(schedule.to) : 24 * 60,
     );
     if (from >= to) return null;
     return { from: this.timeFromMinutes(from), to: this.timeFromMinutes(to) };
+  }
+
+  /** The blocked-date entry for `date`, if the service is blocked that day. */
+  private blockout(date: string, rules: BookingRules | null) {
+    return rules?.blockouts?.find((entry) => entry.date === date);
   }
 
   private beyondHorizon(date: string, rules: BookingRules | null): boolean {
