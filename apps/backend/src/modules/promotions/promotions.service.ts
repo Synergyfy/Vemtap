@@ -1,6 +1,8 @@
 import {
   BadRequestException,
   ConflictException,
+  HttpException,
+  HttpStatus,
   Injectable,
   Logger,
   NotFoundException,
@@ -382,13 +384,35 @@ export class PromotionsService implements OnModuleInit {
     if (funding === 'card') {
       const wallet = await this.walletService.getSummary(businessId);
       const shortfall = round2(total - wallet.spendable);
+      const topUpAmount = Math.max(shortfall, AD_WALLET_MIN_TOPUP);
+      if (shortfall > 0 && dto.useSavedCard) {
+        // No `campaignId` in the metadata: the top-up listener must not
+        // launch this campaign too; it launches below once the money is in.
+        const charge = await this.walletService.topUpWithSavedCard(
+          businessId,
+          user.id,
+          { amount: topUpAmount },
+          { forCampaignId: campaign.id, campaignKind: kind },
+        );
+        if (charge.status !== 'completed') {
+          throw new HttpException(
+            charge.reason ?? 'Your saved card was declined',
+            HttpStatus.PAYMENT_REQUIRED,
+          );
+        }
+        campaign.paymentReference = charge.reference;
+        return this.view(
+          await this.launchFromWallet(campaign, 'card', 'Saved card'),
+        );
+      }
       if (shortfall > 0) {
         const checkout = await this.walletService.startTopUp(
           businessId,
           user,
           {
-            amount: Math.max(shortfall, AD_WALLET_MIN_TOPUP),
+            amount: topUpAmount,
             callbackUrl: dto.callbackUrl,
+            ...(dto.saveCard && { saveCard: true }),
           },
           { campaignId: campaign.id, campaignKind: kind },
         );
@@ -407,6 +431,7 @@ export class PromotionsService implements OnModuleInit {
   private async launchFromWallet(
     campaign: SponsoredCampaign,
     funding: 'wallet' | 'card',
+    invoiceType = funding === 'card' ? 'Card top-up' : 'Ad wallet',
   ) {
     const total = this.totalBudget(campaign);
     await this.walletService.reserve(
@@ -442,7 +467,7 @@ export class PromotionsService implements OnModuleInit {
       this.invoiceRepo.create({
         campaignId: campaign.id,
         invoiceNo: `INV-${campaign.kind === SponsoredCampaignKind.BOOST ? 'B' : 'C'}-${campaign.id.slice(0, 8).toUpperCase()}`,
-        type: funding === 'card' ? 'Card top-up' : 'Ad wallet',
+        type: invoiceType,
         amount: total,
         status: CampaignTransactionStatus.PAID,
         date: now,

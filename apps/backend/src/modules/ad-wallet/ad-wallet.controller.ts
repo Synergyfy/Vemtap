@@ -1,11 +1,14 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpCode,
   HttpStatus,
   Param,
+  ParseUUIDPipe,
   Post,
+  Put,
   Query,
   Req,
   UseGuards,
@@ -16,7 +19,11 @@ import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { UserRole } from '../users/entities/user.entity';
 import { AdWalletService } from './ad-wallet.service';
+import { AdWalletInvoicesService } from './ad-wallet-invoices.service';
 import {
+  AdWalletAutoReloadDto,
+  AdWalletInvoicesQueryDto,
+  AdWalletSavedCardTopUpDto,
   AdWalletTopUpDto,
   AdWalletTransactionsQueryDto,
 } from './dto/ad-wallet.dto';
@@ -31,7 +38,10 @@ interface AuthedRequest {
 @Roles(UserRole.OWNER, UserRole.MANAGER)
 @Controller('ad-wallet')
 export class AdWalletController {
-  constructor(private readonly walletService: AdWalletService) {}
+  constructor(
+    private readonly walletService: AdWalletService,
+    private readonly invoicesService: AdWalletInvoicesService,
+  ) {}
 
   @Get()
   @ApiOperation({ summary: 'Balance, reserved and spendable amounts' })
@@ -48,6 +58,28 @@ export class AdWalletController {
     return this.walletService.listTransactions(req.user.businessId, query);
   }
 
+  @Get('invoices')
+  @ApiOperation({ summary: 'Invoices for launched boosts and campaigns' })
+  listInvoices(
+    @Req() req: AuthedRequest,
+    @Query() query: AdWalletInvoicesQueryDto,
+  ) {
+    return this.invoicesService.list(
+      req.user.businessId,
+      query.page,
+      query.limit,
+    );
+  }
+
+  @Get('invoices/:id')
+  @ApiOperation({ summary: 'One invoice' })
+  getInvoice(
+    @Req() req: AuthedRequest,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    return this.invoicesService.get(req.user.businessId, id);
+  }
+
   @Get('prepacks')
   @ApiOperation({ summary: 'Top-up bundles and their bonus credit' })
   getPrepacks() {
@@ -60,6 +92,38 @@ export class AdWalletController {
   })
   startTopUp(@Req() req: AuthedRequest, @Body() dto: AdWalletTopUpDto) {
     return this.walletService.startTopUp(req.user.businessId, req.user, dto);
+  }
+
+  @Post('top-up/saved-card')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Top up from the saved card, with no checkout',
+  })
+  topUpWithSavedCard(
+    @Req() req: AuthedRequest,
+    @Body() dto: AdWalletSavedCardTopUpDto,
+  ) {
+    return this.walletService.topUpWithSavedCard(
+      req.user.businessId,
+      req.user.id,
+      dto,
+    );
+  }
+
+  @Put('auto-reload')
+  @ApiOperation({
+    summary: 'Top up from the saved card when the balance runs low',
+  })
+  setAutoReload(@Req() req: AuthedRequest, @Body() dto: AdWalletAutoReloadDto) {
+    return this.walletService.setAutoReload(req.user.businessId, dto);
+  }
+
+  @Delete('card')
+  @ApiOperation({
+    summary: 'Forget the saved card (also turns auto-reload off)',
+  })
+  removeCard(@Req() req: AuthedRequest) {
+    return this.walletService.removeCard(req.user.businessId);
   }
 
   @Post('top-up/:reference/confirm')

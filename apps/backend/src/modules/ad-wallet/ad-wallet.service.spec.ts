@@ -61,6 +61,7 @@ describe('AdWalletService', () => {
       findOne: jest.fn().mockResolvedValue(wallet),
       save: jest.fn().mockImplementation((w) => Promise.resolve(w)),
       create: jest.fn().mockImplementation((w) => w),
+      update: jest.fn().mockResolvedValue(undefined),
       manager: { transaction: jest.fn((cb) => cb(manager)) },
     };
     txnRepo = {
@@ -248,6 +249,278 @@ describe('AdWalletService', () => {
       const summary = await service.release('biz-1', 'c-1', 50000, 'ended');
 
       expect(summary).toMatchObject({ reserved: 3000, spendable: 17000 });
+    });
+  });
+
+  describe('saved card', () => {
+    const authorization = {
+      authorization_code: 'AUTH_secret',
+      reusable: true,
+      last4: '4242',
+      exp_month: '08',
+      exp_year: '2027',
+      brand: 'visa',
+      bank: 'Test Bank',
+    };
+
+    it('shows the card for display but never the authorization code', async () => {
+      Object.assign(wallet, {
+        cardAuthorizationCode: 'AUTH_secret',
+        cardSummary: {
+          brand: 'visa',
+          last4: '4242',
+          expMonth: '08',
+          expYear: '2027',
+          bank: null,
+        },
+        autoReload: {
+          enabled: true,
+          threshold: 2000,
+          amount: 10000,
+          lastError: null,
+        },
+      });
+      const summary = await service.getSummary('biz-1');
+      expect(summary.card).toEqual(expect.objectContaining({ last4: '4242' }));
+      expect(summary.autoReload).toEqual({
+        enabled: true,
+        threshold: 2000,
+        amount: 10000,
+        lastError: null,
+      });
+      expect(JSON.stringify(summary)).not.toContain('AUTH_secret');
+    });
+
+    it('saves a reusable card when the owner asked to', async () => {
+      payments.verifyTransaction.mockResolvedValue({
+        status: 'success',
+        amount: 2_500_000,
+        authorization,
+      });
+      await service.creditTopUp(
+        topUpPayment({
+          metadata: { bonus: 0, saveCard: true, cardEmail: 'owner@biz.test' },
+        }) as any,
+      );
+      expect(walletRepo.update).toHaveBeenCalledWith(
+        { businessId: 'biz-1' },
+        {
+          cardAuthorizationCode: 'AUTH_secret',
+          cardEmail: 'owner@biz.test',
+          cardSummary: {
+            brand: 'visa',
+            last4: '4242',
+            expMonth: '08',
+            expYear: '2027',
+            bank: 'Test Bank',
+          },
+        },
+      );
+    });
+
+    it('does not save the card without consent, or when it is not reusable', async () => {
+      payments.verifyTransaction.mockResolvedValue({
+        status: 'success',
+        amount: 2_500_000,
+        authorization,
+      });
+      await service.creditTopUp(
+        topUpPayment({ metadata: { bonus: 0 } }) as any,
+      );
+
+      txnRepo.findOne.mockResolvedValue(null);
+      payments.verifyTransaction.mockResolvedValue({
+        status: 'success',
+        amount: 2_500_000,
+        authorization: { ...authorization, reusable: false },
+      });
+      await service.creditTopUp(
+        topUpPayment({
+          reference: 'ADW-2',
+          metadata: { bonus: 0, saveCard: true, cardEmail: 'owner@biz.test' },
+        }) as any,
+      );
+      expect(walletRepo.update).not.toHaveBeenCalled();
+    });
+
+    it('forgets the card and switches auto-reload off', async () => {
+      Object.assign(wallet, {
+        cardAuthorizationCode: 'AUTH_secret',
+        cardSummary: { brand: 'visa', last4: '4242' },
+        autoReload: { enabled: true, threshold: 2000, amount: 10000 },
+      });
+      const summary = await service.removeCard('biz-1');
+      expect(walletRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          cardAuthorizationCode: null,
+          cardSummary: null,
+          autoReload: expect.objectContaining({ enabled: false }),
+        }),
+      );
+      expect(summary.card).toBeNull();
+    });
+  });
+
+  describe('top up with the saved card', () => {
+    beforeEach(() => {
+      Object.assign(wallet, {
+        cardAuthorizationCode: 'AUTH_secret',
+        cardEmail: 'owner@biz.test',
+        cardSummary: { brand: 'visa', last4: '4242' },
+      });
+      payments.chargeAuthorization = jest
+        .fn()
+        .mockResolvedValue({ status: 'success' });
+      payments.findByReference.mockImplementation((reference: string) =>
+        Promise.resolve(topUpPayment({ reference, metadata: { bonus: 2000 } })),
+      );
+    });
+
+    it('charges the card under our reference and credits the bundle', async () => {
+      const result = await service.topUpWithSavedCard('biz-1', 'u-1', {
+        prepackId: '25k',
+      });
+      expect(result.status).toBe('completed');
+      const [amount, email, code, options] =
+        payments.chargeAuthorization.mock.calls[0];
+      expect([email, code]).toEqual(['owner@biz.test', 'AUTH_secret']);
+      expect(amount).toBe(25000);
+      expect(options.reference).toBe(result.reference);
+      expect(result.reference).toMatch(/^ADW-/);
+      expect(payments.recordPayment).toHaveBeenCalledWith(
+        expect.objectContaining({
+          reference: result.reference,
+          status: PaymentStatus.PENDING,
+        }),
+      );
+      expect(manager.save).toHaveBeenCalled();
+    });
+
+    it('credits nothing when the card is declined', async () => {
+      payments.chargeAuthorization.mockResolvedValue(null);
+      const result = await service.topUpWithSavedCard('biz-1', 'u-1', {
+        amount: 5000,
+      });
+      expect(result).toEqual(
+        expect.objectContaining({
+          status: 'failed',
+          reason: expect.any(String),
+        }),
+      );
+      expect(payments.verifyTransaction).not.toHaveBeenCalled();
+      expect(manager.save).not.toHaveBeenCalled();
+    });
+
+    it('needs a saved card', async () => {
+      wallet.cardAuthorizationCode = null;
+      await expect(
+        service.topUpWithSavedCard('biz-1', 'u-1', { amount: 5000 }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(payments.chargeAuthorization).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('auto-reload', () => {
+    const now = new Date('2026-10-16T12:00:00Z');
+
+    beforeEach(() => {
+      Object.assign(wallet, {
+        balance: 1000,
+        reserved: 0,
+        cardAuthorizationCode: 'AUTH_secret',
+        cardEmail: 'owner@biz.test',
+        autoReload: { enabled: true, threshold: 2000, amount: 10000 },
+      });
+      walletRepo.find = jest.fn().mockResolvedValue([wallet]);
+      payments.chargeAuthorization = jest
+        .fn()
+        .mockResolvedValue({ status: 'success' });
+      payments.findByReference.mockImplementation((reference: string) =>
+        Promise.resolve(
+          topUpPayment({ reference, amount: 10000, metadata: { bonus: 0 } }),
+        ),
+      );
+      payments.verifyTransaction.mockResolvedValue({
+        status: 'success',
+        amount: 1_000_000,
+      });
+    });
+
+    it('saves the settings, and needs a card to switch on', async () => {
+      const summary = await service.setAutoReload('biz-1', {
+        enabled: true,
+        threshold: 3000,
+        amount: 15000,
+      });
+      expect(summary.autoReload).toEqual({
+        enabled: true,
+        threshold: 3000,
+        amount: 15000,
+        lastError: null,
+      });
+
+      wallet.cardAuthorizationCode = null;
+      await expect(
+        service.setAutoReload('biz-1', {
+          enabled: true,
+          threshold: 3000,
+          amount: 15000,
+        }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      await expect(
+        service.setAutoReload('biz-1', {
+          enabled: false,
+          threshold: 3000,
+          amount: 15000,
+        }),
+      ).resolves.toBeDefined();
+    });
+
+    it('reloads a wallet below its threshold and records the attempt', async () => {
+      expect(await service.runAutoReloads(now)).toBe(1);
+      expect(payments.chargeAuthorization.mock.calls[0][0]).toBe(10000);
+      expect(walletRepo.update).toHaveBeenLastCalledWith(
+        { businessId: 'biz-1' },
+        {
+          autoReload: expect.objectContaining({
+            enabled: true,
+            lastAttemptAt: now.toISOString(),
+            lastError: null,
+          }),
+        },
+      );
+    });
+
+    it('skips wallets above the threshold, switched off, or tried within the hour', async () => {
+      wallet.balance = 5000;
+      expect(await service.runAutoReloads(now)).toBe(0);
+
+      wallet.balance = 1000;
+      wallet.autoReload = { ...wallet.autoReload, enabled: false };
+      expect(await service.runAutoReloads(now)).toBe(0);
+
+      wallet.autoReload = {
+        enabled: true,
+        threshold: 2000,
+        amount: 10000,
+        lastAttemptAt: new Date(now.getTime() - 30 * 60_000).toISOString(),
+      };
+      expect(await service.runAutoReloads(now)).toBe(0);
+      expect(payments.chargeAuthorization).not.toHaveBeenCalled();
+    });
+
+    it('switches itself off with the reason when the card is declined', async () => {
+      payments.chargeAuthorization.mockResolvedValue(null);
+      expect(await service.runAutoReloads(now)).toBe(0);
+      expect(walletRepo.update).toHaveBeenLastCalledWith(
+        { businessId: 'biz-1' },
+        {
+          autoReload: expect.objectContaining({
+            enabled: false,
+            lastError: 'Your saved card was declined',
+          }),
+        },
+      );
     });
   });
 });

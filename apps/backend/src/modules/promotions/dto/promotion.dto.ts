@@ -241,6 +241,22 @@ export class LaunchCampaignDto {
   @IsString()
   @IsUrl({ require_tld: false, require_protocol: true })
   callbackUrl?: string;
+
+  @ApiPropertyOptional({
+    description:
+      "With `card` funding: charge the shortfall to the wallet's saved card and launch at once (no checkout)",
+  })
+  @IsOptional()
+  @IsBoolean()
+  useSavedCard?: boolean;
+
+  @ApiPropertyOptional({
+    description:
+      'With `card` funding through checkout: save the card for future payments (owner consent)',
+  })
+  @IsOptional()
+  @IsBoolean()
+  saveCard?: boolean;
 }
 
 export class ListCampaignsQueryDto {

@@ -261,6 +261,84 @@ describe('PromotionsService', () => {
       });
     });
 
+    it('with the saved card, charges the shortfall and goes live at once', async () => {
+      wallet.getSummary.mockResolvedValue({ spendable: 4000 });
+      wallet.topUpWithSavedCard = jest
+        .fn()
+        .mockResolvedValue({ status: 'completed', reference: 'ADW-7' });
+      store.set('c-1', boost());
+
+      const result: any = await service.launch(
+        BOOST,
+        'c-1',
+        'biz-1',
+        { id: 'u', email: 'o@biz.ng' },
+        { fundingSource: 'card', useSavedCard: true },
+      );
+
+      expect(wallet.topUpWithSavedCard).toHaveBeenCalledWith(
+        'biz-1',
+        'u',
+        { amount: 6000 },
+        { forCampaignId: 'c-1', campaignKind: BOOST },
+      );
+      expect(wallet.startTopUp).not.toHaveBeenCalled();
+      expect(wallet.reserve).toHaveBeenCalledWith(
+        'biz-1',
+        'c-1',
+        10000,
+        'Boost: Lunch boost',
+      );
+      expect(result.status).toBe('Active');
+      expect(result.checkout).toBeUndefined();
+      expect(invoiceRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'Saved card', amount: 10000 }),
+      );
+    });
+
+    it('reserves nothing when the saved card is declined', async () => {
+      wallet.getSummary.mockResolvedValue({ spendable: 4000 });
+      wallet.topUpWithSavedCard = jest.fn().mockResolvedValue({
+        status: 'failed',
+        reference: 'ADW-7',
+        reason: 'Your saved card was declined',
+      });
+      store.set('c-1', boost());
+
+      await expect(
+        service.launch(
+          BOOST,
+          'c-1',
+          'biz-1',
+          { id: 'u' },
+          { fundingSource: 'card', useSavedCard: true },
+        ),
+      ).rejects.toMatchObject({
+        message: 'Your saved card was declined',
+        status: 402,
+      });
+      expect(wallet.reserve).not.toHaveBeenCalled();
+      expect(store.get('c-1')!.launchedAt).toBeFalsy();
+    });
+
+    it('asks checkout to save the card when the owner consents', async () => {
+      wallet.getSummary.mockResolvedValue({ spendable: 4000 });
+      store.set('c-1', boost());
+      await service.launch(
+        BOOST,
+        'c-1',
+        'biz-1',
+        { id: 'u', email: 'o@biz.ng' },
+        { fundingSource: 'card', saveCard: true },
+      );
+      expect(wallet.startTopUp).toHaveBeenCalledWith(
+        'biz-1',
+        expect.anything(),
+        expect.objectContaining({ amount: 6000, saveCard: true }),
+        expect.anything(),
+      );
+    });
+
     it('launches a card-funded campaign once its top-up is credited', async () => {
       store.set(
         'c-1',
