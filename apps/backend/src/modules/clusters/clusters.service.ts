@@ -903,6 +903,9 @@ export class ClustersService implements OnApplicationBootstrap {
     if (search) {
       qb.where('cluster.name ILIKE :search', { search: `%${search}%` });
     }
+    if (query.type) {
+      qb.andWhere('cluster.type = :type', { type: query.type });
+    }
 
     const [clusters, total] = await qb
       .orderBy('cluster.createdAt', 'DESC')
@@ -1028,6 +1031,7 @@ export class ClustersService implements OnApplicationBootstrap {
       });
       if (!parent) throw new NotFoundException('Parent cluster not found');
     }
+    const district = dto.type === ClusterType.DISTRICT;
     const cluster = this.clusterRepository.create({
       name: dto.name,
       type: dto.type ?? ClusterType.MARKET,
@@ -1039,9 +1043,11 @@ export class ClustersService implements OnApplicationBootstrap {
       description: dto.description,
       latitude: dto.latitude,
       longitude: dto.longitude,
-      radiusMeters: dto.radiusMeters ?? 500,
+      // A district is a neighbourhood to target, not a place to scan.
+      radiusMeters:
+        dto.radiusMeters ?? (district ? DEFAULT_DISTRICT_RADIUS_METERS : 500),
       isActive: dto.isActive ?? true,
-      qrIsActive: dto.qrIsActive ?? true,
+      qrIsActive: dto.qrIsActive ?? !district,
       createdBy: adminId,
     });
     const saved = await this.clusterRepository.save(cluster);
@@ -1061,6 +1067,16 @@ export class ClustersService implements OnApplicationBootstrap {
         select: ['id'],
       });
       if (!parent) throw new NotFoundException('Parent cluster not found');
+    }
+
+    if (
+      dto.type === ClusterType.DISTRICT &&
+      cluster.type !== ClusterType.DISTRICT &&
+      (await this.branchRepository.count({ where: { clusterId: cluster.id } }))
+    ) {
+      throw new BadRequestException(
+        'Move this cluster’s branches out before making it a district',
+      );
     }
 
     Object.assign(cluster, dto);

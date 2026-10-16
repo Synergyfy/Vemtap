@@ -1264,6 +1264,62 @@ describe('ClustersService', () => {
       expect(sql).toContain(`c2."type" <> 'district'`);
     });
 
+    it('gives an admin-created district a district radius and no QR', async () => {
+      const saved = { id: 'd-new', uniqueCode: 'CL-D1' };
+      clusterRepo.save.mockResolvedValue(saved);
+      clusterRepo.findOne.mockResolvedValue(saved);
+      branchRepo.find.mockResolvedValue([]);
+
+      await service.create(
+        {
+          name: 'Asokoro',
+          type: ClusterType.DISTRICT,
+          latitude: 9.04,
+          longitude: 7.52,
+        },
+        'admin-1',
+      );
+      expect(clusterRepo.create).toHaveBeenLastCalledWith(
+        expect.objectContaining({ radiusMeters: 2500, qrIsActive: false }),
+      );
+
+      // Markets keep their defaults.
+      await service.create(
+        { name: 'Banex', latitude: 9.07, longitude: 7.47 },
+        'admin-1',
+      );
+      expect(clusterRepo.create).toHaveBeenLastCalledWith(
+        expect.objectContaining({ radiusMeters: 500, qrIsActive: true }),
+      );
+    });
+
+    it('will not turn a cluster with branches into a district', async () => {
+      clusterRepo.findOne.mockResolvedValue({
+        id: 'cl-1',
+        uniqueCode: 'CL-1',
+        type: ClusterType.MARKET,
+      });
+      branchRepo.count.mockResolvedValue(3);
+
+      await expect(
+        service.update('cl-1', { type: ClusterType.DISTRICT }),
+      ).rejects.toThrow(/branches out before making it a district/);
+      expect(clusterRepo.save).not.toHaveBeenCalled();
+    });
+
+    it('lists only districts when asked', async () => {
+      const qb = buildQb({
+        getManyAndCount: jest.fn().mockResolvedValue([[], 0]),
+      });
+      clusterRepo.createQueryBuilder.mockReturnValue(qb);
+
+      await service.list({ type: ClusterType.DISTRICT });
+
+      expect(qb.andWhere).toHaveBeenCalledWith('cluster.type = :type', {
+        type: ClusterType.DISTRICT,
+      });
+    });
+
     it('refuses to add a branch to a district', async () => {
       clusterRepo.findOne.mockResolvedValue({
         id: 'd-1',
