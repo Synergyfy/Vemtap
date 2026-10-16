@@ -1208,6 +1208,33 @@ export class CatalogueOfferService {
     return { data, total: data.length };
   }
 
+  /**
+   * Public offer rows for specific ids (sponsored placements): the same
+   * filters and shape as the public feed, so a promoted card renders exactly
+   * like an organic one. Ids that are no longer public are left out.
+   */
+  async findPublicOffersByIds(ids: string[]) {
+    if (!ids.length) return [];
+    const rawOffers = await this.offerRepository
+      .createQueryBuilder('offer')
+      .leftJoinAndSelect('offer.items', 'item')
+      .leftJoinAndSelect('offer.branch', 'branch')
+      .leftJoinAndSelect('branch.business', 'business')
+      .leftJoinAndSelect('business.category', 'category')
+      .where('offer.id IN (:...ids)', { ids })
+      .andWhere('offer.status = :status', {
+        status: CatalogueOfferStatus.ACTIVE,
+      })
+      .andWhere('(offer.endDate IS NULL OR offer.endDate >= NOW())')
+      .andWhere('branch.joinDiscoveryNetwork = :joinDiscoveryNetwork', {
+        joinDiscoveryNetwork: true,
+      })
+      .andWhere('branch.isActive = :branchActive', { branchActive: true })
+      .andWhere(ALL_OFFER_ITEMS_PUBLISHED_SQL, PUBLISHED_ITEM_PARAMS)
+      .getMany();
+    return this.mapPublicOffers(rawOffers);
+  }
+
   private async mapPublicOffers(rawOffers: CatalogueOffer[]) {
     if (!rawOffers || rawOffers.length === 0) return [];
 

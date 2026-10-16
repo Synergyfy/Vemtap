@@ -10,7 +10,7 @@ import {
 } from '@nestjs/common';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { Cron, CronExpression } from '@nestjs/schedule';
-import { DataSource, In, Repository } from 'typeorm';
+import { DataSource, In, MoreThan, Not, Repository } from 'typeorm';
 import {
   SponsoredCampaign,
   SponsoredCampaignKind,
@@ -47,6 +47,18 @@ import {
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const round2 = (value: number) => Math.round(value * 100) / 100;
+
+/** The platform cost-per-claim benchmark: window, minimum sample, cache. */
+const BENCHMARK_WINDOW_MS = 90 * DAY_MS;
+const BENCHMARK_MIN_CAMPAIGNS = 10;
+const BENCHMARK_CACHE_MS = 6 * 60 * 60 * 1000;
+
+export interface CampaignBenchmark {
+  /** Platform-wide spend ÷ claims (₦). */
+  costPerClaim: number;
+  /** Campaigns with claims it is based on. */
+  campaigns: number;
+}
 const num = (value: unknown) => Number(value ?? 0) || 0;
 
 interface CampaignUser {
@@ -764,8 +776,137 @@ export class PromotionsService implements OnModuleInit {
     return { claims, redemptions, revenue: round2(revenue) };
   }
 
+  /** Views, taps and unique viewers recorded for each campaign. */
+  private async eventTotals(campaignIds: string[]) {
+    const totals = new Map<
+      string,
+      { impressions: number; taps: number; reach: number }
+    >();
+    if (!campaignIds.length) return totals;
+    const rows = await this.dataSource.query<
+      { campaignId: string; impressions: number; taps: number; reach: number }[]
+    >(
+      `SELECT "campaignId",
+              COUNT(*) FILTER (WHERE "type" = 'impression')::int AS impressions,
+              COUNT(*) FILTER (WHERE "type" = 'tap')::int AS taps,
+              COUNT(DISTINCT "viewerKey") FILTER (WHERE "type" = 'impression')::int AS reach
+       FROM "sponsored_campaign_events"
+       WHERE "campaignId" = ANY($1::uuid[])
+       GROUP BY "campaignId"`,
+      [campaignIds],
+    );
+    for (const row of Array.isArray(rows) ? rows : []) {
+      if (!row?.campaignId) continue;
+      totals.set(row.campaignId, {
+        impressions: num(row.impressions),
+        taps: num(row.taps),
+        reach: num(row.reach),
+      });
+    }
+    return totals;
+  }
+
+  /**
+   * The run to compare with: the one this auto-renewed from, else the
+   * business's last finished run of the same kind that promoted one of the
+   * same deals.
+   */
+  private async previousRun(campaign: SponsoredCampaign) {
+    let previous: SponsoredCampaign | null = null;
+    if (campaign.renewedFromId) {
+      previous = await this.campaignRepo.findOne({
+        where: { id: campaign.renewedFromId, businessId: campaign.businessId },
+      });
+    }
+    const dealIds = (campaign.assets ?? [])
+      .filter((asset) => asset.type === 'deal')
+      .map((asset) => asset.id);
+    if (!previous && campaign.launchedAt && dealIds.length) {
+      const candidates = await this.campaignRepo.find({
+        where: {
+          businessId: campaign.businessId,
+          kind: campaign.kind,
+          status: SponsoredCampaignStatus.ENDED,
+          id: Not(campaign.id),
+        },
+        order: { launchedAt: 'DESC' },
+        take: 20,
+      });
+      previous =
+        candidates.find(
+          (candidate) =>
+            candidate.businessId === campaign.businessId &&
+            candidate.id !== campaign.id &&
+            candidate.launchedAt &&
+            candidate.launchedAt < campaign.launchedAt! &&
+            (candidate.assets ?? []).some(
+              (asset) => asset.type === 'deal' && dealIds.includes(asset.id),
+            ),
+        ) ?? null;
+    }
+    if (!previous) return null;
+    const totals = (await this.eventTotals([previous.id])).get(previous.id);
+    const outcome = await this.outcomes([previous]);
+    const spent = round2(num(previous.spent));
+    return {
+      id: previous.id,
+      name: previous.name,
+      endDate: previous.endDate ? previous.endDate.toISOString() : null,
+      reach: totals?.reach ?? 0,
+      claims: outcome.claims,
+      redemptions: outcome.redemptions,
+      spent,
+      costPerClaim: outcome.claims > 0 ? round2(spent / outcome.claims) : null,
+    };
+  }
+
+  private benchmarkCache: {
+    at: number;
+    value: CampaignBenchmark | null;
+  } | null = null;
+
+  /**
+   * Platform-wide cost per claim over campaigns that ran in the last 90 days.
+   * Null until enough campaigns have claims to make it meaningful.
+   */
+  async benchmark(now: number = Date.now()): Promise<CampaignBenchmark | null> {
+    if (
+      this.benchmarkCache &&
+      now - this.benchmarkCache.at < BENCHMARK_CACHE_MS
+    ) {
+      return this.benchmarkCache.value;
+    }
+    const recent = await this.campaignRepo.find({
+      where: { launchedAt: MoreThan(new Date(now - BENCHMARK_WINDOW_MS)) },
+      order: { launchedAt: 'DESC' },
+      take: 500,
+    });
+    let spent = 0;
+    let claims = 0;
+    let counted = 0;
+    for (const campaign of recent) {
+      if (!campaign.launchedAt || num(campaign.spent) <= 0) continue;
+      const outcome = await this.outcomes([campaign]);
+      if (outcome.claims <= 0) continue;
+      spent += num(campaign.spent);
+      claims += outcome.claims;
+      counted += 1;
+    }
+    const value =
+      counted >= BENCHMARK_MIN_CAMPAIGNS && claims > 0
+        ? { costPerClaim: round2(spent / claims), campaigns: counted }
+        : null;
+    this.benchmarkCache = { at: now, value };
+    return value;
+  }
+
   async stats(kind: SponsoredCampaignKind, id: string, businessId: string) {
     const campaign = await this.findOwned(kind, id, businessId);
+    const events = (await this.eventTotals([campaign.id])).get(campaign.id) ?? {
+      impressions: 0,
+      taps: 0,
+      reach: 0,
+    };
     const budget = num(campaign.budget);
     const spent = num(campaign.spent);
     const offerIds =
@@ -778,7 +919,7 @@ export class PromotionsService implements OnModuleInit {
         : new Date();
 
     let saves = 0;
-    let rhythm: { hour: number; claims: number }[] = [];
+    let rhythm: { hour: number; views: number; claims: number }[] = [];
     let byBranch: { branchId: string; name: string; claims: number }[] = [];
     let series: { date: string; spend: number; claims: number }[] = [];
     if (from) {
@@ -797,7 +938,11 @@ export class PromotionsService implements OnModuleInit {
              GROUP BY 1 ORDER BY 1`,
             [offerIds, from, until],
           )
-        ).map((row) => ({ hour: num(row.hour), claims: num(row.claims) }));
+        ).map((row) => ({
+          hour: num(row.hour),
+          views: 0,
+          claims: num(row.claims),
+        }));
         byBranch = (
           await this.dataSource.query<
             { branchId: string; name: string; claims: number }[]
@@ -812,6 +957,25 @@ export class PromotionsService implements OnModuleInit {
           )
         ).map((row) => ({ ...row, claims: num(row.claims) }));
       }
+      // Views per hour (Lagos time) next to the claims.
+      const viewRows = await this.dataSource.query<
+        { hour: number; views: number }[]
+      >(
+        `SELECT EXTRACT(HOUR FROM ("createdAt" + interval '1 hour'))::int AS hour, COUNT(*)::int AS views
+         FROM "sponsored_campaign_events"
+         WHERE "campaignId" = $1 AND "type" = 'impression'
+         GROUP BY 1 ORDER BY 1`,
+        [campaign.id],
+      );
+      for (const row of Array.isArray(viewRows) ? viewRows : []) {
+        if (row?.hour === undefined) continue;
+        const hour = num(row.hour);
+        const slot = rhythm.find((entry) => entry.hour === hour);
+        if (slot) slot.views = num(row.views);
+        else rhythm.push({ hour, views: num(row.views), claims: 0 });
+      }
+      rhythm.sort((a, b) => a.hour - b.hour);
+
       const spendRows = await this.dataSource.query<
         { date: string; spend: string }[]
       >(
@@ -854,16 +1018,16 @@ export class PromotionsService implements OnModuleInit {
         percentConsumed: budget > 0 ? Math.round((spent / budget) * 100) : 0,
         redemptions: outcome.redemptions,
         grossRevenue: outcome.revenue,
-        reach: campaign.impressions ?? 0,
+        reach: events.reach,
         returnOnSpend: spent > 0 ? round2(outcome.revenue / spent) : null,
       },
       funnel: [
         {
           id: 'impressions',
           label: 'Impressions',
-          value: campaign.impressions ?? 0,
+          value: events.impressions,
         },
-        { id: 'taps', label: 'Taps & views', value: campaign.clicks ?? 0 },
+        { id: 'taps', label: 'Taps & views', value: events.taps },
         { id: 'saves', label: 'Saves', value: saves },
         { id: 'claims', label: 'Claims', value: outcome.claims },
         { id: 'redeemed', label: 'Redeemed', value: outcome.redemptions },
@@ -871,6 +1035,8 @@ export class PromotionsService implements OnModuleInit {
       rhythm,
       byBranch,
       series,
+      previous: await this.previousRun(campaign),
+      benchmark: await this.benchmark(),
     };
   }
 

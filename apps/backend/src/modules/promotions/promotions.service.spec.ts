@@ -552,4 +552,207 @@ describe('PromotionsService', () => {
       } as any),
     ).toBe(6000);
   });
+
+  describe('stats', () => {
+    const live = (overrides: Record<string, unknown> = {}) =>
+      boost({
+        status: SponsoredCampaignStatus.ACTIVE,
+        launchedAt: new Date('2026-10-10T08:00:00Z'),
+        startDate: new Date('2026-10-10T08:00:00Z'),
+        endDate: new Date('2026-10-15T08:00:00Z'),
+        spent: '4000.00',
+        renewedFromId: null,
+        ...overrides,
+      });
+
+    /** Answers each stats query by what it reads. */
+    const route = (answers: {
+      events?: Record<
+        string,
+        { impressions: number; taps: number; reach: number }
+      >;
+      views?: { hour: number; views: number }[];
+      claimsByHour?: { hour: number; claims: number }[];
+      outcomes?: (ids: string[]) => {
+        claims: number;
+        redemptions: number;
+        revenue: string;
+      };
+    }) =>
+      dataSource.query.mockImplementation((sql: string, params: unknown[]) => {
+        if (sql.includes('GROUP BY "campaignId"')) {
+          const ids = params[0] as string[];
+          return Promise.resolve(
+            ids
+              .filter((id) => answers.events?.[id])
+              .map((id) => ({ campaignId: id, ...answers.events![id] })),
+          );
+        }
+        if (sql.includes('FROM "sponsored_campaign_events"')) {
+          return Promise.resolve(answers.views ?? []);
+        }
+        if (sql.includes('FROM "catalogue_offers" a')) {
+          const ids = params[0] as string[];
+          return Promise.resolve(
+            ids.map((id) => ({ assetId: id, offerId: id })),
+          );
+        }
+        if (sql.includes('AS revenue')) {
+          const outcome = answers.outcomes?.(params[0] as string[]);
+          return Promise.resolve([
+            outcome ?? { claims: 0, redemptions: 0, revenue: '0' },
+          ]);
+        }
+        if (sql.includes('AS claims') && sql.includes('EXTRACT(HOUR')) {
+          return Promise.resolve(answers.claimsByHour ?? []);
+        }
+        return Promise.resolve([]);
+      });
+
+    it('counts views, taps and unique viewers from the recorded events', async () => {
+      jest.useFakeTimers().setSystemTime(new Date('2026-10-14T10:00:00Z'));
+      store.set('c-1', live());
+      route({
+        events: { 'c-1': { impressions: 120, taps: 30, reach: 80 } },
+        views: [
+          { hour: 13, views: 40 },
+          { hour: 19, views: 12 },
+        ],
+        claimsByHour: [{ hour: 13, claims: 6 }],
+        outcomes: () => ({ claims: 10, redemptions: 4, revenue: '40000' }),
+      });
+
+      const stats = await service.stats(BOOST, 'c-1', 'biz-1');
+
+      expect(stats.kpis.reach).toBe(80);
+      expect(stats.funnel.slice(0, 2)).toEqual([
+        { id: 'impressions', label: 'Impressions', value: 120 },
+        { id: 'taps', label: 'Taps & views', value: 30 },
+      ]);
+      expect(stats.rhythm).toEqual([
+        { hour: 13, views: 40, claims: 6 },
+        { hour: 19, views: 12, claims: 0 },
+      ]);
+      expect(stats.previous).toBeNull();
+    });
+
+    it('compares with the run it renewed from first', async () => {
+      store.set(
+        'c-0',
+        boost({
+          id: 'c-0',
+          name: 'Lunch boost (run 1)',
+          status: SponsoredCampaignStatus.ENDED,
+          launchedAt: new Date('2026-10-01T08:00:00Z'),
+          startDate: new Date('2026-10-01T08:00:00Z'),
+          endDate: new Date('2026-10-06T08:00:00Z'),
+          spent: '10000.00',
+        }),
+      );
+      store.set('c-1', live({ renewedFromId: 'c-0' }));
+      route({
+        events: {
+          'c-0': { impressions: 90, taps: 20, reach: 60 },
+          'c-1': { impressions: 120, taps: 30, reach: 80 },
+        },
+        outcomes: () => ({ claims: 8, redemptions: 3, revenue: '30000' }),
+      });
+
+      const { previous } = await service.stats(BOOST, 'c-1', 'biz-1');
+
+      expect(previous).toEqual({
+        id: 'c-0',
+        name: 'Lunch boost (run 1)',
+        endDate: '2026-10-06T08:00:00.000Z',
+        reach: 60,
+        claims: 8,
+        redemptions: 3,
+        spent: 10000,
+        costPerClaim: 1250,
+      });
+    });
+
+    it('otherwise uses the last finished run that promoted the same deal', async () => {
+      const ended = (
+        id: string,
+        deal: string,
+        launched: string,
+        businessId = 'biz-1',
+      ) =>
+        boost({
+          id,
+          businessId,
+          status: SponsoredCampaignStatus.ENDED,
+          assets: [{ type: 'deal', id: deal }],
+          launchedAt: new Date(launched),
+          startDate: new Date(launched),
+        });
+      store.set('c-1', live());
+      // Newest first, as the repository orders them.
+      campaignRepo.find.mockResolvedValueOnce([
+        ended('c-other-biz', 'offer-1', '2026-10-08T08:00:00Z', 'biz-2'),
+        ended('c-other-deal', 'offer-9', '2026-10-07T08:00:00Z'),
+        ended('c-same-deal', 'offer-1', '2026-10-02T08:00:00Z'),
+      ]);
+      route({});
+
+      const { previous } = await service.stats(BOOST, 'c-1', 'biz-1');
+      expect(previous?.id).toBe('c-same-deal');
+    });
+  });
+
+  describe('benchmark', () => {
+    const ran = (id: string, spent: string) =>
+      boost({
+        id,
+        status: SponsoredCampaignStatus.ENDED,
+        launchedAt: new Date('2026-10-01T08:00:00Z'),
+        startDate: new Date('2026-10-01T08:00:00Z'),
+        endDate: new Date('2026-10-06T08:00:00Z'),
+        spent,
+      });
+
+    beforeEach(() => {
+      dataSource.query.mockImplementation((sql: string, params: unknown[]) => {
+        if (sql.includes('FROM "catalogue_offers" a')) {
+          const ids = params[0] as string[];
+          return Promise.resolve(
+            ids.map((id) => ({ assetId: id, offerId: id })),
+          );
+        }
+        if (sql.includes('AS revenue')) {
+          return Promise.resolve([
+            { claims: 20, redemptions: 5, revenue: '0' },
+          ]);
+        }
+        return Promise.resolve([]);
+      });
+    });
+
+    it('is platform spend over claims, once ten campaigns have claims', async () => {
+      campaignRepo.find.mockResolvedValueOnce(
+        Array.from({ length: 10 }, (_, i) => ran(`c-${i}`, '5000.00')),
+      );
+      expect(
+        await service.benchmark(Date.parse('2026-10-14T10:00:00Z')),
+      ).toEqual({
+        costPerClaim: 250,
+        campaigns: 10,
+      });
+    });
+
+    it('is hidden with too few campaigns, and cached for six hours', async () => {
+      const now = Date.parse('2026-10-14T10:00:00Z');
+      campaignRepo.find.mockResolvedValueOnce([ran('c-a', '5000.00')]);
+      expect(await service.benchmark(now)).toBeNull();
+
+      campaignRepo.find.mockClear();
+      expect(await service.benchmark(now + 60_000)).toBeNull();
+      expect(campaignRepo.find).not.toHaveBeenCalled();
+
+      campaignRepo.find.mockResolvedValueOnce([]);
+      await service.benchmark(now + 7 * 60 * 60 * 1000);
+      expect(campaignRepo.find).toHaveBeenCalledTimes(1);
+    });
+  });
 });
