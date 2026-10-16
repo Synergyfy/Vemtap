@@ -23,6 +23,7 @@ import {
 } from '../catalogue/entities/catalogue-item.entity';
 import { User, UserRole } from '../users/entities/user.entity';
 import { normalizeOpeningHours } from '../../common/utils/business-hours.util';
+import type { BookingRules } from '../catalogue/dto/booking-rules.dto';
 import {
   AvailabilityQueryDto,
   BookingAvailabilityDto,
@@ -94,7 +95,8 @@ export class BookingsService {
       ? this.parseDurationMinutes(item.duration)
       : SLOT_MINUTES;
 
-    const window = this.dayWindow(branch, query.date);
+    const rules = item?.bookingRules ?? null;
+    const window = this.serviceWindow(branch, query.date, rules);
     if (!window) {
       return {
         date: query.date,
@@ -115,9 +117,7 @@ export class BookingsService {
 
     const openMinutes = this.minutesFromTime(window.from);
     const closeMinutes = this.minutesFromTime(window.to);
-    const now = new Date();
-    const isToday = query.date === this.dateKey(now);
-    const nowMinutes = now.getHours() * 60 + now.getMinutes();
+    const earliest = this.earliestStart(query.date, rules);
 
     const slots: { time: string; available: boolean }[] = [];
     for (
@@ -126,13 +126,9 @@ export class BookingsService {
       start += SLOT_MINUTES
     ) {
       const end = start + durationMinutes;
-      const clashes = busy.some(
-        (interval) => start < interval.end && end > interval.start,
-      );
-      const inPast = isToday && start < nowMinutes;
       slots.push({
         time: this.timeFromMinutes(start),
-        available: !clashes && !inPast,
+        available: start >= earliest && this.hasRoom(busy, start, end, rules),
       });
     }
 
@@ -171,9 +167,15 @@ export class BookingsService {
       );
     }
 
-    const window = this.dayWindow(branch, dto.date);
+    const rules = item?.bookingRules ?? null;
+    if (this.beyondHorizon(dto.date, rules)) {
+      throw new BadRequestException(
+        `This service can be booked up to ${rules?.horizonDays} days ahead`,
+      );
+    }
+    const window = this.serviceWindow(branch, dto.date, rules);
     if (!window) {
-      throw new BadRequestException('Branch is closed on this day');
+      throw new BadRequestException('Not bookable on this day');
     }
 
     const durationMinutes = item
@@ -187,12 +189,12 @@ export class BookingsService {
       throw new BadRequestException('Requested time is outside business hours');
     }
 
-    const now = new Date();
-    if (
-      dto.date === today &&
-      startMinutes < now.getHours() * 60 + now.getMinutes()
-    ) {
-      throw new BadRequestException('Requested time is in the past');
+    if (startMinutes < this.earliestStart(dto.date, rules)) {
+      throw new BadRequestException(
+        rules?.leadMinutes
+          ? `Book at least ${rules.leadMinutes} minutes ahead`
+          : 'Requested time is in the past',
+      );
     }
 
     const booking = await this.dataSource.transaction(async (manager) => {
@@ -206,13 +208,11 @@ export class BookingsService {
       const relevant = item
         ? active.filter((row) => row.itemId === item.id || row.itemId === null)
         : active;
-      const clash = relevant.some((row) => {
+      const busy = relevant.map((row) => {
         const rowStart = this.minutesFromTime(row.time);
-        return (
-          startMinutes < rowStart + row.durationMinutes && endMinutes > rowStart
-        );
+        return { start: rowStart, end: rowStart + row.durationMinutes };
       });
-      if (clash) {
+      if (!this.hasRoom(busy, startMinutes, endMinutes, rules)) {
         throw new BadRequestException('Time slot is no longer available');
       }
 
@@ -225,7 +225,11 @@ export class BookingsService {
         date: dto.date,
         time: dto.time,
         durationMinutes,
-        status: BookingStatus.BOOKED,
+        // Without manual confirmation the slot is confirmed at once.
+        status:
+          rules?.requiresConfirmation === false
+            ? BookingStatus.CONFIRMED
+            : BookingStatus.BOOKED,
         reference: this.generateReference(),
         notes: dto.notes ?? null,
       });
@@ -465,6 +469,71 @@ export class BookingsService {
       from: day.from || DEFAULT_WINDOW.from,
       to: day.to || DEFAULT_WINDOW.to,
     };
+  }
+
+  /**
+   * The day's bookable window for a service: the branch's opening hours,
+   * narrowed by the service's own days, hours and horizon. Null = closed.
+   */
+  private serviceWindow(
+    branch: Branch,
+    date: string,
+    rules: BookingRules | null,
+  ): { from: string; to: string } | null {
+    const window = this.dayWindow(branch, date);
+    if (!window || !rules) return window;
+    const weekday = new Date(`${date}T00:00:00`).getDay();
+    if (rules.days?.length && !rules.days.includes(weekday)) return null;
+    if (this.beyondHorizon(date, rules)) return null;
+    const from = Math.max(
+      this.minutesFromTime(window.from),
+      rules.from ? this.minutesFromTime(rules.from) : 0,
+    );
+    const to = Math.min(
+      this.minutesFromTime(window.to),
+      rules.to ? this.minutesFromTime(rules.to) : 24 * 60,
+    );
+    if (from >= to) return null;
+    return { from: this.timeFromMinutes(from), to: this.timeFromMinutes(to) };
+  }
+
+  private beyondHorizon(date: string, rules: BookingRules | null): boolean {
+    if (!rules?.horizonDays) return false;
+    const last = new Date();
+    last.setDate(last.getDate() + rules.horizonDays);
+    return date > this.dateKey(last);
+  }
+
+  /**
+   * Earliest start (minutes into `date`) given the clock and the service's
+   * notice period; negative when the whole day is open.
+   */
+  private earliestStart(date: string, rules: BookingRules | null): number {
+    const now = new Date();
+    const earliest = new Date(
+      now.getTime() + (rules?.leadMinutes ?? 0) * 60_000,
+    );
+    const day = new Date(`${date}T00:00:00`);
+    return Math.ceil((earliest.getTime() - day.getTime()) / 60_000);
+  }
+
+  /**
+   * Whether [start, end) fits: fewer overlapping bookings than the service's
+   * capacity, counting each booking's turnaround buffer.
+   */
+  private hasRoom(
+    busy: { start: number; end: number }[],
+    start: number,
+    end: number,
+    rules: BookingRules | null,
+  ): boolean {
+    const buffer = rules?.bufferMinutes ?? 0;
+    const capacity = rules?.capacity ?? 1;
+    const overlapping = busy.filter(
+      (interval) =>
+        start < interval.end + buffer && end + buffer > interval.start,
+    ).length;
+    return overlapping < capacity;
   }
 
   private async getBusyIntervals(

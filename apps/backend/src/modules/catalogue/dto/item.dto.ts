@@ -13,6 +13,7 @@ import {
   ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
+import { BookingRulesDto } from './booking-rules.dto';
 import {
   CatalogueFulfillmentMode,
   CatalogueItemCondition,
@@ -165,6 +166,15 @@ export class CreateCatalogueItemDto {
   @IsOptional()
   @IsEnum(CatalogueItemPricingMode)
   pricingMode?: CatalogueItemPricingMode;
+
+  @ApiPropertyOptional({
+    type: BookingRulesDto,
+    description: 'When a bookable service can be booked (services only)',
+  })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => BookingRulesDto)
+  bookingRules?: BookingRulesDto;
 
   @ApiPropertyOptional({
     example: 'women',
@@ -403,6 +413,15 @@ export class UpdateCatalogueItemDto {
   @IsOptional()
   @IsEnum(CatalogueItemPricingMode)
   pricingMode?: CatalogueItemPricingMode;
+
+  @ApiPropertyOptional({
+    type: BookingRulesDto,
+    description: 'When a bookable service can be booked (services only)',
+  })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => BookingRulesDto)
+  bookingRules?: BookingRulesDto;
 
   @ApiPropertyOptional({
     example: 'women',

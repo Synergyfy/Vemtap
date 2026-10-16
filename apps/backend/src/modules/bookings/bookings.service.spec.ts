@@ -169,3 +169,154 @@ describe('BookingsService business endpoints', () => {
     expect(saved.cancellationReason).toBe('No-show');
   });
 });
+
+describe('BookingsService service booking rules', () => {
+  // Wednesday 21 Oct 2026, 08:00 local.
+  const NOW = new Date('2026-10-21T08:00:00');
+  const branch = {
+    id: 'br-1',
+    name: 'Main',
+    businessId: 'biz-1',
+    businessHours: null,
+  };
+
+  function withRules(
+    rules: Record<string, unknown> | null,
+    active: {
+      time: string;
+      durationMinutes: number;
+      itemId: string | null;
+    }[] = [],
+  ) {
+    const item = {
+      id: 'svc-1',
+      name: 'Facial',
+      isBookable: true,
+      bookingMethod: null,
+      duration: '60 mins',
+      branches: [{ id: 'br-1' }],
+      bookingRules: rules,
+    };
+    const created: unknown[] = [];
+    const manager = {
+      find: jest.fn().mockResolvedValue(active),
+      create: jest.fn((_entity, row) => row),
+      save: jest.fn(async (row) => {
+        created.push(row);
+        return { ...row, id: 'bk-9', createdAt: NOW };
+      }),
+    };
+    const service = new BookingsService(
+      { find: jest.fn().mockResolvedValue(active) } as never,
+      { findOne: jest.fn().mockResolvedValue(branch) } as never,
+      { findOne: jest.fn().mockResolvedValue(item) } as never,
+      { transaction: (run: (m: unknown) => unknown) => run(manager) } as never,
+    );
+    return { service, created };
+  }
+
+  beforeEach(() => {
+    jest.useFakeTimers({ now: NOW });
+  });
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  it('closes days the service is not offered on', async () => {
+    // 21 Oct 2026 is a Wednesday (3).
+    const { service } = withRules({ days: [1, 2] });
+    const day = await service.getAvailability({
+      branchId: 'br-1',
+      itemId: 'svc-1',
+      date: '2026-10-21',
+    } as never);
+    expect(day.isClosed).toBe(true);
+  });
+
+  it('narrows the branch hours to the service hours', async () => {
+    const { service } = withRules({ from: '10:00', to: '12:00' });
+    const day = await service.getAvailability({
+      branchId: 'br-1',
+      itemId: 'svc-1',
+      date: '2026-10-22',
+    } as never);
+    expect(day.slots.map((slot) => slot.time)).toEqual([
+      '10:00',
+      '10:30',
+      '11:00',
+    ]);
+  });
+
+  it('keeps a turnaround buffer and allows parallel bookings up to capacity', async () => {
+    const booked = [{ time: '10:00', durationMinutes: 60, itemId: 'svc-1' }];
+    const single = withRules(
+      { from: '10:00', to: '13:00', bufferMinutes: 30 },
+      booked,
+    );
+    const one = await single.service.getAvailability({
+      branchId: 'br-1',
+      itemId: 'svc-1',
+      date: '2026-10-22',
+    } as never);
+    const open = (slots: { time: string; available: boolean }[]) =>
+      slots.filter((slot) => slot.available).map((slot) => slot.time);
+    // 10:00–11:00 plus a 30-minute buffer blocks starts before 11:30.
+    expect(open(one.slots)).toEqual(['11:30', '12:00']);
+
+    const double = withRules(
+      { from: '10:00', to: '13:00', capacity: 2 },
+      booked,
+    );
+    const two = await double.service.getAvailability({
+      branchId: 'br-1',
+      itemId: 'svc-1',
+      date: '2026-10-22',
+    } as never);
+    expect(open(two.slots)).toContain('10:00');
+  });
+
+  it('enforces notice and horizon, and confirms at once without manual confirmation', async () => {
+    const { service, created } = withRules({
+      leadMinutes: 180,
+      horizonDays: 14,
+      requiresConfirmation: false,
+    });
+    const today = await service.getAvailability({
+      branchId: 'br-1',
+      itemId: 'svc-1',
+      date: '2026-10-21',
+    } as never);
+    // 08:00 + 3h notice: nothing before 11:00.
+    expect(today.slots.find((slot) => slot.time === '10:30')?.available).toBe(
+      false,
+    );
+    expect(today.slots.find((slot) => slot.time === '11:00')?.available).toBe(
+      true,
+    );
+
+    await expect(
+      service.createBooking(
+        { id: 'cust-1' } as never,
+        {
+          branchId: 'br-1',
+          itemId: 'svc-1',
+          date: '2026-11-20',
+          time: '12:00',
+        } as never,
+      ),
+    ).rejects.toThrow(BadRequestException);
+
+    await service.createBooking(
+      { id: 'cust-1' } as never,
+      {
+        branchId: 'br-1',
+        itemId: 'svc-1',
+        date: '2026-10-22',
+        time: '12:00',
+      } as never,
+    );
+    expect(created[0]).toEqual(
+      expect.objectContaining({ status: BookingStatus.CONFIRMED }),
+    );
+  });
+});
