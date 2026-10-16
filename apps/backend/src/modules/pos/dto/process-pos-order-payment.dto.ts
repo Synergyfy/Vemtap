@@ -8,8 +8,10 @@ import {
   IsBoolean,
   ValidateNested,
   Min,
+  IsIn,
 } from 'class-validator';
 import { Type } from 'class-transformer';
+import type { PosOrderType } from '../pos-settings.types';
 import { PaymentMethod } from '../entities/pos-enums';
 import { SplitPaymentDto } from './create-pos-sale.dto';
 
@@ -63,4 +65,23 @@ export class ProcessPosOrderPaymentDto {
   @IsOptional()
   @IsBoolean()
   hideCustomerInfoOnReceipt?: boolean;
+
+  @ApiPropertyOptional({
+    enum: ['dine_in', 'takeaway'],
+    default: 'dine_in',
+    description:
+      'Decides takeaway VAT exemption and packaging fee from the POS settings.',
+  })
+  @IsOptional()
+  @IsIn(['dine_in', 'takeaway'])
+  orderType?: PosOrderType;
+
+  @ApiPropertyOptional({
+    example: false,
+    description:
+      'Drop the service charge for this ticket. Ignored unless the settings allow waiving it.',
+  })
+  @IsOptional()
+  @IsBoolean()
+  waiveServiceCharge?: boolean;
 }

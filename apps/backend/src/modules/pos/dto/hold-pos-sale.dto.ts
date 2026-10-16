@@ -8,8 +8,11 @@ import {
   IsArray,
   ValidateNested,
   Min,
+  IsIn,
+  IsBoolean,
 } from 'class-validator';
 import { Type } from 'class-transformer';
+import type { PosOrderType } from '../pos-settings.types';
 
 export class HoldSaleItemDto {
   @ApiProperty({ example: 'uuid-of-product' })
@@ -103,4 +106,23 @@ export class HoldPosSaleDto {
   @IsOptional()
   @IsNumber()
   total?: number;
+
+  @ApiPropertyOptional({
+    enum: ['dine_in', 'takeaway'],
+    default: 'dine_in',
+    description:
+      'Decides takeaway VAT exemption and packaging fee from the POS settings.',
+  })
+  @IsOptional()
+  @IsIn(['dine_in', 'takeaway'])
+  orderType?: PosOrderType;
+
+  @ApiPropertyOptional({
+    example: false,
+    description:
+      'Drop the service charge for this ticket. Ignored unless the settings allow waiving it.',
+  })
+  @IsOptional()
+  @IsBoolean()
+  waiveServiceCharge?: boolean;
 }

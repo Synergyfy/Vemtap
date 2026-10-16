@@ -1,6 +1,10 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { PosController } from './pos.controller';
 import { PosService } from './pos.service';
+import { PosSettingsService } from './pos-settings.service';
+import { PosTillsService } from './pos-tills.service';
+import { PosPeripheralsService } from './pos-peripherals.service';
+import { PosStaffPinsService } from './pos-staff-pins.service';
 import { PaymentMethod } from './entities/pos-enums';
 import { User, UserRole } from '../users/entities/user.entity';
 
@@ -12,6 +16,8 @@ describe('PosController', () => {
     completeSale: jest.fn(),
     findAllSales: jest.fn(),
     findOneSale: jest.fn(),
+    getSaleDetail: jest.fn(),
+    getCustomerRewards: jest.fn(),
     updateSaleStatus: jest.fn(),
     holdSale: jest.fn(),
     findAllHeldSales: jest.fn(),
@@ -25,6 +31,17 @@ describe('PosController', () => {
     getTopProducts: jest.fn(),
     adjustStock: jest.fn(),
     batchSyncSales: jest.fn(),
+  };
+
+  const mockPosSettingsService = {
+    get: jest.fn(),
+    update: jest.fn(),
+    summary: jest.fn(),
+  };
+
+  const mockTillsService = {
+    count: jest.fn(),
+    branchSummary: jest.fn(),
   };
 
   const mockUser: User = {
@@ -42,7 +59,13 @@ describe('PosController', () => {
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       controllers: [PosController],
-      providers: [{ provide: PosService, useValue: mockPosService }],
+      providers: [
+        { provide: PosService, useValue: mockPosService },
+        { provide: PosSettingsService, useValue: mockPosSettingsService },
+        { provide: PosTillsService, useValue: mockTillsService },
+        { provide: PosPeripheralsService, useValue: { count: jest.fn() } },
+        { provide: PosStaffPinsService, useValue: { count: jest.fn() } },
+      ],
     }).compile();
 
     controller = module.get<PosController>(PosController);
@@ -67,7 +90,9 @@ describe('PosController', () => {
 
       await controller.completeSale(dto, mockReq);
 
-      expect(mockPosService.completeSale).toHaveBeenCalledWith(dto, mockUser);
+      expect(mockPosService.completeSale).toHaveBeenCalledWith(dto, mockUser, {
+        enforceDiscountPolicy: true,
+      });
     });
   });
 
@@ -82,10 +107,10 @@ describe('PosController', () => {
   });
 
   describe('getSale', () => {
-    it('should call service.findOneSale with id and businessId', async () => {
+    it('should call service.getSaleDetail with id and businessId', async () => {
       await controller.getSale('sale-1', mockReq);
 
-      expect(mockPosService.findOneSale).toHaveBeenCalledWith(
+      expect(mockPosService.getSaleDetail).toHaveBeenCalledWith(
         'sale-1',
         'bus-1',
       );
@@ -103,6 +128,7 @@ describe('PosController', () => {
         dto,
         'bus-1',
         'user-1',
+        mockUser,
       );
     });
   });
@@ -164,10 +190,7 @@ describe('PosController', () => {
     it('should call service.closeRegister', async () => {
       await controller.closeRegister({}, mockReq);
 
-      expect(mockPosService.closeRegister).toHaveBeenCalledWith(
-        mockUser,
-        {},
-      );
+      expect(mockPosService.closeRegister).toHaveBeenCalledWith(mockUser, {});
     });
 
     it('should forward the counted cash so the drawer can be reconciled', async () => {
@@ -221,12 +244,55 @@ describe('PosController', () => {
 
   describe('adjustStock', () => {
     it('should call service.adjustStock', async () => {
-      await controller.adjustStock('prod-1', 50, mockReq);
+      await controller.adjustStock(
+        'prod-1',
+        { quantity: 50, reason: 'Recount' },
+        mockReq,
+      );
 
       expect(mockPosService.adjustStock).toHaveBeenCalledWith(
         'prod-1',
         'bus-1',
         50,
+        { reason: 'Recount', userId: 'user-1', branchId: 'br-1' },
+      );
+    });
+  });
+
+  describe('settings', () => {
+    it('reads the settings for the caller business', async () => {
+      await controller.getSettings(mockReq);
+      expect(mockPosSettingsService.get).toHaveBeenCalledWith('bus-1');
+    });
+
+    it('updates the settings for the caller business only', async () => {
+      const dto = { taxEnabled: true, taxRate: 7.5 };
+      await controller.updateSettings(dto, mockReq);
+      expect(mockPosSettingsService.update).toHaveBeenCalledWith('bus-1', dto);
+    });
+  });
+
+  describe('branch summary', () => {
+    it('marks the caller branch as current', async () => {
+      await controller.getBranchSummary(mockReq);
+      expect(mockTillsService.branchSummary).toHaveBeenCalledWith(
+        'bus-1',
+        'br-1',
+      );
+    });
+  });
+
+  describe('getCustomerRewards', () => {
+    it('scopes the lookup to the caller business and branch filter', async () => {
+      await controller.getCustomerRewards(
+        'cust-1',
+        { branchId: 'br-1' },
+        mockReq,
+      );
+      expect(mockPosService.getCustomerRewards).toHaveBeenCalledWith(
+        'cust-1',
+        'bus-1',
+        'br-1',
       );
     });
   });

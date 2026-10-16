@@ -5,6 +5,7 @@ import {
   IsOptional,
   IsDateString,
   Min,
+  IsUUID,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { PaginationQueryDto } from '../../../common/dto/pagination.dto';
@@ -15,6 +16,14 @@ export class OpenRegisterDto {
   @IsNumber()
   @Min(0)
   openingCash: number;
+
+  @ApiPropertyOptional({
+    description:
+      'Till to open the session on. The session takes the till branch; a till can hold one open session.',
+  })
+  @IsOptional()
+  @IsUUID()
+  tillId?: string;
 }
 
 /**

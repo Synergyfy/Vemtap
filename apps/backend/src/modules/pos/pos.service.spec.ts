@@ -37,6 +37,9 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { CatalogueOrderService } from '../catalogue-orders/catalogue-orders.service';
 import { LoyaltyService } from '../loyalty/loyalty.service';
 import { StockMovementService } from '../inventory-counting/stock-movement.service';
+import { PosTillsService } from './pos-tills.service';
+import { PosStaffPinsService } from './pos-staff-pins.service';
+import { ForbiddenException } from '@nestjs/common';
 
 describe('PosService', () => {
   let service: PosService;
@@ -55,6 +58,16 @@ describe('PosService', () => {
     count: jest.fn().mockResolvedValue(0),
     createQueryBuilder: jest.fn().mockImplementation(() => ({
       leftJoinAndSelect: jest.fn().mockReturnThis(),
+      leftJoin: jest.fn().mockReturnThis(),
+      select: jest.fn().mockReturnThis(),
+      addSelect: jest.fn().mockReturnThis(),
+      groupBy: jest.fn().mockReturnThis(),
+      addGroupBy: jest.fn().mockReturnThis(),
+      getRawMany: jest.fn().mockResolvedValue([
+        { status: 'completed', method: 'cash', count: '2', sum: '9000' },
+        { status: 'completed', method: 'card', count: '1', sum: '4500' },
+        { status: 'refunded', method: 'cash', count: '1', sum: '800' },
+      ]),
       innerJoinAndSelect: jest.fn().mockReturnThis(),
       where: jest.fn().mockReturnThis(),
       andWhere: jest.fn().mockReturnThis(),
@@ -162,10 +175,23 @@ describe('PosService', () => {
 
   const mockLoyaltyService = {
     awardPoints: jest.fn(),
+    getBusinessPoints: jest.fn().mockResolvedValue(0),
+    getBusinessPointsForCustomers: jest.fn().mockResolvedValue(new Map()),
+    getPointsEarnedForReason: jest.fn().mockResolvedValue(0),
+    getActiveBusinessRewards: jest.fn().mockResolvedValue([]),
+    tierForPoints: jest.fn().mockReturnValue('Bronze'),
   };
 
   const mockStockMovementService = {
     record: jest.fn().mockResolvedValue({}),
+  };
+
+  const mockTillsService = {
+    claimForSession: jest.fn(),
+  };
+
+  const mockStaffPinsService = {
+    assertOverride: jest.fn().mockResolvedValue(undefined),
   };
 
   const mockBusinessRepo = {
@@ -346,6 +372,8 @@ describe('PosService', () => {
         },
         { provide: CatalogueOrderService, useValue: mockCatalogueOrderService },
         { provide: LoyaltyService, useValue: mockLoyaltyService },
+        { provide: PosTillsService, useValue: mockTillsService },
+        { provide: PosStaffPinsService, useValue: mockStaffPinsService },
         { provide: StockMovementService, useValue: mockStockMovementService },
       ],
     }).compile();
@@ -1179,6 +1207,325 @@ describe('PosService', () => {
         }),
       );
       expect(result.id).toBe('cash-drop-1');
+    });
+  });
+  describe('POS charges and shift link', () => {
+    it('applies VAT and service charge from the business settings', async () => {
+      mockBranchRepo.findOne.mockResolvedValue({
+        id: 'br-1',
+        businessId: 'bus-1',
+      });
+      mockBusinessRepo.findOne.mockResolvedValueOnce({
+        id: 'bus-1',
+        posSettings: {
+          taxEnabled: true,
+          taxRate: 7.5,
+          serviceChargeEnabled: true,
+          serviceChargeRate: 5,
+        },
+      });
+      mockProductRepo.findOne.mockResolvedValueOnce({ ...mockItem });
+      mockRegisterSessionRepo.findOne.mockResolvedValueOnce({
+        id: 'session-1',
+        totalSales: 0,
+        transactionCount: 0,
+        expectedCash: 0,
+      });
+
+      await service.completeSale(
+        {
+          items: [{ productId: 'prod-1', quantity: 2 }],
+          payment: { method: PaymentMethod.CASH, amountPaid: 10000 },
+          branchId: 'br-1',
+        },
+        mockCashier,
+      );
+
+      // 2 × 4,500 = 9,000 net; VAT 675; service 450.
+      expect(mockSaleRepo.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          subtotal: 9000,
+          tax: 675,
+          serviceCharge: 450,
+          packagingFee: 0,
+          total: 10125,
+          registerSessionId: 'session-1',
+        }),
+      );
+    });
+
+    it('rejects holding a ticket on another business branch', async () => {
+      mockBranchRepo.findOne.mockResolvedValueOnce({
+        id: 'br-x',
+        businessId: 'other-bus',
+      });
+      await expect(
+        service.holdSale(
+          {
+            items: [
+              {
+                productId: 'prod-1',
+                productName: 'Burger',
+                unitPrice: 4500,
+                quantity: 1,
+                totalPrice: 4500,
+              },
+            ],
+            branchId: 'br-x',
+          },
+          mockCashier,
+        ),
+      ).rejects.toThrow(BadRequestException);
+    });
+  });
+
+  describe('findAllSales meta', () => {
+    it('counts every status and leaves fully refunded sales out of gross', async () => {
+      const result = await service.findAllSales('bus-1', {
+        page: 1,
+        limit: 10,
+      });
+      expect(result.meta.counts).toEqual({
+        completed: 3,
+        refunded: 1,
+        partial_refund: 0,
+      });
+      expect(result.meta.grossTotal).toBe(13500);
+      expect(result.meta.byMethod).toEqual({ cash: 9000, card: 4500 });
+    });
+  });
+
+  describe('batchSyncSales statuses', () => {
+    it('reports an already-synced clientRef as duplicate without re-running it', async () => {
+      mockSaleRepo.find.mockResolvedValueOnce([
+        { id: 'sale-old', clientRef: 'ref-1', receiptNumber: 'RCT-1' },
+      ]);
+      const completeSpy = jest.spyOn(service, 'completeSale');
+
+      const results = await service.batchSyncSales(
+        [
+          {
+            items: [{ productId: 'prod-1', quantity: 1 }],
+            payment: { method: PaymentMethod.CASH, amountPaid: 4500 },
+            branchId: 'br-1',
+            clientRef: 'ref-1',
+          },
+        ],
+        mockCashier,
+      );
+
+      expect(results).toEqual([
+        {
+          clientRef: 'ref-1',
+          status: 'duplicate',
+          success: true,
+          saleId: 'sale-old',
+          receiptNumber: 'RCT-1',
+        },
+      ]);
+      expect(completeSpy).not.toHaveBeenCalled();
+      completeSpy.mockRestore();
+    });
+
+    it('marks a business-rule rejection as conflict', async () => {
+      mockSaleRepo.find.mockResolvedValueOnce([]);
+      const completeSpy = jest
+        .spyOn(service, 'completeSale')
+        .mockRejectedValueOnce(new BadRequestException('Insufficient stock'));
+
+      const [result] = await service.batchSyncSales(
+        [
+          {
+            items: [{ productId: 'prod-1', quantity: 99 }],
+            payment: { method: PaymentMethod.CASH, amountPaid: 1 },
+            branchId: 'br-1',
+            clientRef: 'ref-9',
+          },
+        ],
+        mockCashier,
+      );
+
+      expect(result).toMatchObject({
+        clientRef: 'ref-9',
+        status: 'conflict',
+        success: false,
+        error: 'Insufficient stock',
+      });
+      completeSpy.mockRestore();
+    });
+  });
+  describe('tills and supervisor policy', () => {
+    it('opens a register on a till and takes the till branch', async () => {
+      mockRegisterSessionRepo.findOne.mockResolvedValueOnce(null);
+      mockTillsService.claimForSession.mockResolvedValueOnce({
+        id: 'till-1',
+        branchId: 'br-9',
+      });
+
+      await service.openRegister(
+        { openingCash: 5000, tillId: 'till-1' },
+        mockCashier,
+      );
+
+      expect(mockTillsService.claimForSession).toHaveBeenCalledWith(
+        'bus-1',
+        'till-1',
+      );
+      expect(mockRegisterSessionRepo.create).toHaveBeenCalledWith(
+        expect.objectContaining({ tillId: 'till-1', branchId: 'br-9' }),
+      );
+    });
+
+    it('requires a refund override from a manager when the policy says so', async () => {
+      mockSaleRepo.findOne.mockResolvedValueOnce({
+        id: 'sale-1',
+        businessId: 'bus-1',
+        status: SaleStatus.COMPLETED,
+        items: [],
+        refunds: [],
+      });
+      mockBusinessRepo.findOne.mockResolvedValueOnce({
+        id: 'bus-1',
+        posSettings: { permissions: { refundRequiresPin: true } },
+      });
+      mockStaffPinsService.assertOverride.mockRejectedValueOnce(
+        new ForbiddenException('A supervisor PIN is required to refund'),
+      );
+
+      await expect(
+        service.updateSaleStatus(
+          'sale-1',
+          { status: SaleStatus.REFUNDED },
+          'bus-1',
+          'mgr-1',
+          { ...mockCashier, role: UserRole.MANAGER } as User,
+        ),
+      ).rejects.toThrow(ForbiddenException);
+      expect(mockStaffPinsService.assertOverride).toHaveBeenCalledWith(
+        undefined,
+        'bus-1',
+        'refund',
+        'sale-1',
+      );
+    });
+
+    it('refuses a discount above the cashier cap when overrides are off', async () => {
+      mockBranchRepo.findOne.mockResolvedValue({
+        id: 'br-1',
+        businessId: 'bus-1',
+      });
+      mockBusinessRepo.findOne.mockResolvedValueOnce({
+        id: 'bus-1',
+        posSettings: { permissions: { discountMaxPercent: 10 } },
+      });
+      mockProductRepo.findOne.mockResolvedValueOnce({ ...mockItem });
+
+      await expect(
+        service.completeSale(
+          {
+            items: [{ productId: 'prod-1', quantity: 1, discount: 900 }],
+            payment: { method: PaymentMethod.CASH, amountPaid: 3600 },
+            branchId: 'br-1',
+          },
+          mockCashier,
+          { enforceDiscountPolicy: true },
+        ),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('lets an override token through for a capped discount', async () => {
+      mockBranchRepo.findOne.mockResolvedValue({
+        id: 'br-1',
+        businessId: 'bus-1',
+      });
+      mockBusinessRepo.findOne.mockResolvedValueOnce({
+        id: 'bus-1',
+        posSettings: {
+          permissions: {
+            discountMaxPercent: 10,
+            discountOverrideRequiresPin: true,
+          },
+        },
+      });
+      mockProductRepo.findOne.mockResolvedValueOnce({ ...mockItem });
+
+      await service.completeSale(
+        {
+          items: [{ productId: 'prod-1', quantity: 1, discount: 900 }],
+          payment: { method: PaymentMethod.CASH, amountPaid: 3600 },
+          branchId: 'br-1',
+          overrideToken: 'token-1',
+        },
+        mockCashier,
+        { enforceDiscountPolicy: true },
+      );
+
+      expect(mockStaffPinsService.assertOverride).toHaveBeenCalledWith(
+        'token-1',
+        'bus-1',
+        'discount',
+      );
+    });
+  });
+  describe('guest QR ordering rules', () => {
+    const guestOrder = {
+      branchId: 'br-1',
+      phone: '+2348000000000',
+      firstName: 'Tolu',
+      lastName: 'A',
+      items: [{ itemId: 'prod-1', quantity: 1 }],
+    };
+
+    it('refuses guest orders when self-ordering is off', async () => {
+      mockBranchRepo.findOne.mockResolvedValueOnce({
+        id: 'br-1',
+        businessId: 'bus-1',
+      });
+      mockBusinessRepo.findOne.mockResolvedValueOnce({
+        id: 'bus-1',
+        posSettings: { selfOrderingEnabled: false },
+      });
+      await expect(service.placeOrder(guestOrder)).rejects.toThrow(
+        ForbiddenException,
+      );
+    });
+
+    it('refuses guest orders during a rush pause', async () => {
+      mockBranchRepo.findOne.mockResolvedValueOnce({
+        id: 'br-1',
+        businessId: 'bus-1',
+      });
+      mockBusinessRepo.findOne.mockResolvedValueOnce({
+        id: 'bus-1',
+        posSettings: { rushPause: true },
+      });
+      await expect(service.placeOrder(guestOrder)).rejects.toThrow(
+        ForbiddenException,
+      );
+    });
+
+    it('lets staff order during a rush pause', async () => {
+      mockBranchRepo.findOne.mockResolvedValueOnce({
+        id: 'br-1',
+        businessId: 'bus-1',
+      });
+      mockBusinessRepo.findOne.mockResolvedValueOnce({
+        id: 'bus-1',
+        posSettings: { rushPause: true },
+      });
+      mockUserRepo.findOne.mockResolvedValueOnce({
+        id: 'cust-1',
+        firstName: 'Tolu',
+        lastName: 'A',
+      });
+      // The staff path gets past the pause and fails later on the missing item.
+      mockProductRepo.findOne.mockResolvedValueOnce(null);
+      await expect(
+        service.placeOrder(
+          { ...guestOrder, customerId: 'cust-1' },
+          mockCashier,
+        ),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 });

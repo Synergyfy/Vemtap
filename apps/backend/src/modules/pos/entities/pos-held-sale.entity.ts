@@ -11,6 +11,7 @@ import { Business } from '../../businesses/entities/business.entity';
 import { Branch } from '../../branches/entities/branch.entity';
 import { User } from '../../users/entities/user.entity';
 import { PosHeldSaleItem } from './pos-held-sale-item.entity';
+import type { PosOrderType } from '../pos-settings.types';
 import { ApiProperty } from '@nestjs/swagger';
 
 @Entity('pos_held_sales')
@@ -72,6 +73,32 @@ export class PosHeldSale extends AbstractBaseEntity {
     transformer: { to: (v: number) => v, from: (v: string) => parseFloat(v) },
   })
   tax: number;
+
+  /** Service charge added on top of the net subtotal. */
+  @ApiProperty({ example: 750 })
+  @Column({
+    type: 'decimal',
+    precision: 12,
+    scale: 2,
+    default: 0,
+    transformer: { to: (v: number) => v, from: (v: string) => parseFloat(v) },
+  })
+  serviceCharge: number;
+
+  /** Flat takeaway packaging fee. */
+  @ApiProperty({ example: 300 })
+  @Column({
+    type: 'decimal',
+    precision: 12,
+    scale: 2,
+    default: 0,
+    transformer: { to: (v: number) => v, from: (v: string) => parseFloat(v) },
+  })
+  packagingFee: number;
+
+  @ApiProperty({ enum: ['dine_in', 'takeaway'], example: 'dine_in' })
+  @Column({ type: 'varchar', length: 16, default: 'dine_in' })
+  orderType: PosOrderType;
 
   @ApiProperty({ example: 15000 })
   @Column({

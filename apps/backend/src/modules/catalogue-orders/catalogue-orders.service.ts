@@ -41,6 +41,8 @@ import { CatalogueOfferService } from '../catalogue/catalogue-offer.service';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { v4 as uuidv4 } from 'uuid';
+import { EventEmitter2 } from '@nestjs/event-emitter';
+import { ORDER_EVENTS, OrderLifecycleEvent, stampStatus } from './order-events';
 
 @Injectable()
 export class CatalogueOrderService {
@@ -71,7 +73,25 @@ export class CatalogueOrderService {
     private readonly orderNotificationQueue: Queue,
     @Optional()
     private readonly catalogueOfferService?: CatalogueOfferService,
+    @Optional()
+    private readonly eventEmitter?: EventEmitter2,
   ) {}
+
+  private emitOrderEvent(
+    event: (typeof ORDER_EVENTS)[keyof typeof ORDER_EVENTS],
+    order: CatalogueOrder,
+  ) {
+    const payload: OrderLifecycleEvent = {
+      orderId: order.id,
+      businessId: order.businessId,
+      branchId: order.branchId,
+      status: order.status,
+      trackingToken: order.trackingToken ?? null,
+      tableNumber: order.tableNumber ?? null,
+      at: new Date().toISOString(),
+    };
+    this.eventEmitter?.emit(event, payload);
+  }
 
   async bulkCheckout(dto: BulkCheckoutDto, user?: User) {
     const results: CatalogueOrder[] = [];
@@ -341,9 +361,11 @@ export class CatalogueOrderService {
       sessionToken: effectiveSessionToken,
       bookingDate: dto.bookingDate,
       bookingTime: dto.bookingTime,
+      statusTimeline: stampStatus(null, CatalogueOrderStatus.NEW),
     });
 
     const savedOrder = await this.orderRepository.save(order);
+    this.emitOrderEvent(ORDER_EVENTS.CREATED, savedOrder);
 
     // Trigger notification to branch staff
     // Shared with the in-app row below so the push tap and the bell entry for
@@ -594,7 +616,9 @@ export class CatalogueOrderService {
       order.loyaltyAwarded = true;
     }
 
+    order.statusTimeline = stampStatus(order.statusTimeline, order.status);
     const updatedOrder = await this.orderRepository.save(order);
+    this.emitOrderEvent(ORDER_EVENTS.STATUS_CHANGED, updatedOrder);
 
     // The queued 'send-order-email' job owns the customer's side of a status
     // change: it writes the in-app row, sends the push and sends the email,

@@ -159,6 +159,86 @@ export class LoyaltyService {
   }
 
   /**
+   * Points each customer holds at one business, for a list of customers in a
+   * single grouped query. Customers with no ledger rows map to 0.
+   */
+  async getBusinessPointsForCustomers(
+    customerIds: string[],
+    businessId: string,
+  ): Promise<Map<string, number>> {
+    const balances = new Map<string, number>(customerIds.map((id) => [id, 0]));
+    if (!customerIds.length) return balances;
+    const rows = await this.pointTransactionRepo
+      .createQueryBuilder('transaction')
+      .select('transaction.customerId', 'customerId')
+      .addSelect('COALESCE(SUM(transaction.amount), 0)', 'sum')
+      .where('transaction.customerId IN (:...customerIds)', { customerIds })
+      .andWhere('transaction.businessId = :businessId', { businessId })
+      .groupBy('transaction.customerId')
+      .getRawMany<{ customerId: string; sum: string }>();
+    for (const row of rows) {
+      balances.set(row.customerId, parseInt(row.sum || '0', 10));
+    }
+    return balances;
+  }
+
+  /** Tier name for a points balance, using the shared thresholds. */
+  tierForPoints(points: number): string {
+    let tier: string = LOYALTY_TIER_THRESHOLDS[0].name;
+    for (const threshold of LOYALTY_TIER_THRESHOLDS) {
+      if (points >= threshold.minPoints) tier = threshold.name;
+    }
+    return tier;
+  }
+
+  /**
+   * Points a customer earned at a business for ledger rows whose reason starts
+   * with `reasonPrefix` (e.g. "POS Sale RCT-20261016-004").
+   */
+  async getPointsEarnedForReason(
+    customerId: string,
+    businessId: string,
+    reasonPrefix: string,
+  ): Promise<number> {
+    const escaped = reasonPrefix.replace(/[%_\\]/g, (m) => `\\${m}`);
+    const result = await this.pointTransactionRepo
+      .createQueryBuilder('transaction')
+      .select('COALESCE(SUM(transaction.amount), 0)', 'sum')
+      .where('transaction.customerId = :customerId', { customerId })
+      .andWhere('transaction.businessId = :businessId', { businessId })
+      .andWhere('transaction.type = :type', {
+        type: PointTransactionType.EARNED,
+      })
+      .andWhere('transaction.reason LIKE :reason', { reason: `${escaped}%` })
+      .getRawOne<{ sum: string }>();
+    return parseInt(result?.sum || '0', 10);
+  }
+
+  /**
+   * Rewards a business currently offers: active, in stock and unexpired,
+   * cheapest first. Bounded by `limit`.
+   */
+  async getActiveBusinessRewards(
+    businessId: string,
+    options: { branchId?: string; limit?: number } = {},
+  ): Promise<Reward[]> {
+    const qb = this.rewardRepo
+      .createQueryBuilder('reward')
+      .where('reward.businessId = :businessId', { businessId })
+      .andWhere('reward.isActive = true')
+      .andWhere('reward.remainingQuantity > 0')
+      .andWhere('reward.expiryDate > :now', { now: new Date() })
+      .orderBy('reward.pointsRequired', 'ASC')
+      .take(options.limit ?? 20);
+    if (options.branchId) {
+      qb.andWhere('reward.branchId = :branchId', {
+        branchId: options.branchId,
+      });
+    }
+    return qb.getMany();
+  }
+
+  /**
    * Customer loyalty tier derived from their global points balance.
    * Thresholds mirror the app's shipped rewardTiers so both stay in sync.
    */

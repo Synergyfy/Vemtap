@@ -2,15 +2,29 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  ForbiddenException,
   Inject,
+  Optional,
   forwardRef,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Between, ILike, DataSource, EntityManager } from 'typeorm';
+import {
+  Repository,
+  Between,
+  ILike,
+  In,
+  DataSource,
+  EntityManager,
+  SelectQueryBuilder,
+} from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import { randomBytes } from 'crypto';
 import { PosSale } from './entities/pos-sale.entity';
-import { PaymentMethod, SaleStatus } from './entities/pos-enums';
+import {
+  PaymentMethod,
+  PosOverrideAction,
+  SaleStatus,
+} from './entities/pos-enums';
 import { PosSaleItem } from './entities/pos-sale-item.entity';
 import { PosSplitPayment } from './entities/pos-split-payment.entity';
 import { PosHeldSale } from './entities/pos-held-sale.entity';
@@ -62,6 +76,48 @@ import { PosCashDrop } from './entities/pos-cash-drop.entity';
 import { CashDropDto } from './dto/cash-drop.dto';
 import { StockMovementService } from '../inventory-counting/stock-movement.service';
 import { StockMovementType } from '../inventory-counting/entities/stock-movement.entity';
+import {
+  computePosCharges,
+  PosSettings,
+  resolvePosSettings,
+} from './pos-settings.types';
+import { PosTillsService } from './pos-tills.service';
+import { PosStaffPinsService } from './pos-staff-pins.service';
+import { EventEmitter2 } from '@nestjs/event-emitter';
+import {
+  ORDER_EVENTS,
+  OrderLifecycleEvent,
+  stampStatus,
+} from '../catalogue-orders/order-events';
+import { PosCustomerSegment } from './dto/pos-customer-query.dto';
+
+export interface BatchSyncResult {
+  clientRef: string | null;
+  status: 'synced' | 'duplicate' | 'conflict' | 'failed';
+  /** Kept for clients written before `status` existed. */
+  success: boolean;
+  saleId?: string;
+  receiptNumber?: string;
+  error?: string;
+}
+
+interface PosCustomerRow {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  createdAt: Date;
+  totalSpent: string;
+  totalVisits: string;
+  firstVisitAt: Date | null;
+  lastVisitAt: Date | null;
+}
+
+const VIP_MIN_VISITS = 10;
+const VIP_MIN_SPEND = 100_000;
+const NEW_CUSTOMER_DAYS = 30;
+const LAPSED_CUSTOMER_DAYS = 60;
 
 @Injectable()
 export class PosService {
@@ -107,9 +163,22 @@ export class PosService {
     @Inject(forwardRef(() => LoyaltyService))
     private readonly loyaltyService: LoyaltyService,
     private readonly stockMovementService: StockMovementService,
+    private readonly tillsService: PosTillsService,
+    private readonly staffPinsService: PosStaffPinsService,
+    @Optional()
+    private readonly eventEmitter?: EventEmitter2,
   ) {}
 
-  async completeSale(dto: CreatePosSaleDto, cashier: User) {
+  /**
+   * @param options.enforceDiscountPolicy Check the cashier discount cap. On for
+   *   live checkout; off for offline replays, which already happened at the
+   *   till and cannot wait for a supervisor.
+   */
+  async completeSale(
+    dto: CreatePosSaleDto,
+    cashier: User,
+    options: { enforceDiscountPolicy?: boolean } = {},
+  ) {
     return this.dataSource.transaction(async (manager) => {
       const branchRepo = manager.getRepository(Branch);
       const saleRepo = manager.getRepository(PosSale);
@@ -150,7 +219,12 @@ export class PosService {
         });
       }
 
+      const business = await businessRepo.findOne({
+        where: { id: branch.businessId },
+      });
+
       const items: PosSaleItem[] = [];
+      const productsById = new Map<string, CatalogueItem>();
       let subtotal = 0;
       let totalDiscount = 0;
 
@@ -160,6 +234,7 @@ export class PosService {
         });
         if (!product)
           throw new NotFoundException(`Product ${itemDto.productId} not found`);
+        productsById.set(product.id, product);
 
         if (
           product.stockQuantity !== null &&
@@ -207,8 +282,26 @@ export class PosService {
 
       const cartDiscount = dto.cartDiscountAmount || 0;
       const totalDiscountAmount = totalDiscount + cartDiscount;
-      const tax = 0;
-      const total = subtotal - totalDiscountAmount + tax;
+      const charges = computePosCharges(
+        business?.posSettings,
+        subtotal - totalDiscountAmount,
+        {
+          orderType: dto.orderType,
+          waiveServiceCharge: dto.waiveServiceCharge,
+        },
+      );
+      const { tax, serviceCharge, packagingFee, total } = charges;
+
+      if (options.enforceDiscountPolicy && totalDiscountAmount > 0) {
+        await this.assertDiscountAllowed(
+          business?.posSettings,
+          cashier,
+          subtotal,
+          totalDiscountAmount,
+          dto.overrideToken,
+        );
+      }
+
       const receiptNumber = await this.generateReceiptNumber(
         branch.businessId,
         manager,
@@ -240,6 +333,7 @@ export class PosService {
           const splitPayment = splitPaymentRepo.create({
             method: sp.method,
             amount: sp.amount,
+            payer: sp.payer ?? null,
           });
           splitPayments.push(splitPayment);
         }
@@ -262,6 +356,14 @@ export class PosService {
         }
       }
 
+      const openRegister = await registerSessionRepo.findOne({
+        where: {
+          cashierId: cashier.id,
+          status: RegisterSessionStatus.OPEN,
+          branchId: branch.id,
+        },
+      });
+
       const sale = saleRepo.create({
         businessId: branch.businessId,
         branchId: branch.id,
@@ -272,6 +374,10 @@ export class PosService {
         subtotal,
         discountAmount: totalDiscountAmount,
         tax,
+        serviceCharge,
+        packagingFee,
+        orderType: dto.orderType ?? 'dine_in',
+        registerSessionId: openRegister?.id ?? null,
         total,
         paymentMethod: dto.payment.method,
         amountPaid: dto.payment.amountPaid,
@@ -303,14 +409,6 @@ export class PosService {
         manager,
       );
 
-      const openRegister = await registerSessionRepo.findOne({
-        where: {
-          cashierId: cashier.id,
-          status: RegisterSessionStatus.OPEN,
-          branchId: branch.id,
-        },
-      });
-
       if (openRegister) {
         openRegister.totalSales = Number(openRegister.totalSales) + total;
         openRegister.transactionCount =
@@ -325,17 +423,12 @@ export class PosService {
       // Auto-award loyalty points if the business has loyalty enabled and a customer is linked
       if (customer) {
         try {
-          const business = await businessRepo.findOne({
-            where: { id: branch.businessId },
-          });
           if (business?.posSettings?.loyaltyEnabled) {
             let totalPoints = 0;
             let totalSpent = 0;
             for (const item of items) {
               if (item.productId) {
-                const product = await productRepo.findOne({
-                  where: { id: item.productId },
-                });
+                const product = productsById.get(item.productId);
                 if (
                   product?.enableLoyaltyPoints &&
                   product.loyaltyPointsValue
@@ -398,38 +491,67 @@ export class PosService {
     });
   }
 
+  /**
+   * Replays offline sales one by one. Each result says what happened to that
+   * sale so the device can clear its queue precisely:
+   * - `synced`: created now.
+   * - `duplicate`: this `clientRef` was already on the server (an earlier push
+   *   landed but the device never heard back); the existing sale is returned.
+   * - `conflict`: the server refused it on business rules (stock, branch,
+   *   split totals), so a person has to look at it.
+   * - `failed`: anything else; safe to retry.
+   * Already-synced refs are found with one query before the loop.
+   */
   async batchSyncSales(
     dtos: CreatePosSaleDto[],
     cashier: User,
-  ): Promise<
-    {
-      clientRef: string | null;
-      saleId?: string;
-      success: boolean;
-      error?: string;
-    }[]
-  > {
-    const results: {
-      clientRef: string | null;
-      saleId?: string;
-      success: boolean;
-      error?: string;
-    }[] = [];
+  ): Promise<BatchSyncResult[]> {
+    const refs = dtos
+      .map((dto) => dto.clientRef)
+      .filter((ref): ref is string => !!ref);
+    const existing = refs.length
+      ? await this.saleRepository.find({
+          where: { businessId: cashier.businessId, clientRef: In(refs) },
+          select: ['id', 'clientRef', 'receiptNumber'],
+        })
+      : [];
+    const existingByRef = new Map(
+      existing.map((sale) => [sale.clientRef, sale]),
+    );
+
+    const results: BatchSyncResult[] = [];
     for (const dto of dtos) {
+      const clientRef = dto.clientRef || null;
+      const already = clientRef ? existingByRef.get(clientRef) : undefined;
+      if (already) {
+        results.push({
+          clientRef,
+          status: 'duplicate',
+          success: true,
+          saleId: already.id,
+          receiptNumber: already.receiptNumber,
+        });
+        continue;
+      }
       try {
         const sale = await this.completeSale(dto, cashier);
         results.push({
-          clientRef: dto.clientRef || null,
-          saleId: sale.id,
+          clientRef,
+          status: 'synced',
           success: true,
+          saleId: sale.id,
+          receiptNumber: sale.receiptNumber,
         });
       } catch (error) {
-        const errorMessage =
-          error instanceof Error ? error.message : 'Internal server error';
+        const isRuleError =
+          error instanceof BadRequestException ||
+          error instanceof NotFoundException;
         results.push({
-          clientRef: dto.clientRef || null,
+          clientRef,
+          status: isRuleError ? 'conflict' : 'failed',
           success: false,
-          error: errorMessage,
+          error:
+            error instanceof Error ? error.message : 'Internal server error',
         });
       }
     }
@@ -444,6 +566,23 @@ export class PosService {
       where: { id: dto.branchId },
     });
     if (!branch) throw new NotFoundException('Branch not found');
+
+    // Guest (no-login) ordering follows the venue's self-ordering switches.
+    const business = await this.businessRepository.findOne({
+      where: { id: branch.businessId },
+      select: ['id', 'posSettings'],
+    });
+    const settings = resolvePosSettings(business?.posSettings);
+    if (!staff) {
+      if (!settings.selfOrderingEnabled) {
+        throw new ForbiddenException('This venue is not taking QR orders');
+      }
+      if (settings.rushPause) {
+        throw new ForbiddenException(
+          'The kitchen has paused new QR orders for a moment. Please ask a member of staff.',
+        );
+      }
+    }
 
     // Resolve customer
     let customer: User | null = null;
@@ -585,6 +724,13 @@ export class PosService {
       throw new BadRequestException('Order must contain at least one item');
     }
 
+    const maxQrOrderValue = settings.maxQrOrderValue ?? 0;
+    if (!staff && maxQrOrderValue > 0 && totalAmount > maxQrOrderValue) {
+      throw new BadRequestException(
+        `QR orders are limited to ${this.formatNaira(maxQrOrderValue)}. Please order the rest with a member of staff.`,
+      );
+    }
+
     // Create the order
     const order = this.orderRepository.create({
       businessId: branch.businessId,
@@ -595,9 +741,20 @@ export class PosService {
       totalAmount,
       items: orderItems,
       stockDeducted: true,
+      trackingToken: randomBytes(18).toString('base64url'),
+      statusTimeline: stampStatus(null, CatalogueOrderStatus.NEW),
     });
 
     const savedOrder = await this.orderRepository.save(order);
+    this.eventEmitter?.emit(ORDER_EVENTS.CREATED, {
+      orderId: savedOrder.id,
+      businessId: savedOrder.businessId,
+      branchId: savedOrder.branchId,
+      status: savedOrder.status ?? CatalogueOrderStatus.NEW,
+      trackingToken: savedOrder.trackingToken,
+      tableNumber: savedOrder.tableNumber ?? null,
+      at: new Date().toISOString(),
+    } satisfies OrderLifecycleEvent);
 
     // Deduct stock immediately
     for (const orderItem of savedOrder.items) {
@@ -739,6 +896,24 @@ export class PosService {
       subtotal += lineTotal;
     }
 
+    const business = await this.businessRepository.findOne({
+      where: { id: order.businessId },
+      select: ['id', 'posSettings'],
+    });
+    const { tax, serviceCharge, packagingFee, total } = computePosCharges(
+      business?.posSettings,
+      Number(order.totalAmount),
+      { orderType: dto.orderType, waiveServiceCharge: dto.waiveServiceCharge },
+    );
+
+    const openRegister = await this.registerSessionRepository.findOne({
+      where: {
+        cashierId: staff.id,
+        status: RegisterSessionStatus.OPEN,
+        branchId: order.branchId,
+      },
+    });
+
     const receiptNumber = await this.generateReceiptNumber(order.businessId);
     const cashierName =
       `${staff.firstName} ${staff.lastName}`.trim() || staff.email;
@@ -750,6 +925,7 @@ export class PosService {
           this.splitPaymentRepository.create({
             method: sp.method,
             amount: sp.amount,
+            payer: sp.payer ?? null,
           }),
         );
       }
@@ -764,8 +940,12 @@ export class PosService {
       receiptNumber,
       subtotal,
       discountAmount: 0,
-      tax: 0,
-      total: Number(order.totalAmount),
+      tax,
+      serviceCharge,
+      packagingFee,
+      orderType: dto.orderType ?? 'dine_in',
+      registerSessionId: openRegister?.id ?? null,
+      total,
       paymentMethod: dto.paymentMethod,
       amountPaid: dto.amountPaid,
       change: dto.change || 0,
@@ -790,24 +970,14 @@ export class PosService {
     // Record FOS transaction
     await this.recordFosTransaction({
       businessId: order.businessId,
-      amount: Number(order.totalAmount),
+      amount: total,
       paymentMethod: dto.paymentMethod,
       referenceId: savedSale.id,
       description: `POS Order Payment ${receiptNumber}`,
     });
 
-    // Update register session
-    const openRegister = await this.registerSessionRepository.findOne({
-      where: {
-        cashierId: staff.id,
-        status: RegisterSessionStatus.OPEN,
-        branchId: order.branchId,
-      },
-    });
-
     if (openRegister) {
-      openRegister.totalSales =
-        Number(openRegister.totalSales) + Number(order.totalAmount);
+      openRegister.totalSales = Number(openRegister.totalSales) + total;
       openRegister.transactionCount = Number(openRegister.transactionCount) + 1;
       if (dto.paymentMethod === PaymentMethod.CASH) {
         openRegister.expectedCash =
@@ -832,7 +1002,12 @@ export class PosService {
     };
   }
 
-  async adjustStock(id: string, businessId: string, quantity: number) {
+  async adjustStock(
+    id: string,
+    businessId: string,
+    quantity: number,
+    options: { reason?: string; userId?: string; branchId?: string } = {},
+  ) {
     const product = await this.productRepository.findOne({
       where: { id, businessId },
     });
@@ -845,27 +1020,23 @@ export class PosService {
     await this.stockMovementService.record({
       itemId: product.id,
       businessId,
-      branchId: null,
+      branchId: options.branchId ?? null,
+      userId: options.userId,
       type: StockMovementType.ADJUST,
       previousQuantity,
       newQuantity: quantity,
-      reason: 'Manual stock adjustment',
+      reason: options.reason?.trim() || 'Manual stock adjustment',
     });
     return saved;
   }
 
+  /**
+   * Sales page plus a `meta` block for the ledger header: counts per status
+   * (ignoring the status filter, so every chip has a number), gross takings and
+   * the tender mix. Two queries: the page and one grouped aggregate.
+   */
   async findAllSales(businessId: string, query: PosSaleQueryDto) {
-    const {
-      page = 1,
-      limit = 10,
-      status,
-      paymentMethod,
-      branchId,
-      cashierId,
-      dateFrom,
-      dateTo,
-      search,
-    } = query;
+    const { page = 1, limit = 10, status } = query;
     const qb = this.saleRepository
       .createQueryBuilder('sale')
       .leftJoinAndSelect('sale.items', 'items')
@@ -874,39 +1045,71 @@ export class PosService {
       .leftJoinAndSelect('sale.cashier', 'cashier')
       .leftJoinAndSelect('sale.branch', 'branch')
       .where('sale.businessId = :businessId', { businessId });
-
+    this.applySaleFilters(qb, query);
     if (status) qb.andWhere('sale.status = :status', { status });
-    if (paymentMethod)
-      qb.andWhere('sale.paymentMethod = :paymentMethod', { paymentMethod });
-    if (branchId) qb.andWhere('sale.branchId = :branchId', { branchId });
-    if (cashierId) qb.andWhere('sale.cashierId = :cashierId', { cashierId });
 
-    if (dateFrom || dateTo) {
-      const start = dateFrom ? new Date(dateFrom) : new Date(0);
-      const end = dateTo ? new Date(dateTo) : new Date();
-      end.setHours(23, 59, 59, 999);
-      qb.andWhere('sale.createdAt BETWEEN :start AND :end', { start, end });
+    const metaQb = this.saleRepository
+      .createQueryBuilder('sale')
+      .leftJoin('sale.customer', 'customer')
+      .select('sale.status', 'status')
+      .addSelect('sale.paymentMethod', 'method')
+      .addSelect('COUNT(sale.id)', 'count')
+      .addSelect('COALESCE(SUM(sale.total), 0)', 'sum')
+      .where('sale.businessId = :businessId', { businessId })
+      .groupBy('sale.status')
+      .addGroupBy('sale.paymentMethod');
+    this.applySaleFilters(metaQb, query);
+
+    const [result, metaRows] = await Promise.all([
+      paginateWithCursor({
+        queryBuilder: qb,
+        cursor: (query as any)?.cursor || (query as any)?.nextCursor,
+        page,
+        limit,
+        sortField: 'createdAt',
+        sortOrder: 'DESC',
+        entityAlias: 'sale',
+      }),
+      metaQb.getRawMany<{
+        status: SaleStatus;
+        method: PaymentMethod;
+        count: string;
+        sum: string;
+      }>(),
+    ]);
+
+    const counts: Record<SaleStatus, number> = {
+      [SaleStatus.COMPLETED]: 0,
+      [SaleStatus.REFUNDED]: 0,
+      [SaleStatus.PARTIAL_REFUND]: 0,
+    };
+    const byMethod: Record<string, number> = {};
+    let grossTotal = 0;
+    for (const row of metaRows) {
+      counts[row.status] = (counts[row.status] ?? 0) + Number(row.count);
+      if (row.status === SaleStatus.REFUNDED) continue;
+      const sum = Number(row.sum);
+      grossTotal += sum;
+      byMethod[row.method] = (byMethod[row.method] ?? 0) + sum;
     }
-
-    if (search) {
-      qb.andWhere(
-        '(sale.receiptNumber ILIKE :search OR sale.cashierName ILIKE :search OR customer.firstName ILIKE :search OR customer.lastName ILIKE :search OR customer.phone ILIKE :search)',
-        { search: `%${search}%` },
-      );
-    }
-
-    const result = await paginateWithCursor({
-      queryBuilder: qb,
-      cursor: (query as any)?.cursor || (query as any)?.nextCursor,
-      page,
-      limit,
-      sortField: 'createdAt',
-      sortOrder: 'DESC',
-      entityAlias: 'sale',
-    });
 
     return {
-      data: result.data,
+      // Assigned onto the entity (not spread) so the serializer still applies
+      // the User @Exclude rules to the nested customer and cashier.
+      data: result.data.map((sale) =>
+        Object.assign(sale, {
+          itemCount: (sale.items ?? []).reduce(
+            (sum, item) => sum + Number(item.quantity),
+            0,
+          ),
+          customerName: this.displayName(sale.customer),
+        }),
+      ),
+      meta: {
+        counts,
+        grossTotal: Math.round(grossTotal * 100) / 100,
+        byMethod,
+      },
       total: result.total,
       page: result.page,
       limit: result.limit,
@@ -936,13 +1139,92 @@ export class PosService {
     return sale;
   }
 
+  /**
+   * One sale for the transaction and e-receipt screens: the sale with its
+   * shift, plus the loyalty points the customer earned on it. Three queries.
+   */
+  async getSaleDetail(id: string, businessId: string) {
+    const sale = await this.saleRepository.findOne({
+      where: { id, businessId },
+      relations: [
+        'items',
+        'splitPayments',
+        'customer',
+        'cashier',
+        'branch',
+        'refunds',
+        'registerSession',
+      ],
+    });
+    if (!sale) throw new NotFoundException('Sale not found');
+
+    const [business, pointsEarned] = await Promise.all([
+      this.businessRepository.findOne({
+        where: { id: businessId },
+        select: ['id', 'name', 'logoUrl', 'address', 'posSettings'],
+      }),
+      sale.customerId
+        ? this.loyaltyService.getPointsEarnedForReason(
+            sale.customerId,
+            businessId,
+            `POS Sale ${sale.receiptNumber}`,
+          )
+        : Promise.resolve(0),
+    ]);
+    const settings = business?.posSettings ?? {};
+
+    return Object.assign(sale, {
+      itemCount: (sale.items ?? []).reduce(
+        (sum, item) => sum + Number(item.quantity),
+        0,
+      ),
+      customerName: this.displayName(sale.customer),
+      pointsEarned,
+      receipt: {
+        businessName: business?.name ?? null,
+        logo: settings.showLogo === false ? null : (business?.logoUrl ?? null),
+        header: settings.receiptHeader ?? null,
+        footer: settings.receiptFooter ?? null,
+        address:
+          settings.receiptAddress ??
+          sale.branch?.address ??
+          business?.address ??
+          null,
+        phone: settings.receiptPhone ?? null,
+        tin: settings.tin ?? null,
+        taxLabel: settings.taxLabel ?? 'VAT',
+        width: settings.receiptWidth ?? 80,
+      },
+    });
+  }
+
   async updateSaleStatus(
     id: string,
     dto: UpdatePosSaleStatusDto,
     businessId: string,
     refundedById?: string,
+    requester?: User,
   ) {
     const sale = await this.findOneSale(id, businessId);
+
+    // The owner is the policy's author; everyone else needs a supervisor
+    // approval when the business turned the refund PIN on.
+    if (requester && requester.role !== UserRole.OWNER) {
+      const business = await this.businessRepository.findOne({
+        where: { id: businessId },
+        select: ['id', 'posSettings'],
+      });
+      if (
+        resolvePosSettings(business?.posSettings).permissions?.refundRequiresPin
+      ) {
+        await this.staffPinsService.assertOverride(
+          dto.overrideToken,
+          businessId,
+          PosOverrideAction.REFUND,
+          sale.id,
+        );
+      }
+    }
 
     // Can only refund COMPLETED or PARTIAL_REFUND sales
     if (
@@ -1126,6 +1408,9 @@ export class PosService {
       where: { id: dto.branchId },
     });
     if (!branch) throw new NotFoundException('Branch not found');
+    if (branch.businessId !== cashier.businessId) {
+      throw new BadRequestException('Branch does not belong to your business');
+    }
 
     const items = dto.items.map((item) =>
       this.heldSaleItemRepository.create({
@@ -1141,15 +1426,33 @@ export class PosService {
       }),
     );
 
+    // Charges come from the settings, not the client, so a parked ticket
+    // resumes with the same totals the till would compute.
+    const subtotal =
+      dto.subtotal || items.reduce((acc, i) => acc + i.totalPrice, 0);
+    const discountAmount = dto.discountAmount || 0;
+    const business = await this.businessRepository.findOne({
+      where: { id: branch.businessId },
+      select: ['id', 'posSettings'],
+    });
+    const { tax, serviceCharge, packagingFee, total } = computePosCharges(
+      business?.posSettings,
+      subtotal - discountAmount,
+      { orderType: dto.orderType, waiveServiceCharge: dto.waiveServiceCharge },
+    );
+
     const heldSale = this.heldSaleRepository.create({
       businessId: branch.businessId,
       branchId: branch.id,
       cashierId: cashier.id,
       customerId: dto.customerId || null,
-      subtotal: dto.subtotal || items.reduce((acc, i) => acc + i.totalPrice, 0),
-      discountAmount: dto.discountAmount || 0,
-      tax: dto.tax || 0,
-      total: dto.total || items.reduce((acc, i) => acc + i.totalPrice, 0),
+      subtotal,
+      discountAmount,
+      tax,
+      serviceCharge,
+      packagingFee,
+      orderType: dto.orderType ?? 'dine_in',
+      total,
       note: dto.note || null,
       heldAt: new Date(),
       items,
@@ -1194,9 +1497,14 @@ export class PosService {
       throw new BadRequestException('Register is already open');
     }
 
+    const till = dto.tillId
+      ? await this.tillsService.claimForSession(cashier.businessId, dto.tillId)
+      : null;
+
     const session = this.registerSessionRepository.create({
       businessId: cashier.businessId,
-      branchId: cashier.branchId,
+      branchId: till?.branchId ?? cashier.branchId,
+      tillId: till?.id ?? null,
       cashierId: cashier.id,
       openedAt: new Date(),
       openingCash: dto.openingCash,
@@ -1304,6 +1612,7 @@ export class PosService {
   async getRegisterStatus(cashier: User) {
     const session = await this.registerSessionRepository.findOne({
       where: { cashierId: cashier.id, status: RegisterSessionStatus.OPEN },
+      relations: ['till', 'branch'],
     });
 
     return { isOpen: !!session, session: session || null };
@@ -1502,7 +1811,7 @@ export class PosService {
     const limit = query.limit || 10;
     const skip = (page - 1) * limit;
 
-    // Single aggregated query: joins pos_sales with users, groups by customer
+    // One aggregated row per customer: pos_sales joined to users, grouped.
     const qb = this.saleRepository
       .createQueryBuilder('sale')
       .innerJoin('sale.customer', 'customer')
@@ -1514,6 +1823,7 @@ export class PosService {
       .addSelect('customer.createdAt', 'createdAt')
       .addSelect('SUM(sale.total)', 'totalSpent')
       .addSelect('COUNT(sale.id)', 'totalVisits')
+      .addSelect('MIN(sale.orderedAt)', 'firstVisitAt')
       .addSelect('MAX(sale.orderedAt)', 'lastVisitAt')
       .where('sale.businessId = :businessId', { businessId })
       .andWhere('sale.customerId IS NOT NULL')
@@ -1538,33 +1848,124 @@ export class PosService {
       );
     }
 
-    const countQb = qb.clone();
-    const total = await countQb
-      .select('COUNT(DISTINCT customer.id)', 'count')
-      .getRawOne();
+    const now = Date.now();
+    const segmentParams = {
+      vipVisits: VIP_MIN_VISITS,
+      vipSpend: VIP_MIN_SPEND,
+      newSince: new Date(now - NEW_CUSTOMER_DAYS * 86_400_000),
+      lapsedBefore: new Date(now - LAPSED_CUSTOMER_DAYS * 86_400_000),
+    };
+    const segmentHaving: Record<PosCustomerSegment, string> = {
+      [PosCustomerSegment.VIP]:
+        '(COUNT(sale.id) >= :vipVisits OR SUM(sale.total) >= :vipSpend)',
+      [PosCustomerSegment.NEW]: 'MIN(sale.orderedAt) >= :newSince',
+      [PosCustomerSegment.LAPSED]: 'MAX(sale.orderedAt) < :lapsedBefore',
+    };
 
-    const customers = await qb
-      .orderBy('"totalSpent"', 'DESC')
-      .offset(skip)
-      .limit(limit)
-      .getRawMany();
+    // Segment chip counts over the unsegmented list (one wrapped query).
+    const base = qb.clone().setParameters(segmentParams);
+    const segmentCountsQuery = this.dataSource
+      .createQueryBuilder()
+      .select('COUNT(*)', 'all')
+      .addSelect(
+        `COUNT(*) FILTER (WHERE c."totalVisits" >= :vipVisits OR c."totalSpent" >= :vipSpend)`,
+        'vip',
+      )
+      .addSelect(`COUNT(*) FILTER (WHERE c."firstVisitAt" >= :newSince)`, 'new')
+      .addSelect(
+        `COUNT(*) FILTER (WHERE c."lastVisitAt" < :lapsedBefore)`,
+        'lapsed',
+      )
+      .from(`(${base.getQuery()})`, 'c')
+      .setParameters(base.getParameters());
+
+    if (query.segment) {
+      qb.having(segmentHaving[query.segment]).setParameters(segmentParams);
+    }
+    const totalQuery = this.dataSource
+      .createQueryBuilder()
+      .select('COUNT(*)', 'count')
+      .from(`(${qb.getQuery()})`, 'c')
+      .setParameters(qb.getParameters());
+
+    const [segmentCounts, total, customers] = await Promise.all([
+      segmentCountsQuery.getRawOne<Record<string, string>>(),
+      totalQuery.getRawOne<{ count: string }>(),
+      qb
+        .orderBy('"totalSpent"', 'DESC')
+        .offset(skip)
+        .limit(limit)
+        .getRawMany<PosCustomerRow>(),
+    ]);
+
+    const points = await this.loyaltyService.getBusinessPointsForCustomers(
+      customers.map((c) => c.id),
+      businessId,
+    );
 
     return {
-      data: customers.map((c) => ({
-        id: c.id,
-        firstName: c.firstName,
-        lastName: c.lastName,
-        email: c.email,
-        phone: c.phone,
-        createdAt: c.createdAt,
-        totalSpent: Number(c.totalSpent) || 0,
-        totalVisits: Number(c.totalVisits) || 0,
-        lastVisitAt: c.lastVisitAt,
-      })),
+      data: customers.map((c) => {
+        const totalSpent = Number(c.totalSpent) || 0;
+        const totalVisits = Number(c.totalVisits) || 0;
+        const pointsBalance = points.get(c.id) ?? 0;
+        return {
+          id: c.id,
+          firstName: c.firstName,
+          lastName: c.lastName,
+          email: c.email,
+          phone: c.phone,
+          createdAt: c.createdAt,
+          totalSpent,
+          totalVisits,
+          firstVisitAt: c.firstVisitAt,
+          lastVisitAt: c.lastVisitAt,
+          pointsBalance,
+          tier: this.loyaltyService.tierForPoints(pointsBalance),
+          segments: this.customerSegments(
+            totalVisits,
+            totalSpent,
+            c.firstVisitAt,
+            c.lastVisitAt,
+            now,
+          ),
+        };
+      }),
+      segmentCounts: {
+        all: Number(segmentCounts?.all) || 0,
+        vip: Number(segmentCounts?.vip) || 0,
+        new: Number(segmentCounts?.new) || 0,
+        lapsed: Number(segmentCounts?.lapsed) || 0,
+      },
       total: Number(total?.count) || 0,
       page,
       limit,
     };
+  }
+
+  private customerSegments(
+    visits: number,
+    spent: number,
+    firstVisitAt: Date | string | null,
+    lastVisitAt: Date | string | null,
+    now: number,
+  ): PosCustomerSegment[] {
+    const segments: PosCustomerSegment[] = [];
+    if (visits >= VIP_MIN_VISITS || spent >= VIP_MIN_SPEND) {
+      segments.push(PosCustomerSegment.VIP);
+    }
+    if (
+      firstVisitAt &&
+      new Date(firstVisitAt).getTime() >= now - NEW_CUSTOMER_DAYS * 86_400_000
+    ) {
+      segments.push(PosCustomerSegment.NEW);
+    }
+    if (
+      lastVisitAt &&
+      new Date(lastVisitAt).getTime() < now - LAPSED_CUSTOMER_DAYS * 86_400_000
+    ) {
+      segments.push(PosCustomerSegment.LAPSED);
+    }
+    return segments;
   }
 
   async findCustomerById(customerId: string, businessId: string) {
@@ -1614,6 +2015,10 @@ export class PosService {
     const totalSpent = Number(stats?.totalSpent) || 0;
     const totalVisits = Number(stats?.totalVisits) || 0;
     const averageOrderValue = Number(stats?.averageOrderValue) || 0;
+    const pointsBalance = await this.loyaltyService.getBusinessPoints(
+      customerId,
+      businessId,
+    );
 
     return {
       id: customer.id,
@@ -1627,12 +2032,58 @@ export class PosService {
       lastVisitAt: stats?.lastVisitAt || null,
       averageOrderValue,
       lifetimeValue: totalSpent,
+      pointsBalance,
+      tier: this.loyaltyService.tierForPoints(pointsBalance),
       recentPurchases: recentPurchases.map((sale) => ({
         id: sale.id,
         date: sale.orderedAt,
         total: Number(sale.total),
         items: sale.items?.length || 0,
+        itemNames: (sale.items ?? []).map((item) => item.productName),
+        paymentMethod: sale.paymentMethod,
         receipt: sale.receiptNumber,
+      })),
+    };
+  }
+
+  /**
+   * What a customer can redeem here now: the business's active rewards, each
+   * flagged with whether their balance covers it. Two queries plus the
+   * transacted-with-us check.
+   */
+  async getCustomerRewards(
+    customerId: string,
+    businessId: string,
+    branchId?: string,
+  ) {
+    const hasTransacted = await this.saleRepository.findOne({
+      where: { customerId, businessId },
+      select: ['id'],
+    });
+    if (!hasTransacted) {
+      throw new NotFoundException('Customer not found for this business');
+    }
+
+    const [pointsBalance, rewards] = await Promise.all([
+      this.loyaltyService.getBusinessPoints(customerId, businessId),
+      this.loyaltyService.getActiveBusinessRewards(businessId, { branchId }),
+    ]);
+
+    return {
+      pointsBalance,
+      tier: this.loyaltyService.tierForPoints(pointsBalance),
+      data: rewards.map((reward) => ({
+        id: reward.id,
+        name: reward.name,
+        description: reward.description,
+        category: reward.category,
+        pointsRequired: reward.pointsRequired,
+        coverImage: reward.coverImage ?? null,
+        expiryDate: reward.expiryDate,
+        remainingQuantity: reward.remainingQuantity,
+        branchId: reward.branchId,
+        affordable: pointsBalance >= reward.pointsRequired,
+        pointsShort: Math.max(0, reward.pointsRequired - pointsBalance),
       })),
     };
   }
@@ -1719,6 +2170,81 @@ export class PosService {
     ) {
       item.status = CatalogueItemStatus.ACTIVE;
     }
+  }
+
+  /**
+   * Cashier discount cap from the permission policy. Within the cap the sale
+   * goes through; above it a supervisor override is required when the policy
+   * allows one, otherwise the discount is refused. The owner is never capped.
+   */
+  private async assertDiscountAllowed(
+    stored: PosSettings | null | undefined,
+    cashier: User,
+    subtotal: number,
+    discount: number,
+    overrideToken?: string,
+  ) {
+    if (cashier.role === UserRole.OWNER) return;
+    const policy = resolvePosSettings(stored).permissions ?? {};
+    const maxPercent = policy.discountMaxPercent ?? 100;
+    const maxAmount = policy.discountMaxAmount ?? 0;
+    const percent = subtotal > 0 ? (discount / subtotal) * 100 : 0;
+    const overCap =
+      (maxPercent < 100 && percent > maxPercent + 1e-9) ||
+      (maxAmount > 0 && discount > maxAmount);
+    if (!overCap) return;
+    if (!policy.discountOverrideRequiresPin) {
+      throw new ForbiddenException(
+        'This discount is above the cashier limit set for this business',
+      );
+    }
+    await this.staffPinsService.assertOverride(
+      overrideToken,
+      cashier.businessId,
+      PosOverrideAction.DISCOUNT,
+    );
+  }
+
+  /** Filters shared by the sales page and its meta aggregate (status excluded). */
+  private applySaleFilters(
+    qb: SelectQueryBuilder<PosSale>,
+    query: PosSaleQueryDto,
+  ) {
+    const {
+      paymentMethod,
+      branchId,
+      cashierId,
+      sessionId,
+      dateFrom,
+      dateTo,
+      search,
+    } = query;
+    if (paymentMethod)
+      qb.andWhere('sale.paymentMethod = :paymentMethod', { paymentMethod });
+    if (branchId) qb.andWhere('sale.branchId = :branchId', { branchId });
+    if (cashierId) qb.andWhere('sale.cashierId = :cashierId', { cashierId });
+    if (sessionId)
+      qb.andWhere('sale.registerSessionId = :sessionId', { sessionId });
+
+    if (dateFrom || dateTo) {
+      const start = dateFrom ? new Date(dateFrom) : new Date(0);
+      const end = dateTo ? new Date(dateTo) : new Date();
+      end.setHours(23, 59, 59, 999);
+      qb.andWhere('sale.createdAt BETWEEN :start AND :end', { start, end });
+    }
+
+    if (search) {
+      const escaped = search.replace(/[%_]/g, (m) => `\\${m}`);
+      qb.andWhere(
+        '(sale.receiptNumber ILIKE :search OR sale.cashierName ILIKE :search OR customer.firstName ILIKE :search OR customer.lastName ILIKE :search OR customer.phone ILIKE :search)',
+        { search: `%${escaped}%` },
+      );
+    }
+  }
+
+  private displayName(user?: Pick<User, 'firstName' | 'lastName'> | null) {
+    if (!user) return null;
+    return `${user.firstName ?? ''} ${user.lastName ?? ''}`.trim() || null;
   }
 
   /** Money for a sentence or a stat block. Scoped: nothing else needs it yet. */
