@@ -9,7 +9,6 @@ import {
 import { Business } from '../businesses/entities/business.entity';
 import { PlansService } from './plans.service';
 import { PaymentsService } from '../payments/payments.service';
-import { Repository } from 'typeorm';
 import { BadRequestException } from '@nestjs/common';
 import { User } from '../users/entities/user.entity';
 import { Branch } from '../branches/entities/branch.entity';

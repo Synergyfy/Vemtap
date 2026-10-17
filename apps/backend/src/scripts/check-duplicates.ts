@@ -1,6 +1,4 @@
 import { DataSource } from 'typeorm';
-import { User } from '../modules/users/entities/user.entity';
-import { Business } from '../modules/businesses/entities/business.entity';
 import * as dotenv from 'dotenv';
 import { join } from 'path';
 

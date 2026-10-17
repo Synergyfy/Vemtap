@@ -2,7 +2,6 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { PlansService } from './plans.service';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Plan } from './entities/plan.entity';
-import { Repository } from 'typeorm';
 import { PricingUtil } from './utils/pricing.util';
 
 import { SubscriptionTaxService } from './services/subscription-tax.service';
@@ -10,7 +9,6 @@ import { TaxType } from './entities/subscription-tax-config.entity';
 
 describe('PlansService', () => {
   let service: PlansService;
-  let repository: Repository<Plan>;
 
   const mockPlan = {
     id: '1',
@@ -93,7 +91,6 @@ describe('PlansService', () => {
     }).compile();
 
     service = module.get<PlansService>(PlansService);
-    repository = module.get<Repository<Plan>>(getRepositoryToken(Plan));
   });
 
   it('should be defined', () => {

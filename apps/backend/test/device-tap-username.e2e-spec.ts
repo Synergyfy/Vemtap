@@ -66,7 +66,7 @@ describe('Device Tap - Username (e2e)', () => {
     const business = await businessRepo.findOne({
       where: { name: 'Test Business' },
     });
-    const inactiveBranch = await branchRepo.save(
+    await branchRepo.save(
       branchRepo.create({
         name: 'Inactive Branch',
         username: 'inactive-branch',

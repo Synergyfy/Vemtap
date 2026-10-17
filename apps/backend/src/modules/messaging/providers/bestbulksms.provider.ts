@@ -118,27 +118,27 @@ export class BestBulkSmsProvider implements MessagingProvider {
     }
   }
 
-  async parseWebhook(payload: any): Promise<{
+  parseWebhook(payload: any): Promise<{
     type: 'inbound' | 'delivery';
     data: InboundMessage | DeliveryReport;
   } | null> {
-    if (!payload) return null;
+    if (!payload) return Promise.resolve(null);
 
     if (payload.message_id && payload.status) {
-      return {
+      return Promise.resolve({
         type: 'delivery',
         data: {
           messageId: payload.message_id,
           status: this.mapStatus(payload.status),
           rawPayload: payload,
         },
-      };
+      });
     }
 
-    return null;
+    return Promise.resolve(null);
   }
 
-  estimateCost(payload: SendMessagePayload): number {
+  estimateCost(_payload: SendMessagePayload): number {
     return 1.0;
   }
 

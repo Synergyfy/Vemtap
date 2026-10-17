@@ -1,3 +1,4 @@
+import * as QRCode from 'qrcode';
 import {
   Injectable,
   NotFoundException,
@@ -881,8 +882,6 @@ export class CatalogueOfferService {
         `Failed to get branch offers from cache: ${err.message}`,
       );
     }
-
-    const skip = (page - 1) * limit;
 
     const qb = this.offerRepository
       .createQueryBuilder('offer')
@@ -2287,19 +2286,8 @@ export class CatalogueOfferService {
       .leftJoinAndSelect('offer.branch', 'branch')
       .leftJoinAndSelect('branch.business', 'business');
 
-    const ownership = [
-      'claim.userId = :userId',
-      'LOWER(claim.email) = LOWER(:email)',
-    ];
-    const ownershipParams: { userId: string; email: string; phone?: string } = {
-      userId: user.id,
-      email: user.email,
-    };
-    if (user.phone) {
-      ownership.push('claim.phone = :phone');
-      ownershipParams.phone = user.phone;
-    }
-    qb.where(`(${ownership.join(' OR ')})`, ownershipParams);
+    const ownership = this.claimOwnership(user);
+    qb.where(ownership.sql, ownership.params);
 
     if (query.status === MyClaimStatus.REDEEMED) {
       qb.andWhere('claim.status = :redeemed', {
@@ -2358,6 +2346,74 @@ export class CatalogueOfferService {
     };
   }
 
+  /**
+   * Which claims belong to the caller: linked by `userId`, or matched on the
+   * account's email / phone for claims made before the link existed.
+   */
+  private claimOwnership(user: User): {
+    sql: string;
+    params: { userId: string; email: string; phone?: string };
+  } {
+    const clauses = [
+      'claim.userId = :userId',
+      'LOWER(claim.email) = LOWER(:email)',
+    ];
+    const params: { userId: string; email: string; phone?: string } = {
+      userId: user.id,
+      email: user.email,
+    };
+    if (user.phone) {
+      clauses.push('claim.phone = :phone');
+      params.phone = user.phone;
+    }
+    return { sql: `(${clauses.join(' OR ')})`, params };
+  }
+
+  /** One of the caller's own claims, or a 404 (never another customer's). */
+  private async findOwnClaim(
+    user: User,
+    claimId: string,
+  ): Promise<CatalogueOfferClaim> {
+    const ownership = this.claimOwnership(user);
+    const claim = await this.claimRepository
+      .createQueryBuilder('claim')
+      .where('claim.id = :claimId', { claimId })
+      .andWhere(ownership.sql, ownership.params)
+      .getOne();
+    if (!claim) throw new NotFoundException('Claim not found');
+    return claim;
+  }
+
+  /** The pass QR: an SVG encoding the claim code the merchant verifies. */
+  async myClaimQr(
+    user: User,
+    claimId: string,
+  ): Promise<{ claimCode: string; svg: string }> {
+    const claim = await this.findOwnClaim(user, claimId);
+    const svg = await QRCode.toString(claim.claimCode, {
+      type: 'svg',
+      errorCorrectionLevel: 'M',
+      margin: 1,
+    });
+    return { claimCode: claim.claimCode, svg };
+  }
+
+  /**
+   * Gives an unused claim back. The row is soft-deleted, so the offer's
+   * claimed count (and any sold-out pause) frees the slot for someone else. A
+   * redeemed or expired claim is history and cannot be released.
+   */
+  async releaseMyClaim(user: User, claimId: string): Promise<void> {
+    const claim = await this.findOwnClaim(user, claimId);
+    if (
+      claim.status !== CatalogueOfferClaimStatus.CLAIMED ||
+      claim.expiresAt < new Date()
+    ) {
+      throw new BadRequestException('Only an active claim can be released');
+    }
+    await this.claimRepository.softDelete(claim.id);
+  }
+
   private toMyClaim(claim: CatalogueOfferClaim, now: Date): MyClaimDto {
     const offer = claim.offer;
     const originalPrice = (offer.items ?? []).reduce(
@@ -2409,6 +2465,11 @@ export class CatalogueOfferService {
         branchId: branch?.id ?? offer.branchId,
         branchName: branch?.name ?? '',
         branchAddress: branch?.address ?? business?.address ?? null,
+        branchPhone: branch?.phone ?? business?.phone ?? null,
+        branchLatitude:
+          branch?.latitude != null ? Number(branch.latitude) : null,
+        branchLongitude:
+          branch?.longitude != null ? Number(branch.longitude) : null,
         endDate: offer.endDate,
       },
     };

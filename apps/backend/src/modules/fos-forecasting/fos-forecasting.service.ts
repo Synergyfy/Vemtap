@@ -96,7 +96,7 @@ export class FosForecastingService {
     };
   }
 
-  async project(
+  project(
     dto: ForecastProjectionRequestDto,
   ): Promise<ForecastProjectionResponseDto> {
     let currentBiz = dto.baseBusinesses;
@@ -154,7 +154,7 @@ export class FosForecastingService {
     const healthAlert: 'HIGH_RISK' | 'HEALTHY' =
       isDeclining || mrrGrowthPercent < 0 ? 'HIGH_RISK' : 'HEALTHY';
 
-    return {
+    return Promise.resolve({
       summary: {
         projectedMrr: Math.round(lastMrr * 100) / 100,
         mrrGrowthPercent: Math.round(mrrGrowthPercent * 100) / 100,
@@ -163,7 +163,7 @@ export class FosForecastingService {
         healthAlert,
       },
       monthlyData,
-    };
+    });
   }
 
   async persist(dto: SaveForecastRequestDto): Promise<SavedForecastDto> {

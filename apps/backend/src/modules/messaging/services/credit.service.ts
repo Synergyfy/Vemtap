@@ -4,21 +4,17 @@ import {
   NotFoundException,
   Logger,
 } from '@nestjs/common';
-import { Repository, DataSource, Between } from 'typeorm';
+import { Repository, DataSource } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Business } from '../../businesses/entities/business.entity';
 import { Branch } from '../../branches/entities/branch.entity';
 import { Channel } from '../enums/channel.enum';
-import { MessageDirection, MessageStatus } from '../enums/message.enum';
 import { Message } from '../entities/message.entity';
 import { BusinessCredit } from '../entities/business-credit.entity';
 import { BusinessCreditWallet } from '../entities/business-credit-wallet.entity';
 import { CreditTransaction } from '../entities/credit-transaction.entity';
 import { CreditTransactionType } from '../enums/credit-transaction-type.enum';
-import {
-  Subscription,
-  SubscriptionStatus,
-} from '../../subscriptions/entities/subscription.entity';
+import { Subscription } from '../../subscriptions/entities/subscription.entity';
 import { Plan } from '../../subscriptions/entities/plan.entity';
 
 @Injectable()

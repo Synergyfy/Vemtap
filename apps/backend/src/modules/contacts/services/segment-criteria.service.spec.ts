@@ -17,7 +17,7 @@ describe('SegmentCriteriaService.buildMemberQuery', () => {
       spend: { minTotal: 50000, minAverageTicket: 20000 },
       location: { branchIds: ['b-1'] },
       deals: { offerIds: ['o-1'], redeemedAtLeast: 2, withinDays: 60 },
-      menu: { itemIds: [malicious as any], orderedAtLeast: 2 },
+      menu: { itemIds: [malicious], orderedAtLeast: 2 },
     });
 
     expect(sql).not.toContain('DROP TABLE');

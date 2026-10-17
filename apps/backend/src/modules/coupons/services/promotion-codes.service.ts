@@ -5,7 +5,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Like, ILike } from 'typeorm';
+import { Repository } from 'typeorm';
 import { PromotionCode } from '../entities/promotion-code.entity';
 import { Coupon } from '../entities/coupon.entity';
 import { CouponRedemption } from '../entities/coupon-redemption.entity';

@@ -8,7 +8,6 @@ import {
   IsArray,
   IsUUID,
 } from 'class-validator';
-import { UserRole } from '../entities/user.entity';
 
 export enum StaffPermission {
   DASHBOARD = 'dashboard',

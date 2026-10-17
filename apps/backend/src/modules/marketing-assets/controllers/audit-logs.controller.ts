@@ -1,4 +1,4 @@
-import { Controller, Get, Query, UseGuards, Param, Req } from '@nestjs/common';
+import { Controller, Get, Query, UseGuards } from '@nestjs/common';
 import { Request } from 'express';
 import {
   ApiTags,
@@ -8,16 +8,10 @@ import {
   ApiQuery,
 } from '@nestjs/swagger';
 import { AuditLogService } from '../services/audit-log.service';
-import { MarketingAuditLog } from '../entities/marketing-audit-log.entity';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../../common/guards/roles.guard';
 import { Roles } from '../../../common/decorators/roles.decorator';
 import { UserRole } from '../../users/entities/user.entity';
-import { User } from '../../users/entities/user.entity';
-
-interface RequestWithUser extends Request {
-  user: User;
-}
 
 @ApiTags('Marketing Audit Logs')
 @ApiBearerAuth()

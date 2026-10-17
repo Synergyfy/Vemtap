@@ -7,7 +7,6 @@ import { BusinessAddOn } from './entities/business-addon.entity';
 import { Business } from '../businesses/entities/business.entity';
 import { User } from '../users/entities/user.entity';
 import { BusinessesModule } from '../businesses/businesses.module';
-import { HttpModule } from '@nestjs/axios';
 import { PlansController } from './plans.controller';
 import { SubscriptionsController } from './subscriptions.controller';
 import { AddonsController } from './addons.controller';

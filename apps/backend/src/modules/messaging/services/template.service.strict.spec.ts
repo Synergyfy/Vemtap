@@ -5,11 +5,7 @@ import {
   MessageTemplate,
   TemplateStatus,
 } from '../entities/message-template.entity';
-import {
-  BadRequestException,
-  ForbiddenException,
-  NotFoundException,
-} from '@nestjs/common';
+import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import { Channel } from '../enums/channel.enum';
 import { User, UserRole } from '../../users/entities/user.entity';
 import { IsNull } from 'typeorm';

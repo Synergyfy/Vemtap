@@ -58,4 +58,19 @@ export class DealReview extends AbstractBaseEntity {
     default: DealReviewStatus.PENDING,
   })
   status: DealReviewStatus;
+
+  @ApiProperty({
+    example: 'Thank you! See you again soon.',
+    nullable: true,
+    description: 'Public reply from the business',
+  })
+  @Column({ type: 'text', nullable: true })
+  merchantReply: string | null;
+
+  @ApiProperty({ nullable: true })
+  @Column({ type: 'timestamp', nullable: true })
+  repliedAt: Date | null;
+
+  @Column({ type: 'uuid', nullable: true })
+  repliedById: string | null;
 }

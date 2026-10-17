@@ -10,7 +10,6 @@ import { User, UserRole } from '../users/entities/user.entity';
 
 describe('PosController', () => {
   let controller: PosController;
-  let service: PosService;
 
   const mockPosService = {
     completeSale: jest.fn(),
@@ -69,7 +68,6 @@ describe('PosController', () => {
     }).compile();
 
     controller = module.get<PosController>(PosController);
-    service = module.get<PosService>(PosService);
   });
 
   afterEach(() => {

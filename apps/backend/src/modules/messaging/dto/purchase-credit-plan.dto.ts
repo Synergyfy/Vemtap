@@ -1,5 +1,11 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsNotEmpty, IsUUID } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import {
+  IsString,
+  IsNotEmpty,
+  IsOptional,
+  IsUUID,
+  MaxLength,
+} from 'class-validator';
 
 export class PurchaseCreditPlanDto {
   @ApiProperty({
@@ -17,4 +23,15 @@ export class PurchaseCreditPlanDto {
   @IsUUID()
   @IsNotEmpty()
   branchId: string;
+}
+
+export class StartCreditCheckoutDto {
+  @ApiPropertyOptional({
+    example: 'vemtap://payment-return',
+    description: 'Where Paystack sends the customer after paying',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  callbackUrl?: string;
 }

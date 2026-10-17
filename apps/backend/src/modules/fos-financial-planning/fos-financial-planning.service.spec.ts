@@ -1,20 +1,14 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
 import { FosFinancialPlanningService } from './fos-financial-planning.service';
 import {
   FinancialTarget,
   TargetPeriodType,
 } from './entities/financial-target.entity';
-import {
-  FinancialTransaction,
-  FosTransactionType,
-} from '../fos-core/entities/financial-transaction.entity';
+import { FinancialTransaction } from '../fos-core/entities/financial-transaction.entity';
 
 describe('FosFinancialPlanningService', () => {
   let service: FosFinancialPlanningService;
-  let targetRepo: Repository<FinancialTarget>;
-  let transactionRepo: Repository<FinancialTransaction>;
 
   const mockTargetRepo = {
     create: jest.fn(),
@@ -43,12 +37,6 @@ describe('FosFinancialPlanningService', () => {
 
     service = module.get<FosFinancialPlanningService>(
       FosFinancialPlanningService,
-    );
-    targetRepo = module.get<Repository<FinancialTarget>>(
-      getRepositoryToken(FinancialTarget),
-    );
-    transactionRepo = module.get<Repository<FinancialTransaction>>(
-      getRepositoryToken(FinancialTransaction),
     );
   });
 

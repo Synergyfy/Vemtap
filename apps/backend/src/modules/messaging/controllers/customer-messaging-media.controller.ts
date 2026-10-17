@@ -22,7 +22,6 @@ import { Roles } from '../../../common/decorators/roles.decorator';
 import { UserRole } from '../../users/entities/user.entity';
 import { SkipSubscriptionCheck } from '../../subscriptions/decorators/skip-subscription-check.decorator';
 import { UploadsService } from '../../uploads/uploads.service';
-import { InboxService } from '../services/inbox.service';
 
 /**
  * Media for customer-side chats.

@@ -51,9 +51,15 @@ const BATCHABLE: Record<string, BatchPolicy> = {
     windowMs: DEFAULT_BATCH_WINDOW_MS,
     pushImmediately: false,
   },
+  product_comment: {
+    windowMs: DEFAULT_BATCH_WINDOW_MS,
+    pushImmediately: false,
+  },
 };
 
-export function getBatchPolicy(eventType: string | null | undefined): BatchPolicy | null {
+export function getBatchPolicy(
+  eventType: string | null | undefined,
+): BatchPolicy | null {
   if (!eventType) return null;
   return BATCHABLE[eventType] ?? null;
 }
@@ -73,9 +79,7 @@ export function buildBatchKey(
 ): string {
   const policy = BATCHABLE[eventType];
   const entity = policy?.entityOf?.(metadata);
-  return entity
-    ? `${userId}:${eventType}:${entity}`
-    : `${userId}:${eventType}`;
+  return entity ? `${userId}:${eventType}:${entity}` : `${userId}:${eventType}`;
 }
 
 /** Stable job id for the closer, so re-queueing the same batch is a no-op. */

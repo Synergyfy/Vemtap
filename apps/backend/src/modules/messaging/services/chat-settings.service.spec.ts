@@ -70,7 +70,7 @@ describe('ChatSettingsService', () => {
     it('should create a new rule if none exists', async () => {
       automationRepo.findOne.mockResolvedValue(null);
 
-      const result = await service.updateAutomatedReplies('branch-1', {
+      await service.updateAutomatedReplies('branch-1', {
         welcomeEnabled: true,
         welcomeMessage: 'Hello',
       });

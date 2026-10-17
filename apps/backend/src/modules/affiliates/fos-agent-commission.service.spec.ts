@@ -1,10 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { FosAgentCommissionService } from './fos-agent-commission.service';
-import {
-  FosAgentCommission,
-  FosCommissionStatus,
-} from './entities/agent-commission.entity';
+import { FosAgentCommission } from './entities/agent-commission.entity';
 import { FinancialTransaction } from '../fos-core/entities/financial-transaction.entity';
 
 describe('FosAgentCommissionService', () => {

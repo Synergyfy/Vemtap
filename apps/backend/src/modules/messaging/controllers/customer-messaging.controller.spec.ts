@@ -99,7 +99,10 @@ describe('CustomerMessagingController', () => {
 
   describe('markThreadAsRead', () => {
     it('should scope the clear to the calling customer', async () => {
-      await controller.markThreadAsRead({ threadId: 'th-1' }, { user: mockUser });
+      await controller.markThreadAsRead(
+        { threadId: 'th-1' },
+        { user: mockUser },
+      );
       // The third argument is the customer scope: without it the service would
       // take the branch branch of the method and zero the wrong counter.
       expect(inboxService.markAsRead).toHaveBeenCalledWith(

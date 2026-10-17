@@ -12,7 +12,7 @@ import { BranchesService } from '../../branches/branches.service';
 import { DataSource } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
 
-import { User, UserRole } from '../../users/entities/user.entity';
+import { User } from '../../users/entities/user.entity';
 import { Message } from '../entities/message.entity';
 import { MessageLog } from '../entities/message-log.entity';
 import { ConversationThread } from '../entities/conversation-thread.entity';
@@ -33,7 +33,6 @@ describe('MessagingEngineService Credit Logic', () => {
   let branchRepoMock: any;
   let userRepoMock: any;
   let creditServiceMock: any;
-  let creditPlanService: CreditPlanService;
   let paymentsServiceMock: any;
 
   const mockIndividualQueue = {
@@ -121,7 +120,6 @@ describe('MessagingEngineService Credit Logic', () => {
     }).compile();
 
     service = module.get<MessagingEngineService>(MessagingEngineService);
-    creditPlanService = module.get<CreditPlanService>(CreditPlanService);
   });
 
   it('should throw BadRequestException if credits are insufficient', async () => {

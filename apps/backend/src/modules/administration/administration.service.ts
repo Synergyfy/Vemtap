@@ -5,12 +5,7 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import {
-  Repository,
-  FindOptionsWhere,
-  LessThan,
-  MoreThanOrEqual,
-} from 'typeorm';
+import { Repository, LessThan, MoreThanOrEqual } from 'typeorm';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { User, UserRole, UserStatus } from '../users/entities/user.entity';
 import { ImpersonationToken } from './entities/impersonation-token.entity';

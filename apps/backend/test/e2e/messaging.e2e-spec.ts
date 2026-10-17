@@ -1,7 +1,6 @@
 import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { createTestApp } from '../utils/create-app';
-import { createAuthenticatedUser } from '../utils/auth';
 import { Repository } from 'typeorm';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import {

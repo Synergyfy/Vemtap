@@ -10,14 +10,10 @@ import {
 } from '../../src/modules/users/entities/user.entity';
 import { Business } from '../../src/modules/businesses/entities/business.entity';
 import { Branch } from '../../src/modules/branches/entities/branch.entity';
-import {
-  ConversationThread,
-  ThreadStatus,
-} from '../../src/modules/messaging/entities/conversation-thread.entity';
+import { ConversationThread } from '../../src/modules/messaging/entities/conversation-thread.entity';
 import { Message } from '../../src/modules/messaging/entities/message.entity';
 import { Visit } from '../../src/modules/visitors/entities/visit.entity';
 import { AuthService } from '../../src/modules/auth/auth.service';
-import { Channel } from '../../src/modules/messaging/enums/channel.enum';
 import { MessageDirection } from '../../src/modules/messaging/enums/message.enum';
 import * as bcrypt from 'bcrypt';
 
@@ -36,7 +32,6 @@ describe('Messaging Inbox (e2e)', () => {
   let otherVisitorToken: string;
   let branchId: string;
   let customerId: string;
-  let otherCustomerId: string;
 
   beforeAll(async () => {
     app = await createTestApp();
@@ -117,7 +112,6 @@ describe('Messaging Inbox (e2e)', () => {
         status: UserStatus.ACTIVE,
       } as any),
     )) as any;
-    otherCustomerId = otherVisitorUser.id;
 
     // Login
     const ownerLogin = await authService.login({

@@ -1476,7 +1476,7 @@ export class AuthService {
     return { message: 'Password reset successfully' };
   }
 
-  async switchRole(user: User, targetRole: UserRole) {
+  async switchRole(user: User & { sessionId?: string }, targetRole: UserRole) {
     // Only the two sides of a dual-role account are switchable — never
     // Manager/Staff/Admin, which are assigned, not self-selected.
     if (targetRole !== UserRole.OWNER && targetRole !== UserRole.CUSTOMER) {
@@ -1509,6 +1509,9 @@ export class AuthService {
       role: targetRole,
       branchId: targetRole === UserRole.OWNER ? dbUser.branchId : null,
       businessId: targetRole === UserRole.OWNER ? business?.id : null,
+      // Same sign-in, same device: keeps the switched token revocable from
+      // "Your devices" instead of outliving its session.
+      ...(user.sessionId ? { sid: user.sessionId } : {}),
     };
 
     delete (dbUser as Partial<User>).password;

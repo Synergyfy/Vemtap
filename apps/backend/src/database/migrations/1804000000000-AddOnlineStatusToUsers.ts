@@ -23,6 +23,8 @@ export class AddOnlineStatusToUsers1804000000000 implements MigrationInterface {
   public async down(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`DROP INDEX IF EXISTS "IDX_users_isOnline"`);
     await queryRunner.query(`DROP INDEX IF EXISTS "IDX_users_lastSeen"`);
-    await queryRunner.query(`ALTER TABLE "users" DROP COLUMN "isOnline", DROP COLUMN "lastSeen"`);
+    await queryRunner.query(
+      `ALTER TABLE "users" DROP COLUMN "isOnline", DROP COLUMN "lastSeen"`,
+    );
   }
 }

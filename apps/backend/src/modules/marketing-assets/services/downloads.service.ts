@@ -9,6 +9,7 @@ import { MarketingDownload } from '../entities/marketing-download.entity';
 import { MarketingAsset } from '../entities/marketing-asset.entity';
 import { User } from '../../users/entities/user.entity';
 import { AuditLogService } from './audit-log.service';
+import { UserRole } from '../../users/entities/user.entity';
 
 @Injectable()
 export class DownloadsService {
@@ -36,7 +37,7 @@ export class DownloadsService {
     }
 
     // Verify ownership
-    const isAdmin = user.role === 'Admin';
+    const isAdmin = user.role === UserRole.ADMIN;
     if (!isAdmin && asset.businessId !== businessId) {
       throw new ForbiddenException('You do not own this asset');
     }
@@ -65,7 +66,7 @@ export class DownloadsService {
     user: User,
     assetId?: string,
   ): Promise<MarketingDownload[]> {
-    const isAdmin = user.role === 'Admin';
+    const isAdmin = user.role === UserRole.ADMIN;
     const businessId = user.businessId || user.ownedBusiness?.id;
     if (!isAdmin && !businessId) {
       throw new ForbiddenException('User is not associated with any business');

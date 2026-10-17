@@ -385,7 +385,7 @@ describe('Auth & Notifications (e2e)', () => {
       .send({ email: dummyEmail, code: otpRecord.code })
       .expect(200);
 
-    const registerRes = await request(app.getHttpServer())
+    await request(app.getHttpServer())
       .post('/api/v1/auth/register')
       .send({
         firstName: 'Dummy',
@@ -394,7 +394,6 @@ describe('Auth & Notifications (e2e)', () => {
         password: 'Password123!',
       })
       .expect(201);
-    const token = registerRes.body.access_token;
 
     // Complete setup: update to real email
     await request(app.getHttpServer())
@@ -438,7 +437,7 @@ describe('Auth & Notifications (e2e)', () => {
       .expect(200);
 
     // 3. Register Owner with all details
-    const registerRes = await request(app.getHttpServer())
+    await request(app.getHttpServer())
       .post('/api/v1/auth/register/owner')
       .send({
         email: ownerEmail,

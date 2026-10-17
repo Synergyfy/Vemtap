@@ -1,5 +1,5 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsOptional, IsString, IsUUID } from 'class-validator';
+import { IsOptional, IsString } from 'class-validator';
 
 export class UpdateBranchFormSettingsDto {
   @ApiPropertyOptional({ example: '#2563EB' })

@@ -131,6 +131,15 @@ export class MyClaimOfferDto {
   })
   branchAddress: string | null;
 
+  @ApiProperty({ example: '+2348012345678', nullable: true })
+  branchPhone: string | null;
+
+  @ApiProperty({ example: 9.0765, nullable: true })
+  branchLatitude: number | null;
+
+  @ApiProperty({ example: 7.3986, nullable: true })
+  branchLongitude: number | null;
+
   @ApiProperty({
     example: '2026-11-07T10:00:00.000Z',
     nullable: true,

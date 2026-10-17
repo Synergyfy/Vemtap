@@ -10,7 +10,7 @@ import { EventsGateway } from './events.gateway';
     TypeOrmModule.forFeature([User]),
     JwtModule.registerAsync({
       imports: [ConfigModule],
-      useFactory: async (configService: ConfigService) => ({
+      useFactory: (configService: ConfigService) => ({
         secret: configService.get<string>('JWT_SECRET'),
         signOptions: {
           expiresIn: configService.get<string>('JWT_EXPIRATION') as any,

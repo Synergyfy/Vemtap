@@ -1,6 +1,7 @@
 import { BadRequestException } from '@nestjs/common';
 import {
   assertCompareAtPrice,
+  effectiveUnitPrice,
   normalizeVariants,
 } from './catalogue-item.utils';
 
@@ -80,7 +81,7 @@ describe('assertCompareAtPrice', () => {
 
 describe('CatalogueItem legacy variants on load', () => {
   // Imported here so the entity's @AfterLoad hook is exercised directly.
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
+
   const { CatalogueItem } = require('../entities/catalogue-item.entity');
 
   it('presents stored legacy variants in the current shape with stable ids', () => {
@@ -103,5 +104,55 @@ describe('CatalogueItem legacy variants on load', () => {
     const item = Object.assign(new CatalogueItem(), { price: 100, variants });
     item.normalizeStoredVariants();
     expect(item.variants).toBe(variants);
+  });
+});
+
+describe('effectiveUnitPrice', () => {
+  it('takes a percentage or fixed discount off, never below zero', () => {
+    expect(
+      effectiveUnitPrice({
+        price: 5000,
+        discountType: 'percentage',
+        discountValue: 10,
+      }),
+    ).toBe(4500);
+    expect(
+      effectiveUnitPrice({
+        price: '5000.00',
+        discountType: 'fixed',
+        discountValue: '750',
+      }),
+    ).toBe(4250);
+    expect(
+      effectiveUnitPrice({
+        price: 5000,
+        discountType: 'percentage',
+        discountValue: 150,
+      }),
+    ).toBe(0);
+    expect(
+      effectiveUnitPrice({
+        price: 5000,
+        discountType: 'fixed',
+        discountValue: 9000,
+      }),
+    ).toBe(0);
+  });
+
+  it('charges the list price with no usable discount', () => {
+    expect(
+      effectiveUnitPrice({
+        price: 5000,
+        discountType: 'none',
+        discountValue: 10,
+      }),
+    ).toBe(5000);
+    expect(
+      effectiveUnitPrice({
+        price: 3333,
+        discountType: 'percentage',
+        discountValue: null,
+      }),
+    ).toBe(3333);
   });
 });

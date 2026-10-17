@@ -1,5 +1,4 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { BadRequestException } from '@nestjs/common';
 import { UsersController } from './users.controller';
 import { UserRole } from './entities/user.entity';
 import { UsersService } from './users.service';
@@ -17,6 +16,7 @@ describe('UsersController', () => {
     adminDeleteUser: jest.fn(),
     findByBranch: jest.fn(),
     findTeamMembers: jest.fn(),
+    resendTeamInvite: jest.fn(),
     create: jest.fn(),
     findByEmail: jest.fn(),
     updateStaff: jest.fn(),
@@ -112,6 +112,46 @@ describe('UsersController', () => {
         branchId: 'branch-1',
         businessId: undefined,
       });
+    });
+
+    it('should include the owner in the business-wide team', async () => {
+      const ownerReq = {
+        user: {
+          id: 'user-1',
+          role: UserRole.OWNER,
+          businessId: 'business-1',
+          branchId: null,
+        },
+      };
+      const team = [{ id: 'user-1', role: UserRole.OWNER }];
+      mockUsersService.findTeamMembers.mockResolvedValue(team);
+
+      const result = await controller.getTeam(ownerReq, { allBranches: true });
+
+      expect(result).toEqual(team);
+      // The service's default role set would answer without the owner — no
+      // owner card, no owners filter, no "(You)" marker for the viewer.
+      expect(mockUsersService.findTeamMembers).toHaveBeenCalledWith({
+        businessId: 'business-1',
+        roles: [UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF],
+      });
+    });
+  });
+
+  describe('resendTeamInvite', () => {
+    it('should re-issue the invitation from the member’s own branch', async () => {
+      const invited = { id: 'user-2', status: 'Invited' };
+      mockUsersService.resendTeamInvite.mockResolvedValue(invited);
+
+      const result = await controller.resendTeamInvite(mockReq, 'user-2', {
+        branchId: 'branch-1',
+      });
+
+      expect(result).toEqual(invited);
+      expect(mockUsersService.resendTeamInvite).toHaveBeenCalledWith(
+        'user-2',
+        'branch-1',
+      );
     });
   });
 

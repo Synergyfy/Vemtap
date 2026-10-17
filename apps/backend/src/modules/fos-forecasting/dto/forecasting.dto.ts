@@ -1,12 +1,5 @@
-import {
-  IsString,
-  IsNotEmpty,
-  IsNumber,
-  IsOptional,
-  Min,
-  Max,
-} from 'class-validator';
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsString, IsNotEmpty, IsNumber, Min, Max } from 'class-validator';
+import { ApiProperty } from '@nestjs/swagger';
 
 export class ForecastProjectionRequestDto {
   @ApiProperty({ example: 340 })

@@ -206,8 +206,7 @@ export class AiCreditService {
    * Throws ForbiddenException if no credits remain.
    */
   async consume(targetId: string): Promise<void> {
-    const { limit, enabled, businessId } =
-      await this.getPlanCreditLimit(targetId);
+    const { limit, businessId } = await this.getPlanCreditLimit(targetId);
 
     const row = await this.getOrCreateUsageRow(businessId);
 

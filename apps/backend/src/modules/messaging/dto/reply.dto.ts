@@ -31,7 +31,8 @@ export class ReplyDto {
   metadata?: any;
 
   @ApiPropertyOptional({
-    example: 'https://res.cloudinary.com/vemtap/image/upload/vemtap/messaging/photo.jpg',
+    example:
+      'https://res.cloudinary.com/vemtap/image/upload/vemtap/messaging/photo.jpg',
     description:
       'Hosted image to send with the message. Images may travel without text, ' +
       'in which case `content` may be an empty string.',

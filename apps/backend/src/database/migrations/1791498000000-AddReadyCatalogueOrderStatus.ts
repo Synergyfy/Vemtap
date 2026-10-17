@@ -4,9 +4,7 @@ import { MigrationInterface, QueryRunner } from 'typeorm';
  * Orders move through a distinct "ready" stage between processing and
  * completed. The UI already had the stage; the enum did not.
  */
-export class AddReadyCatalogueOrderStatus1791498000000
-  implements MigrationInterface
-{
+export class AddReadyCatalogueOrderStatus1791498000000 implements MigrationInterface {
   name = 'AddReadyCatalogueOrderStatus1791498000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {

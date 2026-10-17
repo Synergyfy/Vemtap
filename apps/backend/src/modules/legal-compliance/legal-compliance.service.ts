@@ -2,7 +2,6 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
-  InternalServerErrorException,
   Logger,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -15,7 +14,6 @@ import {
 } from './dto/create-agreement.dto';
 import {
   AgreementResponseDto,
-  AgreementHistoryResponseDto,
   PaginatedAgreementHistoryDto,
 } from './dto/agreement-response.dto';
 

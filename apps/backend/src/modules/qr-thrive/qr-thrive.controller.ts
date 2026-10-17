@@ -27,6 +27,7 @@ import {
   UpdateFolderDto,
   SpecializedLeadsQueryDto,
   UpdateLeadStatusDto,
+  UpdateQrCodeStatusDto,
 } from './dto/qr-thrive.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
@@ -118,14 +119,16 @@ export class QrThriveController {
     return this.qrThriveService.duplicateQRCode(req.user, branchId, qrCodeId);
   }
 
-  @Patch('branches/:branchId/qr-codes/:qrCodeId')
+  // Its own path: declared on `qr-codes/:qrCodeId` it was shadowed by the
+  // general update route above and never reached.
+  @Patch('branches/:branchId/qr-codes/:qrCodeId/status')
   @Roles(UserRole.OWNER, UserRole.MANAGER)
   @ApiOperation({ summary: 'Update QR code status (active/archived)' })
   async setStatus(
     @Req() req: RequestWithUser,
     @Param('branchId') branchId: string,
     @Param('qrCodeId') qrCodeId: string,
-    @Body() dto: { status: 'active' | 'archived' },
+    @Body() dto: UpdateQrCodeStatusDto,
   ) {
     return this.qrThriveService.updateQRCode(req.user, branchId, qrCodeId, dto);
   }

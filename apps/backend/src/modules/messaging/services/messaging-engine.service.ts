@@ -182,7 +182,7 @@ export class MessagingEngineService {
     let totalCreditsNeeded = 0;
     if (channel === Channel.SMS) {
       for (const customer of validUsers) {
-        const resolved = await this.resolvePlaceholdersSync(
+        const resolved = this.resolvePlaceholdersSync(
           baseContent,
           customer,
           branch,

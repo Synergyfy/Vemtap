@@ -1,9 +1,6 @@
 import { Entity, Column, ManyToOne, JoinColumn, Index } from 'typeorm';
 import { AbstractBaseEntity } from '../../../common/entities/base.entity';
 import { PosRegisterSession } from './pos-register-session.entity';
-import { Business } from '../../businesses/entities/business.entity';
-import { Branch } from '../../branches/entities/branch.entity';
-import { User } from '../../users/entities/user.entity';
 
 @Entity('pos_cash_drops')
 @Index(['registerSessionId', 'createdAt'])

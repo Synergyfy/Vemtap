@@ -12,7 +12,7 @@ import { BranchesService } from '../../branches/branches.service';
 import { DataSource } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
 
-import { User, UserRole } from '../../users/entities/user.entity';
+import { User } from '../../users/entities/user.entity';
 import { Visit } from '../../visitors/entities/visit.entity';
 import { Message } from '../entities/message.entity';
 import { MessageLog } from '../entities/message-log.entity';

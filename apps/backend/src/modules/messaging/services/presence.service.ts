@@ -70,7 +70,10 @@ export class PresenceService {
     set?.delete(socketId);
 
     if (set && set.size > 0) {
-      return { isOnline: true, lastSeen: this.lastSeen.get(key)?.toISOString() ?? null };
+      return {
+        isOnline: true,
+        lastSeen: this.lastSeen.get(key)?.toISOString() ?? null,
+      };
     }
 
     this.sockets.delete(key);
@@ -90,7 +93,10 @@ export class PresenceService {
   }
 
   /** Many statuses in one pass, as a plain object so it survives JSON. */
-  getStatuses(kind: PresenceKind, ids: string[]): Record<string, PresenceStatus> {
+  getStatuses(
+    kind: PresenceKind,
+    ids: string[],
+  ): Record<string, PresenceStatus> {
     const out: Record<string, PresenceStatus> = {};
     for (const id of ids ?? []) {
       if (id) out[id] = this.getStatus(kind, id);

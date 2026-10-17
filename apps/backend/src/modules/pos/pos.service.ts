@@ -11,7 +11,6 @@ import { InjectRepository } from '@nestjs/typeorm';
 import {
   Repository,
   Between,
-  ILike,
   In,
   DataSource,
   EntityManager,
@@ -90,6 +89,12 @@ import {
   stampStatus,
 } from '../catalogue-orders/order-events';
 import { PosCustomerSegment } from './dto/pos-customer-query.dto';
+import {
+  LAPSED_CUSTOMER_DAYS,
+  NEW_CUSTOMER_DAYS,
+  VIP_MIN_SPEND,
+  VIP_MIN_VISITS,
+} from '../../common/utils/customer-segments';
 
 export interface BatchSyncResult {
   clientRef: string | null;
@@ -113,11 +118,6 @@ interface PosCustomerRow {
   firstVisitAt: Date | null;
   lastVisitAt: Date | null;
 }
-
-const VIP_MIN_VISITS = 10;
-const VIP_MIN_SPEND = 100_000;
-const NEW_CUSTOMER_DAYS = 30;
-const LAPSED_CUSTOMER_DAYS = 60;
 
 @Injectable()
 export class PosService {

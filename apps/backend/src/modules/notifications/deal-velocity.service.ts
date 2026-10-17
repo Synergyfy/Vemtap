@@ -40,11 +40,31 @@ export class DealVelocityService {
     private readonly notificationsService: NotificationsService,
     private readonly configService: ConfigService,
   ) {
-    this.windowHours = readNumber(this.configService, 'DEAL_VELOCITY_WINDOW_HOURS', 2);
-    this.baselineDays = readNumber(this.configService, 'DEAL_VELOCITY_BASELINE_DAYS', 7);
-    this.minClaims = readNumber(this.configService, 'DEAL_VELOCITY_MIN_CLAIMS', 5);
-    this.minUplift = readNumber(this.configService, 'DEAL_VELOCITY_MIN_UPLIFT', 0.25);
-    this.cooldownHours = readNumber(this.configService, 'DEAL_VELOCITY_COOLDOWN_HOURS', 8);
+    this.windowHours = readNumber(
+      this.configService,
+      'DEAL_VELOCITY_WINDOW_HOURS',
+      2,
+    );
+    this.baselineDays = readNumber(
+      this.configService,
+      'DEAL_VELOCITY_BASELINE_DAYS',
+      7,
+    );
+    this.minClaims = readNumber(
+      this.configService,
+      'DEAL_VELOCITY_MIN_CLAIMS',
+      5,
+    );
+    this.minUplift = readNumber(
+      this.configService,
+      'DEAL_VELOCITY_MIN_UPLIFT',
+      0.25,
+    );
+    this.cooldownHours = readNumber(
+      this.configService,
+      'DEAL_VELOCITY_COOLDOWN_HOURS',
+      8,
+    );
   }
 
   @Cron(CronExpression.EVERY_HOUR)
@@ -67,7 +87,10 @@ export class DealVelocityService {
   async run(): Promise<{ checked: number; notified: number }> {
     const now = new Date();
     const windowStart = hoursAgo(now, this.windowHours);
-    const baselineStart = daysAgo(now, this.baselineDays + this.windowHours / 24);
+    const baselineStart = daysAgo(
+      now,
+      this.baselineDays + this.windowHours / 24,
+    );
     const baselineEnd = daysAgo(now, this.baselineDays);
 
     const [current, baseline] = await Promise.all([

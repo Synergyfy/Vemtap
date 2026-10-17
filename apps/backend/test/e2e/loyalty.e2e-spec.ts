@@ -1,15 +1,12 @@
 import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { createTestApp } from '../utils/create-app';
-import { DataSource } from 'typeorm';
 
 describe('LoyaltyController (e2e)', () => {
   let app: INestApplication;
-  let dataSource: DataSource;
 
   beforeAll(async () => {
     app = await createTestApp();
-    dataSource = app.get(DataSource);
   });
 
   afterAll(async () => {

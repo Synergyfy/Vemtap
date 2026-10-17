@@ -8,8 +8,9 @@ import {
 } from './batching.policy';
 
 describe('batching policy', () => {
-  it('batches ratings and nothing else', () => {
+  it('batches ratings and product comments, nothing else', () => {
     expect(isBatchable('new_rating')).toBe(true);
+    expect(isBatchable('product_comment')).toBe(true);
     expect(isBatchable('new_order')).toBe(false);
     expect(isBatchable('new_pos_order')).toBe(false);
     expect(isBatchable('new_message')).toBe(false);
@@ -55,6 +56,22 @@ describe('batching policy', () => {
 });
 
 describe('aggregate copy', () => {
+  it('summarises a burst of product comments', () => {
+    expect(
+      buildAggregateCopy(
+        'product_comment',
+        [{ name: 'Ada O.' }, { name: 'Bayo K.' }],
+        2,
+      ),
+    ).toEqual({
+      title: 'New product comments',
+      message: 'Ada O. and Bayo K. left 2 comments on your products',
+    });
+    expect(
+      buildAggregateCopy('product_comment', [{ name: 'Ada O.' }], 1),
+    ).toBeNull();
+  });
+
   it('names two actors and counts the rest against the true total', () => {
     const copy = buildAggregateCopy(
       'new_rating',
@@ -73,7 +90,9 @@ describe('aggregate copy', () => {
       [{ name: 'Jane' }, { name: 'Amara' }],
       2,
     );
-    expect(copy?.message).toBe('Jane and Amara left 2 ratings on your business');
+    expect(copy?.message).toBe(
+      'Jane and Amara left 2 ratings on your business',
+    );
   });
 
   it('collapses long name lists into "N others"', () => {
@@ -81,17 +100,26 @@ describe('aggregate copy', () => {
     // reads "Jane, Amara and 2 others", which names all four.
     const copy = buildAggregateCopy(
       'new_rating',
-      [{ name: 'Jane' }, { name: 'Amara' }, { name: 'Chidi' }, { name: 'Bola' }],
+      [
+        { name: 'Jane' },
+        { name: 'Amara' },
+        { name: 'Chidi' },
+        { name: 'Bola' },
+      ],
       4,
     );
-    expect(copy?.message).toBe('Jane, Amara and 2 others left 4 ratings on your business');
+    expect(copy?.message).toBe(
+      'Jane, Amara and 2 others left 4 ratings on your business',
+    );
   });
 
   it('counts events whose names were not stored', () => {
     // The row only keeps five actor names, so a group larger than that has
     // real contributors beyond the stored ones — "others" must count from the
     // true total, not from the stored names, or the sentence undercounts.
-    const actors = Array.from({ length: 5 }, (_, i) => ({ name: `Person${i}` }));
+    const actors = Array.from({ length: 5 }, (_, i) => ({
+      name: `Person${i}`,
+    }));
     const copy = buildAggregateCopy('new_rating', actors, 12);
     expect(copy?.message).toBe(
       'Person0, Person1 and 10 others left 12 ratings on your business',
@@ -110,7 +138,9 @@ describe('aggregate copy', () => {
     // Only one of the three entries yields a name, so the other two events
     // count as unnamed rather than being silently dropped from the sentence.
     const copy = buildAggregateCopy('new_rating', [null, 'Jane', 7], 3);
-    expect(copy?.message).toBe('Jane and 2 others left 3 ratings on your business');
+    expect(copy?.message).toBe(
+      'Jane and 2 others left 3 ratings on your business',
+    );
   });
 
   it('returns null for a single event, so the stored prose is kept', () => {

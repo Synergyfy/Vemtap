@@ -265,7 +265,10 @@ describe('NotificationsService', () => {
     });
 
     it('should not re-save a notification that is already read', async () => {
-      notifRepo.findOne.mockResolvedValue({ ...mockNotification, isRead: true });
+      notifRepo.findOne.mockResolvedValue({
+        ...mockNotification,
+        isRead: true,
+      });
 
       await service.markAsRead('notif-1', 'user-1');
 

@@ -7,13 +7,11 @@ import { ProductReview } from './entities/product-review.entity';
 import { Quote } from './entities/quote.entity';
 import { Order } from './entities/order.entity';
 import { QuoteNegotiation } from './entities/quote-negotiation.entity';
-import { Repository } from 'typeorm';
 import { PaymentsService } from '../payments/payments.service';
 import { ConflictException } from '@nestjs/common';
 
 describe('ProductsService - Product Types', () => {
   let service: ProductsService;
-  let productTypeRepo: Repository<ProductType>;
 
   const mockProductTypeRepo = {
     create: jest.fn(),
@@ -64,9 +62,6 @@ describe('ProductsService - Product Types', () => {
     }).compile();
 
     service = module.get<ProductsService>(ProductsService);
-    productTypeRepo = module.get<Repository<ProductType>>(
-      getRepositoryToken(ProductType),
-    );
   });
 
   afterEach(() => {

@@ -1,12 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import {
-  IsEnum,
-  IsNotEmpty,
-  IsOptional,
-  IsString,
-  IsArray,
-  IsUUID,
-} from 'class-validator';
+import { IsEnum, IsOptional, IsString, IsArray, IsUUID } from 'class-validator';
 import { Channel } from '../enums/channel.enum';
 import { AudienceType } from '../entities/message-campaign.entity';
 

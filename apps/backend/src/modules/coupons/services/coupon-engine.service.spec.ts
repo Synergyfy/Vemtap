@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { BadRequestException } from '@nestjs/common';
 import { CouponEngineService } from './coupon-engine.service';
 import {
   Coupon,
@@ -14,10 +14,7 @@ import {
   Subscription,
   BillingPeriod,
 } from '../../subscriptions/entities/subscription.entity';
-import {
-  SubscriptionTaxService,
-  TaxCalculationResult,
-} from '../../subscriptions/services/subscription-tax.service';
+import { SubscriptionTaxService } from '../../subscriptions/services/subscription-tax.service';
 import { TaxType } from '../../subscriptions/entities/subscription-tax-config.entity';
 
 describe('CouponEngineService', () => {
@@ -56,6 +53,7 @@ describe('CouponEngineService', () => {
     maxCatalogueCategories: 10,
     maxCatalogueOffers: 5,
     automationsEnabled: true,
+    autoFeatureDeals: false,
     maxAutomations: 10,
     isActive: true,
     description: 'Pro plan for businesses',

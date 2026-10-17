@@ -9,9 +9,7 @@ import { MigrationInterface, QueryRunner } from 'typeorm';
  * time. Nullable so the column matches the contract; existing rows are
  * untouched.
  */
-export class AddCatalogueItemShortDescriptionNullability1802000000000
-  implements MigrationInterface
-{
+export class AddCatalogueItemShortDescriptionNullability1802000000000 implements MigrationInterface {
   name = 'AddCatalogueItemShortDescriptionNullability1802000000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {

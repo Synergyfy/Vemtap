@@ -4,19 +4,20 @@ import {
   Post,
   Body,
   Patch,
+  Put,
   Delete,
   UseGuards,
   Request,
   Param,
   Query,
   BadRequestException,
+  NotFoundException,
 } from '@nestjs/common';
 import {
   ApiTags,
   ApiOperation,
   ApiResponse,
   ApiBearerAuth,
-  ApiQuery,
 } from '@nestjs/swagger';
 import { UsersService } from './users.service';
 import { User, UserRole } from './entities/user.entity';
@@ -40,8 +41,18 @@ import { Public } from '../../common/decorators/public.decorator';
 import { ParseUUIDPipe, Inject, forwardRef } from '@nestjs/common';
 import { QrThriveService } from '../qr-thrive/qr-thrive.service';
 import { BusinessesService } from '../businesses/businesses.service';
-import { RenameSessionDto } from './dto/rename-session.dto';
+import {
+  DescribeCurrentSessionDto,
+  RenameSessionDto,
+} from './dto/rename-session.dto';
 import { CheckPhoneQueryDto } from './dto/check-phone-query.dto';
+
+/** The request as the JWT guard leaves it, for the session routes. */
+interface SessionRequest {
+  user: { id: string; sessionId?: string };
+  headers: Record<string, string | string[] | undefined>;
+  ip?: string;
+}
 
 @ApiTags('Users')
 @ApiBearerAuth()
@@ -112,8 +123,43 @@ export class UsersController {
     UserRole.CUSTOMER,
   )
   @ApiOperation({ summary: 'List linked login devices for the current user' })
-  async getLinkedDevices(@Request() req) {
-    return this.usersService.listSessions(req.user.id);
+  async getLinkedDevices(@Request() req: SessionRequest) {
+    return this.usersService.listSessions(req.user.id, req.user.sessionId);
+  }
+
+  @Put('linked-devices/current')
+  @Roles(
+    UserRole.ADMIN,
+    UserRole.OWNER,
+    UserRole.MANAGER,
+    UserRole.STAFF,
+    UserRole.AGENT,
+    UserRole.CUSTOMER,
+  )
+  @ApiOperation({
+    summary: 'Describe the device this token signed in on',
+    description:
+      'Sets the current session’s device name and platform (sent once by the app after sign-in) and records the user agent and IP. 404 for a token without a session.',
+  })
+  async describeCurrentDevice(
+    @Request() req: SessionRequest,
+    @Body() dto: DescribeCurrentSessionDto,
+  ) {
+    if (!req.user.sessionId) {
+      throw new NotFoundException('Linked device not found');
+    }
+    const forwarded = req.headers['x-forwarded-for'];
+    return this.usersService.describeSession(req.user.id, req.user.sessionId, {
+      deviceName: dto.deviceName,
+      platform: dto.platform,
+      userAgent: (req.headers['user-agent'] as string | undefined) ?? null,
+      ipAddress:
+        (typeof forwarded === 'string'
+          ? forwarded.split(',')[0].trim()
+          : null) ??
+        req.ip ??
+        null,
+    });
   }
 
   @Patch('linked-devices/:id')
@@ -212,6 +258,20 @@ export class UsersController {
     return this.usersService.inviteStaff(branchId, dto);
   }
 
+  @Post('team/:id/resend-invite')
+  @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF)
+  @Permissions('staff')
+  @ApiOperation({ summary: 'Resend a pending staff invitation email' })
+  @ApiResponse({ status: 201, type: User })
+  async resendTeamInvite(
+    @Request() req,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Query() filter: BranchFilterDto,
+  ) {
+    const branchId = this.getBranchId(req, filter.branchId);
+    return this.usersService.resendTeamInvite(id, branchId);
+  }
+
   @Get('team')
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.ADMIN, UserRole.STAFF)
   @Permissions('staff')
@@ -224,7 +284,14 @@ export class UsersController {
       filter.allBranches &&
       (req.user.role === UserRole.OWNER || req.user.role === UserRole.ADMIN)
     ) {
-      return this.usersService.findTeamMembers({ businessId });
+      // The service's default role set is [MANAGER, STAFF], which answers the
+      // business-wide directory without the owner — no owner card, no owners
+      // filter, and no "(You)" marker for the person looking at it. The
+      // directory asks for every team role, so name them explicitly.
+      return this.usersService.findTeamMembers({
+        businessId,
+        roles: [UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF],
+      });
     }
 
     const branchId = this.getBranchId(req, filter.branchId);

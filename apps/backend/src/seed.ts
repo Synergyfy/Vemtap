@@ -178,7 +178,7 @@ async function bootstrap() {
     console.log('Created Owner: business@latap.com');
 
     // Create Business for Owner (this automatically creates Main Branch and links owner)
-    const biz = await businessesService.create({
+    await businessesService.create({
       name: 'The Azure Bistro',
       monthlyVisitors: '501-2000',
       ownerId: owner.id,

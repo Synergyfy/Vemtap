@@ -4,19 +4,32 @@ import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Repository } from 'typeorm';
 import { CreditPlanService } from './credit-plan.service';
 import { CreditPlan } from '../entities/credit-plan.entity';
-import { BusinessCreditWallet } from '../entities/business-credit-wallet.entity';
-import { PaymentsService } from '../../payments/payments.service';
+import {
+  PaymentsService,
+  type VerifiedTransaction,
+} from '../../payments/payments.service';
 import { CreditService } from './credit.service';
 import { BranchesService } from '../../branches/branches.service';
 import { SettingsService } from '../../settings/settings.service';
+import {
+  PaymentPurpose,
+  PaymentStatus,
+} from '../../payments/entities/payment.entity';
+
+/** A verified Paystack transaction for `amount` kobo. */
+const paid = (amount: number): VerifiedTransaction => ({
+  reference: 'ref',
+  status: 'success',
+  amount,
+  currency: 'NGN',
+  channel: 'card',
+});
 
 describe('CreditPlanService', () => {
   let service: CreditPlanService;
   let creditPlanRepo: Repository<CreditPlan>;
   let paymentsService: PaymentsService;
   let creditService: CreditService;
-  let branchesService: BranchesService;
-  let settingsService: SettingsService;
 
   const mockCreditPlan = {
     id: 'plan-123',
@@ -63,6 +76,13 @@ describe('CreditPlanService', () => {
             verifyTransaction: jest.fn(),
             recordPayment: jest.fn().mockResolvedValue({}),
             findByReference: jest.fn().mockResolvedValue(null),
+            initializeTransaction: jest.fn().mockResolvedValue({
+              reference: 'x',
+              access_code: 'code',
+              authorization_url: 'https://checkout.paystack.test/x',
+            }),
+            claimPending: jest.fn().mockResolvedValue(true),
+            registerPurposeHandler: jest.fn(),
           },
         },
         {
@@ -95,8 +115,6 @@ describe('CreditPlanService', () => {
     );
     paymentsService = module.get<PaymentsService>(PaymentsService);
     creditService = module.get<CreditService>(CreditService);
-    branchesService = module.get<BranchesService>(BranchesService);
-    settingsService = module.get<SettingsService>(SettingsService);
     jest.clearAllMocks();
   });
 
@@ -109,10 +127,9 @@ describe('CreditPlanService', () => {
       const reference = 'ref-123';
       const branchId = 'branch-123';
 
-      jest.spyOn(paymentsService, 'verifyTransaction').mockResolvedValue({
-        status: 'success',
-        amount: 500000, // 5000 * 100
-      });
+      jest.spyOn(paymentsService, 'verifyTransaction').mockResolvedValue(
+        paid(500000), // 5000 * 100
+      );
 
       const result = await service.purchase(branchId, 'plan-123', reference);
 
@@ -130,9 +147,9 @@ describe('CreditPlanService', () => {
     });
 
     it('should throw BadRequestException if paid amount is insufficient', async () => {
-      jest.spyOn(paymentsService, 'verifyTransaction').mockResolvedValue({
-        amount: 400000, // 4000 instead of 5000
-      });
+      jest.spyOn(paymentsService, 'verifyTransaction').mockResolvedValue(
+        paid(400000), // 4000 instead of 5000
+      );
 
       await expect(
         service.purchase('branch-123', 'plan-123', 'ref-low'),
@@ -148,9 +165,10 @@ describe('CreditPlanService', () => {
     });
 
     it('should short-circuit and return wallet if payment reference has already been processed (idempotency)', async () => {
-      jest
-        .spyOn(paymentsService, 'findByReference')
-        .mockResolvedValueOnce({ id: 'pmt-123' } as any);
+      jest.spyOn(paymentsService, 'findByReference').mockResolvedValueOnce({
+        id: 'pmt-123',
+        purpose: PaymentPurpose.CREDIT_TOPUP,
+      } as any);
 
       const result = await service.purchase(
         'branch-123',
@@ -163,15 +181,125 @@ describe('CreditPlanService', () => {
     });
   });
 
+  describe('ownership', () => {
+    it('refuses to credit a branch of another business', async () => {
+      await expect(
+        service.purchase('branch-123', 'plan-123', 'ref', 'biz-other'),
+      ).rejects.toThrow('That branch is not part of your business');
+      expect(paymentsService.verifyTransaction).not.toHaveBeenCalled();
+    });
+
+    it('refuses a reference that is not a credit top-up', async () => {
+      jest
+        .spyOn(paymentsService, 'findByReference')
+        .mockResolvedValueOnce({ purpose: PaymentPurpose.ORDER } as any);
+      await expect(
+        service.purchase('branch-123', 'plan-123', 'ref', 'biz-123'),
+      ).rejects.toThrow(BadRequestException);
+    });
+  });
+
+  describe('checkout', () => {
+    const owner = {
+      id: 'user-1',
+      email: 'owner@example.com',
+      businessId: 'biz-123',
+      branchId: 'branch-123',
+    };
+    const pending = {
+      reference: 'CRD-1',
+      amount: 5000,
+      purpose: PaymentPurpose.CREDIT_TOPUP,
+      status: PaymentStatus.PENDING,
+      businessId: 'biz-123',
+      metadata: { planId: 'plan-123' },
+    };
+
+    it('records a pending payment for the caller and returns the pay page', async () => {
+      const result = await service.startCheckout(
+        owner,
+        'plan-123',
+        'app://back',
+      );
+
+      expect(paymentsService.recordPayment).toHaveBeenCalledWith(
+        expect.objectContaining({
+          amount: 5000,
+          purpose: PaymentPurpose.CREDIT_TOPUP,
+          status: PaymentStatus.PENDING,
+          businessId: 'biz-123',
+          metadata: expect.objectContaining({ planId: 'plan-123' }),
+        }),
+      );
+      expect(paymentsService.initializeTransaction).toHaveBeenCalledWith(
+        expect.objectContaining({ amount: 500000, callbackUrl: 'app://back' }),
+      );
+      expect(result.authorizationUrl).toBe('https://checkout.paystack.test/x');
+      expect(result.reference).toMatch(/^CRD-/);
+    });
+
+    it('needs a business account', async () => {
+      await expect(
+        service.startCheckout({ ...owner, businessId: null }, 'plan-123'),
+      ).rejects.toThrow('Credits are bought by a business account');
+    });
+
+    it('hides another business’s checkout', async () => {
+      jest
+        .spyOn(paymentsService, 'findByReference')
+        .mockResolvedValueOnce(pending as any);
+      await expect(
+        service.confirmCheckout('biz-other', 'CRD-1'),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('awards a paid checkout and reports it completed', async () => {
+      jest
+        .spyOn(paymentsService, 'findByReference')
+        .mockResolvedValueOnce(pending as any);
+      jest
+        .spyOn(paymentsService, 'verifyTransaction')
+        .mockResolvedValueOnce(paid(500000));
+
+      const result = await service.confirmCheckout('biz-123', 'CRD-1');
+
+      expect(result.status).toBe('completed');
+      expect(paymentsService.claimPending).toHaveBeenCalledWith('CRD-1');
+      expect(creditService.addCredits).toHaveBeenCalledTimes(3);
+    });
+
+    it('awards nothing when the webhook already claimed it', async () => {
+      jest
+        .spyOn(paymentsService, 'verifyTransaction')
+        .mockResolvedValueOnce(paid(500000));
+      jest.spyOn(paymentsService, 'claimPending').mockResolvedValueOnce(false);
+
+      await expect(service.completeCheckout(pending as any)).resolves.toBe(
+        true,
+      );
+      expect(creditService.addCredits).not.toHaveBeenCalled();
+    });
+
+    it('stays pending while Paystack has not been paid in full', async () => {
+      jest
+        .spyOn(paymentsService, 'verifyTransaction')
+        .mockResolvedValueOnce(paid(100));
+
+      await expect(service.completeCheckout(pending as any)).resolves.toBe(
+        false,
+      );
+      expect(paymentsService.claimPending).not.toHaveBeenCalled();
+    });
+  });
+
   describe('purchaseCustom', () => {
     it('should successfully award custom credits on valid payment', async () => {
       const reference = 'ref-custom-123';
       const branchId = 'branch-123';
 
-      jest.spyOn(paymentsService, 'verifyTransaction').mockResolvedValue({
-        status: 'success',
-        amount: 110000, // (10 SMS * 15) + (10 WA * 25) + (100 EM * 2) + (10 AI * 50) = 150 + 250 + 200 + 500 = 1100 NGN = 110000 kobo
-      });
+      jest.spyOn(paymentsService, 'verifyTransaction').mockResolvedValue(
+        paid(110000), // (10 SMS * 15) + (10 WA * 25) + (100 EM * 2) + (10 AI * 50) = 150 + 250 + 200 + 500 = 1100 NGN = 110000 kobo
+      );
 
       const result = await service.purchaseCustom(
         branchId,
@@ -202,9 +330,9 @@ describe('CreditPlanService', () => {
     });
 
     it('should throw BadRequestException if paid amount is less than expected custom price', async () => {
-      jest.spyOn(paymentsService, 'verifyTransaction').mockResolvedValue({
-        amount: 10000, // 100 NGN instead of 150 NGN (10 SMS * 15)
-      });
+      jest.spyOn(paymentsService, 'verifyTransaction').mockResolvedValue(
+        paid(10000), // 100 NGN instead of 150 NGN (10 SMS * 15)
+      );
 
       await expect(
         service.purchaseCustom('branch-123', 'ref-low', 10, 0, 0, 0),

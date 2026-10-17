@@ -1,5 +1,4 @@
 import {
-  IsString,
   IsNotEmpty,
   IsNumber,
   IsEnum,
@@ -8,7 +7,6 @@ import {
   Min,
   Max,
 } from 'class-validator';
-import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { TargetPeriodType } from '../entities/financial-target.entity';
 

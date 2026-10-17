@@ -4,6 +4,7 @@ import { JwtService } from '@nestjs/jwt';
 import { User, UserRole } from '../users/entities/user.entity';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { PlansService } from '../subscriptions/plans.service';
+import { SubscriptionStatus } from '../subscriptions/entities/subscription.entity';
 
 export interface VemTapQrThriveTokenPayload {
   sub: string;
@@ -92,7 +93,10 @@ export class SubscriptionTokenService {
         return 'active';
       }
 
-      if (sub.status === 'active' || sub.status === 'trial') {
+      if (
+        sub.status === SubscriptionStatus.ACTIVE ||
+        sub.status === SubscriptionStatus.TRIAL
+      ) {
         return sub.status;
       }
 
@@ -124,23 +128,23 @@ export class SubscriptionTokenService {
     }
   }
 
-  private async getPlanCapabilities(
-    qrThrivePlanId: string,
+  private getPlanCapabilities(
+    _qrThrivePlanId: string,
   ): Promise<VemTapQrThriveTokenPayload['planCapabilities']> {
     try {
       // Since VemTap Plan doesn't have qrCodeLimit/qrCodeTypes directly,
       // we'll use defaults and let QR-Thrive handle the actual limits based on qrThrivePlanId
-      return this.getDefaultCapabilities();
+      return Promise.resolve(this.getDefaultCapabilities());
     } catch (error) {
       this.logger.warn(
         `Failed to get plan capabilities: ${error.message}, using defaults`,
       );
-      return this.getDefaultCapabilities();
+      return Promise.resolve(this.getDefaultCapabilities());
     }
   }
 
-  private async getBusinessIdFromPlan(qrThrivePlanId: string): Promise<string> {
-    return '';
+  private getBusinessIdFromPlan(_qrThrivePlanId: string): Promise<string> {
+    return Promise.resolve('');
   }
 
   private getDefaultCapabilities(): VemTapQrThriveTokenPayload['planCapabilities'] {

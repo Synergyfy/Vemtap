@@ -10,7 +10,6 @@ describe('Affiliates System (e2e)', () => {
   let app: INestApplication;
   let adminToken: string;
   let agentToken: string;
-  let adminId: string;
   let agentId: string;
   let affiliateProfileId: string;
   let withdrawalId: string;
@@ -20,7 +19,6 @@ describe('Affiliates System (e2e)', () => {
 
     const admin = await createAuthenticatedUser(app, UserRole.ADMIN);
     adminToken = admin.token;
-    adminId = admin.user.id;
 
     const agent = await createAuthenticatedUser(app, UserRole.AGENT);
     agentToken = agent.token;

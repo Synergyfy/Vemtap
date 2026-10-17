@@ -6,7 +6,6 @@ import {
   Param,
   UseGuards,
   Request,
-  NotFoundException,
   ParseUUIDPipe,
   Patch,
   Delete,
@@ -19,7 +18,6 @@ import {
   ApiBody,
   ApiResponse,
   ApiParam,
-  ApiQuery,
 } from '@nestjs/swagger';
 import { InboxService } from '../services/inbox.service';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';

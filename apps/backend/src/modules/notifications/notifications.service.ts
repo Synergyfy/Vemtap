@@ -1,6 +1,11 @@
-import { Injectable, NotFoundException, Logger, Optional } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  Logger,
+  Optional,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, In, ILike } from 'typeorm';
+import { Repository, In } from 'typeorm';
 import { Notification } from './entities/notification.entity';
 import {
   NotificationBroadcast,
@@ -14,13 +19,8 @@ import {
   AdminBroadcastDto,
   BroadcastQueryDto,
 } from './dto/admin-broadcast.dto';
-import { ListNotificationsDto } from './dto/list-notifications.dto';
 import { InjectQueue } from '@nestjs/bullmq';
-import {
-  buildBatchKey,
-  closeJobId,
-  getBatchPolicy,
-} from './batching.policy';
+import { buildBatchKey, closeJobId, getBatchPolicy } from './batching.policy';
 import { buildAggregateCopy } from './batching.copy';
 
 /** Where a closer is queued. Injected so tests can decide to not schedule. */
@@ -45,7 +45,11 @@ export class NotificationsService {
     @Optional()
     @InjectQueue(NOTIFICATION_BATCH_QUEUE)
     private readonly batchQueue?: {
-      add: (name: string, data: unknown, opts: Record<string, unknown>) => Promise<unknown>;
+      add: (
+        name: string,
+        data: unknown,
+        opts: Record<string, unknown>,
+      ) => Promise<unknown>;
     },
   ) {}
 
@@ -207,12 +211,12 @@ export class NotificationsService {
   }
 
   /**
-    * Writes one in-app notification and tells the recipient's sockets.
-    *
-    * The emit is the point of this service being the only writer of the table:
-    * a row can appear through the bell refetching, but a live client sees it
-    * the moment it lands.
-    */
+   * Writes one in-app notification and tells the recipient's sockets.
+   *
+   * The emit is the point of this service being the only writer of the table:
+   * a row can appear through the bell refetching, but a live client sees it
+   * the moment it lands.
+   */
   async create(
     userId: string,
     title: string,
@@ -222,7 +226,15 @@ export class NotificationsService {
     metadata?: Record<string, any> | null,
     eventType?: string | null,
   ) {
-    return this.writeOne({ userId, title, message, type, actionUrl, metadata, eventType });
+    return this.writeOne({
+      userId,
+      title,
+      message,
+      type,
+      actionUrl,
+      metadata,
+      eventType,
+    });
   }
 
   /**
@@ -242,11 +254,19 @@ export class NotificationsService {
     metadata?: Record<string, any> | null;
     eventType?: string | null;
   }): Promise<Notification> {
-    const { userId, title, message, type, actionUrl, metadata, eventType } = input;
-    const batchKey = eventType ? buildBatchKey(userId, eventType, metadata) : null;
+    const { userId, title, message, type, actionUrl, metadata, eventType } =
+      input;
+    const batchKey = eventType
+      ? buildBatchKey(userId, eventType, metadata)
+      : null;
 
     if (batchKey) {
-      const merged = await this.extendOpenBatch(userId, batchKey, eventType as string, metadata);
+      const merged = await this.extendOpenBatch(
+        userId,
+        batchKey,
+        eventType as string,
+        metadata,
+      );
       if (merged) return merged;
     }
 
@@ -296,9 +316,11 @@ export class NotificationsService {
     if (!open) return null;
 
     const existingActors = Array.isArray(open.metadata?.actors)
-      ? (open.metadata!.actors as unknown[])
+      ? (open.metadata.actors as unknown[])
       : [];
-    const actors: Array<{ name: string }> = [...(existingActors as Array<{ name: string }>)];
+    const actors: Array<{ name: string }> = [
+      ...(existingActors as Array<{ name: string }>),
+    ];
     if (actors.length < ACTORS_STORED_MAX) {
       const name = this.actorNameFrom(metadata);
       if (name) actors.push({ name });
@@ -315,9 +337,15 @@ export class NotificationsService {
     // A joined event is not a new row, so it is not announced as one. The
     // client needs to refetch to show the new count, but must not show a
     // second banner for an event whose first arrival already showed one.
-    this.notificationsGateway.emitNotificationUpdated(userId, open.id, open.groupCount + 1);
+    this.notificationsGateway.emitNotificationUpdated(
+      userId,
+      open.id,
+      open.groupCount + 1,
+    );
 
-    return this.notificationsRepository.findOneBy({ id: open.id }) as Promise<Notification>;
+    return this.notificationsRepository.findOneBy({
+      id: open.id,
+    });
   }
 
   /** Pulls the actor's display name out of a writer's metadata. */
@@ -333,7 +361,10 @@ export class NotificationsService {
    * logged rather than thrown — an unthrowable error here would fail the
    * write that produced the notification the user is waiting on.
    */
-  private async scheduleBatchClose(batchKey: string, eventType: string): Promise<void> {
+  private async scheduleBatchClose(
+    batchKey: string,
+    eventType: string,
+  ): Promise<void> {
     const policy = getBatchPolicy(eventType);
     if (!policy) return;
     try {
@@ -376,7 +407,15 @@ export class NotificationsService {
     const saved: Notification[] = [];
     for (const userId of unique) {
       saved.push(
-        await this.writeOne({ userId, title, message, type, actionUrl, metadata, eventType }),
+        await this.writeOne({
+          userId,
+          title,
+          message,
+          type,
+          actionUrl,
+          metadata,
+          eventType,
+        }),
       );
     }
 
@@ -420,14 +459,16 @@ export class NotificationsService {
       .getMany();
 
     const now = Date.now();
-    const overdue = open.filter(row => {
+    const overdue = open.filter((row) => {
       const policy = getBatchPolicy(row.eventType);
       if (!policy || !row.createdAt) return false;
       return row.createdAt.getTime() + policy.windowMs < now;
     });
 
     for (const row of overdue) {
-      await this.notificationsRepository.update(row.id, { flushedAt: new Date() });
+      await this.notificationsRepository.update(row.id, {
+        flushedAt: new Date(),
+      });
     }
   }
 
@@ -590,7 +631,9 @@ export class NotificationsService {
 
     const copy = buildAggregateCopy(
       row.eventType,
-      Array.isArray(row.metadata?.actors) ? (row.metadata!.actors as unknown[]) : [],
+      Array.isArray(row.metadata?.actors)
+        ? (row.metadata.actors as unknown[])
+        : [],
       row.groupCount,
     );
     if (!copy) return row;
@@ -603,7 +646,7 @@ export class NotificationsService {
       title: copy.title,
       message: copy.message,
       metadata: { ...(row.metadata ?? {}) },
-    } as Notification;
+    };
   }
 
   async markAsRead(id: string, userId: string) {

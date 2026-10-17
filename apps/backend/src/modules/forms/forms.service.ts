@@ -5,7 +5,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Like, FindOptionsWhere } from 'typeorm';
+import { Repository, FindOptionsWhere } from 'typeorm';
 import { Form } from './entities/form.entity';
 import { FormField } from './entities/form-field.entity';
 import { FormResponse } from './entities/form-response.entity';

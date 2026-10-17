@@ -12,6 +12,7 @@ import { UpdateAssetDto } from '../dto/update-asset.dto';
 import { User } from '../../users/entities/user.entity';
 import { Business } from '../../businesses/entities/business.entity';
 import { AuditLogService } from './audit-log.service';
+import { UserRole } from '../../users/entities/user.entity';
 
 @Injectable()
 export class AssetsService {
@@ -27,7 +28,7 @@ export class AssetsService {
 
   // Validate business category is not in the excluded list (PRD §8.0)
   private async validateBusinessCategory(user: User): Promise<void> {
-    if (user.role === 'Admin') {
+    if (user.role === UserRole.ADMIN) {
       return;
     }
     const businessId = user.businessId || user.ownedBusiness?.id;
@@ -109,7 +110,7 @@ export class AssetsService {
     branchId?: string,
     type?: string,
   ): Promise<MarketingAsset[]> {
-    const isAdmin = user.role === 'Admin';
+    const isAdmin = user.role === UserRole.ADMIN;
     if (!isAdmin) {
       await this.validateBusinessCategory(user);
     }
@@ -135,7 +136,7 @@ export class AssetsService {
   }
 
   async findOne(id: string, user: User): Promise<MarketingAsset> {
-    const isAdmin = user.role === 'Admin';
+    const isAdmin = user.role === UserRole.ADMIN;
     if (!isAdmin) {
       await this.validateBusinessCategory(user);
     }

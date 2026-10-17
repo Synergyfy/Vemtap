@@ -280,6 +280,8 @@ export class DealEngagementService {
         comment: r.comment,
         rating: r.rating,
         likesCount: r.likesCount,
+        merchantReply: r.merchantReply,
+        repliedAt: r.repliedAt,
         createdAt: r.createdAt,
         ...(user?.id ? { isLiked: likedIds.has(r.id) } : {}),
       })),
@@ -302,6 +304,8 @@ export class DealEngagementService {
         comment: r.comment,
         rating: r.rating,
         likesCount: r.likesCount,
+        merchantReply: r.merchantReply,
+        repliedAt: r.repliedAt,
         createdAt: r.createdAt,
       })),
     };
@@ -339,6 +343,8 @@ export class DealEngagementService {
       likesCount: review.likesCount,
       status: review.status,
       isAuthor,
+      merchantReply: review.merchantReply,
+      repliedAt: review.repliedAt,
       createdAt: review.createdAt,
       updatedAt: review.updatedAt,
     };
@@ -569,6 +575,8 @@ export class DealEngagementService {
         status: r.status,
         userId: r.userId,
         ipHash: r.ipHash,
+        merchantReply: r.merchantReply,
+        repliedAt: r.repliedAt,
         createdAt: r.createdAt,
       })),
       total,
@@ -578,8 +586,14 @@ export class DealEngagementService {
   }
 
   /**
-   * Rating summary for the merchant's reviews: APPROVED only feeds the average
-   * and total (that is what customers see), pending is a moderation counter.
+   * Rating summary for the merchant's reviews: APPROVED only feeds the average,
+   * the total and the per-star distribution (that is what customers see), pending
+   * is a moderation counter.
+   *
+   * The distribution is returned as a fixed 1–5 map rather than a sparse array
+   * so the screen can render five bars without re-indexing whatever the database
+   * happens to return, and unrated approved reviews (a rating is optional) simply
+   * contribute nothing.
    */
   async getReviewsSummaryForBusiness(businessId: string) {
     const approved = await this.reviewRepository
@@ -603,6 +617,32 @@ export class DealEngagementService {
       .select('COUNT(review.id)', 'count')
       .getRawOne<{ count: string }>();
 
+    const distributionRows = await this.reviewRepository
+      .createQueryBuilder('review')
+      .innerJoin('review.offer', 'offer')
+      .where('offer.businessId = :businessId', { businessId })
+      .andWhere('review.status = :status', {
+        status: DealReviewStatus.APPROVED,
+      })
+      .select('review.rating', 'rating')
+      .addSelect('COUNT(review.id)', 'count')
+      .groupBy('review.rating')
+      .getRawMany<{ rating: number | string | null; count: string }>();
+
+    const ratingDistribution: Record<number, number> = {
+      1: 0,
+      2: 0,
+      3: 0,
+      4: 0,
+      5: 0,
+    };
+    for (const row of distributionRows) {
+      const stars = Number(row.rating);
+      if (stars >= 1 && stars <= 5) {
+        ratingDistribution[stars] = parseInt(row.count, 10) || 0;
+      }
+    }
+
     const totalReviews = parseInt(approved?.count ?? '0', 10) || 0;
     const average = approved?.average != null ? Number(approved.average) : null;
 
@@ -613,6 +653,7 @@ export class DealEngagementService {
           ? Math.round(average * 10) / 10
           : null,
       pendingReviews: parseInt(pending?.count ?? '0', 10) || 0,
+      ratingDistribution,
     };
   }
 
@@ -665,6 +706,51 @@ export class DealEngagementService {
     await this.reviewRepository.softDelete(reviewId);
     await this.syncReviewsCount(review.offerId);
     await this.syncAverageRating(review.offerId);
+    if (review.offer) {
+      await this.clearOfferCaches(review.offer.id, review.offer.branchId);
+    }
+  }
+
+  /** Set (or replace) the business's public reply on one of its reviews. */
+  async replyToReviewByBusiness(
+    businessId: string,
+    reviewId: string,
+    staffId: string | null,
+    reply: string,
+  ) {
+    const review = await this.reviewRepository.findOne({
+      where: { id: reviewId },
+      relations: ['offer'],
+    });
+    if (!review || review.offer?.businessId !== businessId) {
+      throw new NotFoundException('Review not found');
+    }
+    review.merchantReply = reply;
+    review.repliedAt = new Date();
+    review.repliedById = staffId;
+    await this.reviewRepository.save(review);
+    if (review.offer) {
+      await this.clearOfferCaches(review.offer.id, review.offer.branchId);
+    }
+    return {
+      id: review.id,
+      merchantReply: review.merchantReply,
+      repliedAt: review.repliedAt,
+    };
+  }
+
+  async removeReplyByBusiness(businessId: string, reviewId: string) {
+    const review = await this.reviewRepository.findOne({
+      where: { id: reviewId },
+      relations: ['offer'],
+    });
+    if (!review || review.offer?.businessId !== businessId) {
+      throw new NotFoundException('Review not found');
+    }
+    review.merchantReply = null;
+    review.repliedAt = null;
+    review.repliedById = null;
+    await this.reviewRepository.save(review);
     if (review.offer) {
       await this.clearOfferCaches(review.offer.id, review.offer.branchId);
     }

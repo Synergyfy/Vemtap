@@ -126,7 +126,7 @@ import { ChannelSettingsController } from './controllers/channel-settings.contro
     forwardRef(() => LoyaltyModule),
     JwtModule.registerAsync({
       imports: [ConfigModule],
-      useFactory: async (configService: ConfigService) => ({
+      useFactory: (configService: ConfigService) => ({
         secret: configService.get<string>('JWT_SECRET'),
         signOptions: {
           expiresIn: configService.get<string>('JWT_EXPIRATION') as any,
@@ -136,15 +136,13 @@ import { ChannelSettingsController } from './controllers/channel-settings.contro
     }),
     BullModule.forRootAsync({
       imports: [ConfigModule],
-      useFactory: async (configService: ConfigService) => {
+      useFactory: (configService: ConfigService) => {
         const host = configService.get<string>('REDIS_HOST', 'localhost');
         const port = configService.get<number>('REDIS_PORT', 6379);
         const password = configService.get<string>('REDIS_PASSWORD');
         const useTls =
           configService.get<string>('REDIS_TLS') === 'true' ||
           host.includes('upstash.io');
-
-        const isUpstash = host.includes('upstash.io');
 
         return {
           connection: {

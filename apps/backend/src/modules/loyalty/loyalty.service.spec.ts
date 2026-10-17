@@ -97,6 +97,7 @@ describe('LoyaltyService', () => {
         {
           provide: DataSource,
           useValue: {
+            query: jest.fn(),
             createQueryRunner: jest.fn().mockReturnValue({
               connect: jest.fn(),
               startTransaction: jest.fn(),
@@ -117,6 +118,50 @@ describe('LoyaltyService', () => {
 
   it('should be defined', () => {
     expect(service).toBeDefined();
+  });
+
+  describe('customer wallet and redemptions', () => {
+    let query: jest.Mock;
+    beforeEach(() => {
+      query = (service as unknown as { dataSource: { query: jest.Mock } })
+        .dataSource.query;
+    });
+
+    it('groups the balance per business for the caller only', async () => {
+      query.mockResolvedValue([
+        {
+          businessId: 'b1',
+          businessName: 'Aurora',
+          businessLogo: null,
+          points: '420',
+        },
+      ]);
+
+      const wallet = await service.getCustomerWallet('user-1');
+
+      const [sql, params] = query.mock.calls[0] as [string, unknown[]];
+      expect(sql).toContain('GROUP BY pt."businessId"');
+      expect(params).toEqual(['user-1']);
+      expect(wallet).toEqual([
+        {
+          businessId: 'b1',
+          businessName: 'Aurora',
+          businessLogo: null,
+          points: 420,
+        },
+      ]);
+    });
+
+    it('lists only the caller’s used codes, capped at 100', async () => {
+      query.mockResolvedValue([{ code: 'RDM-1', pointsSpent: '300' }]);
+
+      const rows = await service.getCustomerRedemptions('user-1', 500);
+
+      const [sql, params] = query.mock.calls[0] as [string, unknown[]];
+      expect(sql).toContain('rc."usedById" = $1');
+      expect(params).toEqual(['user-1', 100]);
+      expect(rows[0].pointsSpent).toBe(300);
+    });
   });
 
   describe('getBusinessPoints', () => {

@@ -93,7 +93,7 @@ function untransformedDecimalColumns(): string[] {
   for (const file of entityFiles(join(__dirname, '..', '..'))) {
     // Loading the module is the point: its decorators register the columns.
     // Dynamic import() needs --experimental-vm-modules under this Jest setup.
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
+
     require(file);
   }
   return getMetadataArgsStorage()

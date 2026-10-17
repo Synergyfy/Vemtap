@@ -229,7 +229,7 @@ describe('BookingsService service booking rules', () => {
       branchId: 'br-1',
       itemId: 'svc-1',
       date: '2026-10-21',
-    } as never);
+    });
     expect(day.isClosed).toBe(true);
   });
 
@@ -239,7 +239,7 @@ describe('BookingsService service booking rules', () => {
       branchId: 'br-1',
       itemId: 'svc-1',
       date: '2026-10-22',
-    } as never);
+    });
     expect(day.slots.map((slot) => slot.time)).toEqual([
       '10:00',
       '10:30',
@@ -257,7 +257,7 @@ describe('BookingsService service booking rules', () => {
       branchId: 'br-1',
       itemId: 'svc-1',
       date: '2026-10-22',
-    } as never);
+    });
     const open = (slots: { time: string; available: boolean }[]) =>
       slots.filter((slot) => slot.available).map((slot) => slot.time);
     // 10:00–11:00 plus a 30-minute buffer blocks starts before 11:30.
@@ -271,7 +271,7 @@ describe('BookingsService service booking rules', () => {
       branchId: 'br-1',
       itemId: 'svc-1',
       date: '2026-10-22',
-    } as never);
+    });
     expect(open(two.slots)).toContain('10:00');
   });
 
@@ -285,7 +285,7 @@ describe('BookingsService service booking rules', () => {
       branchId: 'br-1',
       itemId: 'svc-1',
       date: '2026-10-21',
-    } as never);
+    });
     // 08:00 + 3h notice: nothing before 11:00.
     expect(today.slots.find((slot) => slot.time === '10:30')?.available).toBe(
       false,
@@ -295,26 +295,20 @@ describe('BookingsService service booking rules', () => {
     );
 
     await expect(
-      service.createBooking(
-        { id: 'cust-1' } as never,
-        {
-          branchId: 'br-1',
-          itemId: 'svc-1',
-          date: '2026-11-20',
-          time: '12:00',
-        } as never,
-      ),
-    ).rejects.toThrow(BadRequestException);
-
-    await service.createBooking(
-      { id: 'cust-1' } as never,
-      {
+      service.createBooking({ id: 'cust-1' } as never, {
         branchId: 'br-1',
         itemId: 'svc-1',
-        date: '2026-10-22',
+        date: '2026-11-20',
         time: '12:00',
-      } as never,
-    );
+      }),
+    ).rejects.toThrow(BadRequestException);
+
+    await service.createBooking({ id: 'cust-1' } as never, {
+      branchId: 'br-1',
+      itemId: 'svc-1',
+      date: '2026-10-22',
+      time: '12:00',
+    });
     expect(created[0]).toEqual(
       expect.objectContaining({ status: BookingStatus.CONFIRMED }),
     );
@@ -363,7 +357,7 @@ describe('BookingsService blocked dates and branch schedules', () => {
       branchId: 'br-1',
       itemId: 'svc-1',
       date,
-    } as never);
+    });
 
   beforeEach(() => jest.useFakeTimers({ now: NOW }));
   afterEach(() => jest.useRealTimers());
@@ -375,15 +369,12 @@ describe('BookingsService blocked dates and branch schedules', () => {
     expect((await ask(service, '2026-10-23')).isClosed).toBe(true);
     expect((await ask(service, '2026-10-22')).isClosed).toBe(false);
     await expect(
-      service.createBooking(
-        { id: 'cust-1' } as never,
-        {
-          branchId: 'br-1',
-          itemId: 'svc-1',
-          date: '2026-10-23',
-          time: '12:00',
-        } as never,
-      ),
+      service.createBooking({ id: 'cust-1' } as never, {
+        branchId: 'br-1',
+        itemId: 'svc-1',
+        date: '2026-10-23',
+        time: '12:00',
+      }),
     ).rejects.toThrow('Not bookable on this day: Staff training');
   });
 

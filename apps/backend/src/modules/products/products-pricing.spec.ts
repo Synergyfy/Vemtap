@@ -7,7 +7,6 @@ import { Quote } from './entities/quote.entity';
 import { Order, OrderStatus, PaymentStatus } from './entities/order.entity';
 import { QuoteNegotiation } from './entities/quote-negotiation.entity';
 import { ProductType } from './entities/product-type.entity';
-import { Repository } from 'typeorm';
 import { User, UserRole } from '../users/entities/user.entity';
 import { BadRequestException } from '@nestjs/common';
 import { PaymentsService } from '../payments/payments.service';

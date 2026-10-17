@@ -304,6 +304,18 @@ export class PaymentsService {
     return { data, total, page, limit };
   }
 
+  /**
+   * Flip a pending payment to success. True only for the one caller that made
+   * the change, so whatever it pays for is granted once.
+   */
+  async claimPending(reference: string): Promise<boolean> {
+    const result = await this.paymentRepository.update(
+      { reference, status: PaymentStatus.PENDING },
+      { status: PaymentStatus.SUCCESS },
+    );
+    return (result.affected ?? 0) > 0;
+  }
+
   async findByReference(reference: string): Promise<Payment | null> {
     return this.paymentRepository.findOneBy({ reference });
   }

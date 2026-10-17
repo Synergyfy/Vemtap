@@ -21,7 +21,9 @@ export class AddChatMessageMedia1791600000000 implements MigrationInterface {
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`ALTER TABLE "messages" DROP COLUMN "mediaMimeType"`);
+    await queryRunner.query(
+      `ALTER TABLE "messages" DROP COLUMN "mediaMimeType"`,
+    );
     await queryRunner.query(`ALTER TABLE "messages" DROP COLUMN "mediaUrl"`);
   }
 }

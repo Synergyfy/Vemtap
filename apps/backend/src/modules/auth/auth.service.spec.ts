@@ -37,13 +37,10 @@ describe('AuthService', () => {
   let service: AuthService;
   let usersService: any;
   let businessesService: any;
-  let devicesService: any;
   let mailService: any;
   let jwtService: any;
   let otpRepository: any;
   let subscriptionsService: any;
-  let affiliatesService: any;
-  let externalAffiliateService: any;
 
   const mockUsersService = {
     findByEmail: jest.fn(),
@@ -158,13 +155,10 @@ describe('AuthService', () => {
     service = module.get<AuthService>(AuthService);
     usersService = module.get(UsersService);
     businessesService = module.get(BusinessesService);
-    devicesService = module.get(DevicesService);
     mailService = module.get(MailService);
     jwtService = module.get(JwtService);
     otpRepository = module.get(getRepositoryToken(Otp));
     subscriptionsService = module.get(SubscriptionsService);
-    affiliatesService = module.get(AffiliatesService);
-    externalAffiliateService = module.get(ExternalAffiliateService);
   });
 
   // ==================== requestOwnerOtp ====================
@@ -937,6 +931,24 @@ describe('AuthService', () => {
 
   // ==================== switchRole ====================
   describe('switchRole', () => {
+    it('keeps the switched token on the same login session', async () => {
+      const user = {
+        id: 'owner-1',
+        email: 'owner@example.com',
+        role: UserRole.OWNER,
+        branchId: 'br-1',
+        sessionId: 'session-9',
+      } as any;
+      usersService.findOne.mockResolvedValue(user);
+      businessesService.findByOwner.mockResolvedValue({ id: 'biz-1' });
+
+      await service.switchRole(user, UserRole.CUSTOMER);
+
+      expect(jwtService.sign).toHaveBeenCalledWith(
+        expect.objectContaining({ sid: 'session-9' }),
+      );
+    });
+
     it('should switch Owner to Customer', async () => {
       const user = {
         id: 'owner-1',

@@ -419,9 +419,7 @@ export class InboxService {
         if (BOOKING_CATEGORY_RE.test(text)) categories.push('bookings');
       }
 
-      return Object.assign(thread, { categories }) as ConversationThread & {
-        categories: string[];
-      };
+      return Object.assign(thread, { categories });
     });
   }
 

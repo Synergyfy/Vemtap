@@ -5,11 +5,7 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import {
-  User,
-  UserRole,
-  UserStatus,
-} from '../../modules/users/entities/user.entity';
+import { User, UserStatus } from '../../modules/users/entities/user.entity';
 
 @Injectable()
 export class UserStatusGuard implements CanActivate {
@@ -24,11 +20,6 @@ export class UserStatusGuard implements CanActivate {
     if (isPublic) {
       return true;
     }
-
-    const isAllowPending = this.reflector.getAllAndOverride<boolean>(
-      'isAllowPending',
-      [context.getHandler(), context.getClass()],
-    );
 
     const request = context.switchToHttp().getRequest<{ user: User }>();
     const user = request.user;

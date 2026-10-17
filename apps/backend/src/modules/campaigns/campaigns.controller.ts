@@ -11,7 +11,7 @@ import {
   Request,
 } from '@nestjs/common';
 import { CampaignsService } from './campaigns.service';
-import { CreateCampaignDto, CampaignStatus } from './dto/create-campaign.dto';
+import { CreateCampaignDto } from './dto/create-campaign.dto';
 import { FindCampaignsDto } from './dto/find-campaigns.dto';
 import { UpdateCampaignDto } from './dto/update-campaign.dto';
 import { CreateCampaignTemplateDto } from './dto/campaign-template.dto';
@@ -23,7 +23,6 @@ import {
   ApiTags,
   ApiOperation,
   ApiBearerAuth,
-  ApiQuery,
   ApiResponse,
 } from '@nestjs/swagger';
 import { PermissionsGuard } from '../../common/guards/permissions.guard';

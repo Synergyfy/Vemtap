@@ -430,7 +430,7 @@ export class BusinessDashboardService {
     }
 
     const weekOrder = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-    return weekOrder.map(day => ({
+    return weekOrder.map((day) => ({
       hour: day,
       visits: counts[day] || 0,
       branchId: branchId || undefined,

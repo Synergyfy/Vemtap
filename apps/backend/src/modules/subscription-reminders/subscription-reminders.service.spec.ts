@@ -16,7 +16,7 @@ import { PushNotificationService } from '../notifications/push-notification.serv
 import { MailService } from '../mail/mail.service';
 import { SubscriptionRemindersService } from './subscription-reminders.service';
 import { SUBSCRIPTION_RENEWAL_URL } from './subscription-reminders.constants';
-import { NotFoundException, BadRequestException } from '@nestjs/common';
+import { BadRequestException } from '@nestjs/common';
 
 const NOW = new Date('2026-08-26T08:00:00Z');
 
@@ -25,7 +25,8 @@ function daysFromNow(days: number): Date {
 }
 
 function makeSub(overrides: Partial<Subscription> = {}): Subscription {
-  const base: Subscription = {
+  // Only the fields the reminder job reads; the rest of the entity is irrelevant here.
+  const base = {
     id: 'sub-1',
     businessId: 'biz-1',
     planId: 'plan-1',
@@ -44,7 +45,7 @@ function makeSub(overrides: Partial<Subscription> = {}): Subscription {
       ownerId: 'owner-1',
       businessName: 'Ikeja Store',
     } as unknown as Subscription['business'],
-  };
+  } as Subscription;
   return { ...base, ...overrides };
 }
 
@@ -277,6 +278,8 @@ describe('SubscriptionRemindersService', () => {
         expect.stringContaining('60'),
         'warning',
         SUBSCRIPTION_RENEWAL_URL,
+        null,
+        'subscription_reminder',
       );
 
       expect(pushService.sendNotification).toHaveBeenCalledWith(

@@ -157,7 +157,7 @@ export class NotificationsController {
   @ApiOperation({
     summary: "List a business's notifications, newest first",
     description:
-      'Union of every row written for anyone at the caller\'s business. Access: OWNER, MANAGER, ADMIN, STAFF.',
+      "Union of every row written for anyone at the caller's business. Access: OWNER, MANAGER, ADMIN, STAFF.",
   })
   @ApiResponse({
     status: 200,

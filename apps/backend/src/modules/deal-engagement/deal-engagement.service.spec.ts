@@ -667,12 +667,23 @@ describe('DealEngagementService', () => {
       select: jest.fn().mockReturnThis(),
       addSelect: jest.fn().mockReturnThis(),
       getRawOne: jest.fn().mockResolvedValue(raw),
+      groupBy: jest.fn().mockReturnThis(),
+      getRawMany: jest.fn().mockResolvedValue([]),
     });
 
-    it('averages approved reviews and counts pending separately', async () => {
+    it('averages approved reviews, counts pending and buckets the stars', async () => {
+      const groupQb = summaryQb({});
+      groupQb.getRawMany.mockResolvedValue([
+        { rating: '5', count: '120' },
+        { rating: '4', count: '6' },
+        { rating: '3', count: '2' },
+        { rating: null, count: '0' },
+      ]);
+
       mockReviewRepository.createQueryBuilder
         .mockReturnValueOnce(summaryQb({ count: '128', average: '4.87' }))
-        .mockReturnValueOnce(summaryQb({ count: '2' }));
+        .mockReturnValueOnce(summaryQb({ count: '2' }))
+        .mockReturnValueOnce(groupQb);
 
       const result = await service.getReviewsSummaryForBusiness('biz-1');
 
@@ -680,13 +691,15 @@ describe('DealEngagementService', () => {
         totalReviews: 128,
         averageRating: 4.9,
         pendingReviews: 2,
+        ratingDistribution: { 1: 0, 2: 0, 3: 2, 4: 6, 5: 120 },
       });
     });
 
-    it('returns a null rating when nothing is approved', async () => {
+    it('returns a null rating and empty buckets when nothing is approved', async () => {
       mockReviewRepository.createQueryBuilder
         .mockReturnValueOnce(summaryQb({ count: '0', average: null }))
-        .mockReturnValueOnce(summaryQb({ count: '0' }));
+        .mockReturnValueOnce(summaryQb({ count: '0' }))
+        .mockReturnValueOnce(summaryQb({}));
 
       const result = await service.getReviewsSummaryForBusiness('biz-1');
 
@@ -694,6 +707,7 @@ describe('DealEngagementService', () => {
         totalReviews: 0,
         averageRating: null,
         pendingReviews: 0,
+        ratingDistribution: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 },
       });
     });
   });

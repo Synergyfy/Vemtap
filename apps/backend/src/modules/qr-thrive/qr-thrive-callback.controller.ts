@@ -17,7 +17,7 @@ export class QrThriveCallbackController {
   @Public()
   @Post('callback')
   @ApiOperation({ summary: 'Handle incoming callback from QR-Thrive' })
-  async handleCallback(@Body() payload: any) {
+  handleCallback(@Body() payload: any) {
     const { event, data } = payload;
     this.logger.log(
       `Received callback event "${event}" from QR-Thrive: ${JSON.stringify(data)}`,
@@ -45,6 +45,6 @@ export class QrThriveCallbackController {
         );
     }
 
-    return { status: 'success', message: 'Callback received' };
+    return Promise.resolve({ status: 'success', message: 'Callback received' });
   }
 }

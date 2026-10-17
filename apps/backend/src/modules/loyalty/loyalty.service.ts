@@ -271,6 +271,68 @@ export class LoyaltyService {
     };
   }
 
+  /**
+   * The customer's points at every business that holds any, as one grouped
+   * aggregate — balances are per business, so the rewards screen needs them
+   * side by side to say which rewards the customer can afford.
+   */
+  async getCustomerWallet(userId: string) {
+    const rows = await this.dataSource.query<
+      {
+        businessId: string;
+        businessName: string | null;
+        businessLogo: string | null;
+        points: string;
+      }[]
+    >(
+      `SELECT pt."businessId", b.name AS "businessName", b."logoUrl" AS "businessLogo",
+              SUM(pt.amount)::int AS points
+         FROM point_transactions pt
+         LEFT JOIN businesses b ON b.id = pt."businessId"
+        WHERE pt."customerId" = $1 AND pt."deletedAt" IS NULL
+        GROUP BY pt."businessId", b.name, b."logoUrl"
+       HAVING SUM(pt.amount) <> 0
+        ORDER BY SUM(pt.amount) DESC`,
+      [userId],
+    );
+    return rows.map((row) => ({ ...row, points: Number(row.points) || 0 }));
+  }
+
+  /** Rewards the customer has redeemed, newest first, with the code to show staff. */
+  async getCustomerRedemptions(userId: string, limit = 50) {
+    const rows = await this.dataSource.query<
+      {
+        code: string;
+        redeemedAt: Date;
+        rewardId: string;
+        rewardName: string;
+        rewardImage: string | null;
+        pointsSpent: string;
+        expiresAt: Date | null;
+        businessId: string;
+        businessName: string | null;
+        branchName: string | null;
+      }[]
+    >(
+      `SELECT rc.code, rc."usedAt" AS "redeemedAt", r.id AS "rewardId", r.name AS "rewardName",
+              r."coverImage" AS "rewardImage", r."pointsRequired" AS "pointsSpent",
+              r."expiryDate" AS "expiresAt", rc."businessId", b.name AS "businessName",
+              br.name AS "branchName"
+         FROM redemption_codes rc
+         JOIN rewards r ON r.id = rc."rewardId"
+         LEFT JOIN businesses b ON b.id = rc."businessId"
+         LEFT JOIN branches br ON br.id = rc."branchId"
+        WHERE rc."usedById" = $1 AND rc."isUsed" = true
+        ORDER BY rc."usedAt" DESC NULLS LAST
+        LIMIT $2`,
+      [userId, Math.min(Math.max(limit, 1), 100)],
+    );
+    return rows.map((row) => ({
+      ...row,
+      pointsSpent: Number(row.pointsSpent) || 0,
+    }));
+  }
+
   async getPointLogs(
     userId: string,
     businessId?: string,
@@ -771,7 +833,6 @@ export class LoyaltyService {
 
     return {
       data: items.map((item) => {
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const { redemptionCount, branch, business, ...rest } = item;
         if (!global) return rest;
         return {
@@ -1539,7 +1600,7 @@ export class LoyaltyService {
         where.branchId = branchId;
       }
 
-      const totalRewards = await this.rewardRepo.count({ where });
+      await this.rewardRepo.count({ where });
       const activeRewards = await this.rewardRepo.count({
         where: { ...where, isActive: true },
       });

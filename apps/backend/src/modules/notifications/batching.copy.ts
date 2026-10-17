@@ -49,11 +49,14 @@ export function buildAggregateCopy(
   groupCount: number,
 ): AggregateCopy | null {
   const names = actors
-    .map(actor =>
+    .map((actor) =>
       typeof actor === 'string'
         ? actor
         : actor && typeof actor === 'object' && 'name' in actor
-          ? String((actor as { name?: unknown }).name ?? '')
+          ? (() => {
+              const name = (actor as { name?: unknown }).name;
+              return typeof name === 'string' ? name : '';
+            })()
           : '',
     )
     .filter((name): name is string => name.length > 0);
@@ -72,6 +75,15 @@ export function buildAggregateCopy(
       return {
         title: 'New ratings',
         message: `${groupCount} new ratings on your business`,
+      };
+    }
+    case 'product_comment': {
+      if (groupCount <= 1) return null;
+      return {
+        title: 'New product comments',
+        message: who
+          ? `${who} left ${groupCount} comments on your products`
+          : `${groupCount} new comments on your products`,
       };
     }
     default:

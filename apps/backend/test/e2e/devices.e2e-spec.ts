@@ -3,7 +3,7 @@ import request from 'supertest';
 import { createTestApp } from '../utils/create-app';
 import { createAuthenticatedUser } from '../utils/auth';
 import { UserRole } from '../../src/modules/users/entities/user.entity';
-import { DataSource, Repository } from 'typeorm';
+import { Repository } from 'typeorm';
 import {
   Device,
   DeviceStatus,

@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  ForbiddenException,
   Optional,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -37,12 +38,21 @@ import * as bcrypt from 'bcrypt';
 import { VisitorsService } from '../visitors/visitors.service';
 import { MailService } from '../mail/mail.service';
 import { CatalogueService } from '../catalogue/catalogue.service';
+import { CatalogueBranchPricingService } from '../catalogue/catalogue-branch-pricing.service';
+import { effectiveUnitPrice } from '../catalogue/utils/catalogue-item.utils';
 import { CatalogueOfferService } from '../catalogue/catalogue-offer.service';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { v4 as uuidv4 } from 'uuid';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { ORDER_EVENTS, OrderLifecycleEvent, stampStatus } from './order-events';
+
+/** Roles that may create catalogue items while entering a manual order. */
+const STAFF_ROLES: readonly UserRole[] = [
+  UserRole.OWNER,
+  UserRole.MANAGER,
+  UserRole.STAFF,
+];
 
 @Injectable()
 export class CatalogueOrderService {
@@ -69,6 +79,7 @@ export class CatalogueOrderService {
     private readonly visitorsService: VisitorsService,
     private readonly mailService: MailService,
     private readonly catalogueService: CatalogueService,
+    private readonly pricingService: CatalogueBranchPricingService,
     @InjectQueue('order-notifications')
     private readonly orderNotificationQueue: Queue,
     @Optional()
@@ -137,6 +148,21 @@ export class CatalogueOrderService {
       where: { id: dto.branchId },
     });
     if (!branch) throw new NotFoundException('Branch not found');
+
+    // 1.1 `newItem` creates a catalogue item for this business, so only the
+    // business's own staff may send it. Checked before any side effect (guest
+    // account, visit) so a refused request leaves nothing behind.
+    if (dto.items.some((item) => item.newItem)) {
+      const isOwnStaff =
+        !!existingUser &&
+        STAFF_ROLES.includes(existingUser.role) &&
+        existingUser.businessId === branch.businessId;
+      if (!isOwnStaff) {
+        throw new ForbiddenException(
+          'Only staff of this business can add new items to an order',
+        );
+      }
+    }
 
     // 2. Resolve or Create customer (User)
     let customer: User | null = existingUser || null;
@@ -271,14 +297,21 @@ export class CatalogueOrderService {
           }
         }
 
+        // Charge what the customer was shown: the branch's own price when the
+        // item is priced per branch, less the item's discount.
+        const [priced] = await this.pricingService.applyBranchPrices(
+          [item],
+          branch.id,
+        );
+        const unitPrice = effectiveUnitPrice(priced);
         const orderItem = this.orderItemRepository.create({
           itemId: item.id,
           quantity: itemDto.quantity,
-          priceAtOrder: item.price,
+          priceAtOrder: unitPrice,
           loyaltyPointsAtOrder: item.loyaltyPoints,
         });
         orderItems.push(orderItem);
-        totalAmount += Number(item.price) * itemDto.quantity;
+        totalAmount += unitPrice * itemDto.quantity;
       } else if (itemDto.offerId) {
         const offer = await this.offerRepository.findOne({
           where: { id: itemDto.offerId, branchId: dto.branchId },
