@@ -89,4 +89,33 @@ describe('CustomerActivityService', () => {
       businesses: 2,
     });
   });
+
+  it('previews the customer side for the caller only, with active claims', async () => {
+    const { service, query } = await build([
+      {
+        activeClaims: 2,
+        savedPlaces: 5,
+        savedDeals: 1,
+        latestClaim: { offerId: 'o1', title: 'Lunch', businessName: 'Aurora' },
+      },
+    ]);
+
+    const preview = await service.switchPreview(customer);
+
+    const [sql, params] = query.mock.calls[0];
+    expect(params).toEqual([
+      'user-1',
+      'ada@example.com',
+      '+2348000000000',
+      null,
+    ]);
+    expect(sql).toContain("a.status = 'active'");
+    expect(sql).toContain('saved_businesses');
+    expect(preview).toEqual({
+      activeClaims: 2,
+      savedPlaces: 5,
+      savedDeals: 1,
+      latestClaim: { offerId: 'o1', title: 'Lunch', businessName: 'Aurora' },
+    });
+  });
 });

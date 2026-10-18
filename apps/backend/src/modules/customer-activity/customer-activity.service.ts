@@ -82,6 +82,48 @@ export class CustomerActivityService {
   }
 
   /** Counts for the activity header, over the same rows the list shows. */
+  /**
+   * What is waiting on the customer side of this account: active claims (and
+   * the newest one), saved places and deals. Read with any role, because the
+   * owner sees it before switching to customer mode; it only ever covers the
+   * caller's own records.
+   */
+  async switchPreview(customer: ActivityCustomer) {
+    const [row] = await this.dataSource.query<
+      {
+        activeClaims: number;
+        savedPlaces: number;
+        savedDeals: number;
+        latestClaim: {
+          offerId: string | null;
+          title: string | null;
+          businessName: string | null;
+        } | null;
+      }[]
+    >(
+      `WITH claims AS (
+         SELECT * FROM (${ACTIVITY_ROWS_SQL}) a
+          WHERE a.kind = 'claim' AND a.status = 'active'
+       )
+       SELECT
+         (SELECT COUNT(*)::int FROM claims) AS "activeClaims",
+         (SELECT COUNT(*)::int FROM saved_businesses s
+           WHERE s."userId" = $1::uuid AND s."deletedAt" IS NULL) AS "savedPlaces",
+         (SELECT COUNT(*)::int FROM deal_saves d
+           WHERE d."userId" = $1::uuid AND d."deletedAt" IS NULL) AS "savedDeals",
+         (SELECT json_build_object('offerId', c."refId", 'title', c.title,
+                                   'businessName', c."businessName")
+            FROM claims c ORDER BY c."at" DESC LIMIT 1) AS "latestClaim"`,
+      this.params(customer),
+    );
+    return {
+      activeClaims: Number(row?.activeClaims ?? 0),
+      savedPlaces: Number(row?.savedPlaces ?? 0),
+      savedDeals: Number(row?.savedDeals ?? 0),
+      latestClaim: row?.latestClaim ?? null,
+    };
+  }
+
   async summary(customer: ActivityCustomer, from?: string) {
     const [row] = await this.dataSource.query<
       {

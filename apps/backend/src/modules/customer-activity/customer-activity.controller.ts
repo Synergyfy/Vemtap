@@ -32,6 +32,23 @@ export class CustomerActivityController {
     return this.activityService.list(req.user, query);
   }
 
+  @Get('switch-preview')
+  @Roles(
+    UserRole.CUSTOMER,
+    UserRole.OWNER,
+    UserRole.MANAGER,
+    UserRole.STAFF,
+    UserRole.AGENT,
+  )
+  @ApiOperation({
+    summary: 'The customer side of this account, for the profile switch',
+    description:
+      'Active claims (and the newest), saved places and saved deals for the caller only. Any role: an owner reads it before switching to customer mode.',
+  })
+  switchPreview(@Req() req: ActivityRequest) {
+    return this.activityService.switchPreview(req.user);
+  }
+
   @Get('summary')
   @Roles(UserRole.CUSTOMER)
   @ApiOperation({ summary: 'Activity counts for the same period' })
