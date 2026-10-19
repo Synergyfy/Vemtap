@@ -539,6 +539,18 @@ export class BusinessCustomersService {
     };
   }
 
+  /**
+   * Whether the user has any recorded touch with the business (a POS sale,
+   * order, booking, claim and so on) — the same test the directory uses.
+   */
+  async isKnownCustomer(businessId: string, userId: string): Promise<boolean> {
+    const known = await this.dataSource.query<unknown[]>(
+      `WITH touches AS (${TOUCHES_SQL}) SELECT 1 FROM touches WHERE uid = $3::uuid LIMIT 1`,
+      [businessId, null, userId],
+    );
+    return known.length > 0;
+  }
+
   /** Create or update the business's note and tags on a customer it knows. */
   async saveNote(
     businessId: string,

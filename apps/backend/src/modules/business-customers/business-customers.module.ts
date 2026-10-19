@@ -9,5 +9,6 @@ import { BusinessCustomersService } from './business-customers.service';
   imports: [TypeOrmModule.forFeature([BusinessCustomerNote]), LoyaltyModule],
   controllers: [BusinessCustomersController],
   providers: [BusinessCustomersService],
+  exports: [BusinessCustomersService],
 })
 export class BusinessCustomersModule {}

@@ -38,6 +38,7 @@ import { MailModule } from '../mail/mail.module';
 import { BranchesModule } from '../branches/branches.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { LoyaltyModule } from '../loyalty/loyalty.module';
+import { BusinessCustomersModule } from '../business-customers/business-customers.module';
 
 import { MessagingEngineService } from './services/messaging-engine.service';
 import { TemplateService } from './services/template.service';
@@ -124,6 +125,7 @@ import { ChannelSettingsController } from './controllers/channel-settings.contro
     NotificationsModule,
     UploadsModule,
     forwardRef(() => LoyaltyModule),
+    forwardRef(() => BusinessCustomersModule),
     JwtModule.registerAsync({
       imports: [ConfigModule],
       useFactory: (configService: ConfigService) => ({
