@@ -399,7 +399,11 @@ export class PublicDiscoveryService {
     return {
       id: business.id,
       name: business.name,
+      // The business's own code, which `GET /public/businesses/code/:code`
+      // resolves; `slug`/`branchCode` below identify its main branch.
+      uniqueCode: business.uniqueCode,
       logoUrl: business.logoUrl,
+      coverImage: business.coverImage ?? null,
       description: business.description,
       address: business.address,
       state: business.state,
