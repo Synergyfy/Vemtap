@@ -261,12 +261,12 @@ export class AutomationService {
     return log;
   }
 
-  async getConnectionStatus(branchId: string) {
-    return {
+  getConnectionStatus(_branchId: string) {
+    return Promise.resolve({
       status: 'Connected',
       provider: 'WhatsApp',
       updatedAt: new Date(),
-    };
+    });
   }
 
   // --- Analytics ---

@@ -37,13 +37,10 @@ describe('AuthService', () => {
   let service: AuthService;
   let usersService: any;
   let businessesService: any;
-  let devicesService: any;
   let mailService: any;
   let jwtService: any;
   let otpRepository: any;
   let subscriptionsService: any;
-  let affiliatesService: any;
-  let externalAffiliateService: any;
 
   const mockUsersService = {
     findByEmail: jest.fn(),
@@ -158,13 +155,10 @@ describe('AuthService', () => {
     service = module.get<AuthService>(AuthService);
     usersService = module.get(UsersService);
     businessesService = module.get(BusinessesService);
-    devicesService = module.get(DevicesService);
     mailService = module.get(MailService);
     jwtService = module.get(JwtService);
     otpRepository = module.get(getRepositoryToken(Otp));
     subscriptionsService = module.get(SubscriptionsService);
-    affiliatesService = module.get(AffiliatesService);
-    externalAffiliateService = module.get(ExternalAffiliateService);
   });
 
   // ==================== requestOwnerOtp ====================
@@ -937,6 +931,24 @@ describe('AuthService', () => {
 
   // ==================== switchRole ====================
   describe('switchRole', () => {
+    it('keeps the switched token on the same login session', async () => {
+      const user = {
+        id: 'owner-1',
+        email: 'owner@example.com',
+        role: UserRole.OWNER,
+        branchId: 'br-1',
+        sessionId: 'session-9',
+      } as any;
+      usersService.findOne.mockResolvedValue(user);
+      businessesService.findByOwner.mockResolvedValue({ id: 'biz-1' });
+
+      await service.switchRole(user, UserRole.CUSTOMER);
+
+      expect(jwtService.sign).toHaveBeenCalledWith(
+        expect.objectContaining({ sid: 'session-9' }),
+      );
+    });
+
     it('should switch Owner to Customer', async () => {
       const user = {
         id: 'owner-1',
@@ -1072,6 +1084,27 @@ describe('AuthService', () => {
       );
       expect(result.access_token).toBe('mock_token');
       expect(result.isNewUser).toBe(false);
+    });
+
+    it('upgrades the account only when no business name is sent', async () => {
+      // The setup wizard upgrades at its entry gate, before it has the
+      // business details; the business is created later via PATCH my-business.
+      (bcrypt.compare as jest.Mock).mockResolvedValue(true);
+      usersService.findOne
+        .mockResolvedValueOnce({ ...customer })
+        .mockResolvedValueOnce({ ...customer, role: UserRole.OWNER });
+      businessesService.findByOwner.mockResolvedValue(null);
+
+      const result = await service.upgradeToOwner(
+        { id: 'cust-1' },
+        { password: dto.password },
+      );
+
+      expect(usersService.create).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'cust-1', role: UserRole.OWNER }),
+      );
+      expect(businessesService.create).not.toHaveBeenCalled();
+      expect(result.access_token).toBe('mock_token');
     });
 
     it('should reject a wrong password', async () => {

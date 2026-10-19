@@ -14,6 +14,8 @@ export interface SegmentReach {
   reachableByPush: number;
   reachableBySms: number;
   reachableByEmail: number;
+  /** Members who opted out of promotions (all channels, or marketing). */
+  excludedFromPromotions: number;
 }
 
 export interface SegmentInsights extends SegmentReach {
@@ -62,13 +64,72 @@ const TOUCHES_SQL = `
   WHERE o."businessId" = $1 AND c."userId" IS NOT NULL AND c."deletedAt" IS NULL
 `;
 
+/**
+ * Who a promotion can reach, by the same consent rules messages are sent
+ * under (`ComplianceService`, notification preferences):
+ *
+ * - out of promotions: opted out of everything, or turned marketing off;
+ * - push: a device token and push not turned off;
+ * - SMS / email: a phone / email, the channel not turned off, and (when the
+ *   customer keeps an opt-in list) the channel on it.
+ */
+const REACH_SQL = `
+  WITH m AS (
+    SELECT u.*,
+           (COALESCE(u."optOut", false)
+             OR COALESCE(u."notificationPreferences"->>'marketing', '') = 'false') AS "isOut",
+           NULLIF(COALESCE(u."optInChannels", ''), '') AS channels
+    FROM "users" u
+    WHERE u."id" = ANY($1::uuid[])
+  )
+  SELECT
+    COUNT(*) FILTER (WHERE "isOut")::int AS excluded,
+    COUNT(*) FILTER (
+      WHERE NOT "isOut"
+        AND COALESCE(m."notificationPreferences"->>'push', '') <> 'false'
+        AND (EXISTS (
+               SELECT 1 FROM "push_tokens" t WHERE t."userId" = m."id" AND t."deletedAt" IS NULL
+             ) OR m."pushToken" IS NOT NULL)
+    )::int AS push,
+    COUNT(*) FILTER (
+      WHERE NOT "isOut"
+        AND COALESCE(m."phone", '') <> ''
+        AND COALESCE(m."notificationPreferences"->>'sms', '') <> 'false'
+        AND (channels IS NULL OR 'SMS' = ANY(string_to_array(channels, ',')))
+    )::int AS sms,
+    COUNT(*) FILTER (
+      WHERE NOT "isOut"
+        AND COALESCE(m."email", '') <> ''
+        AND COALESCE(m."notificationPreferences"->>'email', '') <> 'false'
+        AND (channels IS NULL OR 'EMAIL' = ANY(string_to_array(channels, ',')))
+    )::int AS email
+  FROM m
+`;
+
 /** Per-customer roll-up of their touches. */
+/**
+ * Saving a deal and chatting make someone reachable, but not a customer by
+ * the usual rules: these touches join `touches` only for the criteria that
+ * ask about them, so every other segment keeps exactly its members.
+ */
+const SAVE_TOUCHES_SQL = `
+  SELECT s."userId", o."branchId", 0, s."createdAt", 'save'
+  FROM "deal_saves" s
+  JOIN "catalogue_offers" o ON o."id" = s."offerId"
+  WHERE o."businessId" = $1 AND s."deletedAt" IS NULL
+`;
+const CHAT_TOUCHES_SQL = `
+  SELECT t."customerId", t."branchId", 0, t."lastActivityAt", 'chat'
+  FROM "conversation_threads" t
+  WHERE t."businessId" = $1 AND t."deletedAt" IS NULL
+`;
+
 const PER_CUSTOMER_SQL = `
   SELECT uid,
          COUNT(*) FILTER (WHERE kind IN ('pos', 'order', 'visit')) AS visits,
          COUNT(*) FILTER (WHERE kind IN ('pos', 'order')) AS purchases,
          COALESCE(SUM(amount), 0) AS spend,
-         MAX(at) AS "lastAt"
+         MAX(at) FILTER (WHERE kind NOT IN ('save', 'chat')) AS "lastAt"
   FROM touches
   GROUP BY uid
 `;
@@ -122,15 +183,70 @@ export class SegmentCriteriaService {
       );
     }
 
+    if (recency?.interactedWithinDays) {
+      const since = `now() - (${p(recency.interactedWithinDays)} * interval '1 day')`;
+      where.push(`(
+        EXISTS (
+          SELECT 1 FROM "visits" v
+          WHERE v."customerId" = per.uid AND v."businessId" = $1
+            AND v."deletedAt" IS NULL AND v."createdAt" >= ${since}
+        )
+        OR EXISTS (
+          SELECT 1 FROM "conversation_threads" ct
+          WHERE ct."customerId" = per.uid AND ct."businessId" = $1
+            AND ct."deletedAt" IS NULL AND ct."lastActivityAt" >= ${since}
+        )
+      )`);
+    }
+
     if (criteria.location?.branchIds?.length) {
       where.push(`EXISTS (
         SELECT 1 FROM touches t
         WHERE t.uid = per.uid AND t."branchId" = ANY(${p(criteria.location.branchIds)}::uuid[])
       )`);
     }
+    if (criteria.location?.homeDistrictIds?.length) {
+      where.push(`EXISTS (
+        SELECT 1 FROM "users" u
+        WHERE u."id" = per.uid
+          AND u."homeDistrictId" = ANY(${p(criteria.location.homeDistrictIds)}::uuid[])
+      )`);
+    }
+
+    if (criteria.loyalty?.minPoints) {
+      where.push(`COALESCE((
+        SELECT SUM(CASE WHEN pt."type" = 'earned' THEN pt."amount" ELSE -pt."amount" END)
+        FROM "point_transactions" pt
+        WHERE pt."customerId" = per.uid AND pt."businessId" = $1 AND pt."deletedAt" IS NULL
+      ), 0) >= ${p(criteria.loyalty.minPoints)}`);
+    }
 
     const deals = criteria.deals;
-    if (deals) {
+    if (deals?.savedNotRedeemed) {
+      // Any of the business's deals. A deal published to several branches is
+      // one group: a redemption of any row of it redeems the saved one.
+      where.push(`EXISTS (
+        SELECT 1 FROM "deal_saves" s
+        JOIN "catalogue_offers" o ON o."id" = s."offerId"
+        WHERE s."userId" = per.uid AND o."businessId" = $1 AND s."deletedAt" IS NULL
+          AND NOT EXISTS (
+            SELECT 1 FROM "catalogue_offer_claims" rc
+            JOIN "catalogue_offers" ro ON ro."id" = rc."offerId"
+            WHERE rc."userId" = per.uid AND rc."status" = 'redeemed' AND rc."deletedAt" IS NULL
+              AND (ro."id" = o."id"
+                OR (o."dealGroupId" IS NOT NULL AND ro."dealGroupId" = o."dealGroupId"))
+          )
+      )`);
+    }
+    // `deals: {}` means "claimed any deal"; saved-not-redeemed on its own
+    // does not also require a claim, but chosen deals still mean "claimed".
+    if (
+      deals &&
+      (!deals.savedNotRedeemed ||
+        deals.offerIds?.length ||
+        deals.redeemedAtLeast ||
+        deals.withinDays)
+    ) {
       const filters = [
         `o."businessId" = $1`,
         `c."userId" = per.uid`,
@@ -181,8 +297,13 @@ export class SegmentCriteriaService {
       ) >= ${p(menu.orderedAtLeast ?? 1)}`);
     }
 
+    const touches = [
+      TOUCHES_SQL,
+      ...(deals?.savedNotRedeemed ? [SAVE_TOUCHES_SQL] : []),
+      ...(recency?.interactedWithinDays ? [CHAT_TOUCHES_SQL] : []),
+    ].join('  UNION ALL\n');
     const sql = `
-      WITH touches AS (${TOUCHES_SQL}),
+      WITH touches AS (${touches}),
            per AS (${PER_CUSTOMER_SQL})
       SELECT per.uid AS "userId" FROM per
       ${where.length ? `WHERE ${where.join('\n        AND ')}` : ''}
@@ -207,26 +328,18 @@ export class SegmentCriteriaService {
         reachableByPush: 0,
         reachableBySms: 0,
         reachableByEmail: 0,
+        excludedFromPromotions: 0,
       };
     }
     const [row] = await this.dataSource.query<
-      { push: number; sms: number; email: number }[]
-    >(
-      `SELECT
-         COUNT(*) FILTER (WHERE EXISTS (
-           SELECT 1 FROM "push_tokens" t WHERE t."userId" = u."id" AND t."deletedAt" IS NULL
-         ) OR u."pushToken" IS NOT NULL)::int AS push,
-         COUNT(*) FILTER (WHERE COALESCE(u."phone", '') <> '')::int AS sms,
-         COUNT(*) FILTER (WHERE COALESCE(u."email", '') <> '')::int AS email
-       FROM "users" u
-       WHERE u."id" = ANY($1::uuid[])`,
-      [userIds],
-    );
+      { push: number; sms: number; email: number; excluded: number }[]
+    >(REACH_SQL, [userIds]);
     return {
       size: userIds.length,
       reachableByPush: Number(row?.push ?? 0),
       reachableBySms: Number(row?.sms ?? 0),
       reachableByEmail: Number(row?.email ?? 0),
+      excludedFromPromotions: Number(row?.excluded ?? 0),
     };
   }
 
@@ -387,7 +500,7 @@ export class SegmentCriteriaService {
 
   /** Choices for the criteria builder chips. */
   async criteriaOptions(businessId: string) {
-    const [deals, menuItems, branches] = await Promise.all([
+    const [deals, menuItems, branches, districts] = await Promise.all([
       this.dataSource.query<{ id: string; name: string }[]>(
         `SELECT DISTINCT ON (COALESCE(o."dealGroupId", o."id")) o."id" AS id, o."name" AS name
          FROM "catalogue_offers" o
@@ -407,11 +520,18 @@ export class SegmentCriteriaService {
          ORDER BY b."isMainBranch" DESC, b."name"`,
         [businessId],
       ),
+      // Home districts customers can pick (`location.homeDistrictIds`).
+      this.dataSource.query<{ id: string; name: string }[]>(
+        `SELECT c."id" AS id, c."name" AS name FROM "clusters" c
+         WHERE c."type" = 'district' AND c."isActive" = true AND c."deletedAt" IS NULL
+         ORDER BY c."name"`,
+      ),
     ]);
     return {
       deals,
       menuItems,
       branches,
+      districts,
       recency: [
         {
           id: 'active_7',

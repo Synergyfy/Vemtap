@@ -1,7 +1,10 @@
 import { Processor, WorkerHost, OnWorkerEvent } from '@nestjs/bullmq';
 import { Logger } from '@nestjs/common';
 import { Job } from 'bullmq';
-import { NotificationsService, NOTIFICATION_BATCH_QUEUE } from './notifications.service';
+import {
+  NotificationsService,
+  NOTIFICATION_BATCH_QUEUE,
+} from './notifications.service';
 
 /**
  * Closes notification batches once their window has elapsed.

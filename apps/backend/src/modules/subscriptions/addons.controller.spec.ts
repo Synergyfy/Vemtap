@@ -1,11 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { AddonsController } from './addons.controller';
 import { AddonsService } from './services/addons.service';
-import { AddOn, AddOnType } from './entities/addon.entity';
-import {
-  BusinessAddOn,
-  BusinessAddOnStatus,
-} from './entities/business-addon.entity';
+import { AddOnType } from './entities/addon.entity';
+import { BusinessAddOnStatus } from './entities/business-addon.entity';
 import { UserRole } from '../users/entities/user.entity';
 
 describe('AddonsController', () => {

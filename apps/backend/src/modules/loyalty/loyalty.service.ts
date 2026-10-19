@@ -159,6 +159,86 @@ export class LoyaltyService {
   }
 
   /**
+   * Points each customer holds at one business, for a list of customers in a
+   * single grouped query. Customers with no ledger rows map to 0.
+   */
+  async getBusinessPointsForCustomers(
+    customerIds: string[],
+    businessId: string,
+  ): Promise<Map<string, number>> {
+    const balances = new Map<string, number>(customerIds.map((id) => [id, 0]));
+    if (!customerIds.length) return balances;
+    const rows = await this.pointTransactionRepo
+      .createQueryBuilder('transaction')
+      .select('transaction.customerId', 'customerId')
+      .addSelect('COALESCE(SUM(transaction.amount), 0)', 'sum')
+      .where('transaction.customerId IN (:...customerIds)', { customerIds })
+      .andWhere('transaction.businessId = :businessId', { businessId })
+      .groupBy('transaction.customerId')
+      .getRawMany<{ customerId: string; sum: string }>();
+    for (const row of rows) {
+      balances.set(row.customerId, parseInt(row.sum || '0', 10));
+    }
+    return balances;
+  }
+
+  /** Tier name for a points balance, using the shared thresholds. */
+  tierForPoints(points: number): string {
+    let tier: string = LOYALTY_TIER_THRESHOLDS[0].name;
+    for (const threshold of LOYALTY_TIER_THRESHOLDS) {
+      if (points >= threshold.minPoints) tier = threshold.name;
+    }
+    return tier;
+  }
+
+  /**
+   * Points a customer earned at a business for ledger rows whose reason starts
+   * with `reasonPrefix` (e.g. "POS Sale RCT-20261016-004").
+   */
+  async getPointsEarnedForReason(
+    customerId: string,
+    businessId: string,
+    reasonPrefix: string,
+  ): Promise<number> {
+    const escaped = reasonPrefix.replace(/[%_\\]/g, (m) => `\\${m}`);
+    const result = await this.pointTransactionRepo
+      .createQueryBuilder('transaction')
+      .select('COALESCE(SUM(transaction.amount), 0)', 'sum')
+      .where('transaction.customerId = :customerId', { customerId })
+      .andWhere('transaction.businessId = :businessId', { businessId })
+      .andWhere('transaction.type = :type', {
+        type: PointTransactionType.EARNED,
+      })
+      .andWhere('transaction.reason LIKE :reason', { reason: `${escaped}%` })
+      .getRawOne<{ sum: string }>();
+    return parseInt(result?.sum || '0', 10);
+  }
+
+  /**
+   * Rewards a business currently offers: active, in stock and unexpired,
+   * cheapest first. Bounded by `limit`.
+   */
+  async getActiveBusinessRewards(
+    businessId: string,
+    options: { branchId?: string; limit?: number } = {},
+  ): Promise<Reward[]> {
+    const qb = this.rewardRepo
+      .createQueryBuilder('reward')
+      .where('reward.businessId = :businessId', { businessId })
+      .andWhere('reward.isActive = true')
+      .andWhere('reward.remainingQuantity > 0')
+      .andWhere('reward.expiryDate > :now', { now: new Date() })
+      .orderBy('reward.pointsRequired', 'ASC')
+      .take(options.limit ?? 20);
+    if (options.branchId) {
+      qb.andWhere('reward.branchId = :branchId', {
+        branchId: options.branchId,
+      });
+    }
+    return qb.getMany();
+  }
+
+  /**
    * Customer loyalty tier derived from their global points balance.
    * Thresholds mirror the app's shipped rewardTiers so both stay in sync.
    */
@@ -189,6 +269,68 @@ export class LoyaltyService {
       progressPercent,
       thresholds,
     };
+  }
+
+  /**
+   * The customer's points at every business that holds any, as one grouped
+   * aggregate — balances are per business, so the rewards screen needs them
+   * side by side to say which rewards the customer can afford.
+   */
+  async getCustomerWallet(userId: string) {
+    const rows = await this.dataSource.query<
+      {
+        businessId: string;
+        businessName: string | null;
+        businessLogo: string | null;
+        points: string;
+      }[]
+    >(
+      `SELECT pt."businessId", b.name AS "businessName", b."logoUrl" AS "businessLogo",
+              SUM(pt.amount)::int AS points
+         FROM point_transactions pt
+         LEFT JOIN businesses b ON b.id = pt."businessId"
+        WHERE pt."customerId" = $1 AND pt."deletedAt" IS NULL
+        GROUP BY pt."businessId", b.name, b."logoUrl"
+       HAVING SUM(pt.amount) <> 0
+        ORDER BY SUM(pt.amount) DESC`,
+      [userId],
+    );
+    return rows.map((row) => ({ ...row, points: Number(row.points) || 0 }));
+  }
+
+  /** Rewards the customer has redeemed, newest first, with the code to show staff. */
+  async getCustomerRedemptions(userId: string, limit = 50) {
+    const rows = await this.dataSource.query<
+      {
+        code: string;
+        redeemedAt: Date;
+        rewardId: string;
+        rewardName: string;
+        rewardImage: string | null;
+        pointsSpent: string;
+        expiresAt: Date | null;
+        businessId: string;
+        businessName: string | null;
+        branchName: string | null;
+      }[]
+    >(
+      `SELECT rc.code, rc."usedAt" AS "redeemedAt", r.id AS "rewardId", r.name AS "rewardName",
+              r."coverImage" AS "rewardImage", r."pointsRequired" AS "pointsSpent",
+              r."expiryDate" AS "expiresAt", rc."businessId", b.name AS "businessName",
+              br.name AS "branchName"
+         FROM redemption_codes rc
+         JOIN rewards r ON r.id = rc."rewardId"
+         LEFT JOIN businesses b ON b.id = rc."businessId"
+         LEFT JOIN branches br ON br.id = rc."branchId"
+        WHERE rc."usedById" = $1 AND rc."isUsed" = true
+        ORDER BY rc."usedAt" DESC NULLS LAST
+        LIMIT $2`,
+      [userId, Math.min(Math.max(limit, 1), 100)],
+    );
+    return rows.map((row) => ({
+      ...row,
+      pointsSpent: Number(row.pointsSpent) || 0,
+    }));
   }
 
   async getPointLogs(
@@ -691,7 +833,6 @@ export class LoyaltyService {
 
     return {
       data: items.map((item) => {
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const { redemptionCount, branch, business, ...rest } = item;
         if (!global) return rest;
         return {
@@ -1459,7 +1600,7 @@ export class LoyaltyService {
         where.branchId = branchId;
       }
 
-      const totalRewards = await this.rewardRepo.count({ where });
+      await this.rewardRepo.count({ where });
       const activeRewards = await this.rewardRepo.count({
         where: { ...where, isActive: true },
       });

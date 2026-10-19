@@ -19,6 +19,7 @@ import { paginateWithCursor } from '../../common/utils/cursor-pagination.util';
 import { Branch } from '../branches/entities/branch.entity';
 import { Business } from '../businesses/entities/business.entity';
 
+import { Cluster, ClusterType } from '../clusters/entities/cluster.entity';
 @Injectable()
 export class UsersService {
   constructor(
@@ -28,6 +29,8 @@ export class UsersService {
     private passwordResetHistoryRepository: Repository<PasswordResetHistory>,
     @InjectRepository(UserSession)
     private userSessionRepository: Repository<UserSession>,
+    @InjectRepository(Cluster)
+    private clusterRepository: Repository<Cluster>,
     private readonly mailService: MailService,
     private readonly eventsGateway: EventsGateway,
   ) {}
@@ -101,6 +104,54 @@ export class UsersService {
       );
     } catch (error) {
       console.error('Failed to send invitation email:', error);
+    }
+
+    return savedUser;
+  }
+
+  /**
+   * Re-issue the invitation email for a row that is still waiting to be
+   * accepted.
+   *
+   * A fresh temporary password is generated instead of replaying the original:
+   * that one was written into the invitee's inbox once, and reusing it after a
+   * resend would leave a credential alive that the owner may believe was
+   * superseded.
+   */
+  async resendTeamInvite(id: string, branchId: string): Promise<User> {
+    const user = await this.usersRepository.findOne({
+      where: { id, branchId },
+    });
+    if (!user) {
+      throw new NotFoundException('Staff member not found in this branch');
+    }
+    if (user.status !== UserStatus.INVITED) {
+      throw new BadRequestException('Only pending invitations can be resent');
+    }
+
+    const defaultPassword = Math.floor(
+      100000 + Math.random() * 900000,
+    ).toString();
+    user.password = await bcrypt.hash(defaultPassword, 10);
+    const savedUser = await this.usersRepository.save(user);
+
+    const branch = await this.usersRepository.manager
+      .getRepository(Branch)
+      .findOne({
+        where: { id: branchId },
+        relations: ['business'],
+      });
+
+    try {
+      await this.mailService.sendWelcomeEmail(
+        savedUser.email,
+        savedUser.firstName,
+        defaultPassword,
+        branch?.business?.name,
+        branch?.name,
+      );
+    } catch (error) {
+      console.error('Failed to resend invitation email:', error);
     }
 
     return savedUser;
@@ -194,8 +245,32 @@ export class UsersService {
     });
   }
 
-  async listSessions(userId: string) {
-    return this.userSessionRepository.find({
+  /**
+   * Fills in the session the caller is signed in with: the app names the
+   * device once after sign-in, because the login itself only knows a default.
+   */
+  async describeSession(
+    userId: string,
+    sessionId: string,
+    details: {
+      deviceName: string;
+      platform: string;
+      userAgent?: string | null;
+      ipAddress?: string | null;
+    },
+  ) {
+    const session = await this.findActiveSession(sessionId, userId);
+    if (!session) throw new NotFoundException('Linked device not found');
+    session.deviceName = details.deviceName;
+    session.platform = details.platform;
+    session.userAgent = details.userAgent ?? session.userAgent;
+    session.ipAddress = details.ipAddress ?? session.ipAddress;
+    session.lastActiveAt = new Date();
+    return this.userSessionRepository.save(session);
+  }
+
+  async listSessions(userId: string, currentSessionId?: string) {
+    const sessions = await this.userSessionRepository.find({
       where: { userId },
       order: { lastActiveAt: 'DESC' },
       select: [
@@ -209,6 +284,10 @@ export class UsersService {
         'createdAt',
       ],
     });
+    return sessions.map((session) => ({
+      ...session,
+      isCurrent: session.id === currentSessionId,
+    }));
   }
 
   async renameSession(userId: string, sessionId: string, deviceName: string) {
@@ -243,6 +322,17 @@ export class UsersService {
   }
 
   async updateProfile(id: string, updates: Partial<User>): Promise<User> {
+    if (updates.homeDistrictId) {
+      const district = await this.clusterRepository.findOne({
+        where: {
+          id: updates.homeDistrictId,
+          type: ClusterType.DISTRICT,
+          isActive: true,
+        },
+        select: ['id'],
+      });
+      if (!district) throw new BadRequestException('Unknown district');
+    }
     const {
       branch,
       business,

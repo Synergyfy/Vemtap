@@ -73,6 +73,7 @@ describe('ClustersService', () => {
     create: jest.fn(),
     save: jest.fn(),
     softDelete: jest.fn(),
+    count: jest.fn(),
     increment: jest.fn().mockResolvedValue(undefined),
     createQueryBuilder: jest.fn(),
     manager: { createQueryBuilder: jest.fn() },
@@ -1192,6 +1193,142 @@ describe('ClustersService', () => {
       );
       expect(result).toEqual({ enqueued: true, jobId: 'job-1' });
       expect(branchRepo.manager.query).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('districts', () => {
+    it('seeds the default districts on a database without any', async () => {
+      clusterRepo.count.mockResolvedValue(0);
+      clusterRepo.save.mockImplementation((rows: unknown) =>
+        Promise.resolve(rows),
+      );
+
+      const seeded = await service.ensureDefaultDistricts();
+
+      expect(seeded).toBe(6);
+      const [[rows]] = clusterRepo.save.mock.calls as [Partial<Cluster>[]][];
+      expect(rows.map((row) => row.name)).toContain('Wuse 2');
+      expect(
+        rows.every(
+          (row) =>
+            row.type === ClusterType.DISTRICT && row.radiusMeters === 2500,
+        ),
+      ).toBe(true);
+      // Districts are areas, not scannable QR places.
+      expect(rows.every((row) => row.qrIsActive === false)).toBe(true);
+    });
+
+    it('leaves districts alone once any exist, even deleted ones', async () => {
+      clusterRepo.count.mockResolvedValue(1);
+
+      expect(await service.ensureDefaultDistricts()).toBe(0);
+      expect(clusterRepo.count).toHaveBeenCalledWith(
+        expect.objectContaining({ withDeleted: true }),
+      );
+      expect(clusterRepo.save).not.toHaveBeenCalled();
+    });
+
+    it('lists active districts with numeric coordinates', async () => {
+      clusterRepo.find.mockResolvedValue([
+        {
+          id: 'd-1',
+          name: 'Maitama',
+          latitude: '9.1136000',
+          longitude: '7.4856000',
+          radiusMeters: 2500,
+        },
+      ]);
+
+      const districts = await service.listDistricts();
+
+      expect(clusterRepo.find).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { type: ClusterType.DISTRICT, isActive: true },
+        }),
+      );
+      expect(districts).toEqual([
+        {
+          id: 'd-1',
+          name: 'Maitama',
+          latitude: 9.1136,
+          longitude: 7.4856,
+          radiusMeters: 2500,
+        },
+      ]);
+    });
+
+    it('never auto-assigns a branch to a district', async () => {
+      branchRepo.manager.query.mockResolvedValue([]);
+      await service.autoAssign({ dryRun: true });
+      const sql = branchRepo.manager.query.mock.calls[0][0];
+      expect(sql).toContain(`c2."type" <> 'district'`);
+    });
+
+    it('gives an admin-created district a district radius and no QR', async () => {
+      const saved = { id: 'd-new', uniqueCode: 'CL-D1' };
+      clusterRepo.save.mockResolvedValue(saved);
+      clusterRepo.findOne.mockResolvedValue(saved);
+      branchRepo.find.mockResolvedValue([]);
+
+      await service.create(
+        {
+          name: 'Asokoro',
+          type: ClusterType.DISTRICT,
+          latitude: 9.04,
+          longitude: 7.52,
+        },
+        'admin-1',
+      );
+      expect(clusterRepo.create).toHaveBeenLastCalledWith(
+        expect.objectContaining({ radiusMeters: 2500, qrIsActive: false }),
+      );
+
+      // Markets keep their defaults.
+      await service.create(
+        { name: 'Banex', latitude: 9.07, longitude: 7.47 },
+        'admin-1',
+      );
+      expect(clusterRepo.create).toHaveBeenLastCalledWith(
+        expect.objectContaining({ radiusMeters: 500, qrIsActive: true }),
+      );
+    });
+
+    it('will not turn a cluster with branches into a district', async () => {
+      clusterRepo.findOne.mockResolvedValue({
+        id: 'cl-1',
+        uniqueCode: 'CL-1',
+        type: ClusterType.MARKET,
+      });
+      branchRepo.count.mockResolvedValue(3);
+
+      await expect(
+        service.update('cl-1', { type: ClusterType.DISTRICT }),
+      ).rejects.toThrow(/branches out before making it a district/);
+      expect(clusterRepo.save).not.toHaveBeenCalled();
+    });
+
+    it('lists only districts when asked', async () => {
+      const qb = buildQb({
+        getManyAndCount: jest.fn().mockResolvedValue([[], 0]),
+      });
+      clusterRepo.createQueryBuilder.mockReturnValue(qb);
+
+      await service.list({ type: ClusterType.DISTRICT });
+
+      expect(qb.andWhere).toHaveBeenCalledWith('cluster.type = :type', {
+        type: ClusterType.DISTRICT,
+      });
+    });
+
+    it('refuses to add a branch to a district', async () => {
+      clusterRepo.findOne.mockResolvedValue({
+        id: 'd-1',
+        type: ClusterType.DISTRICT,
+      });
+      await expect(service.addBranch('d-1', 'b-1')).rejects.toThrow(
+        'Districts are targeting areas',
+      );
+      expect(branchRepo.save).not.toHaveBeenCalled();
     });
   });
 });

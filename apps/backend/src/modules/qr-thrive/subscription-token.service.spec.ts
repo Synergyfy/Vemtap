@@ -10,9 +10,6 @@ import { PlansService } from '../subscriptions/plans.service';
 
 describe('SubscriptionTokenService', () => {
   let service: SubscriptionTokenService;
-  let jwtService: JwtService;
-  let subscriptionsService: SubscriptionsService;
-  let plansService: PlansService;
 
   const mockConfigService = {
     get: jest.fn().mockReturnValue('test-secret-key'),
@@ -53,10 +50,6 @@ describe('SubscriptionTokenService', () => {
     }).compile();
 
     service = module.get<SubscriptionTokenService>(SubscriptionTokenService);
-    jwtService = module.get<JwtService>(JwtService);
-    subscriptionsService =
-      module.get<SubscriptionsService>(SubscriptionsService);
-    plansService = module.get<PlansService>(PlansService);
   });
 
   afterEach(() => {
@@ -132,7 +125,7 @@ describe('SubscriptionTokenService', () => {
       mockSubscriptionsService.activeSubscription.mockResolvedValue(null);
       mockJwtService.sign.mockReturnValue('active-token');
 
-      const result = await service.generateToken(mockUser as any, 'biz-456');
+      await service.generateToken(mockUser as any, 'biz-456');
 
       expect(mockJwtService.sign).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -153,7 +146,7 @@ describe('SubscriptionTokenService', () => {
 
       mockJwtService.sign.mockReturnValue('free-token');
 
-      const result = await service.generateToken(mockUser as any, 'biz-456');
+      await service.generateToken(mockUser as any, 'biz-456');
 
       expect(mockJwtService.sign).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -180,7 +173,7 @@ describe('SubscriptionTokenService', () => {
       );
       mockJwtService.sign.mockReturnValue('canceled-token');
 
-      const result = await service.generateToken(mockUser as any, 'biz-456');
+      await service.generateToken(mockUser as any, 'biz-456');
 
       expect(mockJwtService.sign).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -207,7 +200,7 @@ describe('SubscriptionTokenService', () => {
       );
       mockJwtService.sign.mockReturnValue('expired-token');
 
-      const result = await service.generateToken(mockUser as any, 'biz-456');
+      await service.generateToken(mockUser as any, 'biz-456');
 
       expect(mockJwtService.sign).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -223,7 +216,7 @@ describe('SubscriptionTokenService', () => {
       );
       mockJwtService.sign.mockReturnValue('default-token');
 
-      const result = await service.generateToken(mockUser as any, 'biz-456');
+      await service.generateToken(mockUser as any, 'biz-456');
 
       expect(mockJwtService.sign).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -256,7 +249,7 @@ describe('SubscriptionTokenService', () => {
       mockPlansService.findFreePlan.mockResolvedValue(null);
       mockJwtService.sign.mockReturnValue('no-plan-token');
 
-      const result = await service.generateToken(mockUser as any, 'biz-456');
+      await service.generateToken(mockUser as any, 'biz-456');
 
       expect(mockJwtService.sign).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -368,7 +361,7 @@ describe('SubscriptionTokenService', () => {
       );
       mockJwtService.sign.mockReturnValue('null-types-token');
 
-      const result = await service.generateToken(mockUser as any, 'biz-456');
+      await service.generateToken(mockUser as any, 'biz-456');
 
       expect(mockJwtService.sign).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -398,7 +391,7 @@ describe('SubscriptionTokenService', () => {
       );
       mockJwtService.sign.mockReturnValue('analytics-token');
 
-      const result = await service.generateToken(mockUser as any, 'biz-456');
+      await service.generateToken(mockUser as any, 'biz-456');
 
       expect(mockJwtService.sign).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -427,7 +420,7 @@ describe('SubscriptionTokenService', () => {
       );
       mockJwtService.sign.mockReturnValue('no-analytics-token');
 
-      const result = await service.generateToken(mockUser as any, 'biz-456');
+      await service.generateToken(mockUser as any, 'biz-456');
 
       expect(mockJwtService.sign).toHaveBeenCalledWith(
         expect.objectContaining({

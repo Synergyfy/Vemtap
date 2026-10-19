@@ -5,9 +5,11 @@ import { Branch } from '../../branches/entities/branch.entity';
 import { User } from '../../users/entities/user.entity';
 import { ApiProperty } from '@nestjs/swagger';
 import { RegisterSessionStatus } from './pos-enums';
+import { PosTill } from './pos-till.entity';
 
 @Entity('pos_register_sessions')
 @Index(['businessId', 'cashierId'])
+@Index(['tillId', 'status'])
 export class PosRegisterSession extends AbstractBaseEntity {
   @ManyToOne(() => Business, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'businessId' })
@@ -29,6 +31,15 @@ export class PosRegisterSession extends AbstractBaseEntity {
 
   @Column({ type: 'uuid' })
   cashierId: string;
+
+  /** The till this shift runs on. Null for sessions opened without one. */
+  @ManyToOne(() => PosTill, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'tillId' })
+  till: PosTill | null;
+
+  @ApiProperty({ nullable: true })
+  @Column({ type: 'uuid', nullable: true })
+  tillId: string | null;
 
   @ApiProperty()
   @Column({ type: 'timestamp' })
@@ -72,7 +83,10 @@ export class PosRegisterSession extends AbstractBaseEntity {
   @Column({ type: 'int', default: 0 })
   transactionCount: number;
 
-  @ApiProperty({ enum: RegisterSessionStatus, default: RegisterSessionStatus.OPEN })
+  @ApiProperty({
+    enum: RegisterSessionStatus,
+    default: RegisterSessionStatus.OPEN,
+  })
   @Column({
     type: 'enum',
     enum: RegisterSessionStatus,

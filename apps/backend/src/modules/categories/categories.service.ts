@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException, Inject, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { CACHE_MANAGER, type Cache } from '@nestjs/cache-manager';
-import { Repository, Like, ILike } from 'typeorm';
+import { Repository, ILike } from 'typeorm';
 import { Category } from '../businesses/entities/category.entity';
 import { Subcategory } from '../businesses/entities/subcategory.entity';
 import {

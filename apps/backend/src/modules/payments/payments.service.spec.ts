@@ -2,15 +2,12 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { PaymentsService } from './payments.service';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Payment, PaymentPurpose } from './entities/payment.entity';
-import { Repository } from 'typeorm';
 import { HttpService } from '@nestjs/axios';
 import { of } from 'rxjs';
 import { ConflictException } from '@nestjs/common';
 
 describe('PaymentsService', () => {
   let service: PaymentsService;
-  let paymentRepo: Repository<Payment>;
-  let httpService: HttpService;
 
   const mockPaymentRepo = {
     create: jest.fn(),
@@ -33,8 +30,6 @@ describe('PaymentsService', () => {
     }).compile();
 
     service = module.get<PaymentsService>(PaymentsService);
-    paymentRepo = module.get<Repository<Payment>>(getRepositoryToken(Payment));
-    httpService = module.get<HttpService>(HttpService);
   });
 
   afterEach(() => {
@@ -59,8 +54,8 @@ describe('PaymentsService', () => {
 
       const result = await service.verifyTransaction('ref_123');
       expect(result).toBeTruthy();
-      expect(result.status).toBe('success');
-      expect(result.amount).toBe(5000);
+      expect(result?.status).toBe('success');
+      expect(result?.amount).toBe(5000);
     });
 
     it('should return failed status if paystack status is not success', async () => {
@@ -72,7 +67,7 @@ describe('PaymentsService', () => {
 
       const result = await service.verifyTransaction('ref_123');
       expect(result).toBeTruthy();
-      expect(result.status).toBe('failed');
+      expect(result?.status).toBe('failed');
     });
 
     it('should return pending status for async channels', async () => {
@@ -83,7 +78,7 @@ describe('PaymentsService', () => {
       );
 
       const result = await service.verifyTransaction('ref_123');
-      expect(result.status).toBe('pending');
+      expect(result?.status).toBe('pending');
     });
 
     it('should return null on error', async () => {

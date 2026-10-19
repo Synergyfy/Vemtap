@@ -1,20 +1,7 @@
-import {
-  Controller,
-  Post,
-  Body,
-  UseGuards,
-  Request,
-  BadRequestException,
-} from '@nestjs/common';
-import {
-  ApiTags,
-  ApiOperation,
-  ApiResponse,
-  ApiBearerAuth,
-} from '@nestjs/swagger';
+import { Controller, Post, Body, Request } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { CouponEngineService } from '../services/coupon-engine.service';
 import { ValidatePromoCodeDto } from '../dto/validate-promo-code.dto';
-import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { Public } from '../../../common/decorators/public.decorator';
 import { BranchesService } from '../../branches/branches.service';
 import { UserRole } from '../../users/entities/user.entity';

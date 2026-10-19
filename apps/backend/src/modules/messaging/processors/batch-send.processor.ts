@@ -47,7 +47,6 @@ export class BatchSendProcessor extends WorkerHost {
       campaignId,
       branchId,
       customerIds,
-      templateId,
       content,
       from: jobFrom,
     } = job.data;

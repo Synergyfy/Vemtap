@@ -192,6 +192,28 @@ export class LoyaltyController {
     return this.loyaltyService.getCustomerPoints(req.user.id, businessId);
   }
 
+  @Get('me/wallet')
+  @Roles(UserRole.CUSTOMER)
+  @ApiOperation({
+    summary: "The customer's points at each business",
+    description:
+      'Returns `[{ businessId, businessName, businessLogo, points }]`, one row per business with a non-zero balance, highest first. Access: CUSTOMER',
+  })
+  async getMyWallet(@Request() req: { user: User }) {
+    return this.loyaltyService.getCustomerWallet(req.user.id);
+  }
+
+  @Get('me/redemptions')
+  @Roles(UserRole.CUSTOMER)
+  @ApiOperation({
+    summary: 'Rewards the customer has redeemed',
+    description:
+      'Newest first: the code to show staff, the reward, points spent, business and branch, and when the reward expires. Access: CUSTOMER',
+  })
+  async getMyRedemptions(@Request() req: { user: User }) {
+    return this.loyaltyService.getCustomerRedemptions(req.user.id);
+  }
+
   @Get('points/tier')
   @Roles(UserRole.CUSTOMER)
   @ApiOperation({

@@ -25,7 +25,6 @@ import {
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { DevicesService } from '../devices/devices.service';
 import {
-  isValidUsername,
   RESERVED_USERNAMES,
   generateUsernameFromName,
 } from '../../common/utils/username.util';
@@ -313,7 +312,7 @@ export class BranchesService {
     businessId: string,
     id: string,
     updateBranchDto: UpdateBranchDto,
-    user?: User,
+    _user?: User,
   ): Promise<Branch> {
     const branch = await this.findOne(businessId, id);
 

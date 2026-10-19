@@ -239,6 +239,8 @@ export class PaymentsService {
     amount: number,
     email: string,
     authorization_code: string,
+    /** Our own reference (so the charge can be verified) and metadata. */
+    options: { reference?: string; metadata?: Record<string, unknown> } = {},
   ): Promise<any> {
     const secretKey = process.env.PAYSTACK_SECRET_KEY;
     if (!secretKey) {
@@ -253,6 +255,8 @@ export class PaymentsService {
             amount: Math.round(amount * 100), // Convert to kobo
             email,
             authorization_code,
+            ...(options.reference && { reference: options.reference }),
+            ...(options.metadata && { metadata: options.metadata }),
           },
           {
             headers: {
@@ -298,6 +302,18 @@ export class PaymentsService {
       take: limit,
     });
     return { data, total, page, limit };
+  }
+
+  /**
+   * Flip a pending payment to success. True only for the one caller that made
+   * the change, so whatever it pays for is granted once.
+   */
+  async claimPending(reference: string): Promise<boolean> {
+    const result = await this.paymentRepository.update(
+      { reference, status: PaymentStatus.PENDING },
+      { status: PaymentStatus.SUCCESS },
+    );
+    return (result.affected ?? 0) > 0;
   }
 
   async findByReference(reference: string): Promise<Payment | null> {

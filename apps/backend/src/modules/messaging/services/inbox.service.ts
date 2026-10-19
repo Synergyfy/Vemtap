@@ -228,6 +228,17 @@ export class InboxService {
     return savedMessage;
   }
 
+  /** The branch's in-app thread with a customer, if one exists. */
+  findBranchConversation(
+    branchId: string,
+    customerId: string,
+  ): Promise<ConversationThread | null> {
+    return this.threadRepo.findOne({
+      where: { branchId, customerId, channel: Channel.IN_HOUSE },
+      relations: ['customer'],
+    });
+  }
+
   async initBranchConversation(
     branchId: string,
     customerId: string,
@@ -419,9 +430,7 @@ export class InboxService {
         if (BOOKING_CATEGORY_RE.test(text)) categories.push('bookings');
       }
 
-      return Object.assign(thread, { categories }) as ConversationThread & {
-        categories: string[];
-      };
+      return Object.assign(thread, { categories });
     });
   }
 

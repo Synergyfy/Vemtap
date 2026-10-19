@@ -1,12 +1,4 @@
-import {
-  Controller,
-  Post,
-  Body,
-  UseGuards,
-  Logger,
-  ConflictException,
-  HttpStatus,
-} from '@nestjs/common';
+import { Controller, Post, Body, UseGuards, Logger } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { BusinessesService } from '../businesses/businesses.service';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';

@@ -1,6 +1,6 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
-import { DataSource, Repository, In } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
 import {
   Payment,
   PaymentPurpose,

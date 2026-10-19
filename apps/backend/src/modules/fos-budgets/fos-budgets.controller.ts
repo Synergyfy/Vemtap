@@ -3,7 +3,6 @@ import {
   Get,
   Post,
   Body,
-  Query,
   UseGuards,
   Request,
 } from '@nestjs/common';
@@ -14,7 +13,7 @@ import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { FosEnvelope } from '../../common/decorators/fos-envelope.decorator';
 import { User, UserRole } from '../users/entities/user.entity';
-import { CreateBudgetDto, ForecastsQueryDto } from './dto/budget.dto';
+import { CreateBudgetDto } from './dto/budget.dto';
 
 @ApiTags('FOS Budgets')
 @ApiBearerAuth()

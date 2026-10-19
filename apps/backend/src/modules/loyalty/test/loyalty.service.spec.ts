@@ -17,14 +17,10 @@ import { CatalogueOfferClaim } from '../../catalogue/entities/catalogue-offer-cl
 
 describe('LoyaltyService', () => {
   let service: LoyaltyService;
-  let rewardTemplateRepo: any;
-  let rewardRepo: any;
   let pointTransactionRepo: any;
   let pointCodeRepo: any;
-  let redemptionCodeRepo: any;
   let userRepo: any;
   let branchRepo: any;
-  let visitRepo: any;
 
   const mockRepo = () => ({
     find: jest.fn(),
@@ -90,14 +86,10 @@ describe('LoyaltyService', () => {
     }).compile();
 
     service = module.get<LoyaltyService>(LoyaltyService);
-    rewardTemplateRepo = module.get(getRepositoryToken(RewardTemplate));
-    rewardRepo = module.get(getRepositoryToken(Reward));
     pointTransactionRepo = module.get(getRepositoryToken(PointTransaction));
     pointCodeRepo = module.get(getRepositoryToken(PointCode));
-    redemptionCodeRepo = module.get(getRepositoryToken(RedemptionCode));
     userRepo = module.get(getRepositoryToken(User));
     branchRepo = module.get(getRepositoryToken(Branch));
-    visitRepo = module.get(getRepositoryToken(Visit));
   });
 
   it('should be defined', () => {

@@ -1,3 +1,4 @@
+import type { PosSettings } from '../../pos/pos-settings.types';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsString,
@@ -10,7 +11,6 @@ import {
   Min,
   Max,
 } from 'class-validator';
-import { Transform } from 'class-transformer';
 
 export class UpdateBusinessDto {
   @ApiPropertyOptional({ example: 'The Azure Bistro' })
@@ -196,23 +196,7 @@ export class UpdateBusinessDto {
   })
   @IsOptional()
   @IsObject()
-  posSettings?: {
-    currency?: string;
-    receiptHeader?: string;
-    receiptFooter?: string;
-    autoPrintReceipt?: boolean;
-    showLogo?: boolean;
-    taxEnabled?: boolean;
-    taxRate?: number;
-    taxLabel?: string;
-    pricesIncludeTax?: boolean;
-    loyaltyEnabled?: boolean;
-    loyaltyRedeemThreshold?: number;
-    lowStockAlerts?: boolean;
-    dailySalesSummary?: boolean;
-    newOrderAlert?: boolean;
-    staffActivityAlerts?: boolean;
-  };
+  posSettings?: PosSettings;
 
   @ApiPropertyOptional({
     example: 'VEM-ABC-1234',

@@ -10,7 +10,7 @@ import {
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { JwtService } from '@nestjs/jwt';
-import { Logger, UseGuards } from '@nestjs/common';
+import { Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In } from 'typeorm';
 import { User } from '../users/entities/user.entity';
@@ -19,7 +19,10 @@ import { Branch } from '../branches/entities/branch.entity';
 import { Message } from './entities/message.entity';
 import { ConversationThread } from './entities/conversation-thread.entity';
 import { MessageDirection, MessageStatus } from './enums/message.enum';
-import { PresenceService, type PresenceKind } from './services/presence.service';
+import {
+  PresenceService,
+  type PresenceKind,
+} from './services/presence.service';
 
 /** Room a subscriber joins to hear about one presence channel. */
 function presenceRoom(kind: PresenceKind, id: string): string {
@@ -51,7 +54,7 @@ export class MessagingGateway
     private readonly presenceService: PresenceService,
   ) {}
 
-  afterInit(server: Server) {
+  afterInit(_server: Server) {
     this.logger.log('WebSocket Gateway Initialized');
   }
 
@@ -113,7 +116,11 @@ export class MessagingGateway
       // Presence: the customer-facing channel is the business, not the staff
       // member — a thread knows the business, never which staffer is holding
       // the phone — so both keys are tracked and announced.
-      const userStatus = this.presenceService.setOnline('user', user.id, client.id);
+      const userStatus = this.presenceService.setOnline(
+        'user',
+        user.id,
+        client.id,
+      );
       this.emitPresence('user', user.id, userStatus);
       if (user.businessId) {
         client.data.businessId = user.businessId;
@@ -254,12 +261,14 @@ export class MessagingGateway
 
   /** Read-only snapshot; does not join any room. */
   @SubscribeMessage('presence:get')
-  async handlePresenceGet(
+  handlePresenceGet(
     @MessageBody() data: { userIds?: string[]; businessIds?: string[] },
   ) {
-    return this.presenceSnapshot(
-      this.cleanIds(data?.userIds),
-      this.cleanIds(data?.businessIds),
+    return Promise.resolve(
+      this.presenceSnapshot(
+        this.cleanIds(data?.userIds),
+        this.cleanIds(data?.businessIds),
+      ),
     );
   }
 
@@ -300,7 +309,10 @@ export class MessagingGateway
   private async incomingDirectionFor(
     client: Socket,
     threadId: string,
-  ): Promise<{ thread: ConversationThread; direction: MessageDirection } | null> {
+  ): Promise<{
+    thread: ConversationThread;
+    direction: MessageDirection;
+  } | null> {
     const thread = await this.threadRepo.findOne({
       where: { id: threadId },
       select: ['id', 'branchId', 'customerId'],
@@ -334,7 +346,8 @@ export class MessagingGateway
       direction === MessageDirection.OUTBOUND
         ? `branch_${thread.branchId}`
         : `user_${thread.customerId}`;
-    const event = status === MessageStatus.READ ? 'messageRead' : 'messageStatus';
+    const event =
+      status === MessageStatus.READ ? 'messageRead' : 'messageStatus';
     this.server.to([`thread_${thread.id}`, senderRoom]).emit(event, {
       threadId: thread.id,
       // `messageId` is kept for clients that only read a single id.
@@ -381,7 +394,12 @@ export class MessagingGateway
         { id: In(ids) },
         { status: MessageStatus.DELIVERED },
       );
-      this.emitReceipt(side.thread, side.direction, ids, MessageStatus.DELIVERED);
+      this.emitReceipt(
+        side.thread,
+        side.direction,
+        ids,
+        MessageStatus.DELIVERED,
+      );
     } catch (e) {
       this.logger.error(`markDelivered error: ${e.message}`);
     }
@@ -477,7 +495,11 @@ export class MessagingGateway
 
     const groups = new Map<
       string,
-      { thread: { id: string; branchId: string; customerId: string }; direction: MessageDirection; ids: string[] }
+      {
+        thread: { id: string; branchId: string; customerId: string };
+        direction: MessageDirection;
+        ids: string[];
+      }
     >();
     for (const message of pending) {
       if (!message.threadId) continue;
@@ -495,7 +517,12 @@ export class MessagingGateway
       groups.set(key, group);
     }
     for (const group of groups.values()) {
-      this.emitReceipt(group.thread, group.direction, group.ids, MessageStatus.DELIVERED);
+      this.emitReceipt(
+        group.thread,
+        group.direction,
+        group.ids,
+        MessageStatus.DELIVERED,
+      );
     }
   }
 

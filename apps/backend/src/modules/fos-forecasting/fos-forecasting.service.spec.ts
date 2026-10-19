@@ -1,6 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
 import { FosForecastingService } from './fos-forecasting.service';
 import { ForecastScenario } from './entities/forecast-scenario.entity';
 import { FinancialTransaction } from '../fos-core/entities/financial-transaction.entity';
@@ -9,7 +8,6 @@ import { Expense } from '../fos-core/entities/expense.entity';
 
 describe('FosForecastingService', () => {
   let service: FosForecastingService;
-  let scenarioRepo: Repository<ForecastScenario>;
 
   const mockScenarioRepo = {
     create: jest.fn(),
@@ -53,9 +51,6 @@ describe('FosForecastingService', () => {
     }).compile();
 
     service = module.get<FosForecastingService>(FosForecastingService);
-    scenarioRepo = module.get<Repository<ForecastScenario>>(
-      getRepositoryToken(ForecastScenario),
-    );
   });
 
   afterEach(() => {

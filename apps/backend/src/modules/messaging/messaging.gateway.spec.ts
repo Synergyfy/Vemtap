@@ -76,16 +76,21 @@ describe('MessagingGateway', () => {
           useValue: branchRepo,
         },
         { provide: getRepositoryToken(Message), useValue: messageRepo },
-        { provide: getRepositoryToken(ConversationThread), useValue: threadRepo },
+        {
+          provide: getRepositoryToken(ConversationThread),
+          useValue: threadRepo,
+        },
         {
           provide: PresenceService,
           useValue: {
-            setOnline: jest
-              .fn()
-              .mockReturnValue({ isOnline: true, lastSeen: '2026-01-01T00:00:00.000Z' }),
-            setOffline: jest
-              .fn()
-              .mockReturnValue({ isOnline: false, lastSeen: '2026-01-01T00:00:00.000Z' }),
+            setOnline: jest.fn().mockReturnValue({
+              isOnline: true,
+              lastSeen: '2026-01-01T00:00:00.000Z',
+            }),
+            setOffline: jest.fn().mockReturnValue({
+              isOnline: false,
+              lastSeen: '2026-01-01T00:00:00.000Z',
+            }),
             getStatus: jest
               .fn()
               .mockReturnValue({ isOnline: false, lastSeen: null }),
@@ -352,7 +357,11 @@ describe('MessagingGateway', () => {
   });
 
   describe('receipts', () => {
-    const thread = { id: 'thread-1', branchId: 'branch-1', customerId: 'cust-1' };
+    const thread = {
+      id: 'thread-1',
+      branchId: 'branch-1',
+      customerId: 'cust-1',
+    };
 
     /** A socket already authenticated as `userId` with access to `branchIds`. */
     const partySocket = (userId: string, branchIds?: string[]) => {
@@ -376,15 +385,27 @@ describe('MessagingGateway', () => {
 
       expect(messageRepo.find).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: expect.objectContaining({ threadId: 'thread-1', direction: 'OUTBOUND' }),
+          where: expect.objectContaining({
+            threadId: 'thread-1',
+            direction: 'OUTBOUND',
+          }),
         }),
       );
-      expect(messageRepo.update).toHaveBeenCalledWith(expect.anything(), { status: 'READ' });
+      expect(messageRepo.update).toHaveBeenCalledWith(expect.anything(), {
+        status: 'READ',
+      });
       // The business sent these, so its branch room hears about it.
-      expect(mockServer.to).toHaveBeenCalledWith(['thread_thread-1', 'branch_branch-1']);
+      expect(mockServer.to).toHaveBeenCalledWith([
+        'thread_thread-1',
+        'branch_branch-1',
+      ]);
       expect(mockServer.emit).toHaveBeenCalledWith(
         'messageRead',
-        expect.objectContaining({ threadId: 'thread-1', messageIds: ['m1', 'm2'], status: 'READ' }),
+        expect.objectContaining({
+          threadId: 'thread-1',
+          messageIds: ['m1', 'm2'],
+          status: 'READ',
+        }),
       );
     });
 
@@ -399,7 +420,10 @@ describe('MessagingGateway', () => {
           where: expect.objectContaining({ direction: 'INBOUND' }),
         }),
       );
-      expect(mockServer.to).toHaveBeenCalledWith(['thread_thread-1', 'user_cust-1']);
+      expect(mockServer.to).toHaveBeenCalledWith([
+        'thread_thread-1',
+        'user_cust-1',
+      ]);
     });
 
     it('ignores read receipts from a socket that is not a party to the thread', async () => {
@@ -415,17 +439,29 @@ describe('MessagingGateway', () => {
       const socket = partySocket('cust-1');
       messageRepo.find.mockResolvedValue([{ id: 'm1' }]);
 
-      await gateway.handleMarkDelivered(socket, { threadId: 'thread-1', messageId: 'm1' });
+      await gateway.handleMarkDelivered(socket, {
+        threadId: 'thread-1',
+        messageId: 'm1',
+      });
 
       expect(messageRepo.find).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: expect.objectContaining({ direction: 'OUTBOUND', status: 'SENT' }),
+          where: expect.objectContaining({
+            direction: 'OUTBOUND',
+            status: 'SENT',
+          }),
         }),
       );
-      expect(messageRepo.update).toHaveBeenCalledWith(expect.anything(), { status: 'DELIVERED' });
+      expect(messageRepo.update).toHaveBeenCalledWith(expect.anything(), {
+        status: 'DELIVERED',
+      });
       expect(mockServer.emit).toHaveBeenCalledWith(
         'messageStatus',
-        expect.objectContaining({ messageId: 'm1', messageIds: ['m1'], status: 'DELIVERED' }),
+        expect.objectContaining({
+          messageId: 'm1',
+          messageIds: ['m1'],
+          status: 'DELIVERED',
+        }),
       );
     });
 
@@ -435,27 +471,53 @@ describe('MessagingGateway', () => {
       const socket = partySocket('cust-1');
       messageRepo.find.mockResolvedValue([]);
 
-      await gateway.handleMarkDelivered(socket, { threadId: 'thread-1', messageId: 'own' });
+      await gateway.handleMarkDelivered(socket, {
+        threadId: 'thread-1',
+        messageId: 'own',
+      });
 
       expect(messageRepo.update).not.toHaveBeenCalled();
-      expect(mockServer.emit).not.toHaveBeenCalledWith('messageStatus', expect.anything());
+      expect(mockServer.emit).not.toHaveBeenCalledWith(
+        'messageStatus',
+        expect.anything(),
+      );
     });
 
     it('marks messages waiting for a user delivered when they connect', async () => {
       userRepo.findOne.mockResolvedValue({ id: 'cust-1', role: 'Customer' });
-      jest.spyOn(jwtService, 'verify').mockReturnValue({ sub: 'cust-1' } as any);
+      jest.spyOn(jwtService, 'verify').mockReturnValue({ sub: 'cust-1' });
       messageRepo.find.mockResolvedValue([
-        { id: 'm1', threadId: 'thread-1', branchId: 'branch-1', customerId: 'cust-1', direction: 'OUTBOUND' },
-        { id: 'm2', threadId: 'thread-1', branchId: 'branch-1', customerId: 'cust-1', direction: 'OUTBOUND' },
+        {
+          id: 'm1',
+          threadId: 'thread-1',
+          branchId: 'branch-1',
+          customerId: 'cust-1',
+          direction: 'OUTBOUND',
+        },
+        {
+          id: 'm2',
+          threadId: 'thread-1',
+          branchId: 'branch-1',
+          customerId: 'cust-1',
+          direction: 'OUTBOUND',
+        },
       ]);
 
       await gateway.handleConnection(freshSocket());
 
-      expect(messageRepo.update).toHaveBeenCalledWith(expect.anything(), { status: 'DELIVERED' });
-      expect(mockServer.to).toHaveBeenCalledWith(['thread_thread-1', 'branch_branch-1']);
+      expect(messageRepo.update).toHaveBeenCalledWith(expect.anything(), {
+        status: 'DELIVERED',
+      });
+      expect(mockServer.to).toHaveBeenCalledWith([
+        'thread_thread-1',
+        'branch_branch-1',
+      ]);
       expect(mockServer.emit).toHaveBeenCalledWith(
         'messageStatus',
-        expect.objectContaining({ threadId: 'thread-1', messageIds: ['m1', 'm2'] }),
+        expect.objectContaining({
+          threadId: 'thread-1',
+          messageIds: ['m1', 'm2'],
+        }),
       );
     });
   });

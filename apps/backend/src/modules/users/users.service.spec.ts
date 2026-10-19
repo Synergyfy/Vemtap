@@ -1,12 +1,13 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { UsersService } from './users.service';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { User, UserRole } from './entities/user.entity';
+import { User, UserRole, UserStatus } from './entities/user.entity';
 import { PasswordResetHistory } from './entities/password-reset-history.entity';
 import { UserSession } from './entities/user-session.entity';
 import { NotFoundException, BadRequestException } from '@nestjs/common';
 import { MailService } from '../mail/mail.service';
 import { EventsGateway } from '../../common/gateways/events.gateway';
+import { Cluster, ClusterType } from '../clusters/entities/cluster.entity';
 import * as bcrypt from 'bcrypt';
 
 jest.mock('bcrypt', () => ({
@@ -17,6 +18,7 @@ describe('UsersService', () => {
   let service: UsersService;
   let userRepository: any;
   let mailService: any;
+  let clusterRepository: { findOne: jest.Mock };
 
   beforeEach(async () => {
     userRepository = {
@@ -44,11 +46,13 @@ describe('UsersService', () => {
     mailService = {
       sendWelcomeEmail: jest.fn().mockResolvedValue(true),
     };
+    clusterRepository = { findOne: jest.fn() };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         UsersService,
         { provide: getRepositoryToken(User), useValue: userRepository },
+        { provide: getRepositoryToken(Cluster), useValue: clusterRepository },
         {
           provide: getRepositoryToken(PasswordResetHistory),
           useValue: {
@@ -89,6 +93,66 @@ describe('UsersService', () => {
 
   it('should be defined', () => {
     expect(service).toBeDefined();
+  });
+
+  describe('linked devices', () => {
+    const sessions = () =>
+      (
+        service as unknown as {
+          userSessionRepository: Record<string, jest.Mock>;
+        }
+      ).userSessionRepository;
+
+    it('names the current session from what the app reports', async () => {
+      const repo = sessions();
+      repo.findOne = jest.fn().mockResolvedValue({
+        id: 'session-1',
+        userId: 'user-1',
+        deviceName: 'Web browser',
+        platform: 'web',
+        userAgent: null,
+        ipAddress: null,
+      });
+
+      const saved = await service.describeSession('user-1', 'session-1', {
+        deviceName: 'iPhone 15 Pro',
+        platform: 'ios',
+        userAgent: 'VemTap/1.0',
+        ipAddress: '10.0.0.2',
+      });
+
+      expect(repo.findOne).toHaveBeenCalledWith({
+        where: expect.objectContaining({ id: 'session-1', userId: 'user-1' }),
+      });
+      expect(saved).toEqual(
+        expect.objectContaining({
+          deviceName: 'iPhone 15 Pro',
+          platform: 'ios',
+          userAgent: 'VemTap/1.0',
+          ipAddress: '10.0.0.2',
+        }),
+      );
+    });
+
+    it('refuses a revoked or unknown session', async () => {
+      sessions().findOne = jest.fn().mockResolvedValue(null);
+      await expect(
+        service.describeSession('user-1', 'gone', {
+          deviceName: 'x',
+          platform: 'ios',
+        }),
+      ).rejects.toThrow('Linked device not found');
+    });
+
+    it('marks which listed session is this device', async () => {
+      sessions().find = jest
+        .fn()
+        .mockResolvedValue([{ id: 'session-1' }, { id: 'session-2' }]);
+
+      const list = await service.listSessions('user-1', 'session-2');
+
+      expect(list.map((row) => row.isCurrent)).toEqual([false, true]);
+    });
   });
 
   describe('create', () => {
@@ -220,6 +284,60 @@ describe('UsersService', () => {
     });
   });
 
+  describe('resendTeamInvite', () => {
+    const invited = {
+      id: 'user-2',
+      email: 'kemi.d@example.com',
+      firstName: 'Kemi',
+      status: UserStatus.INVITED,
+    };
+
+    it('should issue a fresh password and re-send the invitation email', async () => {
+      userRepository.findOne.mockResolvedValue({ ...invited });
+      userRepository.manager.getRepository.mockReturnValue({
+        findOne: jest.fn().mockResolvedValue({
+          id: 'br-1',
+          name: 'Wuse Branch',
+          business: { name: 'Urban Grill' },
+        }),
+      });
+
+      const result = await service.resendTeamInvite('user-2', 'br-1');
+
+      expect(result.password).toBe('hashed_password');
+      const expectedPassword = (bcrypt.hash as jest.Mock).mock.calls[0][0];
+      expect(expectedPassword).toMatch(/^\d{6}$/);
+      expect(userRepository.save).toHaveBeenCalled();
+      expect(mailService.sendWelcomeEmail).toHaveBeenCalledWith(
+        invited.email,
+        invited.firstName,
+        expectedPassword,
+        'Urban Grill',
+        'Wuse Branch',
+      );
+    });
+
+    it('should refuse to resend an accepted invitation', async () => {
+      userRepository.findOne.mockResolvedValue({
+        ...invited,
+        status: UserStatus.ACTIVE,
+      });
+
+      await expect(service.resendTeamInvite('user-2', 'br-1')).rejects.toThrow(
+        BadRequestException,
+      );
+      expect(userRepository.save).not.toHaveBeenCalled();
+    });
+
+    it('should 404 when the member is not in the given branch', async () => {
+      userRepository.findOne.mockResolvedValue(null);
+
+      await expect(service.resendTeamInvite('user-2', 'br-9')).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+  });
+
   describe('updateStaff', () => {
     it('should update staff details including custom role', async () => {
       const existingUser = {
@@ -303,6 +421,46 @@ describe('UsersService', () => {
       await expect(service.remove('1', 'br-1')).rejects.toThrow(
         BadRequestException,
       );
+    });
+  });
+
+  describe('updateProfile home district', () => {
+    beforeEach(() => {
+      userRepository.update = jest.fn().mockResolvedValue(undefined);
+      userRepository.findOne.mockResolvedValue({ id: 'u-1' });
+    });
+
+    it('saves an active district', async () => {
+      clusterRepository.findOne.mockResolvedValue({ id: 'd-1' });
+
+      await service.updateProfile('u-1', { homeDistrictId: 'd-1' });
+
+      expect(clusterRepository.findOne).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'd-1', type: ClusterType.DISTRICT, isActive: true },
+        }),
+      );
+      expect(userRepository.update).toHaveBeenCalledWith('u-1', {
+        homeDistrictId: 'd-1',
+      });
+    });
+
+    it('rejects a cluster that is not an active district', async () => {
+      clusterRepository.findOne.mockResolvedValue(null);
+
+      await expect(
+        service.updateProfile('u-1', { homeDistrictId: 'market-1' }),
+      ).rejects.toThrow(BadRequestException);
+      expect(userRepository.update).not.toHaveBeenCalled();
+    });
+
+    it('clears the district with null without a lookup', async () => {
+      await service.updateProfile('u-1', { homeDistrictId: null });
+
+      expect(clusterRepository.findOne).not.toHaveBeenCalled();
+      expect(userRepository.update).toHaveBeenCalledWith('u-1', {
+        homeDistrictId: null,
+      });
     });
   });
 });

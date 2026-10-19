@@ -82,9 +82,7 @@ describe('BusinessesService', () => {
     count: jest.fn().mockResolvedValue(0),
     find: jest.fn().mockResolvedValue([]),
     manager: {
-      query: jest
-        .fn()
-        .mockResolvedValue([{ total: 0, new_this_week: 0 }]),
+      query: jest.fn().mockResolvedValue([{ total: 0, new_this_week: 0 }]),
     },
     createQueryBuilder: jest.fn(() => ({
       where: jest.fn().mockReturnThis(),

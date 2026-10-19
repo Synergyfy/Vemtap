@@ -1,3 +1,4 @@
+import * as QRCode from 'qrcode';
 import {
   Injectable,
   NotFoundException,
@@ -88,6 +89,22 @@ const ALL_OFFER_ITEMS_PUBLISHED_SQL = `NOT EXISTS (
 const PUBLISHED_ITEM_PARAMS = {
   publishedItemStatus: CatalogueItemStatus.ACTIVE,
 };
+
+/**
+ * A deal's items in a fixed order (oldest first, id as tiebreak). The joins
+ * that load them have no ORDER BY, so Postgres could return them in a different
+ * order per query — and clients that fall back to "the first item's photo" then
+ * showed one picture on a feed card and another on the deal page.
+ */
+function sortOfferItems<
+  T extends { id: string; createdAt?: Date | string | null },
+>(items: T[] | null | undefined): T[] {
+  return [...(items ?? [])].sort((a, b) => {
+    const at = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+    const bt = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+    return at - bt || a.id.localeCompare(b.id);
+  });
+}
 
 function isPublishedItem(item: CatalogueItem): boolean {
   return item.status === CatalogueItemStatus.ACTIVE && !item.isSuspended;
@@ -866,8 +883,6 @@ export class CatalogueOfferService {
       );
     }
 
-    const skip = (page - 1) * limit;
-
     const qb = this.offerRepository
       .createQueryBuilder('offer')
       .leftJoinAndSelect('offer.items', 'item')
@@ -918,7 +933,10 @@ export class CatalogueOfferService {
     });
 
     const result = {
-      data: paginated.data,
+      data: paginated.data.map((offer) => ({
+        ...offer,
+        items: sortOfferItems(offer.items),
+      })),
       total: paginated.total,
       page: paginated.page,
       limit: paginated.limit,
@@ -1189,6 +1207,33 @@ export class CatalogueOfferService {
     return { data, total: data.length };
   }
 
+  /**
+   * Public offer rows for specific ids (sponsored placements): the same
+   * filters and shape as the public feed, so a promoted card renders exactly
+   * like an organic one. Ids that are no longer public are left out.
+   */
+  async findPublicOffersByIds(ids: string[]) {
+    if (!ids.length) return [];
+    const rawOffers = await this.offerRepository
+      .createQueryBuilder('offer')
+      .leftJoinAndSelect('offer.items', 'item')
+      .leftJoinAndSelect('offer.branch', 'branch')
+      .leftJoinAndSelect('branch.business', 'business')
+      .leftJoinAndSelect('business.category', 'category')
+      .where('offer.id IN (:...ids)', { ids })
+      .andWhere('offer.status = :status', {
+        status: CatalogueOfferStatus.ACTIVE,
+      })
+      .andWhere('(offer.endDate IS NULL OR offer.endDate >= NOW())')
+      .andWhere('branch.joinDiscoveryNetwork = :joinDiscoveryNetwork', {
+        joinDiscoveryNetwork: true,
+      })
+      .andWhere('branch.isActive = :branchActive', { branchActive: true })
+      .andWhere(ALL_OFFER_ITEMS_PUBLISHED_SQL, PUBLISHED_ITEM_PARAMS)
+      .getMany();
+    return this.mapPublicOffers(rawOffers);
+  }
+
   private async mapPublicOffers(rawOffers: CatalogueOffer[]) {
     if (!rawOffers || rawOffers.length === 0) return [];
 
@@ -1265,6 +1310,10 @@ export class CatalogueOfferService {
         id: offer.id,
         name: offer.name,
         description: offer.description,
+        // The deal's own photo: the image a card should show. Without it the
+        // app fell back to an item photo picked by arbitrary join order.
+        mainImage: offer.mainImage ?? null,
+        galleryImages: offer.galleryImages ?? [],
         pricingType: offer.pricingType,
         fixedPrice,
         percentageOff:
@@ -1299,7 +1348,7 @@ export class CatalogueOfferService {
                 undefined,
             }
           : undefined,
-        items: offer.items,
+        items: sortOfferItems(offer.items),
         claimedCount,
         totalLimit: (offer as any).totalLimit ?? offer.quantity,
         remainingLimit:
@@ -1392,6 +1441,7 @@ export class CatalogueOfferService {
 
     const mappedOffer = {
       ...offer,
+      items: sortOfferItems(offer.items),
       originalPrice,
       dealPrice: offer.calculatedPrice,
       discountPercent,
@@ -2236,19 +2286,8 @@ export class CatalogueOfferService {
       .leftJoinAndSelect('offer.branch', 'branch')
       .leftJoinAndSelect('branch.business', 'business');
 
-    const ownership = [
-      'claim.userId = :userId',
-      'LOWER(claim.email) = LOWER(:email)',
-    ];
-    const ownershipParams: { userId: string; email: string; phone?: string } = {
-      userId: user.id,
-      email: user.email,
-    };
-    if (user.phone) {
-      ownership.push('claim.phone = :phone');
-      ownershipParams.phone = user.phone;
-    }
-    qb.where(`(${ownership.join(' OR ')})`, ownershipParams);
+    const ownership = this.claimOwnership(user);
+    qb.where(ownership.sql, ownership.params);
 
     if (query.status === MyClaimStatus.REDEEMED) {
       qb.andWhere('claim.status = :redeemed', {
@@ -2307,6 +2346,74 @@ export class CatalogueOfferService {
     };
   }
 
+  /**
+   * Which claims belong to the caller: linked by `userId`, or matched on the
+   * account's email / phone for claims made before the link existed.
+   */
+  private claimOwnership(user: User): {
+    sql: string;
+    params: { userId: string; email: string; phone?: string };
+  } {
+    const clauses = [
+      'claim.userId = :userId',
+      'LOWER(claim.email) = LOWER(:email)',
+    ];
+    const params: { userId: string; email: string; phone?: string } = {
+      userId: user.id,
+      email: user.email,
+    };
+    if (user.phone) {
+      clauses.push('claim.phone = :phone');
+      params.phone = user.phone;
+    }
+    return { sql: `(${clauses.join(' OR ')})`, params };
+  }
+
+  /** One of the caller's own claims, or a 404 (never another customer's). */
+  private async findOwnClaim(
+    user: User,
+    claimId: string,
+  ): Promise<CatalogueOfferClaim> {
+    const ownership = this.claimOwnership(user);
+    const claim = await this.claimRepository
+      .createQueryBuilder('claim')
+      .where('claim.id = :claimId', { claimId })
+      .andWhere(ownership.sql, ownership.params)
+      .getOne();
+    if (!claim) throw new NotFoundException('Claim not found');
+    return claim;
+  }
+
+  /** The pass QR: an SVG encoding the claim code the merchant verifies. */
+  async myClaimQr(
+    user: User,
+    claimId: string,
+  ): Promise<{ claimCode: string; svg: string }> {
+    const claim = await this.findOwnClaim(user, claimId);
+    const svg = await QRCode.toString(claim.claimCode, {
+      type: 'svg',
+      errorCorrectionLevel: 'M',
+      margin: 1,
+    });
+    return { claimCode: claim.claimCode, svg };
+  }
+
+  /**
+   * Gives an unused claim back. The row is soft-deleted, so the offer's
+   * claimed count (and any sold-out pause) frees the slot for someone else. A
+   * redeemed or expired claim is history and cannot be released.
+   */
+  async releaseMyClaim(user: User, claimId: string): Promise<void> {
+    const claim = await this.findOwnClaim(user, claimId);
+    if (
+      claim.status !== CatalogueOfferClaimStatus.CLAIMED ||
+      claim.expiresAt < new Date()
+    ) {
+      throw new BadRequestException('Only an active claim can be released');
+    }
+    await this.claimRepository.softDelete(claim.id);
+  }
+
   private toMyClaim(claim: CatalogueOfferClaim, now: Date): MyClaimDto {
     const offer = claim.offer;
     const originalPrice = (offer.items ?? []).reduce(
@@ -2358,6 +2465,11 @@ export class CatalogueOfferService {
         branchId: branch?.id ?? offer.branchId,
         branchName: branch?.name ?? '',
         branchAddress: branch?.address ?? business?.address ?? null,
+        branchPhone: branch?.phone ?? business?.phone ?? null,
+        branchLatitude:
+          branch?.latitude != null ? Number(branch.latitude) : null,
+        branchLongitude:
+          branch?.longitude != null ? Number(branch.longitude) : null,
         endDate: offer.endDate,
       },
     };

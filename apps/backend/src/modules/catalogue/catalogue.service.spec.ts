@@ -4,7 +4,6 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { CatalogueCategory } from './entities/catalogue-category.entity';
 import {
   CatalogueItem,
-  CatalogueItemStatus,
   CatalogueItemType,
   ServicePriceType,
   ServiceMode,

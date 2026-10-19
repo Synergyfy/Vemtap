@@ -1,4 +1,15 @@
-import { Controller, Get, Query, Req, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Param,
+  ParseUUIDPipe,
+  Query,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
 import {
   ApiTags,
   ApiOperation,
@@ -63,5 +74,37 @@ export class MeClaimsController {
     @Query() query: MyClaimsQueryDto,
   ): Promise<MyClaimDto[] | MyClaimsPageDto> {
     return this.offerService.findMyClaims(req.user, query);
+  }
+
+  @Get(':id/qr')
+  @Roles(UserRole.CUSTOMER)
+  @ApiOperation({
+    summary: 'QR code for one of the customer’s claims',
+    description:
+      'Returns `{ claimCode, svg }`; the SVG encodes the claim code the merchant scans or types. Another customer’s claim is a 404.',
+  })
+  @ApiResponse({ status: 404, description: 'Claim not found' })
+  async getClaimQr(
+    @Req() req: RequestWithUser,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    return this.offerService.myClaimQr(req.user, id);
+  }
+
+  @Delete(':id')
+  @Roles(UserRole.CUSTOMER)
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({
+    summary: 'Release an unused claim',
+    description:
+      'Gives an active claim back so the slot frees up. Redeemed or expired claims answer 400.',
+  })
+  @ApiResponse({ status: 400, description: 'Claim is redeemed or expired' })
+  @ApiResponse({ status: 404, description: 'Claim not found' })
+  async releaseClaim(
+    @Req() req: RequestWithUser,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    await this.offerService.releaseMyClaim(req.user, id);
   }
 }

@@ -4,9 +4,7 @@ import { join } from 'path';
 import * as dotenv from 'dotenv';
 import { existsSync } from 'fs';
 
-const envFile = process.env.NODE_ENV 
-  ? `.env.${process.env.NODE_ENV}` 
-  : '.env';
+const envFile = process.env.NODE_ENV ? `.env.${process.env.NODE_ENV}` : '.env';
 const envPath = join(process.cwd(), envFile);
 // Fall back to .env if the specific env file doesn't exist
 if (!existsSync(envPath)) {

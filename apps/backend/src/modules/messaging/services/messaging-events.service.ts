@@ -4,7 +4,6 @@ import { Repository, In } from 'typeorm';
 import { Message } from '../entities/message.entity';
 import { ConversationThread } from '../entities/conversation-thread.entity';
 import { MessageDirection, MessageStatus } from '../enums/message.enum';
-import { getRepository } from 'typeorm';
 
 @Injectable()
 export class MessagingEventsService {
@@ -28,7 +27,10 @@ export class MessagingEventsService {
     userId: string,
   ): Promise<void> {
     // 1. Advance backend status
-    const where: any = { threadId, status: In([MessageStatus.SENT, MessageStatus.DELIVERED]) };
+    const where: any = {
+      threadId,
+      status: In([MessageStatus.SENT, MessageStatus.DELIVERED]),
+    };
     if (direction === MessageDirection.OUTBOUND) {
       where.customerId = userId;
     } else if (direction === MessageDirection.INBOUND) {

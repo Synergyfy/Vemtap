@@ -1,29 +1,19 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { ProductsService } from './products.service';
-import { Product, ProductStatus } from './entities/product.entity';
+import { Product } from './entities/product.entity';
 import {
   ProductReview,
   ProductReviewStatus,
 } from './entities/product-review.entity';
-import { Quote, QuoteStatus } from './entities/quote.entity';
-import {
-  QuoteNegotiation,
-  OfferedByRole,
-} from './entities/quote-negotiation.entity';
+import { Quote } from './entities/quote.entity';
+import { QuoteNegotiation } from './entities/quote-negotiation.entity';
 import { Order, OrderStatus, PaymentStatus } from './entities/order.entity';
 import { ProductType } from './entities/product-type.entity';
-import { CreateProductDto } from './dto/create-product.dto';
-import { RequestQuoteDto } from './dto/request-quote.dto';
 import { CreateOrderDto } from './dto/create-order.dto';
-import { NegotiateQuoteDto } from './dto/negotiate-quote.dto';
 import { User, UserRole } from '../users/entities/user.entity';
 import { PaymentsService } from '../payments/payments.service';
-import {
-  NotFoundException,
-  ForbiddenException,
-  BadRequestException,
-} from '@nestjs/common';
+import { NotFoundException } from '@nestjs/common';
 
 const mockProductRepository = {
   create: jest.fn(),

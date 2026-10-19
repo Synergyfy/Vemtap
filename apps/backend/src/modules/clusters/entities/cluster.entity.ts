@@ -18,6 +18,8 @@ export enum ClusterType {
   MARKET = 'market',
   BUILDING = 'building',
   CUSTOM = 'custom',
+  /** A named city area (Wuse 2, Maitama…) that boosts and segments target. */
+  DISTRICT = 'district',
 }
 
 @Entity('clusters')

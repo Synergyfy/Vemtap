@@ -83,7 +83,6 @@ describe('Branches (E2E)', () => {
 
   describe('GET /api/v1/public/branches/nearby', () => {
     let sourceBranchId: string;
-    let nearbyBranchId: string;
 
     beforeAll(async () => {
       // Enable PostGIS and set up the geography column (TypeORM sync doesn't create it)
@@ -103,7 +102,7 @@ describe('Branches (E2E)', () => {
         }),
       );
 
-      const nearbyBranch = await branchRepo.save(
+      await branchRepo.save(
         branchRepo.create({
           name: 'Nearby Branch',
           businessId: otherBusiness.id,
@@ -113,7 +112,6 @@ describe('Branches (E2E)', () => {
           isActive: true,
         }),
       );
-      nearbyBranchId = nearbyBranch.id;
 
       // Create a farther branch (within 500m but further)
       await branchRepo.save(

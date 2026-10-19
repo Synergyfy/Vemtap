@@ -1,4 +1,4 @@
-import { Test, TestingModule } from '@nestjs/testing';
+import { Test } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { ConfigService } from '@nestjs/config';
 import { CatalogueOfferClaim } from '../catalogue/entities/catalogue-offer-claim.entity';
@@ -7,184 +7,151 @@ import { Notification } from './entities/notification.entity';
 import { NotificationsService } from './notifications.service';
 import { DealVelocityService } from './deal-velocity.service';
 
+type ClaimRow = { branchId: string; claims: string };
+
 /** Records the clauses it is told to apply, and replays the rows it was given. */
-function queryBuilderDouble(rows: any[]) {
-  const self: any = {
-    _rows: rows,
+function queryBuilderDouble(rows: ClaimRow[]) {
+  const self = {
     innerJoin: jest.fn().mockReturnThis(),
     select: jest.fn().mockReturnThis(),
     addSelect: jest.fn().mockReturnThis(),
     where: jest.fn().mockReturnThis(),
     andWhere: jest.fn().mockReturnThis(),
     groupBy: jest.fn().mockReturnThis(),
-    getRawMany: jest.fn().mockImplementation(() => Promise.resolve(self._rows)),
+    getRawMany: jest.fn().mockResolvedValue(rows),
   };
   return self;
 }
 
-/** Each describe block creates fresh data – no shared mutation. */
-function freshData() {
+/**
+ * Builds the service over fresh doubles. The service asks for the current
+ * window first and the same hours last week second, so the claim repository
+ * replays `current` then `baseline`.
+ */
+async function build(
+  current: ClaimRow[] = [{ branchId: 'branch-1', claims: '14' }],
+  baseline: ClaimRow[] = [{ branchId: 'branch-1', claims: '10' }],
+) {
+  let calls = 0;
+  const claimRepo = {
+    createQueryBuilder: jest.fn(() =>
+      queryBuilderDouble(calls++ === 0 ? current : baseline),
+    ),
+  };
+  const notificationRepo = { findOne: jest.fn().mockResolvedValue(null) };
+  const userRepo = {
+    find: jest.fn().mockResolvedValue([{ id: 'owner-1' }]),
+  };
+  const notificationsService = {
+    createMany: jest.fn().mockResolvedValue([]),
+  };
+
+  const module = await Test.createTestingModule({
+    providers: [
+      DealVelocityService,
+      { provide: getRepositoryToken(CatalogueOfferClaim), useValue: claimRepo },
+      { provide: getRepositoryToken(Notification), useValue: notificationRepo },
+      { provide: getRepositoryToken(User), useValue: userRepo },
+      { provide: NotificationsService, useValue: notificationsService },
+      { provide: ConfigService, useValue: { get: jest.fn() } },
+    ],
+  }).compile();
+
   return {
-    current: [{ branchId: 'branch-1', claims: '14' }],
-    baseline: [{ branchId: 'branch-1', claims: '10' }],
+    service: module.get(DealVelocityService),
+    claimRepo,
+    notificationRepo,
+    userRepo,
+    notificationsService,
   };
 }
 
 describe('DealVelocityService', () => {
-  let service: DealVelocityService;
-  let claimRepo: any;
-  let notificationRepo: any;
-  let userRepo: any;
-  let notificationsService: { createMany: jest.Mock };
-
-  const owner = { id: 'owner-1' };
-
-  beforeEach(async () => {
-    const arrays = freshData();
-    // Which query builder is being built: the service asks for the current
-    // window first, then the same hour last week. Reset per test so each one
-    // gets the same pair in the same order.
-    callCount = 0;
-
-    claimRepo = {
-      createQueryBuilder: jest.fn().mockImplementation(() => {
-        const isCurrent = callCount++ === 0;
-        const rows = isCurrent ? arrays.current : arrays.baseline;
-        return queryBuilderDouble(rows);
-      }),
-    };
-
-    notificationRepo = {
-      findOne: jest.fn().mockResolvedValue(null),
-    };
-
-    userRepo = {
-      find: jest.fn().mockResolvedValue([owner]),
-    };
-
-    notificationsService = { createMany: jest.fn().mockResolvedValue([]) };
-
-    const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        DealVelocityService,
-        { provide: getRepositoryToken(CatalogueOfferClaim), useValue: claimRepo },
-        { provide: getRepositoryToken(Notification), useValue: notificationRepo },
-        { provide: getRepositoryToken(User), useValue: userRepo },
-        { provide: NotificationsService, useValue: notificationsService },
-        { provide: ConfigService, useValue: { get: jest.fn() } },
-      ],
-    }).compile();
-
-    service = module.get<DealVelocityService>(DealVelocityService);
-  });
-
-  afterEach(() => {
-    callCount = 0;
-  });
-
   describe('spike detection', () => {
     it('alerts the branch when claims run well above the same hour last week', async () => {
+      const { service, notificationsService } = await build();
+
       const result = await service.run();
 
-      expect(result.notified).toBe(1);
+      expect(result).toEqual({ checked: 1, notified: 1 });
       expect(notificationsService.createMany).toHaveBeenCalledTimes(1);
     });
 
     it('carries the counts and the gap in the payload, not just the prose', async () => {
+      const { service, notificationsService } = await build();
+
       await service.run();
 
-      const [, title, message, type, actionUrl, metadata] =
+      const [userIds, title, message, type, actionUrl, metadata, eventType] =
         notificationsService.createMany.mock.calls[0];
+      expect(userIds).toEqual(['owner-1']);
       expect(title).toContain('Velocity');
       expect(message).toContain('14');
       expect(type).toBe('warning');
       expect(actionUrl).toBe('/deals');
+      expect(eventType).toBe('deal_spike');
       expect(metadata).toEqual(
         expect.objectContaining({
           stat: expect.objectContaining({
             value: '14',
-            trend: expect.stringContaining('vs last week'),
+            trend: '40% vs last week',
           }),
         }),
       );
     });
 
-    it('alerts only the recipients who would otherwise see nothing', async () => {
-      await service.run();
+    it('does not alert when the branch is busy but not spiking', async () => {
+      const { service, notificationsService } = await build(
+        [{ branchId: 'branch-1', claims: '6' }],
+        [{ branchId: 'branch-1', claims: '6' }],
+      );
 
-      const [userIds] = notificationsService.createMany.mock.calls[0];
-      expect(userIds).toEqual(['owner-1']);
-    });
-
-    it('does not alert when the branch is quiet but not spiking', async () => {
-      // 4 claims is normal operation, not a surge.
-      const arrays = freshData();
-      arrays.current.length = 0;
-      arrays.current.push({ branchId: 'branch-1', claims: '4' });
-      arrays.baseline.length = 0;
-      arrays.baseline.push({ branchId: 'branch-1', claims: '4' });
-
-      await Test.createTestingModule({
-        providers: [
-          DealVelocityService,
-          { provide: getRepositoryToken(CatalogueOfferClaim),
-            useValue: { createQueryBuilder: jest.fn().mockImplementation(() => queryBuilderDouble(arrays.current)) } },
-          { provide: getRepositoryToken(Notification), useValue: { findOne: jest.fn().mockResolvedValue(null) } },
-          { provide: getRepositoryToken(User), useValue: { find: jest.fn().mockResolvedValue([owner]) } },
-          { provide: NotificationsService, useValue: { createMany: jest.fn().mockResolvedValue([]) } },
-          { provide: ConfigService, useValue: { get: jest.fn() } },
-        ],
-      }).compile();
-
-      const freshService = module.get<DealVelocityService>(DealVelocityService);
-      const result = await freshService.run();
+      const result = await service.run();
 
       expect(result.notified).toBe(0);
+      expect(notificationsService.createMany).not.toHaveBeenCalled();
     });
 
     it('does not alert below the absolute floor', async () => {
-      const arrays = freshData();
-      arrays.current.length = 0;
-      arrays.current.push({ branchId: 'branch-1', claims: '2' });
-      arrays.baseline.length = 0;
+      const { service, notificationsService } = await build(
+        [{ branchId: 'branch-1', claims: '2' }],
+        [],
+      );
 
-      await Test.createTestingModule({
-        providers: [
-          DealVelocityService,
-          { provide: getRepositoryToken(CatalogueOfferClaim),
-            useValue: { createQueryBuilder: jest.fn().mockImplementation(() => queryBuilderDouble(arrays.current)) } },
-          ...newProviderMap(),
-        ],
-      }).compile();
-
-      const freshService = module.get<DealVelocityService>(DealVelocityService);
-      const result = await freshService.run();
+      const result = await service.run();
 
       expect(result.notified).toBe(0);
+      expect(notificationsService.createMany).not.toHaveBeenCalled();
     });
 
     it('treats a first-ever claim run as having no baseline to compare against', async () => {
-      const arrays = freshData();
-      arrays.current.length = 0;
-      arrays.current.push({ branchId: 'branch-1', claims: '1' });
+      const { service, notificationsService } = await build(
+        [{ branchId: 'branch-1', claims: '6' }],
+        [],
+      );
 
-      await Test.createTestingModule({
-        providers: [
-          DealVelocityService,
-          ...newProviderMap(),
-        ],
-      }).compile();
+      const result = await service.run();
 
-      const freshService = module.get<DealVelocityService>(DealVelocityService);
-      const result = await freshService.run();
+      expect(result.notified).toBe(1);
+      const metadata = notificationsService.createMany.mock.calls[0][5];
+      expect(metadata.stat.trend).toBe('no claims last week');
+    });
+
+    it('skips a branch with nobody to tell', async () => {
+      const { service, userRepo, notificationsService } = await build();
+      userRepo.find.mockResolvedValue([]);
+
+      const result = await service.run();
 
       expect(result.notified).toBe(0);
+      expect(notificationsService.createMany).not.toHaveBeenCalled();
     });
   });
 
   describe('cooldown', () => {
     it('stays quiet when this branch was already told within the cooldown', async () => {
-      notificationRepo.findOne = jest.fn().mockResolvedValue({ id: 'earlier-alert' });
+      const { service, notificationRepo, notificationsService } = await build();
+      notificationRepo.findOne.mockResolvedValue({ id: 'earlier-alert' });
 
       const result = await service.run();
 
@@ -193,10 +160,12 @@ describe('DealVelocityService', () => {
     });
 
     it('asks about the recipients, so one venue cannot suppress another', async () => {
+      const { service, notificationRepo } = await build();
+
       await service.run();
 
       expect(notificationRepo.findOne).toHaveBeenCalledTimes(1);
-      const where = notificationRepo.findOne.mock.calls[0][0].where;
+      const { where } = notificationRepo.findOne.mock.calls[0][0];
       expect(where.type).toBe('deal_spike');
       expect(where.userId._value).toEqual(['owner-1']);
     });
@@ -204,12 +173,16 @@ describe('DealVelocityService', () => {
 
   describe('query shape', () => {
     it('counts each window as one grouped aggregate rather than per branch', async () => {
+      const { service, claimRepo } = await build();
+
       await service.run();
 
       expect(claimRepo.createQueryBuilder).toHaveBeenCalledTimes(2);
     });
 
     it('counts claims per branch, not per offer or per claim', async () => {
+      const { service, claimRepo } = await build();
+
       await service.run();
 
       const qb = claimRepo.createQueryBuilder.mock.results[0].value;
@@ -219,38 +192,28 @@ describe('DealVelocityService', () => {
 
   describe('resilience', () => {
     it('keeps scanning after one branch fails to alert', async () => {
-      // Two branches spike, first one fails, second succeeds.
-      // Reset data fresh each time.
-      const arrays = freshData();
-      arrays.current.length = 0;
-      arrays.current.push({ branchId: 'branch-1', claims: '14' });
-      arrays.current.push({ branchId: 'branch-2', claims: '14' });
-      arrays.baseline.length = 0;
-      arrays.baseline.push({ branchId: 'branch-1', claims: '10' });
-      arrays.baseline.push({ branchId: 'branch-2', claims: '10' });
-
-      userRepo.find = jest.fn().mockImplementation(({ where }) =>
-        Promise.resolve([{ id: `owner-${where[0].branchId}` }]),
+      const { service, userRepo, notificationsService } = await build(
+        [
+          { branchId: 'branch-1', claims: '14' },
+          { branchId: 'branch-2', claims: '14' },
+        ],
+        [
+          { branchId: 'branch-1', claims: '10' },
+          { branchId: 'branch-2', claims: '10' },
+        ],
       );
-      notificationsService.createMany = jest
-        .fn()
+      userRepo.find.mockImplementation(
+        ({ where }: { where: { branchId: string }[] }) =>
+          Promise.resolve([{ id: `owner-${where[0].branchId}` }]),
+      );
+      notificationsService.createMany
         .mockRejectedValueOnce(new Error('socket closed'))
         .mockResolvedValueOnce([]);
 
       const result = await service.run();
 
-      expect(result.notified).toBe(1);
+      expect(result).toEqual({ checked: 2, notified: 1 });
       expect(notificationsService.createMany).toHaveBeenCalledTimes(2);
     });
   });
 });
-
-function newProviderMap() {
-  return [
-    { provide: getRepositoryToken(CatalogueOfferClaim), useValue: claimRepo },
-    { provide: getRepositoryToken(Notification), useValue: notificationRepo },
-    { provide: getRepositoryToken(User), useValue: userRepo },
-    { provide: NotificationsService, useValue: notificationsService },
-    { provide: ConfigService, useValue: { get: jest.fn() } },
-  ];
-}

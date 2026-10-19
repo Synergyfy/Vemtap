@@ -48,4 +48,12 @@ describe('UpdateUserProfileDto', () => {
     expect(errors).toHaveLength(1);
     expect(errors[0].constraints).toHaveProperty('isString');
   });
+
+  it('accepts a home district id, or null to clear it', async () => {
+    expect(
+      await runPipe({ homeDistrictId: '3f0c8a4e-6b1d-4c2a-9e7f-1a2b3c4d5e6f' }),
+    ).toEqual([]);
+    expect(await runPipe({ homeDistrictId: null })).toEqual([]);
+    expect(await runPipe({ homeDistrictId: 'Wuse 2' })).not.toEqual([]);
+  });
 });

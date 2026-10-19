@@ -1,3 +1,4 @@
+import type { PosSettings } from '../../pos/pos-settings.types';
 import {
   Entity,
   Column,
@@ -197,23 +198,7 @@ export class Business extends AbstractBaseEntity {
     description: 'POS-specific settings for this business',
   })
   @Column({ type: 'jsonb', nullable: true, default: () => "'{}'" })
-  posSettings: {
-    currency?: string;
-    receiptHeader?: string;
-    receiptFooter?: string;
-    autoPrintReceipt?: boolean;
-    showLogo?: boolean;
-    taxEnabled?: boolean;
-    taxRate?: number;
-    taxLabel?: string;
-    pricesIncludeTax?: boolean;
-    loyaltyEnabled?: boolean;
-    loyaltyRedeemThreshold?: number;
-    lowStockAlerts?: boolean;
-    dailySalesSummary?: boolean;
-    newOrderAlert?: boolean;
-    staffActivityAlerts?: boolean;
-  };
+  posSettings: PosSettings;
 
   // Relation to the owner
   @OneToOne(() => User, (user) => user.ownedBusiness, {

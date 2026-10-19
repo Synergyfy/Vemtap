@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  ForbiddenException,
   Optional,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -37,10 +38,21 @@ import * as bcrypt from 'bcrypt';
 import { VisitorsService } from '../visitors/visitors.service';
 import { MailService } from '../mail/mail.service';
 import { CatalogueService } from '../catalogue/catalogue.service';
+import { CatalogueBranchPricingService } from '../catalogue/catalogue-branch-pricing.service';
+import { effectiveUnitPrice } from '../catalogue/utils/catalogue-item.utils';
 import { CatalogueOfferService } from '../catalogue/catalogue-offer.service';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { v4 as uuidv4 } from 'uuid';
+import { EventEmitter2 } from '@nestjs/event-emitter';
+import { ORDER_EVENTS, OrderLifecycleEvent, stampStatus } from './order-events';
+
+/** Roles that may create catalogue items while entering a manual order. */
+const STAFF_ROLES: readonly UserRole[] = [
+  UserRole.OWNER,
+  UserRole.MANAGER,
+  UserRole.STAFF,
+];
 
 @Injectable()
 export class CatalogueOrderService {
@@ -67,11 +79,30 @@ export class CatalogueOrderService {
     private readonly visitorsService: VisitorsService,
     private readonly mailService: MailService,
     private readonly catalogueService: CatalogueService,
+    private readonly pricingService: CatalogueBranchPricingService,
     @InjectQueue('order-notifications')
     private readonly orderNotificationQueue: Queue,
     @Optional()
     private readonly catalogueOfferService?: CatalogueOfferService,
+    @Optional()
+    private readonly eventEmitter?: EventEmitter2,
   ) {}
+
+  private emitOrderEvent(
+    event: (typeof ORDER_EVENTS)[keyof typeof ORDER_EVENTS],
+    order: CatalogueOrder,
+  ) {
+    const payload: OrderLifecycleEvent = {
+      orderId: order.id,
+      businessId: order.businessId,
+      branchId: order.branchId,
+      status: order.status,
+      trackingToken: order.trackingToken ?? null,
+      tableNumber: order.tableNumber ?? null,
+      at: new Date().toISOString(),
+    };
+    this.eventEmitter?.emit(event, payload);
+  }
 
   async bulkCheckout(dto: BulkCheckoutDto, user?: User) {
     const results: CatalogueOrder[] = [];
@@ -117,6 +148,21 @@ export class CatalogueOrderService {
       where: { id: dto.branchId },
     });
     if (!branch) throw new NotFoundException('Branch not found');
+
+    // 1.1 `newItem` creates a catalogue item for this business, so only the
+    // business's own staff may send it. Checked before any side effect (guest
+    // account, visit) so a refused request leaves nothing behind.
+    if (dto.items.some((item) => item.newItem)) {
+      const isOwnStaff =
+        !!existingUser &&
+        STAFF_ROLES.includes(existingUser.role) &&
+        existingUser.businessId === branch.businessId;
+      if (!isOwnStaff) {
+        throw new ForbiddenException(
+          'Only staff of this business can add new items to an order',
+        );
+      }
+    }
 
     // 2. Resolve or Create customer (User)
     let customer: User | null = existingUser || null;
@@ -251,14 +297,21 @@ export class CatalogueOrderService {
           }
         }
 
+        // Charge what the customer was shown: the branch's own price when the
+        // item is priced per branch, less the item's discount.
+        const [priced] = await this.pricingService.applyBranchPrices(
+          [item],
+          branch.id,
+        );
+        const unitPrice = effectiveUnitPrice(priced);
         const orderItem = this.orderItemRepository.create({
           itemId: item.id,
           quantity: itemDto.quantity,
-          priceAtOrder: item.price,
+          priceAtOrder: unitPrice,
           loyaltyPointsAtOrder: item.loyaltyPoints,
         });
         orderItems.push(orderItem);
-        totalAmount += Number(item.price) * itemDto.quantity;
+        totalAmount += unitPrice * itemDto.quantity;
       } else if (itemDto.offerId) {
         const offer = await this.offerRepository.findOne({
           where: { id: itemDto.offerId, branchId: dto.branchId },
@@ -341,9 +394,11 @@ export class CatalogueOrderService {
       sessionToken: effectiveSessionToken,
       bookingDate: dto.bookingDate,
       bookingTime: dto.bookingTime,
+      statusTimeline: stampStatus(null, CatalogueOrderStatus.NEW),
     });
 
     const savedOrder = await this.orderRepository.save(order);
+    this.emitOrderEvent(ORDER_EVENTS.CREATED, savedOrder);
 
     // Trigger notification to branch staff
     // Shared with the in-app row below so the push tap and the bell entry for
@@ -594,7 +649,9 @@ export class CatalogueOrderService {
       order.loyaltyAwarded = true;
     }
 
+    order.statusTimeline = stampStatus(order.statusTimeline, order.status);
     const updatedOrder = await this.orderRepository.save(order);
+    this.emitOrderEvent(ORDER_EVENTS.STATUS_CHANGED, updatedOrder);
 
     // The queued 'send-order-email' job owns the customer's side of a status
     // change: it writes the in-app row, sends the push and sends the email,

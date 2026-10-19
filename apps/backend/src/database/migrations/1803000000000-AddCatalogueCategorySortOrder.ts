@@ -8,9 +8,7 @@ import { MigrationInterface, QueryRunner } from 'typeorm';
  * the branch-scoped (customer menu) category order; 0 with a name tie-break
  * preserves today's alphabetical behaviour for existing rows.
  */
-export class AddCatalogueCategorySortOrder1803000000000
-  implements MigrationInterface
-{
+export class AddCatalogueCategorySortOrder1803000000000 implements MigrationInterface {
   name = 'AddCatalogueCategorySortOrder1803000000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {

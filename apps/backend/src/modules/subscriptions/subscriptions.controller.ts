@@ -12,7 +12,6 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { SubscriptionsService } from './subscriptions.service';
-import { SubscribeDto } from './dto/subscribe.dto';
 import {
   ApiTags,
   ApiOperation,
@@ -306,7 +305,9 @@ export class SubscriptionsController {
     if (req?.user) {
       try {
         businessId = await this.getBusinessId(req);
-      } catch {}
+      } catch {
+        // No business yet: preview the price without business context.
+      }
     }
     return this.subscriptionsService.previewPrice(dto, businessId);
   }

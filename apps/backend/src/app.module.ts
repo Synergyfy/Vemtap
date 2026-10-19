@@ -4,6 +4,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { join } from 'path';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { CacheModule } from '@nestjs/cache-manager';
+import { EventEmitterModule } from '@nestjs/event-emitter';
 import { redisStore } from 'cache-manager-redis-yet';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -17,6 +18,11 @@ import { CampaignsModule } from './modules/campaigns/campaigns.module';
 import { SurveysModule } from './modules/surveys/surveys.module';
 import { ProductsModule } from './modules/products/products.module';
 import { AnalyticsModule } from './modules/analytics/analytics.module';
+import { BusinessAnalyticsModule } from './modules/business-analytics/business-analytics.module';
+import { BusinessCustomersModule } from './modules/business-customers/business-customers.module';
+import { ProductCommentsModule } from './modules/product-comments/product-comments.module';
+import { CustomerActivityModule } from './modules/customer-activity/customer-activity.module';
+import { BusinessNetworkModule } from './modules/business-network/business-network.module';
 import { SubscriptionsModule } from './modules/subscriptions/subscriptions.module';
 import { CouponsModule } from './modules/coupons/coupons.module';
 import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
@@ -76,7 +82,6 @@ import { FosTransfersModule } from './modules/fos-transfers/fos-transfers.module
 import { FosPlanningModule } from './modules/fos-planning/fos-planning.module';
 import { FosProfileModule } from './modules/fos-profile/fos-profile.module';
 
-import { dataSourceOptions } from './database/data-source';
 import { CatalogueCartModule } from './modules/catalogue-cart/catalogue-cart.module';
 import { PosModule } from './modules/pos/pos.module';
 import { InventoryCountingModule } from './modules/inventory-counting/inventory-counting.module';
@@ -106,6 +111,7 @@ import { PublicDiscoveryModule } from './modules/public-discovery/public-discove
         join(__dirname, '..', '..', '.env'),
       ],
     }),
+    EventEmitterModule.forRoot(),
     CacheModule.registerAsync({
       isGlobal: true,
       imports: [ConfigModule],
@@ -187,6 +193,11 @@ import { PublicDiscoveryModule } from './modules/public-discovery/public-discove
     SurveysModule,
     ProductsModule,
     AnalyticsModule,
+    BusinessAnalyticsModule,
+    BusinessCustomersModule,
+    ProductCommentsModule,
+    CustomerActivityModule,
+    BusinessNetworkModule,
     SubscriptionsModule,
     CouponsModule,
     SettingsModule,

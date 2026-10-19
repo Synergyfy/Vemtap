@@ -8,7 +8,6 @@ import {
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 const ICON_NAMES = ['Sparkles', 'Megaphone', 'Zap', 'Gift'] as const;
-const GRADIENT_PATTERN = /^bg-gradient-to-[a-z]+/;
 
 export class CreateBannerDto {
   @ApiProperty({ example: 'Welcome to VemTap!' })

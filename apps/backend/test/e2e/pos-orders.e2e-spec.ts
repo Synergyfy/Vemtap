@@ -10,7 +10,6 @@ describe('POS Orders (E2E)', () => {
   let anotherOwnerToken: string;
   let businessId: string;
   let branchId: string;
-  let anotherBusinessId: string;
   let anotherBranchId: string;
   let itemId: string;
   let offerId: string;
@@ -25,7 +24,6 @@ describe('POS Orders (E2E)', () => {
     // Second business for cross-business isolation tests
     const anotherOwnerRes = await createAuthenticatedUser(app, UserRole.OWNER);
     anotherOwnerToken = anotherOwnerRes.token;
-    anotherBusinessId = anotherOwnerRes.user.businessId;
     anotherBranchId = anotherOwnerRes.user.branchId;
 
     // Create a category

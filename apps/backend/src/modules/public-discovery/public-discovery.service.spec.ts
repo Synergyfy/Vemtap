@@ -99,6 +99,7 @@ describe('PublicDiscoveryService', () => {
           name: 'The Azure Bistro',
           status: BusinessStatus.ACTIVE,
           logoUrl: 'https://example.com/logo.png',
+          coverImage: 'https://example.com/cover.png',
           description: 'Fine dining',
           address: '42 Admiralty Way',
           state: 'Lagos',
@@ -133,6 +134,8 @@ describe('PublicDiscoveryService', () => {
         expect.objectContaining({
           id: 'biz-1',
           name: 'The Azure Bistro',
+          uniqueCode: 'BIZ123XYZ',
+          coverImage: 'https://example.com/cover.png',
           categoryName: 'Restaurant',
           slug: 'azure-bistro',
           branchCode: 'BR123ABC',

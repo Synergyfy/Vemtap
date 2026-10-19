@@ -24,6 +24,19 @@ export const AUDIENCE_SCOPES = [
   { id: 'clusters', label: 'Multi-Branch Clusters' },
 ] as const;
 
+/**
+ * Who a boost is shown to, on top of its geography. Both come from the
+ * business's own data; targeting people by their claims at rival businesses
+ * ("competitor deal claimers") is deliberately not offered.
+ */
+export const BOOST_AUDIENCE_TYPES = [
+  { id: 'regulars', label: 'Past Customers & Regulars' },
+  { id: 'walkins', label: 'New Walk-ins in 1km Radius' },
+] as const;
+
+/** "Walk-ins" are viewers within this distance of the branch. */
+export const WALKIN_RADIUS_KM = 1;
+
 export const PROMOTION_STRATEGIES = [
   { id: 'nearby', label: 'All Nearby Customers' },
   { id: 'segments', label: 'Specific Segments' },
@@ -67,6 +80,9 @@ export const PROMOTION_BUDGET_TIERS = [
 
 /** Smallest total budget a campaign can launch with (₦). */
 export const MIN_CAMPAIGN_BUDGET = 2_000;
+
+/** The longest a run may last, including budget added while it is live. */
+export const MAX_RUN_DAYS = 90;
 
 /**
  * Forecast model, calibrated to the wizard's published tiers (e.g. ₦10,000

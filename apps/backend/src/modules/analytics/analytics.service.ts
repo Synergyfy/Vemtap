@@ -5,7 +5,6 @@ import { Visit } from '../visitors/entities/visit.entity';
 import { User } from '../users/entities/user.entity';
 import { Device } from '../devices/entities/device.entity';
 import { MessageLog } from '../messaging/entities/message-log.entity';
-import { MessageStatus } from '../messaging/enums/message.enum';
 import { PointTransaction } from '../loyalty/entities/point-transaction.entity';
 import { RedemptionCode } from '../loyalty/entities/redemption-code.entity';
 import { Reward } from '../loyalty/entities/reward.entity';

@@ -85,7 +85,7 @@ export async function createTestApp(
 
   // Apply standard configuration (pipes, prefix, etc.)
   console.log('[TestApp] Configuring application...');
-  await configureApp(app);
+  configureApp(app);
 
   // Apply test-only error logger
   app.useGlobalFilters(new TestErrorFilter());

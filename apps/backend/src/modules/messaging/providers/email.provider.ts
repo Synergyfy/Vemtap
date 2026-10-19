@@ -34,16 +34,16 @@ export class EmailProvider implements MessagingProvider {
     };
   }
 
-  async parseWebhook(payload: any): Promise<{
+  parseWebhook(_payload: any): Promise<{
     type: 'inbound' | 'delivery';
     data: InboundMessage | DeliveryReport;
   } | null> {
     // Resend webhook parsing can be added here for delivery status tracking
     // See: https://resend.com/docs/dashboard/webhooks/introduction
-    return null;
+    return Promise.resolve(null);
   }
 
-  estimateCost(payload: SendMessagePayload): number {
+  estimateCost(_payload: SendMessagePayload): number {
     return 0.01; // Low cost for email
   }
 }

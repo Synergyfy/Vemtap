@@ -22,6 +22,8 @@ interface AccessTokenPayload {
 type RequestUser = Omit<User, 'businessId' | 'branchId'> & {
   businessId?: string | null;
   branchId?: string | null;
+  /** The login session this token belongs to (`sid`), for "this device". */
+  sessionId?: string;
 };
 
 @Injectable()
@@ -58,6 +60,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
         user.id,
       );
       if (!session) throw new UnauthorizedException('Session has been revoked');
+      user.sessionId = payload.sid;
     }
     // Honor the signed token's role and business context. `switch-role` issues
     // CUSTOMER-scoped tokens for dual-role owners; without applying the claim

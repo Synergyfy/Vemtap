@@ -2,7 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { SegmentsService } from './segments.service';
 import { Segment } from '../entities/segment.entity';
-import { User, UserRole } from '../../users/entities/user.entity';
+import { User } from '../../users/entities/user.entity';
 import { Branch } from '../../branches/entities/branch.entity';
 import {
   NotFoundException,

@@ -145,7 +145,11 @@ export class NotificationsGateway
    * joined an open batch, announcing the same thing repeatedly. This event
    * carries just enough that a live client can refetch the row.
    */
-  emitNotificationUpdated(userId: string, notificationId: string, groupCount: number) {
+  emitNotificationUpdated(
+    userId: string,
+    notificationId: string,
+    groupCount: number,
+  ) {
     this.server.to(roomFor(userId)).emit('notification_updated', {
       id: notificationId,
       groupCount,

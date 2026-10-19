@@ -3,9 +3,6 @@ import request from 'supertest';
 import { createTestApp } from '../utils/create-app';
 import { createAuthenticatedUser } from '../utils/auth';
 import { UserRole } from '../../src/modules/users/entities/user.entity';
-import { DataSource } from 'typeorm';
-import { Business } from '../../src/modules/businesses/entities/business.entity';
-import { Branch } from '../../src/modules/branches/entities/branch.entity';
 
 describe('Staff Management (e2e)', () => {
   let app: INestApplication;

@@ -1,5 +1,13 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsOptional, IsString, IsInt, Min } from 'class-validator';
+import {
+  IsIn,
+  IsOptional,
+  IsString,
+  IsInt,
+  MaxLength,
+  Min,
+} from 'class-validator';
+import { Transform } from 'class-transformer';
 import { Type } from 'class-transformer';
 
 export class AdminPaginationDto {
@@ -29,11 +37,17 @@ export class AdminOfferQueryDto extends AdminPaginationDto {
   @IsString()
   status?: string;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({
+    description:
+      'Offer type as the list shows it (e.g. `discount`), case-insensitive; `N/A` for offers without one.',
+  })
   @IsOptional()
   @IsString()
+  @MaxLength(50)
   category?: string;
 }
+
+export const ADMIN_REFERRAL_STATUSES = ['purchased', 'visited'] as const;
 
 export class AdminReferralQueryDto extends AdminPaginationDto {
   @ApiPropertyOptional()
@@ -41,10 +55,17 @@ export class AdminReferralQueryDto extends AdminPaginationDto {
   @IsString()
   search?: string;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({
+    enum: ADMIN_REFERRAL_STATUSES,
+    description:
+      '`purchased` = referred visits that became a purchase, `visited` = the rest (case-insensitive).',
+  })
   @IsOptional()
-  @IsString()
-  status?: string;
+  @Transform(({ value }: { value: unknown }) =>
+    typeof value === 'string' ? value.toLowerCase() : value,
+  )
+  @IsIn(ADMIN_REFERRAL_STATUSES)
+  status?: (typeof ADMIN_REFERRAL_STATUSES)[number];
 }
 
 export class AdminPartnershipQueryDto extends AdminPaginationDto {

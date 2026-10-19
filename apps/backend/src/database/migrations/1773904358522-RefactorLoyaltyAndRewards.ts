@@ -293,7 +293,7 @@ export class RefactorLoyaltyAndRewards1773904358522 implements MigrationInterfac
     );
   }
 
-  public async down(queryRunner: QueryRunner): Promise<void> {
+  public async down(_queryRunner: QueryRunner): Promise<void> {
     // Down migration can be simplified or omitted for this complex refactor if allowed,
     // but it's good practice. For now I'll just leave it as generated or empty.
   }

@@ -27,6 +27,7 @@ import {
   DealReviewDetailDto,
   ListReviewsQueryDto,
   UpdateDealReviewDto,
+  ReplyToReviewDto,
 } from './dto/deal-review.dto';
 import { DealReactionDto } from './dto/deal-reaction.dto';
 import { Public } from '../../common/decorators/public.decorator';
@@ -76,7 +77,7 @@ export class DealEngagementController {
   @ApiOperation({
     summary: 'Rating summary for the current business (Merchant)',
     description:
-      'Average and total of APPROVED deal reviews plus the pending moderation count.',
+      'Average and total of APPROVED deal reviews, the pending moderation count and the 1–5 star distribution.',
   })
   async getBusinessReviewsSummary(@Request() req: DealEngagementRequest) {
     return this.engagementService.getReviewsSummaryForBusiness(
@@ -111,6 +112,45 @@ export class DealEngagementController {
     @Param('id', ParseUUIDPipe) id: string,
   ) {
     return this.engagementService.rejectReviewByBusiness(
+      this.getBusinessIdOrThrow(req),
+      id,
+    );
+  }
+
+  @ApiBearerAuth()
+  @Roles(UserRole.OWNER, UserRole.MANAGER)
+  @Post('business/reviews/:id/reply')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Reply publicly to a deal review (Merchant)',
+    description:
+      'Sets or replaces the reply (trimmed, 1–1000 chars). Shown with the review to customers.',
+  })
+  async replyToBusinessReview(
+    @Request() req: DealEngagementRequest,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: ReplyToReviewDto,
+  ) {
+    return this.engagementService.replyToReviewByBusiness(
+      this.getBusinessIdOrThrow(req),
+      id,
+      req.user?.id ?? null,
+      dto.reply,
+    );
+  }
+
+  @ApiBearerAuth()
+  @Roles(UserRole.OWNER, UserRole.MANAGER)
+  @Delete('business/reviews/:id/reply')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({
+    summary: 'Remove the business reply from a review (Merchant)',
+  })
+  async removeBusinessReviewReply(
+    @Request() req: DealEngagementRequest,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    await this.engagementService.removeReplyByBusiness(
       this.getBusinessIdOrThrow(req),
       id,
     );

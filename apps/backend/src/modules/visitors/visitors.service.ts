@@ -6,18 +6,11 @@ import {
   HttpStatus,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import {
-  Repository,
-  DataSource,
-  In,
-  FindOptionsWhere,
-  MoreThan,
-  LessThan,
-} from 'typeorm';
+import { Repository, DataSource, In, MoreThan } from 'typeorm';
 import { v4 as uuidv4 } from 'uuid';
 import { User, UserRole, UserStatus } from '../users/entities/user.entity';
 import { Visit } from './entities/visit.entity';
-import { Device, DeviceStatus } from '../devices/entities/device.entity';
+import { Device } from '../devices/entities/device.entity';
 import { Branch } from '../branches/entities/branch.entity';
 import { Contact } from '../contacts/entities/contact.entity';
 import { VisitorQueryDto } from './dto/visitor-query.dto';
@@ -39,7 +32,6 @@ import { TriggerType } from '../messaging/enums/automation.enum';
 import { Channel } from '../messaging/enums/channel.enum';
 import { CampaignsService } from '../campaigns/campaigns.service';
 import * as bcrypt from 'bcrypt';
-import { randomBytes } from 'crypto';
 import { MailService } from '../mail/mail.service';
 import { MessageLog } from '../messaging/entities/message-log.entity';
 import { BranchesService } from '../branches/branches.service';
@@ -47,7 +39,6 @@ import { LoyaltyService } from '../loyalty/loyalty.service';
 import { AuthService } from '../auth/auth.service';
 import { PointTransaction } from '../loyalty/entities/point-transaction.entity';
 import { RedemptionCode } from '../loyalty/entities/redemption-code.entity';
-import { Reward } from '../loyalty/entities/reward.entity';
 
 export class SendCampaignBody {
   channel: Channel;
@@ -1296,8 +1287,6 @@ export class VisitorsService {
     limit: number = 20,
     cursor?: string,
   ): Promise<PaginatedActivityFeedResponseDto> {
-    const skip = (page - 1) * limit;
-
     const qb = this.visitRepository
       .createQueryBuilder('visit')
       .leftJoinAndSelect('visit.customer', 'customer')

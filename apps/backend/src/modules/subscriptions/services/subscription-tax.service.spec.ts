@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource } from 'typeorm';
 import { SubscriptionTaxService } from './subscription-tax.service';
 import {
   SubscriptionTaxConfig,
@@ -9,8 +9,6 @@ import {
 
 describe('SubscriptionTaxService', () => {
   let service: SubscriptionTaxService;
-  let taxConfigRepository: Repository<SubscriptionTaxConfig>;
-  let dataSource: DataSource;
 
   const mockActiveConfig: Partial<SubscriptionTaxConfig> = {
     id: 'tax-config-1',
@@ -70,10 +68,6 @@ describe('SubscriptionTaxService', () => {
     }).compile();
 
     service = module.get<SubscriptionTaxService>(SubscriptionTaxService);
-    taxConfigRepository = module.get<Repository<SubscriptionTaxConfig>>(
-      getRepositoryToken(SubscriptionTaxConfig),
-    );
-    dataSource = module.get<DataSource>(DataSource);
   });
 
   it('should be defined', () => {
@@ -166,7 +160,7 @@ describe('SubscriptionTaxService', () => {
     it('should toggle enabled state by creating a new history row', async () => {
       mockTaxConfigRepository.findOne.mockResolvedValue(mockActiveConfig);
 
-      const result = await service.toggleTax('admin-user-id', {
+      await service.toggleTax('admin-user-id', {
         isEnabled: false,
         changeReason: 'Disabled VAT',
       });

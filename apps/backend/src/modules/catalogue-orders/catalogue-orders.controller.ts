@@ -17,6 +17,7 @@ import {
   ApiResponse,
 } from '@nestjs/swagger';
 import { CatalogueOrderService } from './catalogue-orders.service';
+import { CatalogueOrderReceiptService } from './catalogue-order-receipt.service';
 import {
   CreateCatalogueOrderDto,
   UpdateCatalogueOrderStatusDto,
@@ -39,7 +40,10 @@ interface RequestWithUser extends Request {
 @ApiTags('Catalogue Orders')
 @Controller('catalogue/orders')
 export class CatalogueOrdersController {
-  constructor(private readonly orderService: CatalogueOrderService) {}
+  constructor(
+    private readonly orderService: CatalogueOrderService,
+    private readonly receiptService: CatalogueOrderReceiptService,
+  ) {}
 
   @Public()
   @Post()
@@ -83,6 +87,22 @@ export class CatalogueOrdersController {
     @Query() query: MyOrdersQueryDto,
   ) {
     return this.orderService.findAllByCustomer(req.user.id, query);
+  }
+
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Get('my-orders/:id/receipt')
+  @Roles(UserRole.CUSTOMER)
+  @ApiOperation({
+    summary: 'PDF receipt for one of the customer’s own orders',
+    description:
+      'Returns `{ filename, mimeType, contentBase64 }`. Another customer’s order is a 404.',
+  })
+  async getMyOrderReceipt(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Req() req: RequestWithUser,
+  ) {
+    return this.receiptService.buildForCustomer(req.user.id, id);
   }
 
   @ApiBearerAuth()

@@ -2,11 +2,7 @@ import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { createTestApp } from '../utils/create-app';
 import { createAuthenticatedUser } from '../utils/auth';
-import {
-  UserRole,
-  User,
-  UserStatus,
-} from '../../src/modules/users/entities/user.entity';
+import { UserRole } from '../../src/modules/users/entities/user.entity';
 import { TicketStatus } from '../../src/modules/support/entities/support-ticket.entity';
 
 describe('Agent Flow (e2e)', () => {

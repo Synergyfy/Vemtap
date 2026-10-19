@@ -178,3 +178,14 @@ export class BusinessReviewsQueryDto {
   @Max(50)
   limit?: number = 20;
 }
+
+export class ReplyToReviewDto {
+  @ApiProperty({ example: 'Thank you! See you again soon.', maxLength: 1000 })
+  @Transform(({ value }: { value: unknown }) =>
+    typeof value === 'string' ? value.trim() : value,
+  )
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(1000)
+  reply: string;
+}

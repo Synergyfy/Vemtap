@@ -9,8 +9,6 @@ import { BranchesService } from '../../branches/branches.service';
 
 describe('SubscriptionGuard', () => {
   let guard: SubscriptionGuard;
-  let subscriptionsService: SubscriptionsService;
-  let reflector: Reflector;
 
   const mockSubscriptionsService = {
     getSubscriptionStatus: jest.fn(),
@@ -43,9 +41,6 @@ describe('SubscriptionGuard', () => {
     }).compile();
 
     guard = module.get<SubscriptionGuard>(SubscriptionGuard);
-    subscriptionsService =
-      module.get<SubscriptionsService>(SubscriptionsService);
-    reflector = module.get<Reflector>(Reflector);
   });
 
   it('should be defined', () => {

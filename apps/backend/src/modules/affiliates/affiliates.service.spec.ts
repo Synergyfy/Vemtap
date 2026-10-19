@@ -4,15 +4,9 @@ import { NotFoundException, BadRequestException } from '@nestjs/common';
 import { DataSource, In } from 'typeorm';
 import { AffiliatesService } from './affiliates.service';
 import { AffiliateSyncService } from './affiliate-sync.service';
-import {
-  AffiliateProfile,
-  KycStatus,
-} from './entities/affiliate-profile.entity';
+import { AffiliateProfile } from './entities/affiliate-profile.entity';
 import { AffiliateReferral, ReferralStatus } from './entities/referral.entity';
-import {
-  AffiliateCommission,
-  CommissionStatus,
-} from './entities/commission.entity';
+import { AffiliateCommission } from './entities/commission.entity';
 import {
   AffiliateWithdrawalRequest,
   WithdrawalStatus,

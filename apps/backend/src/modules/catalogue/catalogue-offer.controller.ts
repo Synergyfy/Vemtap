@@ -256,7 +256,9 @@ export class CatalogueOfferController {
     if (req?.headers?.['referer']) {
       try {
         refererOrigin = new URL(req.headers['referer']).origin;
-      } catch {}
+      } catch {
+        // A malformed Referer just means no detected origin.
+      }
     }
     const detectedOrigin = dto.frontendBaseUrl || originHeader || refererOrigin;
     return this.offerService.sendDealGift(dto, req.user, detectedOrigin);

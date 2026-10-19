@@ -319,8 +319,8 @@ export class SubscriptionRemindersService {
   // Template Management (CRUD & Interpolation)
   // ------------------------------------------------------------------
 
-  async getPlaceholders() {
-    return SUBSCRIPTION_REMINDER_PLACEHOLDERS;
+  getPlaceholders() {
+    return Promise.resolve(SUBSCRIPTION_REMINDER_PLACEHOLDERS);
   }
 
   async getTemplates(): Promise<SubscriptionReminderTemplate[]> {
@@ -423,7 +423,7 @@ export class SubscriptionRemindersService {
     return this.templateRepository.save(template);
   }
 
-  async previewTemplate(dto: PreviewReminderTemplateDto) {
+  previewTemplate(dto: PreviewReminderTemplateDto) {
     const defaultMockVariables = {
       businessName: 'Apex Electronics',
       ownerName: 'Alex Johnson',
@@ -441,11 +441,11 @@ export class SubscriptionRemindersService {
     const renderedTitle = this.interpolate(dto.titleTemplate, variables);
     const renderedMessage = this.interpolate(dto.messageTemplate, variables);
 
-    return {
+    return Promise.resolve({
       title: renderedTitle,
       message: renderedMessage,
       variablesUsed: variables,
-    };
+    });
   }
 
   /**

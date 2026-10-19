@@ -2,9 +2,8 @@ import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { createTestApp } from '../utils/create-app';
 import { createAuthenticatedUser } from '../utils/auth';
-import { UserRole, User } from '../../src/modules/users/entities/user.entity';
+import { UserRole } from '../../src/modules/users/entities/user.entity';
 import { BackendModule } from '../../src/common/enums/backend-module.enum';
-import { DataSource } from 'typeorm';
 import { AffiliatesService } from '../../src/modules/affiliates/affiliates.service';
 
 describe('Administration & Impersonation (e2e)', () => {
@@ -12,7 +11,6 @@ describe('Administration & Impersonation (e2e)', () => {
   let adminToken: string;
   let agentId: string;
   let branchId: string;
-  let businessId: string;
   let impersonationToken: string;
   let agentEmail: string;
 
@@ -24,7 +22,6 @@ describe('Administration & Impersonation (e2e)', () => {
 
     const ownerRes = await createAuthenticatedUser(app, UserRole.OWNER);
     branchId = ownerRes.user.branchId;
-    businessId = ownerRes.user.businessId;
   }, 300000);
 
   afterAll(async () => {

@@ -9,7 +9,7 @@ import {
 } from '@nestjs/common';
 import { CACHE_MANAGER, type Cache } from '@nestjs/cache-manager';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Brackets, In } from 'typeorm';
+import { Repository, Brackets } from 'typeorm';
 import { CatalogueCategory } from './entities/catalogue-category.entity';
 import {
   CatalogueItem,

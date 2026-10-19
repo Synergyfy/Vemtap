@@ -101,10 +101,10 @@ export class LocalFallbackService {
         type: 'risk',
         severity: 'warning',
         title: 'Stock Warning',
-        description: `${data.lowStockCount} items have reached or dropped below low-stock thresholds.`,
+        description: `${Number(data.lowStockCount)} items have reached or dropped below low-stock thresholds.`,
         metric: {
           label: 'Low Stock Items',
-          value: `${data.lowStockCount}`,
+          value: String(Number(data.lowStockCount)),
           isUp: false,
         },
       });

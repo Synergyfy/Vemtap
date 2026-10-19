@@ -1,5 +1,4 @@
 import {
-  BadRequestException,
   Controller,
   Delete,
   Post,
@@ -8,6 +7,7 @@ import {
   Param,
   UseGuards,
   Query,
+  NotFoundException,
   Request,
   Patch,
   ParseEnumPipe,
@@ -43,6 +43,8 @@ import { TrialRestrictionGuard } from '../../subscriptions/guards/trial-restrict
 import { BranchFilterDto } from '../../../common/dto/branch-filter.dto';
 import { MessagingAnalyticsFilterDto } from '../dto/messaging-analytics-filter.dto';
 import { MessagingHelperService } from '../services/messaging-helper.service';
+import { BusinessCustomersService } from '../../business-customers/business-customers.service';
+import { InitThreadDto } from '../dto/init-thread.dto';
 import { BranchesService } from '../../branches/branches.service';
 import { IdDto } from '../dto/id.dto';
 import { ThreadIdDto } from '../dto/thread-id.dto';
@@ -59,6 +61,7 @@ export class MessagingController {
     private readonly inboxService: InboxService,
     private readonly branchesService: BranchesService,
     private readonly messagingHelperService: MessagingHelperService,
+    private readonly businessCustomers: BusinessCustomersService,
   ) {}
 
   private async getBranchId(
@@ -352,11 +355,26 @@ export class MessagingController {
   @ApiOperation({
     summary: 'Initialize an empty conversation thread with a customer',
   })
-  async initThread(
-    @Body() dto: { branchId?: string; customerId: string },
-    @Request() req: { user: User },
-  ) {
+  async initThread(@Body() dto: InitThreadDto, @Request() req: { user: User }) {
     const branchId = await this.getBranchId(req, dto.branchId);
+    // An existing conversation can always be reopened; a new one only with
+    // someone who is already this business's customer, so a business cannot
+    // message arbitrary users by id.
+    const existing = await this.inboxService.findBranchConversation(
+      branchId,
+      dto.customerId,
+    );
+    if (existing) return existing;
+    const businessId = req.user.businessId;
+    if (
+      !businessId ||
+      !(await this.businessCustomers.isKnownCustomer(
+        businessId,
+        dto.customerId,
+      ))
+    ) {
+      throw new NotFoundException('Customer not found');
+    }
     return this.inboxService.initBranchConversation(branchId, dto.customerId);
   }
 

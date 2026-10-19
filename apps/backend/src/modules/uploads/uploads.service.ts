@@ -88,12 +88,13 @@ export class UploadsService {
       const uploaded = await new Promise<UploadApiResponse>(
         (resolve, reject) => {
           const stream = cloudinary.uploader.upload_stream(
-            { folder, resource_type: resourceType as 'image' | 'raw' },
+            { folder, resource_type: resourceType },
             (error, result) => {
               if (error || !result) {
                 // Keep Cloudinary's error intact — replacing non-Error values
                 // with a generic message is what hid the restricted-key
                 // "missing permissions" outage behind "returned no result".
+                // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors -- Cloudinary's error object is passed through on purpose (see above).
                 reject(error ?? new Error('Cloudinary returned no result'));
                 return;
               }
@@ -106,10 +107,7 @@ export class UploadsService {
 
       return { url: uploaded.secure_url };
     } catch (error) {
-      this.logger.error(
-        'Cloudinary upload failed',
-        describeUploadError(error),
-      );
+      this.logger.error('Cloudinary upload failed', describeUploadError(error));
 
       const httpCode = uploadErrorHttpCode(error);
       if (httpCode === 401 || httpCode === 403) {

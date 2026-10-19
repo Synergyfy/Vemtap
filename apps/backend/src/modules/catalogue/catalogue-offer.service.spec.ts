@@ -1,5 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { CatalogueOfferService } from './catalogue-offer.service';
+import { PublicOffersSortBy } from './dto/offer.dto';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import {
   CatalogueOffer,
@@ -25,7 +26,6 @@ import {
   ForbiddenException,
   UnauthorizedException,
 } from '@nestjs/common';
-import { In } from 'typeorm';
 
 import { AiCreditService } from '../ai-copilot/services/ai-credit.service';
 import { OpenAIClient } from '../ai-copilot/openai/openai.client';
@@ -695,7 +695,7 @@ describe('CatalogueOfferService', () => {
       );
 
       const result = await service.findAllOffersPublicGlobal({
-        sortBy: 'popular',
+        sortBy: PublicOffersSortBy.POPULAR,
         page: 1,
         limit: 10,
       });
@@ -721,7 +721,7 @@ describe('CatalogueOfferService', () => {
       ]);
 
       const result = await service.findAllOffersPublicGlobal({
-        sortBy: 'featured',
+        sortBy: PublicOffersSortBy.FEATURED,
         page: 1,
         limit: 10,
       });
@@ -756,6 +756,46 @@ describe('CatalogueOfferService', () => {
       // discountPercent must be computed from the coerced number, not from
       // string comparison: 10000 → 8500 is 15% off.
       expect(result.data[0].discountPercent).toBe(15);
+    });
+
+    it('gives each row the deal photo and its items in a fixed order', async () => {
+      const older = {
+        id: 'b-item',
+        price: 60,
+        mainImage: 'pasta.jpg',
+        createdAt: new Date('2026-01-01'),
+      };
+      const newer = {
+        id: 'a-item',
+        price: 40,
+        mainImage: 'wings.jpg',
+        createdAt: new Date('2026-02-01'),
+      };
+      const read = async (items: unknown[]) => {
+        offerRepo.createQueryBuilder = jest
+          .fn()
+          .mockReturnValue(makeOfferQb({ mainImage: 'deal.jpg', items }));
+        claimRepo.find.mockResolvedValue([]);
+        const result = await service.findAllOffersPublicGlobal({
+          page: 1,
+          limit: 10,
+        });
+        return result.data[0];
+      };
+
+      const first = await read([newer, older]);
+      const second = await read([older, newer]);
+
+      expect(first.mainImage).toBe('deal.jpg');
+      // Same order whichever way the join returned them.
+      expect(first.items.map((item: any) => item.id)).toEqual([
+        'b-item',
+        'a-item',
+      ]);
+      expect(second.items.map((item: any) => item.id)).toEqual([
+        'b-item',
+        'a-item',
+      ]);
     });
 
     it('only lists deals whose items are all published', async () => {
@@ -1239,6 +1279,77 @@ describe('CatalogueOfferService', () => {
       return { qb, calls };
     };
 
+    describe('own claim actions', () => {
+      const mockOwnClaim = (row: unknown) => {
+        const { qb, calls } = mockClaimQb([]);
+        qb.getOne = jest.fn().mockResolvedValue(row);
+        claimRepo.softDelete = jest.fn().mockResolvedValue(undefined);
+        return { qb, calls };
+      };
+
+      it('encodes the caller’s claim code as an SVG QR', async () => {
+        const { calls } = mockOwnClaim(claimRow());
+
+        const result = await service.myClaimQr(customer, 'claim-1');
+
+        expect(result.claimCode).toBe('VEM1-APO1LUNCH-7F2A');
+        expect(result.svg).toContain('<svg');
+        expect(calls.andWhere[0][0]).toContain('claim.userId = :userId');
+      });
+
+      it('hides another customer’s claim', async () => {
+        mockOwnClaim(null);
+        await expect(service.myClaimQr(customer, 'claim-x')).rejects.toThrow(
+          'Claim not found',
+        );
+      });
+
+      it('releases an active claim by soft-deleting it', async () => {
+        mockOwnClaim(
+          claimRow({ expiresAt: new Date(Date.now() + 86_400_000) }),
+        );
+
+        await service.releaseMyClaim(customer, 'claim-1');
+
+        expect(claimRepo.softDelete).toHaveBeenCalledWith('claim-1');
+      });
+
+      it('refuses to release a redeemed or expired claim', async () => {
+        mockOwnClaim(claimRow({ status: CatalogueOfferClaimStatus.REDEEMED }));
+        await expect(
+          service.releaseMyClaim(customer, 'claim-1'),
+        ).rejects.toThrow('Only an active claim can be released');
+
+        mockOwnClaim(claimRow({ expiresAt: new Date('2020-01-01T00:00:00Z') }));
+        await expect(
+          service.releaseMyClaim(customer, 'claim-1'),
+        ).rejects.toThrow('Only an active claim can be released');
+        expect(claimRepo.softDelete).not.toHaveBeenCalled();
+      });
+
+      it('carries the branch phone and coordinates on each pass', async () => {
+        mockClaimQb([
+          claimRow({
+            offer: {
+              ...claimRow().offer,
+              branch: {
+                ...claimRow().offer.branch,
+                phone: '+2348011112222',
+                latitude: '9.0765000',
+                longitude: '7.3986000',
+              },
+            },
+          }),
+        ]);
+
+        const [pass] = (await service.findMyClaims(customer, {})) as any[];
+
+        expect(pass.offer.branchPhone).toBe('+2348011112222');
+        expect(pass.offer.branchLatitude).toBeCloseTo(9.0765);
+        expect(pass.offer.branchLongitude).toBeCloseTo(7.3986);
+      });
+    });
+
     it('scopes rows to the caller by id or email or phone', async () => {
       const { calls } = mockClaimQb([claimRow()]);
 
@@ -1355,7 +1466,7 @@ describe('CatalogueOfferService', () => {
     it('matches q against offer, business, branch and claim code', async () => {
       const { calls } = mockClaimQb([claimRow()]);
 
-      await service.findMyClaims(customer, { q: '  APO LUNCH  ' } as any);
+      await service.findMyClaims(customer, { q: '  APO LUNCH  ' });
 
       const [sql, params] = calls.andWhere[0];
       expect(sql).toContain('LOWER(offer.name) LIKE :q');
@@ -1369,7 +1480,7 @@ describe('CatalogueOfferService', () => {
     it('does not filter on an empty q', async () => {
       const { calls } = mockClaimQb([claimRow()]);
 
-      await service.findMyClaims(customer, { q: '   ' } as any);
+      await service.findMyClaims(customer, { q: '   ' });
 
       const joined = calls.andWhere.map(([sql]) => sql).join(' ');
       expect(joined).not.toContain('LIKE :q');
@@ -1516,7 +1627,7 @@ describe('CatalogueOfferService', () => {
     it('matches q against recipient, sender and offer name', async () => {
       const { calls } = mockGiftQb([giftRow()]);
 
-      await service.findMyGifts(customer, { q: ' SAM ' } as any);
+      await service.findMyGifts(customer, { q: ' SAM ' });
 
       const [sql, params] = calls.andWhere[0];
       expect(sql).toContain('LOWER(gift.recipientEmail) LIKE :q');
@@ -1574,7 +1685,7 @@ describe('CatalogueOfferService', () => {
           branchOverrides: [
             { branchId: 'branch-2', discountValue: 30, quantity: 5 },
           ],
-        } as any,
+        },
         'biz-1',
       );
 
@@ -1663,7 +1774,7 @@ describe('CatalogueOfferService', () => {
           fixedPrice: 7500,
           branchId: 'branch-1',
           itemIds: ['item-1'],
-        } as any,
+        },
         'biz-1',
       );
       expect(combo.calculatedPrice).toBe(7500);
@@ -1686,7 +1797,7 @@ describe('CatalogueOfferService', () => {
           ],
           branchId: 'branch-1',
           itemIds: ['item-1'],
-        } as any,
+        },
         'biz-1',
       );
       expect(tiered.calculatedPrice).toBe(9000);

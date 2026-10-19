@@ -7,7 +7,6 @@ import { UserRole } from '../../src/modules/users/entities/user.entity';
 describe('Catalogue Orders (E2E)', () => {
   let app: INestApplication;
   let ownerToken: string;
-  let businessId: string;
   let branchId: string;
   let itemId: string;
   let orderId: string;
@@ -16,7 +15,6 @@ describe('Catalogue Orders (E2E)', () => {
     app = await createTestApp();
     const ownerRes = await createAuthenticatedUser(app, UserRole.OWNER);
     ownerToken = ownerRes.token;
-    businessId = ownerRes.user.businessId;
     branchId = ownerRes.user.branchId;
 
     // Create a category

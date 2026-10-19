@@ -23,6 +23,7 @@ import { SponsoredCampaignKind } from '../discovery/entities/sponsored-campaign.
 import { PromotionsService } from './promotions.service';
 import {
   ForecastDto,
+  AddBudgetDto,
   LaunchCampaignDto,
   ListCampaignsQueryDto,
   SaveCampaignDto,
@@ -67,8 +68,8 @@ function campaignController(
 
     @Get('options')
     @ApiOperation({ summary: `Choices for the ${noun} wizard` })
-    options() {
-      return this.service.options(kind);
+    options(@Req() req: AuthedRequest) {
+      return this.service.options(kind, req.user.businessId);
     }
 
     @Get('eligible-assets')
@@ -82,8 +83,8 @@ function campaignController(
     @Post('forecast')
     @HttpCode(HttpStatus.OK)
     @ApiOperation({ summary: 'Estimated reach and claims for a budget' })
-    forecast(@Body() dto: ForecastDto) {
-      return this.service.forecast(dto);
+    forecast(@Req() req: AuthedRequest, @Body() dto: ForecastDto) {
+      return this.service.forecast(dto, req.user.businessId);
     }
 
     @Post()
@@ -125,6 +126,25 @@ function campaignController(
       @Body() dto: LaunchCampaignDto,
     ) {
       return this.service.launch(kind, id, req.user.businessId, req.user, dto);
+    }
+
+    @Post(':id/budget')
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({
+      summary: `Add budget to a live ${noun}; its end date moves out at the same daily spend`,
+    })
+    addBudget(
+      @Req() req: AuthedRequest,
+      @Param('id', ParseUUIDPipe) id: string,
+      @Body() dto: AddBudgetDto,
+    ) {
+      return this.service.addBudget(
+        kind,
+        id,
+        req.user.businessId,
+        req.user,
+        dto,
+      );
     }
 
     @Post(':id/pause')

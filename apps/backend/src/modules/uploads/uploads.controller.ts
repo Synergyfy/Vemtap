@@ -28,7 +28,12 @@ import { UploadsService } from './uploads.service';
 // rejected by the platform before multer ever sees it. 4MB keeps the in-code
 // limit under that cliff instead of advertising a size the deploy can't take.
 const MAX_UPLOAD_BYTES = 4 * 1024 * 1024; // 4MB, under the Vercel body cap
-const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
+const ALLOWED_MIME_TYPES = [
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'application/pdf',
+];
 
 /**
  * Cloudinary folders a caller may route to. The override exists so avatars,
@@ -47,7 +52,7 @@ function isAllowedFolder(folder: string): boolean {
   // A prefix plus at least one path segment — `vemtap/avatars/` alone is a
   // folder-less path and Cloudinary would flatten it into the parent.
   return ALLOWED_FOLDER_PREFIXES.some(
-    prefix => folder.startsWith(prefix) && folder.length > prefix.length,
+    (prefix) => folder.startsWith(prefix) && folder.length > prefix.length,
   );
 }
 
@@ -94,7 +99,7 @@ export class UploadsController {
     summary: 'Upload an image (business logo/cover/gallery, or user avatar)',
     description:
       'Accepts multipart/form-data `file` (JPG/PNG/WebP, max 4MB — kept under ' +
-      "the serverless body cap) and returns the hosted URL. Owners, managers " +
+      'the serverless body cap) and returns the hosted URL. Owners, managers ' +
       'and admins land in `vemtap/businesses/{businessId}`; customers with no ' +
       'business context land in `vemtap/users/{userId}`, which is where the ' +
       'profile-picture flow puts avatars before PATCHing them onto the user.',
@@ -106,7 +111,11 @@ export class UploadsController {
   })
   upload(
     @UploadedFile() file: Express.Multer.File,
-    @Request() req: { user?: { id?: string; businessId?: string }; body?: { folderOverride?: string } },
+    @Request()
+    req: {
+      user?: { id?: string; businessId?: string };
+      body?: { folderOverride?: string };
+    },
   ) {
     const user = req.user;
     const folderOverride = req.body?.folderOverride;

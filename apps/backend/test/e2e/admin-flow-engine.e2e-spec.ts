@@ -3,9 +3,6 @@ import request from 'supertest';
 import { createTestApp } from '../utils/create-app';
 import { createAuthenticatedUser } from '../utils/auth';
 import { UserRole } from '../../src/modules/users/entities/user.entity';
-import { FlowTriggerConfig } from '../../src/modules/messaging/entities/flow-trigger-config.entity';
-import { FlowAnalyticsResponse } from '../../src/modules/messaging/interfaces/flow-engine.interface';
-import { Setting } from '../../src/modules/settings/entities/setting.entity';
 
 describe('Admin Flow Engine (E2E)', () => {
   let app: INestApplication;

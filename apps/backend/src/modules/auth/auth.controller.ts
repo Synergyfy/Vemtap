@@ -39,7 +39,6 @@ import {
   MessageResponseDto,
   VerifyOtpResponseDto,
 } from './dto/responses.dto';
-import { LocalAuthGuard } from './guards/local-auth.guard';
 import { User, UserRole } from '../users/entities/user.entity';
 import { TwoFactorCodeDto } from './dto/two-factor.dto';
 import { VerifyEmailDto } from './dto/verify-email.dto';

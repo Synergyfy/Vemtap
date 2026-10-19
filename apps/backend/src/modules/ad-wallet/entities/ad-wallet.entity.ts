@@ -43,4 +43,42 @@ export class AdWallet extends AbstractBaseEntity {
   @ApiProperty({ example: 14350 })
   @Column(money)
   reserved: number;
+
+  /**
+   * Paystack reusable authorization for the saved card. Stored only with the
+   * owner's consent and never returned by the API.
+   */
+  @Column({ type: 'varchar', length: 128, nullable: true, select: true })
+  cardAuthorizationCode: string | null;
+
+  /** The Paystack customer email the authorization was issued to. */
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  cardEmail: string | null;
+
+  /** The saved card for display: no secrets. */
+  @Column({ type: 'jsonb', nullable: true })
+  cardSummary: AdWalletCardSummary | null;
+
+  /** Top up from the saved card when spendable money drops below `threshold`. */
+  @Column({ type: 'jsonb', nullable: true })
+  autoReload: AdWalletAutoReload | null;
+}
+
+export interface AdWalletCardSummary {
+  brand: string | null;
+  last4: string | null;
+  expMonth: string | null;
+  expYear: string | null;
+  bank: string | null;
+}
+
+export interface AdWalletAutoReload {
+  enabled: boolean;
+  /** Reload when spendable (₦) is below this. */
+  threshold: number;
+  /** Top-up amount (₦). */
+  amount: number;
+  lastAttemptAt?: string | null;
+  /** Why the last attempt failed (auto-reload is switched off then). */
+  lastError?: string | null;
 }

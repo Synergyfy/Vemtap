@@ -2,10 +2,9 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
-  ConflictException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, DataSource, In, MoreThan } from 'typeorm';
+import { Repository, DataSource, In } from 'typeorm';
 import {
   AffiliateProfile,
   KycStatus,
@@ -445,7 +444,7 @@ export class AffiliatesService {
 
       return referred.map((b) => ({
         id: b.id,
-        status: b.status === 'active' ? 'Converted' : 'Pending',
+        status: b.status === BusinessStatus.ACTIVE ? 'Converted' : 'Pending',
         createdAt: b.createdAt,
         referredBusiness: b,
       }));

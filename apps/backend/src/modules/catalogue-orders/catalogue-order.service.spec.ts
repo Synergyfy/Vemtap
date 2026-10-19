@@ -1,3 +1,4 @@
+import { ForbiddenException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { CatalogueOrderService } from './catalogue-orders.service';
 import { getRepositoryToken } from '@nestjs/typeorm';
@@ -21,7 +22,8 @@ import { LoyaltyService } from '../loyalty/loyalty.service';
 import { VisitorsService } from '../visitors/visitors.service';
 import { MailService } from '../mail/mail.service';
 import { CatalogueService } from '../catalogue/catalogue.service';
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { CatalogueBranchPricingService } from '../catalogue/catalogue-branch-pricing.service';
+import { BadRequestException } from '@nestjs/common';
 import { getQueueToken } from '@nestjs/bullmq';
 
 describe('CatalogueOrderService', () => {
@@ -84,8 +86,10 @@ describe('CatalogueOrderService', () => {
     role: UserRole.STAFF,
   } as any;
 
+  let module: TestingModule;
+
   beforeEach(async () => {
-    const module: TestingModule = await Test.createTestingModule({
+    module = await Test.createTestingModule({
       providers: [
         {
           provide: PushNotificationService,
@@ -164,6 +168,14 @@ describe('CatalogueOrderService', () => {
           provide: CatalogueService,
           useValue: { findItem: jest.fn(), findOffer: jest.fn() },
         },
+        {
+          provide: CatalogueBranchPricingService,
+          useValue: {
+            applyBranchPrices: jest.fn((items: unknown[]) =>
+              Promise.resolve(items),
+            ),
+          },
+        },
       ],
     }).compile();
 
@@ -209,6 +221,112 @@ describe('CatalogueOrderService', () => {
       expect(result.totalAmount).toBe(20);
       expect(result.items[0].loyaltyPointsAtOrder).toBe(5);
       expect(mockOrderRepo.save).toHaveBeenCalled();
+    });
+
+    it('charges the branch price less the item discount the customer saw', async () => {
+      const applyBranchPrices = module.get(CatalogueBranchPricingService)
+        .applyBranchPrices as jest.Mock;
+      applyBranchPrices.mockImplementationOnce(
+        (items: Array<Record<string, unknown>>) =>
+          Promise.resolve(items.map((item) => ({ ...item, price: 6000 }))),
+      );
+      mockBranchRepo.findOne.mockResolvedValue({
+        id: 'br-1',
+        businessId: 'bus-1',
+      });
+      mockUserRepo.findOne.mockResolvedValue({
+        id: 'cust-1',
+        phone: '12345678',
+      });
+      mockItemRepo.findOne.mockResolvedValue({
+        id: 'item-1',
+        name: 'Wrap',
+        price: 5000,
+        discountType: 'percentage',
+        discountValue: 10,
+        status: CatalogueItemStatus.ACTIVE,
+        isSuspended: false,
+        branches: [{ id: 'br-1' }],
+        stockQuantity: null,
+        allowBackOrder: false,
+      });
+
+      const result = await service.createOrder({
+        firstName: 'John',
+        lastName: 'Doe',
+        phone: '12345678',
+        branchId: 'br-1',
+        items: [{ itemId: 'item-1', quantity: 2 }],
+      });
+
+      expect(applyBranchPrices).toHaveBeenCalledWith(
+        [expect.objectContaining({ id: 'item-1' })],
+        'br-1',
+      );
+      expect(result.items[0].priceAtOrder).toBe(5400);
+      expect(result.totalAmount).toBe(10800);
+    });
+
+    describe('newItem lines', () => {
+      const dto = {
+        firstName: 'John',
+        lastName: 'Doe',
+        phone: '12345678',
+        branchId: 'br-1',
+        items: [{ newItem: { name: 'Off-menu', price: 500 }, quantity: 1 }],
+      };
+
+      beforeEach(() => {
+        mockBranchRepo.findOne.mockResolvedValue({
+          id: 'br-1',
+          businessId: 'bus-1',
+        });
+      });
+
+      it('refuses an anonymous caller before creating anything', async () => {
+        await expect(service.createOrder(dto)).rejects.toThrow(
+          ForbiddenException,
+        );
+        expect(mockUserRepo.save).not.toHaveBeenCalled();
+        expect(mockOrderRepo.save).not.toHaveBeenCalled();
+      });
+
+      it('refuses a customer', async () => {
+        await expect(
+          service.createOrder(dto, {
+            id: 'cust-1',
+            role: UserRole.CUSTOMER,
+          } as never),
+        ).rejects.toThrow(ForbiddenException);
+      });
+
+      it('refuses staff of another business', async () => {
+        await expect(
+          service.createOrder(dto, {
+            id: 'staff-2',
+            role: UserRole.STAFF,
+            businessId: 'bus-2',
+          } as never),
+        ).rejects.toThrow(ForbiddenException);
+      });
+
+      it('lets the business’s own staff add an item', async () => {
+        const catalogue = module.get(CatalogueService);
+        catalogue.createItem = jest
+          .fn()
+          .mockResolvedValue({ id: 'new-1', price: 500, loyaltyPoints: 0 });
+
+        const result = await service.createOrder(dto, {
+          id: 'staff-1',
+          role: UserRole.STAFF,
+          businessId: 'bus-1',
+          firstName: 'Sam',
+          lastName: 'Staff',
+        } as never);
+
+        expect(catalogue.createItem).toHaveBeenCalled();
+        expect(result.totalAmount).toBe(500);
+      });
     });
 
     it('should create an order with offers successfully', async () => {

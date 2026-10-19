@@ -269,6 +269,39 @@ describe('DiscoveryService', () => {
     expect(service).toBeDefined();
   });
 
+  describe('admin list filters', () => {
+    const conditions = () =>
+      mockQueryBuilder.andWhere.mock.calls.map((call) => call as unknown[]);
+
+    beforeEach(() => mockQueryBuilder.andWhere.mockClear());
+
+    it('filters admin offers by offer type, case-insensitively', async () => {
+      await service.getAdminOffers({ category: ' Discount ' });
+      expect(conditions()).toContainEqual([
+        'LOWER(offer.offerType) = LOWER(:category)',
+        { category: 'Discount' },
+      ]);
+    });
+
+    it('treats category N/A as offers without a type', async () => {
+      await service.getAdminOffers({ category: 'n/a' });
+      expect(conditions()).toContainEqual([
+        "COALESCE(offer.offerType, '') = ''",
+      ]);
+    });
+
+    it('filters referrals by the status the list prints', async () => {
+      await service.getAdminReferrals({ status: 'purchased' });
+      expect(conditions()).toContainEqual(["visit.visitType = 'patronage'"]);
+
+      mockQueryBuilder.andWhere.mockClear();
+      await service.getAdminReferrals({ status: 'visited' });
+      expect(conditions()).toContainEqual([
+        "COALESCE(visit.visitType, 'portal') <> 'patronage'",
+      ]);
+    });
+  });
+
   describe('getAdminStats', () => {
     it('should return aggregated admin stats', async () => {
       mockBusinessRepo.count.mockResolvedValue(100);

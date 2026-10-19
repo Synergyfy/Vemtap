@@ -41,8 +41,8 @@ export class ProviderRouterService {
     return provider.sendMessage(payload);
   }
 
-  public async estimateCost(payload: SendMessagePayload): Promise<number> {
+  public estimateCost(payload: SendMessagePayload): Promise<number> {
     const provider = this.getProvider(payload.channel);
-    return provider.estimateCost(payload);
+    return Promise.resolve(provider.estimateCost(payload));
   }
 }

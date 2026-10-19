@@ -30,8 +30,15 @@ export interface SponsoredCampaignAudience {
   segmentIds?: string[];
   cohorts?: string[];
   branchIds?: string[];
+  /**
+   * Districts (boost scope `districts`, campaigns) or the business's own
+   * clusters (boost scope `clusters`). When set, the deal is served only to
+   * viewers inside one of them, instead of within `radiusKm` of the branch.
+   */
   clusterIds?: string[];
   radiusKm?: number;
+  /** Boosts only: `regulars` | `walkins` (`BOOST_AUDIENCE_TYPES`). */
+  audienceType?: string;
 }
 
 export interface SponsoredCampaignSchedule {

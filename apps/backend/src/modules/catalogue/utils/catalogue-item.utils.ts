@@ -97,3 +97,26 @@ export function assertCompareAtPrice(
     );
   }
 }
+
+/**
+ * What a customer pays for one unit: the (branch) price less the item's own
+ * discount. A percentage is capped at 100 and a fixed amount at the price, so
+ * a bad discount can never make a price negative. This is the price the app
+ * shows on the product page, so orders charge exactly that.
+ */
+export function effectiveUnitPrice(item: {
+  price: number | string;
+  discountType?: string | null;
+  discountValue?: number | string | null;
+}): number {
+  const list = Number(item.price) || 0;
+  const value = Number(item.discountValue) || 0;
+  if (list <= 0 || value <= 0) return list;
+  if (item.discountType === 'percentage') {
+    return Math.round(list * (1 - Math.min(value, 100) / 100) * 100) / 100;
+  }
+  if (item.discountType === 'fixed') {
+    return Math.round((list - Math.min(value, list)) * 100) / 100;
+  }
+  return list;
+}

@@ -22,8 +22,10 @@ import { Type } from 'class-transformer';
 import { SponsoredCampaignStatus } from '../../discovery/entities/sponsored-campaign.entity';
 import {
   AUDIENCE_SCOPES,
+  BOOST_AUDIENCE_TYPES,
   BOOST_GOALS,
   DAYPART_WINDOWS,
+  MIN_CAMPAIGN_BUDGET,
   PLACEMENTS,
   PROMOTION_COHORTS,
   PROMOTION_OBJECTIVES,
@@ -87,6 +89,15 @@ export class CampaignAudienceDto {
   @Min(0.5)
   @Max(50)
   radiusKm?: number;
+
+  @ApiPropertyOptional({
+    enum: ids(BOOST_AUDIENCE_TYPES),
+    description:
+      'Boosts only: past customers (signed-in viewers who used the business) or new walk-ins within 1 km',
+  })
+  @IsOptional()
+  @IsIn(ids(BOOST_AUDIENCE_TYPES))
+  audienceType?: string;
 }
 
 export class CampaignScheduleDto {
@@ -225,6 +236,25 @@ export class SaveCampaignDto {
   branchId?: string;
 }
 
+export class AddBudgetDto {
+  @ApiProperty({
+    example: 10000,
+    description:
+      'Naira to add. The end date moves out by amount ÷ the current daily spend, so pacing is unchanged.',
+  })
+  @IsNumber()
+  @Min(MIN_CAMPAIGN_BUDGET)
+  amount: number;
+
+  @ApiPropertyOptional({
+    description:
+      "Charge any wallet shortfall to the wallet's saved card; without it a shortfall is refused",
+  })
+  @IsOptional()
+  @IsBoolean()
+  useSavedCard?: boolean;
+}
+
 export class LaunchCampaignDto {
   @ApiPropertyOptional({
     enum: ['wallet', 'card'],
@@ -241,6 +271,22 @@ export class LaunchCampaignDto {
   @IsString()
   @IsUrl({ require_tld: false, require_protocol: true })
   callbackUrl?: string;
+
+  @ApiPropertyOptional({
+    description:
+      "With `card` funding: charge the shortfall to the wallet's saved card and launch at once (no checkout)",
+  })
+  @IsOptional()
+  @IsBoolean()
+  useSavedCard?: boolean;
+
+  @ApiPropertyOptional({
+    description:
+      'With `card` funding through checkout: save the card for future payments (owner consent)',
+  })
+  @IsOptional()
+  @IsBoolean()
+  saveCard?: boolean;
 }
 
 export class ListCampaignsQueryDto {
@@ -294,4 +340,22 @@ export class ForecastDto {
   @Min(0.5)
   @Max(50)
   radiusKm?: number;
+
+  @ApiPropertyOptional({
+    type: [String],
+    description:
+      'Districts or clusters the run is limited to; their populations replace the radius',
+  })
+  @IsOptional()
+  @IsArray()
+  @IsUUID('4', { each: true })
+  clusterIds?: string[];
+
+  @ApiPropertyOptional({
+    enum: ids(BOOST_AUDIENCE_TYPES),
+    description: 'Boost audience; narrows the population the budget can reach',
+  })
+  @IsOptional()
+  @IsIn(ids(BOOST_AUDIENCE_TYPES))
+  audienceType?: string;
 }

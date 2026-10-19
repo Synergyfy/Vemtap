@@ -145,4 +145,23 @@ export class CatalogueOrder extends AbstractBaseEntity {
   @ApiProperty({ example: '10:00 AM', nullable: true, required: false })
   @Column({ type: 'varchar', nullable: true })
   bookingTime: string;
+
+  /** ISO time each status was first reached, e.g. { new, processing, ready }. */
+  @ApiProperty({
+    example: {
+      new: '2026-10-16T12:00:00.000Z',
+      ready: '2026-10-16T12:14:00.000Z',
+    },
+    nullable: true,
+  })
+  @Column({ type: 'jsonb', nullable: true })
+  statusTimeline: Partial<Record<CatalogueOrderStatus, string>> | null;
+
+  /**
+   * Handle a guest uses to follow a POS order without logging in. Returned to
+   * whoever placed the order; only ever read back by token.
+   */
+  @ApiProperty({ example: 'q9X2b7KfLp0aZs4Rt8Vw1nYc', nullable: true })
+  @Column({ type: 'varchar', length: 32, nullable: true })
+  trackingToken: string | null;
 }

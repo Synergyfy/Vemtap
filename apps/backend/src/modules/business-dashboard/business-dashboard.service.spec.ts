@@ -62,12 +62,19 @@ describe('BusinessDashboardService', () => {
     threadRepo.sum.mockResolvedValue(5);
     visitRepo.count.mockResolvedValue(0);
     visitRepo.find.mockResolvedValue([]);
-    businessRepo.findOne.mockResolvedValue({ name: 'Aurora Grill', logoUrl: '' });
-    offerRepo.createQueryBuilder.mockReturnValue(chainableQb({ raw: { sum: '0' } }));
+    businessRepo.findOne.mockResolvedValue({
+      name: 'Aurora Grill',
+      logoUrl: '',
+    });
+    offerRepo.createQueryBuilder.mockReturnValue(
+      chainableQb({ raw: { sum: '0' } }),
+    );
     claimRepo.createQueryBuilder.mockReturnValue(chainableQb({ count: 0 }));
-    posSaleRepo.createQueryBuilder.mockReturnValue(chainableQb({ raw: { sum: '0' } }));
+    posSaleRepo.createQueryBuilder.mockReturnValue(
+      chainableQb({ raw: { sum: '0' } }),
+    );
     for (const repo of Object.values(emptyRepo)) {
-      (repo as jest.Mock).mockResolvedValue([]);
+      repo.mockResolvedValue([]);
     }
 
     const module: TestingModule = await Test.createTestingModule({
@@ -82,9 +89,15 @@ describe('BusinessDashboardService', () => {
         { provide: getRepositoryToken(Branch), useValue: emptyRepo },
         { provide: getRepositoryToken(Business), useValue: businessRepo },
         { provide: getRepositoryToken(CatalogueOffer), useValue: offerRepo },
-        { provide: getRepositoryToken(CatalogueOfferClaim), useValue: claimRepo },
+        {
+          provide: getRepositoryToken(CatalogueOfferClaim),
+          useValue: claimRepo,
+        },
         { provide: getRepositoryToken(PosSale), useValue: posSaleRepo },
-        { provide: getRepositoryToken(ConversationThread), useValue: threadRepo },
+        {
+          provide: getRepositoryToken(ConversationThread),
+          useValue: threadRepo,
+        },
         { provide: getRepositoryToken(CatalogueOrder), useValue: orderRepo },
       ],
     }).compile();
@@ -145,11 +158,15 @@ describe('BusinessDashboardService', () => {
       // Local-time constructors keep the weekday stable in any test timezone.
       const monday = new Date(2026, 9, 5, 10);
       const wednesday = new Date(2026, 9, 7, 10);
-      visitRepo.find.mockResolvedValue([visit(monday), visit(monday), visit(wednesday)]);
+      visitRepo.find.mockResolvedValue([
+        visit(monday),
+        visit(monday),
+        visit(wednesday),
+      ]);
 
       const dashboard = await service.getDashboard('biz-1', 'branch-1');
 
-      expect(dashboard.activityData.map(point => point.hour)).toEqual([
+      expect(dashboard.activityData.map((point) => point.hour)).toEqual([
         'Mon',
         'Tue',
         'Wed',
@@ -158,7 +175,7 @@ describe('BusinessDashboardService', () => {
         'Sat',
         'Sun',
       ]);
-      expect(dashboard.activityData.map(point => point.visits)).toEqual([
+      expect(dashboard.activityData.map((point) => point.visits)).toEqual([
         2, 0, 1, 0, 0, 0, 0,
       ]);
     });

@@ -39,7 +39,7 @@ import { CatalogueOfferClaim } from '../catalogue/entities/catalogue-offer-claim
     // DI scope, NestJS will reuse the existing connection.
     BullModule.forRootAsync({
       imports: [ConfigModule],
-      useFactory: async (configService: ConfigService) => {
+      useFactory: (configService: ConfigService) => {
         const host = configService.get<string>('REDIS_HOST', 'localhost');
         const port = configService.get<number>('REDIS_PORT', 6379);
         const password = configService.get<string>('REDIS_PASSWORD');
@@ -73,7 +73,7 @@ import { CatalogueOfferClaim } from '../catalogue/entities/catalogue-offer-claim
     // The gateway verifies handshake tokens, exactly as MessagingGateway does.
     JwtModule.registerAsync({
       imports: [ConfigModule],
-      useFactory: async (configService: ConfigService) => ({
+      useFactory: (configService: ConfigService) => ({
         secret: configService.get<string>('JWT_SECRET'),
         signOptions: {
           expiresIn: configService.get<string>('JWT_EXPIRATION') as any,

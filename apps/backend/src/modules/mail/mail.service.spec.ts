@@ -191,7 +191,7 @@ describe('MailService', () => {
         .spyOn((service as any).resend.emails, 'send')
         .mockResolvedValue({ data: { id: 'email-plan-change' }, error: null });
 
-      const result = await service.sendPlanChangeEmail(mockParams);
+      await service.sendPlanChangeEmail(mockParams);
 
       expect(sendSpy).toHaveBeenCalledWith(
         expect.objectContaining({

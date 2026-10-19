@@ -7,7 +7,7 @@ import {
   BusinessStatus,
 } from '../../businesses/entities/business.entity';
 import { Contact } from '../../contacts/entities/contact.entity';
-import { User, UserRole } from '../../users/entities/user.entity';
+import { User } from '../../users/entities/user.entity';
 import { AdministrationService } from '../../administration/administration.service';
 import {
   BusinessSudoActionDto,

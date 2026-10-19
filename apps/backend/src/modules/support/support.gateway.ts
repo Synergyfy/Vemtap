@@ -33,7 +33,7 @@ export class SupportGateway
     private readonly userRepo: Repository<User>,
   ) {}
 
-  afterInit(server: Server) {
+  afterInit(_server: Server) {
     this.logger.log('Support WebSocket Gateway Initialized');
   }
 

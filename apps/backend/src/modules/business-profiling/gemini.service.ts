@@ -62,7 +62,7 @@ export class GeminiService {
       `;
 
       const result = await model.generateContent(prompt);
-      const response = await result.response;
+      const response = result.response;
       const text = response.text();
 
       // Extract JSON from the response (in case AI adds markdown blocks)

@@ -8,8 +8,9 @@ import {
   Delete,
   UseGuards,
   Request,
-  Query,
   BadRequestException,
+  HttpCode,
+  HttpStatus,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -18,12 +19,14 @@ import {
   ApiResponse,
   ApiBody,
   ApiParam,
-  ApiQuery,
 } from '@nestjs/swagger';
 import { CreditPlanService } from '../services/credit-plan.service';
 import { CreateCreditPlanDto } from '../dto/create-credit-plan.dto';
 import { UpdateCreditPlanDto } from '../dto/update-credit-plan.dto';
-import { PurchaseCreditPlanDto } from '../dto/purchase-credit-plan.dto';
+import {
+  PurchaseCreditPlanDto,
+  StartCreditCheckoutDto,
+} from '../dto/purchase-credit-plan.dto';
 import { PurchaseCustomCreditsDto } from '../dto/purchase-custom-credits.dto';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../../common/guards/roles.guard';
@@ -31,9 +34,26 @@ import { Roles } from '../../../common/decorators/roles.decorator';
 import { User, UserRole } from '../../users/entities/user.entity';
 import { CreditPlan } from '../entities/credit-plan.entity';
 import { BusinessCreditWallet } from '../entities/business-credit-wallet.entity';
-import { BranchFilterDto } from '../../../common/dto/branch-filter.dto';
 import { BranchesService } from '../../branches/branches.service';
 import { IdDto } from '../dto/id.dto';
+
+interface CreditRequest {
+  user: {
+    id: string;
+    email: string;
+    role: UserRole;
+    businessId?: string | null;
+    branchId?: string | null;
+  };
+}
+
+/** Admins may credit any branch; everyone else only their own business. */
+function callerScope(req: CreditRequest): string | null | undefined {
+  return req.user.role === UserRole.ADMIN ||
+    req.user.role === UserRole.SUPER_ADMIN
+    ? undefined
+    : (req.user.businessId ?? null);
+}
 
 @ApiTags('Credit Top-up Plans')
 @ApiBearerAuth()
@@ -180,7 +200,10 @@ export class CreditPlanController {
     status: 400,
     description: 'Payment verification failed or insufficient amount.',
   })
-  purchaseCustom(@Body() customPurchaseDto: PurchaseCustomCreditsDto) {
+  purchaseCustom(
+    @Request() req: CreditRequest,
+    @Body() customPurchaseDto: PurchaseCustomCreditsDto,
+  ) {
     return this.creditPlanService.purchaseCustom(
       customPurchaseDto.branchId,
       customPurchaseDto.reference,
@@ -188,7 +211,44 @@ export class CreditPlanController {
       customPurchaseDto.whatsappAmount,
       customPurchaseDto.emailAmount,
       customPurchaseDto.aiAmount || 0,
+      callerScope(req),
     );
+  }
+
+  @Post('checkout/:reference/confirm')
+  @HttpCode(HttpStatus.OK)
+  @Roles(UserRole.OWNER, UserRole.MANAGER)
+  @ApiOperation({
+    summary: 'Check a credit checkout with Paystack and award it if paid',
+    description:
+      'Safe to repeat: credits are added once (the webhook may already have). 404 for a reference that is not this business’s credit checkout.',
+  })
+  @ApiParam({ name: 'reference', description: 'Checkout reference (CRD-…)' })
+  confirmCheckout(
+    @Request() req: CreditRequest,
+    @Param('reference') reference: string,
+  ) {
+    return this.creditPlanService.confirmCheckout(
+      req.user.businessId,
+      reference,
+    );
+  }
+
+  @Post(':id/checkout')
+  @Roles(UserRole.OWNER, UserRole.MANAGER)
+  @ApiOperation({
+    summary: 'Start a card payment for a credit plan',
+    description:
+      'Records a pending payment for the caller’s business and returns the Paystack page. Credits are added by the confirm call or the webhook.',
+  })
+  @ApiParam({ name: 'id', description: 'Credit plan UUID' })
+  @ApiBody({ type: StartCreditCheckoutDto })
+  startCheckout(
+    @Request() req: CreditRequest,
+    @Param() { id }: IdDto,
+    @Body() dto: StartCreditCheckoutDto,
+  ) {
+    return this.creditPlanService.startCheckout(req.user, id, dto.callbackUrl);
   }
 
   @Post(':id/purchase')
@@ -210,11 +270,16 @@ export class CreditPlanController {
     status: 400,
     description: 'Payment verification failed or insufficient amount.',
   })
-  purchase(@Param() { id }: IdDto, @Body() purchaseDto: PurchaseCreditPlanDto) {
+  purchase(
+    @Request() req: CreditRequest,
+    @Param() { id }: IdDto,
+    @Body() purchaseDto: PurchaseCreditPlanDto,
+  ) {
     return this.creditPlanService.purchase(
       purchaseDto.branchId,
       id,
       purchaseDto.reference,
+      callerScope(req),
     );
   }
 

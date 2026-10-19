@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsOptional, IsString, MaxLength } from 'class-validator';
+import { IsOptional, IsString, IsUUID, MaxLength } from 'class-validator';
 
 export class UpdateUserProfileDto {
   @ApiProperty({ example: 'John', required: false })
@@ -38,6 +38,16 @@ export class UpdateUserProfileDto {
   @IsString()
   @MaxLength(512)
   avatar?: string;
+
+  @ApiProperty({
+    required: false,
+    nullable: true,
+    description:
+      'Home district (`GET /clusters/districts`), saved from the area the customer picks; null clears it',
+  })
+  @IsOptional()
+  @IsUUID('4')
+  homeDistrictId?: string | null;
 
   // Email updates usually require verification, but for profile update let's allow it or maybe not?
   // The reviewer mentioned "emailVerified".

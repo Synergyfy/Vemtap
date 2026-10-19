@@ -3,6 +3,7 @@ import { NotificationsController } from './notifications.controller';
 import { NotificationsService } from './notifications.service';
 import { PushNotificationService } from './push-notification.service';
 import { TargetAudience } from './entities/notification-broadcast.entity';
+import { PushTransport } from './entities/push-token.entity';
 
 describe('NotificationsController', () => {
   let controller: NotificationsController;
@@ -98,7 +99,11 @@ describe('NotificationsController', () => {
     const req = { user: { id: 'user-1' } };
 
     await controller.registerPushToken(
-      { token: 'ExponentPushToken[abc]', transport: 'EXPO', platform: 'ios' },
+      {
+        token: 'ExponentPushToken[abc]',
+        transport: PushTransport.EXPO,
+        platform: 'ios',
+      },
       req,
     );
 
@@ -139,7 +144,10 @@ describe('NotificationsController', () => {
     const req = { user: { id: 'user-1' } };
     notificationsService.findByUser.mockResolvedValue([]);
 
-    await controller.findAll(req, { limit: 20, before: '2026-01-01T00:00:00Z' });
+    await controller.findAll(req, {
+      limit: 20,
+      before: '2026-01-01T00:00:00Z',
+    });
 
     expect(notificationsService.findByUser).toHaveBeenCalledWith('user-1', {
       limit: 20,

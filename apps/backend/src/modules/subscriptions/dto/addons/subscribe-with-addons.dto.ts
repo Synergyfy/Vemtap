@@ -1,5 +1,11 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsArray, IsString, IsOptional, IsNumber, IsUrl } from 'class-validator';
+import {
+  IsArray,
+  IsString,
+  IsOptional,
+  IsNumber,
+  IsUrl,
+} from 'class-validator';
 import { Transform } from 'class-transformer';
 import { SubscribeDto } from '../subscribe.dto';
 

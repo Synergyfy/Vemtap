@@ -1,3 +1,4 @@
+import type { BookingRules } from '../dto/booking-rules.dto';
 import {
   Entity,
   Column,
@@ -348,6 +349,13 @@ export class CatalogueItem extends AbstractBaseEntity {
   @ApiProperty({ example: '45 mins', nullable: true })
   @Column({ type: 'varchar', length: 50, nullable: true })
   duration: string | null;
+
+  @ApiProperty({
+    description: 'Booking days, hours, buffer, notice, horizon and capacity',
+    nullable: true,
+  })
+  @Column({ type: 'jsonb', nullable: true })
+  bookingRules: BookingRules | null;
 
   @ApiProperty({
     enum: ServiceMode,

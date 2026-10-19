@@ -17,12 +17,6 @@ export class ProfilingLogicHelper {
     // Scoring
     let totalScore = 0;
 
-    // Low=1, Medium=2, High=3
-    const getVal = (val: string) =>
-      val === 'High' ? 3 : val === 'Medium' ? 2 : 1;
-    const getYesNo = (val: string) =>
-      val === 'Yes' ? 1 : val === 'Partially' || val === 'Sometimes' ? 2 : 3;
-
     // SECTION 2 & 3 & 4 & 5 & 6 & 8
     const q4 = data.productDiscovery; // How do customers find products
     const q5 = data.customerQuestions; // Do customers ask many questions
@@ -35,7 +29,6 @@ export class ProfilingLogicHelper {
     const q13 = data.followUp; // Follow up after purchase
     const q15 = data.marketingAwareness; // Know about new products
     const q16 = data.entranceVisibility; // Visible entrance
-    const q17 = data.timeInside; // Spend time inside
     const q2 = data.customerTraffic; // Daily customers
 
     // Problem Detection
@@ -949,24 +942,16 @@ export class ProfilingLogicHelper {
     // Mapping 20 Questions
     const q1 = data.propertyType;
     const q2 = data.monthlyLeads;
-    const q3 = data.clientSource;
-    const q4 = data.inquiryMethod;
     const q5 = data.responseTime;
-    const q6 = data.delayedResponseComplaints;
     const q7 = data.propertyVisibility;
     const q8 = data.propertyQuestions;
     const q9 = data.viewingDecisionDelay;
     const q10 = data.conversionLoss;
     const q11 = data.noShowInspections;
     const q12 = data.collectsData;
-    const q13 = data.followUpEffort;
     const q14 = data.valueUnderstanding;
     const q15 = data.activePromotion;
-    const q16 = data.physicalBranding;
-    const q17 = data.digitalEngagement;
     const q18 = data.digitalPlatform;
-    const q19 = data.biggestChallenges;
-    const q20 = data.improvementNeed;
 
     // SLOW RESPONSE PROBLEM
     if (q5 === 'Medium' || q5 === 'Slow') {
@@ -1102,24 +1087,17 @@ export class ProfilingLogicHelper {
     // Mapping 20 Questions
     const q1 = data.autoType;
     const q2 = data.dailyCustomers;
-    const q3 = data.customerSource;
-    const q4 = data.inquiryMethod;
     const q5 = data.waitingTime;
-    const q6 = data.waitingComplaints;
     const q7 = data.serviceClarity;
     const q8 = data.preserviceQuestions || data.serviceQuestions;
     const q9 = data.serviceHesitation;
     const q10 = data.lostToDelay;
     const q11 = data.retentionRate;
     const q12 = data.collectsData;
-    const q13 = data.followUpEffort;
     const q14 = data.serviceAwareness;
     const q15 = data.activePromotion;
     const q16 = data.hasSignage;
     const q17 = data.waitingOnsite;
-    const q18 = data.qrFeasibility;
-    const q19 = data.biggestChallenges;
-    const q20 = data.improvementNeed;
 
     // WAITING PROBLEM
     if (q5 === 'Medium' || q5 === 'High' || q5 === '30+ minutes') {
@@ -1262,8 +1240,6 @@ export class ProfilingLogicHelper {
     // Mapping 20 Questions
     const q1 = data.logisticsType; // Type of logistics business
     const q2 = data.dailyRequests; // Number of orders daily
-    const q3 = data.requestChannel; // How customers request service
-    const q4 = data.bookingManagement; // How they manage bookings
     const q5 = data.responseTime; // Response speed
     const q6 = data.delayComplaints; // Customer complaints about delays
     const q7 = data.trackingCapability; // Can customers track delivery
@@ -1275,10 +1251,7 @@ export class ProfilingLogicHelper {
     const q13 = data.followUpEffort; // Post-service follow-up
     const q14 = data.serviceAwareness; // Customer awareness of services/routes
     const q15 = data.activePromotion; // Promotion effort
-    const q16 = data.brandingVisibility; // Visible branding on vehicles/offices
-    const q17 = data.digitalEngagement; // Digital interaction level
     const q18 = data.digitalOperations; // Digital platform for operations
-    const q20 = data.improvementNeed; // Overall urgency
 
     // Logic Engine (Deterministic Rules)
 
@@ -1434,8 +1407,6 @@ export class ProfilingLogicHelper {
     // Mapping 20 Questions
     const q1 = data.constructionType;
     const q2 = data.monthlyJobs;
-    const q3 = data.leadSource;
-    const q4 = data.requestChannel;
     const q5 = data.responseTime;
     const q6 = data.slowResponseComplaints;
     const q7 = data.serviceClarity;
@@ -1447,10 +1418,7 @@ export class ProfilingLogicHelper {
     const q13 = data.followUpEffort;
     const q14 = data.valuePerception;
     const q15 = data.activePromotion;
-    const q16 = data.brandingVisibility;
-    const q17 = data.digitalInteraction;
     const q18 = data.digitalPresence; // Portfolio
-    const q20 = data.improvementNeed;
 
     // Logic Engine (Deterministic Rules)
 
@@ -1607,8 +1575,6 @@ export class ProfilingLogicHelper {
     // Mapping 20 Questions
     const q1 = data.eventType;
     const q2 = data.monthlyEvents;
-    const q3 = data.discoveryChannel;
-    const q4 = data.bookingChannel;
     const q5 = data.responseTime;
     const q6 = data.slowResponseComplaints;
     const q7 = data.portfolioVisibility;
@@ -1620,10 +1586,7 @@ export class ProfilingLogicHelper {
     const q13 = data.followUpEffort;
     const q14 = data.valuePerception;
     const q15 = data.activePromotion;
-    const q16 = data.physicalSetup;
-    const q17 = data.digitalInteraction;
     const q18 = data.digitalPresence; // Portfolio
-    const q20 = data.improvementNeed;
 
     // SLOW RESPONSE PROBLEM
     if (q5 === 'Medium' || q5 === 'Slow' || q6 === 'High' || q6 === 'Medium') {
@@ -1790,7 +1753,6 @@ export class ProfilingLogicHelper {
     const q14 = data.valuePerception;
     const q15 = data.customerEducation;
     const q18 = data.digitalPlatform;
-    const q20 = data.improvementNeed;
 
     // WAITING PROBLEM
     if (
@@ -2145,8 +2107,6 @@ export class ProfilingLogicHelper {
     const q10 = data.citizenDropoff;
     const q11 = data.multipleReturns;
     const q12 = data.collectsData;
-    const q13 = data.followUpLevel;
-    const q14 = data.impactAwareness;
     const q15 = data.promotionEffort;
     const q18 = data.digitalPlatform;
 
@@ -2442,10 +2402,8 @@ export class ProfilingLogicHelper {
     const qrStrategy: string[] = [];
 
     // Mapping 20 Questions for "Others"
-    const q1 = data.businessDescription; // Open text
     const q2 = data.closestCategory; // Retail, Service-based...
     const q3 = data.customerVolume; // Low, Medium, High
-    const q4 = data.reachMethod; // Phone, WhatsApp...
     const q5 = data.responseTime;
     const q6 = data.responseLoss;
     const q7 = data.discoveryMethod; // Menu/Service visibility
@@ -2458,10 +2416,7 @@ export class ProfilingLogicHelper {
     const q14 = data.followUpMethod;
     const q15 = data.retentionDrop;
     const q16 = data.promotionMethod;
-    const q17 = data.hasPhysicalPresence;
     const q18 = data.digitalSystem;
-    const q19 = data.biggestChallenge;
-    const q20 = data.urgency;
 
     // Logic Engine
     if (

@@ -10,7 +10,6 @@ import { BadRequestException } from '@nestjs/common';
 describe('ChannelSettingsController', () => {
   let controller: ChannelSettingsController;
   let service: ChannelSettingsService;
-  let messagingHelper: MessagingHelperService;
 
   const mockChannelSettingsService = {
     getChannelSettings: jest.fn(),
@@ -48,9 +47,6 @@ describe('ChannelSettingsController', () => {
       ChannelSettingsController,
     );
     service = module.get<ChannelSettingsService>(ChannelSettingsService);
-    messagingHelper = module.get<MessagingHelperService>(
-      MessagingHelperService,
-    );
     jest.clearAllMocks();
   });
 
