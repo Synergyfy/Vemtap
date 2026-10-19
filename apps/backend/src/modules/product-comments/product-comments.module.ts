@@ -4,7 +4,9 @@ import { CatalogueItem } from '../catalogue/entities/catalogue-item.entity';
 import { User } from '../users/entities/user.entity';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { ProductComment } from './entities/product-comment.entity';
+import { ProductLike } from './entities/product-like.entity';
 import { ProductCommentsService } from './product-comments.service';
+import { ProductLikesService } from './product-likes.service';
 import {
   BusinessProductCommentsController,
   ProductCommentsController,
@@ -12,10 +14,15 @@ import {
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([ProductComment, CatalogueItem, User]),
+    TypeOrmModule.forFeature([
+      ProductComment,
+      ProductLike,
+      CatalogueItem,
+      User,
+    ]),
     NotificationsModule,
   ],
   controllers: [ProductCommentsController, BusinessProductCommentsController],
-  providers: [ProductCommentsService],
+  providers: [ProductCommentsService, ProductLikesService],
 })
 export class ProductCommentsModule {}

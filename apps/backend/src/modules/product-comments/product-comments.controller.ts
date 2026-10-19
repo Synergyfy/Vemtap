@@ -18,6 +18,7 @@ import { Public } from '../../common/decorators/public.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { UserRole } from '../users/entities/user.entity';
 import { ProductCommentsService } from './product-comments.service';
+import { ProductLikesService } from './product-likes.service';
 import {
   BusinessProductCommentsQueryDto,
   CreateProductCommentDto,
@@ -40,7 +41,49 @@ interface CommentsRequest {
 @ApiTags('Product Comments')
 @Controller()
 export class ProductCommentsController {
-  constructor(private readonly commentsService: ProductCommentsService) {}
+  constructor(
+    private readonly commentsService: ProductCommentsService,
+    private readonly likesService: ProductLikesService,
+  ) {}
+
+  @Public()
+  @Get('public/catalogue/items/:itemId/likes')
+  @ApiOperation({
+    summary: 'Like count for a product or service (Public)',
+    description:
+      '`liked` is true when a token is sent and the caller likes it.',
+  })
+  likeStatus(
+    @Request() req: CommentsRequest,
+    @Param('itemId', ParseUUIDPipe) itemId: string,
+  ) {
+    return this.likesService.status(itemId, req.user?.id);
+  }
+
+  @ApiBearerAuth()
+  @Post('catalogue/items/:itemId/like')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Like a product or service (Authenticated, idempotent)',
+  })
+  like(
+    @Request() req: CommentsRequest,
+    @Param('itemId', ParseUUIDPipe) itemId: string,
+  ) {
+    return this.likesService.like(req.user!.id, itemId);
+  }
+
+  @ApiBearerAuth()
+  @Delete('catalogue/items/:itemId/like')
+  @ApiOperation({
+    summary: 'Remove your like from a product or service (idempotent)',
+  })
+  unlike(
+    @Request() req: CommentsRequest,
+    @Param('itemId', ParseUUIDPipe) itemId: string,
+  ) {
+    return this.likesService.unlike(req.user!.id, itemId);
+  }
 
   @Public()
   @Get('public/catalogue/items/:itemId/comments')
