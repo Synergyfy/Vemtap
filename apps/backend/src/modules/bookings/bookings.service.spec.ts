@@ -75,6 +75,8 @@ describe('BookingsService business endpoints', () => {
       firstName: 'Amina',
       lastName: 'Bello',
       phone: '+2348032198831',
+      email: null,
+      avatar: null,
     });
   });
 
@@ -409,5 +411,142 @@ describe('BookingsService blocked dates and branch schedules', () => {
       '09:30',
       '10:00',
     ]);
+  });
+});
+
+describe('BookingsService reschedule and merchant details', () => {
+  // Wednesday 21 Oct 2026, 08:00 local.
+  const NOW = new Date('2026-10-21T08:00:00');
+  const branch = {
+    id: 'br-1',
+    name: 'Main',
+    businessId: 'biz-1',
+    businessHours: null,
+    uniqueCode: 'BR123ABC',
+    phone: '+2348011111111',
+    address: '12 Jabi Lake Road',
+    city: 'Abuja',
+    state: 'FCT',
+    latitude: '9.07',
+    longitude: '7.42',
+    business: { id: 'biz-1', name: 'Aurora Spa' },
+  };
+  const business = {
+    id: 'biz-1',
+    name: 'Aurora Spa',
+    uniqueCode: 'BIZ123XYZ',
+    logoUrl: 'https://cdn.test/logo.png',
+    coverImage: 'https://cdn.test/cover.png',
+    phone: '+2348099999999',
+  };
+
+  function setup(
+    booking: Record<string, unknown>,
+    active: {
+      id: string;
+      time: string;
+      durationMinutes: number;
+      itemId: string | null;
+    }[] = [],
+  ) {
+    const manager = {
+      find: jest.fn().mockResolvedValue(active),
+      save: jest.fn(async (row) => row),
+    };
+    const service = new BookingsService(
+      {
+        findOne: jest.fn().mockResolvedValue({
+          ...baseBooking,
+          branch,
+          business,
+          ...booking,
+        }),
+      } as never,
+      { findOne: jest.fn().mockResolvedValue(branch) } as never,
+      { findOne: jest.fn() } as never,
+      { transaction: (run: (m: unknown) => unknown) => run(manager) } as never,
+    );
+    return { service, manager };
+  }
+
+  beforeEach(() => jest.useFakeTimers({ now: NOW }));
+  afterEach(() => jest.useRealTimers());
+
+  it('moves the customer’s booking and sends it back for confirmation', async () => {
+    const { service, manager } = setup({ status: BookingStatus.CONFIRMED });
+    const moved = await service.rescheduleBooking(
+      { id: 'cust-1' } as never,
+      'bk-1',
+      { date: '2026-10-23', time: '11:00' },
+    );
+    expect(manager.save).toHaveBeenCalledWith(
+      expect.objectContaining({
+        date: '2026-10-23',
+        time: '11:00',
+        status: BookingStatus.BOOKED,
+      }),
+    );
+    expect(moved.date).toBe('2026-10-23');
+  });
+
+  it('ignores its own slot but not someone else’s', async () => {
+    // Its own 14:30 slot does not block moving 30 minutes later...
+    const own = setup({}, [
+      { id: 'bk-1', time: '14:30', durationMinutes: 60, itemId: null },
+    ]);
+    await expect(
+      own.service.rescheduleBooking({ id: 'cust-1' } as never, 'bk-1', {
+        date: '2026-10-22',
+        time: '15:00',
+      }),
+    ).resolves.toBeDefined();
+
+    // ...but another booking there does.
+    const taken = setup({}, [
+      { id: 'bk-2', time: '15:00', durationMinutes: 30, itemId: null },
+    ]);
+    await expect(
+      taken.service.rescheduleBooking({ id: 'cust-1' } as never, 'bk-1', {
+        date: '2026-10-22',
+        time: '15:00',
+      }),
+    ).rejects.toThrow('Time slot is no longer available');
+  });
+
+  it('only lets the customer move an active booking of their own', async () => {
+    await expect(
+      setup({}).service.rescheduleBooking(
+        { id: 'someone-else' } as never,
+        'bk-1',
+        {
+          date: '2026-10-22',
+          time: '15:00',
+        },
+      ),
+    ).rejects.toThrow(ForbiddenException);
+    await expect(
+      setup({ status: BookingStatus.COMPLETED }).service.rescheduleBooking(
+        { id: 'cust-1' } as never,
+        'bk-1',
+        { date: '2026-10-22', time: '15:00' },
+      ),
+    ).rejects.toThrow(BadRequestException);
+  });
+
+  it('returns the business logo, branch phone, address and codes', async () => {
+    const { service } = setup({});
+    const detail = await service.getBooking({ id: 'cust-1' } as never, 'bk-1');
+    expect(detail.merchant).toEqual({
+      businessCode: 'BIZ123XYZ',
+      branchCode: 'BR123ABC',
+      logoUrl: 'https://cdn.test/logo.png',
+      coverImage: 'https://cdn.test/cover.png',
+      phone: '+2348011111111',
+      address: '12 Jabi Lake Road',
+      city: 'Abuja',
+      state: 'FCT',
+      latitude: 9.07,
+      longitude: 7.42,
+    });
   });
 });

@@ -62,6 +62,19 @@ export class CreateBookingDto {
   notes?: string;
 }
 
+export class RescheduleBookingDto {
+  @ApiProperty({ example: '2026-10-22', description: 'New date (YYYY-MM-DD)' })
+  @Matches(DATE_RE, { message: 'date must be YYYY-MM-DD' })
+  date: string;
+
+  @ApiProperty({
+    example: '15:00',
+    description: 'New slot start (HH:mm, 30-min grid)',
+  })
+  @Matches(TIME_RE, { message: 'time must be HH:mm' })
+  time: string;
+}
+
 export class CancelBookingDto {
   @ApiPropertyOptional({ example: 'Change of plans' })
   @IsOptional()
@@ -185,6 +198,19 @@ export class BookingAvailabilityDto {
   slots: BookingSlotDto[];
 }
 
+export interface BookingMerchantDto {
+  businessCode: string | null;
+  branchCode: string | null;
+  logoUrl: string | null;
+  coverImage: string | null;
+  phone: string | null;
+  address: string | null;
+  city: string | null;
+  state: string | null;
+  latitude: number | null;
+  longitude: number | null;
+}
+
 export class BookingResponseDto {
   @ApiProperty({ example: 'uuid-of-booking' })
   id: string;
@@ -227,7 +253,28 @@ export class BookingResponseDto {
     firstName: string | null;
     lastName: string | null;
     phone: string | null;
+    email: string | null;
+    avatar: string | null;
   } | null;
+
+  @ApiPropertyOptional({
+    description:
+      'Who the booking is with: the business and branch details the ' +
+      'customer needs to recognise, call, find or message them.',
+    example: {
+      businessCode: 'BIZ123XYZ',
+      branchCode: 'BR123ABC',
+      logoUrl: 'https://example.com/logo.png',
+      coverImage: 'https://example.com/cover.png',
+      phone: '+2348012345678',
+      address: '42 Admiralty Way, Lekki',
+      city: 'Lagos',
+      state: 'Lagos',
+      latitude: 6.4474,
+      longitude: 3.4723,
+    },
+  })
+  merchant?: BookingMerchantDto | null;
 
   @ApiProperty({ example: 'uuid-of-item', nullable: true })
   itemId: string | null;

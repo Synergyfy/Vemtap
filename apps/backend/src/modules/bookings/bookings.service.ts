@@ -8,6 +8,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import {
   Between,
   DataSource,
+  EntityManager,
   FindOptionsWhere,
   In,
   LessThanOrEqual,
@@ -17,6 +18,7 @@ import {
 import { randomBytes } from 'crypto';
 import { Booking, BookingStatus } from './entities/booking.entity';
 import { Branch } from '../branches/entities/branch.entity';
+import { Business } from '../businesses/entities/business.entity';
 import {
   CatalogueItem,
   ServiceBookingMethod,
@@ -28,11 +30,13 @@ import {
   AvailabilityQueryDto,
   BookingAvailabilityDto,
   BookingPageDto,
+  BookingMerchantDto,
   BookingResponseDto,
   BusinessBookingsQueryDto,
   CancelBookingDto,
   CreateBookingDto,
   MyBookingsQueryDto,
+  RescheduleBookingDto,
   UpdateBookingStatusDto,
 } from './dto/booking.dto';
 
@@ -154,75 +158,11 @@ export class BookingsService {
     if (!branch) throw new NotFoundException('Branch not found');
 
     const item = await this.resolveBookableItem(dto.itemId, branch);
-
-    const today = this.dateKey(new Date());
-    if (dto.date < today) {
-      throw new BadRequestException('Booking date cannot be in the past');
-    }
-
-    const startMinutes = this.minutesFromTime(dto.time);
-    if (startMinutes % SLOT_MINUTES !== 0) {
-      throw new BadRequestException(
-        `Bookings start on a ${SLOT_MINUTES}-minute grid`,
-      );
-    }
-
-    const rules = item?.bookingRules ?? null;
-    if (this.beyondHorizon(dto.date, rules)) {
-      throw new BadRequestException(
-        `This service can be booked up to ${rules?.horizonDays} days ahead`,
-      );
-    }
-    const blocked = this.blockout(dto.date, rules);
-    if (blocked) {
-      throw new BadRequestException(
-        blocked.reason
-          ? `Not bookable on this day: ${blocked.reason}`
-          : 'Not bookable on this day',
-      );
-    }
-    const window = this.serviceWindow(branch, dto.date, rules);
-    if (!window) {
-      throw new BadRequestException('Not bookable on this day');
-    }
-
-    const durationMinutes = item
-      ? this.parseDurationMinutes(item.duration)
-      : SLOT_MINUTES;
-    const endMinutes = startMinutes + durationMinutes;
-    if (
-      startMinutes < this.minutesFromTime(window.from) ||
-      endMinutes > this.minutesFromTime(window.to)
-    ) {
-      throw new BadRequestException('Requested time is outside business hours');
-    }
-
-    if (startMinutes < this.earliestStart(dto.date, rules)) {
-      throw new BadRequestException(
-        rules?.leadMinutes
-          ? `Book at least ${rules.leadMinutes} minutes ahead`
-          : 'Requested time is in the past',
-      );
-    }
+    const slot = this.assertBookableSlot(branch, item, dto.date, dto.time);
+    const { durationMinutes, rules } = slot;
 
     const booking = await this.dataSource.transaction(async (manager) => {
-      const active = await manager.find(Booking, {
-        where: {
-          branchId: branch.id,
-          date: dto.date,
-          status: In(ACTIVE_STATUSES),
-        },
-      });
-      const relevant = item
-        ? active.filter((row) => row.itemId === item.id || row.itemId === null)
-        : active;
-      const busy = relevant.map((row) => {
-        const rowStart = this.minutesFromTime(row.time);
-        return { start: rowStart, end: rowStart + row.durationMinutes };
-      });
-      if (!this.hasRoom(busy, startMinutes, endMinutes, rules)) {
-        throw new BadRequestException('Time slot is no longer available');
-      }
+      await this.assertSlotFree(manager, branch.id, item, dto.date, slot);
 
       const created = manager.create(Booking, {
         customerId: user.id,
@@ -243,6 +183,8 @@ export class BookingsService {
       });
       return manager.save(created);
     });
+    booking.branch = branch;
+    booking.business = branch.business;
 
     return this.toResponse(booking, {
       branchName: branch.name,
@@ -395,6 +337,157 @@ export class BookingsService {
       branchName: booking.branch?.name ?? null,
       businessName: booking.business?.name ?? null,
     });
+  }
+
+  /**
+   * Moves the customer's own active booking to a new slot. The new slot goes
+   * through the same checks as a new booking (hours, grid, lead time, horizon,
+   * blocked days, capacity), ignoring the booking's own current slot. A
+   * service that needs the business to confirm goes back to `booked`.
+   */
+  async rescheduleBooking(
+    user: User,
+    id: string,
+    dto: RescheduleBookingDto,
+  ): Promise<BookingResponseDto> {
+    const booking = await this.findBookingOrThrow(id);
+    if (booking.customerId !== user.id) {
+      throw new ForbiddenException('You can only reschedule your own bookings');
+    }
+    if (!ACTIVE_STATUSES.includes(booking.status)) {
+      throw new BadRequestException(
+        `A ${booking.status} booking cannot be rescheduled`,
+      );
+    }
+    if (booking.date === dto.date && booking.time === dto.time) {
+      throw new BadRequestException('Pick a different date or time');
+    }
+
+    const branch = await this.branchRepository.findOne({
+      where: { id: booking.branchId },
+      relations: ['business'],
+    });
+    if (!branch) throw new NotFoundException('Branch not found');
+    const item = booking.itemId
+      ? await this.resolveBookableItem(booking.itemId, branch)
+      : null;
+    const slot = this.assertBookableSlot(branch, item, dto.date, dto.time);
+
+    const saved = await this.dataSource.transaction(async (manager) => {
+      await this.assertSlotFree(
+        manager,
+        branch.id,
+        item,
+        dto.date,
+        slot,
+        booking.id,
+      );
+      booking.date = dto.date;
+      booking.time = dto.time;
+      booking.durationMinutes = slot.durationMinutes;
+      booking.status =
+        slot.rules?.requiresConfirmation === false
+          ? BookingStatus.CONFIRMED
+          : BookingStatus.BOOKED;
+      return manager.save(booking);
+    });
+
+    return this.toResponse(saved, {
+      branchName: branch.name,
+      businessName: branch.business?.name ?? null,
+    });
+  }
+
+  /** Throws unless `date` + `time` is a slot this branch/service can take. */
+  private assertBookableSlot(
+    branch: Branch,
+    item: CatalogueItem | null,
+    date: string,
+    time: string,
+  ) {
+    const today = this.dateKey(new Date());
+    if (date < today) {
+      throw new BadRequestException('Booking date cannot be in the past');
+    }
+
+    const startMinutes = this.minutesFromTime(time);
+    if (startMinutes % SLOT_MINUTES !== 0) {
+      throw new BadRequestException(
+        `Bookings start on a ${SLOT_MINUTES}-minute grid`,
+      );
+    }
+
+    const rules = item?.bookingRules ?? null;
+    if (this.beyondHorizon(date, rules)) {
+      throw new BadRequestException(
+        `This service can be booked up to ${rules?.horizonDays} days ahead`,
+      );
+    }
+    const blocked = this.blockout(date, rules);
+    if (blocked) {
+      throw new BadRequestException(
+        blocked.reason
+          ? `Not bookable on this day: ${blocked.reason}`
+          : 'Not bookable on this day',
+      );
+    }
+    const window = this.serviceWindow(branch, date, rules);
+    if (!window) {
+      throw new BadRequestException('Not bookable on this day');
+    }
+
+    const durationMinutes = item
+      ? this.parseDurationMinutes(item.duration)
+      : SLOT_MINUTES;
+    const endMinutes = startMinutes + durationMinutes;
+    if (
+      startMinutes < this.minutesFromTime(window.from) ||
+      endMinutes > this.minutesFromTime(window.to)
+    ) {
+      throw new BadRequestException('Requested time is outside business hours');
+    }
+
+    if (startMinutes < this.earliestStart(date, rules)) {
+      throw new BadRequestException(
+        rules?.leadMinutes
+          ? `Book at least ${rules.leadMinutes} minutes ahead`
+          : 'Requested time is in the past',
+      );
+    }
+
+    return { startMinutes, endMinutes, durationMinutes, rules };
+  }
+
+  /**
+   * Throws when the slot is taken. Run inside the write transaction so two
+   * customers cannot both win the last place. `excludeId` leaves a booking
+   * that is moving out of the way.
+   */
+  private async assertSlotFree(
+    manager: EntityManager,
+    branchId: string,
+    item: CatalogueItem | null,
+    date: string,
+    slot: {
+      startMinutes: number;
+      endMinutes: number;
+      rules: BookingRules | null;
+    },
+    excludeId?: string,
+  ): Promise<void> {
+    const active = await manager.find(Booking, {
+      where: { branchId, date, status: In(ACTIVE_STATUSES) },
+    });
+    const relevant = active
+      .filter((row) => row.id !== excludeId)
+      .filter((row) => !item || row.itemId === item.id || row.itemId === null);
+    const busy = relevant.map((row) => {
+      const rowStart = this.minutesFromTime(row.time);
+      return { start: rowStart, end: rowStart + row.durationMinutes };
+    });
+    if (!this.hasRoom(busy, slot.startMinutes, slot.endMinutes, slot.rules)) {
+      throw new BadRequestException('Time slot is no longer available');
+    }
   }
 
   // --- helpers ---
@@ -604,6 +697,34 @@ export class BookingsService {
     return `BK-${randomBytes(3).toString('hex').toUpperCase()}`;
   }
 
+  /**
+   * The branch's own details win over the business's: a booking is at a
+   * branch, so its phone and address are the ones to call and travel to.
+   * `null` when neither relation was loaded.
+   */
+  private merchantOf(
+    branch?: Branch | null,
+    business?: Business | null,
+  ): BookingMerchantDto | null {
+    if (!branch && !business) return null;
+    const coordinate = (value: unknown) => {
+      const parsed = value == null ? NaN : Number(value);
+      return Number.isFinite(parsed) ? parsed : null;
+    };
+    return {
+      businessCode: business?.uniqueCode ?? null,
+      branchCode: branch?.uniqueCode ?? null,
+      logoUrl: business?.logoUrl || branch?.logoUrl || null,
+      coverImage: business?.coverImage ?? null,
+      phone: branch?.phone || business?.phone || null,
+      address: branch?.address || business?.address || null,
+      city: branch?.city || business?.city || null,
+      state: branch?.state || business?.state || null,
+      latitude: coordinate(branch?.latitude ?? business?.latitude),
+      longitude: coordinate(branch?.longitude ?? business?.longitude),
+    };
+  }
+
   private toResponse(
     booking: Booking,
     names: { branchName: string | null; businessName: string | null },
@@ -624,8 +745,11 @@ export class BookingsService {
             firstName: booking.customer.firstName ?? null,
             lastName: booking.customer.lastName ?? null,
             phone: booking.customer.phone ?? null,
+            email: booking.customer.email ?? null,
+            avatar: booking.customer.avatar ?? null,
           }
         : null,
+      merchant: this.merchantOf(booking.branch, booking.business),
       itemId: booking.itemId,
       itemName: booking.itemName,
       notes: booking.notes,

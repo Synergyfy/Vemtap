@@ -25,6 +25,7 @@ import {
   BookingResponseDto,
   BusinessBookingsQueryDto,
   CancelBookingDto,
+  RescheduleBookingDto,
   CreateBookingDto,
   UpdateBookingStatusDto,
 } from './dto/booking.dto';
@@ -63,7 +64,9 @@ export class BookingsController {
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Post()
-  @Roles(UserRole.CUSTOMER)
+  // A business owner can also book as a customer (dual-role account); the
+  // booking is always made in the caller's own name.
+  @Roles(UserRole.CUSTOMER, UserRole.OWNER)
   @ApiOperation({
     summary: 'Book an appointment/table for a branch',
     description:
@@ -134,7 +137,8 @@ export class BookingsController {
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Patch(':id/cancel')
-  @Roles(UserRole.CUSTOMER)
+  // The service only lets the booking's own customer cancel it.
+  @Roles(UserRole.CUSTOMER, UserRole.OWNER)
   @ApiOperation({
     summary: 'Cancel your booking',
     description:
@@ -150,6 +154,32 @@ export class BookingsController {
     @Body() dto: CancelBookingDto,
   ): Promise<BookingResponseDto> {
     return this.bookingsService.cancelBooking(req.user, id, dto);
+  }
+
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Patch(':id/reschedule')
+  // The service only lets the booking's own customer move it.
+  @Roles(UserRole.CUSTOMER, UserRole.OWNER)
+  @ApiOperation({
+    summary: 'Reschedule your booking',
+    description:
+      'Moves a `booked` or `confirmed` booking to a new slot, checked like a ' +
+      'new booking. Services that need confirmation go back to `booked`. ' +
+      'Access: the booking’s customer',
+  })
+  @ApiResponse({ status: 200, type: BookingResponseDto })
+  @ApiResponse({
+    status: 400,
+    description: 'Slot unavailable, or the booking can no longer move',
+  })
+  @ApiResponse({ status: 403, description: 'Not your booking' })
+  async rescheduleBooking(
+    @Req() req: RequestWithUser,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: RescheduleBookingDto,
+  ): Promise<BookingResponseDto> {
+    return this.bookingsService.rescheduleBooking(req.user, id, dto);
   }
 
   @ApiBearerAuth()

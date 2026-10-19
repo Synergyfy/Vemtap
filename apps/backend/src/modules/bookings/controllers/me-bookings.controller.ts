@@ -24,13 +24,15 @@ export class MeBookingsController {
   constructor(private readonly bookingsService: BookingsService) {}
 
   @Get()
-  @Roles(UserRole.CUSTOMER)
+  // Owners who book as customers (dual-role accounts) list their own bookings
+  // too; the query is always scoped to the caller.
+  @Roles(UserRole.CUSTOMER, UserRole.OWNER)
   @ApiOperation({
     summary: "List the customer's bookings",
     description:
       'Paginated list of the customer’s bookings, newest first, optionally ' +
       'filtered by `status` (booked | confirmed | completed | cancelled). ' +
-      'Access: CUSTOMER',
+      'Access: CUSTOMER, OWNER (their own bookings as a customer)',
   })
   @ApiResponse({ status: 200, type: BookingPageDto })
   @ApiResponse({ status: 401, description: 'Missing or invalid token' })
