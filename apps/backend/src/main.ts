@@ -1,3 +1,4 @@
+import './utc';
 import { initializeTracing } from './observability/tracing';
 initializeTracing();
 
