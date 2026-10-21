@@ -12,9 +12,24 @@ import {
   IsEmail,
   IsEnum,
   IsInt,
+  IsIn,
+  MaxLength,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { CatalogueOrderStatus } from '../entities/catalogue-order.entity';
+
+/** Where a store-ordering order came from (`CatalogueOrder.source`). */
+export const STORE_ORDER_SOURCES = [
+  'storefront',
+  'store_qr',
+  'category_qr',
+  'product_qr',
+  'section_qr',
+  'placement_qr',
+  'deal',
+  'pos',
+] as const;
+export type StoreOrderSource = (typeof STORE_ORDER_SOURCES)[number];
 
 /**
  * Customer order list. Pagination is opt-in: without `page`/`limit` the
@@ -110,6 +125,25 @@ export class CreateCatalogueOrderDto {
   @IsOptional()
   @IsString()
   tableNumber?: string;
+
+  @ApiPropertyOptional({
+    example: 'store_qr',
+    enum: STORE_ORDER_SOURCES,
+    description:
+      'Marks a store-ordering (scan, pick, pay at the counter) order and where it came from',
+  })
+  @IsOptional()
+  @IsIn(STORE_ORDER_SOURCES)
+  source?: StoreOrderSource;
+
+  @ApiPropertyOptional({
+    example: 'SQ7KX2P9',
+    description: 'Code of the store QR the order was placed from',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(20)
+  storeQrCode?: string;
 
   @ApiProperty({ type: [OrderItemDto] })
   @IsArray()

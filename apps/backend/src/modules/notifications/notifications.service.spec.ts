@@ -289,6 +289,33 @@ describe('NotificationsService', () => {
     });
   });
 
+  describe('preferences', () => {
+    it('keeps stored choices when a PATCH carries undefined keys', async () => {
+      userRepo.findOne = jest.fn().mockResolvedValue({
+        id: 'u1',
+        notificationPreferences: { marketing: false },
+      });
+      userRepo.update = jest.fn().mockResolvedValue({ affected: 1 });
+      const result = await service.updatePreferences('u1', {
+        push: false,
+        email: undefined,
+        marketing: undefined,
+      } as unknown as Record<string, boolean>);
+      expect(result).toMatchObject({
+        push: false,
+        email: true,
+        marketing: false,
+      });
+      expect(userRepo.update).toHaveBeenCalledWith('u1', {
+        notificationPreferences: expect.objectContaining({
+          push: false,
+          marketing: false,
+          email: true,
+        }),
+      });
+    });
+  });
+
   describe('staff notifications', () => {
     it('should write one row per staff member of a branch', async () => {
       userRepo.find.mockResolvedValue([{ id: 'staff-1' }, { id: 'owner-1' }]);

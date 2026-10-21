@@ -131,6 +131,23 @@ export class Cluster extends AbstractBaseEntity {
   @Column({ type: 'uuid', nullable: true })
   createdBy: string;
 
+  /** Business that proposed the cluster from its dashboard; null for admin-made ones. */
+  @ApiProperty({ nullable: true })
+  @Column({ type: 'uuid', nullable: true })
+  proposedByBusinessId: string | null;
+
+  /** The business-facing kind: mall, plaza, market, commercial-axis or strip. */
+  @ApiProperty({ example: 'mall', nullable: true })
+  @Column({ type: 'varchar', length: 30, nullable: true })
+  kind: string | null;
+
+  @ApiProperty({
+    example: 'Plot 12 Adetokunbo Ademola Crescent',
+    nullable: true,
+  })
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  address: string | null;
+
   @ApiProperty({
     example: 0,
     description: 'Total number of times the cluster QR has been scanned',

@@ -5,6 +5,8 @@ import {
   IsDateString,
   IsNotEmpty,
   MaxLength,
+  IsUrl,
+  IsEmail,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
@@ -72,6 +74,34 @@ export class CreateCampaignDto {
   @IsString()
   @MaxLength(200)
   subject?: string;
+
+  @ApiPropertyOptional({
+    example: 'https://urbangrill.ng/menu',
+    description:
+      'Link the campaign promotes. Sent messages carry a tracked `/c/:id` URL that counts the click and redirects here.',
+  })
+  @IsOptional()
+  @IsUrl({ protocols: ['https', 'http'], require_protocol: true })
+  @MaxLength(500)
+  link?: string;
+
+  @ApiPropertyOptional({
+    example: 'Urban Grill',
+    description: 'Email sender name, shown as "<name> via VemTap"',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(80)
+  senderName?: string;
+
+  @ApiPropertyOptional({
+    example: 'hello@urbangrill.ng',
+    description: 'Where email replies go',
+  })
+  @IsOptional()
+  @IsEmail()
+  @MaxLength(254)
+  replyTo?: string;
 
   @ApiProperty({
     example: 'branch-uuid',

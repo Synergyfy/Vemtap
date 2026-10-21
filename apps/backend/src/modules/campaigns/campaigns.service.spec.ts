@@ -14,6 +14,10 @@ import {
 import { BusinessCustomersService } from '../business-customers/business-customers.service';
 import { MessagingEngineService } from '../messaging/services/messaging-engine.service';
 import { UserRole } from '../users/entities/user.entity';
+import { ConfigService } from '@nestjs/config';
+import { BadRequestException } from '@nestjs/common';
+import { ProviderRouterService } from '../messaging/services/provider-router.service';
+import { CreditService } from '../messaging/services/credit.service';
 
 describe('CampaignsService', () => {
   let service: CampaignsService;
@@ -29,6 +33,21 @@ describe('CampaignsService', () => {
     findOne: jest.fn().mockResolvedValue(null),
     remove: jest.fn().mockResolvedValue(undefined),
     update: jest.fn().mockResolvedValue({ affected: 1 }),
+    manager: { query: jest.fn() },
+  };
+
+  const mockProviderRouter = {
+    sendMessage: jest
+      .fn()
+      .mockResolvedValue({ messageId: 'p1', status: 'sent' }),
+  };
+  const mockCreditService = {
+    deductCredits: jest.fn().mockResolvedValue(undefined),
+  };
+  const mockConfig = {
+    get: jest.fn((key: string) =>
+      key === 'API_PUBLIC_URL' ? 'https://api.vemtap.test/' : undefined,
+    ),
   };
 
   const mockTemplateRepository = {
@@ -91,6 +110,9 @@ describe('CampaignsService', () => {
         },
         { provide: BusinessCustomersService, useValue: mockBusinessCustomers },
         { provide: MessagingEngineService, useValue: mockMessagingEngine },
+        { provide: ProviderRouterService, useValue: mockProviderRouter },
+        { provide: CreditService, useValue: mockCreditService },
+        { provide: ConfigService, useValue: mockConfig },
       ],
     }).compile();
 
@@ -239,6 +261,128 @@ describe('CampaignsService', () => {
       expect(mockCampaignRepository.update).toHaveBeenLastCalledWith('c1', {
         status: 'Draft',
       });
+    });
+  });
+
+  describe('tracking, stats and test sends', () => {
+    const base = {
+      id: 'c9',
+      businessId: 'biz-1',
+      branchId: 'branch-1',
+      name: 'Promo',
+      type: 'SMS',
+      status: 'Draft',
+      message: 'See https://shop.ng/menu now',
+      link: 'https://shop.ng/menu',
+      sent: 10,
+      clicks: 3,
+      subject: null,
+      senderName: 'Urban Grill',
+      replyTo: 'hi@urban.ng',
+      messageCampaignId: 'mc-1',
+    };
+
+    beforeEach(() => {
+      jest.clearAllMocks();
+      mockCampaignRepository.findOne.mockResolvedValue({ ...base });
+      mockBusinessCustomers.filterKnownCustomers.mockResolvedValue(['u1']);
+      mockUserRepo.find.mockResolvedValue([
+        { id: 'u1', optOut: false, optInChannels: null },
+      ]);
+      mockMessagingEngine.sendMessage.mockResolvedValue({
+        count: 1,
+        messageIds: [],
+        campaignId: 'mc-2',
+      });
+    });
+
+    it('sends the tracked link, sender metadata and keeps the engine campaign', async () => {
+      await service.send('c9', 'biz-1', { customerIds: ['u1'] });
+      expect(mockMessagingEngine.sendMessage).toHaveBeenCalledWith(
+        expect.objectContaining({
+          content: 'See https://api.vemtap.test/api/v1/c/c9 now',
+          audienceType: 'GROUP',
+          metadata: expect.objectContaining({
+            senderName: 'Urban Grill',
+            replyTo: 'hi@urban.ng',
+          }),
+        }),
+      );
+      expect(mockCampaignRepository.update).toHaveBeenLastCalledWith(
+        'c9',
+        expect.objectContaining({ messageCampaignId: 'mc-2' }),
+      );
+    });
+
+    it('counts statuses into stats', async () => {
+      mockCampaignRepository.manager.query.mockResolvedValue([
+        { status: 'DELIVERED', count: 6 },
+        { status: 'READ', count: 2 },
+        { status: 'SENT', count: 1 },
+        { status: 'FAILED', count: 1 },
+      ]);
+      const stats = await service.stats('c9', 'biz-1');
+      expect(stats).toMatchObject({
+        delivered: 8,
+        failed: 1,
+        sent: 9,
+        deliveredRate: 80,
+        clicks: 3,
+        clickRate: 37.5,
+      });
+    });
+
+    it('refuses WhatsApp test sends', async () => {
+      mockCampaignRepository.findOne.mockResolvedValue({
+        ...base,
+        type: 'WhatsApp',
+      });
+      await expect(
+        service.sendTest('c9', { id: 'u1', businessId: 'biz-1' } as any),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(mockCreditService.deductCredits).not.toHaveBeenCalled();
+    });
+
+    it('emails a test to the caller for one credit', async () => {
+      mockCampaignRepository.findOne.mockResolvedValue({
+        ...base,
+        type: 'Email',
+      });
+      mockUserRepo.findOne.mockResolvedValue({ id: 'u1', email: 'me@biz.ng' });
+      const result = await service.sendTest('c9', {
+        id: 'u1',
+        businessId: 'biz-1',
+      } as any);
+      expect(mockCreditService.deductCredits).toHaveBeenCalledWith(
+        'biz-1',
+        'EMAIL',
+        1,
+        expect.any(String),
+      );
+      expect(mockProviderRouter.sendMessage).toHaveBeenCalledWith(
+        expect.objectContaining({
+          channel: 'EMAIL',
+          to: 'me@biz.ng',
+          content: expect.stringContaining('[TEST]'),
+          metadata: {
+            subject: '[TEST] Promo',
+            senderName: 'Urban Grill',
+            replyTo: 'hi@urban.ng',
+          },
+        }),
+      );
+      expect(result).toEqual({
+        to: 'me@biz.ng',
+        channel: 'Email',
+        status: 'sent',
+      });
+    });
+
+    it('404s a click on a campaign without a link', async () => {
+      mockCampaignRepository.manager.query.mockResolvedValue([[], 0]);
+      await expect(service.registerClick('c9')).rejects.toBeInstanceOf(
+        NotFoundException,
+      );
     });
   });
 });

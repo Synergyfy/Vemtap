@@ -30,12 +30,14 @@ import { AiCreditService } from './services/ai-credit.service';
 import { AiCreditUsage } from './entities/ai-credit-usage.entity';
 import { Subscription } from '../subscriptions/entities/subscription.entity';
 import { Plan } from '../subscriptions/entities/plan.entity';
+import { AccountPrivacyModule } from '../account-privacy/account-privacy.module';
 
 @Module({
   imports: [
     ConfigModule,
     TypeOrmModule.forFeature([AiCreditUsage, Subscription, Plan]),
     forwardRef(() => MessagingModule),
+    AccountPrivacyModule,
   ],
   controllers: [AiCopilotController],
   providers: [

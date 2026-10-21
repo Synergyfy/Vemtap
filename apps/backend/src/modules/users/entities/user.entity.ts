@@ -200,6 +200,10 @@ export class User extends AbstractBaseEntity {
   @Column({ type: 'jsonb', nullable: true })
   notificationPreferences: Record<string, boolean> | null;
 
+  /** Personal security choices, e.g. `{ deviceAlerts: true }` (email on a new device's sign-in). */
+  @Column({ type: 'jsonb', nullable: true })
+  securityPreferences: { deviceAlerts?: boolean } | null;
+
   @Column({ default: false })
   emailVerified: boolean;
 

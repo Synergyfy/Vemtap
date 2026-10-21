@@ -16,6 +16,10 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { AiCopilotService } from './ai-copilot.service';
 import { AnalyzeRequestDto } from './dto/analyze-request.dto';
 import { AIAnalysisResponse } from './dto/ai-analysis-response.dto';
+import {
+  ProcessingConsentGuard,
+  RequiresProcessingConsent,
+} from '../account-privacy/processing-consent.guard';
 
 @ApiTags('AI Copilot')
 @ApiBearerAuth()
@@ -26,6 +30,8 @@ export class AiCopilotController {
   constructor(private readonly aiCopilotService: AiCopilotService) {}
 
   @Post('analyze')
+  @UseGuards(ProcessingConsentGuard)
+  @RequiresProcessingConsent('analytics')
   @Throttle({ default: { limit: 10, ttl: 60000 } })
   @ApiOperation({ summary: 'Analyze a dashboard page using AI copilot' })
   async analyze(

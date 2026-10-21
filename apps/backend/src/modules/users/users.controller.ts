@@ -46,6 +46,10 @@ import {
   RenameSessionDto,
 } from './dto/rename-session.dto';
 import { CheckPhoneQueryDto } from './dto/check-phone-query.dto';
+import {
+  AccountDeletionResponseDto,
+  CreateAccountDeletionDto,
+} from './dto/account-deletion.dto';
 
 /** The request as the JWT guard leaves it, for the session routes. */
 interface SessionRequest {
@@ -195,6 +199,25 @@ export class UsersController {
     @Param('id', ParseUUIDPipe) id: string,
   ) {
     return this.usersService.revokeSession(req.user.id, id);
+  }
+
+  @Post('me/deletion-request')
+  @ApiOperation({
+    summary: 'Delete my account',
+    description:
+      'Records the optional exit reason, anonymises the profile (name, email, phone, password, Google link, avatar), revokes every session and push token, and soft-deletes the user — every token stops working at once. 409 when the caller still owns a business; 403 for admin accounts. Access: any signed-in non-admin user.',
+  })
+  @ApiResponse({ status: 201, type: AccountDeletionResponseDto })
+  @ApiResponse({
+    status: 403,
+    description: 'Admin accounts cannot self-delete',
+  })
+  @ApiResponse({ status: 409, description: 'Caller still owns a business' })
+  async deleteOwnAccount(
+    @Request() req: SessionRequest,
+    @Body() dto: CreateAccountDeletionDto,
+  ) {
+    return this.usersService.deleteOwnAccount(req.user.id, dto);
   }
 
   // --- QR-Thrive Integration ---

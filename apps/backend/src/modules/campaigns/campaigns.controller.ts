@@ -10,7 +10,17 @@ import {
   UseGuards,
   Request,
   ParseUUIDPipe,
+  HttpCode,
+  HttpStatus,
+  Redirect,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
+import { Public } from '../../common/decorators/public.decorator';
+import { SkipSubscriptionCheck } from '../subscriptions/decorators/skip-subscription-check.decorator';
+import {
+  CampaignStatsDto,
+  CampaignTestResultDto,
+} from './dto/campaign-stats.dto';
 import { CampaignsService } from './campaigns.service';
 import { CreateCampaignDto } from './dto/create-campaign.dto';
 import { FindCampaignsDto } from './dto/find-campaigns.dto';
@@ -163,6 +173,48 @@ export class CampaignsController {
     return this.campaignsService.send(id, req.user.businessId, dto);
   }
 
+  @Get(':id/stats')
+  @Roles(UserRole.OWNER, UserRole.MANAGER)
+  @Permissions('engagement')
+  @ApiOperation({
+    summary: 'Delivery and click stats for a campaign',
+    description:
+      "Counts the campaign's messages by status (one grouped query) plus tracked-link clicks. Email has no delivery receipts, so an email the provider accepted counts as delivered. Access: OWNER, MANAGER",
+  })
+  @ApiResponse({ status: 200, type: CampaignStatsDto })
+  @ApiResponse({ status: 404, description: 'Campaign not found' })
+  stats(
+    @Request() req: { user: User },
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    return this.campaignsService.stats(id, req.user.businessId);
+  }
+
+  @Post(':id/test')
+  @HttpCode(HttpStatus.OK)
+  @Throttle({ default: { limit: 5, ttl: 600000 } })
+  @Roles(UserRole.OWNER, UserRole.MANAGER)
+  @Permissions('engagement')
+  @UseGuards(TrialRestrictionGuard)
+  @ApiOperation({
+    summary: 'Send a test of a campaign to myself',
+    description:
+      "Sends the campaign as it stands, prefixed [TEST], to the caller's own email (Email) or phone (SMS) for 1 channel credit. The campaign's status is unchanged. WhatsApp tests are not offered (400). At most 5 per 10 minutes. Access: OWNER, MANAGER",
+  })
+  @ApiResponse({ status: 200, type: CampaignTestResultDto })
+  @ApiResponse({
+    status: 400,
+    description:
+      'WhatsApp campaign, no email/phone on the profile, or not enough credits',
+  })
+  @ApiResponse({ status: 404, description: 'Campaign not found' })
+  sendTest(
+    @Request() req: { user: User },
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    return this.campaignsService.sendTest(id, req.user);
+  }
+
   @Delete(':id')
   @Roles(UserRole.OWNER, UserRole.MANAGER)
   @Permissions('engagement')
@@ -184,5 +236,28 @@ export class CampaignsController {
   @ApiOperation({ summary: 'Create a campaign template' })
   async createTemplate(@Body() createTemplateDto: CreateCampaignTemplateDto) {
     return this.campaignsService.createTemplate(createTemplateDto);
+  }
+}
+
+/** Tracked campaign links: `/c/:id` counts the click and redirects to the stored link only. */
+@ApiTags('Campaign Links')
+@Controller('c')
+export class CampaignLinksController {
+  constructor(private readonly campaignsService: CampaignsService) {}
+
+  @Get(':id')
+  @Public()
+  @SkipSubscriptionCheck()
+  @Throttle({ default: { limit: 60, ttl: 60000 } })
+  @Redirect(undefined, HttpStatus.FOUND)
+  @ApiOperation({
+    summary: "Follow a campaign's tracked link",
+    description:
+      "Counts one click and 302-redirects to the campaign's own `link` (never to a URL from the request). 404 when the campaign has no link. Access: Public",
+  })
+  @ApiResponse({ status: 302, description: 'Redirect to the campaign link' })
+  @ApiResponse({ status: 404, description: 'Unknown campaign or no link' })
+  async follow(@Param('id', ParseUUIDPipe) id: string) {
+    return { url: await this.campaignsService.registerClick(id) };
   }
 }

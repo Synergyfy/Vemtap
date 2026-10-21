@@ -380,8 +380,35 @@ export class CatalogueOrderService {
       }
     }
 
+    // Store ordering: tag the order with its source and the QR it came from
+    // (a QR of another business, or a paused one, is ignored).
+    let storeQrId: string | null = null;
+    if (dto.source && dto.storeQrCode) {
+      const [qr] = await this.orderRepository.manager.query<{ id: string }[]>(
+        `SELECT "id" FROM "store_qr_codes"
+         WHERE "code" = $1 AND "businessId" = $2 AND "isActive" = true AND "deletedAt" IS NULL`,
+        [dto.storeQrCode, branch.businessId],
+      );
+      storeQrId = qr?.id ?? null;
+    }
+    const storeFields = dto.source
+      ? {
+          source: dto.source,
+          storeQrId,
+          storeStatus: 'new',
+          storeHistory: [
+            {
+              status: 'new',
+              at: new Date().toISOString(),
+              note: `Order placed via ${dto.source.replace(/_/g, ' ')}`,
+            },
+          ],
+        }
+      : {};
+
     // 4. Create Order
     const order = this.orderRepository.create({
+      ...storeFields,
       businessId: branch.businessId,
       branchId: branch.id,
       customerId: customer.id,

@@ -87,8 +87,17 @@ export class AuthController {
     description: 'Login successful',
     type: AuthResponseDto,
   })
-  async login(@Body() loginDto: LoginDto) {
-    return this.authService.login(loginDto);
+  async login(@Body() loginDto: LoginDto, @Request() req) {
+    const forwarded = req.headers?.['x-forwarded-for'];
+    return this.authService.login(loginDto, {
+      userAgent: req.headers?.['user-agent'] ?? null,
+      ip:
+        (typeof forwarded === 'string'
+          ? forwarded.split(',')[0].trim()
+          : null) ??
+        req.ip ??
+        null,
+    });
   }
 
   @Post('email-verification/send')
@@ -389,6 +398,24 @@ export class AuthController {
     const ip = req.ip || req.connection.remoteAddress;
     const userAgent = req.headers['user-agent'];
     return this.authService.resetPassword(dto, { ip, userAgent });
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @AllowPending()
+  @Post('logout')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Sign out of this device',
+    description:
+      'Revokes the session the access token belongs to; the same token answers 401 afterwards. Push tokens are unregistered separately via the notifications routes. Access: any signed-in user.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Signed out',
+    type: MessageResponseDto,
+  })
+  async logout(@Request() req) {
+    return this.authService.logout(req.user);
   }
 
   @UseGuards(JwtAuthGuard)

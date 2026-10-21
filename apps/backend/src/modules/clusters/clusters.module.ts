@@ -3,6 +3,10 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { BullModule } from '@nestjs/bullmq';
 import { Cluster } from './entities/cluster.entity';
 import { ClusterOffer } from './entities/cluster-offer.entity';
+import { ClusterShowcaseItem } from './entities/cluster-showcase-item.entity';
+import { ClusterMessage } from './entities/cluster-message.entity';
+import { BusinessClustersService } from './business-clusters.service';
+import { BusinessClustersController } from './business-clusters.controller';
 import { Branch } from '../branches/entities/branch.entity';
 import { CatalogueOffer } from '../catalogue/entities/catalogue-offer.entity';
 import { CatalogueOfferClaim } from '../catalogue/entities/catalogue-offer-claim.entity';
@@ -21,6 +25,8 @@ import { RotatorModule } from '../rotator/rotator.module';
     TypeOrmModule.forFeature([
       Cluster,
       ClusterOffer,
+      ClusterShowcaseItem,
+      ClusterMessage,
       Branch,
       CatalogueOffer,
       CatalogueOfferClaim,
@@ -30,8 +36,17 @@ import { RotatorModule } from '../rotator/rotator.module';
     }),
     RotatorModule,
   ],
-  controllers: [ClustersPublicController, ClustersAdminController],
-  providers: [ClustersService, ClusterCacheService, ClusterAutoAssignProcessor],
+  controllers: [
+    ClustersPublicController,
+    ClustersAdminController,
+    BusinessClustersController,
+  ],
+  providers: [
+    ClustersService,
+    BusinessClustersService,
+    ClusterCacheService,
+    ClusterAutoAssignProcessor,
+  ],
   exports: [ClustersService],
 })
 export class ClustersModule {}

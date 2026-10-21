@@ -3,6 +3,7 @@ import {
   NotFoundException,
   BadRequestException,
   ConflictException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, IsNull } from 'typeorm';
@@ -20,6 +21,19 @@ import { Branch } from '../branches/entities/branch.entity';
 import { Business } from '../businesses/entities/business.entity';
 
 import { Cluster, ClusterType } from '../clusters/entities/cluster.entity';
+import { PushToken } from '../notifications/entities/push-token.entity';
+import {
+  AccountDeletionRequest,
+  AccountDeletionStatus,
+} from './entities/account-deletion-request.entity';
+import {
+  AccountDeletionResponseDto,
+  CreateAccountDeletionDto,
+} from './dto/account-deletion.dto';
+
+const ACCOUNT_DELETION_RETAINED_NOTE =
+  'Receipts and transaction records are retained for 24 months where legally required, then anonymised. Everything else is purged within 30 days.';
+
 @Injectable()
 export class UsersService {
   constructor(
@@ -236,7 +250,38 @@ export class UsersService {
       lastActiveAt: new Date(),
       revokedAt: null,
     });
-    return this.userSessionRepository.save(session);
+    const saved = await this.userSessionRepository.save(session);
+    if (saved.userAgent) {
+      await this.alertNewDevice(userId, saved).catch((err: Error) =>
+        console.error(`New-device alert for ${userId} failed:`, err.message),
+      );
+    }
+    return saved;
+  }
+
+  /**
+   * Emails the user when they opted into device alerts and this sign-in's
+   * browser/app (user agent) has never signed in to their account before.
+   */
+  private async alertNewDevice(userId: string, session: UserSession) {
+    const user = await this.usersRepository.findOne({
+      where: { id: userId },
+      select: ['id', 'email', 'firstName', 'securityPreferences'],
+    });
+    if (!user?.securityPreferences?.deviceAlerts || !user.email) return;
+    const seenBefore = await this.userSessionRepository
+      .createQueryBuilder('s')
+      .withDeleted()
+      .where('s.userId = :userId', { userId })
+      .andWhere('s.userAgent = :userAgent', { userAgent: session.userAgent })
+      .andWhere('s.id != :id', { id: session.id })
+      .getExists();
+    if (seenBefore) return;
+    await this.mailService.sendGenericEmail(
+      user.email,
+      'New sign-in to your VemTap account',
+      `Hi ${user.firstName || 'there'},\n\nYour VemTap account was just signed in from a new device:\n${session.userAgent}${session.ipAddress ? `\nIP address: ${session.ipAddress}` : ''}\nTime: ${session.createdAt.toISOString()}\n\nIf this was you, there is nothing to do. If not, change your password and sign that device out under Settings → Linked devices.`,
+    );
   }
 
   async findActiveSession(id: string, userId: string) {
@@ -544,6 +589,77 @@ export class UsersService {
       role: updates.role || undefined,
     });
     return saved;
+  }
+
+  /**
+   * Self-service account deletion. Owners must close or hand over their
+   * business first; admin accounts are removed by another admin. The user row
+   * is anonymised (so the email/phone can sign up again) and soft-deleted,
+   * which makes every outstanding token fail the JWT strategy's lookup.
+   */
+  async deleteOwnAccount(
+    userId: string,
+    dto: CreateAccountDeletionDto,
+  ): Promise<AccountDeletionResponseDto> {
+    const user = await this.usersRepository.findOne({
+      where: { id: userId },
+      select: ['id', 'role'],
+    });
+    if (!user) throw new NotFoundException('User not found');
+    if (user.role === UserRole.ADMIN || user.role === UserRole.SUPER_ADMIN) {
+      throw new ForbiddenException(
+        'Admin accounts cannot be deleted from the account settings',
+      );
+    }
+    const ownsBusiness = await this.usersRepository.manager
+      .getRepository(Business)
+      .exists({ where: { ownerId: userId } });
+    if (ownsBusiness) {
+      throw new ConflictException(
+        'Close or transfer your business before deleting your account',
+      );
+    }
+
+    const now = new Date();
+    const request = await this.usersRepository.manager.transaction(
+      async (manager) => {
+        const saved = await manager.getRepository(AccountDeletionRequest).save(
+          manager.getRepository(AccountDeletionRequest).create({
+            userId,
+            role: user.role,
+            reasonId: dto.reasonId ?? null,
+            feedback: dto.feedback?.trim() || null,
+            status: AccountDeletionStatus.COMPLETED,
+            completedAt: now,
+          }),
+        );
+        await manager.getRepository(User).update(userId, {
+          email: `deleted+${userId}@deleted.vemtap.invalid`,
+          phone: null as unknown as string,
+          googleId: null as unknown as string,
+          password: null as unknown as string,
+          firstName: 'Deleted',
+          lastName: 'User',
+          avatar: null as unknown as string,
+          pushToken: null,
+          status: UserStatus.INACTIVE,
+        });
+        await manager
+          .getRepository(UserSession)
+          .update({ userId, revokedAt: IsNull() }, { revokedAt: now });
+        await manager.getRepository(PushToken).delete({ userId });
+        await manager.getRepository(User).softDelete(userId);
+        return saved;
+      },
+    );
+
+    return {
+      id: request.id,
+      status: request.status,
+      submittedAt: now,
+      completedAt: request.completedAt,
+      retainedNote: ACCOUNT_DELETION_RETAINED_NOTE,
+    };
   }
 
   async adminDeleteUser(id: string): Promise<void> {

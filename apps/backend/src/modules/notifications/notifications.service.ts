@@ -78,7 +78,14 @@ export class NotificationsService {
     userId: string,
     preferences: Record<string, boolean>,
   ) {
-    const updated = { ...(await this.getPreferences(userId)), ...preferences };
+    // The validated DTO carries every optional key, unset ones as undefined;
+    // spreading those would wipe the stored choices, so keep only real values.
+    const changes = Object.fromEntries(
+      Object.entries(preferences).filter(
+        ([, value]) => typeof value === 'boolean',
+      ),
+    );
+    const updated = { ...(await this.getPreferences(userId)), ...changes };
     await this.userRepository.update(userId, {
       notificationPreferences: updated,
     });

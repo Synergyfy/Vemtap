@@ -21,6 +21,10 @@ export class EmailProvider implements MessagingProvider {
         payload.from ||
         'VemTap',
       payload.content,
+      {
+        name: payload.metadata?.senderName as string | undefined,
+        replyTo: payload.metadata?.replyTo as string | undefined,
+      },
     );
 
     if (success) {

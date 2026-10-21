@@ -200,6 +200,14 @@ export class Business extends AbstractBaseEntity {
   @Column({ type: 'jsonb', nullable: true, default: () => "'{}'" })
   posSettings: PosSettings;
 
+  /**
+   * NDPR processing choices for the business: `restrictProcessing` stops all
+   * optional AI processing of its data; `analytics: false` stops AI analysis
+   * of its dashboards. Missing keys mean the defaults (not restricted, on).
+   */
+  @Column({ type: 'jsonb', nullable: true })
+  privacySettings: { restrictProcessing?: boolean; analytics?: boolean } | null;
+
   // Relation to the owner
   @OneToOne(() => User, (user) => user.ownedBusiness, {
     onDelete: 'CASCADE',
