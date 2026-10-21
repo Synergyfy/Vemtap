@@ -50,6 +50,7 @@ import {
   createDecipheriv,
   createHmac,
 } from 'crypto';
+import * as QRCode from 'qrcode';
 
 const BASE32 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
 
@@ -247,7 +248,11 @@ export class AuthService {
     return this.generateAuthResponse(user, isNewUser);
   }
 
-  private async generateAuthResponse(user: Partial<User>, isNewUser = false) {
+  private async generateAuthResponse(
+    user: Partial<User>,
+    isNewUser = false,
+    device?: { userAgent?: string | null; ip?: string | null },
+  ) {
     let businessId: string | undefined;
     let branchId: string | undefined = user.branchId;
 
@@ -309,7 +314,12 @@ export class AuthService {
       }
     }
 
-    const session = await this.usersService.createSession(user.id as string);
+    const session = await this.usersService.createSession(
+      user.id as string,
+      device
+        ? { userAgent: device.userAgent ?? null, ipAddress: device.ip ?? null }
+        : undefined,
+    );
     const payload = {
       email: user.email,
       sub: user.id,
@@ -345,7 +355,10 @@ export class AuthService {
     };
   }
 
-  async login(dto: LoginDto): Promise<any> {
+  async login(
+    dto: LoginDto,
+    device?: { userAgent?: string | null; ip?: string | null },
+  ): Promise<any> {
     const user = await this.usersService.findByIdentifier(dto.identifier);
     if (!user) {
       throw new UnauthorizedException('Invalid email/phone or password');
@@ -410,7 +423,7 @@ export class AuthService {
     }
 
     const { password: _password, ...result } = user;
-    return this.generateAuthResponse(result);
+    return this.generateAuthResponse(result, false, device);
   }
 
   async sendVerificationEmail(userId: string) {
@@ -464,14 +477,28 @@ export class AuthService {
   async setupTwoFactor(userId: string) {
     const user = await this.usersService.findById(userId);
     if (!user) throw new NotFoundException('User not found');
+    // Re-running setup would replace the secret and switch 2FA off without a
+    // code, so an enabled account must turn it off (with a code) first.
+    if (user.twoFactorEnabled) {
+      throw new ConflictException(
+        'Two-factor authentication is already on; turn it off first',
+      );
+    }
     const secret = encodeBase32(randomBytes(20));
     await this.usersService.update(userId, {
       twoFactorEnabled: false,
       twoFactorSecret: this.encryptTwoFactorSecret(secret),
     });
+    const otpauthUrl = `otpauth://totp/VemTap:${encodeURIComponent(user.email)}?secret=${secret}&issuer=VemTap`;
     return {
       secret,
-      otpauthUrl: `otpauth://totp/VemTap:${encodeURIComponent(user.email)}?secret=${secret}&issuer=VemTap`,
+      otpauthUrl,
+      /** Scannable QR of `otpauthUrl` for authenticator apps. */
+      qrSvg: await QRCode.toString(otpauthUrl, {
+        type: 'svg',
+        errorCorrectionLevel: 'M',
+        margin: 1,
+      }),
     };
   }
 
@@ -1474,6 +1501,18 @@ export class AuthService {
     await this.otpRepository.remove(otpRecord);
 
     return { message: 'Password reset successfully' };
+  }
+
+  /**
+   * Ends the session the token was signed for, so the token (and any copy of
+   * it) stops authenticating. Tokens without a session id predate linked
+   * devices and simply expire.
+   */
+  async logout(user: User & { sessionId?: string }) {
+    if (user.sessionId) {
+      await this.usersService.revokeSession(user.id, user.sessionId);
+    }
+    return { message: 'Signed out' };
   }
 
   async switchRole(user: User & { sessionId?: string }, targetRole: UserRole) {

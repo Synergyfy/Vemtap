@@ -95,6 +95,70 @@ describe('UsersService', () => {
     expect(service).toBeDefined();
   });
 
+  describe('new-device alerts', () => {
+    const sessionRepo = () =>
+      (service as unknown as { userSessionRepository: any })
+        .userSessionRepository;
+    const seen = (exists: boolean) => {
+      const qb = {
+        withDeleted: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        getExists: jest.fn().mockResolvedValue(exists),
+      };
+      sessionRepo().createQueryBuilder.mockReturnValue(qb);
+    };
+
+    beforeEach(() => {
+      mailService.sendGenericEmail = jest.fn().mockResolvedValue(true);
+      sessionRepo().save.mockImplementation((session: object) =>
+        Promise.resolve({ id: 'session-9', createdAt: new Date(), ...session }),
+      );
+    });
+
+    it('emails an opted-in user signing in from an unseen device', async () => {
+      userRepository.findOne.mockResolvedValue({
+        id: 'u1',
+        email: 'owner@biz.ng',
+        firstName: 'Ada',
+        securityPreferences: { deviceAlerts: true },
+      });
+      seen(false);
+      await service.createSession('u1', {
+        userAgent: 'Firefox/130',
+        ipAddress: '1.2.3.4',
+      });
+      expect(mailService.sendGenericEmail).toHaveBeenCalledWith(
+        'owner@biz.ng',
+        'New sign-in to your VemTap account',
+        expect.stringContaining('Firefox/130'),
+      );
+    });
+
+    it('stays quiet for a device seen before', async () => {
+      userRepository.findOne.mockResolvedValue({
+        id: 'u1',
+        email: 'owner@biz.ng',
+        securityPreferences: { deviceAlerts: true },
+      });
+      seen(true);
+      await service.createSession('u1', { userAgent: 'Firefox/130' });
+      expect(mailService.sendGenericEmail).not.toHaveBeenCalled();
+    });
+
+    it('stays quiet when alerts are off or there is no user agent', async () => {
+      userRepository.findOne.mockResolvedValue({
+        id: 'u1',
+        email: 'owner@biz.ng',
+        securityPreferences: null,
+      });
+      seen(false);
+      await service.createSession('u1', { userAgent: 'Firefox/130' });
+      await service.createSession('u1');
+      expect(mailService.sendGenericEmail).not.toHaveBeenCalled();
+    });
+  });
+
   describe('linked devices', () => {
     const sessions = () =>
       (

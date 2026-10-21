@@ -4,6 +4,7 @@ import { CatalogueOfferService } from './catalogue-offer.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { PermissionsGuard } from '../../common/guards/permissions.guard';
+import { ProcessingConsentGuard } from '../account-privacy/processing-consent.guard';
 
 describe('CatalogueOfferController', () => {
   let controller: CatalogueOfferController;
@@ -35,6 +36,8 @@ describe('CatalogueOfferController', () => {
       .overrideGuard(RolesGuard)
       .useValue({ canActivate: () => true })
       .overrideGuard(PermissionsGuard)
+      .useValue({ canActivate: () => true })
+      .overrideGuard(ProcessingConsentGuard)
       .useValue({ canActivate: () => true })
       .compile();
 

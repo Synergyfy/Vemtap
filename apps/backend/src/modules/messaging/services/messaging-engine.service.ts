@@ -529,7 +529,10 @@ export class MessagingEngineService {
           to: savedMessage.to,
           content: savedMessage.content,
           from,
-          metadata: { messageId: savedMessage.id },
+          metadata: {
+            ...(savedMessage.metadata ?? {}),
+            messageId: savedMessage.id,
+          },
         });
 
         savedMessage.status = this.mapProviderStatus(providerResult.status);

@@ -29,9 +29,11 @@ import { CatalogueBranchPricingService } from './catalogue-branch-pricing.servic
 import { CatalogueBranchPricingController } from './catalogue-branch-pricing.controller';
 import { CatalogueOfferStatsService } from './catalogue-offer-stats.service';
 import { CatalogueOfferStatsController } from './catalogue-offer-stats.controller';
+import { AccountPrivacyModule } from '../account-privacy/account-privacy.module';
 
 @Module({
   imports: [
+    AccountPrivacyModule,
     TypeOrmModule.forFeature([
       CatalogueCategory,
       CatalogueItem,

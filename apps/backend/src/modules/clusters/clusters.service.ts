@@ -13,6 +13,7 @@ import { Queue } from 'bullmq';
 import { Cron } from '@nestjs/schedule';
 import { Cluster, ClusterType } from './entities/cluster.entity';
 import { ClusterOffer } from './entities/cluster-offer.entity';
+import { NOT_HIDDEN_FROM_CLUSTER_SQL } from './entities/cluster-showcase-item.entity';
 import {
   DEFAULT_DISTRICTS,
   DEFAULT_DISTRICT_RADIUS_METERS,
@@ -474,6 +475,7 @@ export class ClustersService implements OnApplicationBootstrap {
       qb.leftJoinAndSelect('offer.items', 'offerItems');
     }
     qb.where('branch.clusterId = :clusterId', { clusterId })
+      .andWhere(NOT_HIDDEN_FROM_CLUSTER_SQL)
       .andWhere('offer.status = :status', {
         status: CatalogueOfferStatus.ACTIVE,
       })

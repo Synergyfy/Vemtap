@@ -15,6 +15,7 @@ import { QrThriveModule } from '../qr-thrive/qr-thrive.module';
 import { EventsModule } from '../../common/gateways/events.module';
 
 import { Cluster } from '../clusters/entities/cluster.entity';
+import { AccountDeletionRequest } from './entities/account-deletion-request.entity';
 @Module({
   imports: [
     TypeOrmModule.forFeature([
@@ -22,6 +23,7 @@ import { Cluster } from '../clusters/entities/cluster.entity';
       UserSession,
       PasswordResetHistory,
       Cluster,
+      AccountDeletionRequest,
     ]),
     BusinessesModule,
     BranchesModule,

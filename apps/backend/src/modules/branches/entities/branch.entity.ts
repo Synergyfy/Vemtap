@@ -114,6 +114,14 @@ export class Branch extends AbstractBaseEntity {
   @JoinColumn({ name: 'clusterId' })
   cluster: Cluster;
 
+  /** When the branch joined its current cluster from the business dashboard. */
+  @Column({ type: 'timestamp', nullable: true })
+  clusterJoinedAt: Date | null;
+
+  /** What the branch features in its cluster: all, deals, products, services or profile. */
+  @Column({ type: 'varchar', length: 20, default: 'all' })
+  clusterShowcase: string;
+
   @ApiProperty({
     example: '#2563EB',
     description: 'The primary color for branch forms',

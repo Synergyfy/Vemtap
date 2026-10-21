@@ -78,6 +78,34 @@ export class Campaign extends AbstractBaseEntity {
   @Column({ type: 'uuid', nullable: true })
   businessId: string;
 
+  @ApiProperty({
+    example: 'This weekend only',
+    description: 'Email subject line (Email campaigns)',
+    required: false,
+  })
+  @Column({ type: 'varchar', length: 200, nullable: true })
+  subject: string | null;
+
+  @ApiProperty({ example: 'https://urbangrill.ng/menu', required: false })
+  @Column({ type: 'varchar', length: 500, nullable: true })
+  link: string | null;
+
+  @ApiProperty({ example: 'Urban Grill', required: false })
+  @Column({ type: 'varchar', length: 80, nullable: true })
+  senderName: string | null;
+
+  @ApiProperty({ example: 'hello@urbangrill.ng', required: false })
+  @Column({ type: 'varchar', length: 254, nullable: true })
+  replyTo: string | null;
+
+  /** The messaging engine's `message_campaigns` row its messages are filed under. */
+  @Column({ type: 'uuid', nullable: true })
+  messageCampaignId: string | null;
+
+  /** Customers a scheduled campaign goes to; set by `POST /:id/send`. */
+  @Column({ type: 'jsonb', nullable: true, select: false })
+  recipientIds: string[] | null;
+
   @ManyToOne(() => Branch, (branch) => branch.campaigns, {
     onDelete: 'CASCADE',
     nullable: true,

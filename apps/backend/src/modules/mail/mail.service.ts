@@ -132,10 +132,23 @@ export class MailService {
     }
   }
 
-  async sendGenericEmail(email: string, subject: string, content: string) {
+  /**
+   * `sender.name` shows as "<name> via VemTap" (the address stays ours so SPF
+   * and DKIM still pass); `sender.replyTo` is where replies go.
+   */
+  async sendGenericEmail(
+    email: string,
+    subject: string,
+    content: string,
+    sender?: { name?: string | null; replyTo?: string | null },
+  ) {
+    const displayName = sender?.name?.replace(/[<>"\r\n]/g, '').trim();
     try {
       await this.resend.emails.send({
-        from: this.fromEmail,
+        from: displayName
+          ? `${displayName} via VemTap <hello@vemtap.com>`
+          : this.fromEmail,
+        ...(sender?.replyTo ? { replyTo: sender.replyTo } : {}),
         to: email,
         subject,
         html: `

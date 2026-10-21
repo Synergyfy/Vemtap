@@ -164,4 +164,54 @@ export class CatalogueOrder extends AbstractBaseEntity {
   @ApiProperty({ example: 'q9X2b7KfLp0aZs4Rt8Vw1nYc', nullable: true })
   @Column({ type: 'varchar', length: 32, nullable: true })
   trackingToken: string | null;
+
+  /**
+   * Where a store (scan, pick, pay at the counter) order came from:
+   * `storefront`, `store_qr`, `section_qr`, `product_qr`, `placement_qr`, …
+   * Null for orders placed outside store ordering.
+   */
+  @ApiProperty({ example: 'store_qr', nullable: true })
+  @Column({ type: 'varchar', length: 30, nullable: true })
+  source: string | null;
+
+  @ApiProperty({ example: 'uuid-of-store-qr', nullable: true })
+  @Column({ type: 'uuid', nullable: true })
+  storeQrId: string | null;
+
+  /**
+   * The store-ordering stage, finer than `status`: new, accepted, preparing,
+   * partially-fulfilled, ready, awaiting-payment, paid, completed, rejected,
+   * cancelled. `status` always holds the matching catalogue status.
+   */
+  @ApiProperty({ example: 'preparing', nullable: true })
+  @Column({ type: 'varchar', length: 30, nullable: true })
+  storeStatus: string | null;
+
+  /** Store-ordering steps, newest first: `{ status, at, note, staffName }`. */
+  @Column({ type: 'jsonb', nullable: true })
+  storeHistory:
+    { status: string; at: string; note?: string; staffName?: string }[] | null;
+
+  @ApiProperty({
+    example: 'unpaid',
+    enum: ['unpaid', 'partially-paid', 'paid-in-store', 'paid-pos', 'refunded'],
+  })
+  @Column({ type: 'varchar', length: 20, default: 'unpaid' })
+  paymentStatus: string;
+
+  /** The payment taken at the counter: method, amounts, reference, who and when. */
+  @Column({ type: 'jsonb', nullable: true })
+  payment: {
+    method: string;
+    amountDue: number;
+    amountReceived: number;
+    change: number;
+    balance: number;
+    reference: string;
+    notes?: string;
+    posSaleId?: string;
+    recordedById: string;
+    recordedByName: string;
+    recordedAt: string;
+  } | null;
 }

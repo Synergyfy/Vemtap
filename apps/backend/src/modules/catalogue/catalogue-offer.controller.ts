@@ -43,6 +43,10 @@ import { Roles } from '../../common/decorators/roles.decorator';
 import { Permissions } from '../../common/decorators/permissions.decorator';
 import { Public } from '../../common/decorators/public.decorator';
 import { UserRole } from '../users/entities/user.entity';
+import {
+  ProcessingConsentGuard,
+  RequiresProcessingConsent,
+} from '../account-privacy/processing-consent.guard';
 
 @ApiTags('Catalogue Offers')
 @Controller('catalogue/offers')
@@ -50,7 +54,8 @@ export class CatalogueOfferController {
   constructor(private readonly offerService: CatalogueOfferService) {}
 
   @ApiBearerAuth()
-  @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard, ProcessingConsentGuard)
+  @RequiresProcessingConsent('ai')
   @Post('generate-terms')
   @HttpCode(HttpStatus.OK)
   @Roles(UserRole.OWNER, UserRole.MANAGER)

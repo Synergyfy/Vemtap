@@ -21,6 +21,7 @@ import {
 } from './entities/rotator-config.entity';
 import { RotatorClusterConfig } from './entities/rotator-cluster-config.entity';
 import { RotatorCacheService, ROTATOR_POOL_TTL } from './rotator-cache.service';
+import { NOT_HIDDEN_FROM_CLUSTER_SQL } from '../clusters/entities/cluster-showcase-item.entity';
 
 // Global rotator config is a singleton row that only changes via admin
 // endpoints (which invalidate this cache). A short TTL avoids a DB read on the
@@ -323,6 +324,8 @@ export class RotatorEligibilityService implements OnModuleInit {
       .innerJoin('offer.branch', 'branch')
       .innerJoin('offer.business', 'business')
       .where('branch.clusterId = :clusterId', { clusterId })
+      // Deals the business hid from its cluster are never featured either.
+      .andWhere(NOT_HIDDEN_FROM_CLUSTER_SQL)
       .andWhere('offer.status = :status', {
         status: CatalogueOfferStatus.ACTIVE,
       })

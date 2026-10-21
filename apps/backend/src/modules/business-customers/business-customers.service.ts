@@ -551,6 +551,19 @@ export class BusinessCustomersService {
     return known.length > 0;
   }
 
+  /** The subset of `userIds` that have bought from or visited the business. */
+  async filterKnownCustomers(
+    businessId: string,
+    userIds: string[],
+  ): Promise<string[]> {
+    if (!userIds.length) return [];
+    const rows = await this.dataSource.query<{ uid: string }[]>(
+      `WITH touches AS (${TOUCHES_SQL}) SELECT DISTINCT uid FROM touches WHERE uid = ANY($3::uuid[])`,
+      [businessId, null, userIds],
+    );
+    return rows.map((row) => row.uid);
+  }
+
   /** Create or update the business's note and tags on a customer it knows. */
   async saveNote(
     businessId: string,

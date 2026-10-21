@@ -60,6 +60,9 @@ import { PromotionsModule } from './modules/promotions/promotions.module';
 import { QrThriveModule } from './modules/qr-thrive/qr-thrive.module';
 import { BannersModule } from './modules/banners/banners.module';
 import { SavedModule } from './modules/saved/saved.module';
+import { AddressesModule } from './modules/addresses/addresses.module';
+import { StoreOrderingModule } from './modules/store-ordering/store-ordering.module';
+import { AccountPrivacyModule } from './modules/account-privacy/account-privacy.module';
 import { BookingsModule } from './modules/bookings/bookings.module';
 import { BusinessDashboardModule } from './modules/business-dashboard/business-dashboard.module';
 import { MarketingAssetsModule } from './modules/marketing-assets/marketing-assets.module';
@@ -256,6 +259,9 @@ import { PublicDiscoveryModule } from './modules/public-discovery/public-discove
     DealEngagementModule,
     PublicDiscoveryModule,
     SavedModule,
+    AddressesModule,
+    StoreOrderingModule,
+    AccountPrivacyModule,
     BookingsModule,
     StatusModule,
     ScheduleModule.forRoot(),
