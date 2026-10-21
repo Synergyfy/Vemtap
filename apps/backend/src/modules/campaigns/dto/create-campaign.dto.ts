@@ -4,8 +4,9 @@ import {
   IsOptional,
   IsDateString,
   IsNotEmpty,
+  MaxLength,
 } from 'class-validator';
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export enum CampaignType {
   WHATSAPP = 'WhatsApp',
@@ -62,6 +63,15 @@ export class CreateCampaignDto {
   @IsOptional()
   @IsEnum(CampaignStatus)
   status?: CampaignStatus;
+
+  @ApiPropertyOptional({
+    example: 'This weekend only',
+    description: 'Email subject line (Email campaigns)',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  subject?: string;
 
   @ApiProperty({
     example: 'branch-uuid',

@@ -11,6 +11,7 @@ import { BranchesModule } from '../branches/branches.module';
 import { User } from '../users/entities/user.entity';
 import { Contact } from '../contacts/entities/contact.entity';
 import { BannersModule } from '../banners/banners.module';
+import { SubscriptionsModule } from '../subscriptions/subscriptions.module';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { BannersModule } from '../banners/banners.module';
     ContactsModule,
     forwardRef(() => BranchesModule),
     BannersModule,
+    forwardRef(() => SubscriptionsModule),
   ],
   controllers: [CampaignsController],
   providers: [CampaignsService],

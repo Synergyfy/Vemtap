@@ -22,6 +22,7 @@ interface BatchJobData {
   templateId?: string;
   content?: string;
   from?: string;
+  metadata?: Record<string, unknown>;
 }
 
 @Processor('messaging-batch-send', {
@@ -196,7 +197,7 @@ export class BatchSendProcessor extends WorkerHost {
                     job.data.channel === Channel.EMAIL
                       ? customer.email || ''
                       : formatPhoneNumber(customer.phone || ''),
-                  metadata: {},
+                  metadata: job.data.metadata ?? {},
                 });
 
                 await this.messagingEngine.queueIndividualSend({

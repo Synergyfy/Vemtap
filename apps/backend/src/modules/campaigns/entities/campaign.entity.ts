@@ -78,6 +78,18 @@ export class Campaign extends AbstractBaseEntity {
   @Column({ type: 'uuid', nullable: true })
   businessId: string;
 
+  @ApiProperty({
+    example: 'This weekend only',
+    description: 'Email subject line (Email campaigns)',
+    required: false,
+  })
+  @Column({ type: 'varchar', length: 200, nullable: true })
+  subject: string | null;
+
+  /** Customers a scheduled campaign goes to; set by `POST /:id/send`. */
+  @Column({ type: 'jsonb', nullable: true, select: false })
+  recipientIds: string[] | null;
+
   @ManyToOne(() => Branch, (branch) => branch.campaigns, {
     onDelete: 'CASCADE',
     nullable: true,

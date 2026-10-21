@@ -15,6 +15,9 @@ import { CampaignsService } from './campaigns.service';
 import { CreateCampaignDto } from './dto/create-campaign.dto';
 import { FindCampaignsDto } from './dto/find-campaigns.dto';
 import { UpdateCampaignDto } from './dto/update-campaign.dto';
+import { SendCampaignDto } from './dto/send-campaign.dto';
+import { Campaign } from './entities/campaign.entity';
+import { TrialRestrictionGuard } from '../subscriptions/guards/trial-restriction.guard';
 import { CreateCampaignTemplateDto } from './dto/campaign-template.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
@@ -25,6 +28,7 @@ import {
   ApiOperation,
   ApiBearerAuth,
   ApiResponse,
+  ApiBody,
 } from '@nestjs/swagger';
 import { PermissionsGuard } from '../../common/guards/permissions.guard';
 import { Permissions } from '../../common/decorators/permissions.decorator';
@@ -125,6 +129,38 @@ export class CampaignsController {
       updateCampaignDto,
       req.user.businessId,
     );
+  }
+
+  @Post(':id/send')
+  @Roles(UserRole.OWNER, UserRole.MANAGER)
+  @Permissions('engagement')
+  @UseGuards(TrialRestrictionGuard)
+  @ApiOperation({
+    summary: 'Send a campaign to customers',
+    description:
+      "Queues the campaign's message for the given customers through the messaging engine, " +
+      "using the business's channel credits. Ids that are not the business's customers, or " +
+      'that opted out of the channel, are skipped. A campaign whose `scheduledFor` is in the ' +
+      'future stays `Scheduled` and is sent automatically when due. Access: OWNER, MANAGER',
+  })
+  @ApiBody({ type: SendCampaignDto })
+  @ApiResponse({
+    status: 201,
+    description: 'Sent or scheduled',
+    type: Campaign,
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'No reachable customers, or not enough credits',
+  })
+  @ApiResponse({ status: 404, description: 'Campaign not found' })
+  @ApiResponse({ status: 409, description: 'Campaign has already been sent' })
+  async send(
+    @Request() req: { user: User },
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: SendCampaignDto,
+  ) {
+    return this.campaignsService.send(id, req.user.businessId, dto);
   }
 
   @Delete(':id')

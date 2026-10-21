@@ -6,7 +6,13 @@ import { CampaignTemplate } from './entities/campaign-template.entity';
 import { User } from '../users/entities/user.entity';
 import { Contact } from '../contacts/entities/contact.entity';
 import { BranchesService } from '../branches/branches.service';
-import { ForbiddenException, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
+import { BusinessCustomersService } from '../business-customers/business-customers.service';
+import { MessagingEngineService } from '../messaging/services/messaging-engine.service';
 import { UserRole } from '../users/entities/user.entity';
 
 describe('CampaignsService', () => {
@@ -22,6 +28,7 @@ describe('CampaignsService', () => {
     find: jest.fn().mockResolvedValue([]),
     findOne: jest.fn().mockResolvedValue(null),
     remove: jest.fn().mockResolvedValue(undefined),
+    update: jest.fn().mockResolvedValue({ affected: 1 }),
   };
 
   const mockTemplateRepository = {
@@ -37,6 +44,15 @@ describe('CampaignsService', () => {
 
   const mockUserRepo = {
     findOne: jest.fn(),
+    find: jest.fn(),
+  };
+
+  const mockBusinessCustomers = {
+    filterKnownCustomers: jest.fn(),
+  };
+
+  const mockMessagingEngine = {
+    sendMessage: jest.fn().mockResolvedValue({ count: 2, messageIds: [] }),
   };
 
   const mockContactRepo = {
@@ -73,6 +89,8 @@ describe('CampaignsService', () => {
           provide: BranchesService,
           useValue: mockBranchesService,
         },
+        { provide: BusinessCustomersService, useValue: mockBusinessCustomers },
+        { provide: MessagingEngineService, useValue: mockMessagingEngine },
       ],
     }).compile();
 
@@ -140,6 +158,86 @@ describe('CampaignsService', () => {
       expect(result).toEqual(campaign);
       expect(mockCampaignRepository.findOne).toHaveBeenCalledWith({
         where: { id: 'c1', businessId: 'biz-1' },
+      });
+    });
+  });
+
+  describe('send', () => {
+    const draft = {
+      id: 'c1',
+      type: 'SMS',
+      status: 'Draft',
+      message: 'Hi',
+      branchId: 'branch-1',
+      businessId: 'biz-1',
+      subject: null,
+    };
+
+    beforeEach(() => {
+      mockCampaignRepository.findOne.mockResolvedValue({ ...draft });
+      mockCampaignRepository.update.mockClear();
+      mockMessagingEngine.sendMessage.mockClear();
+      mockBusinessCustomers.filterKnownCustomers.mockResolvedValue([
+        'u1',
+        'u2',
+        'u3',
+      ]);
+      mockUserRepo.find.mockResolvedValue([
+        { id: 'u1', optOut: false, optInChannels: null },
+        { id: 'u2', optOut: true, optInChannels: null },
+        { id: 'u3', optOut: false, optInChannels: ['EMAIL'] },
+      ]);
+    });
+
+    it('sends only to customers who accept the channel', async () => {
+      await service.send('c1', 'biz-1', {
+        customerIds: ['u1', 'u2', 'u3', 'x'],
+      });
+      expect(mockBusinessCustomers.filterKnownCustomers).toHaveBeenCalledWith(
+        'biz-1',
+        ['u1', 'u2', 'u3', 'x'],
+      );
+      expect(mockMessagingEngine.sendMessage).toHaveBeenCalledWith(
+        expect.objectContaining({ channel: 'SMS', customerIds: ['u1'] }),
+      );
+      expect(mockCampaignRepository.update).toHaveBeenLastCalledWith(
+        'c1',
+        expect.objectContaining({ status: 'Completed', sent: 2 }),
+      );
+    });
+
+    it('keeps a future campaign scheduled with its recipients', async () => {
+      mockCampaignRepository.findOne.mockResolvedValue({
+        ...draft,
+        scheduledFor: new Date(Date.now() + 3_600_000),
+      });
+      await service.send('c1', 'biz-1', { customerIds: ['u1'] });
+      expect(mockMessagingEngine.sendMessage).not.toHaveBeenCalled();
+      expect(mockCampaignRepository.update).toHaveBeenCalledWith(
+        'c1',
+        expect.objectContaining({ status: 'Scheduled', recipientIds: ['u1'] }),
+      );
+    });
+
+    it('refuses a campaign that was already sent', async () => {
+      mockCampaignRepository.findOne.mockResolvedValue({
+        ...draft,
+        status: 'Completed',
+      });
+      await expect(
+        service.send('c1', 'biz-1', { customerIds: ['u1'] }),
+      ).rejects.toThrow(ConflictException);
+    });
+
+    it('puts the status back when the engine fails', async () => {
+      mockMessagingEngine.sendMessage.mockRejectedValueOnce(
+        new Error('Insufficient SMS credits'),
+      );
+      await expect(
+        service.send('c1', 'biz-1', { customerIds: ['u1'] }),
+      ).rejects.toThrow('Insufficient SMS credits');
+      expect(mockCampaignRepository.update).toHaveBeenLastCalledWith('c1', {
+        status: 'Draft',
       });
     });
   });
