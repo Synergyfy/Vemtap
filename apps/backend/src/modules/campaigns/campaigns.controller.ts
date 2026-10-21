@@ -9,6 +9,7 @@ import {
   Query,
   UseGuards,
   Request,
+  ParseUUIDPipe,
 } from '@nestjs/common';
 import { CampaignsService } from './campaigns.service';
 import { CreateCampaignDto } from './dto/create-campaign.dto';
@@ -49,7 +50,7 @@ export class CampaignsController {
     @Body() createCampaignDto: CreateCampaignDto,
     @Query('branchId') branchId: string,
   ) {
-    return this.campaignsService.create(createCampaignDto, branchId);
+    return this.campaignsService.create(createCampaignDto, branchId, req.user);
   }
   @Get()
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.ADMIN)
@@ -60,9 +61,9 @@ export class CampaignsController {
     @Query() query: FindCampaignsDto,
   ) {
     return this.campaignsService.findAll(
+      req.user,
       query.branchId,
       query.status,
-      req.user.businessId,
     );
   }
 
@@ -83,31 +84,63 @@ export class CampaignsController {
     return this.bannersService.findActive('customer');
   }
 
+  @Get('templates')
+  @ApiOperation({ summary: 'Get all campaign templates' })
+  async findAllTemplates() {
+    return this.campaignsService.findAllTemplates();
+  }
+
   @Get(':id')
   @Roles(UserRole.OWNER, UserRole.MANAGER)
   @Permissions('engagement')
-  @ApiOperation({ summary: 'Get a campaign by ID' })
-  async findOne(@Param('id') id: string) {
-    return this.campaignsService.findOne(id);
+  @ApiOperation({
+    summary: 'Get a campaign by ID',
+    description:
+      "Only the caller's own business's campaigns; any other id is a 404. Access: OWNER, MANAGER",
+  })
+  @ApiResponse({ status: 404, description: 'Campaign not found' })
+  async findOne(
+    @Request() req: { user: User },
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    return this.campaignsService.findOne(id, req.user.businessId);
   }
 
   @Patch(':id')
   @Roles(UserRole.OWNER, UserRole.MANAGER)
   @Permissions('engagement')
-  @ApiOperation({ summary: 'Update a campaign' })
+  @ApiOperation({
+    summary: 'Update a campaign',
+    description:
+      "Only the caller's own business's campaigns; any other id is a 404. Access: OWNER, MANAGER",
+  })
+  @ApiResponse({ status: 404, description: 'Campaign not found' })
   async update(
-    @Param('id') id: string,
+    @Request() req: { user: User },
+    @Param('id', ParseUUIDPipe) id: string,
     @Body() updateCampaignDto: UpdateCampaignDto,
   ) {
-    return this.campaignsService.update(id, updateCampaignDto);
+    return this.campaignsService.update(
+      id,
+      updateCampaignDto,
+      req.user.businessId,
+    );
   }
 
   @Delete(':id')
   @Roles(UserRole.OWNER, UserRole.MANAGER)
   @Permissions('engagement')
-  @ApiOperation({ summary: 'Delete a campaign' })
-  async remove(@Param('id') id: string) {
-    return this.campaignsService.remove(id);
+  @ApiOperation({
+    summary: 'Delete a campaign',
+    description:
+      "Only the caller's own business's campaigns; any other id is a 404. Access: OWNER, MANAGER",
+  })
+  @ApiResponse({ status: 404, description: 'Campaign not found' })
+  async remove(
+    @Request() req: { user: User },
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    return this.campaignsService.remove(id, req.user.businessId);
   }
 
   @Post('templates')
@@ -115,11 +148,5 @@ export class CampaignsController {
   @ApiOperation({ summary: 'Create a campaign template' })
   async createTemplate(@Body() createTemplateDto: CreateCampaignTemplateDto) {
     return this.campaignsService.createTemplate(createTemplateDto);
-  }
-
-  @Get('templates')
-  @ApiOperation({ summary: 'Get all campaign templates' })
-  async findAllTemplates() {
-    return this.campaignsService.findAllTemplates();
   }
 }

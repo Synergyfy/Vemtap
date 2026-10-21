@@ -52,10 +52,16 @@ export class CreateCampaignDto {
   @IsDateString()
   scheduledFor?: string;
 
-  @ApiProperty({ enum: CampaignStatus, example: 'Scheduled', required: false })
+  @ApiProperty({
+    enum: CampaignStatus,
+    example: 'Scheduled',
+    required: false,
+    description:
+      'Defaults to Draft on create; left unchanged on update when omitted',
+  })
   @IsOptional()
   @IsEnum(CampaignStatus)
-  status?: CampaignStatus = CampaignStatus.DRAFT;
+  status?: CampaignStatus;
 
   @ApiProperty({
     example: 'branch-uuid',

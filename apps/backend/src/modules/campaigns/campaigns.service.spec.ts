@@ -6,7 +6,8 @@ import { CampaignTemplate } from './entities/campaign-template.entity';
 import { User } from '../users/entities/user.entity';
 import { Contact } from '../contacts/entities/contact.entity';
 import { BranchesService } from '../branches/branches.service';
-import { NotFoundException } from '@nestjs/common';
+import { ForbiddenException, NotFoundException } from '@nestjs/common';
+import { UserRole } from '../users/entities/user.entity';
 
 describe('CampaignsService', () => {
   let service: CampaignsService;
@@ -82,6 +83,8 @@ describe('CampaignsService', () => {
     expect(service).toBeDefined();
   });
 
+  const owner = { id: 'u1', role: UserRole.OWNER, businessId: 'biz-1' } as any;
+
   describe('create', () => {
     it('should create a campaign', async () => {
       const dto = {
@@ -91,27 +94,53 @@ describe('CampaignsService', () => {
         message: 'Hi!',
       };
       const branchId = 'branch-1';
-      const result = await service.create(dto, branchId);
+      const result = await service.create(dto, branchId, owner);
       expect(result).toBeDefined();
       expect(result.id).toBe('campaign-1');
       expect(mockBranchesService.findById).toHaveBeenCalledWith(branchId);
       expect(mockCampaignRepository.save).toHaveBeenCalled();
+    });
+
+    it("should refuse another business's branch", async () => {
+      const dto = {
+        name: 'X',
+        type: 'SMS' as any,
+        audience: 'all',
+        message: 'Hi',
+      };
+      await expect(
+        service.create(dto, 'branch-1', { ...owner, businessId: 'biz-2' }),
+      ).rejects.toThrow(ForbiddenException);
+    });
+  });
+
+  describe('findAll', () => {
+    it('should always scope an owner to their own business', async () => {
+      await service.findAll(owner, 'branch-9');
+      expect(mockCampaignRepository.find).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { businessId: 'biz-1', branchId: 'branch-9' },
+        }),
+      );
     });
   });
 
   describe('findOne', () => {
     it('should throw NotFoundException if campaign not found', async () => {
       mockCampaignRepository.findOne.mockResolvedValue(null);
-      await expect(service.findOne('invalid')).rejects.toThrow(
+      await expect(service.findOne('invalid', 'biz-1')).rejects.toThrow(
         NotFoundException,
       );
     });
 
-    it('should return campaign if found', async () => {
+    it('should look the campaign up within the business', async () => {
       const campaign = { id: 'c1', name: 'Test' };
       mockCampaignRepository.findOne.mockResolvedValue(campaign);
-      const result = await service.findOne('c1');
+      const result = await service.findOne('c1', 'biz-1');
       expect(result).toEqual(campaign);
+      expect(mockCampaignRepository.findOne).toHaveBeenCalledWith({
+        where: { id: 'c1', businessId: 'biz-1' },
+      });
     });
   });
 });
