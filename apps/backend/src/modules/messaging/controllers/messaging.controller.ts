@@ -8,6 +8,8 @@ import {
   UseGuards,
   Query,
   NotFoundException,
+  BadRequestException,
+  ForbiddenException,
   Request,
   Patch,
   ParseEnumPipe,
@@ -79,7 +81,7 @@ export class MessagingController {
   @ApiOperation({
     summary: 'Send a single message or start a campaign',
     description:
-      'Enqueues a message for delivery or initiates a bulk campaign. Access: OWNER, MANAGER, STAFF',
+      "Enqueues a message for delivery or initiates a bulk campaign. Credits are charged to the caller's business (a body businessId is ignored), and customerIds that are not the business's customers are dropped (400 when none remain). Access: OWNER, MANAGER, STAFF",
   })
   @ApiBody({ type: SendMessageDto })
   @ApiResponse({
@@ -92,6 +94,23 @@ export class MessagingController {
   ) {
     const branchId = await this.getBranchId(req, dto.branchId);
     dto.branchId = branchId;
+    // The business (whose credits pay for the send) comes from the token,
+    // never the body, and a business may only message its own customers.
+    const businessId = req.user.businessId;
+    if (!businessId)
+      throw new ForbiddenException('No business on this account');
+    dto.businessId = businessId;
+    if (dto.customerIds?.length) {
+      dto.customerIds = await this.businessCustomers.filterKnownCustomers(
+        businessId,
+        dto.customerIds,
+      );
+      if (!dto.customerIds.length) {
+        throw new BadRequestException(
+          'None of these customers belong to this business',
+        );
+      }
+    }
     return this.messagingEngine.sendMessage(dto);
   }
 
