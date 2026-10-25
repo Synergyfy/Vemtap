@@ -6,13 +6,20 @@ import {
   IsOptional,
   IsUrl,
   IsArray,
-  IsStrongPassword,
+  Matches,
   IsUUID,
   IsNumber,
   Min,
   Max,
   ValidateIf,
 } from 'class-validator';
+
+/**
+ * Owners sign in with the same "PIN or Password" field as customers, so
+ * registration accepts either a 6-digit PIN or a strong password.
+ */
+const OWNER_SECRET_PATTERN =
+  /^(?:\d{6}|(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,})$/;
 
 export class RegisterOwnerDto {
   @ApiProperty({
@@ -23,19 +30,16 @@ export class RegisterOwnerDto {
   email: string;
 
   @ApiPropertyOptional({
-    example: 'SecurePass123!',
+    example: '482913',
     description:
-      'Password (min 8 chars, 1 upper, 1 lower, 1 number, 1 symbol). Required for manual signup, optional for social logins.',
+      'A 6-digit PIN (same as customer sign-up) or a strong password (min 8 chars, 1 upper, 1 lower, 1 number, 1 symbol). Required for manual signup, optional for social logins.',
   })
   @IsOptional()
   @ValidateIf((o) => !!o.password)
   @IsString()
-  @IsStrongPassword({
-    minLength: 8,
-    minLowercase: 1,
-    minUppercase: 1,
-    minNumbers: 1,
-    minSymbols: 1,
+  @Matches(OWNER_SECRET_PATTERN, {
+    message:
+      'Password must be a 6-digit PIN or at least 8 characters with upper and lower case letters, a number and a symbol',
   })
   password?: string;
 
