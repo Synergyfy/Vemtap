@@ -114,6 +114,13 @@ function totp(secret: string, timestamp = Date.now()): string {
   return String(code % 1000000).padStart(6, '0');
 }
 
+/**
+ * Accounts that sign in with a 6-digit PIN and can reset it by email:
+ * customers, and owners (who register with a PIN too). Managers and staff
+ * keep their separately managed POS PINs.
+ */
+const PIN_RESET_ROLES: UserRole[] = [UserRole.CUSTOMER, UserRole.OWNER];
+
 @Injectable()
 export class AuthService {
   private googleClient: OAuth2Client;
@@ -1336,7 +1343,7 @@ export class AuthService {
         'If an account exists with this email, a reset OTP has been sent.',
     };
 
-    if (!user || user.role !== UserRole.CUSTOMER) {
+    if (!user || !PIN_RESET_ROLES.includes(user.role)) {
       return genericResponse;
     }
 
@@ -1380,8 +1387,8 @@ export class AuthService {
     }
 
     const user = await this.usersService.findByEmail(email);
-    if (!user || user.role !== UserRole.CUSTOMER) {
-      throw new NotFoundException('Customer account not found');
+    if (!user || !PIN_RESET_ROLES.includes(user.role)) {
+      throw new NotFoundException('Account not found');
     }
 
     const hashedPassword = await bcrypt.hash(dto.newPin, 10);

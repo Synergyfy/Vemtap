@@ -1454,6 +1454,43 @@ describe('AuthService', () => {
         expect(otpRepository.remove).toHaveBeenCalled();
         expect(result.message).toContain('PIN reset successfully');
       });
+
+      it('should reset an owner PIN with valid OTP', async () => {
+        otpRepository.findOne.mockResolvedValue({
+          email: 'owner@example.com',
+          code: '123456',
+          expiresAt: new Date(Date.now() + 60000),
+        });
+        usersService.findByEmail.mockResolvedValue({
+          id: 'owner-1',
+          email: 'owner@example.com',
+          role: UserRole.OWNER,
+        });
+
+        const result = await service.resetCustomerPin({
+          email: 'owner@example.com',
+          otp: '123456',
+          newPin: '999888',
+        });
+
+        expect(usersService.updatePassword).toHaveBeenCalled();
+        expect(result.message).toContain('PIN reset successfully');
+      });
+
+      it('should not send a PIN reset OTP to staff accounts', async () => {
+        usersService.findByEmail.mockResolvedValue({
+          id: 'staff-1',
+          email: 'staff@example.com',
+          role: UserRole.STAFF,
+        });
+
+        const result = await service.requestCustomerPinReset({
+          email: 'staff@example.com',
+        });
+
+        expect(mailService.sendOtp).not.toHaveBeenCalled();
+        expect(result.message).toContain('reset OTP has been sent');
+      });
     });
   });
 });
