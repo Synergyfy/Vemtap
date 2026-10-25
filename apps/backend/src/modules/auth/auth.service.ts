@@ -121,6 +121,9 @@ function totp(secret: string, timestamp = Date.now()): string {
  */
 const PIN_RESET_ROLES: UserRole[] = [UserRole.CUSTOMER, UserRole.OWNER];
 
+/** Wrong guesses allowed per emailed reset code before it is discarded. */
+const MAX_RESET_OTP_ATTEMPTS = 5;
+
 @Injectable()
 export class AuthService {
   private googleClient: OAuth2Client;
@@ -1364,27 +1367,72 @@ export class AuthService {
     return genericResponse;
   }
 
+  /**
+   * Finds the newest reset code sent for this flow (codes issued for other
+   * purposes never count) and checks it. Wrong guesses are counted in the
+   * record's metadata; after MAX_RESET_OTP_ATTEMPTS the code is discarded.
+   */
+  private async consumeResetOtp(
+    email: string,
+    code: string,
+    matchesPurpose: (record: Otp) => boolean,
+    messages: { invalid: string; expired: string },
+  ): Promise<Otp> {
+    const records = await this.otpRepository.find({
+      where: { email },
+      order: { createdAt: 'DESC' },
+    });
+    const otpRecord = records.find(matchesPurpose);
+
+    if (!otpRecord) {
+      throw new BadRequestException('Reset session not found');
+    }
+
+    const failedAttempts = Number(otpRecord.metadata?.failedAttempts ?? 0);
+    if (failedAttempts >= MAX_RESET_OTP_ATTEMPTS) {
+      await this.otpRepository.remove(otpRecord);
+      throw new BadRequestException(
+        'Too many incorrect attempts. Request a new code.',
+      );
+    }
+
+    if (otpRecord.code !== code) {
+      const attempts = failedAttempts + 1;
+      if (attempts >= MAX_RESET_OTP_ATTEMPTS) {
+        await this.otpRepository.remove(otpRecord);
+        throw new BadRequestException(
+          'Too many incorrect attempts. Request a new code.',
+        );
+      }
+      otpRecord.metadata = {
+        ...(otpRecord.metadata ?? {}),
+        failedAttempts: attempts,
+      };
+      await this.otpRepository.save(otpRecord);
+      throw new BadRequestException(messages.invalid);
+    }
+
+    if (new Date() > otpRecord.expiresAt) {
+      throw new BadRequestException(messages.expired);
+    }
+
+    return otpRecord;
+  }
+
   async resetCustomerPin(
     dto: ResetCustomerPinDto,
     meta?: { ip?: string; userAgent?: string },
   ) {
     const email = dto.email.toLowerCase();
-    const otpRecord = await this.otpRepository.findOne({
-      where: { email },
-      order: { createdAt: 'DESC' },
-    });
-
-    if (!otpRecord) {
-      throw new BadRequestException('Reset session not found');
-    }
-    if (otpRecord.code !== dto.otp) {
-      throw new BadRequestException('Invalid reset OTP');
-    }
-    if (new Date() > otpRecord.expiresAt) {
-      throw new BadRequestException(
-        'Reset OTP has expired. Please request a new code.',
-      );
-    }
+    const otpRecord = await this.consumeResetOtp(
+      email,
+      dto.otp,
+      (record) => record.metadata?.purpose === 'customer-pin-reset',
+      {
+        invalid: 'Invalid reset OTP',
+        expired: 'Reset OTP has expired. Please request a new code.',
+      },
+    );
 
     const user = await this.usersService.findByEmail(email);
     if (!user || !PIN_RESET_ROLES.includes(user.role)) {
@@ -1485,16 +1533,12 @@ export class AuthService {
     dto: ResetPasswordDto,
     meta?: { ip: string; userAgent: string },
   ) {
-    const otpRecord = await this.otpRepository.findOne({
-      where: { email: dto.email },
-      order: { createdAt: 'DESC' },
-    });
-
-    if (!otpRecord) throw new BadRequestException('Reset session not found');
-    if (otpRecord.code !== dto.otp)
-      throw new BadRequestException('Invalid reset code');
-    if (new Date() > otpRecord.expiresAt)
-      throw new BadRequestException('Reset code expired');
+    const otpRecord = await this.consumeResetOtp(
+      dto.email,
+      dto.otp,
+      (record) => record.metadata?.type === 'password_reset',
+      { invalid: 'Invalid reset code', expired: 'Reset code expired' },
+    );
 
     const user = await this.usersService.findByEmail(dto.email);
     if (!user) throw new NotFoundException('User no longer exists');
