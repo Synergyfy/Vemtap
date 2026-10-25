@@ -15,6 +15,7 @@ import {
   CatalogueOfferPricingType,
   CatalogueOfferStatus,
 } from './entities/catalogue-offer.entity';
+import { OfferPriceChange } from './entities/offer-price-change.entity';
 import {
   CatalogueItem,
   CatalogueItemStatus,
@@ -692,6 +693,17 @@ export class CatalogueOfferService {
     return { dealGroupId, offers: updated };
   }
 
+  /** A deal's recent per-branch price changes, newest first. */
+  async getOfferGroupPriceHistory(dealGroupId: string, businessId: string) {
+    const offers = await this.findGroupOffers(dealGroupId, businessId);
+    const groupId = offers[0].dealGroupId ?? offers[0].id;
+    return this.offerRepository.manager.getRepository(OfferPriceChange).find({
+      where: { businessId, dealGroupId: groupId },
+      order: { createdAt: 'DESC' },
+      take: 20,
+    });
+  }
+
   /** Each branch of a deal with its own price, vouchers, status and claims. */
   async getOfferGroupBranchPricing(dealGroupId: string, businessId: string) {
     const offers = await this.findGroupOffers(dealGroupId, businessId);
@@ -732,6 +744,7 @@ export class CatalogueOfferService {
     dealGroupId: string,
     dto: SetOfferBranchPricingDto,
     businessId: string,
+    changedById?: string,
   ) {
     const offers = await this.findGroupOffers(dealGroupId, businessId);
     const template = offers[0];
@@ -780,6 +793,11 @@ export class CatalogueOfferService {
     }
 
     const toSave: CatalogueOffer[] = [];
+    // Price moves on existing branches, kept as the deal's price-change history.
+    const priceChanges: Partial<OfferPriceChange>[] = [];
+    const branchName = new Map(
+      branches.map((branch) => [branch.id, branch.name]),
+    );
     if (!template.dealGroupId) {
       // A deal created before grouping becomes the group's first row.
       template.dealGroupId = groupId;
@@ -789,6 +807,7 @@ export class CatalogueOfferService {
     for (const entry of dto.branches) {
       const existing = byBranch.get(entry.branchId);
       if (existing) {
+        const previousPrice = Number(existing.calculatedPrice);
         if (entry.fixedPrice !== undefined)
           existing.fixedPrice = entry.fixedPrice;
         if (entry.discountValue !== undefined) {
@@ -802,6 +821,18 @@ export class CatalogueOfferService {
           existing,
           existing.items,
         );
+        if (Number(existing.calculatedPrice) !== previousPrice) {
+          priceChanges.push({
+            businessId,
+            dealGroupId: groupId,
+            offerId: existing.id,
+            branchId: existing.branchId,
+            branchName: branchName.get(existing.branchId) ?? null,
+            oldPrice: previousPrice,
+            newPrice: Number(existing.calculatedPrice),
+            changedById: changedById ?? null,
+          });
+        }
         if (!toSave.includes(existing)) toSave.push(existing);
       } else if (entry.isActive) {
         const {
@@ -839,9 +870,17 @@ export class CatalogueOfferService {
     }
 
     if (toSave.length) {
-      await this.offerRepository.manager.transaction((manager) =>
-        manager.save(CatalogueOffer, toSave),
-      );
+      await this.offerRepository.manager.transaction(async (manager) => {
+        await manager.save(CatalogueOffer, toSave);
+        if (priceChanges.length) {
+          await manager.save(
+            OfferPriceChange,
+            priceChanges.map((change) =>
+              manager.create(OfferPriceChange, change),
+            ),
+          );
+        }
+      });
       await Promise.all(
         toSave.map((offer) => this.clearCache(offer.branchId, offer.id)),
       );
