@@ -68,7 +68,7 @@ export class StoreOrderingController {
   @Get('orders')
   @ApiOperation({
     summary: 'List store orders',
-    description: `Catalogue orders placed through store ordering (they carry a \`source\`), newest first, paginated. ${ACCESS}`,
+    description: `Every non-booking catalogue order: store-ordering orders carry a \`source\`, app orders have none. Newest first, paginated. ${ACCESS}`,
   })
   list(@Req() req: BusinessRequest, @Query() query: StoreOrderQueryDto) {
     return this.store.list(req.user.businessId, query);

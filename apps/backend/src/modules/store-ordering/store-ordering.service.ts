@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, IsNull, Not, Repository } from 'typeorm';
+import { In, IsNull, Repository } from 'typeorm';
 import {
   CatalogueOrder,
   CatalogueOrderStatus,
@@ -108,7 +108,9 @@ const fullName = (user?: User | null) =>
 
 /**
  * Store ordering: scan, pick and pay at the counter. A store order is a
- * catalogue order with a `source`; this service adds the store stages, line
+ * catalogue order with a `source`; app orders (no `source`) are worked from
+ * the same board, so every non-booking order is listed. This service adds the
+ * store stages, line
  * adjustments, staff assignment and counter payments on top, and moves the
  * catalogue status through `CatalogueOrderService.updateStatus` so stock,
  * loyalty and customer notifications behave exactly as for any order.
@@ -203,7 +205,10 @@ export class StoreOrderingService {
       createdAt: order.createdAt,
       branchId: order.branchId,
       branchName: order.branch?.name ?? '',
-      origin: order.source,
+      // App orders carry no source: a deal line marks them as deal orders.
+      origin:
+        order.source ??
+        ((order.items ?? []).some((line) => line.offerId) ? 'deal' : null),
       sourceRef: order.storeQrId ?? undefined,
       placementDetails: order.tableNumber ?? undefined,
       items,
@@ -247,7 +252,8 @@ export class StoreOrderingService {
     const [rows, total] = await this.orders.findAndCount({
       where: {
         businessId,
-        source: query.source ?? Not(IsNull()),
+        ...(query.source ? { source: query.source } : {}),
+        bookingDate: IsNull(),
         ...(query.branchId ? { branchId: query.branchId } : {}),
         ...(query.status ? { storeStatus: query.status } : {}),
       },
@@ -261,7 +267,7 @@ export class StoreOrderingService {
 
   private async load(businessId: string, id: string) {
     const order = await this.orders.findOne({
-      where: { id, businessId, source: Not(IsNull()) },
+      where: { id, businessId, bookingDate: IsNull() },
       relations: ORDER_RELATIONS,
     });
     if (!order) throw new NotFoundException('Store order not found');
@@ -609,7 +615,7 @@ export class StoreOrderingService {
            WHERE "paymentStatus" IN ('paid-in-store','paid-pos') AND "updatedAt" >= $2
          ), 0)::float AS "totalRevenueToday"
        FROM "catalogue_orders"
-       WHERE "businessId" = $1 AND "source" IS NOT NULL AND "deletedAt" IS NULL
+       WHERE "businessId" = $1 AND "bookingDate" IS NULL AND "deletedAt" IS NULL
          ${branchId ? 'AND "branchId" = $3' : ''}`,
       params,
     );
