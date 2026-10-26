@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { LoyaltyModule } from '../loyalty/loyalty.module';
 import { MailModule } from '../mail/mail.module';
+import { ContactsModule } from '../contacts/contacts.module';
 import { Business } from '../businesses/entities/business.entity';
 import { Branch } from '../branches/entities/branch.entity';
 import { Contact } from '../contacts/entities/contact.entity';
@@ -26,6 +27,7 @@ import { CustomerInvitesService } from './customer-invites.service';
     ]),
     LoyaltyModule,
     MailModule,
+    ContactsModule,
   ],
   // The invites controller is listed first so `POST /business-customers/invites`
   // is never shadowed by the directory's `/business-customers/:userId` routes.

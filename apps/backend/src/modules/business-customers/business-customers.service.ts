@@ -6,6 +6,7 @@ import {
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import { LoyaltyService } from '../loyalty/loyalty.service';
+import { SegmentCriteriaService } from '../contacts/services/segment-criteria.service';
 import {
   DORMANT_CUSTOMER_DAYS,
   LAPSED_CUSTOMER_DAYS,
@@ -108,6 +109,14 @@ const SEGMENT_WHERE: Record<CustomerSegment, string> = {
   returning: 'seg.visits >= 2 AND NOT seg.frequent AND NOT seg.inactive',
 };
 
+const SEGMENT_NAMES: Record<CustomerSegment, string> = {
+  all: 'All Customers',
+  frequent: 'Frequent Customers',
+  returning: 'Returning Customers',
+  new: 'New Customers',
+  inactive: 'Inactive Customers',
+};
+
 const SORT_ORDER: Record<string, string> = {
   recent: 'seg."lastAt" DESC',
   spend: 'seg.spend DESC, seg."lastAt" DESC',
@@ -154,6 +163,7 @@ export class BusinessCustomersService {
     @InjectRepository(BusinessCustomerNote)
     private readonly notes: Repository<BusinessCustomerNote>,
     private readonly loyaltyService: LoyaltyService,
+    private readonly segmentCriteria: SegmentCriteriaService,
   ) {}
 
   private async checkBranch(businessId: string, branchId?: string) {
@@ -551,6 +561,23 @@ export class BusinessCustomersService {
       [businessId, null, userId],
     );
     return known.length > 0;
+  }
+
+  /**
+   * Spend, frequency, branch mix, favourites and sample patrons for one of
+   * the directory's built-in segments, in the shape saved segments report.
+   */
+  async segmentInsights(businessId: string, segment: CustomerSegment) {
+    if (!businessId) throw new BadRequestException('Business ID is required');
+    const rows = await this.dataSource.query<{ uid: string }[]>(
+      `${SEGMENTED_SQL} SELECT seg.uid FROM seg WHERE ${SEGMENT_WHERE[segment]}`,
+      [businessId, null],
+    );
+    const insights = await this.segmentCriteria.insights(
+      businessId,
+      rows.map((row) => row.uid),
+    );
+    return { segmentId: segment, name: SEGMENT_NAMES[segment], ...insights };
   }
 
   /** The subset of `userIds` that have bought from or visited the business. */
