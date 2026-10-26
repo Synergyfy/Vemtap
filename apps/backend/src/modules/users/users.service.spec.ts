@@ -262,6 +262,29 @@ describe('UsersService', () => {
       );
     });
 
+    it('should use the PIN the owner set and email it to the new member', async () => {
+      const dto = {
+        email: 'staff@example.com',
+        firstName: 'Staff',
+        lastName: 'User',
+        role: 'Staff',
+        pin: '482913',
+      };
+
+      userRepository.findOne.mockResolvedValue(null);
+
+      await service.inviteStaff('br-1', dto as any);
+
+      expect(bcrypt.hash).toHaveBeenCalledWith('482913', 10);
+      expect(mailService.sendWelcomeEmail).toHaveBeenCalledWith(
+        dto.email,
+        dto.firstName,
+        '482913',
+        undefined,
+        undefined,
+      );
+    });
+
     it('should pass businessName and branchName to sendWelcomeEmail when available', async () => {
       const dto = {
         email: 'staff@example.com',

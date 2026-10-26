@@ -7,6 +7,7 @@ import {
   IsOptional,
   IsArray,
   IsUUID,
+  Matches,
 } from 'class-validator';
 
 export enum StaffPermission {
@@ -107,4 +108,14 @@ export class InviteStaffDto {
   @IsUUID()
   @IsOptional()
   branchId?: string;
+
+  @ApiProperty({
+    example: '482913',
+    required: false,
+    description:
+      'Sign-in PIN the owner sets for the new member; emailed to them. A random one is generated when omitted.',
+  })
+  @Matches(/^\d{6}$/, { message: 'pin must be 6 digits' })
+  @IsOptional()
+  pin?: string;
 }

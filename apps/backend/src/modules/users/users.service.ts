@@ -83,9 +83,8 @@ export class UsersService {
     }
 
     const trimmedFirstName = dto.firstName.trim();
-    const defaultPassword = Math.floor(
-      100000 + Math.random() * 900000,
-    ).toString();
+    const defaultPassword =
+      dto.pin ?? Math.floor(100000 + Math.random() * 900000).toString();
     const hashedPassword = await bcrypt.hash(defaultPassword, 10);
     const actualRole =
       dto.role.trim().toLowerCase() === 'manager'
