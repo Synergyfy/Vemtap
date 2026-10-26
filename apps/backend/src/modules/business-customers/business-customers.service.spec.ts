@@ -83,6 +83,7 @@ describe('BusinessCustomersService', () => {
     expect(result.total).toBe(4);
     expect(result.hasNextPage).toBe(true);
     expect(result.meta.insight.frequentSpendShare).toBe(0.58);
+    expect(result.meta.insight.averageSpend).toBe(33333.33);
     expect(result.data[0]).toMatchObject({
       userId: 'u1',
       name: 'Ada Obi',
