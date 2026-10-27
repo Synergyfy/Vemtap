@@ -51,4 +51,21 @@ export class MessagingHelperService {
     // Staff/Agents can only access their own branch
     return user.branchId;
   }
+
+  /**
+   * Every branch whose inbox this user may read: all of the business's
+   * branches for an owner, otherwise just the user's own branch.
+   */
+  async accessibleBranchIds(user: User): Promise<string[]> {
+    if (user.role === UserRole.OWNER) {
+      const businessId =
+        user.businessId ??
+        (await this.branchesService.findBusinessByOwner(user.id))?.id;
+      if (businessId) {
+        const branches = await this.branchesService.findAll(businessId);
+        return branches.map((branch) => branch.id);
+      }
+    }
+    return user.branchId ? [user.branchId] : [];
+  }
 }

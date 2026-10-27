@@ -26,6 +26,41 @@ import { Visit } from '../../visitors/entities/visit.entity';
 import { Branch } from '../../branches/entities/branch.entity';
 import { AutomationService } from './automation.service';
 import { TriggerType } from '../enums/automation.enum';
+import { CatalogueOrder } from '../../catalogue-orders/entities/catalogue-order.entity';
+import { CatalogueOfferClaim } from '../../catalogue/entities/catalogue-offer-claim.entity';
+
+/** What a chat is about, for the inbox's order / booking / deal context cards. */
+export interface ThreadContext {
+  threadId: string;
+  subjectType: ThreadSubjectType | null;
+  order: {
+    id: string;
+    reference: string;
+    kind: 'order' | 'booking';
+    status: string;
+    totalAmount: number;
+    paymentStatus: string | null;
+    bookingDate: string | null;
+    bookingTime: string | null;
+    tableNumber: string | null;
+    createdAt: Date;
+    items: { name: string; quantity: number; unitPrice: number }[];
+  } | null;
+  claim: {
+    id: string;
+    claimCode: string;
+    status: string;
+    claimedAt: Date;
+    expiresAt: Date | null;
+    redeemedAt: Date | null;
+    offer: {
+      id: string;
+      name: string;
+      price: number | null;
+      mainImage: string | null;
+    } | null;
+  } | null;
+}
 
 /** Optional conversation context supplied when a chat is opened. */
 export interface ThreadSubjectInput {
@@ -85,6 +120,115 @@ export class InboxService {
     }
 
     return query.orderBy('thread.lastActivityAt', 'DESC').getMany();
+  }
+
+  /**
+   * Unread conversation counts for each branch (zeros included), so the
+   * inbox can show which other branches have customers waiting.
+   */
+  async getUnreadSummary(
+    branchIds: string[],
+    channel: Channel,
+  ): Promise<{ branchId: string; unread: number; threads: number }[]> {
+    if (!branchIds.length) return [];
+    const rows = await this.threadRepo
+      .createQueryBuilder('thread')
+      .select('thread.branchId', 'branchId')
+      .addSelect('COALESCE(SUM(thread.branchUnreadCount), 0)', 'unread')
+      .addSelect(
+        'COUNT(*) FILTER (WHERE thread.branchUnreadCount > 0)',
+        'threads',
+      )
+      .where('thread.branchId IN (:...branchIds)', { branchIds })
+      .andWhere('thread.channel = :channel', { channel })
+      .groupBy('thread.branchId')
+      .getRawMany<{ branchId: string; unread: string; threads: string }>();
+    const byBranch = new Map(rows.map((row) => [row.branchId, row]));
+    return branchIds.map((branchId) => ({
+      branchId,
+      unread: Number(byBranch.get(branchId)?.unread ?? 0),
+      threads: Number(byBranch.get(branchId)?.threads ?? 0),
+    }));
+  }
+
+  /** The order, booking or deal claim a thread was opened about. */
+  async getThreadContext(
+    threadId: string,
+    branchId: string,
+  ): Promise<ThreadContext> {
+    const thread = await this.threadRepo.findOne({
+      where: { id: threadId, branchId },
+    });
+    if (!thread) throw new NotFoundException('Thread not found');
+
+    const manager = this.threadRepo.manager;
+    const order = thread.orderId
+      ? await manager.getRepository(CatalogueOrder).findOne({
+          where: { id: thread.orderId, branchId },
+          relations: ['items', 'items.item', 'items.offer'],
+        })
+      : null;
+    const claim = thread.claimId
+      ? await manager.getRepository(CatalogueOfferClaim).findOne({
+          where: { id: thread.claimId },
+          relations: ['offer'],
+        })
+      : null;
+    // A claim is only shown when its deal belongs to this thread's business.
+    const claimInScope =
+      claim &&
+      (!claim.offer ||
+        !thread.businessId ||
+        claim.offer.businessId === thread.businessId)
+        ? claim
+        : null;
+
+    return {
+      threadId: thread.id,
+      subjectType: thread.subjectType ?? null,
+      order: order
+        ? {
+            id: order.id,
+            reference: `#${order.id.slice(0, 8).toUpperCase()}`,
+            kind: order.bookingDate ? 'booking' : 'order',
+            status: order.status,
+            totalAmount: Number(order.totalAmount),
+            paymentStatus: order.paymentStatus ?? null,
+            bookingDate: order.bookingDate ?? null,
+            bookingTime: order.bookingTime ?? null,
+            tableNumber: order.tableNumber ?? null,
+            createdAt: order.createdAt,
+            items: (order.items ?? [])
+              .filter((line) => !line.removed)
+              .map((line) => ({
+                name: line.item?.name ?? line.offer?.name ?? 'Item',
+                quantity: line.quantity,
+                unitPrice: Number(line.priceAtOrder),
+              })),
+          }
+        : null,
+      claim: claimInScope
+        ? {
+            id: claimInScope.id,
+            claimCode: claimInScope.claimCode,
+            status: claimInScope.status,
+            claimedAt: claimInScope.createdAt,
+            expiresAt: claimInScope.expiresAt ?? null,
+            redeemedAt: claimInScope.redeemedAt ?? null,
+            offer: claimInScope.offer
+              ? {
+                  id: claimInScope.offer.id,
+                  name: claimInScope.offer.name,
+                  price:
+                    claimInScope.offer.calculatedPrice != null
+                      ? Number(claimInScope.offer.calculatedPrice)
+                      : null,
+                  mainImage: claimInScope.offer.mainImage ?? null,
+                }
+              : null,
+          }
+        : null,
+    };
   }
 
   async getThreadMessages(
