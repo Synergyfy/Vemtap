@@ -1552,15 +1552,15 @@ describe('AuthService', () => {
         expect(result.message).toContain('PIN reset successfully');
       });
 
-      it('should not send a PIN reset OTP to staff accounts', async () => {
+      it('should not send a PIN reset OTP to admin accounts (they use passwords)', async () => {
         usersService.findByEmail.mockResolvedValue({
-          id: 'staff-1',
-          email: 'staff@example.com',
-          role: UserRole.STAFF,
+          id: 'admin-1',
+          email: 'admin@example.com',
+          role: UserRole.ADMIN,
         });
 
         const result = await service.requestCustomerPinReset({
-          email: 'staff@example.com',
+          email: 'admin@example.com',
         });
 
         expect(mailService.sendOtp).not.toHaveBeenCalled();
