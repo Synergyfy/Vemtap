@@ -84,7 +84,13 @@ export class MailService {
           <div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">
             <h2 style="color: #4A90E2;">Welcome to ${placeName}, ${name}!</h2>
             <p>We are excited to have you on board. Your account has been successfully created.</p>
-            ${password ? `<p>Your default login password is: <strong>${password}</strong></p><p>We recommend changing it after your first login.</p>` : ''}
+            ${
+              password
+                ? /^\d{6}$/.test(password)
+                  ? `<p>Your sign-in PIN is: <strong>${password}</strong></p><p>We recommend changing it after your first sign-in.</p>`
+                  : `<p>Your default login password is: <strong>${password}</strong></p><p>We recommend changing it after your first login.</p>`
+                : ''
+            }
             <p>You can now sign in to your dashboard to manage your visits and explore our features.</p>
             <div style="text-align: center; margin: 30px 0;">
               <a href="https://vemtap.vercel.app/login" style="background-color: #4A90E2; color: white; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;">Sign In to VemTap</a>
