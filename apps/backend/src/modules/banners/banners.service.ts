@@ -7,6 +7,7 @@ import { Banner } from './entities/banner.entity';
 import { CreateBannerDto } from './dto/create-banner.dto';
 import { UpdateBannerDto } from './dto/update-banner.dto';
 import { ReorderBannersDto } from './dto/reorder-banners.dto';
+import { deleteCacheKeys } from '../../common/utils/delete-cache-keys';
 
 const CACHE_KEY_ACTIVE = 'banners:active';
 const CACHE_KEY_ALL = 'banners:all';
@@ -106,22 +107,7 @@ export class BannersService {
 
   private async clearCache() {
     try {
-      const cacheMgr = this.cacheManager as any;
-      const store =
-        cacheMgr.store || (cacheMgr.stores ? cacheMgr.stores[0] : null);
-      if (store && typeof store.keys === 'function') {
-        const keys = await store.keys('*banners:*');
-        for (const key of keys) {
-          if (typeof store.del === 'function') {
-            await store.del(key);
-          } else {
-            await this.cacheManager.del(key);
-          }
-        }
-      } else {
-        await this.cacheManager.del(CACHE_KEY_ACTIVE);
-        await this.cacheManager.del(CACHE_KEY_ALL);
-      }
+      await deleteCacheKeys(this.cacheManager, ['*banners:*']);
     } catch (error) {
       this.logger.error(
         `Failed to clear banner cache: ${(error as Error).message}`,

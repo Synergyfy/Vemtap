@@ -12,6 +12,7 @@ import {
   CategoryPaginationDto,
   SubcategoryPaginationDto,
 } from './dto/category.dto';
+import { deleteCacheKeys } from '../../common/utils/delete-cache-keys';
 
 @Injectable()
 export class CategoriesService {
@@ -27,26 +28,7 @@ export class CategoriesService {
 
   private async clearCache() {
     try {
-      const cacheMgr = this.cacheManager as any;
-      const store =
-        cacheMgr.store || (cacheMgr.stores ? cacheMgr.stores[0] : null);
-
-      if (store && typeof store.keys === 'function') {
-        const keys = await store.keys('*categories:*');
-        for (const key of keys) {
-          if (typeof store.del === 'function') {
-            await store.del(key);
-          } else {
-            await this.cacheManager.del(key);
-          }
-        }
-      } else if (typeof (this.cacheManager as any).reset === 'function') {
-        await (this.cacheManager as any).reset();
-      } else {
-        this.logger.warn(
-          'Cache store does not support keys() or reset(). Cache might not be cleared correctly.',
-        );
-      }
+      await deleteCacheKeys(this.cacheManager, ['*categories:*']);
     } catch (error) {
       this.logger.error(`Failed to clear cache: ${error.message}`);
     }
