@@ -268,11 +268,11 @@ describe('AuthService', () => {
     it('should verify a valid OTP', async () => {
       otpRepository.findOne.mockResolvedValue({
         email: 'test@example.com',
-        code: '1234',
+        code: '123456',
         expiresAt: new Date(Date.now() + 10000),
       });
 
-      const result = await service.verifyOtp('test@example.com', '1234');
+      const result = await service.verifyOtp('test@example.com', '123456');
 
       expect(otpRepository.save).toHaveBeenCalledWith(
         expect.objectContaining({ isVerified: true }),
@@ -284,31 +284,31 @@ describe('AuthService', () => {
       otpRepository.findOne.mockResolvedValue(null);
 
       await expect(
-        service.verifyOtp('test@example.com', '1234'),
+        service.verifyOtp('test@example.com', '123456'),
       ).rejects.toThrow(BadRequestException);
     });
 
     it('should throw if OTP code does not match', async () => {
       otpRepository.findOne.mockResolvedValue({
         email: 'test@example.com',
-        code: '9999',
+        code: '999999',
         expiresAt: new Date(Date.now() + 10000),
       });
 
       await expect(
-        service.verifyOtp('test@example.com', '1234'),
+        service.verifyOtp('test@example.com', '123456'),
       ).rejects.toThrow(BadRequestException);
     });
 
     it('should throw if OTP is expired', async () => {
       otpRepository.findOne.mockResolvedValue({
         email: 'test@example.com',
-        code: '1234',
+        code: '123456',
         expiresAt: new Date(Date.now() - 10000),
       });
 
       await expect(
-        service.verifyOtp('test@example.com', '1234'),
+        service.verifyOtp('test@example.com', '123456'),
       ).rejects.toThrow(BadRequestException);
     });
   });
@@ -329,7 +329,7 @@ describe('AuthService', () => {
     it('should register a new customer successfully with OTP', async () => {
       otpRepository.findOne.mockResolvedValue({
         email: baseDto.email,
-        code: '1234',
+        code: '123456',
         expiresAt: new Date(Date.now() + 10000),
         isVerified: true,
         metadata: {},
@@ -361,7 +361,7 @@ describe('AuthService', () => {
     it('should throw if OTP not verified', async () => {
       otpRepository.findOne.mockResolvedValue({
         email: baseDto.email,
-        code: '1234',
+        code: '123456',
         expiresAt: new Date(Date.now() + 10000),
         isVerified: false,
       });
@@ -374,7 +374,7 @@ describe('AuthService', () => {
     it('should register as OWNER if businessName provided', async () => {
       otpRepository.findOne.mockResolvedValue({
         email: baseDto.email,
-        code: '1234',
+        code: '123456',
         expiresAt: new Date(Date.now() + 10000),
         isVerified: true,
         metadata: {},
@@ -413,7 +413,7 @@ describe('AuthService', () => {
       };
       otpRepository.findOne.mockResolvedValue({
         email: baseDto.email,
-        code: '1234',
+        code: '123456',
         expiresAt: new Date(Date.now() + 10000),
         isVerified: true,
         metadata: {},
@@ -444,7 +444,7 @@ describe('AuthService', () => {
       };
       otpRepository.findOne.mockResolvedValue({
         email: baseDto.email,
-        code: '1234',
+        code: '123456',
         expiresAt: new Date(Date.now() + 10000),
         isVerified: true,
         metadata: {},
@@ -485,7 +485,7 @@ describe('AuthService', () => {
     it('should register a new owner with valid OTP', async () => {
       otpRepository.findOne.mockResolvedValue({
         email: dto.email,
-        code: '1234',
+        code: '123456',
         expiresAt: new Date(Date.now() + 10000),
         isVerified: true,
         metadata: storedMetadata,
@@ -523,7 +523,7 @@ describe('AuthService', () => {
     it('should throw if OTP is invalid', async () => {
       otpRepository.findOne.mockResolvedValue({
         email: dto.email,
-        code: '9999',
+        code: '999999',
         expiresAt: new Date(Date.now() + 10000),
       });
 
@@ -535,7 +535,7 @@ describe('AuthService', () => {
     it('should throw if OTP is expired', async () => {
       otpRepository.findOne.mockResolvedValue({
         email: dto.email,
-        code: '1234',
+        code: '123456',
         expiresAt: new Date(Date.now() - 10000),
       });
 
@@ -547,7 +547,7 @@ describe('AuthService', () => {
     it('should create PENDING user if businessName is omitted (resumption flow)', async () => {
       otpRepository.findOne.mockResolvedValue({
         email: dto.email,
-        code: '1234',
+        code: '123456',
         expiresAt: new Date(Date.now() + 10000),
         isVerified: true,
         metadata: storedMetadata,
@@ -573,7 +573,7 @@ describe('AuthService', () => {
     it('should throw if email exists as ACTIVE (non-Google)', async () => {
       otpRepository.findOne.mockResolvedValue({
         email: dto.email,
-        code: '1234',
+        code: '123456',
         expiresAt: new Date(Date.now() + 10000),
         isVerified: true,
         metadata: storedMetadata,
@@ -1244,7 +1244,7 @@ describe('AuthService', () => {
       otpRepository.find.mockResolvedValue([
         {
           email: 'test@example.com',
-          code: '1234',
+          code: '123456',
           expiresAt: new Date(Date.now() + 10000),
           metadata: { type: 'password_reset' },
         },
@@ -1257,7 +1257,7 @@ describe('AuthService', () => {
       const result = await service.resetPassword(
         {
           email: 'test@example.com',
-          otp: '1234',
+          otp: '123456',
           newPassword: 'NewPass123!',
         },
         { ip: '127.0.0.1', userAgent: 'test' },
@@ -1272,7 +1272,7 @@ describe('AuthService', () => {
       otpRepository.find.mockResolvedValue([
         {
           email: 'test@example.com',
-          code: '9999',
+          code: '999999',
           expiresAt: new Date(Date.now() + 10000),
           metadata: { type: 'password_reset' },
         },
@@ -1281,7 +1281,7 @@ describe('AuthService', () => {
       await expect(
         service.resetPassword({
           email: 'test@example.com',
-          otp: '1234',
+          otp: '123456',
           newPassword: 'NewPass123!',
         }),
       ).rejects.toThrow(BadRequestException);
@@ -1291,7 +1291,7 @@ describe('AuthService', () => {
       otpRepository.find.mockResolvedValue([
         {
           email: 'test@example.com',
-          code: '1234',
+          code: '123456',
           expiresAt: new Date(Date.now() + 10000),
           metadata: { purpose: 'customer-registration' },
         },
@@ -1300,7 +1300,7 @@ describe('AuthService', () => {
       await expect(
         service.resetPassword({
           email: 'test@example.com',
-          otp: '1234',
+          otp: '123456',
           newPassword: 'NewPass123!',
         }),
       ).rejects.toThrow('Reset session not found');
