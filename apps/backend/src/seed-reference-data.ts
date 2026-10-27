@@ -9,8 +9,9 @@
  *      catalogue categories, products, a service and live deals.
  *
  * Idempotent: anything that already exists (matched by name / email) is
- * skipped. Secrets are written to `.seed-credentials.local` (git-ignored,
- * mode 600) and never printed.
+ * skipped. The admin and the demo owner both sign in with a 6-digit PIN;
+ * PINs are written to `.seed-credentials.local` (git-ignored, mode 600) and
+ * never printed.
  *
  *   DEMO_OWNER_EMAIL=you@example.com npm run seed:reference
  *
@@ -36,7 +37,8 @@ const DEMO_OWNER_EMAIL = (
 
 type Json = Record<string, any>;
 interface Credentials {
-  admin?: { email: string; password: string };
+  /** The admin signs in with a 6-digit PIN like everyone on Vemtap-Web (`password` is legacy). */
+  admin?: { email: string; pin?: string; password?: string };
   demoOwner?: { email: string; pin: string };
 }
 
@@ -511,9 +513,9 @@ async function ensureAdmin(credentials: Credentials) {
   const adminCode = process.env.ADMIN_ACCOUNT_CODE;
   const saved =
     credentials.admin?.email === ADMIN_EMAIL ? credentials.admin : undefined;
-  if (saved) {
+  if (saved?.pin || saved?.password) {
     note('Admin', ADMIN_EMAIL, 'exists');
-    return login(ADMIN_EMAIL, saved.password);
+    return login(ADMIN_EMAIL, (saved.pin ?? saved.password) as string);
   }
   if (!adminCode)
     throw new Error(
@@ -532,15 +534,25 @@ async function ensureAdmin(credentials: Credentials) {
   } catch (error) {
     if ((error as { status?: number }).status === 409) {
       throw new Error(
-        `${ADMIN_EMAIL} already exists but its password is not in ${CREDENTIALS_FILE}. Add it there as {"admin":{"email","password"}} and re-run.`,
+        `${ADMIN_EMAIL} already exists but its PIN is not in ${CREDENTIALS_FILE}. Add it there as {"admin":{"email","pin"}} and re-run.`,
       );
     }
     throw error;
   }
-  credentials.admin = { email: ADMIN_EMAIL, password };
+  // Admin registration requires a strong password; switch it to a 6-digit PIN
+  // so the admin signs in on Vemtap-Web like every other account.
+  const pin = sixDigitPin();
+  const token = await login(ADMIN_EMAIL, password);
+  await api(
+    'POST',
+    '/auth/change-password',
+    { currentPassword: password, newPassword: pin },
+    token,
+  );
+  credentials.admin = { email: ADMIN_EMAIL, pin };
   saveCredentials(credentials);
   note('Admin', ADMIN_EMAIL, 'created');
-  return login(ADMIN_EMAIL, password);
+  return login(ADMIN_EMAIL, pin);
 }
 
 async function seedBusinessCategories(token: string) {
@@ -780,13 +792,21 @@ async function seedDemoBusiness(ownerToken: string) {
     const categories = rows(await api('GET', '/categories?limit=100&page=1'));
     const food = byName(categories, 'Food & Beverage');
     const restaurant = food
-      ? byName(rows(await api('GET', `/categories/${food.id}/subcategories?limit=100`)), 'Restaurant')
+      ? byName(
+          rows(
+            await api('GET', `/categories/${food.id}/subcategories?limit=100`),
+          ),
+          'Restaurant',
+        )
       : undefined;
     if (food) {
       await api(
         'PATCH',
         '/businesses/my-business',
-        { categoryId: food.id, ...(restaurant ? { subcategoryId: restaurant.id } : {}) },
+        {
+          categoryId: food.id,
+          ...(restaurant ? { subcategoryId: restaurant.id } : {}),
+        },
         ownerToken,
       );
       note('Demo business category', 'Food & Beverage › Restaurant', 'updated');
@@ -794,8 +814,14 @@ async function seedDemoBusiness(ownerToken: string) {
   }
 
   // Credit bundles are behind sign-in; confirm the owner can see them.
-  const creditBundles = rows(await api('GET', '/credit-plans', undefined, ownerToken));
-  note('Credit plans visible to owner', `${creditBundles.length} bundles`, 'exists');
+  const creditBundles = rows(
+    await api('GET', '/credit-plans', undefined, ownerToken),
+  );
+  note(
+    'Credit plans visible to owner',
+    `${creditBundles.length} bundles`,
+    'exists',
+  );
 
   const catalogueCategories = rows(
     await api('GET', '/catalogue/categories', undefined, ownerToken),
