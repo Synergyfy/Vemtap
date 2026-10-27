@@ -72,6 +72,7 @@ import {
   describeRedemptionWindows,
   isWithinRedemptionWindows,
 } from './utils/offer-rules.utils';
+import { deleteCacheKeys } from '../../common/utils/delete-cache-keys';
 
 /**
  * A deal is only sellable while every item in it is published: when an owner
@@ -2615,39 +2616,10 @@ export class CatalogueOfferService {
 
   private async clearCache(branchId: string, offerId?: string) {
     try {
-      const cacheMgr = this.cacheManager as any;
-      const store =
-        cacheMgr.store || (cacheMgr.stores ? cacheMgr.stores[0] : null);
-
-      if (store && typeof store.keys === 'function') {
-        const branchKeys = await store.keys(
-          `*offers:public:branch:${branchId}:*`,
-        );
-        for (const key of branchKeys) {
-          if (typeof store.del === 'function') {
-            await store.del(key);
-          } else {
-            await this.cacheManager.del(key);
-          }
-        }
-
-        if (offerId) {
-          const detailKeys = await store.keys(
-            `*offers:public:details:${offerId}*`,
-          );
-          for (const key of detailKeys) {
-            if (typeof store.del === 'function') {
-              await store.del(key);
-            } else {
-              await this.cacheManager.del(key);
-            }
-          }
-        }
-      } else {
-        if (typeof (this.cacheManager as any).reset === 'function') {
-          await (this.cacheManager as any).reset();
-        }
-      }
+      await deleteCacheKeys(this.cacheManager, [
+        `*offers:public:branch:${branchId}:*`,
+        offerId && `*offers:public:details:${offerId}*`,
+      ]);
 
       await this.clustersService.invalidateForBranch(branchId);
     } catch (error) {
