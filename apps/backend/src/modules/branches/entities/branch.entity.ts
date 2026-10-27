@@ -94,6 +94,20 @@ export class Branch extends AbstractBaseEntity {
   @Column({ nullable: true })
   officialEmail: string;
 
+  /** Branch manager's contact, collected on the add-branch form. */
+  @Column({ type: 'varchar', length: 120, nullable: true })
+  managerName: string | null;
+
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  managerEmail: string | null;
+
+  @Column({ type: 'varchar', length: 40, nullable: true })
+  managerPhone: string | null;
+
+  /** Local area or district, e.g. "Abuja Municipal • Garki District". */
+  @Column({ type: 'varchar', length: 160, nullable: true })
+  district: string | null;
+
   @Column({ type: 'varchar', nullable: true, length: 255 })
   mainQrCodeId: string | null;
 

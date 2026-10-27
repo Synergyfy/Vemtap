@@ -2,6 +2,7 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   ArrayNotEmpty,
   IsArray,
+  IsIn,
   IsNotEmpty,
   IsString,
   IsOptional,
@@ -13,6 +14,26 @@ export class CreateCatalogueCategoryDto {
   @IsNotEmpty()
   @IsString()
   name: string;
+
+  @ApiPropertyOptional({ example: 'product', enum: ['product', 'service'] })
+  @IsOptional()
+  @IsIn(['product', 'service'])
+  kind?: 'product' | 'service';
+
+  @ApiPropertyOptional({ example: 'Flame-grilled mains' })
+  @IsOptional()
+  @IsString()
+  description?: string;
+
+  @ApiPropertyOptional({ example: 'restaurant' })
+  @IsOptional()
+  @IsString()
+  icon?: string;
+
+  @ApiPropertyOptional({ example: 'https://cdn.example.com/grills.jpg' })
+  @IsOptional()
+  @IsString()
+  imageUrl?: string;
 }
 
 export class UpdateCatalogueCategoryDto {
@@ -20,6 +41,26 @@ export class UpdateCatalogueCategoryDto {
   @IsOptional()
   @IsString()
   name?: string;
+
+  @ApiPropertyOptional({ example: 'product', enum: ['product', 'service'] })
+  @IsOptional()
+  @IsIn(['product', 'service'])
+  kind?: 'product' | 'service';
+
+  @ApiPropertyOptional({ example: 'Flame-grilled mains' })
+  @IsOptional()
+  @IsString()
+  description?: string;
+
+  @ApiPropertyOptional({ example: 'restaurant' })
+  @IsOptional()
+  @IsString()
+  icon?: string;
+
+  @ApiPropertyOptional({ example: 'https://cdn.example.com/grills.jpg' })
+  @IsOptional()
+  @IsString()
+  imageUrl?: string;
 }
 
 export class ReorderCatalogueCategoryDto {
