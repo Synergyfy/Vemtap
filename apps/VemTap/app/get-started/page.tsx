@@ -421,20 +421,21 @@ export default function GetStartedPage() {
                                                         Verify Your Email
                                                     </h1>
                                                     <p className="text-sm font-normal text-text-secondary leading-relaxed">
-                                                        We sent a 4-digit code to <span className="text-primary font-medium break-all">{formData.email}</span>. Enter it below to continue.
+                                                        We sent a 6-digit code to <span className="text-primary font-medium break-all">{formData.email}</span>. Enter it below to continue.
                                                     </p>
                                                 </div>
                                             </div>
 
                                             <div className="space-y-5">
                                                 <div>
-                                                    <Label>4-Digit Security Code</Label>
+                                                    <Label>6-Digit Security Code</Label>
                                                     <input
                                                         type="text"
-                                                        maxLength={4}
+                                                        maxLength={6}
+                                                        inputMode="numeric"
                                                         value={otpCode}
-                                                        onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ''))}
-                                                        placeholder="• • • •"
+                                                        onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                                                        placeholder="• • • • • •"
                                                         className="w-full h-12 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white text-lg font-medium tracking-[0.7em] text-center text-text-main placeholder:text-text-secondary/20 outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary/40 transition-all"
                                                         autoFocus
                                                     />
@@ -444,7 +445,7 @@ export default function GetStartedPage() {
 
                                                 <Button
                                                     onClick={handleVerifyOtp}
-                                                    disabled={otpLoading || otpCode.length !== 4}
+                                                    disabled={otpLoading || otpCode.length !== 6}
                                                     className="w-full h-12 bg-primary hover:bg-primary-hover text-white font-semibold uppercase tracking-[0.14em] text-xs rounded-xl shadow-lg shadow-primary/20 transition-all flex items-center justify-center gap-2.5 cursor-pointer disabled:opacity-50 disabled:pointer-events-none"
                                                 >
                                                     {otpLoading ? <div className="size-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : 'Verify & Continue'}
