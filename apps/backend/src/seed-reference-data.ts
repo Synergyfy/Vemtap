@@ -775,6 +775,28 @@ async function seedDemoBusiness(ownerToken: string) {
     note('Demo business', business.name, 'updated');
   } else note('Demo business', business.name, 'exists');
 
+  // Owner sign-up doesn't persist the category, so set it on the business.
+  if (!business.categoryId) {
+    const categories = rows(await api('GET', '/categories?limit=100&page=1'));
+    const food = byName(categories, 'Food & Beverage');
+    const restaurant = food
+      ? byName(rows(await api('GET', `/categories/${food.id}/subcategories?limit=100`)), 'Restaurant')
+      : undefined;
+    if (food) {
+      await api(
+        'PATCH',
+        '/businesses/my-business',
+        { categoryId: food.id, ...(restaurant ? { subcategoryId: restaurant.id } : {}) },
+        ownerToken,
+      );
+      note('Demo business category', 'Food & Beverage › Restaurant', 'updated');
+    }
+  }
+
+  // Credit bundles are behind sign-in; confirm the owner can see them.
+  const creditBundles = rows(await api('GET', '/credit-plans', undefined, ownerToken));
+  note('Credit plans visible to owner', `${creditBundles.length} bundles`, 'exists');
+
   const catalogueCategories = rows(
     await api('GET', '/catalogue/categories', undefined, ownerToken),
   );
