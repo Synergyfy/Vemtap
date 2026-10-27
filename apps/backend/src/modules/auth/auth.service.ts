@@ -169,7 +169,7 @@ export class AuthService {
       }
     }
 
-    const code = Math.floor(1000 + Math.random() * 9000).toString(); // 4 digit OTP
+    const code = Math.floor(100000 + Math.random() * 900000).toString(); // 6-digit OTP
     const expiresAt = new Date();
     expiresAt.setMinutes(expiresAt.getMinutes() + 10); // 10 min expiry
 
@@ -195,7 +195,7 @@ export class AuthService {
       throw new ConflictException('User with this email already exists');
     }
 
-    const code = Math.floor(1000 + Math.random() * 9000).toString(); // 4 digit OTP
+    const code = Math.floor(100000 + Math.random() * 900000).toString(); // 6-digit OTP
     const expiresAt = new Date();
     expiresAt.setMinutes(expiresAt.getMinutes() + 10); // 10 min expiry
 
@@ -444,7 +444,7 @@ export class AuthService {
     if (user.emailVerified)
       return { verified: true, message: 'Email is already verified' };
 
-    const code = Math.floor(1000 + Math.random() * 9000).toString();
+    const code = Math.floor(100000 + Math.random() * 900000).toString(); // 6-digit code
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
     await this.otpRepository.save(
       this.otpRepository.create({
@@ -1515,7 +1515,7 @@ export class AuthService {
       };
     }
 
-    const code = Math.floor(1000 + Math.random() * 9000).toString();
+    const code = Math.floor(100000 + Math.random() * 900000).toString(); // 6-digit code
     const expiresAt = new Date();
     expiresAt.setMinutes(expiresAt.getMinutes() + 10);
 
