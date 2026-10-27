@@ -262,6 +262,29 @@ describe('UsersService', () => {
       );
     });
 
+    it('should use the PIN the owner set and email it to the new member', async () => {
+      const dto = {
+        email: 'staff@example.com',
+        firstName: 'Staff',
+        lastName: 'User',
+        role: 'Staff',
+        pin: '482913',
+      };
+
+      userRepository.findOne.mockResolvedValue(null);
+
+      await service.inviteStaff('br-1', dto as any);
+
+      expect(bcrypt.hash).toHaveBeenCalledWith('482913', 10);
+      expect(mailService.sendWelcomeEmail).toHaveBeenCalledWith(
+        dto.email,
+        dto.firstName,
+        '482913',
+        undefined,
+        undefined,
+      );
+    });
+
     it('should pass businessName and branchName to sendWelcomeEmail when available', async () => {
       const dto = {
         email: 'staff@example.com',
@@ -397,6 +420,90 @@ describe('UsersService', () => {
       userRepository.findOne.mockResolvedValue(null);
 
       await expect(service.resendTeamInvite('user-2', 'br-9')).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+  });
+
+  describe('resetTeamPin', () => {
+    const active = {
+      id: 'user-3',
+      email: 'tunde@example.com',
+      firstName: 'Tunde',
+      role: UserRole.STAFF,
+      status: UserStatus.ACTIVE,
+    };
+    const sessionRepo = () =>
+      (service as unknown as { userSessionRepository: any })
+        .userSessionRepository;
+    let revoke: { execute: jest.Mock; where: jest.Mock; set: jest.Mock };
+
+    beforeEach(() => {
+      mailService.sendGenericEmail = jest.fn().mockResolvedValue(true);
+      revoke = {
+        update: jest.fn().mockReturnThis(),
+        set: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        execute: jest.fn().mockResolvedValue({ affected: 1 }),
+      } as any;
+      sessionRepo().createQueryBuilder.mockReturnValue(revoke);
+      userRepository.manager.getRepository.mockReturnValue({
+        findOne: jest.fn().mockResolvedValue({
+          id: 'br-1',
+          name: 'Wuse Branch',
+          business: { name: 'Urban <Grill>' },
+        }),
+      });
+    });
+
+    it('emails a fresh PIN and signs the member out of their devices', async () => {
+      userRepository.findOne.mockResolvedValue({ ...active });
+
+      const result = await service.resetTeamPin('user-3', 'br-1');
+
+      const pin = (bcrypt.hash as jest.Mock).mock.calls[0][0];
+      expect(pin).toMatch(/^\d{6}$/);
+      expect(result.password).toBe('hashed_password');
+      expect(revoke.where).toHaveBeenCalledWith('userId = :userId', {
+        userId: 'user-3',
+      });
+      expect(revoke.execute).toHaveBeenCalled();
+      const [to, , body] = (mailService.sendGenericEmail as jest.Mock).mock
+        .calls[0];
+      expect(to).toBe(active.email);
+      expect(body).toContain(pin);
+      expect(body).toContain('Urban &lt;Grill&gt;');
+    });
+
+    it('re-sends the invitation for a pending member', async () => {
+      userRepository.findOne.mockResolvedValue({
+        ...active,
+        status: UserStatus.INVITED,
+      });
+
+      await service.resetTeamPin('user-3', 'br-1');
+
+      expect(mailService.sendWelcomeEmail).toHaveBeenCalled();
+      expect(mailService.sendGenericEmail).not.toHaveBeenCalled();
+    });
+
+    it("refuses to reset the owner's PIN", async () => {
+      userRepository.findOne.mockResolvedValue({
+        ...active,
+        role: UserRole.OWNER,
+      });
+
+      await expect(service.resetTeamPin('user-3', 'br-1')).rejects.toThrow(
+        BadRequestException,
+      );
+      expect(userRepository.save).not.toHaveBeenCalled();
+    });
+
+    it('404s when the member is not in the given branch', async () => {
+      userRepository.findOne.mockResolvedValue(null);
+
+      await expect(service.resetTeamPin('user-3', 'br-9')).rejects.toThrow(
         NotFoundException,
       );
     });

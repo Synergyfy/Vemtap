@@ -295,6 +295,24 @@ export class UsersController {
     return this.usersService.resendTeamInvite(id, branchId);
   }
 
+  @Post('team/:id/reset-pin')
+  @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF)
+  @Permissions('staff')
+  @ApiOperation({
+    summary: "Reset a team member's sign-in PIN",
+    description:
+      'Emails them a fresh PIN and signs them out of their devices; a pending invite is re-sent instead. Not for the owner.',
+  })
+  @ApiResponse({ status: 201, type: User })
+  async resetTeamPin(
+    @Request() req,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Query() filter: BranchFilterDto,
+  ) {
+    const branchId = this.getBranchId(req, filter.branchId);
+    return this.usersService.resetTeamPin(id, branchId);
+  }
+
   @Get('team')
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.ADMIN, UserRole.STAFF)
   @Permissions('staff')
