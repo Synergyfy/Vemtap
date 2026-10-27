@@ -32,6 +32,7 @@ import {
   ListReviewsQueryDto,
   UpdateDealReviewDto,
 } from './dto/deal-review.dto';
+import { deleteCacheKeys } from '../../common/utils/delete-cache-keys';
 
 @Injectable()
 export class DealEngagementService {
@@ -85,34 +86,10 @@ export class DealEngagementService {
     branchId?: string,
   ): Promise<void> {
     try {
-      const cacheMgr = this.cacheManager as unknown as {
-        store?: {
-          keys?: (p: string) => Promise<string[]>;
-          del?: (k: string) => Promise<void>;
-        };
-        reset?: () => Promise<void>;
-      };
-      const store = cacheMgr.store;
-      if (store && typeof store.keys === 'function') {
-        const detailKeys = await store.keys(
-          `*offers:public:details:${offerId}*`,
-        );
-        for (const key of detailKeys) {
-          if (typeof store.del === 'function') await store.del(key);
-          else await this.cacheManager.del(key);
-        }
-        if (branchId) {
-          const branchKeys = await store.keys(
-            `*offers:public:branch:${branchId}*`,
-          );
-          for (const key of branchKeys) {
-            if (typeof store.del === 'function') await store.del(key);
-            else await this.cacheManager.del(key);
-          }
-        }
-      } else if (typeof cacheMgr.reset === 'function') {
-        await cacheMgr.reset();
-      }
+      await deleteCacheKeys(this.cacheManager, [
+        `*offers:public:details:${offerId}*`,
+        branchId && `*offers:public:branch:${branchId}*`,
+      ]);
     } catch (error) {
       this.logger.error(
         `Failed to clear deal engagement cache: ${(error as Error).message}`,

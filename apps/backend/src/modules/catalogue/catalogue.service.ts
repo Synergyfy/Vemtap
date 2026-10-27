@@ -38,6 +38,7 @@ import {
   assertCompareAtPrice,
   normalizeVariants,
 } from './utils/catalogue-item.utils';
+import { deleteCacheKeys } from '../../common/utils/delete-cache-keys';
 
 /**
  * The fields a PATCH actually sent. The build targets ES2023, so every field
@@ -79,15 +80,7 @@ export class CatalogueService {
   private async invalidatePublicOfferCaches(): Promise<void> {
     if (!this.cacheManager) return;
     try {
-      const cacheMgr = this.cacheManager as any;
-      const store =
-        cacheMgr.store || (cacheMgr.stores ? cacheMgr.stores[0] : null);
-      if (!store || typeof store.keys !== 'function') return;
-      const keys: string[] = await store.keys('*offers:public:*');
-      for (const key of keys) {
-        if (typeof store.del === 'function') await store.del(key);
-        else await this.cacheManager.del(key);
-      }
+      await deleteCacheKeys(this.cacheManager, ['*offers:public:*']);
     } catch (err) {
       this.logger.warn(
         `Failed to clear public offer caches: ${(err as Error).message}`,
