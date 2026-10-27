@@ -5,6 +5,7 @@ import {
   HttpCode,
   HttpStatus,
   Param,
+  ParseEnumPipe,
   ParseUUIDPipe,
   Post,
   Put,
@@ -26,9 +27,16 @@ import { Permissions } from '../../common/decorators/permissions.decorator';
 import { UserRole } from '../users/entities/user.entity';
 import { BusinessCustomersService } from './business-customers.service';
 import {
+  CUSTOMER_SEGMENTS,
   CustomerDirectoryQueryDto,
+  type CustomerSegment,
   SaveCustomerNoteDto,
 } from './dto/business-customers.dto';
+
+/** `ParseEnumPipe` takes an enum-like object of the allowed values. */
+const SEGMENT_VALUES = Object.fromEntries(
+  CUSTOMER_SEGMENTS.map((segment) => [segment, segment]),
+);
 
 interface BusinessRequest {
   user: { id: string; businessId: string };
@@ -78,6 +86,21 @@ export class BusinessCustomersController {
     @Body() query: CustomerDirectoryQueryDto,
   ) {
     return this.customers.exportCsv(req.user.businessId, query);
+  }
+
+  @Get('segments/:segment/insights')
+  @ApiOperation({
+    summary:
+      'Insights for a built-in segment (all, frequent, returning, new, inactive)',
+    description:
+      'Same shape as GET /segments/:id/insights: reach, spend, branch split, favourites, sample patrons.',
+  })
+  segmentInsights(
+    @Req() req: BusinessRequest,
+    @Param('segment', new ParseEnumPipe(SEGMENT_VALUES))
+    segment: CustomerSegment,
+  ) {
+    return this.customers.segmentInsights(req.user.businessId, segment);
   }
 
   @Get(':userId')

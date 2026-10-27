@@ -83,9 +83,8 @@ export class UsersService {
     }
 
     const trimmedFirstName = dto.firstName.trim();
-    const defaultPassword = Math.floor(
-      100000 + Math.random() * 900000,
-    ).toString();
+    const defaultPassword =
+      dto.pin ?? Math.floor(100000 + Math.random() * 900000).toString();
     const hashedPassword = await bcrypt.hash(defaultPassword, 10);
     const actualRole =
       dto.role.trim().toLowerCase() === 'manager'
@@ -167,6 +166,62 @@ export class UsersService {
     } catch (error) {
       console.error('Failed to resend invitation email:', error);
     }
+
+    return savedUser;
+  }
+
+  /**
+   * The owner resets a team member's sign-in PIN: a fresh one is emailed to
+   * them and their signed-in devices are signed out. A pending invite gets
+   * its invitation re-sent instead. The owner's own PIN is never reset here.
+   */
+  async resetTeamPin(id: string, branchId: string): Promise<User> {
+    const user = await this.usersRepository.findOne({
+      where: { id, branchId },
+    });
+    if (!user) {
+      throw new NotFoundException('Staff member not found in this branch');
+    }
+    if (user.role === UserRole.OWNER) {
+      throw new BadRequestException("The owner's PIN cannot be reset here");
+    }
+    if (user.status === UserStatus.INVITED) {
+      return this.resendTeamInvite(id, branchId);
+    }
+
+    const pin = Math.floor(100000 + Math.random() * 900000).toString();
+    user.password = await bcrypt.hash(pin, 10);
+    const savedUser = await this.usersRepository.save(user);
+    await this.userSessionRepository
+      .createQueryBuilder()
+      .update(UserSession)
+      .set({ revokedAt: new Date() })
+      .where('userId = :userId', { userId: user.id })
+      .andWhere('revokedAt IS NULL')
+      .execute();
+
+    const branch = await this.usersRepository.manager
+      .getRepository(Branch)
+      .findOne({ where: { id: branchId }, relations: ['business'] });
+    const escape = (value: string) =>
+      value.replace(
+        /[&<>"']/g,
+        (char) =>
+          ({
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#39;',
+          })[char] as string,
+      );
+    const place = escape(branch?.business?.name ?? 'your team');
+    await this.mailService.sendGenericEmail(
+      savedUser.email,
+      `Your new ${branch?.business?.name ?? 'VemTap'} sign-in PIN`,
+      `Hi ${escape(savedUser.firstName ?? 'there')},\n\nYour PIN for ${place} was reset. Your new sign-in PIN is <strong>${pin}</strong>.\n\nYou were signed out of your devices; sign in again with your email and this PIN.`,
+      { name: branch?.business?.name },
+    );
 
     return savedUser;
   }

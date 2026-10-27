@@ -109,6 +109,26 @@ export class CreateBranchDto {
   @IsOptional()
   officialEmail?: string;
 
+  @ApiPropertyOptional({ example: 'Chidinma Okafor' })
+  @IsString()
+  @IsOptional()
+  managerName?: string;
+
+  @ApiPropertyOptional({ example: 'chidinma@example.com' })
+  @IsEmail()
+  @IsOptional()
+  managerEmail?: string;
+
+  @ApiPropertyOptional({ example: '+2348030000000' })
+  @IsString()
+  @IsOptional()
+  managerPhone?: string;
+
+  @ApiPropertyOptional({ example: 'Abuja Municipal • Garki District' })
+  @IsString()
+  @IsOptional()
+  district?: string;
+
   @ApiPropertyOptional({
     example: {
       instagram: 'https://instagram.com/branch',
@@ -224,6 +244,26 @@ export class UpdateBranchDto {
   @IsEmail()
   @IsOptional()
   officialEmail?: string;
+
+  @ApiPropertyOptional({ example: 'Chidinma Okafor' })
+  @IsString()
+  @IsOptional()
+  managerName?: string;
+
+  @ApiPropertyOptional({ example: 'chidinma@example.com' })
+  @IsEmail()
+  @IsOptional()
+  managerEmail?: string;
+
+  @ApiPropertyOptional({ example: '+2348030000000' })
+  @IsString()
+  @IsOptional()
+  managerPhone?: string;
+
+  @ApiPropertyOptional({ example: 'Abuja Municipal • Garki District' })
+  @IsString()
+  @IsOptional()
+  district?: string;
 
   @ApiPropertyOptional()
   @IsString()

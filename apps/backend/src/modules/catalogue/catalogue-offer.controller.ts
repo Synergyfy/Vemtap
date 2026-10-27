@@ -157,6 +157,24 @@ export class CatalogueOfferController {
 
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
+  @Get('groups/:dealGroupId/price-history')
+  @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.ADMIN, UserRole.STAFF)
+  @Permissions('inventory')
+  @ApiOperation({
+    summary: "A deal's recent per-branch price changes, newest first",
+  })
+  async getOfferGroupPriceHistory(
+    @Param('dealGroupId', ParseUUIDPipe) dealGroupId: string,
+    @Req() req: any,
+  ) {
+    return this.offerService.getOfferGroupPriceHistory(
+      dealGroupId,
+      req.user.businessId,
+    );
+  }
+
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
   @Put('groups/:dealGroupId/branch-pricing')
   @Roles(UserRole.OWNER, UserRole.MANAGER)
   @Permissions('inventory')
@@ -173,6 +191,7 @@ export class CatalogueOfferController {
       dealGroupId,
       dto,
       req.user.businessId,
+      req.user.id,
     );
   }
 

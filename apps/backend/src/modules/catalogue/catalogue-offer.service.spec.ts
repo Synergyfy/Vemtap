@@ -1988,6 +1988,7 @@ describe('CatalogueOfferService', () => {
   });
   describe('deal group branch pricing', () => {
     let txSave: jest.Mock;
+    let historyFind: jest.Mock;
     const template = () => ({
       id: 'o1',
       dealGroupId: 'g1',
@@ -2012,8 +2013,12 @@ describe('CatalogueOfferService', () => {
 
     beforeEach(() => {
       txSave = jest.fn().mockResolvedValue(undefined);
+      historyFind = jest.fn().mockResolvedValue([]);
       offerRepo.manager = {
-        transaction: jest.fn((cb) => cb({ save: txSave })),
+        transaction: jest.fn((cb) =>
+          cb({ save: txSave, create: (_entity: unknown, dto: unknown) => dto }),
+        ),
+        getRepository: jest.fn(() => ({ find: historyFind })),
       };
       offerRepo.create = jest.fn().mockImplementation((dto) => ({ ...dto }));
       branchRepo.find = jest.fn().mockResolvedValue([
@@ -2105,6 +2110,72 @@ describe('CatalogueOfferService', () => {
       offerRepo.find = jest.fn().mockResolvedValue([]);
       await expect(
         service.getOfferGroupBranchPricing('g1', 'biz-2'),
+      ).rejects.toThrow('Deal not found');
+    });
+
+    it('records a price change for a branch whose price moves', async () => {
+      offerRepo.find = jest.fn().mockResolvedValue([template()]);
+      branchRepo.find = jest
+        .fn()
+        .mockResolvedValue([{ id: 'b1', name: 'Wuse' }]);
+
+      await service.setOfferGroupBranchPricing(
+        'g1',
+        { branches: [{ branchId: 'b1', isActive: true, discountValue: 30 }] },
+        'biz-1',
+        'user-1',
+      );
+
+      expect(txSave).toHaveBeenCalledTimes(2);
+      expect(txSave.mock.calls[1][1]).toEqual([
+        expect.objectContaining({
+          businessId: 'biz-1',
+          dealGroupId: 'g1',
+          offerId: 'o1',
+          branchId: 'b1',
+          branchName: 'Wuse',
+          oldPrice: 8000,
+          newPrice: 7000,
+          changedById: 'user-1',
+        }),
+      ]);
+    });
+
+    it('records no price change when only a branch is switched off', async () => {
+      offerRepo.find = jest.fn().mockResolvedValue([template()]);
+      branchRepo.find = jest
+        .fn()
+        .mockResolvedValue([{ id: 'b1', name: 'Wuse' }]);
+
+      await service.setOfferGroupBranchPricing(
+        'g1',
+        { branches: [{ branchId: 'b1', isActive: false }] },
+        'biz-1',
+        'user-1',
+      );
+
+      expect(txSave).toHaveBeenCalledTimes(1);
+    });
+
+    it("reads a deal's price history for the caller's business only", async () => {
+      offerRepo.find = jest.fn().mockResolvedValue([template()]);
+      historyFind.mockResolvedValue([{ id: 'h1' }]);
+
+      const history = await service.getOfferGroupPriceHistory('g1', 'biz-1');
+
+      expect(history).toEqual([{ id: 'h1' }]);
+      expect(historyFind).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { businessId: 'biz-1', dealGroupId: 'g1' },
+          take: 20,
+        }),
+      );
+    });
+
+    it('404s price history for a deal of another business', async () => {
+      offerRepo.find = jest.fn().mockResolvedValue([]);
+      await expect(
+        service.getOfferGroupPriceHistory('g1', 'biz-2'),
       ).rejects.toThrow('Deal not found');
     });
   });

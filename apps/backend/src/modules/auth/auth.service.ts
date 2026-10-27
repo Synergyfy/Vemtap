@@ -41,6 +41,7 @@ import { GoogleLoginDto } from './dto/google-login.dto';
 import { OAuth2Client } from 'google-auth-library';
 import { ConfigService } from '@nestjs/config';
 import { AuthProvider } from '../users/entities/user.entity';
+import { PIN_FORMAT_MESSAGE, PIN_ROLES, PIN_SIGN_IN_MESSAGE, isPin, isPinRole } from './pin-policy';
 import { Business } from '../businesses/entities/business.entity';
 import { TwoFactorCodeDto } from './dto/two-factor.dto';
 import { VerifyEmailDto } from './dto/verify-email.dto';
@@ -113,6 +114,12 @@ function totp(secret: string, timestamp = Date.now()): string {
     digest[offset + 3];
   return String(code % 1000000).padStart(6, '0');
 }
+
+/** Every PIN-only account can reset its sign-in PIN by email (see pin-policy). */
+const PIN_RESET_ROLES: UserRole[] = PIN_ROLES;
+
+/** Wrong guesses allowed per emailed reset code before it is discarded. */
+const MAX_RESET_OTP_ATTEMPTS = 5;
 
 @Injectable()
 export class AuthService {
@@ -401,6 +408,11 @@ export class AuthService {
         message:
           'Your account is not verified. An OTP has been sent to your email to set your 6-digit PIN.',
       };
+    }
+
+    // Customer and business accounts sign in with their 6-digit PIN only.
+    if (isPinRole(user.role) && !isPin(dto.password)) {
+      throw new UnauthorizedException(PIN_SIGN_IN_MESSAGE);
     }
 
     if (
@@ -698,6 +710,10 @@ export class AuthService {
 
     if (registrationData.businessName && !registrationData.role) {
       role = UserRole.OWNER;
+    }
+
+    if (registrationData.password && isPinRole(role) && !isPin(registrationData.password)) {
+      throw new BadRequestException(PIN_FORMAT_MESSAGE);
     }
 
     // 1. Create or Update User
@@ -1336,7 +1352,7 @@ export class AuthService {
         'If an account exists with this email, a reset OTP has been sent.',
     };
 
-    if (!user || user.role !== UserRole.CUSTOMER) {
+    if (!user || !PIN_RESET_ROLES.includes(user.role)) {
       return genericResponse;
     }
 
@@ -1357,31 +1373,76 @@ export class AuthService {
     return genericResponse;
   }
 
+  /**
+   * Finds the newest reset code sent for this flow (codes issued for other
+   * purposes never count) and checks it. Wrong guesses are counted in the
+   * record's metadata; after MAX_RESET_OTP_ATTEMPTS the code is discarded.
+   */
+  private async consumeResetOtp(
+    email: string,
+    code: string,
+    matchesPurpose: (record: Otp) => boolean,
+    messages: { invalid: string; expired: string },
+  ): Promise<Otp> {
+    const records = await this.otpRepository.find({
+      where: { email },
+      order: { createdAt: 'DESC' },
+    });
+    const otpRecord = records.find(matchesPurpose);
+
+    if (!otpRecord) {
+      throw new BadRequestException('Reset session not found');
+    }
+
+    const failedAttempts = Number(otpRecord.metadata?.failedAttempts ?? 0);
+    if (failedAttempts >= MAX_RESET_OTP_ATTEMPTS) {
+      await this.otpRepository.remove(otpRecord);
+      throw new BadRequestException(
+        'Too many incorrect attempts. Request a new code.',
+      );
+    }
+
+    if (otpRecord.code !== code) {
+      const attempts = failedAttempts + 1;
+      if (attempts >= MAX_RESET_OTP_ATTEMPTS) {
+        await this.otpRepository.remove(otpRecord);
+        throw new BadRequestException(
+          'Too many incorrect attempts. Request a new code.',
+        );
+      }
+      otpRecord.metadata = {
+        ...(otpRecord.metadata ?? {}),
+        failedAttempts: attempts,
+      };
+      await this.otpRepository.save(otpRecord);
+      throw new BadRequestException(messages.invalid);
+    }
+
+    if (new Date() > otpRecord.expiresAt) {
+      throw new BadRequestException(messages.expired);
+    }
+
+    return otpRecord;
+  }
+
   async resetCustomerPin(
     dto: ResetCustomerPinDto,
     meta?: { ip?: string; userAgent?: string },
   ) {
     const email = dto.email.toLowerCase();
-    const otpRecord = await this.otpRepository.findOne({
-      where: { email },
-      order: { createdAt: 'DESC' },
-    });
-
-    if (!otpRecord) {
-      throw new BadRequestException('Reset session not found');
-    }
-    if (otpRecord.code !== dto.otp) {
-      throw new BadRequestException('Invalid reset OTP');
-    }
-    if (new Date() > otpRecord.expiresAt) {
-      throw new BadRequestException(
-        'Reset OTP has expired. Please request a new code.',
-      );
-    }
+    const otpRecord = await this.consumeResetOtp(
+      email,
+      dto.otp,
+      (record) => record.metadata?.purpose === 'customer-pin-reset',
+      {
+        invalid: 'Invalid reset OTP',
+        expired: 'Reset OTP has expired. Please request a new code.',
+      },
+    );
 
     const user = await this.usersService.findByEmail(email);
-    if (!user || user.role !== UserRole.CUSTOMER) {
-      throw new NotFoundException('Customer account not found');
+    if (!user || !PIN_RESET_ROLES.includes(user.role)) {
+      throw new NotFoundException('Account not found');
     }
 
     const hashedPassword = await bcrypt.hash(dto.newPin, 10);
@@ -1478,19 +1539,18 @@ export class AuthService {
     dto: ResetPasswordDto,
     meta?: { ip: string; userAgent: string },
   ) {
-    const otpRecord = await this.otpRepository.findOne({
-      where: { email: dto.email },
-      order: { createdAt: 'DESC' },
-    });
-
-    if (!otpRecord) throw new BadRequestException('Reset session not found');
-    if (otpRecord.code !== dto.otp)
-      throw new BadRequestException('Invalid reset code');
-    if (new Date() > otpRecord.expiresAt)
-      throw new BadRequestException('Reset code expired');
+    const otpRecord = await this.consumeResetOtp(
+      dto.email,
+      dto.otp,
+      (record) => record.metadata?.type === 'password_reset',
+      { invalid: 'Invalid reset code', expired: 'Reset code expired' },
+    );
 
     const user = await this.usersService.findByEmail(dto.email);
     if (!user) throw new NotFoundException('User no longer exists');
+    if (isPinRole(user.role) && !isPin(dto.newPassword)) {
+      throw new BadRequestException(PIN_FORMAT_MESSAGE);
+    }
 
     const hashedPassword = await bcrypt.hash(dto.newPassword, 10);
     await this.usersService.updatePassword(user.id, hashedPassword, {
@@ -1573,9 +1633,13 @@ export class AuthService {
     const dbUser = await this.usersService.findOne(user.id);
     if (!dbUser) throw new NotFoundException('User not found');
 
+    const pinAccount = isPinRole(dbUser.role);
     const isMatch = await bcrypt.compare(dto.currentPassword, dbUser.password);
     if (!isMatch) {
-      throw new BadRequestException('Current password is incorrect');
+      throw new BadRequestException(pinAccount ? 'Current PIN is incorrect' : 'Current password is incorrect');
+    }
+    if (pinAccount && !isPin(dto.newPassword)) {
+      throw new BadRequestException(PIN_FORMAT_MESSAGE);
     }
 
     const hashedPassword = await bcrypt.hash(dto.newPassword, 10);
@@ -1666,7 +1730,9 @@ export class AuthService {
 
     // Rotate to a fresh random temporary password instead of re-issuing the
     // legacy shared constant.
-    const tempPassword = randomBytes(9).toString('base64url').slice(0, 12);
+    const tempPassword = isPinRole(user.role)
+      ? Math.floor(100000 + Math.random() * 900000).toString()
+      : randomBytes(9).toString('base64url').slice(0, 12);
     user.password = await bcrypt.hash(tempPassword, 10);
     await this.usersService.create(user);
 

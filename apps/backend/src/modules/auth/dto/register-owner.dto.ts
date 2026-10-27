@@ -6,13 +6,15 @@ import {
   IsOptional,
   IsUrl,
   IsArray,
-  IsStrongPassword,
+  Matches,
   IsUUID,
   IsNumber,
   Min,
   Max,
   ValidateIf,
 } from 'class-validator';
+
+import { PIN_FORMAT_MESSAGE, PIN_PATTERN } from '../pin-policy';
 
 export class RegisterOwnerDto {
   @ApiProperty({
@@ -23,20 +25,14 @@ export class RegisterOwnerDto {
   email: string;
 
   @ApiPropertyOptional({
-    example: 'SecurePass123!',
+    example: '482913',
     description:
-      'Password (min 8 chars, 1 upper, 1 lower, 1 number, 1 symbol). Required for manual signup, optional for social logins.',
+      'The 6-digit sign-in PIN (same as customer sign-up). Required for manual signup, optional for social logins.',
   })
   @IsOptional()
   @ValidateIf((o) => !!o.password)
   @IsString()
-  @IsStrongPassword({
-    minLength: 8,
-    minLowercase: 1,
-    minUppercase: 1,
-    minNumbers: 1,
-    minSymbols: 1,
-  })
+  @Matches(PIN_PATTERN, { message: PIN_FORMAT_MESSAGE })
   password?: string;
 
   @ApiPropertyOptional({ example: 'John' })

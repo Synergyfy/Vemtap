@@ -18,10 +18,14 @@ describe('BusinessCustomersService', () => {
       points >= 2000 ? 'Gold' : 'Bronze',
     ),
   };
+  const segmentCriteria = {
+    insights: jest.fn().mockResolvedValue({ size: 2, totalSpend: 5000 }),
+  };
   const service = new BusinessCustomersService(
     { query } as any,
     notes as any,
     loyalty as any,
+    segmentCriteria as any,
   );
 
   const row = {
@@ -83,6 +87,7 @@ describe('BusinessCustomersService', () => {
     expect(result.total).toBe(4);
     expect(result.hasNextPage).toBe(true);
     expect(result.meta.insight.frequentSpendShare).toBe(0.58);
+    expect(result.meta.insight.averageSpend).toBe(33333.33);
     expect(result.data[0]).toMatchObject({
       userId: 'u1',
       name: 'Ada Obi',
@@ -137,6 +142,25 @@ describe('BusinessCustomersService', () => {
     expect(updated).toMatchObject({ note: 'Patio seat', tags: [] });
     expect(notes.save).toHaveBeenLastCalledWith(
       expect.objectContaining({ updatedById: 'staff2' }),
+    );
+  });
+
+  it('builds insights for a built-in segment from its members', async () => {
+    query.mockResolvedValue([{ uid: 'u1' }, { uid: 'u2' }]);
+    const result = await service.segmentInsights('biz', 'returning');
+    expect(query.mock.calls[0][0]).toContain('seg.visits >= 2');
+    expect(query.mock.calls[0][1]).toEqual(['biz', null]);
+    expect(segmentCriteria.insights).toHaveBeenCalledWith('biz', ['u1', 'u2']);
+    expect(result).toMatchObject({
+      segmentId: 'returning',
+      name: 'Returning Customers',
+      totalSpend: 5000,
+    });
+  });
+
+  it('refuses built-in segment insights without a business', async () => {
+    await expect(service.segmentInsights('', 'all')).rejects.toThrow(
+      BadRequestException,
     );
   });
 });

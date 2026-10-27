@@ -258,6 +258,55 @@ export class MessagingController {
     return this.analyticsService.getDashboardMetrics(branchId, filter.channel);
   }
 
+  @Get('inbox/unread-summary')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard, TrialRestrictionGuard)
+  @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF, UserRole.ADMIN)
+  @Permissions('messages')
+  @ApiOperation({
+    summary: 'Unread conversation counts per branch',
+    description:
+      'For every branch the caller can read (all business branches for an owner, otherwise their own): unread messages and conversations waiting, zeros included. Channel defaults to IN_HOUSE. Access: OWNER, MANAGER, STAFF, ADMIN',
+  })
+  @ApiQuery({ name: 'channel', required: false, enum: Channel })
+  @ApiResponse({
+    status: 200,
+    schema: { example: [{ branchId: 'uuid', unread: 3, threads: 2 }] },
+  })
+  async getUnreadSummary(
+    @Query('channel') channel: Channel | undefined,
+    @Request() req: { user: User },
+  ) {
+    const resolved =
+      channel && Object.values(Channel).includes(channel)
+        ? channel
+        : Channel.IN_HOUSE;
+    const branchIds = await this.messagingHelperService.accessibleBranchIds(
+      req.user,
+    );
+    return this.inboxService.getUnreadSummary(branchIds, resolved);
+  }
+
+  @Get('inbox/threads/:threadId/context')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard, TrialRestrictionGuard)
+  @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF, UserRole.ADMIN)
+  @Permissions('messages')
+  @ApiOperation({
+    summary: 'What a conversation is about',
+    description:
+      'The order / booking (reference, status, total, items, booking date) or deal claim (code, status, dates, offer) the thread was opened from; null when it is a general chat. Access: OWNER, MANAGER, STAFF, ADMIN',
+  })
+  @ApiQuery({ name: 'branchId', required: false })
+  async getThreadContext(
+    @Param() params: ThreadIdDto,
+    @Query() filter: BranchFilterDto,
+    @Request() req: { user: User },
+  ) {
+    const branchId = await this.getBranchId(req, filter.branchId);
+    return this.inboxService.getThreadContext(params.threadId, branchId);
+  }
+
   @Get('inbox/:channel')
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard, TrialRestrictionGuard)

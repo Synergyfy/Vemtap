@@ -9,7 +9,20 @@ export class MailService {
   private readonly fromEmail = 'VemTap <hello@vemtap.com>';
 
   constructor(private configService: ConfigService) {
-    this.resend = new Resend(this.configService.get<string>('RESEND_API_KEY'));
+    const apiKey = this.configService.get<string>('RESEND_API_KEY');
+    // Without a key (local dev, CI) the app must still boot: every send below is
+    // inside try/catch, so it is logged and reported as not sent instead.
+    if (!apiKey) {
+      this.logger.warn('RESEND_API_KEY is not set — emails will not be sent.');
+    }
+    this.resend = apiKey
+      ? new Resend(apiKey)
+      : ({
+          emails: {
+            send: () =>
+              Promise.reject(new Error('Email is not configured (RESEND_API_KEY is missing)')),
+          },
+        } as unknown as Resend);
   }
 
   async sendOtp(email: string, otp: string) {
@@ -84,7 +97,13 @@ export class MailService {
           <div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">
             <h2 style="color: #4A90E2;">Welcome to ${placeName}, ${name}!</h2>
             <p>We are excited to have you on board. Your account has been successfully created.</p>
-            ${password ? `<p>Your default login password is: <strong>${password}</strong></p><p>We recommend changing it after your first login.</p>` : ''}
+            ${
+              password
+                ? /^\d{6}$/.test(password)
+                  ? `<p>Your sign-in PIN is: <strong>${password}</strong></p><p>We recommend changing it after your first sign-in.</p>`
+                  : `<p>Your default login password is: <strong>${password}</strong></p><p>We recommend changing it after your first login.</p>`
+                : ''
+            }
             <p>You can now sign in to your dashboard to manage your visits and explore our features.</p>
             <div style="text-align: center; margin: 30px 0;">
               <a href="https://vemtap.vercel.app/login" style="background-color: #4A90E2; color: white; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;">Sign In to VemTap</a>
