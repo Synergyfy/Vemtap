@@ -275,6 +275,8 @@ export class BusinessCustomersService {
           frequentCustomers: num(c.frequentCustomers),
           frequentSpendShare:
             totalSpend > 0 ? round2(num(c.frequentSpend) / totalSpend) : 0,
+          averageSpend:
+            num(c.customers) > 0 ? round2(totalSpend / num(c.customers)) : 0,
           dormant: num(c.dormant),
         },
       },
