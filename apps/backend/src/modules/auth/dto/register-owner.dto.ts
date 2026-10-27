@@ -14,12 +14,7 @@ import {
   ValidateIf,
 } from 'class-validator';
 
-/**
- * Owners sign in with the same "PIN or Password" field as customers, so
- * registration accepts either a 6-digit PIN or a strong password.
- */
-const OWNER_SECRET_PATTERN =
-  /^(?:\d{6}|(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,})$/;
+import { PIN_FORMAT_MESSAGE, PIN_PATTERN } from '../pin-policy';
 
 export class RegisterOwnerDto {
   @ApiProperty({
@@ -32,15 +27,12 @@ export class RegisterOwnerDto {
   @ApiPropertyOptional({
     example: '482913',
     description:
-      'A 6-digit PIN (same as customer sign-up) or a strong password (min 8 chars, 1 upper, 1 lower, 1 number, 1 symbol). Required for manual signup, optional for social logins.',
+      'The 6-digit sign-in PIN (same as customer sign-up). Required for manual signup, optional for social logins.',
   })
   @IsOptional()
   @ValidateIf((o) => !!o.password)
   @IsString()
-  @Matches(OWNER_SECRET_PATTERN, {
-    message:
-      'Password must be a 6-digit PIN or at least 8 characters with upper and lower case letters, a number and a symbol',
-  })
+  @Matches(PIN_PATTERN, { message: PIN_FORMAT_MESSAGE })
   password?: string;
 
   @ApiPropertyOptional({ example: 'John' })

@@ -41,6 +41,7 @@ import { GoogleLoginDto } from './dto/google-login.dto';
 import { OAuth2Client } from 'google-auth-library';
 import { ConfigService } from '@nestjs/config';
 import { AuthProvider } from '../users/entities/user.entity';
+import { PIN_FORMAT_MESSAGE, PIN_ROLES, PIN_SIGN_IN_MESSAGE, isPin, isPinRole } from './pin-policy';
 import { Business } from '../businesses/entities/business.entity';
 import { TwoFactorCodeDto } from './dto/two-factor.dto';
 import { VerifyEmailDto } from './dto/verify-email.dto';
@@ -114,12 +115,8 @@ function totp(secret: string, timestamp = Date.now()): string {
   return String(code % 1000000).padStart(6, '0');
 }
 
-/**
- * Accounts that sign in with a 6-digit PIN and can reset it by email:
- * customers, and owners (who register with a PIN too). Managers and staff
- * keep their separately managed POS PINs.
- */
-const PIN_RESET_ROLES: UserRole[] = [UserRole.CUSTOMER, UserRole.OWNER];
+/** Every PIN-only account can reset its sign-in PIN by email (see pin-policy). */
+const PIN_RESET_ROLES: UserRole[] = PIN_ROLES;
 
 /** Wrong guesses allowed per emailed reset code before it is discarded. */
 const MAX_RESET_OTP_ATTEMPTS = 5;
@@ -411,6 +408,11 @@ export class AuthService {
         message:
           'Your account is not verified. An OTP has been sent to your email to set your 6-digit PIN.',
       };
+    }
+
+    // Customer and business accounts sign in with their 6-digit PIN only.
+    if (isPinRole(user.role) && !isPin(dto.password)) {
+      throw new UnauthorizedException(PIN_SIGN_IN_MESSAGE);
     }
 
     if (
@@ -708,6 +710,10 @@ export class AuthService {
 
     if (registrationData.businessName && !registrationData.role) {
       role = UserRole.OWNER;
+    }
+
+    if (registrationData.password && isPinRole(role) && !isPin(registrationData.password)) {
+      throw new BadRequestException(PIN_FORMAT_MESSAGE);
     }
 
     // 1. Create or Update User
@@ -1542,6 +1548,9 @@ export class AuthService {
 
     const user = await this.usersService.findByEmail(dto.email);
     if (!user) throw new NotFoundException('User no longer exists');
+    if (isPinRole(user.role) && !isPin(dto.newPassword)) {
+      throw new BadRequestException(PIN_FORMAT_MESSAGE);
+    }
 
     const hashedPassword = await bcrypt.hash(dto.newPassword, 10);
     await this.usersService.updatePassword(user.id, hashedPassword, {
@@ -1624,9 +1633,13 @@ export class AuthService {
     const dbUser = await this.usersService.findOne(user.id);
     if (!dbUser) throw new NotFoundException('User not found');
 
+    const pinAccount = isPinRole(dbUser.role);
     const isMatch = await bcrypt.compare(dto.currentPassword, dbUser.password);
     if (!isMatch) {
-      throw new BadRequestException('Current password is incorrect');
+      throw new BadRequestException(pinAccount ? 'Current PIN is incorrect' : 'Current password is incorrect');
+    }
+    if (pinAccount && !isPin(dto.newPassword)) {
+      throw new BadRequestException(PIN_FORMAT_MESSAGE);
     }
 
     const hashedPassword = await bcrypt.hash(dto.newPassword, 10);
@@ -1717,7 +1730,9 @@ export class AuthService {
 
     // Rotate to a fresh random temporary password instead of re-issuing the
     // legacy shared constant.
-    const tempPassword = randomBytes(9).toString('base64url').slice(0, 12);
+    const tempPassword = isPinRole(user.role)
+      ? Math.floor(100000 + Math.random() * 900000).toString()
+      : randomBytes(9).toString('base64url').slice(0, 12);
     user.password = await bcrypt.hash(tempPassword, 10);
     await this.usersService.create(user);
 
