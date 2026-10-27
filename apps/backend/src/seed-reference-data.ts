@@ -842,7 +842,7 @@ async function seedDemoBusiness(ownerToken: string) {
   const offers = rows(
     await api(
       'GET',
-      `/catalogue/offers?branchId=${branch.id}&limit=100`,
+      `/catalogue/offers/admin?branchId=${branch.id}&limit=100`,
       undefined,
       ownerToken,
     ),
