@@ -65,7 +65,7 @@ function LoginPageContent() {
         }
 
         if (!formData.password) {
-            errors.password = 'Password or PIN is required';
+            errors.password = 'Enter your 6-digit PIN';
         } else if (formData.password.length < 6) {
             errors.password = 'Must be at least 6 characters';
         }
@@ -345,7 +345,7 @@ function LoginPageContent() {
 
                         <div className="space-y-2">
                             <div className="flex justify-between items-center">
-                                <label className="text-xs font-medium text-text-secondary">Password or PIN</label>
+                                <label className="text-xs font-medium text-text-secondary">PIN</label>
                                 <div className="flex items-center gap-3">
                                     {/* <Link href="/forgot-password" title="reset password" className="text-xs font-semibold text-primary hover:underline">Forgot password?</Link> */}
                                     <Link href="/forgot-pin" title="reset pin" className="text-xs font-semibold text-primary hover:underline">Forgot Password?</Link>

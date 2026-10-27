@@ -319,7 +319,7 @@ describe('AuthService', () => {
       firstName: 'John',
       lastName: 'Doe',
       email: 'john@example.com',
-      password: 'SecurePass123!',
+      password: '482913',
     };
 
     beforeEach(() => {
@@ -457,7 +457,7 @@ describe('AuthService', () => {
   describe('registerOwner', () => {
     const dto: RegisterOwnerDto = {
       email: 'dan@owner.com',
-      password: 'SecurePass123!',
+      password: '482913',
       firstName: 'Dan',
       lastName: 'Owner',
       businessName: 'Dan Biz',
@@ -556,7 +556,7 @@ describe('AuthService', () => {
 
       const result = await service.registerOwner({
         email: dto.email,
-        password: 'SecurePass123!',
+        password: '482913',
       });
 
       expect(usersService.create).toHaveBeenCalledWith(
@@ -641,7 +641,7 @@ describe('AuthService', () => {
 
       const result = await service.login({
         identifier: 'test@example.com',
-        password: 'password123',
+        password: '482913',
       });
 
       expect(result.access_token).toBe('mock_token');
@@ -662,7 +662,7 @@ describe('AuthService', () => {
 
       const result = await service.login({
         identifier: 'owner@example.com',
-        password: 'password123',
+        password: '482913',
       });
 
       expect(result.access_token).toBe('mock_token');
@@ -697,6 +697,35 @@ describe('AuthService', () => {
           password: 'any',
         }),
       ).rejects.toThrow(UnauthorizedException);
+    });
+
+    it('rejects a password (not a 6-digit PIN) for a PIN-only account', async () => {
+      usersService.findByIdentifier.mockResolvedValue({
+        id: 'owner-1',
+        email: 'owner@example.com',
+        role: UserRole.OWNER,
+        password: 'hashed_password',
+      });
+      (bcrypt.compare as jest.Mock).mockResolvedValue(true);
+
+      await expect(
+        service.login({ identifier: 'owner@example.com', password: 'Password1!' }),
+      ).rejects.toThrow('Sign in with your 6-digit PIN');
+      expect(bcrypt.compare).not.toHaveBeenCalled();
+    });
+
+    it('still lets an admin sign in with a password', async () => {
+      usersService.findByIdentifier.mockResolvedValue({
+        id: 'admin-1',
+        email: 'admin@example.com',
+        role: UserRole.ADMIN,
+        password: 'hashed_password',
+      });
+      (bcrypt.compare as jest.Mock).mockResolvedValue(true);
+
+      const result = await service.login({ identifier: 'admin@example.com', password: 'Password1!' });
+
+      expect(result.access_token).toBe('mock_token');
     });
 
     it('should throw for wrong password', async () => {
@@ -773,6 +802,19 @@ describe('AuthService', () => {
 
   // ==================== changePassword ====================
   describe('changePassword', () => {
+    it('requires a 6-digit PIN as the new secret for a PIN-only account', async () => {
+      usersService.findOne.mockResolvedValue({
+        id: 'user-1',
+        role: UserRole.CUSTOMER,
+        password: 'old_hashed',
+      });
+      (bcrypt.compare as jest.Mock).mockResolvedValue(true);
+
+      await expect(
+        service.changePassword({ id: 'user-1' } as any, { currentPassword: '111111', newPassword: 'NewPass123!' }),
+      ).rejects.toThrow('PIN must be exactly 6 digits');
+    });
+
     it('should change password successfully', async () => {
       const user = { id: 'user-1' } as any;
       usersService.findOne.mockResolvedValue({
@@ -1040,7 +1082,7 @@ describe('AuthService', () => {
   // ==================== upgradeToOwner ====================
   describe('upgradeToOwner', () => {
     const dto = {
-      password: 'SecurePass123!',
+      password: '482913',
       businessName: 'Cust Biz',
       businessAddress: '1 Main St',
       state: 'Lagos',
