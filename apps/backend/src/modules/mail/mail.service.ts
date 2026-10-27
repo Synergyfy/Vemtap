@@ -9,7 +9,20 @@ export class MailService {
   private readonly fromEmail = 'VemTap <hello@vemtap.com>';
 
   constructor(private configService: ConfigService) {
-    this.resend = new Resend(this.configService.get<string>('RESEND_API_KEY'));
+    const apiKey = this.configService.get<string>('RESEND_API_KEY');
+    // Without a key (local dev, CI) the app must still boot: every send below is
+    // inside try/catch, so it is logged and reported as not sent instead.
+    if (!apiKey) {
+      this.logger.warn('RESEND_API_KEY is not set — emails will not be sent.');
+    }
+    this.resend = apiKey
+      ? new Resend(apiKey)
+      : ({
+          emails: {
+            send: () =>
+              Promise.reject(new Error('Email is not configured (RESEND_API_KEY is missing)')),
+          },
+        } as unknown as Resend);
   }
 
   async sendOtp(email: string, otp: string) {

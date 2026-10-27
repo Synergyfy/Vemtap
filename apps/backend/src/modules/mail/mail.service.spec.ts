@@ -29,6 +29,15 @@ describe('MailService', () => {
     expect(service).toBeDefined();
   });
 
+  it('boots without RESEND_API_KEY and reports sends as not delivered', async () => {
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [MailService, { provide: ConfigService, useValue: { get: jest.fn(() => undefined) } }],
+    }).compile();
+    const unconfigured = module.get<MailService>(MailService);
+
+    await expect(unconfigured.sendOtp('someone@example.com', '123456')).resolves.toBe(false);
+  });
+
   describe('generateOrderNotificationHtml', () => {
     const mockOrder = {
       id: 'order-12345678',
