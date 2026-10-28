@@ -53,6 +53,7 @@ import { VerificationModule } from './modules/verification/verification.module';
 import { CatalogueOrderModule } from './modules/catalogue-orders/catalogue-orders.module';
 import { BusinessProfilingModule } from './modules/business-profiling/business-profiling.module';
 import { AffiliatesModule } from './modules/affiliates/affiliates.module';
+import { ReferralsModule } from './modules/referrals/referrals.module';
 import { TrainingModule } from './modules/training/training.module';
 import { DiscoveryModule } from './modules/discovery/discovery.module';
 import { AdWalletModule } from './modules/ad-wallet/ad-wallet.module';
@@ -221,6 +222,7 @@ import { PublicDiscoveryModule } from './modules/public-discovery/public-discove
     CatalogueCartModule,
     BusinessProfilingModule,
     AffiliatesModule,
+    ReferralsModule,
     TrainingModule,
     DiscoveryModule,
     AdWalletModule,

@@ -17,7 +17,7 @@ import { DevicesService } from '../devices/devices.service';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { MailService } from '../mail/mail.service';
 import { AffiliatesService } from '../affiliates/affiliates.service';
-import { ExternalAffiliateService } from '../affiliates/external-affiliate.service';
+import { ReferralsService } from '../referrals/referrals.service';
 import * as bcrypt from 'bcrypt';
 import { User, UserRole, UserStatus } from '../users/entities/user.entity';
 import { Otp } from './entities/otp.entity';
@@ -49,7 +49,6 @@ import {
   isPin,
   isPinRole,
 } from './pin-policy';
-import { Business } from '../businesses/entities/business.entity';
 import { TwoFactorCodeDto } from './dto/two-factor.dto';
 import { VerifyEmailDto } from './dto/verify-email.dto';
 import {
@@ -145,7 +144,8 @@ export class AuthService {
     @InjectRepository(Otp)
     private otpRepository: Repository<Otp>,
     private affiliatesService: AffiliatesService,
-    private externalAffiliateService: ExternalAffiliateService,
+    @Inject(forwardRef(() => ReferralsService))
+    private referralsService: ReferralsService,
   ) {
     this.googleClient = new OAuth2Client(
       this.configService.get<string>('GOOGLE_CLIENT_ID'),
@@ -833,23 +833,10 @@ export class AuthService {
     }
 
     if (registrationData.referralCode) {
-      const affiliate = await this.affiliatesService.findByReferralCode(
+      await this.referralsService.resolveAndApplyReferral(
         registrationData.referralCode,
+        user.id,
       );
-
-      if (affiliate) {
-        const business = await this.businessesService.findByOwner(user.id);
-        await this.affiliatesService.recordReferral(
-          affiliate.id,
-          business?.id,
-          user.id,
-        );
-      } else {
-        await this.handleB2BReferralAndPartnership(
-          registrationData.referralCode,
-          user.id,
-        );
-      }
     }
 
     // Consume OTP session
@@ -1035,26 +1022,12 @@ export class AuthService {
       }
     }
 
-    // --- Post-Registration Affiliate Logic (for Owners) ---
+    // --- Post-Registration Affiliate/Business Referral Logic (for Owners) ---
     if (referralCode) {
-      const affiliate =
-        await this.affiliatesService.findByReferralCode(referralCode);
-
-      if (affiliate) {
-        const business = await this.businessesService.findByOwner(
-          updatedUser.id,
-        );
-        await this.affiliatesService.recordReferral(
-          affiliate.id,
-          business?.id,
-          updatedUser.id,
-        );
-      } else {
-        await this.handleB2BReferralAndPartnership(
-          referralCode,
-          updatedUser.id,
-        );
-      }
+      await this.referralsService.resolveAndApplyReferral(
+        referralCode,
+        updatedUser.id,
+      );
     }
 
     return this.generateAuthResponse(updatedUser, isNewUser);
@@ -1167,24 +1140,13 @@ export class AuthService {
     }
 
     if (referralCode) {
-      const affiliate =
-        await this.affiliatesService.findByReferralCode(referralCode);
-      if (affiliate) {
-        // An affiliate referral is recorded against a business; with none yet,
-        // the code stays on the user (set above) for when it is created.
-        if (business) {
-          await this.affiliatesService.recordReferral(
-            affiliate.id,
-            business.id,
-            upgradedUser.id,
-          );
-        }
-      } else {
-        await this.handleB2BReferralAndPartnership(
-          referralCode,
-          upgradedUser.id,
-        );
-      }
+      await this.referralsService.resolveAndApplyReferral(
+        referralCode,
+        upgradedUser.id,
+        // An account-only upgrade records nothing yet — the code stays on
+        // the user for when their business is created.
+        { affiliateRequiresBusiness: true },
+      );
     }
 
     const freshUser = await this.usersService.findOne(upgradedUser.id);
@@ -1355,6 +1317,18 @@ export class AuthService {
         branchId,
         uniqueCode: `CUST-${Math.floor(100000 + Math.random() * 900000)}`,
       });
+    }
+
+    // Apply the referral code the customer signed up with, if any (invalid
+    // values are ignored so they never block sign-up).
+    const referralCode = isValidReferralCode(dto.referralCode)
+      ? dto.referralCode
+      : undefined;
+    if (referralCode) {
+      await this.referralsService.resolveAndApplyReferral(
+        referralCode,
+        user.id,
+      );
     }
 
     // Consume OTP session
@@ -1768,80 +1742,5 @@ export class AuthService {
     );
 
     return { message: 'Temporary password sent successfully' };
-  }
-
-  private async handleB2BReferralAndPartnership(
-    referralCode: string,
-    referredUserId: string,
-  ) {
-    try {
-      const business = await this.businessesService.findByOwner(referredUserId);
-      if (!business) return;
-
-      // Check if referring code belongs to a business
-      let referringBusiness: Business | null = null;
-      try {
-        referringBusiness = await this.otpRepository.manager.findOne(Business, {
-          where: { uniqueCode: referralCode },
-          relations: ['branches'],
-        });
-      } catch (e) {
-        // Not a business
-      }
-
-      if (referringBusiness) {
-        // Record the referral code on the referred business
-        await this.businessesService.update(business.id, {
-          referralCode,
-        });
-
-        // Fetch fresh branches
-        const referredUser = await this.usersService.findOne(referredUserId);
-        const referringBranchId = referringBusiness.branches?.[0]?.id;
-        const referredBranchId = referredUser?.branchId;
-
-        if (referringBranchId && referredBranchId) {
-          const manager = this.otpRepository.manager;
-
-          // Check if partnership already exists
-          const existingPartnership = await manager.findOne('partnerships', {
-            where: [
-              {
-                initiatorBranchId: referringBranchId,
-                recipientBranchId: referredBranchId,
-              },
-              {
-                initiatorBranchId: referredBranchId,
-                recipientBranchId: referringBranchId,
-              },
-            ],
-          });
-
-          if (!existingPartnership) {
-            await manager.insert('partnerships', {
-              initiatorBranchId: referringBranchId,
-              recipientBranchId: referredBranchId,
-              status: 'Accepted',
-            });
-            console.log(
-              `[PARTNERSHIP] Auto-established B2B partnership between branch ${referringBranchId} and branch ${referredBranchId}`,
-            );
-          }
-        }
-      } else {
-        // Fallback to external affiliate validation
-        const externalAffiliate =
-          await this.externalAffiliateService.validateReferralCode(
-            referralCode,
-          );
-        if (externalAffiliate.valid) {
-          await this.businessesService.update(business.id, {
-            referralCode,
-          });
-        }
-      }
-    } catch (error) {
-      console.error('Error handling B2B referral and partnership:', error);
-    }
   }
 }
