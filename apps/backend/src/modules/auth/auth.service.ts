@@ -4,6 +4,7 @@ import {
   ConflictException,
   BadRequestException,
   NotFoundException,
+  ServiceUnavailableException,
   Inject,
   forwardRef,
 } from '@nestjs/common';
@@ -41,7 +42,13 @@ import { GoogleLoginDto } from './dto/google-login.dto';
 import { OAuth2Client } from 'google-auth-library';
 import { ConfigService } from '@nestjs/config';
 import { AuthProvider } from '../users/entities/user.entity';
-import { PIN_FORMAT_MESSAGE, PIN_ROLES, PIN_SIGN_IN_MESSAGE, isPin, isPinRole } from './pin-policy';
+import {
+  PIN_FORMAT_MESSAGE,
+  PIN_ROLES,
+  PIN_SIGN_IN_MESSAGE,
+  isPin,
+  isPinRole,
+} from './pin-policy';
 import { Business } from '../businesses/entities/business.entity';
 import { TwoFactorCodeDto } from './dto/two-factor.dto';
 import { VerifyEmailDto } from './dto/verify-email.dto';
@@ -580,10 +587,18 @@ export class AuthService {
   }
 
   async googleLogin(dto: GoogleLoginDto) {
+    // Without a client ID, verifyIdToken skips the audience check and would
+    // accept an ID token Google issued to any other app.
+    const audience = this.configService.get<string>('GOOGLE_CLIENT_ID')?.trim();
+    if (!audience) {
+      throw new ServiceUnavailableException(
+        'Google sign-in is not configured on this server.',
+      );
+    }
     try {
       const ticket = await this.googleClient.verifyIdToken({
         idToken: dto.token,
-        audience: this.configService.get<string>('GOOGLE_CLIENT_ID'),
+        audience,
       });
 
       const payload = ticket.getPayload();
@@ -653,7 +668,9 @@ export class AuthService {
           googleId,
           avatar: picture,
           authProvider: AuthProvider.GOOGLE,
-          role: dto.role || UserRole.CUSTOMER,
+          // Self sign-up only ever makes a customer or an owner.
+          role:
+            dto.role === UserRole.OWNER ? UserRole.OWNER : UserRole.CUSTOMER,
           status: UserStatus.ACTIVE,
           isPasswordChanged: true,
         });
@@ -712,7 +729,11 @@ export class AuthService {
       role = UserRole.OWNER;
     }
 
-    if (registrationData.password && isPinRole(role) && !isPin(registrationData.password)) {
+    if (
+      registrationData.password &&
+      isPinRole(role) &&
+      !isPin(registrationData.password)
+    ) {
       throw new BadRequestException(PIN_FORMAT_MESSAGE);
     }
 
@@ -1636,7 +1657,11 @@ export class AuthService {
     const pinAccount = isPinRole(dbUser.role);
     const isMatch = await bcrypt.compare(dto.currentPassword, dbUser.password);
     if (!isMatch) {
-      throw new BadRequestException(pinAccount ? 'Current PIN is incorrect' : 'Current password is incorrect');
+      throw new BadRequestException(
+        pinAccount
+          ? 'Current PIN is incorrect'
+          : 'Current password is incorrect',
+      );
     }
     if (pinAccount && !isPin(dto.newPassword)) {
       throw new BadRequestException(PIN_FORMAT_MESSAGE);
