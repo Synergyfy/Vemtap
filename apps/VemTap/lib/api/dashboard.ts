@@ -42,6 +42,6 @@ export const dashboardApi = {
   },
 
   markAllNotificationsRead: async () => {
-    return api.post('/notifications/read-all', undefined);
+    return api.patch('/notifications/read-all', undefined);
   },
 };

@@ -86,6 +86,9 @@ export class Branch extends AbstractBaseEntity {
   logoUrl: string;
 
   @Column({ nullable: true })
+  coverUrl: string;
+
+  @Column({ nullable: true })
   website: string;
 
   @Column({ nullable: true })

@@ -4,7 +4,7 @@ import { api } from '@/lib/api';
 import type { Form, FormSubmission, CreateFormDto } from '../types/form';
 import toast from 'react-hot-toast';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || (process.env.NODE_ENV === 'production' ? '/api/v1' : 'http://localhost:3005/api/v1');
+const API_URL = process.env.NEXT_PUBLIC_API_URL || (process.env.NODE_ENV === 'production' ? '/api/v1' : 'http://localhost:3001/api/v1');
 
 export const formsApi = {
   getForm: async (qrCodeId: string): Promise<Form> => {

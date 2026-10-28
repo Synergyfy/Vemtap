@@ -329,6 +329,11 @@ export class BusinessesService {
       ...businessData,
       owner: safeOwner,
       rewards: activeRewards,
+      showSocial: businessData.branches?.[0]?.showSocial ?? false,
+      rewardEnabled: businessData.branches?.[0]?.rewardEnabled ?? false,
+      rewardMessage: businessData.branches?.[0]?.rewardMessage ?? null,
+      rewardVisitThreshold:
+        businessData.branches?.[0]?.rewardVisitThreshold ?? 5,
     };
   }
 

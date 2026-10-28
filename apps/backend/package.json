@@ -19,7 +19,7 @@
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
-    "test:e2e": "cross-env NODE_ENV=test ts-node scripts/create-test-db.ts && cross-env NODE_ENV=test jest --config ./test/jest-e2e.json --runInBand --forceExit",
+    "test:e2e": "cross-env NODE_ENV=test ts-node scripts/create-test-db.ts && cross-env NODE_ENV=test NODE_OPTIONS=--max-old-space-size=6144 jest --config ./test/jest-e2e.json --runInBand --forceExit",
     "seed": "dotenv -e .env -- ts-node -r tsconfig-paths/register src/seed.ts",
     "seed:users": "dotenv -e .env -- ts-node -r tsconfig-paths/register src/seed-users.ts",
     "seed:catalogue": "dotenv -e .env -- ts-node -r tsconfig-paths/register src/seed-catalogue.ts",
