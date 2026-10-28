@@ -64,7 +64,7 @@ export class AffiliatesService {
    * Helper to get or auto-create affiliate profile (Agents only).
    * Business owners/managers bypass this — their data lives in the Business table.
    */
-  private async getOrCreateProfile(userId: string): Promise<AffiliateProfile> {
+  async getOrCreateProfile(userId: string): Promise<AffiliateProfile> {
     let profile = await this.profileRepository.findOne({
       where: { userId },
       relations: ['user'],
