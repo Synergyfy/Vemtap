@@ -46,6 +46,7 @@ import {
   RenameSessionDto,
 } from './dto/rename-session.dto';
 import { CheckPhoneQueryDto } from './dto/check-phone-query.dto';
+import { SaveBusinessSetupProgressDto } from './dto/business-setup-progress.dto';
 import {
   AccountDeletionResponseDto,
   CreateAccountDeletionDto,
@@ -218,6 +219,43 @@ export class UsersController {
     @Body() dto: CreateAccountDeletionDto,
   ) {
     return this.usersService.deleteOwnAccount(req.user.id, dto);
+  }
+
+  // --- Business setup progress (resume sign-up on any device) ---
+
+  @Get('me/business-setup')
+  @ApiOperation({ summary: "Get the current owner's unfinished business setup" })
+  @ApiResponse({ status: 200, schema: { example: { progress: null } } })
+  async getBusinessSetupProgress(@Request() req) {
+    const targetUserId = await this.getTargetUserId(req);
+    return {
+      progress: await this.usersService.getBusinessSetupProgress(targetUserId),
+    };
+  }
+
+  @Put('me/business-setup')
+  @ApiOperation({ summary: "Save the current owner's business setup progress" })
+  @ApiResponse({ status: 200, schema: { example: { progress: {} } } })
+  async saveBusinessSetupProgress(
+    @Request() req,
+    @Body() dto: SaveBusinessSetupProgressDto,
+  ) {
+    const targetUserId = await this.getTargetUserId(req);
+    return {
+      progress: await this.usersService.saveBusinessSetupProgress(
+        targetUserId,
+        dto.progress,
+      ),
+    };
+  }
+
+  @Delete('me/business-setup')
+  @ApiOperation({ summary: 'Clear the saved business setup (setup finished)' })
+  @ApiResponse({ status: 200, schema: { example: { success: true } } })
+  async clearBusinessSetupProgress(@Request() req) {
+    const targetUserId = await this.getTargetUserId(req);
+    await this.usersService.clearBusinessSetupProgress(targetUserId);
+    return { success: true };
   }
 
   // --- QR-Thrive Integration ---

@@ -204,6 +204,13 @@ export class User extends AbstractBaseEntity {
   @Column({ type: 'jsonb', nullable: true })
   securityPreferences: { deviceAlerts?: boolean } | null;
 
+  /**
+   * An owner's unfinished business setup (current page, completed pages and
+   * drafts), so sign-up resumes on any device. Cleared once setup is done.
+   */
+  @Column({ type: 'jsonb', nullable: true, select: false })
+  businessSetupProgress: Record<string, unknown> | null;
+
   @Column({ default: false })
   emailVerified: boolean;
 
