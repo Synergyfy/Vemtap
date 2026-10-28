@@ -31,6 +31,9 @@ import {
   CreateAccountDeletionDto,
 } from './dto/account-deletion.dto';
 
+/** Drafts are small text; this keeps stray inline images out of the row. */
+const BUSINESS_SETUP_PROGRESS_MAX_CHARS = 200_000;
+
 const ACCOUNT_DELETION_RETAINED_NOTE =
   'Receipts and transaction records are retained for 24 months where legally required, then anonymised. Everything else is purged within 30 days.';
 
@@ -419,6 +422,35 @@ export class UsersService {
       .andWhere('revokedAt IS NULL')
       .execute();
     return { success: true };
+  }
+
+  /** An owner's saved (unfinished) business setup, or null. */
+  async getBusinessSetupProgress(
+    id: string,
+  ): Promise<Record<string, unknown> | null> {
+    const user = await this.usersRepository.findOne({
+      where: { id },
+      select: ['id', 'businessSetupProgress'],
+    });
+    if (!user) throw new NotFoundException('User not found');
+    return user.businessSetupProgress ?? null;
+  }
+
+  /** Replaces the saved setup run; stamped so the newest copy wins across devices. */
+  async saveBusinessSetupProgress(
+    id: string,
+    progress: Record<string, unknown>,
+  ): Promise<Record<string, unknown>> {
+    if (JSON.stringify(progress).length > BUSINESS_SETUP_PROGRESS_MAX_CHARS) {
+      throw new BadRequestException('Setup progress is too large to save.');
+    }
+    const stored = { ...progress, updatedAt: Date.now() };
+    await this.usersRepository.update(id, { businessSetupProgress: stored });
+    return stored;
+  }
+
+  async clearBusinessSetupProgress(id: string): Promise<void> {
+    await this.usersRepository.update(id, { businessSetupProgress: null });
   }
 
   async updateProfile(id: string, updates: Partial<User>): Promise<User> {

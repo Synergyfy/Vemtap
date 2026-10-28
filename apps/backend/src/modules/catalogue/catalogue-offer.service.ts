@@ -72,6 +72,7 @@ import {
   describeRedemptionWindows,
   isWithinRedemptionWindows,
 } from './utils/offer-rules.utils';
+import { deleteCacheKeys } from '../../common/utils/delete-cache-keys';
 
 /**
  * A deal is only sellable while every item in it is published: when an owner
@@ -975,6 +976,7 @@ export class CatalogueOfferService {
       data: paginated.data.map((offer) => ({
         ...offer,
         items: sortOfferItems(offer.items),
+        galleryImages: offer.galleryImages || [],
       })),
       total: paginated.total,
       page: paginated.page,
@@ -1748,6 +1750,7 @@ export class CatalogueOfferService {
         claim: {
           id: existingClaim.id,
           claimCode: existingClaim.claimCode,
+          redemptionCode: existingClaim.claimCode,
           expiresAt: existingClaim.expiresAt,
           status: existingClaim.status,
         },
@@ -1888,6 +1891,7 @@ export class CatalogueOfferService {
         claim: {
           id: savedClaim?.id || claim.id,
           claimCode: savedClaim?.claimCode || claim.claimCode,
+          redemptionCode: savedClaim?.claimCode || claim.claimCode,
           expiresAt: savedClaim?.expiresAt || claim.expiresAt,
           status: savedClaim?.status || claim.status,
         },
@@ -2615,39 +2619,10 @@ export class CatalogueOfferService {
 
   private async clearCache(branchId: string, offerId?: string) {
     try {
-      const cacheMgr = this.cacheManager as any;
-      const store =
-        cacheMgr.store || (cacheMgr.stores ? cacheMgr.stores[0] : null);
-
-      if (store && typeof store.keys === 'function') {
-        const branchKeys = await store.keys(
-          `*offers:public:branch:${branchId}:*`,
-        );
-        for (const key of branchKeys) {
-          if (typeof store.del === 'function') {
-            await store.del(key);
-          } else {
-            await this.cacheManager.del(key);
-          }
-        }
-
-        if (offerId) {
-          const detailKeys = await store.keys(
-            `*offers:public:details:${offerId}*`,
-          );
-          for (const key of detailKeys) {
-            if (typeof store.del === 'function') {
-              await store.del(key);
-            } else {
-              await this.cacheManager.del(key);
-            }
-          }
-        }
-      } else {
-        if (typeof (this.cacheManager as any).reset === 'function') {
-          await (this.cacheManager as any).reset();
-        }
-      }
+      await deleteCacheKeys(this.cacheManager, [
+        `*offers:public:branch:${branchId}:*`,
+        offerId && `*offers:public:details:${offerId}*`,
+      ]);
 
       await this.clustersService.invalidateForBranch(branchId);
     } catch (error) {

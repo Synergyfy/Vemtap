@@ -8,7 +8,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
-import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiBearerAuth, ApiBody } from '@nestjs/swagger';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { UserRole } from '../users/entities/user.entity';
 import { RolesGuard } from '../../common/guards/roles.guard';
@@ -20,6 +20,7 @@ import {
   ProcessingConsentGuard,
   RequiresProcessingConsent,
 } from '../account-privacy/processing-consent.guard';
+import { PurchaseAiCreditsDto } from './dto/purchase-ai-credits.dto';
 
 @ApiTags('AI Copilot')
 @ApiBearerAuth()
@@ -53,5 +54,24 @@ export class AiCopilotController {
     if (!branchId)
       throw new BadRequestException('Branch or Business ID is required');
     return this.aiCopilotService.getCredits(branchId);
+  }
+
+  @Post('credits/purchase')
+  @ApiOperation({ summary: 'Purchase AI credits after payment verification' })
+  @ApiBody({ type: PurchaseAiCreditsDto })
+  async purchaseCredits(
+    @Request() req: any,
+    @Body() dto: PurchaseAiCreditsDto,
+  ) {
+    const branchId =
+      req.user?.branchId || req.user?.activeBranchId || req.user?.businessId;
+    if (!branchId)
+      throw new BadRequestException('Branch or Business ID is required');
+    return this.aiCopilotService.purchaseCredits(
+      branchId,
+      dto.credits,
+      dto.amount,
+      dto.reference,
+    );
   }
 }

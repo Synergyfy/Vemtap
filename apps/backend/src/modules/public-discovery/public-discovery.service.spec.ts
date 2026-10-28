@@ -24,16 +24,22 @@ describe('PublicDiscoveryService', () => {
   const categoryRepo = { find: jest.fn() };
   const offerRepo = { createQueryBuilder: jest.fn(), count: jest.fn() };
   const claimRepo = { count: jest.fn() };
-  const itemRepo = {
-    createQueryBuilder: jest.fn(() => ({
-      leftJoinAndSelect: jest.fn().mockReturnThis(),
-      where: jest.fn().mockReturnThis(),
-      andWhere: jest.fn().mockReturnThis(),
-      orderBy: jest.fn().mockReturnThis(),
-      take: jest.fn().mockReturnThis(),
-      getMany: jest.fn().mockResolvedValue([]),
-    })),
-  };
+  const itemRepo = { find: jest.fn(), createQueryBuilder: jest.fn() };
+  // One builder serves both the product search (getMany) and the
+  // per-business item counts (getRawMany).
+  const itemQueryBuilder = () => ({
+    leftJoinAndSelect: jest.fn().mockReturnThis(),
+    select: jest.fn().mockReturnThis(),
+    addSelect: jest.fn().mockReturnThis(),
+    where: jest.fn().mockReturnThis(),
+    andWhere: jest.fn().mockReturnThis(),
+    setParameter: jest.fn().mockReturnThis(),
+    groupBy: jest.fn().mockReturnThis(),
+    orderBy: jest.fn().mockReturnThis(),
+    take: jest.fn().mockReturnThis(),
+    getMany: jest.fn().mockResolvedValue([]),
+    getRawMany: jest.fn().mockResolvedValue([]),
+  });
   const catalogueOfferService = {
     findAllOffersPublicGlobal: jest.fn(),
   };
@@ -59,14 +65,7 @@ describe('PublicDiscoveryService', () => {
 
   beforeEach(async () => {
     jest.resetAllMocks();
-    itemRepo.createQueryBuilder.mockImplementation(() => ({
-      leftJoinAndSelect: jest.fn().mockReturnThis(),
-      where: jest.fn().mockReturnThis(),
-      andWhere: jest.fn().mockReturnThis(),
-      orderBy: jest.fn().mockReturnThis(),
-      take: jest.fn().mockReturnThis(),
-      getMany: jest.fn().mockResolvedValue([]),
-    }));
+    itemRepo.createQueryBuilder.mockImplementation(itemQueryBuilder);
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
