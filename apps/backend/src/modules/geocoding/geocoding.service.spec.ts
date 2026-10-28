@@ -102,6 +102,41 @@ describe('GeocodingService', () => {
       expect(fetchMock).toHaveBeenCalledTimes(2);
     });
 
+    it('names the city from the state when OSM has no city', async () => {
+      fetchMock
+        .mockImplementationOnce(() =>
+          json({
+            lat: '6.52',
+            lon: '3.38',
+            address: {
+              suburb: 'Igbobi',
+              town: 'Bariga',
+              state: 'Lagos State',
+              country: 'Nigeria',
+            },
+          }),
+        )
+        .mockImplementationOnce(() =>
+          json({
+            lat: '9.03',
+            lon: '7.49',
+            address: {
+              suburb: 'Garki',
+              town: 'Garki',
+              state: 'Federal Capital Territory',
+              country: 'Nigeria',
+            },
+          }),
+        );
+
+      expect(await service.reverse(6.52, 3.38)).toEqual(
+        expect.objectContaining({ district: 'Igbobi', city: 'Lagos' }),
+      );
+      expect(await service.reverse(9.03, 7.49)).toEqual(
+        expect.objectContaining({ district: 'Garki', city: 'Abuja' }),
+      );
+    });
+
     it('caches by rounded coordinates', async () => {
       fetchMock.mockImplementation(() => json(nominatimWuse));
 

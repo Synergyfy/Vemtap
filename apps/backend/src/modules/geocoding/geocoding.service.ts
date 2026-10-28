@@ -44,6 +44,13 @@ interface NominatimResult {
   address?: NominatimAddress;
 }
 
+/** "Lagos State" → "Lagos", "Federal Capital Territory" → "Abuja". */
+const stateCity = (state?: string): string | undefined => {
+  if (!state) return undefined;
+  if (/federal capital territory|^fct$/i.test(state)) return 'Abuja';
+  return state.replace(/\s+state$/i, '').trim() || undefined;
+};
+
 const GOOGLE_URL = 'https://maps.googleapis.com/maps/api/geocode/json';
 const NOMINATIM_URL = 'https://nominatim.openstreetmap.org';
 const NOMINATIM_HEADERS = {
@@ -224,7 +231,9 @@ export class GeocodingService {
         a.city_district ??
         a.village ??
         null,
-      city: a.city ?? a.town ?? a.county ?? a.state ?? null,
+      // OSM often has no `city` in Nigeria (towns are LGAs, e.g. Bariga in
+      // Lagos): the state's city reads better than the LGA.
+      city: a.city ?? stateCity(a.state) ?? a.town ?? a.county ?? null,
       state: a.state ?? null,
       country: a.country ?? null,
     };
