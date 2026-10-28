@@ -709,7 +709,10 @@ describe('AuthService', () => {
       (bcrypt.compare as jest.Mock).mockResolvedValue(true);
 
       await expect(
-        service.login({ identifier: 'owner@example.com', password: 'Password1!' }),
+        service.login({
+          identifier: 'owner@example.com',
+          password: 'Password1!',
+        }),
       ).rejects.toThrow('Sign in with your 6-digit PIN');
       expect(bcrypt.compare).not.toHaveBeenCalled();
     });
@@ -723,7 +726,10 @@ describe('AuthService', () => {
       });
       (bcrypt.compare as jest.Mock).mockResolvedValue(true);
 
-      const result = await service.login({ identifier: 'admin@example.com', password: 'Password1!' });
+      const result = await service.login({
+        identifier: 'admin@example.com',
+        password: 'Password1!',
+      });
 
       expect(result.access_token).toBe('mock_token');
     });
@@ -811,7 +817,10 @@ describe('AuthService', () => {
       (bcrypt.compare as jest.Mock).mockResolvedValue(true);
 
       await expect(
-        service.changePassword({ id: 'user-1' } as any, { currentPassword: '111111', newPassword: 'NewPass123!' }),
+        service.changePassword({ id: 'user-1' } as any, {
+          currentPassword: '111111',
+          newPassword: 'NewPass123!',
+        }),
       ).rejects.toThrow('PIN must be exactly 6 digits');
     });
 
@@ -1641,6 +1650,70 @@ describe('AuthService', () => {
         ).rejects.toThrow('Too many incorrect attempts');
         expect(usersService.updatePassword).not.toHaveBeenCalled();
       });
+    });
+  });
+  describe('googleLogin hardening', () => {
+    const googlePayload = {
+      email: 'new-google-user@example.com',
+      sub: 'google-sub-1',
+      name: 'New User',
+    };
+
+    beforeEach(() => {
+      mockConfigService.get.mockReturnValue('mock-google-client-id');
+      (service as any).googleClient.verifyIdToken = jest
+        .fn()
+        .mockResolvedValue({ getPayload: () => googlePayload });
+      usersService.findByGoogleId.mockResolvedValue(null);
+      usersService.findByEmail.mockResolvedValue(null);
+    });
+
+    afterAll(() => {
+      mockConfigService.get.mockReturnValue('mock-google-client-id');
+    });
+
+    it('refuses to verify tokens when GOOGLE_CLIENT_ID is not set', async () => {
+      mockConfigService.get.mockReturnValue('');
+      await expect(service.googleLogin({ token: 'id-token' })).rejects.toThrow(
+        'Google sign-in is not configured on this server.',
+      );
+      expect(
+        (service as any).googleClient.verifyIdToken,
+      ).not.toHaveBeenCalled();
+    });
+
+    it('checks the token audience against GOOGLE_CLIENT_ID', async () => {
+      await service.googleLogin({ token: 'id-token' }).catch(() => undefined);
+      expect((service as any).googleClient.verifyIdToken).toHaveBeenCalledWith({
+        idToken: 'id-token',
+        audience: 'mock-google-client-id',
+      });
+    });
+
+    it.each([
+      UserRole.ADMIN,
+      UserRole.SUPER_ADMIN,
+      UserRole.MANAGER,
+      UserRole.AGENT,
+    ])(
+      'creates a new Google user as a customer even when %s is requested',
+      async (role) => {
+        await service
+          .googleLogin({ token: 'id-token', role })
+          .catch(() => undefined);
+        expect(usersService.create).toHaveBeenCalledWith(
+          expect.objectContaining({ role: UserRole.CUSTOMER }),
+        );
+      },
+    );
+
+    it('creates a new Google user as an owner when owner is requested', async () => {
+      await service
+        .googleLogin({ token: 'id-token', role: UserRole.OWNER })
+        .catch(() => undefined);
+      expect(usersService.create).toHaveBeenCalledWith(
+        expect.objectContaining({ role: UserRole.OWNER }),
+      );
     });
   });
 });
