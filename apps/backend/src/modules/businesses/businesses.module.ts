@@ -22,6 +22,7 @@ import {
   GEOCODING_QUEUE,
 } from './processors/geocoding.processor';
 
+import { GeocodingModule } from '../geocoding/geocoding.module';
 @Module({
   imports: [
     TypeOrmModule.forFeature([
@@ -41,6 +42,7 @@ import {
     forwardRef(() => BranchesModule),
     forwardRef(() => SubscriptionsModule),
     RotatorModule,
+    GeocodingModule,
   ],
   providers: [BusinessesService, GeocodingProcessor, BusinessVerifiedGuard],
   controllers: [BusinessesController, PublicBusinessesController],

@@ -97,6 +97,7 @@ import { RotatorModule } from './modules/rotator/rotator.module';
 import { SubscriptionRemindersModule } from './modules/subscription-reminders/subscription-reminders.module';
 import { DealEngagementModule } from './modules/deal-engagement/deal-engagement.module';
 import { PublicDiscoveryModule } from './modules/public-discovery/public-discovery.module';
+import { GeocodingModule } from './modules/geocoding/geocoding.module';
 
 @Module({
   imports: [
@@ -258,6 +259,7 @@ import { PublicDiscoveryModule } from './modules/public-discovery/public-discove
     SubscriptionRemindersModule,
     DealEngagementModule,
     PublicDiscoveryModule,
+    GeocodingModule,
     SavedModule,
     AddressesModule,
     StoreOrderingModule,

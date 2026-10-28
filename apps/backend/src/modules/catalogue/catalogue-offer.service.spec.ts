@@ -680,6 +680,7 @@ describe('CatalogueOfferService', () => {
       setParameter: jest.fn().mockReturnThis(),
       addSelect: jest.fn().mockReturnThis(),
       orderBy: jest.fn().mockReturnThis(),
+      addOrderBy: jest.fn().mockReturnThis(),
       skip: jest.fn().mockReturnThis(),
       take: jest.fn().mockReturnThis(),
       getManyAndCount: jest
@@ -811,6 +812,84 @@ describe('CatalogueOfferService', () => {
         ),
         { publishedItemStatus: 'active' },
       );
+    });
+
+    describe('near a point', () => {
+      // Wuse II and a branch ~2.2 km away in Maitama.
+      const here = { lat: 9.0765, lng: 7.4813 };
+      const nearBranch = {
+        ...basePublicOffer.branch,
+        latitude: 9.0965,
+        longitude: 7.4813,
+      };
+
+      it('sorts nearest first (unknown locations last) and returns distanceKm', async () => {
+        const qb = makeOfferQb({ branch: nearBranch });
+        offerRepo.createQueryBuilder = jest.fn().mockReturnValue(qb);
+        claimRepo.find.mockResolvedValue([]);
+
+        const result = await service.findAllOffersPublicGlobal({
+          ...here,
+          radius: 5,
+          sortBy: PublicOffersSortBy.NEAREST,
+          page: 1,
+          limit: 10,
+        });
+
+        expect(qb.addSelect).toHaveBeenCalledWith(
+          expect.stringContaining('acos'),
+          'distance',
+        );
+        expect(qb.orderBy).toHaveBeenCalledWith(
+          'distance',
+          'ASC',
+          'NULLS LAST',
+        );
+        expect(qb.addOrderBy).toHaveBeenCalledWith('offer.createdAt', 'DESC');
+        expect(qb.skip).toHaveBeenCalledWith(0);
+        expect(qb.take).toHaveBeenCalledWith(10);
+        expect(result.data[0].distanceKm).toBeCloseTo(2.2, 1);
+      });
+
+      it('keeps branches without coordinates inside a radius filter', async () => {
+        const qb = makeOfferQb();
+        offerRepo.createQueryBuilder = jest.fn().mockReturnValue(qb);
+        claimRepo.find.mockResolvedValue([]);
+
+        const result = await service.findAllOffersPublicGlobal({
+          ...here,
+          radius: 5,
+          sortBy: PublicOffersSortBy.NEAREST,
+          page: 1,
+          limit: 10,
+        });
+
+        expect(qb.andWhere).toHaveBeenCalledWith(
+          expect.stringMatching(/branch\.latitude IS NULL OR .*<= :radius/s),
+          { radius: 5 },
+        );
+        expect(result.data[0].distanceKm).toBeNull();
+      });
+
+      it('treats nearest without coordinates like newest (no distance sort)', async () => {
+        const qb = makeOfferQb();
+        offerRepo.createQueryBuilder = jest.fn().mockReturnValue(qb);
+        claimRepo.find.mockResolvedValue([]);
+
+        await service
+          .findAllOffersPublicGlobal({
+            sortBy: PublicOffersSortBy.NEAREST,
+            page: 1,
+            limit: 10,
+          })
+          .catch(() => undefined);
+
+        expect(qb.orderBy).not.toHaveBeenCalledWith(
+          'distance',
+          'ASC',
+          'NULLS LAST',
+        );
+      });
     });
   });
 
