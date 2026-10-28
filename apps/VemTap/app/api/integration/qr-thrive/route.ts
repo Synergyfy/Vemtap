@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const userResponse = await api.get('/users/me');
+    const userResponse = await api.get('/users/profile');
     const user = userResponse;
 
     if (!user) {

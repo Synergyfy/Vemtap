@@ -16,7 +16,7 @@ import type {
   PricingConfig,      
 } from '../types/api';
 
-const API_URL = process.env.NEXT_PUBLIC_QR_THRIVE_API_URL || (process.env.NODE_ENV === 'production' ? '/api/v1' : 'http://localhost:3005/api/v1');
+const API_URL = process.env.NEXT_PUBLIC_QR_THRIVE_API_URL || (process.env.NODE_ENV === 'production' ? '/api/v1' : 'http://localhost:3001/api/v1');
 const SESSION_HINT_KEY = 'QRThrive-session';
 
 export const apiClient = axios.create({

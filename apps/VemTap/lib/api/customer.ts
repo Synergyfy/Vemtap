@@ -28,7 +28,7 @@ const normalizeRewards = (list: any[]) =>
 export const customerApi = {
     getMe: () => api.get('/users/profile'),
     updateMe: (data: { name?: string; phone?: string }) => api.patch('/users/profile', data),
-    deactivateMe: () => api.delete('/users/profile'),
+    // Note: Account deactivation not yet supported by backend (GET/PATCH only)
 
     getLoyaltyAnalytics: () => api.get('/loyalty/analytics'),
     tapDevice: (code: string, payload?: { visitorId?: string; name?: string; email?: string; phone?: string }) => api.post(`/tap/record/${code}`, payload ?? {}),

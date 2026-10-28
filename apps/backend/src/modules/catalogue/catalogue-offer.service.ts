@@ -976,6 +976,7 @@ export class CatalogueOfferService {
       data: paginated.data.map((offer) => ({
         ...offer,
         items: sortOfferItems(offer.items),
+        galleryImages: offer.galleryImages || [],
       })),
       total: paginated.total,
       page: paginated.page,
@@ -1749,6 +1750,7 @@ export class CatalogueOfferService {
         claim: {
           id: existingClaim.id,
           claimCode: existingClaim.claimCode,
+          redemptionCode: existingClaim.claimCode,
           expiresAt: existingClaim.expiresAt,
           status: existingClaim.status,
         },
@@ -1889,6 +1891,7 @@ export class CatalogueOfferService {
         claim: {
           id: savedClaim?.id || claim.id,
           claimCode: savedClaim?.claimCode || claim.claimCode,
+          redemptionCode: savedClaim?.claimCode || claim.claimCode,
           expiresAt: savedClaim?.expiresAt || claim.expiresAt,
           status: savedClaim?.status || claim.status,
         },
