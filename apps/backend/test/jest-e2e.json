@@ -1,15 +1,26 @@
 {
-  "moduleFileExtensions": ["js", "json", "ts"],
+  "moduleFileExtensions": [
+    "js",
+    "json",
+    "ts"
+  ],
   "rootDir": ".",
   "testEnvironment": "node",
   "testRegex": ".e2e-spec.ts$",
   "transform": {
     "^.+\\.(t|j)s$": "ts-jest"
   },
-  "roots": ["<rootDir>/e2e"],
+  "roots": [
+    "<rootDir>/e2e"
+  ],
   "moduleNameMapper": {
     "^src/(.*)$": "<rootDir>/../src/$1"
   },
-  "setupFilesAfterEnv": ["<rootDir>/setup.ts"],
-  "testTimeout": 60000
+  "setupFilesAfterEnv": [
+    "<rootDir>/setup.ts"
+  ],
+  "testTimeout": 60000,
+  "transformIgnorePatterns": [
+    "node_modules/(?!([.]pnpm|expo-server-sdk)/)"
+  ]
 }
