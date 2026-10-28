@@ -595,6 +595,51 @@ describe('UsersService', () => {
     });
   });
 
+  describe('business setup progress', () => {
+    beforeEach(() => {
+      userRepository.update = jest.fn().mockResolvedValue(undefined);
+    });
+
+    it('returns the saved run, or null when there is none', async () => {
+      userRepository.findOne.mockResolvedValueOnce({
+        id: 'u1',
+        businessSetupProgress: { step: 'branding' },
+      });
+      await expect(service.getBusinessSetupProgress('u1')).resolves.toEqual({
+        step: 'branding',
+      });
+      userRepository.findOne.mockResolvedValueOnce({
+        id: 'u1',
+        businessSetupProgress: null,
+      });
+      await expect(service.getBusinessSetupProgress('u1')).resolves.toBeNull();
+    });
+
+    it('stamps the saved run with updatedAt', async () => {
+      const stored = await service.saveBusinessSetupProgress('u1', {
+        step: 'contact',
+      });
+      expect(stored).toEqual({ step: 'contact', updatedAt: expect.any(Number) });
+      expect(userRepository.update).toHaveBeenCalledWith('u1', {
+        businessSetupProgress: stored,
+      });
+    });
+
+    it('rejects an oversized run', async () => {
+      await expect(
+        service.saveBusinessSetupProgress('u1', { blob: 'x'.repeat(200_001) }),
+      ).rejects.toThrow(BadRequestException);
+      expect(userRepository.update).not.toHaveBeenCalled();
+    });
+
+    it('clears the saved run', async () => {
+      await service.clearBusinessSetupProgress('u1');
+      expect(userRepository.update).toHaveBeenCalledWith('u1', {
+        businessSetupProgress: null,
+      });
+    });
+  });
+
   describe('updateProfile home district', () => {
     beforeEach(() => {
       userRepository.update = jest.fn().mockResolvedValue(undefined);
