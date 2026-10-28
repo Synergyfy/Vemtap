@@ -151,6 +151,101 @@ describe('PublicDiscoveryService', () => {
         { search: '%azure%' },
       );
     });
+
+    describe('near a point', () => {
+      const here = { lat: 9.0765, lng: 7.4813 };
+      const business = (id: string, branches: any[], coords: any = {}) => ({
+        id,
+        name: id,
+        status: BusinessStatus.ACTIVE,
+        uniqueCode: id.toUpperCase(),
+        branches,
+        latitude: null,
+        longitude: null,
+        ...coords,
+      });
+
+      it('orders by the nearest branch, unknown locations last, with distanceKm', async () => {
+        const qb = makeBusinessQb([
+          business('no-coords', [{ isActive: true, isMainBranch: true }]),
+          business('far', [
+            {
+              isActive: true,
+              isMainBranch: true,
+              latitude: 9.1765,
+              longitude: 7.4813,
+            },
+          ]),
+          business('near', [
+            {
+              isActive: true,
+              isMainBranch: true,
+              latitude: 9.2765,
+              longitude: 7.4813,
+            },
+            {
+              isActive: true,
+              isMainBranch: false,
+              latitude: 9.0865,
+              longitude: 7.4813,
+            },
+          ]),
+        ]);
+        businessRepo.createQueryBuilder.mockReturnValue(qb);
+
+        const result = await service.findBusinesses({ ...here, limit: 8 });
+
+        expect(result.map((b: any) => b.id)).toEqual([
+          'near',
+          'far',
+          'no-coords',
+        ]);
+        expect(result[0].distanceKm).toBeCloseTo(1.1, 1);
+        expect(result[1].distanceKm).toBeCloseTo(11.1, 1);
+        expect(result[2].distanceKm).toBeNull();
+      });
+
+      it('reads a wider page before ordering by distance, then applies the limit', async () => {
+        const qb = makeBusinessQb([
+          business('a', [
+            { isActive: true, latitude: 9.2765, longitude: 7.4813 },
+          ]),
+          business('b', [
+            { isActive: true, latitude: 9.0865, longitude: 7.4813 },
+          ]),
+        ]);
+        businessRepo.createQueryBuilder.mockReturnValue(qb);
+
+        const result = await service.findBusinesses({ ...here, limit: 1 });
+
+        expect(qb.take).toHaveBeenCalledWith(200);
+        expect(result.map((b: any) => b.id)).toEqual(['b']);
+      });
+
+      it('keeps businesses without coordinates inside a radius filter', async () => {
+        const qb = makeBusinessQb([]);
+        businessRepo.createQueryBuilder.mockReturnValue(qb);
+
+        await service.findBusinesses({ ...here, radius: 5, limit: 8 });
+
+        expect(qb.andWhere).toHaveBeenCalledWith(
+          expect.stringMatching(/<= :radius.*OR.*business\.latitude IS NULL/s),
+          { ...here, radius: 5 },
+        );
+      });
+
+      it('returns distanceKm null and keeps the newest order without a point', async () => {
+        const qb = makeBusinessQb([
+          business('x', [{ isActive: true, latitude: 9.1, longitude: 7.4 }]),
+        ]);
+        businessRepo.createQueryBuilder.mockReturnValue(qb);
+
+        const result = await service.findBusinesses({ limit: 8 });
+
+        expect(qb.take).toHaveBeenCalledWith(8);
+        expect(result[0].distanceKm).toBeNull();
+      });
+    });
   });
 
   describe('search', () => {

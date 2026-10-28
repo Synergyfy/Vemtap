@@ -97,6 +97,8 @@ export enum PublicOffersSortBy {
   TRENDING = 'trending',
   POPULAR = 'popular',
   FEATURED = 'featured',
+  /** Closest branch first (needs `lat` + `lng`); branches without coordinates last. */
+  NEAREST = 'nearest',
 }
 
 /** Sort values supported by the branch-scoped public offers feed. */
@@ -716,7 +718,7 @@ export class PublicCatalogueOffersQueryDto {
     enum: PublicOffersSortBy,
     default: PublicOffersSortBy.NEWEST,
     description:
-      'Sort order: newest | oldest | price_asc | price_desc | trending | popular | featured. Invalid values return 400. `popular`/`featured` use offset pagination (no cursor).',
+      'Sort order: newest | oldest | price_asc | price_desc | trending | popular | featured | nearest. Invalid values return 400. `popular`/`featured`/`nearest` use offset pagination (no cursor); `nearest` needs `lat` + `lng`.',
   })
   @IsOptional()
   @IsEnum(PublicOffersSortBy)
