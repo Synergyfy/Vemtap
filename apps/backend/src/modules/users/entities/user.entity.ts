@@ -128,6 +128,16 @@ export class User extends AbstractBaseEntity {
   @Column({ nullable: true })
   referralCode: string;
 
+  /**
+   * The code this account shares for inviting others (outbound), unlike
+   * `referralCode` which records the code the account signed up with.
+   * Customers get a personal code here; owners/agents reuse their business
+   * uniqueCode / affiliate code.
+   */
+  @ApiProperty({ example: 'K7RTM2QP', nullable: true })
+  @Column({ unique: true, nullable: true })
+  myReferralCode: string;
+
   @ApiProperty({ example: '2023-10-25T10:00:00.000Z', nullable: true })
   @Column({ type: 'timestamp', nullable: true })
   lastActive: Date;

@@ -26,6 +26,7 @@ import {
   PublicBusinessesQueryDto,
   PublicBusinessSortBy,
 } from './dto/public-discovery.dto';
+import { EARTH_RADIUS_KM, haversineKm } from '../../common/utils/haversine';
 
 interface ItemCountRow {
   businessId: string;
@@ -35,7 +36,8 @@ interface ItemCountRow {
 
 const STATS_CACHE_KEY = 'public:stats';
 const STATS_TTL_MS = 5 * 60 * 1000;
-const EARTH_RADIUS_KM = 6371;
+/** How many matches to read before ordering them by distance. */
+const NEAREST_CANDIDATES = 200;
 
 interface PublicLocation {
   lat?: number;
@@ -129,13 +131,23 @@ export class PublicDiscoveryService {
       radius !== undefined &&
       radius > 0
     ) {
+      // Businesses without any coordinates stay in the list (after nearby
+      // ones): missing data shouldn't hide them.
       qb.andWhere(
-        `EXISTS (
+        `(EXISTS (
           SELECT 1 FROM branches b2
           WHERE b2."businessId" = business.id
             AND b2."isActive" = true
             AND ${this.distanceExpression('b2')} <= :radius
-        )`,
+        ) OR (
+          business.latitude IS NULL
+          AND NOT EXISTS (
+            SELECT 1 FROM branches b3
+            WHERE b3."businessId" = business.id
+              AND b3."isActive" = true
+              AND b3.latitude IS NOT NULL
+          )
+        ))`,
         { lat, lng, radius },
       );
     }
@@ -146,9 +158,27 @@ export class PublicDiscoveryService {
       qb.orderBy('business.createdAt', 'DESC');
     }
 
-    qb.take(limit);
+    const hasPoint = lat !== undefined && lng !== undefined;
+    // With a point, read a wider page and order it by distance here: the
+    // nearest branch per business is easier to pick in code than in SQL.
+    qb.take(hasPoint ? Math.max(limit, NEAREST_CANDIDATES) : limit);
 
-    const businesses = await qb.getMany();
+    const found = await qb.getMany();
+    const distances = new Map(
+      found.map((business) => [
+        business.id,
+        hasPoint ? this.nearestDistanceKm(business, lat, lng) : null,
+      ]),
+    );
+    const businesses = hasPoint
+      ? [...found]
+          .sort((a, b) => {
+            const da = distances.get(a.id) ?? Infinity;
+            const db = distances.get(b.id) ?? Infinity;
+            return da - db;
+          })
+          .slice(0, limit)
+      : found;
 
     if (businesses.length === 0) return [];
 
@@ -183,9 +213,33 @@ export class PublicDiscoveryService {
       });
     }
 
-    return businesses.map((business) =>
-      this.toPublicBusiness(business, countMap.get(business.id)),
-    );
+    return businesses.map((business) => ({
+      ...this.toPublicBusiness(business, countMap.get(business.id)),
+      distanceKm: distances.get(business.id) ?? null,
+    }));
+  }
+
+  /**
+   * Distance (to 0.1 km) to the business's closest active branch, falling
+   * back to the business's own coordinates; null when neither has any.
+   */
+  private nearestDistanceKm(
+    business: Business,
+    lat: number,
+    lng: number,
+  ): number | null {
+    const points = (business.branches ?? [])
+      .filter((branch) => branch.isActive !== false)
+      .map((branch) => [
+        branch.latitude ?? business.latitude,
+        branch.longitude ?? business.longitude,
+      ]);
+    if (points.length === 0)
+      points.push([business.latitude, business.longitude]);
+    const km = points
+      .filter(([pLat, pLng]) => pLat != null && pLng != null)
+      .map(([pLat, pLng]) => haversineKm(lat, lng, Number(pLat), Number(pLng)));
+    return km.length ? Math.round(Math.min(...km) * 10) / 10 : null;
   }
 
   async search(
@@ -400,13 +454,13 @@ export class PublicDiscoveryService {
       );
       if (withCoords.length > 0) {
         return withCoords.reduce((nearest, candidate) =>
-          this.haversineKm(
+          haversineKm(
             location.lat as number,
             location.lng as number,
             candidate.latitude,
             candidate.longitude,
           ) <
-          this.haversineKm(
+          haversineKm(
             location.lat as number,
             location.lng as number,
             nearest.latitude,
@@ -419,21 +473,6 @@ export class PublicDiscoveryService {
     }
 
     return branches.find((b) => b.isMainBranch) ?? branches[0];
-  }
-
-  private haversineKm(
-    lat1: number,
-    lng1: number,
-    lat2: number,
-    lng2: number,
-  ): number {
-    const toRad = (deg: number) => (deg * Math.PI) / 180;
-    const dLat = toRad(lat2 - lat1);
-    const dLng = toRad(lng2 - lng1);
-    const a =
-      Math.sin(dLat / 2) ** 2 +
-      Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
-    return 2 * EARTH_RADIUS_KM * Math.asin(Math.sqrt(a));
   }
 
   private toPublicBusiness(

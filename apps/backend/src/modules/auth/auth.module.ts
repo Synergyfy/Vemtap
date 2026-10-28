@@ -12,6 +12,7 @@ import { MailModule } from '../mail/mail.module';
 import { DevicesModule } from '../devices/devices.module';
 import { AffiliatesModule } from '../affiliates/affiliates.module';
 import { ExternalAffiliateModule } from '../affiliates/external-affiliate.module';
+import { ReferralsModule } from '../referrals/referrals.module';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { LocalStrategy } from './strategies/local.strategy';
 import { Otp } from './entities/otp.entity';
@@ -27,6 +28,7 @@ import { Otp } from './entities/otp.entity';
     TypeOrmModule.forFeature([Otp]),
     forwardRef(() => AffiliatesModule),
     ExternalAffiliateModule,
+    forwardRef(() => ReferralsModule),
     JwtModule.registerAsync({
       imports: [ConfigModule],
       useFactory: (configService: ConfigService) => ({

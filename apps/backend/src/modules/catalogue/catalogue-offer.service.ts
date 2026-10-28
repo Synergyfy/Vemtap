@@ -72,6 +72,7 @@ import {
   describeRedemptionWindows,
   isWithinRedemptionWindows,
 } from './utils/offer-rules.utils';
+import { haversineKm } from '../../common/utils/haversine';
 import { deleteCacheKeys } from '../../common/utils/delete-cache-keys';
 
 /**
@@ -1081,8 +1082,30 @@ export class CatalogueOfferService {
       qb.setParameter('lng', lng);
 
       if (radius !== undefined && radius > 0) {
-        qb.andWhere(`${distanceFormula} <= :radius`, { radius });
+        // Branches without coordinates stay in the feed (after nearby ones
+        // when sorting by distance): missing data shouldn't hide a deal.
+        qb.andWhere(
+          `(branch.latitude IS NULL OR branch.longitude IS NULL OR ${distanceFormula} <= :radius)`,
+          { radius },
+        );
       }
+    }
+
+    const hasPoint = lat !== undefined && lng !== undefined;
+    if (sortBy === PublicOffersSortBy.NEAREST && hasPoint) {
+      qb.orderBy('distance', 'ASC', 'NULLS LAST').addOrderBy(
+        'offer.createdAt',
+        'DESC',
+      );
+      qb.skip(skip).take(limit);
+      const [rawOffers, total] = await qb.getManyAndCount();
+      const mappedOffers = await this.mapPublicOffers(rawOffers);
+      return {
+        data: this.withDistance(mappedOffers, rawOffers, lat, lng),
+        total,
+        page,
+        limit,
+      };
     }
 
     let sortField = 'createdAt';
@@ -1133,7 +1156,12 @@ export class CatalogueOfferService {
       qb.skip(skip).take(limit);
       const [rawOffers, total] = await qb.getManyAndCount();
       const mappedOffers = await this.mapPublicOffers(rawOffers);
-      return { data: mappedOffers, total, page, limit };
+      return {
+        data: this.withDistance(mappedOffers, rawOffers, lat, lng),
+        total,
+        page,
+        limit,
+      };
     }
 
     const cursorStr = query.cursor || query.nextCursor;
@@ -1154,7 +1182,7 @@ export class CatalogueOfferService {
     const mappedOffers = await this.mapPublicOffers(rawOffers);
 
     return {
-      data: mappedOffers,
+      data: this.withDistance(mappedOffers, rawOffers, lat, lng),
       total,
       page,
       limit,
@@ -1273,6 +1301,37 @@ export class CatalogueOfferService {
       .andWhere(ALL_OFFER_ITEMS_PUBLISHED_SQL, PUBLISHED_ITEM_PARAMS)
       .getMany();
     return this.mapPublicOffers(rawOffers);
+  }
+
+  /**
+   * Adds `distanceKm` (to 0.1 km) from the searcher to each offer's branch;
+   * null when the branch has no coordinates or no point was given.
+   */
+  private withDistance<T extends { id: string }>(
+    mapped: T[],
+    rawOffers: CatalogueOffer[],
+    lat?: number,
+    lng?: number,
+  ): Array<T & { distanceKm: number | null }> {
+    const branchById = new Map(
+      rawOffers.map((offer) => [offer.id, offer.branch]),
+    );
+    return mapped.map((offer) => {
+      const branch = branchById.get(offer.id);
+      const hasPoint = lat !== undefined && lng !== undefined;
+      const distanceKm =
+        hasPoint && branch?.latitude != null && branch?.longitude != null
+          ? Math.round(
+              haversineKm(
+                lat,
+                lng,
+                Number(branch.latitude),
+                Number(branch.longitude),
+              ) * 10,
+            ) / 10
+          : null;
+      return { ...offer, distanceKm };
+    });
   }
 
   private async mapPublicOffers(rawOffers: CatalogueOffer[]) {

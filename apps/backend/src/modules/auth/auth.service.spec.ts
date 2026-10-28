@@ -9,6 +9,7 @@ import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { AffiliatesService } from '../affiliates/affiliates.service';
 import { ExternalAffiliateService } from '../affiliates/external-affiliate.service';
+import { ReferralsService } from '../referrals/referrals.service';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Otp } from './entities/otp.entity';
 import { RegisterOwnerDto } from './dto/register-owner.dto';
@@ -120,6 +121,10 @@ describe('AuthService', () => {
       .mockResolvedValue({ valid: false, affiliateId: null }),
   };
 
+  const mockReferralsService = {
+    resolveAndApplyReferral: jest.fn().mockResolvedValue(undefined),
+  };
+
   const mockOtpRepository = {
     create: jest.fn().mockImplementation((dto) => dto),
     save: jest.fn().mockImplementation((otp) => Promise.resolve(otp)),
@@ -149,6 +154,10 @@ describe('AuthService', () => {
         {
           provide: ExternalAffiliateService,
           useValue: mockExternalAffiliateService,
+        },
+        {
+          provide: ReferralsService,
+          useValue: mockReferralsService,
         },
       ],
     }).compile();
@@ -1467,6 +1476,66 @@ describe('AuthService', () => {
             pin: '654321',
           }),
         ).rejects.toThrow(BadRequestException);
+      });
+
+      it('should record the referral code a new customer signed up with', async () => {
+        otpRepository.findOne.mockResolvedValue({
+          email: 'jane@example.com',
+          code: '123456',
+          expiresAt: new Date(Date.now() + 60000),
+          metadata: { firstName: 'Jane', lastName: 'Doe' },
+        });
+        usersService.findByEmail.mockResolvedValue(null);
+        usersService.create.mockResolvedValue({
+          id: 'cust-1',
+          email: 'jane@example.com',
+          firstName: 'Jane',
+          lastName: 'Doe',
+          role: UserRole.CUSTOMER,
+          status: UserStatus.ACTIVE,
+          referralCode: null,
+        });
+
+        await service.verifyOtpAndSetCustomerPin({
+          email: 'jane@example.com',
+          code: '123456',
+          pin: '654321',
+          referralCode: 'VEM-8OGUU4',
+        });
+
+        expect(mockReferralsService.resolveAndApplyReferral).toHaveBeenCalledWith(
+          'VEM-8OGUU4',
+          'cust-1',
+        );
+      });
+
+      it('should ignore an invalid referral code at customer sign-up', async () => {
+        otpRepository.findOne.mockResolvedValue({
+          email: 'jane@example.com',
+          code: '123456',
+          expiresAt: new Date(Date.now() + 60000),
+          metadata: { firstName: 'Jane', lastName: 'Doe' },
+        });
+        usersService.findByEmail.mockResolvedValue(null);
+        usersService.create.mockResolvedValue({
+          id: 'cust-1',
+          email: 'jane@example.com',
+          firstName: 'Jane',
+          lastName: 'Doe',
+          role: UserRole.CUSTOMER,
+          status: UserStatus.ACTIVE,
+        });
+
+        await service.verifyOtpAndSetCustomerPin({
+          email: 'jane@example.com',
+          code: '123456',
+          pin: '654321',
+          referralCode: 'not a code@!',
+        });
+
+        expect(
+          mockReferralsService.resolveAndApplyReferral,
+        ).not.toHaveBeenCalled();
       });
     });
 

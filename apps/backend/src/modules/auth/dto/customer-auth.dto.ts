@@ -173,6 +173,14 @@ export class VerifyAndSetCustomerPinDto {
       : value?.trim(),
   )
   branchId?: string;
+
+  @ApiPropertyOptional({
+    example: 'VEM-8OGUU4',
+    description: 'Optional referral code used at sign-up',
+  })
+  @IsOptional()
+  @IsString()
+  referralCode?: string;
 }
 
 export class RequestCustomerPinResetDto {
