@@ -96,6 +96,14 @@ export class User extends AbstractBaseEntity {
   })
   role: UserRole;
 
+  @ApiProperty({
+    enum: ['customer', 'business'],
+    nullable: true,
+    description: 'The shell a dual-role account last used',
+  })
+  @Column({ type: 'varchar', nullable: true })
+  lastActiveShell?: 'customer' | 'business' | null;
+
   @ApiProperty({ example: 'Cashier', nullable: true })
   @Column({ nullable: true })
   roleTag: string;

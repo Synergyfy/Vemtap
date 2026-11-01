@@ -364,6 +364,7 @@ export class AuthService {
         businessId: effectiveBusinessId,
         branchId: branchId,
         referralCode,
+        isOwnerAccount: user.role === UserRole.OWNER,
       },
       isNewUser,
     };
@@ -1590,23 +1591,32 @@ export class AuthService {
       targetRole === UserRole.OWNER
         ? await this.businessesService.findByOwner(dbUser.id)
         : null;
-    if (targetRole === UserRole.OWNER && !business) {
-      throw new BadRequestException('No business is linked to this account');
-    }
 
     // Explicit nulls matter: JwtStrategy treats an explicit null claim as
     // "no business context" (customer mode) and only falls back to the DB
-    // businessId when the claim is absent (legacy tokens).
+    // businessId when the claim is absent (legacy tokens). An owner still in
+    // setup has no business yet, so that claim stays absent and the business
+    // setup creates is picked up from the DB.
     const payload = {
       email: dbUser.email,
       sub: dbUser.id,
       role: targetRole,
-      branchId: targetRole === UserRole.OWNER ? dbUser.branchId : null,
+      branchId: targetRole === UserRole.OWNER ? (dbUser.branchId ?? undefined) : null,
       businessId: targetRole === UserRole.OWNER ? business?.id : null,
       // Same sign-in, same device: keeps the switched token revocable from
       // "Your devices" instead of outliving its session.
       ...(user.sessionId ? { sid: user.sessionId } : {}),
     };
+
+    const isOwnerAccount = dbUser.role === UserRole.OWNER;
+    const lastActiveShell: User['lastActiveShell'] = isOwnerAccount
+      ? targetRole === UserRole.OWNER
+        ? 'business'
+        : 'customer'
+      : dbUser.lastActiveShell;
+    if (isOwnerAccount) {
+      await this.usersService.update(dbUser.id, { lastActiveShell });
+    }
 
     delete (dbUser as Partial<User>).password;
     return {
@@ -1616,6 +1626,8 @@ export class AuthService {
         role: targetRole,
         businessId: payload.businessId,
         branchId: payload.branchId,
+        isOwnerAccount,
+        lastActiveShell,
       },
     };
   }

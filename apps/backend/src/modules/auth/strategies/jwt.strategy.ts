@@ -24,6 +24,8 @@ type RequestUser = Omit<User, 'businessId' | 'branchId'> & {
   branchId?: string | null;
   /** The login session this token belongs to (`sid`), for "this device". */
   sessionId?: string;
+  /** Owner in the DB, even while this token is scoped to the customer shell. */
+  isOwnerAccount?: boolean;
 };
 
 @Injectable()
@@ -62,6 +64,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       if (!session) throw new UnauthorizedException('Session has been revoked');
       user.sessionId = payload.sid;
     }
+    user.isOwnerAccount = user.role === UserRole.OWNER;
     // Honor the signed token's role and business context. `switch-role` issues
     // CUSTOMER-scoped tokens for dual-role owners; without applying the claim
     // the guards would authorize off the DB role (Owner) and customer-only
