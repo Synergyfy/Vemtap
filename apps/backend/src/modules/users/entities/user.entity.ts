@@ -33,6 +33,13 @@ export enum UserRole {
   AGENT = 'Agent',
 }
 
+/** Roles with a business shell; each can also switch to the customer shell. */
+export const BUSINESS_SHELL_ROLES: UserRole[] = [
+  UserRole.OWNER,
+  UserRole.MANAGER,
+  UserRole.STAFF,
+];
+
 export enum UserStatus {
   ACTIVE = 'Active',
   INACTIVE = 'Inactive',

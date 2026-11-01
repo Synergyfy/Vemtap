@@ -19,7 +19,12 @@ import { MailService } from '../mail/mail.service';
 import { AffiliatesService } from '../affiliates/affiliates.service';
 import { ReferralsService } from '../referrals/referrals.service';
 import * as bcrypt from 'bcrypt';
-import { User, UserRole, UserStatus } from '../users/entities/user.entity';
+import {
+  BUSINESS_SHELL_ROLES,
+  User,
+  UserRole,
+  UserStatus,
+} from '../users/entities/user.entity';
 import { Otp } from './entities/otp.entity';
 import { RegisterOwnerDto } from './dto/register-owner.dto';
 import { UpgradeToOwnerDto } from './dto/upgrade-to-owner.dto';
@@ -365,6 +370,10 @@ export class AuthService {
         branchId: branchId,
         referralCode,
         isOwnerAccount: user.role === UserRole.OWNER,
+        hasBusiness: Boolean(effectiveBusinessId),
+        businessRole: BUSINESS_SHELL_ROLES.includes(user.role as UserRole)
+          ? user.role
+          : null,
       },
       isNewUser,
     };
@@ -1572,11 +1581,14 @@ export class AuthService {
   }
 
   async switchRole(user: User & { sessionId?: string }, targetRole: UserRole) {
-    // Only the two sides of a dual-role account are switchable — never
-    // Manager/Staff/Admin, which are assigned, not self-selected.
-    if (targetRole !== UserRole.OWNER && targetRole !== UserRole.CUSTOMER) {
+    // Customer, or the account's own business role. Admin roles are assigned
+    // and never self-selected.
+    if (
+      targetRole !== UserRole.CUSTOMER &&
+      !BUSINESS_SHELL_ROLES.includes(targetRole)
+    ) {
       throw new BadRequestException(
-        'Only Owner and Customer roles can be switched',
+        'Only Owner, Manager, Staff and Customer roles can be switched',
       );
     }
 
@@ -1586,7 +1598,11 @@ export class AuthService {
     if (targetRole === UserRole.OWNER && dbUser.role !== UserRole.OWNER) {
       throw new BadRequestException('You are not an owner');
     }
+    if (targetRole !== UserRole.CUSTOMER && targetRole !== dbUser.role) {
+      throw new BadRequestException('You do not have that role');
+    }
 
+    const businessShell = targetRole !== UserRole.CUSTOMER;
     const business =
       targetRole === UserRole.OWNER
         ? await this.businessesService.findByOwner(dbUser.id)
@@ -1601,20 +1617,27 @@ export class AuthService {
       email: dbUser.email,
       sub: dbUser.id,
       role: targetRole,
-      branchId: targetRole === UserRole.OWNER ? (dbUser.branchId ?? undefined) : null,
-      businessId: targetRole === UserRole.OWNER ? business?.id : null,
+      branchId: businessShell ? (dbUser.branchId ?? undefined) : null,
+      businessId: !businessShell
+        ? null
+        : targetRole === UserRole.OWNER
+          ? business?.id
+          : (dbUser.businessId ?? undefined),
       // Same sign-in, same device: keeps the switched token revocable from
       // "Your devices" instead of outliving its session.
       ...(user.sessionId ? { sid: user.sessionId } : {}),
     };
 
     const isOwnerAccount = dbUser.role === UserRole.OWNER;
-    const lastActiveShell: User['lastActiveShell'] = isOwnerAccount
-      ? targetRole === UserRole.OWNER
+    const businessRole = BUSINESS_SHELL_ROLES.includes(dbUser.role)
+      ? dbUser.role
+      : null;
+    const lastActiveShell: User['lastActiveShell'] = businessRole
+      ? businessShell
         ? 'business'
         : 'customer'
       : dbUser.lastActiveShell;
-    if (isOwnerAccount) {
+    if (businessRole) {
       await this.usersService.update(dbUser.id, { lastActiveShell });
     }
 
@@ -1627,6 +1650,8 @@ export class AuthService {
         businessId: payload.businessId,
         branchId: payload.branchId,
         isOwnerAccount,
+        businessRole,
+        hasBusiness: Boolean(business?.id ?? dbUser.businessId),
         lastActiveShell,
       },
     };

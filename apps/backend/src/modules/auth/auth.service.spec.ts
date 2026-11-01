@@ -1095,6 +1095,46 @@ describe('AuthService', () => {
       expect(claims.businessId).toBeUndefined();
     });
 
+    it('lets staff switch to customer and back to their own role', async () => {
+      usersService.findOne.mockResolvedValue({
+        id: 'staff-1',
+        email: 'staff@example.com',
+        role: UserRole.STAFF,
+        businessId: 'biz-1',
+        branchId: 'br-1',
+      });
+
+      const customer = await service.switchRole(
+        { id: 'staff-1', role: UserRole.STAFF } as any,
+        UserRole.CUSTOMER,
+      );
+      expect(customer.user.businessId).toBeNull();
+      expect(customer.user.businessRole).toBe(UserRole.STAFF);
+      expect(customer.user.lastActiveShell).toBe('customer');
+
+      const back = await service.switchRole(
+        { id: 'staff-1', role: UserRole.CUSTOMER } as any,
+        UserRole.STAFF,
+      );
+      expect(back.user.role).toBe(UserRole.STAFF);
+      expect(back.user.businessId).toBe('biz-1');
+    });
+
+    it('rejects a role the account does not have', async () => {
+      usersService.findOne.mockResolvedValue({
+        id: 'staff-1',
+        email: 'staff@example.com',
+        role: UserRole.STAFF,
+      });
+
+      await expect(
+        service.switchRole(
+          { id: 'staff-1', role: UserRole.STAFF } as any,
+          UserRole.MANAGER,
+        ),
+      ).rejects.toThrow(BadRequestException);
+    });
+
     it('does not record a shell for a plain customer', async () => {
       usersService.update.mockClear();
       usersService.findOne.mockResolvedValue({
