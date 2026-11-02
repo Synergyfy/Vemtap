@@ -262,8 +262,12 @@ export class CatalogueOfferController {
   @Post('claim/verify')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Verify OTP and complete promotion claim (Public)' })
-  async verifyClaim(@Body() dto: VerifyClaimDto) {
-    return this.offerService.verifyClaim(dto);
+  async verifyClaim(@Body() dto: VerifyClaimDto, @Req() req: any) {
+    return this.offerService.verifyClaim(
+      dto,
+      req.user?.id,
+      req?.headers?.['origin'],
+    );
   }
 
   @ApiBearerAuth()
@@ -323,6 +327,20 @@ export class CatalogueOfferController {
       limit,
       search,
     });
+  }
+
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
+  @Get('claim/lookup/:id')
+  @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF)
+  @Permissions('pos')
+  @ApiOperation({
+    summary: 'Look up a scanned voucher before redeeming it',
+    description:
+      'Only vouchers for the caller’s own business are found; any other answers 404.',
+  })
+  async lookupClaim(@Param('id', ParseUUIDPipe) id: string, @Req() req: any) {
+    return this.offerService.lookupClaim(id, req.user.businessId);
   }
 
   @ApiBearerAuth()

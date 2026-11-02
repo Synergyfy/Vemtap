@@ -1022,6 +1022,55 @@ export class MailService {
     return { subject, html };
   }
 
+  /** Tells someone a voucher was claimed for them, with the code to redeem it. */
+  async sendClaimedForYouEmail(params: {
+    email: string;
+    recipientName: string;
+    senderName: string;
+    offerName: string;
+    businessName: string;
+    claimCode: string;
+    expiresAt: Date;
+    passUrl: string;
+  }): Promise<boolean> {
+    const escape = (value: string) =>
+      value
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    const expires = params.expiresAt.toLocaleDateString('en-NG', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+    });
+    try {
+      await this.resend.emails.send({
+        from: this.fromEmail,
+        to: params.email,
+        subject: `${params.senderName} claimed a VemTap voucher for you`,
+        html: `
+          <div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">
+            <h2>A voucher was claimed for you</h2>
+            <p>Hi ${escape(params.recipientName)}, ${escape(params.senderName)} claimed <strong>${escape(params.offerName)}</strong> at ${escape(params.businessName)} for you.</p>
+            <p>Show this code at the business before you pay:</p>
+            <h1 style="background: #f4f4f4; display: inline-block; padding: 10px 20px; border-radius: 8px; letter-spacing: 2px;">${escape(params.claimCode)}</h1>
+            <p>This voucher expires on ${escape(expires)}.</p>
+            <p><a href="${escape(params.passUrl)}" style="color: #066cf4;">Open your voucher</a> (sign in with this email address).</p>
+          </div>
+        `,
+      });
+      this.logger.log(`Claimed-for-you voucher sent to ${params.email}`);
+      return true;
+    } catch (error) {
+      this.logger.error(
+        `Error sending claimed-for-you email to ${params.email}:`,
+        error,
+      );
+      return false;
+    }
+  }
+
   async sendDealGiftEmail(params: DealGiftEmailParams): Promise<boolean> {
     try {
       const {

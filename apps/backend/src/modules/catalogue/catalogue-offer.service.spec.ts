@@ -119,6 +119,8 @@ describe('CatalogueOfferService', () => {
     mailService = {
       sendOtp: jest.fn().mockResolvedValue(true),
       sendDealGiftEmail: jest.fn().mockResolvedValue(true),
+      sendClaimedForYouEmail: jest.fn().mockResolvedValue(true),
+      resolveFrontendBaseUrl: jest.fn().mockReturnValue('https://app.test'),
     };
 
     subscriptionsService = {

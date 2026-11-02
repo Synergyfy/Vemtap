@@ -37,6 +37,13 @@ export class CatalogueOfferClaim extends AbstractBaseEntity {
   @Index()
   userId: string | null;
 
+  @ApiProperty({
+    nullable: true,
+    description: 'The signed-in customer who claimed this for someone else',
+  })
+  @Column({ type: 'uuid', nullable: true })
+  claimedByUserId: string | null;
+
   @ApiProperty({ example: 'Chidi' })
   @Column()
   firstName: string;
