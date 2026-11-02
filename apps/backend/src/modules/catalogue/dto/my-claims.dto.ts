@@ -1,6 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import {
+  IsBoolean,
   IsEnum,
   IsInt,
   IsOptional,
@@ -58,6 +59,15 @@ export class MyClaimsQueryDto {
   @IsOptional()
   @IsEnum(MyClaimStatus)
   status?: MyClaimStatus;
+
+  @ApiPropertyOptional({
+    description:
+      'Also list claims this customer made for someone else. Those rows carry `claimedForOther`, the recipient, and an empty `claimCode`.',
+  })
+  @IsOptional()
+  @Transform(({ value }) => value === true || value === 'true')
+  @IsBoolean()
+  includeClaimedForOthers?: boolean;
 
   @ApiPropertyOptional({
     example: 'apo lunch',
@@ -152,8 +162,20 @@ export class MyClaimDto {
   @ApiProperty({ example: 'uuid-of-claim' })
   id: string;
 
-  @ApiProperty({ example: 'VEM1-8GUF52339-A2B3' })
+  @ApiProperty({
+    example: 'VEM1-8GUF52339-A2B3',
+    description: 'Empty on a row claimed for someone else; only they hold it',
+  })
   claimCode: string;
+
+  @ApiPropertyOptional({ description: 'Claimed by this customer for someone else' })
+  claimedForOther?: boolean;
+
+  @ApiPropertyOptional({ example: 'Tunde Bello' })
+  recipientName?: string;
+
+  @ApiPropertyOptional({ example: 'tunde@example.com' })
+  recipientEmail?: string;
 
   @ApiProperty({ enum: MyClaimStatus, example: MyClaimStatus.ACTIVE })
   status: MyClaimStatus;

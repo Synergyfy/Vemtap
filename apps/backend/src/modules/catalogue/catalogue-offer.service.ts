@@ -1722,7 +1722,11 @@ export class CatalogueOfferService {
     return { message: 'Verification OTP sent successfully' };
   }
 
-  async verifyClaim(dto: VerifyClaimDto) {
+  async verifyClaim(
+    dto: VerifyClaimDto,
+    actorUserId?: string,
+    callerOrigin?: string,
+  ) {
     const email = dto.email.toLowerCase();
 
     const otpRecord = await this.otpRepository.findOne({
@@ -1913,6 +1917,9 @@ export class CatalogueOfferService {
       const claimData = {
         offerId: offer.id,
         userId: linkedUser?.id ?? null,
+        // Signed in and claiming for another person: they keep sight of it.
+        claimedByUserId:
+          actorUserId && actorUserId !== linkedUser?.id ? actorUserId : null,
         firstName: meta.firstName,
         lastName: meta.lastName || undefined,
         email: meta.email,
@@ -1957,10 +1964,52 @@ export class CatalogueOfferService {
       };
     };
 
-    if (this.claimRepository.manager?.transaction) {
-      return await this.claimRepository.manager.transaction(executeSave);
-    }
-    return await executeSave(this.claimRepository);
+    const result = this.claimRepository.manager?.transaction
+      ? await this.claimRepository.manager.transaction(executeSave)
+      : await executeSave(this.claimRepository);
+
+    // After commit, so a mail problem can never undo the claim.
+    await this.emailVoucherToRecipient(
+      offer,
+      otpRecord.metadata,
+      result.claim,
+      actorUserId,
+      callerOrigin,
+    ).catch((err) =>
+      this.logger.warn(`Failed to email claimed voucher: ${err.message}`),
+    );
+
+    return result;
+  }
+
+  /** A claim made for someone else: the recipient gets the code by email. */
+  private async emailVoucherToRecipient(
+    offer: CatalogueOffer,
+    meta: Record<string, any> | null | undefined,
+    claim: { id: string; claimCode: string; expiresAt: Date },
+    actorUserId?: string,
+    callerOrigin?: string,
+  ) {
+    const email = String(meta?.email ?? '').toLowerCase();
+    if (!actorUserId || !email) return;
+    const actor = await this.usersRepository.findOne({
+      where: { id: actorUserId },
+    });
+    if (!actor || actor.email?.toLowerCase() === email) return;
+
+    const base = this.mailService.resolveFrontendBaseUrl(callerOrigin);
+    await this.mailService.sendClaimedForYouEmail({
+      email,
+      recipientName: meta?.firstName || 'there',
+      senderName:
+        `${actor.firstName || ''} ${actor.lastName || ''}`.trim() ||
+        actor.email,
+      offerName: offer.name,
+      businessName: offer.branch?.business?.name ?? 'the business',
+      claimCode: claim.claimCode,
+      expiresAt: new Date(claim.expiresAt),
+      passUrl: `${base}/my/claimed-deal/${claim.id}`,
+    });
   }
 
   async sendDealGift(dto: SendDealGiftDto, user?: User, callerOrigin?: string) {
@@ -2255,6 +2304,35 @@ export class CatalogueOfferService {
     };
   }
 
+  /** A scanned voucher, for the merchant's redeem step. */
+  async lookupClaim(id: string, businessId: string) {
+    if (!businessId) throw new NotFoundException('Voucher not found');
+    const claim = await this.claimRepository.findOne({
+      where: { id },
+      relations: ['offer'],
+    });
+    if (!claim || claim.offer?.businessId !== businessId) {
+      throw new NotFoundException('Voucher not found');
+    }
+    const status =
+      claim.status === CatalogueOfferClaimStatus.REDEEMED
+        ? MyClaimStatus.REDEEMED
+        : claim.status === CatalogueOfferClaimStatus.EXPIRED ||
+            claim.expiresAt < new Date()
+          ? MyClaimStatus.EXPIRED
+          : MyClaimStatus.ACTIVE;
+    return {
+      id: claim.id,
+      claimCode: claim.claimCode,
+      status,
+      expiresAt: claim.expiresAt,
+      customerName: [claim.firstName, claim.lastName].filter(Boolean).join(' '),
+      offerName: claim.offer.name,
+      offerImage: claim.offer.mainImage ?? null,
+      calculatedPrice: Number(claim.offer.calculatedPrice || 0),
+    };
+  }
+
   async redeemClaim(code: string, businessId: string) {
     // Support partial match: if code is short (4-6 chars), search by suffix
     let claim: CatalogueOfferClaim | null;
@@ -2389,7 +2467,11 @@ export class CatalogueOfferService {
       .leftJoinAndSelect('branch.business', 'business');
 
     const ownership = this.claimOwnership(user);
-    qb.where(ownership.sql, ownership.params);
+    if (query.includeClaimedForOthers) {
+      qb.where(`(${ownership.sql} OR claim.claimedByUserId = :userId)`, ownership.params);
+    } else {
+      qb.where(ownership.sql, ownership.params);
+    }
 
     if (query.status === MyClaimStatus.REDEEMED) {
       qb.andWhere('claim.status = :redeemed', {
@@ -2435,13 +2517,13 @@ export class CatalogueOfferService {
 
     if (!wantsPaging) {
       const claims = await qb.getMany();
-      return claims.map((claim) => this.toMyClaim(claim, now));
+      return claims.map((claim) => this.toMyClaim(claim, now, user));
     }
 
     const [claims, total] = await qb.getManyAndCount();
 
     return {
-      data: claims.map((claim) => this.toMyClaim(claim, now)),
+      data: claims.map((claim) => this.toMyClaim(claim, now, user)),
       total,
       page,
       limit,
@@ -2516,7 +2598,16 @@ export class CatalogueOfferService {
     await this.claimRepository.softDelete(claim.id);
   }
 
-  private toMyClaim(claim: CatalogueOfferClaim, now: Date): MyClaimDto {
+  private toMyClaim(
+    claim: CatalogueOfferClaim,
+    now: Date,
+    user: User,
+  ): MyClaimDto {
+    // Made for someone else: the status is shown, but the code stays theirs.
+    const claimedForOther =
+      claim.claimedByUserId === user.id &&
+      claim.userId !== user.id &&
+      claim.email?.toLowerCase() !== user.email?.toLowerCase();
     const offer = claim.offer;
     const originalPrice = (offer.items ?? []).reduce(
       (acc, item) => acc + Number(item.price || 0),
@@ -2541,7 +2632,16 @@ export class CatalogueOfferService {
 
     return {
       id: claim.id,
-      claimCode: claim.claimCode,
+      claimCode: claimedForOther ? '' : claim.claimCode,
+      ...(claimedForOther
+        ? {
+            claimedForOther,
+            recipientName: [claim.firstName, claim.lastName]
+              .filter(Boolean)
+              .join(' '),
+            recipientEmail: claim.email,
+          }
+        : {}),
       status,
       expiresAt: claim.expiresAt,
       claimedAt: claim.createdAt,
