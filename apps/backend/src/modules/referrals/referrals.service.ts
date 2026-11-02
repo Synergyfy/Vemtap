@@ -124,7 +124,8 @@ export class ReferralsService {
         (referred): ReferralEntry => ({
           id: referred.id,
           name: maskName(referred),
-          type: 'customer',
+          // A business owner who signed up with this personal code.
+          type: referred.role === UserRole.OWNER ? 'business' : 'customer',
           joinedAt: referred.createdAt,
         }),
       ),
