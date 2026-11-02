@@ -19,6 +19,25 @@ export const TO = `($4::timestamptz AT TIME ZONE 'UTC')`;
 export const inBranch = (column: string) =>
   `($5::uuid IS NULL OR ${column} = $5::uuid)`;
 
+const SAFE_LITERAL = /^[a-z0-9-]+$/i;
+
+/**
+ * Validated filter values as a SQL list (`'a', 'b'`). Values are DTO-checked
+ * enums or UUIDs, and are re-checked here so nothing else can be inlined; the
+ * positional parameters stay the shared `$1`–`$5` layout every query uses.
+ */
+export const sqlList = (values: readonly string[]) =>
+  values
+    .map((value) => {
+      if (!SAFE_LITERAL.test(value))
+        throw new Error('Unsafe analytics filter value');
+      return `'${value}'`;
+    })
+    .join(', ');
+
+/** "Now" in the UTC wall-clock form the timestamp columns use. */
+export const NOW_UTC = `(now() AT TIME ZONE 'UTC')`;
+
 /** A UTC timestamp column as business-local wall time, for hour/day buckets. */
 export const local = (column: string) =>
   `((${column}) AT TIME ZONE 'UTC' AT TIME ZONE '${BUSINESS_TZ}')`;

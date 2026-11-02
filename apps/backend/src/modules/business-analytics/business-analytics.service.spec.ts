@@ -25,6 +25,12 @@ describe('BusinessAnalyticsService', () => {
         previousTo: '2026-09-16T12:00:00.000Z',
         days: 30,
         branchId: null,
+        filters: {
+          dealStatus: [],
+          paymentMethod: [],
+          tillId: [],
+          cohort: null,
+        },
       });
       expect(query).not.toHaveBeenCalled();
     });
@@ -136,6 +142,50 @@ describe('BusinessAnalyticsService', () => {
       expect(result.tenders.map((t) => t.share)).toEqual([0.75, 0.25]);
       expect(result.hourly).toHaveLength(24);
       expect(result.hourly[14]).toEqual({ hour: 14, sales: 4000, tickets: 4 });
+    });
+  });
+
+  describe('filters', () => {
+    it('applies settlement and till filters to every POS query without changing the parameters', async () => {
+      query.mockResolvedValue([]);
+      const till = '0b5e8a52-4a7e-4b8a-9b44-9a0f6f3b1c11';
+      await service.getPos('biz', {
+        from: '2026-10-01T00:00:00.000Z',
+        to: '2026-10-11T00:00:00.000Z',
+        paymentMethod: ['card', 'cash'],
+        tillId: [till],
+      });
+      const sales = query.mock.calls
+        .map(([sql]) => sql as string)
+        .filter((sql) => sql.includes('"pos_sales" ps'));
+      expect(sales.length).toBeGreaterThan(0);
+      for (const sql of sales) {
+        expect(sql).toContain(`IN ('card', 'cash')`);
+        expect(sql).toContain(`IN ('${till}')`);
+      }
+      for (const [, params] of query.mock.calls) expect(params).toHaveLength(5);
+    });
+
+    it('limits deals to the chosen states', async () => {
+      query.mockResolvedValue([]);
+      await service.getDeals('biz', { dealStatus: ['scheduled', 'paused'] });
+      const [sql] = query.mock.calls[query.mock.calls.length - 1];
+      expect(sql).toContain(`o."startDate" >`);
+      expect(sql).toContain(`o."status" <> 'active'`);
+    });
+
+    it('leaves queries unfiltered when no filter is set', async () => {
+      query.mockResolvedValue([]);
+      await service.getDeals('biz', {});
+      const [sql] = query.mock.calls[query.mock.calls.length - 1];
+      expect(sql).not.toContain(`o."startDate" >`);
+    });
+
+    it('refuses to inline anything but a plain value', async () => {
+      query.mockResolvedValue([]);
+      await expect(
+        service.getPos('biz', { tillId: ["x' OR '1'='1"] }),
+      ).rejects.toThrow('Unsafe analytics filter value');
     });
   });
 
