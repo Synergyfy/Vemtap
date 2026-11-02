@@ -13,10 +13,16 @@ import {
   VIP_MIN_SPEND,
   VIP_MIN_VISITS,
 } from '../../common/utils/customer-segments';
-import { AnalyticsRangeQueryDto } from './dto/analytics-range.dto';
+import {
+  AnalyticsRangeQueryDto,
+  type CustomerCohort,
+  type DealStatusFilter,
+  type PaymentMethodFilter,
+} from './dto/analytics-range.dto';
 import {
   EVENTS_SQL,
   FROM,
+  NOW_UTC,
   PER_CUSTOMER_SQL,
   PREV_FROM,
   SALES_SQL,
@@ -25,6 +31,7 @@ import {
   inBranch,
   inWindow,
   local,
+  sqlList,
 } from './business-analytics.sql';
 
 const DAY_MS = 86_400_000;
@@ -39,7 +46,36 @@ export interface AnalyticsRange {
   previousTo: string;
   days: number;
   branchId: string | null;
+  /** Optional per-module filters; empty means "no filter". */
+  filters: AnalyticsFilters;
 }
+
+export interface AnalyticsFilters {
+  dealStatus: DealStatusFilter[];
+  paymentMethod: PaymentMethodFilter[];
+  tillId: string[];
+  cohort: CustomerCohort | null;
+}
+
+/** Deal states as SQL over an offer row (`o`), matching how a deal shows in the app. */
+const DEAL_STATUS_SQL: Record<DealStatusFilter, (o: string) => string> = {
+  active: (o) =>
+    `(${o}."status" = 'active' AND (${o}."startDate" IS NULL OR ${o}."startDate" <= ${NOW_UTC}) AND (${o}."endDate" IS NULL OR ${o}."endDate" > ${NOW_UTC}))`,
+  scheduled: (o) =>
+    `(${o}."status" = 'active' AND ${o}."startDate" > ${NOW_UTC})`,
+  expired: (o) =>
+    `(${o}."endDate" IS NOT NULL AND ${o}."endDate" <= ${NOW_UTC})`,
+  paused: (o) =>
+    `(${o}."status" <> 'active' AND (${o}."endDate" IS NULL OR ${o}."endDate" > ${NOW_UTC}))`,
+};
+
+/** Customer segments as SQL over the per-customer rollup, the same rules the segment counts use. */
+const COHORT_SQL: Record<CustomerCohort, string> = {
+  vip: `(visits >= ${VIP_MIN_VISITS} OR spend >= ${VIP_MIN_SPEND})`,
+  returning: `(NOT (visits >= ${VIP_MIN_VISITS} OR spend >= ${VIP_MIN_SPEND}) AND visits >= 2 AND "lastAt" >= ${TO} - make_interval(days => ${LAPSED_CUSTOMER_DAYS}))`,
+  new: `("firstAt" >= ${TO} - make_interval(days => ${NEW_CUSTOMER_DAYS}))`,
+  lapsed: `("lastAt" < ${TO} - make_interval(days => ${LAPSED_CUSTOMER_DAYS}))`,
+};
 
 export interface Comparison {
   current: number;
@@ -112,7 +148,41 @@ export class BusinessAnalyticsService {
       previousTo: from.toISOString(),
       days: Math.max(1, Math.round(span / DAY_MS)),
       branchId,
+      filters: {
+        dealStatus: query.dealStatus ?? [],
+        paymentMethod: query.paymentMethod ?? [],
+        tillId: query.tillId ?? [],
+        cohort: query.cohort ?? null,
+      },
     };
+  }
+
+  /** Deal-state filter over an offer alias; `TRUE` when none is set. */
+  private dealStatusWhere(range: AnalyticsRange, alias: string) {
+    const states = range.filters.dealStatus;
+    return states.length
+      ? `(${states.map((state) => DEAL_STATUS_SQL[state](alias)).join(' OR ')})`
+      : 'TRUE';
+  }
+
+  /** Settlement and till filters over a POS sale alias; `TRUE` when none is set. */
+  private posFilterWhere(range: AnalyticsRange, alias: string) {
+    const { paymentMethod, tillId } = range.filters;
+    const parts: string[] = [];
+    if (paymentMethod.length) {
+      const methods = sqlList(paymentMethod);
+      parts.push(
+        `(${alias}."paymentMethod"::text IN (${methods}) OR (${alias}."paymentMethod" = 'split' AND EXISTS (
+           SELECT 1 FROM "pos_split_payments" fsp
+           WHERE fsp."saleId" = ${alias}."id" AND fsp."deletedAt" IS NULL AND fsp."method"::text IN (${methods}))))`,
+      );
+    }
+    if (tillId.length) {
+      parts.push(
+        `${alias}."registerSessionId" IN (SELECT frs."id" FROM "pos_register_sessions" frs WHERE frs."tillId"::text IN (${sqlList(tillId)}))`,
+      );
+    }
+    return parts.length ? parts.join(' AND ') : 'TRUE';
   }
 
   private params(businessId: string, range: AnalyticsRange) {
@@ -348,6 +418,7 @@ export class BusinessAnalyticsService {
               SELECT "cashierId", COUNT(*)::int AS tickets, COALESCE(SUM(amount), 0) AS sales
               FROM sales
               WHERE channel = 'pos' AND at >= ${FROM} AND "cashierId" IS NOT NULL
+                AND id IN (SELECT ps."id" FROM "pos_sales" ps WHERE ps."businessId" = $1 AND ${this.posFilterWhere(range, 'ps')})
               GROUP BY "cashierId"
             ),
             sessions AS (
@@ -703,6 +774,7 @@ export class BusinessAnalyticsService {
            FROM per
            JOIN "users" u ON u."id" = per.uid
            WHERE per."activeInPeriod" AND per."periodSpend" > 0
+             ${range.filters.cohort ? `AND ${COHORT_SQL[range.filters.cohort].replace(/\b(visits|spend)\b/g, 'per.$1').replace(/"(firstAt|lastAt)"/g, 'per."$1"')}` : ''}
            ORDER BY per."periodSpend" DESC, per.visits DESC
            LIMIT ${TOP_LIMIT}`,
           businessId,
@@ -866,6 +938,7 @@ export class BusinessAnalyticsService {
          SELECT o.*, COALESCE(o."dealGroupId", o."id") AS "groupId"
          FROM "catalogue_offers" o
          WHERE o."businessId" = $1 AND o."deletedAt" IS NULL AND ${inBranch(`o."branchId"`)}
+           AND ${this.dealStatusWhere(range, 'o')}
        ),
        claims AS (
          SELECT off."groupId",
@@ -981,7 +1054,13 @@ export class BusinessAnalyticsService {
 
   async getPos(businessId: string, query: AnalyticsRangeQueryDto) {
     const range = await this.resolveRange(businessId, query);
-    const posWhere = `ps."businessId" = $1 AND ps."deletedAt" IS NULL AND ${inBranch(`ps."branchId"`)}`;
+    const posWhere = `ps."businessId" = $1 AND ps."deletedAt" IS NULL AND ${inBranch(`ps."branchId"`)} AND ${this.posFilterWhere(range, 'ps')}`;
+    const tenderFilter = range.filters.paymentMethod.length
+      ? `WHERE method IN (${sqlList(range.filters.paymentMethod)})`
+      : '';
+    const sessionTills = range.filters.tillId.length
+      ? `AND s."tillId"::text IN (${sqlList(range.filters.tillId)})`
+      : '';
     const at = `COALESCE(ps."orderedAt", ps."createdAt")`;
 
     const [
@@ -1031,7 +1110,7 @@ export class BusinessAnalyticsService {
                   COUNT(*)::int AS sessions
            FROM "pos_register_sessions" s
            WHERE s."businessId" = $1 AND s."deletedAt" IS NULL AND ${inBranch(`s."branchId"`)}
-             AND s."openedAt" >= ${FROM} AND s."openedAt" < ${TO} AND $2::text IS NOT NULL`,
+             AND s."openedAt" >= ${FROM} AND s."openedAt" < ${TO} AND $2::text IS NOT NULL ${sessionTills}`,
         businessId,
         range,
       ),
@@ -1060,7 +1139,7 @@ export class BusinessAnalyticsService {
                AND ${at} >= ${FROM} AND ${at} < ${TO} AND $2::text IS NOT NULL
            )
            SELECT method, COUNT(DISTINCT "id")::int AS count, COALESCE(SUM(amount), 0) AS amount
-           FROM tenders GROUP BY method ORDER BY SUM(amount) DESC`,
+           FROM tenders ${tenderFilter} GROUP BY method ORDER BY SUM(amount) DESC`,
         businessId,
         range,
       ),
@@ -1131,6 +1210,7 @@ export class BusinessAnalyticsService {
        JOIN "pos_sales" ps ON ps."id" = psi."saleId"
        WHERE ps."businessId" = $1 AND ps."deletedAt" IS NULL AND psi."deletedAt" IS NULL
          AND ps."status" <> 'refunded' AND ${inBranch(`ps."branchId"`)}
+         AND ${this.posFilterWhere(range, 'ps')}
          AND ${at} >= ${FROM} AND ${at} < ${TO} AND $2::text IS NOT NULL
        GROUP BY psi."productName"
        ORDER BY SUM(psi."totalPrice") DESC, psi."productName"

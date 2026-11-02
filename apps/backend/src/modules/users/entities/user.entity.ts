@@ -33,6 +33,13 @@ export enum UserRole {
   AGENT = 'Agent',
 }
 
+/** Roles with a business shell; each can also switch to the customer shell. */
+export const BUSINESS_SHELL_ROLES: UserRole[] = [
+  UserRole.OWNER,
+  UserRole.MANAGER,
+  UserRole.STAFF,
+];
+
 export enum UserStatus {
   ACTIVE = 'Active',
   INACTIVE = 'Inactive',
@@ -95,6 +102,14 @@ export class User extends AbstractBaseEntity {
     default: UserRole.CUSTOMER,
   })
   role: UserRole;
+
+  @ApiProperty({
+    enum: ['customer', 'business'],
+    nullable: true,
+    description: 'The shell a dual-role account last used',
+  })
+  @Column({ type: 'varchar', nullable: true })
+  lastActiveShell?: 'customer' | 'business' | null;
 
   @ApiProperty({ example: 'Cashier', nullable: true })
   @Column({ nullable: true })

@@ -1070,6 +1070,86 @@ describe('AuthService', () => {
 
       expect(result.user.role).toBe(UserRole.OWNER);
       expect(result.user.businessId).toBe('biz-1');
+      expect(result.user.lastActiveShell).toBe('business');
+      expect(usersService.update).toHaveBeenCalledWith('owner-1', {
+        lastActiveShell: 'business',
+      });
+    });
+
+    it('lets an owner still in setup switch back without a business', async () => {
+      usersService.findOne.mockResolvedValue({
+        id: 'owner-2',
+        email: 'owner2@example.com',
+        role: UserRole.OWNER,
+      });
+      businessesService.findByOwner.mockResolvedValue(null);
+
+      const result = await service.switchRole(
+        { id: 'owner-2', role: UserRole.CUSTOMER } as any,
+        UserRole.OWNER,
+      );
+
+      expect(result.user.role).toBe(UserRole.OWNER);
+      expect(result.user.isOwnerAccount).toBe(true);
+      const claims = jwtService.sign.mock.calls.at(-1)[0];
+      expect(claims.businessId).toBeUndefined();
+    });
+
+    it('lets staff switch to customer and back to their own role', async () => {
+      usersService.findOne.mockResolvedValue({
+        id: 'staff-1',
+        email: 'staff@example.com',
+        role: UserRole.STAFF,
+        businessId: 'biz-1',
+        branchId: 'br-1',
+      });
+
+      const customer = await service.switchRole(
+        { id: 'staff-1', role: UserRole.STAFF } as any,
+        UserRole.CUSTOMER,
+      );
+      expect(customer.user.businessId).toBeNull();
+      expect(customer.user.businessRole).toBe(UserRole.STAFF);
+      expect(customer.user.lastActiveShell).toBe('customer');
+
+      const back = await service.switchRole(
+        { id: 'staff-1', role: UserRole.CUSTOMER } as any,
+        UserRole.STAFF,
+      );
+      expect(back.user.role).toBe(UserRole.STAFF);
+      expect(back.user.businessId).toBe('biz-1');
+    });
+
+    it('rejects a role the account does not have', async () => {
+      usersService.findOne.mockResolvedValue({
+        id: 'staff-1',
+        email: 'staff@example.com',
+        role: UserRole.STAFF,
+      });
+
+      await expect(
+        service.switchRole(
+          { id: 'staff-1', role: UserRole.STAFF } as any,
+          UserRole.MANAGER,
+        ),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('does not record a shell for a plain customer', async () => {
+      usersService.update.mockClear();
+      usersService.findOne.mockResolvedValue({
+        id: 'cust-1',
+        email: 'cust@example.com',
+        role: UserRole.CUSTOMER,
+      });
+
+      const result = await service.switchRole(
+        { id: 'cust-1', role: UserRole.CUSTOMER } as any,
+        UserRole.CUSTOMER,
+      );
+
+      expect(result.user.isOwnerAccount).toBe(false);
+      expect(usersService.update).not.toHaveBeenCalled();
     });
 
     it('should throw if Owner tries to switch to non-Customer', async () => {
@@ -1083,18 +1163,6 @@ describe('AuthService', () => {
       );
     });
 
-    it('should throw if an owner without a business tries to switch to Owner', async () => {
-      const user = { id: 'owner-1', role: UserRole.OWNER } as any;
-      usersService.findOne.mockResolvedValue({
-        id: 'owner-1',
-        role: UserRole.OWNER,
-      });
-      businessesService.findByOwner.mockResolvedValue(null);
-
-      await expect(service.switchRole(user, UserRole.OWNER)).rejects.toThrow(
-        BadRequestException,
-      );
-    });
   });
 
   // ==================== upgradeToOwner ====================

@@ -263,6 +263,10 @@ export class BusinessesService {
   }
 
   async findById(id: string): Promise<Business> {
+    // TypeORM drops an empty `where` value, which would match the first business.
+    if (!id) {
+      throw new NotFoundException('Business not found');
+    }
     const business = await this.businessesRepository.findOne({
       where: { id },
       relations: ['branches', 'category', 'subcategory'],

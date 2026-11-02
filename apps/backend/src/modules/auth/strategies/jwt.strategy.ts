@@ -3,7 +3,11 @@ import { PassportStrategy } from '@nestjs/passport';
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { UsersService } from '../../users/users.service';
-import { User, UserRole } from '../../users/entities/user.entity';
+import {
+  BUSINESS_SHELL_ROLES,
+  User,
+  UserRole,
+} from '../../users/entities/user.entity';
 
 /** Claims the API signs into access tokens (`generateAuthResponse` / `switchRole`). */
 interface AccessTokenPayload {
@@ -24,6 +28,12 @@ type RequestUser = Omit<User, 'businessId' | 'branchId'> & {
   branchId?: string | null;
   /** The login session this token belongs to (`sid`), for "this device". */
   sessionId?: string;
+  /** Owner in the DB, even while this token is scoped to the customer shell. */
+  isOwnerAccount?: boolean;
+  /** The account's business-side role, whatever shell this token is scoped to. */
+  businessRole?: UserRole | null;
+  /** A business exists for this account, even on a customer-scoped token. */
+  hasBusiness?: boolean;
 };
 
 @Injectable()
@@ -62,6 +72,11 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       if (!session) throw new UnauthorizedException('Session has been revoked');
       user.sessionId = payload.sid;
     }
+    user.isOwnerAccount = user.role === UserRole.OWNER;
+    user.businessRole = BUSINESS_SHELL_ROLES.includes(user.role)
+      ? user.role
+      : null;
+    user.hasBusiness = Boolean(user.businessId);
     // Honor the signed token's role and business context. `switch-role` issues
     // CUSTOMER-scoped tokens for dual-role owners; without applying the claim
     // the guards would authorize off the DB role (Owner) and customer-only
