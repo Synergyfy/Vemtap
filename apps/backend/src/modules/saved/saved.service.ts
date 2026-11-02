@@ -318,6 +318,7 @@ export class SavedService {
       duration: item?.duration ?? null,
       businessId: item?.businessId ?? '',
       businessName: item?.business?.name ?? '',
+      businessCode: item?.business?.uniqueCode ?? null,
       branchId: branch?.id ?? null,
       branchName: branch?.name ?? null,
       isBookable: item?.isBookable ?? false,
