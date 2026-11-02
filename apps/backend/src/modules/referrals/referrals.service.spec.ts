@@ -271,6 +271,37 @@ describe('ReferralsService', () => {
       expect(result.referrals[0]).toMatchObject({ name: 'Chidi O.' });
       expect(result.referrals[1]).toMatchObject({ name: 'Ngozi' });
     });
+
+    it('labels a business owner a customer referred as a business', async () => {
+      const user = customer();
+      user.myReferralCode = 'KLTQP2X8';
+      mockUserRepository.findOne.mockResolvedValue(user);
+      mockUserRepository.createQueryBuilder.mockImplementation(() =>
+        mockQueryBuilder([
+          {
+            id: 'r1',
+            firstName: 'Chidi',
+            lastName: 'Okonkwo',
+            role: UserRole.OWNER,
+            createdAt: new Date('2026-01-01'),
+          },
+          {
+            id: 'r2',
+            firstName: 'Ngozi',
+            lastName: 'Eze',
+            role: UserRole.CUSTOMER,
+            createdAt: new Date('2026-01-02'),
+          },
+        ]),
+      );
+
+      const result = await service.getMe('user-1');
+
+      expect(result.referrals.map((entry) => entry.type)).toEqual([
+        'business',
+        'customer',
+      ]);
+    });
   });
 
   // ==================== resolveAndApplyReferral ====================
