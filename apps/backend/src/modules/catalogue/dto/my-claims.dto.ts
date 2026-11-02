@@ -73,6 +73,14 @@ export class MyClaimsQueryDto {
   q?: string;
 }
 
+export class MyClaimOfferItemDto {
+  @ApiProperty({ example: 'uuid-of-item' })
+  id: string;
+
+  @ApiProperty({ example: 'Chicken Burger' })
+  name: string;
+}
+
 export class MyClaimOfferDto {
   @ApiProperty({ example: 'uuid-of-offer' })
   id: string;
@@ -85,6 +93,15 @@ export class MyClaimOfferDto {
     nullable: true,
   })
   mainImage: string | null;
+
+  @ApiProperty({ example: 'Burger, fries and a drink', nullable: true })
+  description: string | null;
+
+  @ApiProperty({
+    type: [MyClaimOfferItemDto],
+    description: 'What the voucher covers; kept after the deal ends',
+  })
+  items: MyClaimOfferItemDto[];
 
   @ApiProperty({ example: 11600, description: 'Deal price of the offer' })
   calculatedPrice: number;
@@ -118,6 +135,16 @@ export class MyClaimOfferDto {
     nullable: true,
   })
   businessLogo: string | null;
+
+  @ApiProperty({
+    example: 'ABC123XYZ',
+    nullable: true,
+    description: 'Public code for opening the business page',
+  })
+  businessCode: string | null;
+
+  @ApiProperty({ example: true })
+  businessVerified: boolean;
 
   @ApiProperty({ example: 'uuid-of-branch' })
   branchId: string;

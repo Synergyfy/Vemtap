@@ -2552,6 +2552,11 @@ export class CatalogueOfferService {
       offer: {
         id: offer.id,
         name: offer.name,
+        description: offer.description || null,
+        items: (offer.items ?? []).map((item) => ({
+          id: item.id,
+          name: item.name,
+        })),
         mainImage: offer.mainImage || offer.items?.[0]?.mainImage || null,
         calculatedPrice,
         originalPrice,
@@ -2563,6 +2568,8 @@ export class CatalogueOfferService {
           offer.discountValue == null ? null : Number(offer.discountValue),
         businessId: business?.id ?? offer.branch?.businessId ?? '',
         businessName: business?.name ?? '',
+        businessCode: business?.uniqueCode ?? null,
+        businessVerified: Boolean(business?.isVerified),
         businessLogo: business?.logoUrl ?? null,
         branchId: branch?.id ?? offer.branchId,
         branchName: branch?.name ?? '',
