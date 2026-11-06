@@ -1,3 +1,4 @@
+import { RefreshTokensService } from './refresh-tokens.service';
 import { Test, TestingModule } from '@nestjs/testing';
 import { AuthService } from './auth.service';
 import { UsersService } from '../users/users.service';
@@ -43,6 +44,12 @@ describe('AuthService', () => {
   let otpRepository: any;
   let subscriptionsService: any;
 
+  const mockRefreshTokens = {
+    issue: jest.fn().mockResolvedValue('session-1.secret'),
+    updateClaims: jest.fn().mockResolvedValue(undefined),
+    rotate: jest.fn(),
+    revoke: jest.fn().mockResolvedValue(undefined),
+  };
   const mockUsersService = {
     findByEmail: jest.fn(),
     findByPhone: jest.fn(),
@@ -140,6 +147,7 @@ describe('AuthService', () => {
       providers: [
         AuthService,
         { provide: UsersService, useValue: mockUsersService },
+        { provide: RefreshTokensService, useValue: mockRefreshTokens },
         { provide: BusinessesService, useValue: mockBusinessesService },
         { provide: DevicesService, useValue: mockDevicesService },
         { provide: SubscriptionsService, useValue: mockSubscriptionsService },
@@ -1162,7 +1170,6 @@ describe('AuthService', () => {
         BadRequestException,
       );
     });
-
   });
 
   // ==================== upgradeToOwner ====================
@@ -1571,10 +1578,9 @@ describe('AuthService', () => {
           referralCode: 'VEM-8OGUU4',
         });
 
-        expect(mockReferralsService.resolveAndApplyReferral).toHaveBeenCalledWith(
-          'VEM-8OGUU4',
-          'cust-1',
-        );
+        expect(
+          mockReferralsService.resolveAndApplyReferral,
+        ).toHaveBeenCalledWith('VEM-8OGUU4', 'cust-1');
       });
 
       it('should ignore an invalid referral code at customer sign-up', async () => {
@@ -1851,6 +1857,89 @@ describe('AuthService', () => {
       expect(usersService.create).toHaveBeenCalledWith(
         expect.objectContaining({ role: UserRole.OWNER }),
       );
+    });
+  });
+
+  describe('refresh', () => {
+    const session = (tokenClaims: Record<string, unknown>) => ({
+      session: { id: 'session-1', userId: 'user-1', tokenClaims },
+      refreshToken: 'session-1.next',
+    });
+
+    beforeEach(() => {
+      mockRefreshTokens.rotate.mockReset();
+      mockRefreshTokens.revoke.mockClear();
+      jwtService.sign.mockClear();
+    });
+
+    it('renews with the same shell and session', async () => {
+      mockRefreshTokens.rotate.mockResolvedValue(
+        session({ role: UserRole.CUSTOMER, businessId: null, branchId: null }),
+      );
+      mockUsersService.findOne.mockResolvedValue({
+        id: 'user-1',
+        email: 'owner@test.com',
+        role: UserRole.OWNER,
+        status: UserStatus.ACTIVE,
+        businessId: 'business-1',
+      });
+
+      const result = await service.refresh('session-1.current');
+
+      expect(jwtService.sign).toHaveBeenCalledWith(
+        expect.objectContaining({
+          sub: 'user-1',
+          sid: 'session-1',
+          role: UserRole.CUSTOMER,
+          businessId: null,
+        }),
+      );
+      expect(result.refresh_token).toBe('session-1.next');
+    });
+
+    it('drops a business shell the account no longer holds', async () => {
+      mockRefreshTokens.rotate.mockResolvedValue(
+        session({ role: UserRole.MANAGER, businessId: 'business-1' }),
+      );
+      mockUsersService.findOne.mockResolvedValue({
+        id: 'user-1',
+        email: 'ex-staff@test.com',
+        role: UserRole.CUSTOMER,
+        status: UserStatus.ACTIVE,
+        businessId: null,
+        branchId: null,
+      });
+
+      await service.refresh('session-1.current');
+
+      expect(jwtService.sign).toHaveBeenCalledWith(
+        expect.objectContaining({ role: UserRole.CUSTOMER, businessId: null }),
+      );
+    });
+
+    it('rejects a token that cannot be used', async () => {
+      mockRefreshTokens.rotate.mockResolvedValue(null);
+
+      await expect(service.refresh('bad')).rejects.toThrow(
+        UnauthorizedException,
+      );
+    });
+
+    it('ends the session of a suspended account', async () => {
+      mockRefreshTokens.rotate.mockResolvedValue(
+        session({ role: UserRole.CUSTOMER }),
+      );
+      mockUsersService.findOne.mockResolvedValue({
+        id: 'user-1',
+        role: UserRole.CUSTOMER,
+        status: UserStatus.SUSPENDED,
+      });
+
+      await expect(service.refresh('session-1.current')).rejects.toThrow(
+        UnauthorizedException,
+      );
+      expect(mockRefreshTokens.revoke).toHaveBeenCalledWith('session-1');
+      expect(jwtService.sign).not.toHaveBeenCalled();
     });
   });
 });

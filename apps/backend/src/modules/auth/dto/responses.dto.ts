@@ -14,6 +14,12 @@ export class AuthResponseDto {
   access_token: string;
 
   @ApiProperty({
+    description: 'Renews the access token through `POST /auth/refresh`',
+    required: false,
+  })
+  refresh_token?: string;
+
+  @ApiProperty({
     type: User,
     description:
       'Includes `isOwnerAccount` (Owner in the DB, whatever shell the token is scoped to) and `lastActiveShell`',

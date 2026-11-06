@@ -8,6 +8,7 @@ import {
   Inject,
   forwardRef,
 } from '@nestjs/common';
+import { RefreshTokensService } from './refresh-tokens.service';
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -151,6 +152,7 @@ export class AuthService {
     private affiliatesService: AffiliatesService,
     @Inject(forwardRef(() => ReferralsService))
     private referralsService: ReferralsService,
+    private refreshTokens: RefreshTokensService,
   ) {
     this.googleClient = new OAuth2Client(
       this.configService.get<string>('GOOGLE_CLIENT_ID'),
@@ -361,8 +363,16 @@ export class AuthService {
         });
     }
 
+    const refreshToken = await this.refreshTokens.issue(session.id, {
+      role: user.role,
+      branchId,
+      businessId: effectiveBusinessId,
+      referralCode,
+    });
+
     return {
       access_token: this.jwtService.sign(payload),
+      refresh_token: refreshToken,
       sessionId: session.id,
       user: {
         ...user,
@@ -1573,6 +1583,45 @@ export class AuthService {
    * it) stops authenticating. Tokens without a session id predate linked
    * devices and simply expire.
    */
+  async refresh(refreshToken: string) {
+    const rotated = await this.refreshTokens.rotate(refreshToken);
+    const expired = 'Your session has expired. Please sign in again.';
+    if (!rotated) throw new UnauthorizedException(expired);
+
+    const { session } = rotated;
+    const user = await this.usersService.findOne(session.userId);
+    if (
+      !user ||
+      user.status === UserStatus.SUSPENDED ||
+      user.status === UserStatus.INACTIVE
+    ) {
+      await this.refreshTokens.revoke(session.id);
+      throw new UnauthorizedException(expired);
+    }
+
+    // The shell from the last token, unless the account has since lost it: a
+    // removed staff member must not renew their way back in.
+    const claims = session.tokenClaims ?? {};
+    const shellStillHeld =
+      claims.role === user.role || claims.role === UserRole.CUSTOMER;
+    const payload = {
+      email: user.email,
+      sub: user.id,
+      sid: session.id,
+      ...(shellStillHeld
+        ? claims
+        : {
+            role: user.role,
+            businessId: user.businessId,
+            branchId: user.branchId,
+          }),
+    };
+    return {
+      access_token: this.jwtService.sign(payload),
+      ...(rotated.refreshToken ? { refresh_token: rotated.refreshToken } : {}),
+    };
+  }
+
   async logout(user: User & { sessionId?: string }) {
     if (user.sessionId) {
       await this.usersService.revokeSession(user.id, user.sessionId);
@@ -1639,6 +1688,13 @@ export class AuthService {
       : dbUser.lastActiveShell;
     if (businessRole) {
       await this.usersService.update(dbUser.id, { lastActiveShell });
+    }
+    if (user.sessionId) {
+      await this.refreshTokens.updateClaims(user.sessionId, {
+        role: targetRole,
+        branchId: payload.branchId,
+        businessId: payload.businessId,
+      });
     }
 
     delete (dbUser as Partial<User>).password;

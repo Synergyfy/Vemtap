@@ -13,7 +13,9 @@ import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { Public } from '../../common/decorators/public.decorator';
 import { AllowPending } from '../../common/decorators/allow-pending.decorator';
 import { ApiTags, ApiOperation, ApiBody, ApiResponse } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import { LoginDto } from './dto/login.dto';
+import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { RegisterDto } from './dto/register.dto';
 import { VerifyOtpDto, SendOtpDto } from './dto/otp.dto';
 import { RegisterOwnerDto } from './dto/register-owner.dto';
@@ -398,6 +400,22 @@ export class AuthController {
     const ip = req.ip || req.connection.remoteAddress;
     const userAgent = req.headers['user-agent'];
     return this.authService.resetPassword(dto, { ip, userAgent });
+  }
+
+  @Public()
+  @Post('refresh')
+  @HttpCode(HttpStatus.OK)
+  @Throttle({ default: { limit: 20, ttl: 60000 } })
+  @ApiOperation({
+    summary: 'Renew an expired access token',
+    description:
+      'Swaps a `refresh_token` for a new access token and a new `refresh_token`; each one works once. `refresh_token` is left out when another request just rotated it, so keep the newer one. A token reused later ends its session. 401 means sign in again. Access: public, the refresh token is the credential.',
+  })
+  @ApiBody({ type: RefreshTokenDto })
+  @ApiResponse({ status: 200, description: 'New tokens' })
+  @ApiResponse({ status: 401, description: 'Session expired or revoked' })
+  refresh(@Body() dto: RefreshTokenDto) {
+    return this.authService.refresh(dto.refreshToken);
   }
 
   @UseGuards(JwtAuthGuard)

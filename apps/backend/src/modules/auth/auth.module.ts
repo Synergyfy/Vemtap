@@ -1,3 +1,5 @@
+import { UserSession } from '../users/entities/user-session.entity';
+import { RefreshTokensService } from './refresh-tokens.service';
 import { Module, forwardRef } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
@@ -25,7 +27,7 @@ import { Otp } from './entities/otp.entity';
     forwardRef(() => SubscriptionsModule),
     MailModule,
     PassportModule,
-    TypeOrmModule.forFeature([Otp]),
+    TypeOrmModule.forFeature([Otp, UserSession]),
     forwardRef(() => AffiliatesModule),
     ExternalAffiliateModule,
     forwardRef(() => ReferralsModule),
@@ -40,7 +42,7 @@ import { Otp } from './entities/otp.entity';
       inject: [ConfigService],
     }),
   ],
-  providers: [AuthService, JwtStrategy, LocalStrategy],
+  providers: [AuthService, JwtStrategy, LocalStrategy, RefreshTokensService],
   controllers: [AuthController],
   exports: [AuthService],
 })
