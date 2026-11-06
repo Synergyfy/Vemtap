@@ -51,17 +51,47 @@ const photonJabi = {
 
 const urlOf = (call: unknown[]) => String(call[0]);
 
+const googleWuse = {
+  status: 'OK',
+  results: [
+    {
+      address_components: [
+        { long_name: 'Wuse II', types: ['sublocality_level_1', 'sublocality'] },
+        { long_name: 'Abuja', types: ['locality'] },
+        {
+          long_name: 'Federal Capital Territory',
+          types: ['administrative_area_level_1'],
+        },
+        { long_name: 'Nigeria', types: ['country'] },
+      ],
+      geometry: { location: { lat: 9.0765, lng: 7.4813 } },
+    },
+  ],
+};
+
 describe('GeocodingService', () => {
   let service: GeocodingService;
   let fetchMock: jest.SpyInstance;
 
+  const originalKey = process.env.GOOGLE_MAPS_API_KEY;
+  const originalLocationIqKey = process.env.LOCATIONIQ_API_KEY;
+
   beforeEach(() => {
+    delete process.env.GOOGLE_MAPS_API_KEY;
+    delete process.env.LOCATIONIQ_API_KEY;
     service = new GeocodingService(createCache());
     Object.assign(service, { nominatimRetryDelayMs: 0 });
     fetchMock = jest.spyOn(global, 'fetch');
   });
 
   afterEach(() => {
+    if (originalKey === undefined) delete process.env.GOOGLE_MAPS_API_KEY;
+    else process.env.GOOGLE_MAPS_API_KEY = originalKey;
+    if (originalLocationIqKey === undefined) {
+      delete process.env.LOCATIONIQ_API_KEY;
+    } else {
+      process.env.LOCATIONIQ_API_KEY = originalLocationIqKey;
+    }
     fetchMock.mockRestore();
   });
 
@@ -136,18 +166,152 @@ describe('GeocodingService', () => {
     });
   });
 
+  describe('LocationIQ first', () => {
+    beforeEach(() => {
+      process.env.LOCATIONIQ_API_KEY = 'iq-key';
+      process.env.GOOGLE_MAPS_API_KEY = 'test-key';
+    });
+
+    it('names a point with LocationIQ and asks nothing else', async () => {
+      fetchMock.mockImplementation(() => json(nominatimWuse));
+
+      await expect(service.reverse(9.0765, 7.4813)).resolves.toMatchObject({
+        district: 'Wuse II',
+        city: 'Abuja',
+      });
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      expect(urlOf(fetchMock.mock.calls[0])).toContain(
+        'us1.locationiq.com/v1/reverse?lat=9.0765&lon=7.4813',
+      );
+    });
+
+    it('keeps typed areas inside Nigeria', async () => {
+      fetchMock.mockImplementation(() => json([nominatimWuse]));
+
+      await expect(service.search('Wuse II')).resolves.toMatchObject({
+        lat: 9.0765,
+        district: 'Wuse II',
+      });
+      expect(urlOf(fetchMock.mock.calls[0])).toContain('countrycodes=ng');
+    });
+
+    it('moves on to Google when LocationIQ has no match', async () => {
+      fetchMock
+        .mockImplementationOnce(() => json({ error: 'none' }, false, 404))
+        .mockImplementationOnce(() => json(googleWuse));
+
+      const place = await service.reverse(9.0765, 7.4813);
+
+      expect(place?.state).toBe('Federal Capital Territory');
+      expect(urlOf(fetchMock.mock.calls[1])).toContain('maps.googleapis.com');
+    });
+
+    it('fills in an area name from the built-in list', async () => {
+      fetchMock.mockImplementation(() =>
+        json({
+          lat: '9.0765',
+          lon: '7.476',
+          address: { state: 'Federal Capital Territory', country: 'Nigeria' },
+        }),
+      );
+
+      await expect(service.reverse(9.0765, 7.476)).resolves.toMatchObject({
+        district: 'Wuse II',
+        city: 'Abuja',
+      });
+    });
+  });
+
+  describe('city from the built-in list', () => {
+    it('replaces a city that is only the state name', async () => {
+      process.env.LOCATIONIQ_API_KEY = 'iq-key';
+      fetchMock.mockImplementation(() =>
+        json({
+          lat: '7.3775',
+          lon: '3.947',
+          address: {
+            county: 'Ona Ara',
+            state: 'Oyo State',
+            country: 'Nigeria',
+          },
+        }),
+      );
+
+      await expect(service.reverse(7.3775, 3.947)).resolves.toMatchObject({
+        city: 'Ibadan',
+        state: 'Oyo State',
+      });
+    });
+  });
+
+  describe('Google first', () => {
+    beforeEach(() => {
+      process.env.GOOGLE_MAPS_API_KEY = 'test-key';
+    });
+
+    it('names a point with Google and asks nothing else', async () => {
+      fetchMock.mockImplementation(() => json(googleWuse));
+
+      await expect(service.reverse(9.0765, 7.4813)).resolves.toEqual({
+        district: 'Wuse II',
+        city: 'Abuja',
+        state: 'Federal Capital Territory',
+        country: 'Nigeria',
+      });
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      expect(urlOf(fetchMock.mock.calls[0])).toContain(
+        'maps.googleapis.com/maps/api/geocode/json?latlng=9.0765,7.4813&key=test-key',
+      );
+    });
+
+    it('keeps typed areas inside Nigeria', async () => {
+      fetchMock.mockImplementation(() => json(googleWuse));
+
+      await expect(service.search('Wuse II')).resolves.toMatchObject({
+        lat: 9.0765,
+        district: 'Wuse II',
+      });
+      expect(urlOf(fetchMock.mock.calls[0])).toContain('components=country:NG');
+    });
+
+    it('falls back to OpenStreetMap when Google refuses', async () => {
+      fetchMock
+        .mockImplementationOnce(() => json({ status: 'REQUEST_DENIED' }))
+        .mockImplementationOnce(() => json(nominatimWuse));
+
+      const place = await service.reverse(9.0765, 7.4813);
+
+      expect(place?.district).toBe('Wuse II');
+      expect(urlOf(fetchMock.mock.calls[1])).toContain('nominatim');
+    });
+
+    it('uses Google for business addresses', async () => {
+      fetchMock.mockImplementation(() => json(googleWuse));
+
+      await expect(
+        service.geocodeAddress('12 Aminu Kano Crescent, Abuja'),
+      ).resolves.toEqual({ lat: 9.0765, lng: 7.4813 });
+    });
+  });
+
   describe('built-in Nigerian areas', () => {
-    it('names a point without calling a provider', async () => {
+    const offline = () =>
+      fetchMock.mockImplementation(() => Promise.reject(new Error('offline')));
+
+    it('names a point when every provider fails', async () => {
+      offline();
+
       await expect(service.reverse(9.0765, 7.476)).resolves.toEqual({
         district: 'Wuse II',
         city: 'Abuja',
         state: 'Federal Capital Territory',
         country: 'Nigeria',
       });
-      expect(fetchMock).not.toHaveBeenCalled();
     });
 
     it('names the state capital as the city around it', async () => {
+      offline();
+
       await expect(service.reverse(4.8156, 7.0498)).resolves.toMatchObject({
         city: 'Port Harcourt',
         state: 'Rivers State',
@@ -159,18 +323,21 @@ describe('GeocodingService', () => {
       ['Garki, Abuja', 'Garki', 'Abuja'],
       ['Ogba Lagos', 'Ogba', 'Lagos'],
       ['GRA Port Harcourt', 'GRA', 'Port Harcourt'],
-    ])('finds %s without calling a provider', async (query, district, city) => {
+    ])('finds %s when every provider fails', async (query, district, city) => {
+      offline();
+
       await expect(service.search(query)).resolves.toMatchObject({
         district,
         city,
       });
-      expect(fetchMock).not.toHaveBeenCalled();
     });
 
     it.each([
       ['Ibadan', 'Oyo State'],
       ['Enugu', 'Enugu State'],
     ])('prefers the state capital for %s', async (query, state) => {
+      offline();
+
       await expect(service.search(query)).resolves.toMatchObject({
         district: null,
         city: query,
@@ -178,17 +345,8 @@ describe('GeocodingService', () => {
       });
     });
 
-    it('does not guess a village when the state is unknown', async () => {
-      fetchMock.mockImplementation(() => json([nominatimWuse]));
-
-      const point = await service.search('Madeko');
-
-      expect(point?.district).toBe('Wuse II');
-      expect(fetchMock).toHaveBeenCalledTimes(1);
-    });
-
-    it('falls back to a village when no provider answers', async () => {
-      fetchMock.mockImplementation(() => Promise.reject(new Error('offline')));
+    it('falls back to a village last of all', async () => {
+      offline();
 
       await expect(service.search('Madeko')).resolves.toMatchObject({
         district: 'Madeko',
