@@ -240,6 +240,7 @@ export class DealEngagementService {
 
     const [data, total] = await this.reviewRepository.findAndCount({
       where: { offerId, status: DealReviewStatus.APPROVED },
+      relations: ['user'],
       order: { createdAt: 'DESC' },
       skip: (page - 1) * limit,
       take: limit,
@@ -257,6 +258,7 @@ export class DealEngagementService {
       reviews: data.map((r) => ({
         id: r.id,
         reviewerName: r.reviewerName,
+        reviewerAvatar: r.user?.avatar ?? null,
         comment: r.comment,
         rating: r.rating,
         likesCount: r.likesCount,
@@ -274,6 +276,7 @@ export class DealEngagementService {
     await this.getOfferOrThrow(offerId);
     const data = await this.reviewRepository.find({
       where: { offerId, status: DealReviewStatus.APPROVED },
+      relations: ['user'],
       order: { likesCount: 'DESC', createdAt: 'DESC' },
       take: 3,
     });
@@ -281,6 +284,7 @@ export class DealEngagementService {
       reviews: data.map((r) => ({
         id: r.id,
         reviewerName: r.reviewerName,
+        reviewerAvatar: r.user?.avatar ?? null,
         comment: r.comment,
         rating: r.rating,
         likesCount: r.likesCount,
@@ -304,6 +308,7 @@ export class DealEngagementService {
     await this.getOfferOrThrow(offerId);
     const review = await this.reviewRepository.findOne({
       where: { id: reviewId, offerId },
+      relations: ['user'],
     });
     if (!review) throw new NotFoundException('Review not found');
 
@@ -318,6 +323,7 @@ export class DealEngagementService {
       id: review.id,
       offerId: review.offerId,
       reviewerName: review.reviewerName,
+      reviewerAvatar: review.user?.avatar ?? null,
       comment: review.comment,
       rating: review.rating,
       likesCount: review.likesCount,
@@ -589,6 +595,7 @@ export class DealEngagementService {
     const qb = this.reviewRepository
       .createQueryBuilder('review')
       .innerJoinAndSelect('review.offer', 'offer')
+      .leftJoinAndSelect('review.user', 'user')
       .where('offer.businessId = :businessId', { businessId })
       .orderBy('review.createdAt', 'DESC')
       .skip((page - 1) * limit)
@@ -610,6 +617,7 @@ export class DealEngagementService {
         offerId: r.offerId,
         offerName: r.offer?.name,
         reviewerName: r.reviewerName,
+        reviewerAvatar: r.user?.avatar ?? null,
         comment: r.comment,
         rating: r.rating,
         likesCount: r.likesCount,
@@ -804,7 +812,7 @@ export class DealEngagementService {
     if (status) where.status = status;
     const [data, total] = await this.reviewRepository.findAndCount({
       where,
-      relations: ['offer'],
+      relations: ['offer', 'user'],
       order: { createdAt: 'DESC' },
       skip: (page - 1) * limit,
       take: limit,
@@ -815,6 +823,7 @@ export class DealEngagementService {
         offerId: r.offerId,
         offerName: r.offer?.name,
         reviewerName: r.reviewerName,
+        reviewerAvatar: r.user?.avatar ?? null,
         comment: r.comment,
         rating: r.rating,
         likesCount: r.likesCount,
