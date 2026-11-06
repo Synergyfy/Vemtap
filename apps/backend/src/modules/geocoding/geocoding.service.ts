@@ -71,6 +71,8 @@ const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 @Injectable()
 export class GeocodingService {
   private readonly logger = new Logger(GeocodingService.name);
+  /** Just over Nominatim's limit of one request a second. */
+  private readonly nominatimRetryDelayMs: number = 1100;
 
   constructor(@Inject(CACHE_MANAGER) private readonly cache: Cache) {}
 
@@ -181,9 +183,25 @@ export class GeocodingService {
     }
   }
 
+  /**
+   * Nominatim's answer, or null. It is often the only provider, so a rate
+   * limit, server error or dropped connection gets one more try. A timeout
+   * doesn't: it has already spent the customer's wait.
+   */
   private async nominatim<T = NominatimResult>(
     path: string,
   ): Promise<T | null> {
+    const first = await this.nominatimRequest<T>(path);
+    if (!first.retry) return first.data;
+    await new Promise((resolve) =>
+      setTimeout(resolve, this.nominatimRetryDelayMs),
+    );
+    return (await this.nominatimRequest<T>(path)).data;
+  }
+
+  private async nominatimRequest<T>(
+    path: string,
+  ): Promise<{ data: T | null; retry: boolean }> {
     try {
       const res = await fetch(`${NOMINATIM_URL}${path}`, {
         headers: NOMINATIM_HEADERS,
@@ -191,13 +209,16 @@ export class GeocodingService {
       });
       if (!res.ok) {
         this.logger.warn(`Nominatim returned ${res.status}`);
-        return null;
+        return { data: null, retry: res.status === 429 || res.status >= 500 };
       }
       const data = (await res.json()) as T & { error?: string };
-      return data && !(data as { error?: string }).error ? data : null;
+      return {
+        data: data && !(data as { error?: string }).error ? data : null,
+        retry: false,
+      };
     } catch (error) {
       this.logger.warn(`Nominatim failed: ${(error as Error).message}`);
-      return null;
+      return { data: null, retry: (error as Error).name !== 'TimeoutError' };
     }
   }
 
