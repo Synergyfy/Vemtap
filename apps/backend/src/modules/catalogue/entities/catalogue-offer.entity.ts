@@ -5,8 +5,10 @@ import {
   JoinColumn,
   ManyToMany,
   JoinTable,
+  Index,
 } from 'typeorm';
 import { AbstractBaseEntity } from '../../../common/entities/base.entity';
+import { numericTransformer } from '../../../common/transformers/numeric.transformer';
 import { Business } from '../../businesses/entities/business.entity';
 import { Branch } from '../../branches/entities/branch.entity';
 import { CatalogueItem } from './catalogue-item.entity';
@@ -17,6 +19,40 @@ export enum CatalogueOfferPricingType {
   SUM = 'sum',
   PERCENTAGE_DISCOUNT = 'percentage_discount',
   FIXED_DISCOUNT_PRICE = 'fixed_discount_price',
+  FIXED_DISCOUNT_AMOUNT = 'fixed_discount_amount',
+  /** Bundle of `items` sold together at `fixedPrice`. */
+  COMBO = 'combo',
+  /** Percentage off that grows with quantity, per `tiers`. */
+  TIERED = 'tiered',
+}
+
+export enum OfferClaimLimitPeriod {
+  LIFETIME = 'lifetime',
+  DAY = 'day',
+  WEEK = 'week',
+  MONTH = 'month',
+}
+
+export enum OfferRedemptionChannel {
+  DINE_IN = 'dine_in',
+  TAKEOUT = 'takeout',
+  RESERVATION = 'reservation',
+}
+
+/** A recurring slot in which a claim can be redeemed (Africa/Lagos time). */
+export interface OfferRedemptionWindow {
+  /** 0 = Sunday … 6 = Saturday. Empty means every day. */
+  weekdays: number[];
+  /** `HH:mm`, inclusive. */
+  start: string;
+  /** `HH:mm`, inclusive. */
+  end: string;
+}
+
+export interface OfferPricingTier {
+  minQuantity: number;
+  /** Percentage off once `minQuantity` is reached. */
+  discountValue: number;
 }
 
 export enum CatalogueOfferStatus {
@@ -31,7 +67,7 @@ export class CatalogueOffer extends AbstractBaseEntity {
   name: string;
 
   @ApiProperty({ example: 'Get 2 burgers and a drink for less!' })
-  @Column({ type: 'text' })
+  @Column({ type: 'text', default: '' })
   description: string;
 
   @ApiProperty({ example: 'https://image.com/offer.jpg' })
@@ -55,15 +91,33 @@ export class CatalogueOffer extends AbstractBaseEntity {
   pricingType: CatalogueOfferPricingType;
 
   @ApiProperty({ example: 10, nullable: true })
-  @Column({ type: 'decimal', precision: 12, scale: 2, nullable: true })
+  @Column({
+    type: 'decimal',
+    precision: 12,
+    scale: 2,
+    nullable: true,
+    transformer: numericTransformer,
+  })
   discountValue: number;
 
   @ApiProperty({ example: 25.0, nullable: true })
-  @Column({ type: 'decimal', precision: 12, scale: 2, nullable: true })
+  @Column({
+    type: 'decimal',
+    precision: 12,
+    scale: 2,
+    nullable: true,
+    transformer: numericTransformer,
+  })
   fixedPrice: number;
 
   @ApiProperty({ example: 22.5 })
-  @Column({ type: 'decimal', precision: 12, scale: 2, default: 0 })
+  @Column({
+    type: 'decimal',
+    precision: 12,
+    scale: 2,
+    default: 0,
+    transformer: numericTransformer,
+  })
   calculatedPrice: number;
 
   @ApiProperty({ example: 50, nullable: true })
@@ -260,6 +314,136 @@ export class CatalogueOffer extends AbstractBaseEntity {
     transformer: { to: (v: number) => v, from: (v: string) => parseFloat(v) },
   })
   revenue: number;
+
+  @ApiProperty({
+    example: 12,
+    description: 'Number of likes on this deal',
+  })
+  @Column({ type: 'int', default: 0 })
+  likesCount: number;
+
+  @ApiProperty({
+    example: 2,
+    description: 'Number of dislikes on this deal',
+  })
+  @Column({ type: 'int', default: 0 })
+  dislikesCount: number;
+
+  @ApiProperty({
+    example: 37,
+    description: 'Number of approved reviews on this deal',
+  })
+  @Column({ type: 'int', default: 0 })
+  reviewsCount: number;
+
+  @ApiProperty({
+    example: 5,
+    description: 'Number of shares on this deal',
+  })
+  @Column({ type: 'int', default: 0 })
+  sharesCount: number;
+
+  @ApiProperty({
+    example: 4.5,
+    description: 'Average rating from approved reviews on this deal',
+    nullable: true,
+  })
+  @Column({
+    type: 'decimal',
+    precision: 3,
+    scale: 2,
+    nullable: true,
+    transformer: {
+      to: (v: number | null) => v,
+      from: (v: string | null) => (v != null ? parseFloat(v) : null),
+    },
+  })
+  averageRating: number | null;
+
+  @ApiProperty({
+    example: false,
+    description: 'Whether the deal is featured',
+  })
+  @Column({ default: false })
+  isFeatured: boolean;
+
+  @ApiProperty({
+    example: 'uuid-of-source-item',
+    description: 'Source product or service ID from catalogue',
+    nullable: true,
+  })
+  @ManyToOne(() => CatalogueItem, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'sourceProductId' })
+  sourceProduct: CatalogueItem | null;
+
+  @Column({ type: 'uuid', nullable: true })
+  sourceProductId: string | null;
+
+  @ApiProperty({
+    example: 'b0b5c3f2-…',
+    nullable: true,
+    description:
+      'Shared by the per-branch rows of one deal published to several branches',
+  })
+  @Index('IDX_catalogue_offers_dealGroupId')
+  @Column({ type: 'uuid', nullable: true })
+  dealGroupId: string | null;
+
+  @ApiProperty({ example: true })
+  @Column({ default: true })
+  autoPauseWhenSoldOut: boolean;
+
+  @ApiProperty({
+    enum: OfferClaimLimitPeriod,
+    example: 'lifetime',
+    description: 'Window `maxClaimsPerCustomer` is counted over',
+  })
+  @Column({
+    type: 'varchar',
+    length: 20,
+    default: OfferClaimLimitPeriod.LIFETIME,
+  })
+  claimLimitPeriod: OfferClaimLimitPeriod;
+
+  @ApiProperty({ example: true })
+  @Column({ default: true })
+  allowGifting: boolean;
+
+  @ApiProperty({ example: false })
+  @Column({ default: false })
+  requireGiftRecipientVerification: boolean;
+
+  @ApiProperty({ example: false })
+  @Column({ default: false })
+  socialSharingBonus: boolean;
+
+  @ApiProperty({ enum: OfferRedemptionChannel, isArray: true, nullable: true })
+  @Column({ type: 'text', array: true, nullable: true })
+  redemptionChannels: OfferRedemptionChannel[] | null;
+
+  @ApiProperty({
+    example: ['Show the pass at the counter', 'Staff enter the code'],
+    nullable: true,
+  })
+  @Column({ type: 'jsonb', nullable: true })
+  claimSteps: string[] | null;
+
+  @ApiProperty({
+    example: [{ weekdays: [1, 2, 3, 4, 5], start: '12:00', end: '16:30' }],
+    nullable: true,
+  })
+  @Column({ type: 'jsonb', nullable: true })
+  redemptionWindows: OfferRedemptionWindow[] | null;
+
+  @ApiProperty({
+    example: [
+      { minQuantity: 2, discountValue: 10 },
+      { minQuantity: 4, discountValue: 20 },
+    ],
+    nullable: true,
+  })
+  @Column({ type: 'jsonb', nullable: true })
+  tiers: OfferPricingTier[] | null;
 
   @ManyToMany(() => CatalogueItem)
   @JoinTable({

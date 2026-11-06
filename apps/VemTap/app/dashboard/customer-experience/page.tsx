@@ -201,9 +201,58 @@ export default function CustomerExperienceRedesignPage() {
 
     return (
         <div className="min-h-screen bg-gray-50 pb-32">
+            {/* NATIVE MOBILE HEADER — only shows on mobile */}
+            {!isDesktop && (
+                <section className="relative bg-[#066CF4] px-5 sm:px-8 pt-10 pb-20 rounded-b-[2.5rem] shadow-lg mb-6">
+                    <div className="absolute top-0 right-0 p-8 opacity-10 pointer-events-none">
+                        <Smartphone size={120} />
+                    </div>
+                    <div className="relative z-10 space-y-6">
+                        <div className="flex flex-col">
+                            <p className="text-blue-100 text-[10px] font-bold uppercase tracking-wider mb-1">
+                                Digital Hub
+                            </p>
+                            <h1 className="text-xl font-bold text-white tracking-tight">
+                                Customer Experience
+                            </h1>
+                        </div>
+                        <div className="pt-2 pb-4">
+                            <p className="text-blue-100 text-xs font-semibold mb-1 flex items-center gap-1.5">
+                                <Monitor size={14} /> Business
+                            </p>
+                            <h2 className="text-3xl font-black text-white tracking-tight truncate">
+                                {business?.name || 'Your Experience'}
+                            </h2>
+                        </div>
+                    </div>
+
+                    {/* Step Segmented Control — Overlapping */}
+                    <div className="absolute left-0 right-0 -bottom-6 px-5 sm:px-8">
+                        <div className="bg-white p-1.5 rounded-2xl shadow-lg shadow-black/5 flex items-center">
+                            {[
+                                { key: 'hub' as FlowStep, label: 'Hub' },
+                                { key: 'deploy' as FlowStep, label: 'Deploy' },
+                                { key: 'preview' as FlowStep, label: 'Preview' },
+                            ].map(tab => (
+                                <button
+                                    key={tab.key}
+                                    onClick={() => setStep(tab.key)}
+                                    className={cn(
+                                        "flex-1 h-11 rounded-xl text-xs font-black transition-all cursor-pointer",
+                                        step === tab.key ? "bg-gray-900 text-white shadow-sm" : "text-gray-400 hover:text-gray-600"
+                                    )}
+                                >
+                                    {tab.label}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                </section>
+            )}
+
             <div className={cn(
                 "mx-auto transition-all duration-500 flex flex-col xl:flex-row xl:items-start xl:justify-center gap-12",
-                isDesktop ? "max-w-7xl px-8" : "max-w-2xl px-0"
+                isDesktop ? "max-w-7xl px-8" : "max-w-2xl px-0 pt-8"
             )}>
                 <div className={cn("flex-1 w-full", isDesktop ? "max-w-3xl" : "w-full")}>
                     <AnimatePresence mode="wait">

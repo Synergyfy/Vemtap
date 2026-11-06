@@ -29,6 +29,15 @@ describe('MailService', () => {
     expect(service).toBeDefined();
   });
 
+  it('boots without RESEND_API_KEY and reports sends as not delivered', async () => {
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [MailService, { provide: ConfigService, useValue: { get: jest.fn(() => undefined) } }],
+    }).compile();
+    const unconfigured = module.get<MailService>(MailService);
+
+    await expect(unconfigured.sendOtp('someone@example.com', '123456')).resolves.toBe(false);
+  });
+
   describe('generateOrderNotificationHtml', () => {
     const mockOrder = {
       id: 'order-12345678',
@@ -191,7 +200,7 @@ describe('MailService', () => {
         .spyOn((service as any).resend.emails, 'send')
         .mockResolvedValue({ data: { id: 'email-plan-change' }, error: null });
 
-      const result = await service.sendPlanChangeEmail(mockParams);
+      await service.sendPlanChangeEmail(mockParams);
 
       expect(sendSpy).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -261,6 +270,81 @@ describe('MailService', () => {
         expect.objectContaining({
           to: 'merchant@example.com',
           subject: expect.stringContaining('Pro Discovery'),
+        }),
+      );
+    });
+  });
+
+  describe('resolveFrontendBaseUrl & sendDealGiftEmail', () => {
+    it('should use candidate localhost URL preserving custom serving port', () => {
+      const url = service.resolveFrontendBaseUrl('http://localhost:3002');
+      expect(url).toBe('http://localhost:3002');
+    });
+
+    it('should use candidate 127.0.0.1 URL preserving port and stripping trailing slashes', () => {
+      const url = service.resolveFrontendBaseUrl('http://127.0.0.1:5173/');
+      expect(url).toBe('http://127.0.0.1:5173');
+    });
+
+    it('should fallback to staging URL when NODE_ENV is staging', () => {
+      configService.get.mockImplementation((key: string) => {
+        if (key === 'NODE_ENV') return 'staging';
+        return null;
+      });
+      const url = service.resolveFrontendBaseUrl();
+      expect(url).toBe('https://vemtap.vercel.app');
+    });
+
+    it('should fallback to production URL when NODE_ENV is production or prod', () => {
+      configService.get.mockImplementation((key: string) => {
+        if (key === 'NODE_ENV') return 'production';
+        return null;
+      });
+      const url = service.resolveFrontendBaseUrl();
+      expect(url).toBe('https://vemtap.com');
+    });
+
+    it('should fallback to http://localhost:3000 in development by default', () => {
+      configService.get.mockImplementation((key: string) => {
+        if (key === 'NODE_ENV') return 'development';
+        return null;
+      });
+      const url = service.resolveFrontendBaseUrl();
+      expect(url).toBe('http://localhost:3000');
+    });
+
+    it('should send deal gift email with dynamic environment URL in claim link', async () => {
+      const sendSpy = jest
+        .spyOn((service as any).resend.emails, 'send')
+        .mockResolvedValue({
+          data: { id: 'email-deal-gift-123' },
+          error: null,
+        });
+
+      const result = await service.sendDealGiftEmail({
+        recipientEmail: 'friend@example.com',
+        senderName: 'Tobi Ade',
+        frontendBaseUrl: 'http://localhost:3002',
+        offer: {
+          id: 'offer-abc-123',
+          name: '50% off Mega Burger',
+          calculatedPrice: 2500,
+        },
+        business: {
+          name: 'Burger Palace',
+          slug: 'burger-palace',
+        },
+      });
+
+      expect(result).toBe(true);
+      expect(sendSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          to: 'friend@example.com',
+          subject:
+            'Tobi Ade sent you a deal: 50% off Mega Burger at Burger Palace!',
+          html: expect.stringContaining(
+            'http://localhost:3002/deals/burger-palace/offer-abc-123?ref=gift&email=friend%40example.com&sender=Tobi%20Ade',
+          ),
         }),
       );
     });

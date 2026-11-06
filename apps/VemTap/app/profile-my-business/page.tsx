@@ -9,7 +9,7 @@ export const metadata = {
 export default function ProfileMyBusinessPage() {
   return (
     <div className="min-h-screen bg-gray-50/50 text-text-main selection:bg-primary/30">
-      <div className="relative z-10 max-w-7xl mx-auto px-6 py-20">
+      <div className="relative z-10 vemtap-container py-20">
         {/* Form Container */}
         <div className="animate-in fade-in slide-in-from-bottom-6 duration-1000 delay-300 mb-24">
             <PublicProfilingForm />

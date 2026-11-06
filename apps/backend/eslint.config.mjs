@@ -29,7 +29,43 @@ export default tseslint.config(
       '@typescript-eslint/no-explicit-any': 'off',
       '@typescript-eslint/no-floating-promises': 'warn',
       '@typescript-eslint/no-unsafe-argument': 'warn',
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        {
+          argsIgnorePattern: '^_',
+          varsIgnorePattern: '^_',
+          caughtErrors: 'none',
+          ignoreRestSiblings: true,
+        },
+      ],
       "prettier/prettier": ["error", { endOfLine: "auto" }],
+      // `any` is allowed above, so reading through it is reported, not fatal.
+      '@typescript-eslint/no-unsafe-member-access': 'warn',
+      '@typescript-eslint/no-unsafe-assignment': 'warn',
+      '@typescript-eslint/no-unsafe-call': 'warn',
+      '@typescript-eslint/no-unsafe-return': 'warn',
+    },
+  },
+  {
+    // Specs build loosely typed mocks on purpose.
+    files: ['**/*.spec.ts', '**/*.e2e-spec.ts', 'test/**/*.ts', '**/test/**/*.ts'],
+    rules: {
+      '@typescript-eslint/no-unsafe-member-access': 'off',
+      '@typescript-eslint/no-unsafe-assignment': 'off',
+      '@typescript-eslint/no-unsafe-call': 'off',
+      '@typescript-eslint/no-unsafe-return': 'off',
+      '@typescript-eslint/no-unsafe-argument': 'off',
+      '@typescript-eslint/unbound-method': 'off',
+      // Async mocks stand in for async APIs, and e2e setup lazy-requires.
+      '@typescript-eslint/require-await': 'off',
+      '@typescript-eslint/no-require-imports': 'off',
+    },
+  },
+  {
+    // Stand-alone Node scripts run outside Nest as CommonJS.
+    files: ['src/scripts/**/*.ts', 'src/seed-direct.ts'],
+    rules: {
+      '@typescript-eslint/no-require-imports': 'off',
     },
   },
 );

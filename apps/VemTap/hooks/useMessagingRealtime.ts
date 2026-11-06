@@ -49,6 +49,26 @@ const patchMessageStatusInCache = (existing: any, messageId: string, status: str
     return existing;
 };
 
+const applyMessageUpdateInCache = (existing: any, update: any) => {
+    if (!existing || !update?.id) return existing;
+    const patch = (item: any) => {
+        if (item?.id !== update.id) return item;
+        if (update.type === 'DELETE' || update.isDeleted) {
+            return { ...item, content: 'Message deleted', isDeleted: true, metadata: undefined };
+        }
+        return {
+            ...item,
+            content: update.content ?? item.content,
+            isEdited: update.isEdited ?? true,
+        };
+    };
+    if (Array.isArray(existing)) return existing.map(patch);
+    if (Array.isArray((existing as any)?.data)) {
+        return { ...existing, data: (existing as any).data.map(patch) };
+    }
+    return existing;
+};
+
 export const useMessagingRealtime = ({
     activeThreadId,
     branchId,
@@ -142,6 +162,16 @@ export const useMessagingRealtime = ({
     useEffect(() => {
         if (!socket) return;
 
+        const removeThreadCache = (threadId?: string) => {
+            if (threadId) {
+                queryClient.removeQueries({ queryKey: ['chat-messages', threadId] });
+                if (useChatStore.getState().activeConversationId === threadId) {
+                    useChatStore.getState().setActiveConversation(null);
+                }
+            }
+            queryClient.invalidateQueries({ queryKey: ['chat-threads'] });
+        };
+
         const handleNewMessage = (message: any) => {
             upsertMessageCache(message);
             ackReceivedMessage(message);
@@ -149,10 +179,33 @@ export const useMessagingRealtime = ({
         };
 
         const handleInboxUpdate = (payload: any) => {
+            if (payload?.type === 'thread_deleted') {
+                removeThreadCache(payload?.threadId);
+                return;
+            }
             if (payload?.message) {
                 upsertMessageCache(payload.message);
                 ackReceivedMessage(payload.message);
             }
+            invalidateThreads();
+        };
+
+        const handleThreadDeleted = (payload: any) => {
+            removeThreadCache(payload?.threadId);
+        };
+
+        const handleMessageUpdate = (payload: any) => {
+            const threadId = resolveThreadId(payload);
+            const update = payload?.update ?? payload;
+            if (update?.type === 'THREAD_DELETE' || payload?.type === 'thread_deleted') {
+                removeThreadCache(threadId || payload?.threadId);
+                return;
+            }
+            if (!threadId || !update?.id) return;
+            queryClient.setQueryData(
+                ['chat-messages', threadId, branchId, isCustomer],
+                (existing) => applyMessageUpdateInCache(existing, update)
+            );
             invalidateThreads();
         };
 
@@ -189,6 +242,8 @@ export const useMessagingRealtime = ({
 
         socket.on('newMessage', handleNewMessage);
         socket.on('inboxUpdate', handleInboxUpdate);
+        socket.on('threadDeleted', handleThreadDeleted);
+        socket.on('messageUpdate', handleMessageUpdate);
         socket.on('userTyping', handleUserTyping);
         socket.on('notification', handleInboxUpdate);
         socket.on('messageStatus', handleMessageStatus);
@@ -197,6 +252,8 @@ export const useMessagingRealtime = ({
         return () => {
             socket.off('newMessage', handleNewMessage);
             socket.off('inboxUpdate', handleInboxUpdate);
+            socket.off('threadDeleted', handleThreadDeleted);
+            socket.off('messageUpdate', handleMessageUpdate);
             socket.off('userTyping', handleUserTyping);
             socket.off('notification', handleInboxUpdate);
             socket.off('messageStatus', handleMessageStatus);
@@ -204,9 +261,12 @@ export const useMessagingRealtime = ({
         };
     }, [
         ackReceivedMessage,
+        branchId,
         invalidateThreads,
+        isCustomer,
         patchMessageStatus,
         patchMessagesStatus,
+        queryClient,
         setTyping,
         socket,
         upsertMessageCache,

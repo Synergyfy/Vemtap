@@ -28,11 +28,14 @@ export default function CatalogueOverviewPage() {
         (order: any) => order.status === 'new' || order.status === 'processing'
     ).length;
 
+    const productCount = items.filter(i => (i.itemType || 'product') === 'product').length;
+    const serviceCount = items.filter(i => i.itemType === 'service').length;
+
     const stats = [
-        { label: 'Total Items', value: items.length.toString(), icon: ShoppingBag, href: '/dashboard/catalogue/products' },
+        { label: 'Products', value: productCount.toString(), icon: ShoppingBag, href: '/dashboard/catalogue/products' },
+        { label: 'Services', value: serviceCount.toString(), icon: ClipboardList, href: '/dashboard/catalogue/products?tab=services' },
         { label: 'Categories', value: categories.length.toString(), icon: LayoutGrid, href: '/dashboard/catalogue/categories' },
         { label: 'Pending Requests', value: pendingRequestsCount.toString(), icon: Clock, href: '/dashboard/catalogue/orders' },
-        { label: 'Total Transactions', value: (ordersData?.total || 0).toString(), icon: ClipboardList, href: '/dashboard/catalogue/orders' },
     ];
 
     if (isLoading) {

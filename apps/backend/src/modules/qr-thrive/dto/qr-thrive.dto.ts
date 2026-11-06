@@ -7,6 +7,7 @@ import {
   IsString,
   IsBoolean,
   IsObject,
+  IsIn,
 } from 'class-validator';
 import { QRType } from '../enums';
 import { ExternalLeadStatus } from '../entities/external-lead-status.entity';
@@ -198,4 +199,10 @@ export class SpecializedLeadsQueryDto {
   })
   @IsOptional()
   limit?: number;
+}
+
+export class UpdateQrCodeStatusDto {
+  @ApiProperty({ enum: ['active', 'archived'], example: 'archived' })
+  @IsIn(['active', 'archived'])
+  status: 'active' | 'archived';
 }

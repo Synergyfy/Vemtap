@@ -6,7 +6,6 @@ import { CampaignService } from '../services/campaign.service';
 import { TemplateService } from '../services/template.service';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { User, UserRole } from '../../users/entities/user.entity';
-import { Business } from '../../businesses/entities/business.entity';
 import { Branch } from '../../branches/entities/branch.entity';
 import { Channel } from '../enums/channel.enum';
 import { Job } from 'bullmq';

@@ -13,6 +13,7 @@ import { Exclude } from 'class-transformer';
 import { AbstractBaseEntity } from '../../../common/entities/base.entity';
 import { Business } from '../../businesses/entities/business.entity';
 import { Notification } from '../../notifications/entities/notification.entity';
+import { PushToken } from '../../notifications/entities/push-token.entity';
 import { Visit } from '../../visitors/entities/visit.entity';
 import { Branch } from '../../branches/entities/branch.entity';
 import { Message } from '../../messaging/entities/message.entity';
@@ -31,6 +32,13 @@ export enum UserRole {
   CUSTOMER = 'Customer',
   AGENT = 'Agent',
 }
+
+/** Roles with a business shell; each can also switch to the customer shell. */
+export const BUSINESS_SHELL_ROLES: UserRole[] = [
+  UserRole.OWNER,
+  UserRole.MANAGER,
+  UserRole.STAFF,
+];
 
 export enum UserStatus {
   ACTIVE = 'Active',
@@ -79,6 +87,14 @@ export class User extends AbstractBaseEntity {
   @Column()
   lastName: string;
 
+  /**
+   * Free-form so the profile screen can save the option it was given without
+   * this enum forcing a product decision on the values themselves.
+   */
+  @ApiProperty({ example: 'Female', nullable: true })
+  @Column({ nullable: true })
+  gender?: string;
+
   @ApiProperty({ enum: UserRole, example: UserRole.OWNER })
   @Column({
     type: 'simple-enum',
@@ -86,6 +102,14 @@ export class User extends AbstractBaseEntity {
     default: UserRole.CUSTOMER,
   })
   role: UserRole;
+
+  @ApiProperty({
+    enum: ['customer', 'business'],
+    nullable: true,
+    description: 'The shell a dual-role account last used',
+  })
+  @Column({ type: 'varchar', nullable: true })
+  lastActiveShell?: 'customer' | 'business' | null;
 
   @ApiProperty({ example: 'Cashier', nullable: true })
   @Column({ nullable: true })
@@ -118,6 +142,16 @@ export class User extends AbstractBaseEntity {
   @ApiProperty({ example: 'AFF001', nullable: true })
   @Column({ nullable: true })
   referralCode: string;
+
+  /**
+   * The code this account shares for inviting others (outbound), unlike
+   * `referralCode` which records the code the account signed up with.
+   * Customers get a personal code here; owners/agents reuse their business
+   * uniqueCode / affiliate code.
+   */
+  @ApiProperty({ example: 'K7RTM2QP', nullable: true })
+  @Column({ unique: true, nullable: true })
+  myReferralCode: string;
 
   @ApiProperty({ example: '2023-10-25T10:00:00.000Z', nullable: true })
   @Column({ type: 'timestamp', nullable: true })
@@ -154,6 +188,9 @@ export class User extends AbstractBaseEntity {
   @OneToMany(() => Notification, (notification) => notification.user)
   notifications: Notification[];
 
+  @OneToMany(() => PushToken, (token) => token.user)
+  pushTokens: PushToken[];
+
   @OneToMany(() => UserSession, (session) => session.user)
   sessions: UserSession[];
 
@@ -177,8 +214,27 @@ export class User extends AbstractBaseEntity {
   @Column({ default: false })
   optOut: boolean;
 
+  @ApiProperty({
+    nullable: true,
+    description:
+      'District (a `district` cluster) the customer chose as their area; segments target it',
+  })
+  @Column({ type: 'uuid', nullable: true })
+  homeDistrictId: string | null;
+
   @Column({ type: 'jsonb', nullable: true })
   notificationPreferences: Record<string, boolean> | null;
+
+  /** Personal security choices, e.g. `{ deviceAlerts: true }` (email on a new device's sign-in). */
+  @Column({ type: 'jsonb', nullable: true })
+  securityPreferences: { deviceAlerts?: boolean } | null;
+
+  /**
+   * An owner's unfinished business setup (current page, completed pages and
+   * drafts), so sign-up resumes on any device. Cleared once setup is done.
+   */
+  @Column({ type: 'jsonb', nullable: true, select: false })
+  businessSetupProgress: Record<string, unknown> | null;
 
   @Column({ default: false })
   emailVerified: boolean;
@@ -193,6 +249,13 @@ export class User extends AbstractBaseEntity {
   @ApiProperty({ example: false })
   @Column({ default: false })
   twoFactorEnabled: boolean;
+
+  @ApiProperty({ example: false })
+  @Column({ default: false })
+  isOnline: boolean;
+
+  @Column({ type: 'timestamp', nullable: true })
+  lastSeen: Date;
 
   @Column({ type: 'text', nullable: true, select: false })
   twoFactorSecret: string | null;

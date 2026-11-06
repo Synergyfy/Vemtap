@@ -47,4 +47,12 @@ export class UpdatePosSaleStatusDto {
   @ValidateNested({ each: true })
   @Type(() => RefundItemDto)
   refundItems?: RefundItemDto[];
+
+  @ApiPropertyOptional({
+    description:
+      'Supervisor approval from POST /pos/staff-pins/verify, when the POS permission policy requires one',
+  })
+  @IsOptional()
+  @IsString()
+  overrideToken?: string;
 }

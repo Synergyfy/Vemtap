@@ -13,8 +13,9 @@ import {
 
 export const loyaltyApi = {
   // Fetch loyalty profile for a user + branch
+  // Note: Backend doesn't have /loyalty/profile/:userId — falls back to points/logs
   fetchProfile: async (userId: string, branchId: string): Promise<LoyaltyProfile | null> => {
-    return api.get(`/loyalty/profile/${userId}?branchId=${branchId}`);
+    return api.get(`/loyalty/points/logs?userId=${userId}&branchId=${branchId}`);
   },
 
   // Earn points
@@ -44,8 +45,9 @@ export const loyaltyApi = {
   },
 
   // Fetch all profiles for a branch (for admin/staff)
+  // Note: Backend doesn't have /loyalty/profiles — falls back to business-stats
   fetchAllProfiles: async (branchId: string): Promise<LoyaltyProfile[]> => {
-    return api.get(`/loyalty/profiles?branchId=${branchId}`);
+    return api.get(`/loyalty/business-stats?branchId=${branchId}`);
   },
 
   // Fetch rewards for a branch
@@ -56,7 +58,7 @@ export const loyaltyApi = {
   // Redeem reward
   redeemReward: async (request: RewardRedeemRequest): Promise<RewardRedeemResponse> => {
     const { branchId, ...data } = request;
-    return api.post(`/loyalty/redeem?branchId=${branchId}`, data);
+    return api.post(`/loyalty/redemption/redeem?branchId=${branchId}`, data);
   },
 
   // Verify redemption (for staff)
@@ -65,8 +67,9 @@ export const loyaltyApi = {
   },
 
   // Fetch transactions
+  // Note: Backend doesn't have /loyalty/transactions/:profileId — falls back to points/logs
   fetchTransactionsByProfile: async (profileId: string): Promise<PointTransaction[]> => {
-    return api.get(`/loyalty/transactions/${profileId}`);
+    return api.get(`/loyalty/points/logs?userId=${profileId}`);
   },
 
   // Manage Rules

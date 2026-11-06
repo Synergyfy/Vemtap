@@ -79,6 +79,7 @@ export function isRouteAllowed(
 
 export function getFirstPermittedDashboardRoute(userRole: string, userPermissions: string[]): string | null {
   if (userRole === 'owner' || userRole === 'admin') return '/dashboard';
+  if (userRole === 'customer') return '/customer/dashboard';
   for (const item of getDashboardNavItems()) {
     if (!item.href) continue;
     if (canAccessMenuItem(item, userRole, userPermissions, false)) {

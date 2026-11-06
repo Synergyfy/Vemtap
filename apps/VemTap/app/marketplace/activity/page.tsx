@@ -86,7 +86,7 @@ export default function MarketplaceActivityPage() {
         <div className="min-h-screen bg-gray-50 flex flex-col">
             <Navbar />
 
-            <main className="max-w-[1400px] mx-auto px-4 md:px-8 py-32 flex-1 w-full">
+            <main className="vemtap-container py-32 flex-1 w-full">
                 <div className="mb-8 flex items-center justify-between">
                     <div>
                         <Link href="/marketplace" className="text-xs font-bold text-primary flex items-center gap-1 mb-2 hover:underline">

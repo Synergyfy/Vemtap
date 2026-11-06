@@ -13,7 +13,11 @@ export class AuthResponseDto {
   })
   access_token: string;
 
-  @ApiProperty({ type: User })
+  @ApiProperty({
+    type: User,
+    description:
+      'Includes `isOwnerAccount` (Owner in the DB, whatever shell the token is scoped to) and `lastActiveShell`',
+  })
   user: User;
 
   @ApiProperty({

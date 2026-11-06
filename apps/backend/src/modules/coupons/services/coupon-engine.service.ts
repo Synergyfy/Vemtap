@@ -95,7 +95,9 @@ export class CouponEngineService {
 
     // 2. Check active switches
     if (!promo.isActive) {
-      throw new BadRequestException('This promotion code is currently suspended');
+      throw new BadRequestException(
+        'This promotion code is currently suspended',
+      );
     }
     if (!coupon.isActive) {
       throw new BadRequestException(
@@ -278,9 +280,12 @@ export class CouponEngineService {
       .createQueryBuilder()
       .update(PromotionCode)
       .set({ timesRedeemed: () => 'times_redeemed + 1' })
-      .where('id = :id AND (maxRedemptions IS NULL OR times_redeemed < maxRedemptions)', {
-        id: params.promotionCodeId,
-      })
+      .where(
+        'id = :id AND (maxRedemptions IS NULL OR times_redeemed < maxRedemptions)',
+        {
+          id: params.promotionCodeId,
+        },
+      )
       .execute();
 
     if (updateResult.affected === 0) {

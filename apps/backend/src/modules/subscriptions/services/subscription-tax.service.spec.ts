@@ -1,9 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { DataSource, Repository } from 'typeorm';
-import {
-  SubscriptionTaxService,
-} from './subscription-tax.service';
+import { DataSource } from 'typeorm';
+import { SubscriptionTaxService } from './subscription-tax.service';
 import {
   SubscriptionTaxConfig,
   TaxType,
@@ -11,8 +9,6 @@ import {
 
 describe('SubscriptionTaxService', () => {
   let service: SubscriptionTaxService;
-  let taxConfigRepository: Repository<SubscriptionTaxConfig>;
-  let dataSource: DataSource;
 
   const mockActiveConfig: Partial<SubscriptionTaxConfig> = {
     id: 'tax-config-1',
@@ -31,17 +27,27 @@ describe('SubscriptionTaxService', () => {
     findOne: jest.fn(),
     find: jest.fn(),
     create: jest.fn().mockImplementation((dto) => dto),
-    save: jest.fn().mockImplementation((dto) => Promise.resolve({ id: 'tax-config-saved', ...dto })),
+    save: jest
+      .fn()
+      .mockImplementation((dto) =>
+        Promise.resolve({ id: 'tax-config-saved', ...dto }),
+      ),
   };
 
   const mockEntityManager = {
     update: jest.fn().mockResolvedValue({ affected: 1 }),
     create: jest.fn().mockImplementation((entityClass, dto) => dto),
-    save: jest.fn().mockImplementation((entityClass, dto) => Promise.resolve({ id: 'tax-config-new', ...dto })),
+    save: jest
+      .fn()
+      .mockImplementation((entityClass, dto) =>
+        Promise.resolve({ id: 'tax-config-new', ...dto }),
+      ),
   };
 
   const mockDataSource = {
-    transaction: jest.fn().mockImplementation(async (cb) => cb(mockEntityManager)),
+    transaction: jest
+      .fn()
+      .mockImplementation(async (cb) => cb(mockEntityManager)),
   };
 
   beforeEach(async () => {
@@ -62,10 +68,6 @@ describe('SubscriptionTaxService', () => {
     }).compile();
 
     service = module.get<SubscriptionTaxService>(SubscriptionTaxService);
-    taxConfigRepository = module.get<Repository<SubscriptionTaxConfig>>(
-      getRepositoryToken(SubscriptionTaxConfig),
-    );
-    dataSource = module.get<DataSource>(DataSource);
   });
 
   it('should be defined', () => {
@@ -158,7 +160,7 @@ describe('SubscriptionTaxService', () => {
     it('should toggle enabled state by creating a new history row', async () => {
       mockTaxConfigRepository.findOne.mockResolvedValue(mockActiveConfig);
 
-      const result = await service.toggleTax('admin-user-id', {
+      await service.toggleTax('admin-user-id', {
         isEnabled: false,
         changeReason: 'Disabled VAT',
       });

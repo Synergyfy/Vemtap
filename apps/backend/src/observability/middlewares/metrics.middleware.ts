@@ -48,7 +48,6 @@ export class MetricsMiddleware implements NestMiddleware {
     const method = req.method;
     // We try to use a normalized route, fallback to baseUrl or path
     // NestJS doesn't expose the matched route pattern easily in middleware
-    const route = req.baseUrl || req.path;
 
     res.on('finish', () => {
       const statusCode = res.statusCode.toString();

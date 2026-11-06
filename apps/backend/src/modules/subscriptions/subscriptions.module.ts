@@ -7,12 +7,12 @@ import { BusinessAddOn } from './entities/business-addon.entity';
 import { Business } from '../businesses/entities/business.entity';
 import { User } from '../users/entities/user.entity';
 import { BusinessesModule } from '../businesses/businesses.module';
-import { HttpModule } from '@nestjs/axios';
 import { PlansController } from './plans.controller';
 import { SubscriptionsController } from './subscriptions.controller';
 import { AddonsController } from './addons.controller';
 import { PlansService } from './plans.service';
 import { SubscriptionsService } from './subscriptions.service';
+import { TrialService } from './services/trial.service';
 import { AddonsService } from './services/addons.service';
 import { PaymentsModule } from '../payments/payments.module';
 import { TrialRestrictionGuard } from './guards/trial-restriction.guard';
@@ -83,6 +83,7 @@ import { Reward } from '../loyalty/entities/reward.entity';
     AddonsService,
     BundleDiscountsService,
     SubscriptionTaxService,
+    TrialService,
     TrialRestrictionGuard,
     CapabilityGuard,
     AnalyticsLevelGuard,

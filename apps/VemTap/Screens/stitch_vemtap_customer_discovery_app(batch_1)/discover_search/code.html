@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Discover / Search</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "inverse-primary": "#b0c6ff",
+                      "surface-bright": "#f7f9fb",
+                      "tertiary-fixed": "#dae2fd",
+                      "on-tertiary-fixed": "#131b2e",
+                      "surface-container-highest": "#e0e3e5",
+                      "primary-fixed": "#d9e2ff",
+                      "surface-container-high": "#e6e8ea",
+                      "on-primary": "#ffffff",
+                      "primary-fixed-dim": "#b0c6ff",
+                      "tertiary-fixed-dim": "#bec6e0",
+                      "background": "#f7f9fb",
+                      "outline": "#727786",
+                      "primary": "#0055c4",
+                      "inverse-on-surface": "#eff1f3",
+                      "surface-dim": "#d8dadc",
+                      "on-surface-variant": "#424655",
+                      "error": "#ba1a1a",
+                      "secondary-fixed": "#d3e4fe",
+                      "secondary-fixed-dim": "#b7c8e1",
+                      "on-primary-fixed-variant": "#00429b",
+                      "surface-variant": "#e0e3e5",
+                      "on-secondary-fixed-variant": "#38485d",
+                      "on-secondary-container": "#54647a",
+                      "surface-container": "#eceef0",
+                      "on-primary-container": "#fcfaff",
+                      "surface-container-low": "#f2f4f6",
+                      "on-secondary": "#ffffff",
+                      "tertiary-container": "#6b738a",
+                      "on-error-container": "#93000a",
+                      "outline-variant": "#c2c6d7",
+                      "error-container": "#ffdad6",
+                      "surface": "#f7f9fb",
+                      "on-secondary-fixed": "#0b1c30",
+                      "on-error": "#ffffff",
+                      "tertiary": "#535a71",
+                      "secondary": "#505f76",
+                      "primary-container": "#066cf4",
+                      "on-tertiary-container": "#fcfaff",
+                      "on-primary-fixed": "#001945",
+                      "inverse-surface": "#2d3133",
+                      "on-tertiary": "#ffffff",
+                      "on-surface": "#191c1e",
+                      "surface-container-lowest": "#ffffff",
+                      "surface-tint": "#0058cb",
+                      "on-tertiary-fixed-variant": "#3f465c",
+                      "on-background": "#191c1e",
+                      "secondary-container": "#d0e1fb"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "stack-md": "1rem",
+                      "touch-target-min": "44px",
+                      "stack-sm": "0.5rem",
+                      "stack-lg": "1.5rem",
+                      "margin-main": "1.25rem",
+                      "gutter-grid": "1rem"
+              },
+              "fontFamily": {
+                      "headline-md": [
+                              "Inter"
+                      ],
+                      "display-lg": [
+                              "Inter"
+                      ],
+                      "label-sm": [
+                              "Inter"
+                      ],
+                      "body-lg": [
+                              "Inter"
+                      ],
+                      "body-md": [
+                              "Inter"
+                      ],
+                      "headline-sm": [
+                              "Inter"
+                      ],
+                      "label-lg": [
+                              "Inter"
+                      ],
+                      "currency-display": [
+                              "Inter"
+                      ]
+              },
+              "fontSize": {
+                      "headline-md": [
+                              "24px",
+                              {
+                                      "lineHeight": "32px",
+                                      "letterSpacing": "-0.01em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "display-lg": [
+                              "32px",
+                              {
+                                      "lineHeight": "40px",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "label-sm": [
+                              "12px",
+                              {
+                                      "lineHeight": "16px",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "body-lg": [
+                              "16px",
+                              {
+                                      "lineHeight": "24px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "body-md": [
+                              "14px",
+                              {
+                                      "lineHeight": "20px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "headline-sm": [
+                              "20px",
+                              {
+                                      "lineHeight": "28px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "label-lg": [
+                              "14px",
+                              {
+                                      "lineHeight": "20px",
+                                      "letterSpacing": "0.01em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "currency-display": [
+                              "20px",
+                              {
+                                      "lineHeight": "24px",
+                                      "fontWeight": "700"
+                              }
+                      ]
+              }
+      },
+          },
+        }
+      </script>
+<style>
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background font-body-md antialiased pb-24 md:pb-0 pt-20">
+<!-- TopAppBar (Hidden on Mobile, Visible on Desktop as per rules, though intent says Mobile search-focused interface, we keep standard pattern) -->
+<header class="hidden md:flex justify-between items-center w-full px-margin-main py-stack-sm bg-surface dark:bg-on-background fixed top-0 z-50 border-b border-outline-variant dark:border-outline transition-colors duration-200">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary dark:text-inverse-primary" style="font-variation-settings: 'FILL' 0;">location_on</span>
+<span class="text-headline-sm font-headline-sm font-bold text-primary dark:text-inverse-primary">📍 Wuse 2, Abuja</span>
+</div>
+<nav class="flex gap-4">
+<a class="text-on-surface-variant dark:text-surface-variant text-label-sm font-label-sm hover:bg-surface-container-low dark:hover:bg-surface-variant px-2 py-1 rounded transition-colors duration-200" href="#">HOME</a>
+<a class="text-primary dark:text-inverse-primary text-label-sm font-label-sm font-bold hover:bg-surface-container-low dark:hover:bg-surface-variant px-2 py-1 rounded transition-colors duration-200" href="#">DISCOVER</a>
+<a class="text-on-surface-variant dark:text-surface-variant text-label-sm font-label-sm hover:bg-surface-container-low dark:hover:bg-surface-variant px-2 py-1 rounded transition-colors duration-200" href="#">DEALS</a>
+<a class="text-on-surface-variant dark:text-surface-variant text-label-sm font-label-sm hover:bg-surface-container-low dark:hover:bg-surface-variant px-2 py-1 rounded transition-colors duration-200" href="#">SAVED</a>
+<a class="text-on-surface-variant dark:text-surface-variant text-label-sm font-label-sm hover:bg-surface-container-low dark:hover:bg-surface-variant px-2 py-1 rounded transition-colors duration-200" href="#">ACCOUNT</a>
+</nav>
+<button class="w-touch-target-min h-touch-target-min flex items-center justify-center hover:bg-surface-container-low dark:hover:bg-surface-variant rounded-full transition-colors duration-200">
+<span class="material-symbols-outlined text-primary dark:text-inverse-primary" style="font-variation-settings: 'FILL' 0;">search</span>
+</button>
+</header>
+<!-- Mobile Header -->
+<div class="md:hidden fixed top-0 w-full bg-surface z-40 px-margin-main py-stack-md border-b border-outline-variant">
+<h1 class="text-headline-md font-headline-md text-on-surface">Discover</h1>
+</div>
+<main class="max-w-screen-md mx-auto px-margin-main space-y-stack-lg pt-4 md:pt-8">
+<!-- Search Section -->
+<section class="space-y-stack-sm">
+<div class="relative group">
+<span class="material-symbols-outlined absolute left-4 top-1/2 transform -translate-y-1/2 text-outline group-focus-within:text-primary transition-colors">search</span>
+<input class="w-full pl-12 pr-4 h-12 bg-surface-container-lowest border border-outline-variant rounded-lg text-body-lg font-body-lg text-on-surface placeholder-on-surface-variant focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all shadow-sm" placeholder="Search businesses, deals, products or services" type="text"/>
+<button class="absolute right-4 top-1/2 transform -translate-y-1/2 w-8 h-8 flex items-center justify-center text-outline hover:text-primary transition-colors">
+<span class="material-symbols-outlined">mic</span>
+</button>
+</div>
+<!-- Quick Filters (Scrollable) -->
+<div class="flex overflow-x-auto hide-scrollbar gap-stack-sm py-2">
+<button class="whitespace-nowrap px-4 py-2 bg-primary text-on-primary rounded-full text-label-lg font-label-lg shadow-sm">All</button>
+<button class="whitespace-nowrap px-4 py-2 bg-surface-container-low text-on-surface-variant border border-outline-variant rounded-full text-label-lg font-label-lg hover:bg-surface-container-highest transition-colors">Businesses</button>
+<button class="whitespace-nowrap px-4 py-2 bg-surface-container-low text-on-surface-variant border border-outline-variant rounded-full text-label-lg font-label-lg hover:bg-surface-container-highest transition-colors">Deals</button>
+<button class="whitespace-nowrap px-4 py-2 bg-surface-container-low text-on-surface-variant border border-outline-variant rounded-full text-label-lg font-label-lg hover:bg-surface-container-highest transition-colors">Products</button>
+<button class="whitespace-nowrap px-4 py-2 bg-surface-container-low text-on-surface-variant border border-outline-variant rounded-full text-label-lg font-label-lg hover:bg-surface-container-highest transition-colors">Services</button>
+</div>
+</section>
+<!-- Popular Categories (Bento Grid Style) -->
+<section class="space-y-stack-md">
+<div class="flex justify-between items-end">
+<h2 class="text-headline-sm font-headline-sm text-on-surface">Popular Categories</h2>
+<button class="text-primary text-label-lg font-label-lg">See all</button>
+</div>
+<div class="grid grid-cols-2 md:grid-cols-4 gap-gutter-grid">
+<!-- Category 1 -->
+<div class="group relative rounded-xl overflow-hidden aspect-square bg-surface-container shadow-sm hover:shadow-md transition-shadow cursor-pointer">
+<div class="absolute inset-0 bg-cover bg-center transition-transform duration-300 group-hover:scale-105" data-alt="A modern, high-end culinary setting featuring a beautifully plated dish on a clean white table, bathed in soft, natural daylight. The aesthetic is bright and appetizing, utilizing warm corporate tones and crisp white space to evoke a premium local dining experience." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuBbBAGEm4svW-Ll-lzT06U4BbjAkZ8n74BIIQMxPU6VLI2pEweF8yhcZsTvOW4XNm9yI5RxaILJ2lVGtKZIzV8l2n9W2V_cb6N2DvAf9jzmiG4_XFqiCIqTHzS-lIITYECuTVM08MCOLoneX8-zno0MRhlbuLfLNkDwcfJv2lzzIrkZ7ALdt0Wd0GlDXUpO6R92CQTWgWjNAvpiYeVhdVNee4JKuSdA9Yfa2krNHZvdcx1UMj7G2kE1Og')"></div>
+<div class="absolute inset-0 bg-gradient-to-t from-on-background/80 to-transparent"></div>
+<div class="absolute bottom-4 left-4 right-4 text-on-primary">
+<span class="material-symbols-outlined mb-1">restaurant</span>
+<h3 class="text-body-lg font-body-lg font-semibold">Restaurants</h3>
+</div>
+</div>
+<!-- Category 2 -->
+<div class="group relative rounded-xl overflow-hidden aspect-square bg-surface-container shadow-sm hover:shadow-md transition-shadow cursor-pointer">
+<div class="absolute inset-0 bg-cover bg-center transition-transform duration-300 group-hover:scale-105" data-alt="A sleek, contemporary beauty salon interior with polished mirrors and minimalist white styling chairs. Bright, even lighting highlights a clean, professional environment. The atmosphere is relaxing and sophisticated, aligning with a premium service brand identity." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuDBvQqqOeM_Aw2X9ihRSZsnfRP1dINZe9hg5b4Rr7md5m1_v97Wo1qBtZAxxUyVPcyZ6bUl8YDFL38S1SQlA9dar-tmjaMKORh3rt_b_D6y8BYzaqy0E0E7lJcSly9t8LDi7Zfnwit7eZwx1CQEtd0HMMFwCzI6YVY9AbPtbGHUmL_oeZcU7deqS2q4713WiHWOv6RO2J3lQ6-rIpQZjU2GWI3lMJcRkdzVrXpqjD6RLK4LPYDvb6nElg')"></div>
+<div class="absolute inset-0 bg-gradient-to-t from-on-background/80 to-transparent"></div>
+<div class="absolute bottom-4 left-4 right-4 text-on-primary">
+<span class="material-symbols-outlined mb-1">spa</span>
+<h3 class="text-body-lg font-body-lg font-semibold">Beauty &amp; Spa</h3>
+</div>
+</div>
+<!-- Category 3 -->
+<div class="group relative rounded-xl overflow-hidden aspect-square bg-surface-container shadow-sm hover:shadow-md transition-shadow cursor-pointer">
+<div class="absolute inset-0 bg-cover bg-center transition-transform duration-300 group-hover:scale-105" data-alt="A brightly lit, modern retail fashion boutique with clean lines, showcasing premium garments on minimalist racks. The setting is aspirational and organized, utilizing a soft color palette that conveys trust and high quality in a local shopping context." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuAdU31m5XfOrBgztxlCByAilY8FBTxyzV2rLNC-BQFiCanX1-4s47jNFLbgJ6AsXuvBPnCi3vUFeIdG2BN1WWCFIpIbCVHfOh0lDeAZqQD0XQRnFYe3uwfoRMboMp7L1__Hn-43Wncjhxa4R2_DhNAVV48GcM72HKsrxwFDhS9z7A469wafxTQk8rIVYn75AhudcSc3Ix2qHBwOGMquH-bZnHJpP5PJDxmTXlY0VgEFbTMK_riIIXVi6Q')"></div>
+<div class="absolute inset-0 bg-gradient-to-t from-on-background/80 to-transparent"></div>
+<div class="absolute bottom-4 left-4 right-4 text-on-primary">
+<span class="material-symbols-outlined mb-1">shopping_bag</span>
+<h3 class="text-body-lg font-body-lg font-semibold">Shopping</h3>
+</div>
+</div>
+<!-- Category 4 -->
+<div class="group relative rounded-xl overflow-hidden aspect-square bg-surface-container shadow-sm hover:shadow-md transition-shadow cursor-pointer">
+<div class="absolute inset-0 bg-cover bg-center transition-transform duration-300 group-hover:scale-105" data-alt="A pristine, modern automotive service center with white floors and well-lit work bays. A sleek car is being serviced by a professional in clean attire. The environment exudes reliability, safety, and modern efficiency suitable for a corporate-backed local service platform." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuBTSoyODUkNkQ33mRcxdJvuQ0qk_vXwWFrg9Qol-NxJOU2HHDBpDrhDiVvnZQT03o7R42w7l9HZcKB0TMFavO9IX1VvMGMJ1GYiQjZKTGY8D_K8ZJACIs1CqFtXk4wAAqLOk6pPEQp3uO-ee3kWbhtniTJUnNrjTciCTixW4cqr8rBX66K9zMp_w52n_PzK6xLnifgxYxA8rAAECobI9RuurcRQ-4ruJ25UFE7N5llHivu42XtrU86LMw')"></div>
+<div class="absolute inset-0 bg-gradient-to-t from-on-background/80 to-transparent"></div>
+<div class="absolute bottom-4 left-4 right-4 text-on-primary">
+<span class="material-symbols-outlined mb-1">directions_car</span>
+<h3 class="text-body-lg font-body-lg font-semibold">Auto Services</h3>
+</div>
+</div>
+</div>
+</section>
+<!-- Nearby Discoveries -->
+<section class="space-y-stack-md">
+<div class="flex justify-between items-end">
+<h2 class="text-headline-sm font-headline-sm text-on-surface">Nearby Discoveries</h2>
+<span class="text-on-surface-variant text-label-sm font-label-sm flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]">location_on</span> Wuse 2
+                </span>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-stack-lg">
+<!-- Discovery Card 1 -->
+<div class="bg-surface-container-lowest rounded-xl border border-outline-variant overflow-hidden shadow-sm flex flex-col group">
+<div class="relative w-full aspect-video overflow-hidden">
+<img class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" data-alt="A vibrant, modern outdoor cafe patio in an upscale urban setting. Sunlight filters through stylish umbrellas onto sleek metal tables. The scene is inviting, safe, and professional, reflecting a high-quality local dining experience curated for a premium discovery app." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDMJOkd3a35ejt0ZJJN2AtqXt5XtFLE0-XBRUkxR1kZd1iIaowRE7pY1RYsoG4KYpeOSSHaDdiaeIU0OG5MIcTgaul22wgTH7a0WsLe3EV31L-TrCJxIVHR7bLcCSAT8CzH57SRooj6slv7_8rHH27j63CyLamsaQcE_qSiPhVukTXhekuqqAIQXm9WHwDq5E8nW-3_tmWKIaOquj9wtqTsmQ19suftBNzSW6A-29rK31iI_9ScgCkIrw"/>
+<div class="absolute top-3 left-3 bg-primary text-on-primary px-2 py-1 rounded text-label-sm font-label-sm font-semibold flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">verified</span> Verified
+                        </div>
+<div class="absolute top-3 right-3 bg-surface-container-lowest/90 backdrop-blur text-on-surface p-1.5 rounded-full shadow-sm cursor-pointer hover:bg-surface-container-lowest transition-colors">
+<span class="material-symbols-outlined text-[18px]">bookmark_border</span>
+</div>
+</div>
+<div class="p-stack-md space-y-2 flex-grow">
+<div class="flex justify-between items-start">
+<h3 class="text-headline-sm font-headline-sm text-on-surface line-clamp-1">The Oasis Lounge</h3>
+<div class="flex items-center gap-1 text-primary">
+<span class="material-symbols-outlined text-[16px]" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="text-label-lg font-label-lg">4.8</span>
+</div>
+</div>
+<p class="text-body-md font-body-md text-on-surface-variant line-clamp-2">Premium dining experience with local and continental dishes in a serene environment.</p>
+<div class="pt-2 flex items-center gap-4 text-on-surface-variant text-label-sm font-label-sm">
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">location_on</span> 0.5 km away</span>
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">restaurant</span> Restaurant</span>
+</div>
+</div>
+</div>
+<!-- Discovery Card 2 -->
+<div class="bg-surface-container-lowest rounded-xl border border-outline-variant overflow-hidden shadow-sm flex flex-col group">
+<div class="relative w-full aspect-video overflow-hidden">
+<img class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" data-alt="A state-of-the-art fitness center with clean, modern equipment arranged neatly in a bright, spacious room. Large windows let in natural light, emphasizing a healthy, safe, and premium lifestyle aesthetic suitable for a professional discovery platform." src="https://lh3.googleusercontent.com/aida-public/AB6AXuD-FP8OnmZbCmzeWqSRPmYGXTuUHsU_8jcI2c8D3EydIDhAppXEMiS9MJuA_ijJpTxTcseVwXyO4isDZN5OKX3aO_WYA7EA-BPlRXgit4Gf5mBxx--VE62jAignA_7lHeL5F3rRZgwvFKpgVXp9UMxdGJQuoHZ2gwrl_hI9E9y1VkyWgCjBLh01A9wWWoz6a6y7YnoAO-YETtWKOUdYVEZHuOjcAekXJcLpLNJ9hy6TCUqQpGxvD9thag"/>
+<div class="absolute top-3 right-3 bg-surface-container-lowest/90 backdrop-blur text-on-surface p-1.5 rounded-full shadow-sm cursor-pointer hover:bg-surface-container-lowest transition-colors">
+<span class="material-symbols-outlined text-[18px]">bookmark_border</span>
+</div>
+</div>
+<div class="p-stack-md space-y-2 flex-grow">
+<div class="flex justify-between items-start">
+<h3 class="text-headline-sm font-headline-sm text-on-surface line-clamp-1">FitLife Studio</h3>
+<div class="flex items-center gap-1 text-primary">
+<span class="material-symbols-outlined text-[16px]" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="text-label-lg font-label-lg">4.5</span>
+</div>
+</div>
+<p class="text-body-md font-body-md text-on-surface-variant line-clamp-2">State-of-the-art fitness equipment and personalized training sessions.</p>
+<div class="pt-2 flex items-center gap-4 text-on-surface-variant text-label-sm font-label-sm">
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">location_on</span> 1.2 km away</span>
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">fitness_center</span> Gym</span>
+</div>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- BottomNavBar (Visible on Mobile) -->
+<nav class="md:hidden fixed bottom-0 w-full z-50 flex justify-around items-center px-4 h-touch-target-min bg-surface dark:bg-on-background shadow-[0_-2px_10px_rgba(0,0,0,0.05)] rounded-t-xl pb-safe">
+<a class="flex flex-col items-center justify-center text-outline dark:text-outline-variant hover:opacity-80 active:scale-95 transition-transform duration-150 w-16" href="#">
+<span class="material-symbols-outlined">home</span>
+<span class="text-label-sm font-label-sm mt-1">HOME</span>
+</a>
+<a class="flex flex-col items-center justify-center text-primary dark:text-inverse-primary font-bold hover:opacity-80 active:scale-95 transition-transform duration-150 w-16" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">explore</span>
+<span class="text-label-sm font-label-sm mt-1">DISCOVER</span>
+</a>
+<a class="flex flex-col items-center justify-center text-outline dark:text-outline-variant hover:opacity-80 active:scale-95 transition-transform duration-150 w-16" href="#">
+<span class="material-symbols-outlined">local_offer</span>
+<span class="text-label-sm font-label-sm mt-1">DEALS</span>
+</a>
+<a class="flex flex-col items-center justify-center text-outline dark:text-outline-variant hover:opacity-80 active:scale-95 transition-transform duration-150 w-16" href="#">
+<span class="material-symbols-outlined">bookmark</span>
+<span class="text-label-sm font-label-sm mt-1">SAVED</span>
+</a>
+<a class="flex flex-col items-center justify-center text-outline dark:text-outline-variant hover:opacity-80 active:scale-95 transition-transform duration-150 w-16" href="#">
+<span class="material-symbols-outlined">person</span>
+<span class="text-label-sm font-label-sm mt-1">ACCOUNT</span>
+</a>
+</nav>
+<script>
+        // Adjust for mobile bottom safe area if needed
+        if (window.CSS && CSS.supports("padding-bottom: env(safe-area-inset-bottom)")) {
+            document.querySelector('nav.md\\:hidden').classList.add('pb-[env(safe-area-inset-bottom)]');
+            document.querySelector('nav.md\\:hidden').style.height = 'calc(44px + env(safe-area-inset-bottom))';
+        }
+    </script>
+</body></html>

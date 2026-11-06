@@ -34,38 +34,38 @@ export default function ProductsAndStockDashboard() {
         subtitle="Manage your catalogue and track inventory levels"
       />
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-[#066CF4] text-white rounded-2xl p-5 md:p-6 shadow-md shadow-blue-500/10 relative overflow-hidden">
-          <div className="absolute top-0 right-0 p-6 opacity-10">
-            <Package size={80} />
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 md:gap-4">
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-[#066CF4] text-white rounded-2xl p-4 sm:p-5 md:p-6 shadow-md shadow-blue-500/10 relative overflow-hidden">
+          <div className="absolute top-0 right-0 p-4 sm:p-6 opacity-10">
+            <Package size={64} className="sm:w-20 sm:h-20" />
           </div>
           <div className="relative z-10">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-blue-200 mb-2">Total Products</p>
-            <h3 className="text-3xl font-bold mb-1">{totalProducts}</h3>
-            <p className="text-xs font-medium text-blue-200">Across your catalogue</p>
+            <p className="text-[9px] sm:text-[10px] font-semibold uppercase tracking-wider text-blue-200 mb-1 sm:mb-2">Total Products</p>
+            <h3 className="text-2xl sm:text-3xl font-bold mb-0.5 sm:mb-1">{totalProducts}</h3>
+            <p className="text-[10px] sm:text-xs font-medium text-blue-200">Across your catalogue</p>
           </div>
         </motion.div>
 
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="bg-white border border-gray-100 rounded-2xl p-5 md:p-6 shadow-sm flex flex-col justify-center">
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-2">Total Stock Units</p>
-          <h3 className="text-2xl font-bold text-gray-900 mb-1">{activeCount} Active</h3>
-          <p className="text-xs font-medium text-gray-500">Items available for sale</p>
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="bg-white border border-gray-100 rounded-2xl p-4 sm:p-5 md:p-6 shadow-sm flex flex-col justify-center">
+          <p className="text-[9px] sm:text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-1 sm:mb-2">Total Stock Units</p>
+          <h3 className="text-xl sm:text-2xl font-bold text-gray-900 mb-0.5 sm:mb-1">{activeCount} Active</h3>
+          <p className="text-[10px] sm:text-xs font-medium text-gray-500">Items available for sale</p>
         </motion.div>
 
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="bg-white border border-gray-100 rounded-2xl p-5 md:p-6 shadow-sm flex flex-col justify-center">
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-2">Inventory Value</p>
-          <h3 className="text-2xl font-bold text-emerald-500 mb-1">₦{totalValue.toLocaleString()}</h3>
-          <p className="text-xs font-medium text-gray-500">Current cost value</p>
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="bg-white border border-gray-100 rounded-2xl p-4 sm:p-5 md:p-6 shadow-sm flex flex-col justify-center">
+          <p className="text-[9px] sm:text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-1 sm:mb-2">Inventory Value</p>
+          <h3 className="text-xl sm:text-2xl font-bold text-emerald-500 mb-0.5 sm:mb-1">₦{totalValue.toLocaleString()}</h3>
+          <p className="text-[10px] sm:text-xs font-medium text-gray-500">Current cost value</p>
         </motion.div>
 
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="bg-white border border-gray-100 rounded-2xl p-5 md:p-6 shadow-sm flex flex-col justify-center">
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="bg-white border border-gray-100 rounded-2xl p-4 sm:p-5 md:p-6 shadow-sm flex flex-col justify-center">
           <div className="flex justify-between items-start">
             <div>
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-2">Needs Attention</p>
-              <h3 className="text-2xl font-bold text-red-500 mb-1">{outOfStockCount + lowStockCount}</h3>
-              <p className="text-xs font-medium text-gray-500">Low or Out of Stock</p>
+              <p className="text-[9px] sm:text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-1 sm:mb-2">Needs Attention</p>
+              <h3 className="text-xl sm:text-2xl font-bold text-red-500 mb-0.5 sm:mb-1">{outOfStockCount + lowStockCount}</h3>
+              <p className="text-[10px] sm:text-xs font-medium text-gray-500">Low or Out of Stock</p>
             </div>
-            <AlertTriangle className={outOfStockCount > 0 ? "text-red-500" : "text-amber-500"} size={24} />
+            <AlertTriangle className={outOfStockCount > 0 ? "text-red-500" : "text-amber-500"} size={20} />
           </div>
         </motion.div>
       </div>

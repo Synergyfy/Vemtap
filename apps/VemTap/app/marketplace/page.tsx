@@ -123,7 +123,7 @@ export default function MarketplacePage() {
         <div className="min-h-screen bg-white flex flex-col font-sans text-text-main relative">
             <Navbar />
 
-            <main className="max-w-[1600px] mx-auto px-4 md:px-8 py-8 md:py-12 flex-1 w-full">
+            <main className="vemtap-container py-8 md:py-12 flex-1 w-full">
 
 
                 {/* Product Grid Area */}

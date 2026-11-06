@@ -9,24 +9,44 @@ import { CatalogueOffer } from './entities/catalogue-offer.entity';
 import { Branch } from '../branches/entities/branch.entity';
 import { CatalogueOfferService } from './catalogue-offer.service';
 import { CatalogueOfferController } from './catalogue-offer.controller';
+import { AdminDealsController } from './admin-deals.controller';
 import { SubscriptionsModule } from '../subscriptions/subscriptions.module';
 import { CatalogueOfferClaim } from './entities/catalogue-offer-claim.entity';
+import { CatalogueDealGift } from './entities/catalogue-deal-gift.entity';
+import { OfferPriceChange } from './entities/offer-price-change.entity';
 import { Otp } from '../auth/entities/otp.entity';
 import { MailModule } from '../mail/mail.module';
 import { AiCopilotModule } from '../ai-copilot/ai-copilot.module';
 import { Business } from '../businesses/entities/business.entity';
 import { ClustersModule } from '../clusters/clusters.module';
+import { User } from '../users/entities/user.entity';
+import { MeClaimsController } from './me-claims.controller';
+import { MeGiftsController } from './me-gifts.controller';
+import { MeSavingsController } from './me-savings.controller';
+import { RecommendationsController } from './recommendations.controller';
+import { SavingsService } from './savings.service';
+import { CatalogueItemBranchPricing } from './entities/catalogue-item-branch-pricing.entity';
+import { CatalogueBranchPricingService } from './catalogue-branch-pricing.service';
+import { CatalogueBranchPricingController } from './catalogue-branch-pricing.controller';
+import { CatalogueOfferStatsService } from './catalogue-offer-stats.service';
+import { CatalogueOfferStatsController } from './catalogue-offer-stats.controller';
+import { AccountPrivacyModule } from '../account-privacy/account-privacy.module';
 
 @Module({
   imports: [
+    AccountPrivacyModule,
     TypeOrmModule.forFeature([
       CatalogueCategory,
       CatalogueItem,
+      CatalogueItemBranchPricing,
       CatalogueOffer,
       CatalogueOfferClaim,
+      CatalogueDealGift,
+      OfferPriceChange,
       Branch,
       Business,
       Otp,
+      User,
     ]),
     SubscriptionsModule,
     MailModule,
@@ -35,10 +55,27 @@ import { ClustersModule } from '../clusters/clusters.module';
   ],
   controllers: [
     AdminCatalogueController,
+    CatalogueBranchPricingController,
+    CatalogueOfferStatsController,
     PublicCatalogueController,
     CatalogueOfferController,
+    AdminDealsController,
+    MeClaimsController,
+    MeGiftsController,
+    MeSavingsController,
+    RecommendationsController,
   ],
-  providers: [CatalogueService, CatalogueOfferService],
-  exports: [CatalogueService, CatalogueOfferService],
+  providers: [
+    CatalogueService,
+    CatalogueOfferService,
+    CatalogueBranchPricingService,
+    CatalogueOfferStatsService,
+    SavingsService,
+  ],
+  exports: [
+    CatalogueService,
+    CatalogueOfferService,
+    CatalogueBranchPricingService,
+  ],
 })
 export class CatalogueModule {}

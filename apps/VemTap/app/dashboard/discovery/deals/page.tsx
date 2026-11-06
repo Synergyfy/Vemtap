@@ -2,22 +2,26 @@
 
 import React, { useState, useRef } from 'react';
 import {
-    Tag, Plus, X, CheckCircle2, ArrowRight, Search, ChevronRight, Loader2, Trash2, Clock, Sparkles, Image as ImageIcon, AlertCircle, RefreshCw, Users, BadgeCheck,
+    Tag, Plus, X, CheckCircle2, ArrowRight, Search, ChevronRight, Loader2, Trash2, Clock, Sparkles, Image as ImageIcon, AlertCircle, RefreshCw, Users, BadgeCheck, ShoppingBag, Flame, Gift,
 } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
-import PageHeader from '@/components/dashboard/PageHeader';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useActiveBranch } from '@/hooks/useActiveBranch';
 import { useBranches } from '@/services/branches/hooks';
 import { useCatalogueOffersAdmin, useUpdateCatalogueOffer, useDeleteCatalogueOffer, useCreateCatalogueOffer, useCatalogueItems } from '@/services/catalogue/hooks';
+import type { CatalogueItem } from '@/services/catalogue/hooks';
 import { useGenerateDealTerms } from '@/services/deals/hooks';
 import { getPromoDaysLeft } from '@/lib/mock/promotions';
 import type { CatalogueOffer } from '@/services/catalogue/hooks';
 import { uploadToCloudinary } from '@/lib/cloudinary';
 import PartnershipVerificationGuard from '@/components/dashboard/partnership/PartnershipVerificationGuard';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu';
+import DealEngagementBadge from '@/components/deals/DealEngagementBadge';
+import MakeDealFlow from '@/components/dashboard/catalogue/MakeDealFlow';
+import GiftedDealsTab from '@/components/dashboard/discovery/GiftedDealsTab';
+import { motion } from 'framer-motion';
 
 const DeliveryRadiusMap = dynamic(() => import('@/components/dashboard/discovery/DeliveryRadiusMap'), { ssr: false });
 
@@ -67,17 +71,65 @@ function EmptyState({ icon: Icon, title, description }: { icon: React.ElementTyp
 export default function DealsPage() {
     const [isCreatingPromo, setIsCreatingPromo] = useState(false);
     const [editingPromo, setEditingPromo] = useState<CatalogueOffer | null>(null);
+    const [importProduct, setImportProduct] = useState<CatalogueItem | null>(null);
+    const [mainTab, setMainTab] = useState<'my-deals' | 'gifted'>('my-deals');
     const { activeBranchId, isAllBranches } = useActiveBranch();
 
     return (
         <PartnershipVerificationGuard>
-            <div className="relative p-3 md:p-8 pb-32 max-w-7xl mx-auto font-sans">
-                <PageHeader
-                    title="Deals"
-                    description="Create and manage deals that attract new customers."
-                    isSticky={false}
-                />
+            <div className="p-4 sm:p-6 max-w-7xl mx-auto flex flex-col pb-28 font-sans">
+                {/* NATIVE APP HEADER SECTION */}
+                {!isCreatingPromo && (
+                    <section className="relative bg-[#066CF4] -mx-4 -mt-4 sm:-mx-6 sm:-mt-6 px-4 sm:px-6 pt-5 pb-14 rounded-b-[2rem] shadow-lg mb-6">
+                        <div className="absolute top-0 right-0 p-8 opacity-10 pointer-events-none">
+                            <Tag size={120} />
+                        </div>
+                        
+                        <div className="relative z-10 space-y-4">
+                            <div className="flex items-center justify-between">
+                                <div className="flex flex-col">
+                                    <p className="text-blue-100 text-[10px] font-bold uppercase tracking-wider mb-1">
+                                        Marketplace
+                                    </p>
+                                    <h1 className="text-lg md:text-2xl font-bold text-white tracking-tight">
+                                        Deals
+                                    </h1>
+                                </div>
+                                <button
+                                    onClick={() => setIsCreatingPromo(true)}
+                                    className="size-12 rounded-2xl bg-white/20 backdrop-blur-sm text-white flex items-center justify-center active:scale-95 transition-all"
+                                >
+                                    <Plus size={22} />
+                                </button>
+                            </div>
+                            
+                            <div className="pt-1 pb-2">
+                                <p className="text-blue-100 text-[11px] font-semibold mb-1 flex items-center gap-1.5">
+                                    <Flame size={12} /> Attract Customers
+                                </p>
+                                <h2 className="text-lg md:text-2xl font-black text-white tracking-tight leading-tight">
+                                    Create and manage deals.
+                                </h2>
+                            </div>
+                        </div>
 
+                        {/* Search Bar - Overlapping the Header */}
+                        <div className="absolute left-0 right-0 -bottom-6 px-5 sm:px-8">
+                            <div className="relative shadow-lg shadow-black/5 rounded-2xl overflow-hidden flex bg-white">
+                                <div className="flex-1 relative">
+                                    <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+                                    <input
+                                        type="text"
+                                        placeholder="Search deals..."
+                                        className="w-full h-14 pl-12 pr-4 bg-transparent border-0 text-sm font-bold outline-none text-gray-900 placeholder:text-gray-400"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+                )}
+
+                <div className={cn("px-5 sm:px-8", !isCreatingPromo && "pt-12")}>
                 {!isCreatingPromo ? (
                     <>
                         {isAllBranches && (
@@ -93,26 +145,76 @@ export default function DealsPage() {
                         )}
 
                         {!isAllBranches && (
+                            <div className="flex items-center gap-2 mb-6">
+                                <button
+                                    type="button"
+                                    onClick={() => setMainTab('my-deals')}
+                                    className={cn(
+                                        "flex items-center gap-2 px-4 py-2 rounded-full text-xs sm:text-sm font-bold transition-all cursor-pointer",
+                                        mainTab === 'my-deals'
+                                            ? "bg-[#066CF4] text-white shadow-sm"
+                                            : "bg-white border border-gray-200 text-gray-700 hover:bg-gray-50"
+                                    )}
+                                >
+                                    <Tag size={14} />
+                                    <span>My Deals</span>
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setMainTab('gifted')}
+                                    className={cn(
+                                        "flex items-center gap-2 px-4 py-2 rounded-full text-xs sm:text-sm font-bold transition-all cursor-pointer",
+                                        mainTab === 'gifted'
+                                            ? "bg-purple-600 text-white shadow-sm"
+                                            : "bg-white border border-gray-200 text-gray-700 hover:bg-gray-50"
+                                    )}
+                                >
+                                    <Gift size={14} />
+                                    <span>Gifted Deals</span>
+                                </button>
+                            </div>
+                        )}
+
+                        {!isAllBranches && mainTab === 'my-deals' && (
                             <PromotionsTab
                                 branchId={activeBranchId!}
                                 onCreatePromo={() => setIsCreatingPromo(true)}
                                 onEditPromo={(promo) => { setEditingPromo(promo); setIsCreatingPromo(true); }}
+                                onImportProduct={(product) => setImportProduct(product)}
                             />
+                        )}
+
+                        {!isAllBranches && mainTab === 'gifted' && (
+                            <GiftedDealsTab branchId={activeBranchId!} />
                         )}
                     </>
                 ) : (
                     <CreatePromotionFlow branchId={activeBranchId!} editPromo={editingPromo} onCancel={() => { setIsCreatingPromo(false); setEditingPromo(null); }} />
                 )}
+
+                {importProduct && (
+                    <MakeDealFlow
+                        isOpen={!!importProduct}
+                        onClose={() => setImportProduct(null)}
+                        product={importProduct}
+                        activeBranchId={activeBranchId || undefined}
+                    />
+                )}
+                </div>
             </div>
         </PartnershipVerificationGuard>
     );
 }
 
-function PromotionsTab({ branchId, onCreatePromo, onEditPromo }: { branchId: string; onCreatePromo: () => void; onEditPromo: (promo: CatalogueOffer) => void }) {
+function PromotionsTab({ branchId, onCreatePromo, onEditPromo, onImportProduct }: { branchId: string; onCreatePromo: () => void; onEditPromo: (promo: CatalogueOffer) => void; onImportProduct: (product: CatalogueItem) => void }) {
     const { data: promotions, isLoading, isError, error, refetch } = useCatalogueOffersAdmin({ branchId });
+    const { data: catalogueItems = [] } = useCatalogueItems({ branchId });
     const updateOffer = useUpdateCatalogueOffer();
     const deleteOffer = useDeleteCatalogueOffer();
     const [statusFilter, setStatusFilter] = useState<'active' | 'all' | 'expired' | 'inactive'>('active');
+    const [itemTypeFilter, setItemTypeFilter] = useState<'all' | 'product' | 'service'>('all');
+    const [showImportModal, setShowImportModal] = useState(false);
+    const [importSearch, setImportSearch] = useState('');
 
     const isExpired = (promo: CatalogueOffer) => {
         if (!promo.endDate) return false;
@@ -121,18 +223,38 @@ function PromotionsTab({ branchId, onCreatePromo, onEditPromo }: { branchId: str
 
     const filteredPromotions = React.useMemo(() => {
         if (!promotions) return [];
+        let filtered = promotions;
+        
+        // Status filter
         switch (statusFilter) {
             case 'active':
-                return promotions.filter((p) => !isExpired(p) && p.status === 'active');
+                filtered = filtered.filter((p) => !isExpired(p) && p.status === 'active');
+                break;
             case 'expired':
-                return promotions.filter((p) => isExpired(p));
+                filtered = filtered.filter((p) => isExpired(p));
+                break;
             case 'inactive':
-                return promotions.filter((p) => p.status === 'inactive' && !isExpired(p));
+                filtered = filtered.filter((p) => p.status === 'inactive' && !isExpired(p));
+                break;
             case 'all':
             default:
-                return promotions;
+                break;
         }
-    }, [promotions, statusFilter]);
+
+        // Item type filter
+        if (itemTypeFilter !== 'all') {
+            filtered = filtered.filter((p) => {
+                const items = p.items || [];
+                if (itemTypeFilter === 'service') {
+                    return items.some((item: any) => item.itemType === 'service');
+                } else {
+                    return items.some((item: any) => (item.itemType || 'product') === 'product');
+                }
+            });
+        }
+
+        return filtered;
+    }, [promotions, statusFilter, itemTypeFilter]);
 
     const statusCounts = React.useMemo(() => {
         if (!promotions) return { active: 0, expired: 0, inactive: 0, all: 0 };
@@ -180,9 +302,18 @@ function PromotionsTab({ branchId, onCreatePromo, onEditPromo }: { branchId: str
         <div className="space-y-4 md:space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div className="flex items-center justify-between">
                 <h3 className="text-lg md:text-xl font-semibold text-gray-800">My Deals</h3>
-                <Button onClick={onCreatePromo} className="rounded-full font-bold gap-1.5 md:gap-2 text-xs md:text-sm h-9 md:h-10 px-3 md:px-4">
-                    <Plus size={14} /> <span className="hidden sm:inline">Create Deal</span><span className="sm:hidden">New</span>
-                </Button>
+                <div className="flex items-center gap-2">
+                    <Button 
+                        onClick={() => setShowImportModal(true)} 
+                        variant="outline"
+                        className="rounded-full font-bold gap-1.5 md:gap-2 text-xs md:text-sm h-9 md:h-10 px-3 md:px-4 border-amber-300 text-amber-700 hover:bg-amber-50"
+                    >
+                        <Flame size={14} /> <span className="hidden sm:inline">Import Product</span><span className="sm:hidden">Import</span>
+                    </Button>
+                    <Button onClick={onCreatePromo} className="rounded-full font-bold gap-1.5 md:gap-2 text-xs md:text-sm h-9 md:h-10 px-3 md:px-4">
+                        <Plus size={14} /> <span className="hidden sm:inline">Create Deal</span><span className="sm:hidden">New</span>
+                    </Button>
+                </div>
             </div>
 
             {promotions && promotions.length > 0 && (
@@ -206,6 +337,28 @@ function PromotionsTab({ branchId, onCreatePromo, onEditPromo }: { branchId: str
                                     <span className="flex-1">{tab.label}</span>
                                     <span className="text-[10px] font-black text-gray-400">{tab.count}</span>
                                     {statusFilter === tab.key && <span className="text-primary">✓</span>}
+                                </DropdownMenuItem>
+                            ))}
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <button className="flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold bg-white border border-gray-200 hover:border-gray-300 transition-all">
+                                <span className="text-gray-500">Type:</span>
+                                <span className="text-gray-800">{itemTypeFilter === 'all' ? 'All' : itemTypeFilter === 'product' ? 'Products' : 'Services'}</span>
+                                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="text-gray-400"><polyline points="6 9 12 15 18 9"/></svg>
+                            </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="start" className="min-w-[140px]">
+                            {[
+                                { key: 'all' as const, label: 'All Types' },
+                                { key: 'product' as const, label: 'Has Products' },
+                                { key: 'service' as const, label: 'Has Services' },
+                            ].map((tab) => (
+                                <DropdownMenuItem key={tab.key} onClick={() => setItemTypeFilter(tab.key)}>
+                                    <span className="flex-1">{tab.label}</span>
+                                    {itemTypeFilter === tab.key && <span className="text-primary">✓</span>}
                                 </DropdownMenuItem>
                             ))}
                         </DropdownMenuContent>
@@ -356,6 +509,9 @@ function PromotionsTab({ branchId, onCreatePromo, onEditPromo }: { branchId: str
                                             <span className="text-[10px] font-bold text-primary">Star seller</span>
                                         </div>
                                     )}
+
+                                    {/* Engagement stats */}
+                                    <DealEngagementBadge offerId={promo.id} />
                                 </div>
 
                                 {/* Admin actions */}
@@ -385,7 +541,7 @@ function PromotionsTab({ branchId, onCreatePromo, onEditPromo }: { branchId: str
                                         asChild
                                         className="w-full rounded-xl font-bold text-[10px] md:text-xs h-8 md:h-9 transition-colors"
                                     >
-                                        <Link href={`/promotions/${promo.id}`} className="flex items-center justify-center gap-2">
+                                        <Link href={`/deals/${(promo as any).business?.slug || (promo as any).branch?.slug || ''}/${promo.id}`} className="flex items-center justify-center gap-2">
                                             <ArrowRight size={13} className="text-[#066CF4]" />
                                             View Deal on Site
                                         </Link>
@@ -394,6 +550,73 @@ function PromotionsTab({ branchId, onCreatePromo, onEditPromo }: { branchId: str
                             </div>
                         );
                     })}
+                </div>
+            )}
+
+            {/* Import Product Modal */}
+            {showImportModal && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowImportModal(false)} className="absolute inset-0 bg-black/50" />
+                    <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-white w-full max-w-lg rounded-3xl overflow-hidden relative shadow-2xl z-10">
+                        <div className="p-6 border-b border-slate-100">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <h3 className="text-lg font-bold text-slate-900">Import a Product</h3>
+                                    <p className="text-xs text-slate-500 mt-1">Select a product to turn into a deal</p>
+                                </div>
+                                <button onClick={() => setShowImportModal(false)} className="p-2 hover:bg-slate-100 rounded-xl transition-all">
+                                    <X size={20} />
+                                </button>
+                            </div>
+                        </div>
+                        <div className="p-4">
+                            <div className="relative mb-4">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                                <input
+                                    type="text"
+                                    value={importSearch}
+                                    onChange={(e) => setImportSearch(e.target.value)}
+                                    placeholder="Search products..."
+                                    className="w-full h-10 pl-10 pr-4 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-primary/20 outline-none"
+                                />
+                            </div>
+                            <div className="max-h-80 overflow-y-auto space-y-2">
+                                {catalogueItems
+                                    .filter(item => (item.itemType || 'product') === 'product')
+                                    .filter(item => item.name.toLowerCase().includes(importSearch.toLowerCase()))
+                                    .map(item => (
+                                        <button
+                                            key={item.id}
+                                            type="button"
+                                            onClick={() => {
+                                                onImportProduct(item);
+                                                setShowImportModal(false);
+                                            }}
+                                            className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 transition-all text-left"
+                                        >
+                                            <div className="w-12 h-12 rounded-lg bg-slate-100 overflow-hidden flex items-center justify-center shrink-0">
+                                                {item.mainImage ? (
+                                                    <img src={item.mainImage} alt={item.name} className="w-full h-full object-cover" />
+                                                ) : (
+                                                    <ShoppingBag size={18} className="text-slate-300" />
+                                                )}
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <p className="text-sm font-bold text-slate-900 truncate">{item.name}</p>
+                                                <p className="text-xs text-slate-500">₦{Number(item.price).toLocaleString()}</p>
+                                            </div>
+                                            <Flame size={16} className="text-amber-500" />
+                                        </button>
+                                    ))}
+                                {catalogueItems.filter(item => (item.itemType || 'product') === 'product').length === 0 && (
+                                    <div className="py-8 text-center text-slate-400">
+                                        <ShoppingBag size={24} className="mx-auto mb-2" />
+                                        <p className="text-sm">No products found. Add products first.</p>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </motion.div>
                 </div>
             )}
         </div>

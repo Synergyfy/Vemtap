@@ -61,9 +61,9 @@ export default function Team() {
 
     return (
         <section id="team" className="py-24 bg-white overflow-hidden relative">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+            <div className="vemtap-container relative z-10">
                 {/* Section Header */}
-                <div className="text-center max-w-3xl mx-auto mb-16">
+                <div className="text-center vemtap-container mb-16">
                     <span className="text-[10px] font-black uppercase tracking-widest text-primary mb-4 block">04</span>
                     <h2 className="text-4xl md:text-5xl font-display font-bold mb-6 text-text-main">Our team</h2>
                     <p className="text-lg text-text-secondary font-medium leading-relaxed">

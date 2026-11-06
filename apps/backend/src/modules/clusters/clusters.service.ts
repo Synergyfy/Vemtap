@@ -3,6 +3,7 @@ import {
   Logger,
   NotFoundException,
   BadRequestException,
+  OnApplicationBootstrap,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In } from 'typeorm';
@@ -12,6 +13,11 @@ import { Queue } from 'bullmq';
 import { Cron } from '@nestjs/schedule';
 import { Cluster, ClusterType } from './entities/cluster.entity';
 import { ClusterOffer } from './entities/cluster-offer.entity';
+import { NOT_HIDDEN_FROM_CLUSTER_SQL } from './entities/cluster-showcase-item.entity';
+import {
+  DEFAULT_DISTRICTS,
+  DEFAULT_DISTRICT_RADIUS_METERS,
+} from './districts.constants';
 import { Branch } from '../branches/entities/branch.entity';
 import { BusinessStatus } from '../businesses/entities/business.entity';
 import {
@@ -184,8 +190,26 @@ function haversineMeters(
   return 2 * R * Math.asin(Math.sqrt(a));
 }
 
+export interface DistrictView {
+  id: string;
+  name: string;
+  latitude: number | null;
+  longitude: number | null;
+  radiusMeters: number;
+}
+
+export function toDistrictView(cluster: Cluster): DistrictView {
+  return {
+    id: cluster.id,
+    name: cluster.name,
+    latitude: cluster.latitude == null ? null : Number(cluster.latitude),
+    longitude: cluster.longitude == null ? null : Number(cluster.longitude),
+    radiusMeters: cluster.radiusMeters,
+  };
+}
+
 @Injectable()
-export class ClustersService {
+export class ClustersService implements OnApplicationBootstrap {
   private readonly logger = new Logger(ClustersService.name);
 
   constructor(
@@ -207,6 +231,52 @@ export class ClustersService {
     private readonly rotatorAnalytics: RotatorAnalyticsService,
     private readonly rotatorInvalidation: RotatorInvalidationService,
   ) {}
+
+  async onApplicationBootstrap(): Promise<void> {
+    try {
+      await this.ensureDefaultDistricts();
+    } catch (error) {
+      this.logger.warn(`Could not seed districts: ${(error as Error).message}`);
+    }
+  }
+
+  /**
+   * Seeds `DEFAULT_DISTRICTS` on a database with no district at all. Done here
+   * rather than in the migration that adds the `district` type: Postgres will
+   * not use a new enum value in the transaction that added it. A district an
+   * admin later deletes is not brought back.
+   */
+  async ensureDefaultDistricts(): Promise<number> {
+    const existing = await this.clusterRepository.count({
+      where: { type: ClusterType.DISTRICT },
+      withDeleted: true,
+    });
+    if (existing > 0) return 0;
+    await this.clusterRepository.save(
+      DEFAULT_DISTRICTS.map((district) =>
+        this.clusterRepository.create({
+          ...district,
+          type: ClusterType.DISTRICT,
+          country: 'Nigeria',
+          state: 'FCT',
+          city: 'Abuja',
+          radiusMeters: DEFAULT_DISTRICT_RADIUS_METERS,
+          isActive: true,
+          qrIsActive: false,
+        }),
+      ),
+    );
+    return DEFAULT_DISTRICTS.length;
+  }
+
+  /** Active districts, for area pickers and targeting. */
+  async listDistricts(): Promise<DistrictView[]> {
+    const rows = await this.clusterRepository.find({
+      where: { type: ClusterType.DISTRICT, isActive: true },
+      order: { name: 'ASC' },
+    });
+    return rows.map(toDistrictView);
+  }
 
   // ------------------------------------------------------------------
   // Public: scan context
@@ -405,6 +475,7 @@ export class ClustersService {
       qb.leftJoinAndSelect('offer.items', 'offerItems');
     }
     qb.where('branch.clusterId = :clusterId', { clusterId })
+      .andWhere(NOT_HIDDEN_FROM_CLUSTER_SQL)
       .andWhere('offer.status = :status', {
         status: CatalogueOfferStatus.ACTIVE,
       })
@@ -727,8 +798,11 @@ export class ClustersService {
       longDescription: offer.longDescription || offer.description,
       terms: offer.terms || [],
       pricingType: offer.pricingType,
-      discountValue: offer.discountValue,
-      fixedPrice: offer.fixedPrice,
+      // numeric columns arrive as strings from the driver; ClusterDealView
+      // promises numbers, so coerce — null stays null.
+      discountValue:
+        offer.discountValue == null ? null : Number(offer.discountValue),
+      fixedPrice: offer.fixedPrice == null ? null : Number(offer.fixedPrice),
       calculatedPrice: Number(offer.calculatedPrice),
       originalPrice,
       dealPrice: Number(offer.calculatedPrice),
@@ -830,6 +904,9 @@ export class ClustersService {
 
     if (search) {
       qb.where('cluster.name ILIKE :search', { search: `%${search}%` });
+    }
+    if (query.type) {
+      qb.andWhere('cluster.type = :type', { type: query.type });
     }
 
     const [clusters, total] = await qb
@@ -956,6 +1033,7 @@ export class ClustersService {
       });
       if (!parent) throw new NotFoundException('Parent cluster not found');
     }
+    const district = dto.type === ClusterType.DISTRICT;
     const cluster = this.clusterRepository.create({
       name: dto.name,
       type: dto.type ?? ClusterType.MARKET,
@@ -967,9 +1045,11 @@ export class ClustersService {
       description: dto.description,
       latitude: dto.latitude,
       longitude: dto.longitude,
-      radiusMeters: dto.radiusMeters ?? 500,
+      // A district is a neighbourhood to target, not a place to scan.
+      radiusMeters:
+        dto.radiusMeters ?? (district ? DEFAULT_DISTRICT_RADIUS_METERS : 500),
       isActive: dto.isActive ?? true,
-      qrIsActive: dto.qrIsActive ?? true,
+      qrIsActive: dto.qrIsActive ?? !district,
       createdBy: adminId,
     });
     const saved = await this.clusterRepository.save(cluster);
@@ -989,6 +1069,16 @@ export class ClustersService {
         select: ['id'],
       });
       if (!parent) throw new NotFoundException('Parent cluster not found');
+    }
+
+    if (
+      dto.type === ClusterType.DISTRICT &&
+      cluster.type !== ClusterType.DISTRICT &&
+      (await this.branchRepository.count({ where: { clusterId: cluster.id } }))
+    ) {
+      throw new BadRequestException(
+        'Move this cluster’s branches out before making it a district',
+      );
     }
 
     Object.assign(cluster, dto);
@@ -1145,6 +1235,11 @@ export class ClustersService {
       where: { id: clusterId },
     });
     if (!cluster) throw new NotFoundException('Cluster not found');
+    if (cluster.type === ClusterType.DISTRICT) {
+      throw new BadRequestException(
+        'Districts are targeting areas; branches cannot be added to them',
+      );
+    }
 
     const branch = await this.branchRepository.findOne({
       where: { id: branchId },
@@ -1269,6 +1364,8 @@ export class ClustersService {
         SELECT c2."id", c2."location", c2."longitude", c2."latitude"
         FROM "clusters" c2
         WHERE c2."isActive" = true
+          -- Districts are targeting areas, never a branch's cluster.
+          AND c2."type" <> 'district'
           AND c2."latitude" IS NOT NULL
           AND c2."longitude" IS NOT NULL
           AND ST_DWithin(

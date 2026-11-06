@@ -17,8 +17,14 @@ export class EmailProvider implements MessagingProvider {
   async sendMessage(payload: SendMessagePayload): Promise<ProviderResponse> {
     const success = await this.mailService.sendGenericEmail(
       Array.isArray(payload.to) ? payload.to[0] : payload.to,
-      payload.from || 'VemTap',
+      (payload.metadata?.subject as string | undefined) ||
+        payload.from ||
+        'VemTap',
       payload.content,
+      {
+        name: payload.metadata?.senderName as string | undefined,
+        replyTo: payload.metadata?.replyTo as string | undefined,
+      },
     );
 
     if (success) {
@@ -34,16 +40,16 @@ export class EmailProvider implements MessagingProvider {
     };
   }
 
-  async parseWebhook(payload: any): Promise<{
+  parseWebhook(_payload: any): Promise<{
     type: 'inbound' | 'delivery';
     data: InboundMessage | DeliveryReport;
   } | null> {
     // Resend webhook parsing can be added here for delivery status tracking
     // See: https://resend.com/docs/dashboard/webhooks/introduction
-    return null;
+    return Promise.resolve(null);
   }
 
-  estimateCost(payload: SendMessagePayload): number {
+  estimateCost(_payload: SendMessagePayload): number {
     return 0.01; // Low cost for email
   }
 }

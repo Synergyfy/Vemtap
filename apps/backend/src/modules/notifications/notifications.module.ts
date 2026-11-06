@@ -2,26 +2,44 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { BullModule } from '@nestjs/bullmq';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { JwtModule } from '@nestjs/jwt';
 import { Notification } from './entities/notification.entity';
+import { NotificationBroadcast } from './entities/notification-broadcast.entity';
+import { PushToken } from './entities/push-token.entity';
 import { NotificationsService } from './notifications.service';
+import { DealVelocityService } from './deal-velocity.service';
 import { NotificationsController } from './notifications.controller';
+import { NotificationsGateway } from './notifications.gateway';
 import { PushNotificationService } from './push-notification.service';
 import {
   PushNotificationProcessor,
   PUSH_NOTIFICATION_QUEUE,
 } from './push-notification.processor';
+import { BatchCloseProcessor } from './batch-close.processor';
+import { NOTIFICATION_BATCH_QUEUE } from './notifications.service';
 import { User } from '../users/entities/user.entity';
 import { Contact } from '../contacts/entities/contact.entity';
+import { CatalogueOfferClaim } from '../catalogue/entities/catalogue-offer-claim.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Notification, User, Contact]),
+    TypeOrmModule.forFeature([
+      Notification,
+      NotificationBroadcast,
+      PushToken,
+      User,
+      Contact,
+      // Read-only: the velocity detector counts claims written by the
+      // catalogue module. Injected here rather than imported so the
+      // notifications module does not depend on the catalogue module.
+      CatalogueOfferClaim,
+    ]),
     // BullMQ root connection (Redis) — re-uses the same env vars as MessagingModule.
     // forRoot is idempotent; if MessagingModule already registered it in the same
     // DI scope, NestJS will reuse the existing connection.
     BullModule.forRootAsync({
       imports: [ConfigModule],
-      useFactory: async (configService: ConfigService) => {
+      useFactory: (configService: ConfigService) => {
         const host = configService.get<string>('REDIS_HOST', 'localhost');
         const port = configService.get<number>('REDIS_PORT', 6379);
         const password = configService.get<string>('REDIS_PASSWORD');
@@ -49,11 +67,28 @@ import { Contact } from '../contacts/entities/contact.entity';
     BullModule.registerQueue({
       name: PUSH_NOTIFICATION_QUEUE,
     }),
+    BullModule.registerQueue({
+      name: NOTIFICATION_BATCH_QUEUE,
+    }),
+    // The gateway verifies handshake tokens, exactly as MessagingGateway does.
+    JwtModule.registerAsync({
+      imports: [ConfigModule],
+      useFactory: (configService: ConfigService) => ({
+        secret: configService.get<string>('JWT_SECRET'),
+        signOptions: {
+          expiresIn: configService.get<string>('JWT_EXPIRATION') as any,
+        },
+      }),
+      inject: [ConfigService],
+    }),
   ],
   providers: [
     NotificationsService,
+    DealVelocityService,
     PushNotificationService,
     PushNotificationProcessor,
+    BatchCloseProcessor,
+    NotificationsGateway,
   ],
   controllers: [NotificationsController],
   exports: [NotificationsService, PushNotificationService],

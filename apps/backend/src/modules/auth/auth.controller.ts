@@ -17,9 +17,17 @@ import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { VerifyOtpDto, SendOtpDto } from './dto/otp.dto';
 import { RegisterOwnerDto } from './dto/register-owner.dto';
+import { UpgradeToOwnerDto } from './dto/upgrade-to-owner.dto';
 import { RegisterAdminDto } from './dto/register-admin.dto';
 import { RequestOtpDto } from './dto/request-otp.dto';
 import { PasswordResetOtpDto } from './dto/password-reset-otp.dto';
+import {
+  RequestCustomerSignupOtpDto,
+  ResendCustomerOtpDto,
+  VerifyAndSetCustomerPinDto,
+  RequestCustomerPinResetDto,
+  ResetCustomerPinDto,
+} from './dto/customer-auth.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { SwitchRoleDto } from './dto/switch-role.dto';
@@ -31,7 +39,6 @@ import {
   MessageResponseDto,
   VerifyOtpResponseDto,
 } from './dto/responses.dto';
-import { LocalAuthGuard } from './guards/local-auth.guard';
 import { User, UserRole } from '../users/entities/user.entity';
 import { TwoFactorCodeDto } from './dto/two-factor.dto';
 import { VerifyEmailDto } from './dto/verify-email.dto';
@@ -80,8 +87,17 @@ export class AuthController {
     description: 'Login successful',
     type: AuthResponseDto,
   })
-  async login(@Body() loginDto: LoginDto) {
-    return this.authService.login(loginDto);
+  async login(@Body() loginDto: LoginDto, @Request() req) {
+    const forwarded = req.headers?.['x-forwarded-for'];
+    return this.authService.login(loginDto, {
+      userAgent: req.headers?.['user-agent'] ?? null,
+      ip:
+        (typeof forwarded === 'string'
+          ? forwarded.split(',')[0].trim()
+          : null) ??
+        req.ip ??
+        null,
+    });
   }
 
   @Post('email-verification/send')
@@ -217,6 +233,106 @@ export class AuthController {
     return this.authService.registerOwner(registerOwnerDto);
   }
 
+  @UseGuards(JwtAuthGuard)
+  @Roles(UserRole.CUSTOMER)
+  @Post('upgrade-to-owner')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary:
+      'Upgrade the current customer account to a business owner (keeps both sides)',
+    description:
+      'Creates the business for the authenticated customer, flips the account to Owner and returns a new session. Local-auth accounts must confirm their password.',
+  })
+  @ApiBody({ type: UpgradeToOwnerDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Upgraded successfully, returns a new access token',
+    type: AuthResponseDto,
+  })
+  async upgradeToOwner(
+    @Request() req: { user: User },
+    @Body() dto: UpgradeToOwnerDto,
+  ) {
+    return this.authService.upgradeToOwner(req.user, dto);
+  }
+
+  @Public()
+  @Post('customer/register/request-otp')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Request OTP for Customer Registration' })
+  @ApiBody({ type: RequestCustomerSignupOtpDto })
+  @ApiResponse({
+    status: 200,
+    description: 'OTP sent successfully',
+    type: MessageResponseDto,
+  })
+  async requestCustomerRegistrationOtp(
+    @Body() dto: RequestCustomerSignupOtpDto,
+  ) {
+    return this.authService.requestCustomerRegistrationOtp(dto);
+  }
+
+  @Public()
+  @Post('customer/otp/resend')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Resend OTP for Customer' })
+  @ApiBody({ type: ResendCustomerOtpDto })
+  @ApiResponse({
+    status: 200,
+    description: 'OTP resent successfully',
+    type: MessageResponseDto,
+  })
+  async resendCustomerOtp(@Body() dto: ResendCustomerOtpDto) {
+    return this.authService.resendCustomerOtp(dto);
+  }
+
+  @Public()
+  @Post('customer/register/verify-and-set-pin')
+  @ApiOperation({ summary: 'Verify OTP and Set 6-Digit PIN for Customer' })
+  @ApiBody({ type: VerifyAndSetCustomerPinDto })
+  @ApiResponse({
+    status: 201,
+    description: 'Customer verified and PIN set successfully',
+    type: AuthResponseDto,
+  })
+  async verifyAndSetCustomerPin(@Body() dto: VerifyAndSetCustomerPinDto) {
+    return this.authService.verifyOtpAndSetCustomerPin(dto);
+  }
+
+  @Public()
+  @Post('customer/pin/forgot')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Request OTP for Customer PIN Reset' })
+  @ApiBody({ type: RequestCustomerPinResetDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Reset OTP sent successfully',
+    type: MessageResponseDto,
+  })
+  async requestCustomerPinReset(@Body() dto: RequestCustomerPinResetDto) {
+    return this.authService.requestCustomerPinReset(dto);
+  }
+
+  @Public()
+  @Post('customer/pin/reset')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Verify OTP and Reset Customer 6-Digit PIN' })
+  @ApiBody({ type: ResetCustomerPinDto })
+  @ApiResponse({
+    status: 200,
+    description: 'PIN reset successfully',
+    type: MessageResponseDto,
+  })
+  async resetCustomerPin(
+    @Body() dto: ResetCustomerPinDto,
+    @Request() req: any,
+  ) {
+    return this.authService.resetCustomerPin(dto, {
+      ip: req?.ip,
+      userAgent: req?.headers?.['user-agent'],
+    });
+  }
+
   @Public()
   @Post('register/admin')
   @ApiOperation({ summary: 'Register an Admin account' })
@@ -282,6 +398,24 @@ export class AuthController {
     const ip = req.ip || req.connection.remoteAddress;
     const userAgent = req.headers['user-agent'];
     return this.authService.resetPassword(dto, { ip, userAgent });
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @AllowPending()
+  @Post('logout')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Sign out of this device',
+    description:
+      'Revokes the session the access token belongs to; the same token answers 401 afterwards. Push tokens are unregistered separately via the notifications routes. Access: any signed-in user.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Signed out',
+    type: MessageResponseDto,
+  })
+  async logout(@Request() req) {
+    return this.authService.logout(req.user);
   }
 
   @UseGuards(JwtAuthGuard)

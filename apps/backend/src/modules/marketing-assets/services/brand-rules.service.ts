@@ -1,14 +1,11 @@
-import {
-  Injectable,
-  ForbiddenException,
-  NotFoundException,
-} from '@nestjs/common';
+import { Injectable, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { MarketingBrandRule } from '../entities/marketing-brand-rule.entity';
 import { SaveBrandRuleDto } from '../dto/save-brand-rule.dto';
 import { User } from '../../users/entities/user.entity';
 import { Business } from '../../businesses/entities/business.entity';
+import { UserRole } from '../../users/entities/user.entity';
 
 @Injectable()
 export class BrandRulesService {
@@ -19,7 +16,7 @@ export class BrandRulesService {
 
   private async resolveBusinessId(user: User): Promise<string> {
     let businessId = user.businessId || user.ownedBusiness?.id;
-    if (!businessId && user.role === 'Admin') {
+    if (!businessId && user.role === UserRole.ADMIN) {
       const firstBusiness = await this.ruleRepo.manager
         .getRepository(Business)
         .findOne({ where: {} });

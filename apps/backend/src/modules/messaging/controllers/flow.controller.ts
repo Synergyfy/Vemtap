@@ -7,25 +7,14 @@ import {
   Query,
   UseGuards,
   Request,
-  BadRequestException,
-  ValidationPipe,
-  UsePipes,
 } from '@nestjs/common';
-import {
-  ApiTags,
-  ApiOperation,
-  ApiBearerAuth,
-  ApiBody,
-  ApiResponse,
-  ApiProperty,
-} from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiBearerAuth, ApiBody } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../../common/guards/roles.guard';
 import { PermissionsGuard } from '../../../common/guards/permissions.guard';
 import { Roles } from '../../../common/decorators/roles.decorator';
 import { User, UserRole } from '../../users/entities/user.entity';
 import { TrialRestrictionGuard } from '../../subscriptions/guards/trial-restriction.guard';
-import { Flow, FlowStatus, FlowTriggerType } from '../entities/flow.entity';
 import {
   CreateFlowDto,
   UpdateFlowStatusDto,

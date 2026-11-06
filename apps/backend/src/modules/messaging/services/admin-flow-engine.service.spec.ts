@@ -14,7 +14,6 @@ describe('AdminFlowEngineService', () => {
   let triggerRepo: jest.Mocked<Repository<FlowTriggerConfig>>;
   let logRepo: jest.Mocked<Repository<FlowLog>>;
   let executionRepo: jest.Mocked<Repository<FlowExecution>>;
-  let settingsService: jest.Mocked<SettingsService>;
 
   beforeEach(async () => {
     const mockRepo = () => ({
@@ -61,7 +60,6 @@ describe('AdminFlowEngineService', () => {
     triggerRepo = module.get(getRepositoryToken(FlowTriggerConfig));
     logRepo = module.get(getRepositoryToken(FlowLog));
     executionRepo = module.get(getRepositoryToken(FlowExecution));
-    settingsService = module.get(SettingsService);
   });
 
   it('should be defined', () => {

@@ -15,6 +15,8 @@ import { PosSplitPayment } from './pos-split-payment.entity';
 import type { PosRefund } from './pos-refund.entity';
 import { ApiProperty } from '@nestjs/swagger';
 import { PaymentMethod, SaleStatus } from './pos-enums';
+import { PosRegisterSession } from './pos-register-session.entity';
+import type { PosOrderType } from '../pos-settings.types';
 import { CatalogueOrder } from '../../catalogue-orders/entities/catalogue-order.entity';
 
 @Entity('pos_sales')
@@ -28,6 +30,7 @@ import { CatalogueOrder } from '../../catalogue-orders/entities/catalogue-order.
   where: '"clientRef" IS NOT NULL',
 })
 @Index(['orderedAt'])
+@Index(['registerSessionId'])
 export class PosSale extends AbstractBaseEntity {
   @ManyToOne(() => Business, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'businessId' })
@@ -94,6 +97,32 @@ export class PosSale extends AbstractBaseEntity {
   })
   tax: number;
 
+  /** Service charge added on top of the net subtotal. */
+  @ApiProperty({ example: 750 })
+  @Column({
+    type: 'decimal',
+    precision: 12,
+    scale: 2,
+    default: 0,
+    transformer: { to: (v: number) => v, from: (v: string) => parseFloat(v) },
+  })
+  serviceCharge: number;
+
+  /** Flat takeaway packaging fee. */
+  @ApiProperty({ example: 300 })
+  @Column({
+    type: 'decimal',
+    precision: 12,
+    scale: 2,
+    default: 0,
+    transformer: { to: (v: number) => v, from: (v: string) => parseFloat(v) },
+  })
+  packagingFee: number;
+
+  @ApiProperty({ enum: ['dine_in', 'takeaway'], example: 'dine_in' })
+  @Column({ type: 'varchar', length: 16, default: 'dine_in' })
+  orderType: PosOrderType;
+
   @ApiProperty({ example: 15000 })
   @Column({
     type: 'decimal',
@@ -127,6 +156,21 @@ export class PosSale extends AbstractBaseEntity {
   @ApiProperty({ example: false })
   @Column({ default: false })
   hideCustomerInfoOnReceipt: boolean;
+
+  /** Tip the customer added on the customer-facing display. */
+  @ApiProperty({ example: 1500 })
+  @Column({
+    type: 'decimal',
+    precision: 12,
+    scale: 2,
+    default: 0,
+    transformer: { to: (v: number) => v, from: (v: string) => parseFloat(v) },
+  })
+  tipAmount: number;
+
+  @ApiProperty({ example: 5, nullable: true, description: '1–5 stars' })
+  @Column({ type: 'smallint', nullable: true })
+  rating: number | null;
 
   @ManyToOne(() => CatalogueOrder, { nullable: true, onDelete: 'SET NULL' })
   @JoinColumn({ name: 'orderId' })
@@ -164,6 +208,15 @@ export class PosSale extends AbstractBaseEntity {
 
   @Column({ type: 'timestamp', nullable: true })
   refundedAt: Date | null;
+
+  /** The cashier shift the sale was rung up in, when one was open. */
+  @ManyToOne(() => PosRegisterSession, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'registerSessionId' })
+  registerSession: PosRegisterSession | null;
+
+  @ApiProperty({ nullable: true })
+  @Column({ type: 'uuid', nullable: true })
+  registerSessionId: string | null;
 
   @OneToMany(() => PosSaleItem, (item) => item.sale, { cascade: true })
   items: PosSaleItem[];

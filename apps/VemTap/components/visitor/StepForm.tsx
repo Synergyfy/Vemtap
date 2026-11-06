@@ -165,7 +165,7 @@ export const StepForm: React.FC<StepFormProps> = ({
                     <div className="flex flex-col items-center justify-center py-8 space-y-6">
                         <div className="w-full">
                             <GoogleAuthButton 
-                                role="customer" 
+                                role="Customer" 
                                 onSuccess={(res) => {
                                     if (res.user.phone) {
                                         onSubmit({

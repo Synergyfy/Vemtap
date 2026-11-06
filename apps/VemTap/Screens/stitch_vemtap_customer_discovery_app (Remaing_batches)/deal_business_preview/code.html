@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Deal Business Preview</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-secondary-fixed": "#0b1c30",
+                        "surface-container-highest": "#e0e3e5",
+                        "secondary-fixed": "#d3e4fe",
+                        "on-surface-variant": "#424655",
+                        "inverse-surface": "#2d3133",
+                        "on-primary-fixed": "#001945",
+                        "on-error-container": "#93000a",
+                        "secondary-container": "#d0e1fb",
+                        "on-primary-fixed-variant": "#00429b",
+                        "surface-dim": "#d8dadc",
+                        "surface-container-lowest": "#ffffff",
+                        "secondary": "#505f76",
+                        "tertiary": "#535a71",
+                        "tertiary-container": "#6b738a",
+                        "background": "#f7f9fb",
+                        "on-tertiary-fixed": "#131b2e",
+                        "primary": "#0055c4",
+                        "on-error": "#ffffff",
+                        "on-secondary-fixed-variant": "#38485d",
+                        "error": "#ba1a1a",
+                        "on-background": "#191c1e",
+                        "primary-container": "#066cf4",
+                        "surface-tint": "#0058cb",
+                        "inverse-on-surface": "#eff1f3",
+                        "on-tertiary-fixed-variant": "#3f465c",
+                        "tertiary-fixed": "#dae2fd",
+                        "surface-bright": "#f7f9fb",
+                        "surface-container": "#eceef0",
+                        "secondary-fixed-dim": "#b7c8e1",
+                        "outline": "#727786",
+                        "on-surface": "#191c1e",
+                        "error-container": "#ffdad6",
+                        "surface": "#f7f9fb",
+                        "tertiary-fixed-dim": "#bec6e0",
+                        "on-secondary-container": "#54647a",
+                        "on-secondary": "#ffffff",
+                        "on-tertiary-container": "#fcfaff",
+                        "outline-variant": "#c2c6d7",
+                        "surface-container-high": "#e6e8ea",
+                        "primary-fixed": "#d9e2ff",
+                        "on-primary-container": "#fcfaff",
+                        "inverse-primary": "#b0c6ff",
+                        "on-primary": "#ffffff",
+                        "on-tertiary": "#ffffff",
+                        "surface-container-low": "#f2f4f6",
+                        "primary-fixed-dim": "#b0c6ff",
+                        "surface-variant": "#e0e3e5"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "touch-target-min": "44px",
+                        "margin-main": "1.25rem",
+                        "stack-sm": "0.5rem",
+                        "gutter-grid": "1rem",
+                        "stack-lg": "1.5rem",
+                        "stack-md": "1rem"
+                    },
+                    "fontFamily": {
+                        "label-lg": ["Inter"],
+                        "headline-sm": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "display-lg": ["Inter"],
+                        "label-sm": ["Inter"],
+                        "currency-display": ["Inter"],
+                        "body-md": ["Inter"]
+                    },
+                    "fontSize": {
+                        "label-lg": ["14px", { "lineHeight": "20px", "letterSpacing": "0.01em", "fontWeight": "600" }],
+                        "headline-sm": ["20px", { "lineHeight": "28px", "fontWeight": "600" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                        "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "display-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "label-sm": ["12px", { "lineHeight": "16px", "fontWeight": "500" }],
+                        "currency-display": ["20px", { "lineHeight": "24px", "fontWeight": "700" }],
+                        "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .material-symbols-outlined.fill {
+            font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background font-body-md antialiased min-h-screen flex flex-col pb-24 md:pb-0 pt-touch-target-min">
+<!-- TopAppBar -->
+<header class="bg-surface dark:bg-on-surface-variant fixed top-0 w-full flex items-center justify-between px-margin-main h-touch-target-min z-50 border-b border-outline-variant dark:border-outline">
+<button class="flex items-center justify-center w-touch-target-min h-touch-target-min active:scale-95 duration-100 rounded-full hover:bg-surface-container-low transition-colors text-on-surface">
+<span class="material-symbols-outlined">arrow_back</span>
+</button>
+<h1 class="font-headline-sm text-headline-sm text-on-surface">Deal Preview</h1>
+<div class="w-touch-target-min"></div>
+</header>
+<!-- Main Content Canvas -->
+<main class="flex-grow px-margin-main pt-stack-md max-w-4xl mx-auto w-full">
+<!-- Business Preview Card (Bento Style) -->
+<section class="bg-surface-container-lowest rounded-xl border border-outline-variant p-stack-md shadow-sm mb-stack-lg relative overflow-hidden">
+<!-- decorative accent -->
+<div class="absolute top-0 left-0 w-full h-1 bg-primary"></div>
+<div class="flex items-start gap-stack-md">
+<!-- Business Logo -->
+<div class="w-20 h-20 rounded-lg overflow-hidden flex-shrink-0 border border-outline-variant bg-surface-container-low">
+<img class="w-full h-full object-cover" data-alt="A professional logo design for a restaurant named Royal Spice. The logo features warm colors like deep red and gold, perhaps incorporating subtle spice or flame motifs. The style is modern, appetizing, and corporate, placed on a clean white background." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDECyixsooTmpKgCoa7JXpVItl1RzghB34DB8k9cAZ8KlywlhkKas_lrV0Cbshc2a5B2Ycum1NBRIMAQ3Mqv_e5XNGfmjW0vYegND6n09BUZYEEq6Q4pIRbeIZKjzydtG12_dtwmnO_RPqZPH0f6fvYaY1Xtd1qZNSWq-gvy5EhMBCHt7m-E5HZ8a38_QXCnAeyURsU8DpHGu_8FDNmIrKuxgDsGas2nSDHMZaVNakjpE-avzE_h20t5Q"/>
+</div>
+<!-- Business Details -->
+<div class="flex-grow">
+<div class="flex justify-between items-start">
+<div>
+<h2 class="font-headline-sm text-headline-sm text-on-surface mb-1">Royal Spice Restaurant</h2>
+<p class="font-body-md text-body-md text-on-surface-variant flex items-center gap-1 mb-2">
+<span class="material-symbols-outlined text-[16px]">restaurant</span>
+                                Food &amp; Hospitality
+                            </p>
+</div>
+</div>
+<div class="flex items-center gap-3 mb-3">
+<div class="flex items-center gap-1 bg-surface-container-low px-2 py-1 rounded-md">
+<span class="material-symbols-outlined fill text-[#F59E0B] text-[16px]">star</span>
+<span class="font-label-lg text-label-lg text-on-surface">4.8</span>
+<span class="font-body-md text-body-md text-on-surface-variant">(124 reviews)</span>
+</div>
+<div class="flex items-center gap-1">
+<span class="w-2 h-2 rounded-full bg-primary"></span>
+<span class="font-label-lg text-label-lg text-primary">Open Now</span>
+</div>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant flex items-center gap-1 mb-4">
+<span class="material-symbols-outlined text-[18px]">location_on</span>
+                        123 Culinary Ave, Wuse 2, Abuja
+                    </p>
+<a class="inline-flex items-center gap-1 font-label-lg text-label-lg text-primary hover:text-primary-container transition-colors" href="#">
+                        View Business <span class="material-symbols-outlined text-[18px]">arrow_forward</span>
+</a>
+</div>
+</div>
+</section>
+<!-- Other Deals Rail -->
+<section class="mb-stack-lg">
+<h3 class="font-headline-sm text-headline-sm text-on-surface mb-stack-md flex items-center justify-between">
+                Other Deals from this Business
+                <a class="font-label-sm text-label-sm text-primary" href="#">See All</a>
+</h3>
+<div class="flex overflow-x-auto gap-stack-md pb-4 hide-scrollbar -mx-margin-main px-margin-main md:mx-0 md:px-0">
+<!-- Compact Deal Card 1 -->
+<div class="min-w-[240px] max-w-[240px] bg-surface-container-lowest rounded-xl border border-outline-variant overflow-hidden shadow-sm flex-shrink-0 active:scale-[0.98] transition-transform">
+<div class="h-32 bg-surface-container relative">
+<img class="w-full h-full object-cover" data-alt="A delicious looking two course meal deal featuring a steaming bowl of spicy Nigerian jollof rice with grilled chicken, next to a refreshing iced beverage. The food is plated on elegant ceramic dishware in a well-lit, modern restaurant setting with soft focus background." src="https://lh3.googleusercontent.com/aida-public/AB6AXuB_V5fAeYpQ3kpItgDyiN7fk1S0EaXgXoIM9gQSesmDn4AWnOPfrXELSJcZw0DQMaf6WMhjn66hdqO7QbQDekNmGzRv96_yg2tQFl5uUUVW9rw7ctUlXyr46mzjg8O9m0C_d_yryzjgy3hjtxAUavOEwC39rNePIC36mSwlrjn0Ix8DrIuoCZRpCniS1lckwAXP7KzpDYh19DeiC2ISxE_F36hTaHBhFkpFBmNk3h26wd4KsKUGjxBTGg"/>
+<div class="absolute top-2 right-2 bg-error text-on-error font-label-sm text-label-sm px-2 py-1 rounded-md shadow-sm">
+                            -20%
+                        </div>
+</div>
+<div class="p-3">
+<h4 class="font-label-lg text-label-lg text-on-surface mb-1 truncate">Lunch Special Duo</h4>
+<div class="flex items-baseline gap-2 mb-2">
+<span class="font-label-lg text-label-lg text-primary">₦4,500</span>
+<span class="font-body-md text-body-md text-on-surface-variant line-through text-xs">₦5,625</span>
+</div>
+<p class="font-label-sm text-label-sm text-on-surface-variant flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">schedule</span> Expires in 2 days
+                        </p>
+</div>
+</div>
+<!-- Compact Deal Card 2 -->
+<div class="min-w-[240px] max-w-[240px] bg-surface-container-lowest rounded-xl border border-outline-variant overflow-hidden shadow-sm flex-shrink-0 active:scale-[0.98] transition-transform">
+<div class="h-32 bg-surface-container relative">
+<img class="w-full h-full object-cover" data-alt="A decadent dessert platter featuring a slice of rich chocolate cake, a scoop of vanilla ice cream, and drizzled caramel sauce. The lighting is warm and inviting, highlighting the textures of the dessert. Set on a dark wooden table." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDAop3nqRB_pGvxf6PJJekmT0BqzyRlMQ48xajHF8Pccy82LN7Nbhem6ihxLKI1levn0cyR8vKroiJDQcWKUZd-r0nuMALvNTns8L5U0v_nULlVIlEcUDIcV21f9mfVZz7PYyr7ClrKUhA3nYCGCJjZQShbs9DHths_DH6qRIFQ56j48BVWyUGH4JOMB1LjOgty_CYCaT264YvaNvoM7lNwHv7kqR_Nzqp1Y-GWF6IDnelubFc_QuOfMA"/>
+<div class="absolute top-2 right-2 bg-error text-on-error font-label-sm text-label-sm px-2 py-1 rounded-md shadow-sm">
+                            -15%
+                        </div>
+</div>
+<div class="p-3">
+<h4 class="font-label-lg text-label-lg text-on-surface mb-1 truncate">Sweet Tooth Platter</h4>
+<div class="flex items-baseline gap-2 mb-2">
+<span class="font-label-lg text-label-lg text-primary">₦2,500</span>
+<span class="font-body-md text-body-md text-on-surface-variant line-through text-xs">₦2,940</span>
+</div>
+<p class="font-label-sm text-label-sm text-on-surface-variant flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">schedule</span> Expires in 5 days
+                        </p>
+</div>
+</div>
+<!-- Compact Deal Card 3 -->
+<div class="min-w-[240px] max-w-[240px] bg-surface-container-lowest rounded-xl border border-outline-variant overflow-hidden shadow-sm flex-shrink-0 active:scale-[0.98] transition-transform">
+<div class="h-32 bg-surface-container relative">
+<img class="w-full h-full object-cover" data-alt="A large, colorful family feast spread on a dining table. Includes various dishes like grilled fish, plantains, assorted vegetables, and multiple drinks. The scene conveys abundance and sharing in a bright, festive atmosphere." src="https://lh3.googleusercontent.com/aida-public/AB6AXuD7WT3UDFu2mEr5jcCr3LOAdgdL3RCbBF3BlsB7loKmnXybQVqyQMUsJkc6Blc_uekazubi4MgTx68yCgFtlXjjezg6gQXF6AZz0DkRYm4B4ZclCdYfOnfuVjZmkCTbbwDmpwOfKKdyG4Z4wWs4yhpF8o49xcBdoWiFgMTlp0KqK3U17rQ9MgvzVUjT-XNGQAZCqmwaJseWkp-Hki4sCNUF1tAOrWi-NuF54n4Rq2MQyvUZkdIwcNBqyw"/>
+<div class="absolute top-2 right-2 bg-error text-on-error font-label-sm text-label-sm px-2 py-1 rounded-md shadow-sm">
+                            -10%
+                        </div>
+</div>
+<div class="p-3">
+<h4 class="font-label-lg text-label-lg text-on-surface mb-1 truncate">Family Feast Combo</h4>
+<div class="flex items-baseline gap-2 mb-2">
+<span class="font-label-lg text-label-lg text-primary">₦18,000</span>
+<span class="font-body-md text-body-md text-on-surface-variant line-through text-xs">₦20,000</span>
+</div>
+<p class="font-label-sm text-label-sm text-on-surface-variant flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">schedule</span> Valid till Sunday
+                        </p>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- BottomNavBar -->
+<nav class="md:hidden bg-surface dark:bg-on-surface-variant border-t border-outline-variant shadow-sm fixed bottom-0 left-0 w-full z-50 flex justify-around items-center h-16 px-gutter-grid">
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:text-primary transition-all active:scale-90 duration-200 min-w-[48px] min-h-[48px]" href="#">
+<span class="material-symbols-outlined text-[24px]">home</span>
+<span class="font-label-sm text-label-sm mt-1">Home</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:text-primary transition-all active:scale-90 duration-200 min-w-[48px] min-h-[48px]" href="#">
+<span class="material-symbols-outlined text-[24px]">explore</span>
+<span class="font-label-sm text-label-sm mt-1">Discover</span>
+</a>
+<!-- Active Tab: Deals -->
+<a class="flex flex-col items-center justify-center text-primary bg-secondary-container rounded-full px-4 py-1 hover:text-primary transition-all active:scale-90 duration-200 min-h-[48px]" href="#">
+<span class="material-symbols-outlined fill text-[24px]">local_offer</span>
+<span class="font-label-sm text-label-sm mt-1">Deals</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:text-primary transition-all active:scale-90 duration-200 min-w-[48px] min-h-[48px]" href="#">
+<span class="material-symbols-outlined text-[24px]">bookmark</span>
+<span class="font-label-sm text-label-sm mt-1">Saved</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:text-primary transition-all active:scale-90 duration-200 min-w-[48px] min-h-[48px]" href="#">
+<span class="material-symbols-outlined text-[24px]">person</span>
+<span class="font-label-sm text-label-sm mt-1">Account</span>
+</a>
+</nav>
+</body></html>

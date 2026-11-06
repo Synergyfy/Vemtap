@@ -3,10 +3,12 @@ import {
   Get,
   Post,
   Patch,
+  Delete,
   Param,
   UseGuards,
   Request,
   Body,
+  Query,
 } from '@nestjs/common';
 import { NotificationsService } from './notifications.service';
 import { PushNotificationService } from './push-notification.service';
@@ -23,7 +25,13 @@ import {
 } from '@nestjs/swagger';
 import { NotificationResponseDto } from './dto/notification-response.dto';
 import { RegisterPushTokenDto } from './dto/register-push-token.dto';
+import { ListNotificationsDto } from './dto/list-notifications.dto';
 import { UpdateNotificationPreferencesDto } from './dto/update-notification-preferences.dto';
+import {
+  AdminBroadcastDto,
+  BroadcastQueryDto,
+} from './dto/admin-broadcast.dto';
+import { TargetAudience } from './entities/notification-broadcast.entity';
 
 @ApiTags('notifications')
 @ApiBearerAuth()
@@ -36,62 +44,35 @@ export class NotificationsController {
   ) {}
 
   @Post('push-token')
-  @ApiOperation({ summary: 'Register a push token for the current user' })
-  @ApiBody({
-    schema: {
-      type: 'object',
-      properties: {
-        token: { type: 'string', example: 'fcm-token-abc-123' },
-      },
-      required: ['token'],
-    },
+  @ApiOperation({
+    summary: 'Register a push token for the current user',
+    description:
+      'Expo tokens are stored per device in push_tokens; a Web Push subscription mirrors onto the user row. Re-registering the same token refreshes it.',
   })
+  @ApiBody({ type: RegisterPushTokenDto })
   @ApiResponse({ status: 201, description: 'Token registered successfully' })
   async registerPushToken(@Body() dto: RegisterPushTokenDto, @Request() req) {
     return this.pushNotificationService.registerToken(
       req.user.id,
       dto.token,
       true,
+      dto.transport,
+      dto.platform,
     );
   }
 
-  @Post('device-token')
+  @Delete('push-token')
   @ApiOperation({
-    summary: 'Register a device/FCM push token for the current user',
+    summary: 'Clear push tokens for the current user',
+    description:
+      'Without a token in the body every device is signed out; pass one to sign out just that device.',
   })
-  @ApiBody({ type: RegisterPushTokenDto })
-  @ApiResponse({
-    status: 201,
-    description: 'Device token registered successfully',
-  })
-  async registerDeviceToken(@Body() dto: RegisterPushTokenDto, @Request() req) {
-    return this.pushNotificationService.registerToken(
+  @ApiResponse({ status: 200, description: 'Push token cleared successfully' })
+  async clearPushToken(@Body() dto: { token?: string }, @Request() req) {
+    return this.pushNotificationService.clearToken(
       req.user.id,
-      dto.token,
       true,
-    );
-  }
-
-  @Post('visitor/push-token')
-  @ApiOperation({ summary: 'Register a push token for the current visitor' })
-  @ApiBody({
-    schema: {
-      type: 'object',
-      properties: {
-        token: { type: 'string', example: 'fcm-token-abc-123' },
-      },
-      required: ['token'],
-    },
-  })
-  @ApiResponse({ status: 201, description: 'Token registered successfully' })
-  async registerVisitorPushToken(
-    @Body() dto: RegisterPushTokenDto,
-    @Request() req,
-  ) {
-    return this.pushNotificationService.registerToken(
-      req.user.id,
-      dto.token,
-      false,
+      dto?.token,
     );
   }
 
@@ -134,14 +115,21 @@ export class NotificationsController {
   }
 
   @Get()
-  @ApiOperation({ summary: 'Get all notifications for current user' })
+  @ApiOperation({
+    summary: "List the current user's notifications, newest first",
+    description:
+      'Paginated with a `limit`/`before` cursor. Still returns a bare array so older clients keep working.',
+  })
   @ApiResponse({
     status: 200,
     description: 'List of notifications',
     type: [NotificationResponseDto],
   })
-  async findAll(@Request() req) {
-    const items = await this.notificationsService.findByUser(req.user.id);
+  async findAll(@Request() req, @Query() query: ListNotificationsDto) {
+    const items = await this.notificationsService.findByUser(req.user.id, {
+      limit: query.limit,
+      before: query.before ? new Date(query.before) : undefined,
+    });
     return items.map((n) => ({ ...n, read: n.isRead }));
   }
 
@@ -154,6 +142,34 @@ export class NotificationsController {
   })
   getUnreadCount(@Request() req) {
     return this.notificationsService.getUnreadCount(req.user.id);
+  }
+
+  /**
+   * The venue's notification centre.
+   *
+   * Distinct from `GET /notifications`, which returns only the caller's own
+   * rows: a business needs the events that happened at the business, whoever
+   * the row was addressed to. Unread travels with the page so the bell and the
+   * list are populated from the same read.
+   */
+  @Get('business')
+  @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.ADMIN, UserRole.STAFF)
+  @ApiOperation({
+    summary: "List a business's notifications, newest first",
+    description:
+      "Union of every row written for anyone at the caller's business. Access: OWNER, MANAGER, ADMIN, STAFF.",
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Paginated notification page with the unread total',
+  })
+  @ApiResponse({ status: 401, description: 'Not authenticated' })
+  @ApiResponse({ status: 403, description: 'Role cannot view business rows' })
+  async findForBusiness(@Request() req, @Query() query: ListNotificationsDto) {
+    return this.notificationsService.findByBusiness(req.user.businessId, {
+      page: query.page,
+      limit: query.limit,
+    });
   }
 
   @Post('mark-all-read')
@@ -176,30 +192,46 @@ export class NotificationsController {
   @Patch(':id/read')
   @ApiOperation({ summary: 'Mark a specific notification as read' })
   @ApiResponse({ status: 200, description: 'Notification marked as read' })
-  async markAsRead(@Param('id') id: string) {
-    const notification = await this.notificationsService.markAsRead(id);
+  async markAsRead(@Param('id') id: string, @Request() req) {
+    const notification = await this.notificationsService.markAsRead(
+      id,
+      req.user.id,
+    );
     return { ...notification, read: notification.isRead };
   }
 
+  @Post('admin/broadcast')
   @Post('broadcast')
-  @UseGuards(RolesGuard)
   @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @ApiOperation({
-    summary: 'Broadcast a notification to all agents (affiliates)',
+    summary: 'Admin: Push custom notification to ALL, BUSINESSES, or CUSTOMERS',
+    description:
+      'Creates in-app notifications and queues web push notifications for targeted users. Persists to broadcast history.',
   })
-  async broadcast(@Body() data: { title: string; message: string }) {
-    return this.notificationsService.broadcastToRole(
-      UserRole.AGENT,
-      data.title,
-      data.message,
-    );
+  @ApiResponse({
+    status: 201,
+    description: 'Broadcast dispatched successfully',
+  })
+  async broadcast(@Body() data: AdminBroadcastDto, @Request() req) {
+    const targetAudience = data.targetAudience || TargetAudience.ALL;
+    return this.notificationsService.sendAdminBroadcast(req.user?.id, {
+      ...data,
+      targetAudience,
+    });
   }
 
+  @Get('admin/broadcasts')
   @Get('admin/history/broadcasts')
-  @UseGuards(RolesGuard)
   @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
-  @ApiOperation({ summary: 'Get broadcast history for admins' })
-  async getHistory() {
-    return this.notificationsService.getBroadcastHistory();
+  @ApiOperation({ summary: 'Admin: Get paginated broadcast history' })
+  async getBroadcastHistory(@Query() query: BroadcastQueryDto) {
+    return this.notificationsService.getBroadcastHistory(query);
+  }
+
+  @Get('admin/broadcasts/:id')
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Admin: Get broadcast details by ID' })
+  async getBroadcastById(@Param('id') id: string) {
+    return this.notificationsService.getBroadcastById(id);
   }
 }

@@ -69,8 +69,7 @@ export class PaymentsController {
       throw new BadRequestException('Missing signature');
     }
 
-    const rawBody =
-      (req as any).rawBody ?? (req as any).raw?.rawBody ?? undefined;
+    const rawBody = req.rawBody ?? req.raw?.rawBody ?? undefined;
 
     const isValid = this.paymentsService.verifyWebhookSignature(
       signature,
@@ -101,6 +100,11 @@ export class PaymentsController {
         if (!payment) {
           // No pending subscription intent for this reference (legacy client
           // flows, credit top-ups, or add-on purchases) — nothing to activate.
+          return;
+        }
+
+        // Purposes owned by another module (ad wallet top-ups, …).
+        if (await this.paymentsService.dispatchSuccessfulPayment(payment)) {
           return;
         }
 

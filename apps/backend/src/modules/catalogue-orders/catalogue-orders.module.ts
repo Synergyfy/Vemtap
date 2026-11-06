@@ -2,6 +2,7 @@ import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { BullModule } from '@nestjs/bullmq';
 import { CatalogueOrderService } from './catalogue-orders.service';
+import { CatalogueOrderReceiptService } from './catalogue-order-receipt.service';
 import { CatalogueOrdersController } from './catalogue-orders.controller';
 import { CatalogueOrder } from './entities/catalogue-order.entity';
 import { CatalogueOrderItem } from './entities/catalogue-order-item.entity';
@@ -42,7 +43,11 @@ import { OrderNotificationProcessor } from './processors/order-notification.proc
     CatalogueModule,
   ],
   controllers: [CatalogueOrdersController],
-  providers: [CatalogueOrderService, OrderNotificationProcessor],
+  providers: [
+    CatalogueOrderService,
+    CatalogueOrderReceiptService,
+    OrderNotificationProcessor,
+  ],
   exports: [CatalogueOrderService],
 })
 export class CatalogueOrderModule {}

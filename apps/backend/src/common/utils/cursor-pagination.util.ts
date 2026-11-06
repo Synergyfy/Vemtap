@@ -4,6 +4,8 @@ export interface CursorPayload {
   id: string;
   v?: string | number | null;
   d?: 'ASC' | 'DESC';
+  /** Set when `v` came from a Date; comparison uses millisecond precision. */
+  t?: 'ts';
 }
 
 export function encodeCursor(payload: CursorPayload): string {
@@ -15,30 +17,80 @@ export function encodeCursor(payload: CursorPayload): string {
   }
 }
 
+function parseCursorPayload(json: string): CursorPayload | null {
+  const parsed: unknown = JSON.parse(json);
+  if (
+    parsed &&
+    typeof parsed === 'object' &&
+    'id' in parsed &&
+    typeof (parsed as { id?: unknown }).id === 'string'
+  ) {
+    return parsed as CursorPayload;
+  }
+  return null;
+}
+
 export function decodeCursor(cursor?: string | null): CursorPayload | null {
   if (!cursor || typeof cursor !== 'string') {
     return null;
   }
   try {
     const json = Buffer.from(cursor, 'base64url').toString('utf8');
-    const parsed = JSON.parse(json);
-    if (parsed && typeof parsed === 'object' && parsed.id) {
-      return parsed as CursorPayload;
-    }
+    const parsed = parseCursorPayload(json);
+    if (parsed) return parsed;
     return null;
   } catch {
     // Fallback try standard base64 if base64url fails
     try {
       const json = Buffer.from(cursor, 'base64').toString('utf8');
-      const parsed = JSON.parse(json);
-      if (parsed && typeof parsed === 'object' && parsed.id) {
-        return parsed as CursorPayload;
-      }
+      return parseCursorPayload(json);
     } catch {
       return null;
     }
-    return null;
   }
+}
+
+/**
+ * Serialize a cursor sort value for storage in the opaque cursor.
+ *
+ * Dates must be emitted as naive local timestamps (`YYYY-MM-DD HH:mm:ss.SSS`,
+ * no timezone designator), NOT `toISOString()`. Postgres `timestamp` columns
+ * (`@CreateDateColumn`) hold naive values and the `pg` driver parses them as
+ * local time; formatting the parsed Date's local components round-trips back to
+ * the exact stored digits. `toISOString()` shifts by the process/DB timezone
+ * offset, and the shifted cursor matches zero rows on the next page.
+ */
+export function serializeCursorValue(value: unknown): string | number | null {
+  if (value instanceof Date) {
+    const pad = (n: number, width = 2) => String(n).padStart(width, '0');
+    return (
+      `${value.getFullYear()}-${pad(value.getMonth() + 1)}-${pad(value.getDate())} ` +
+      `${pad(value.getHours())}:${pad(value.getMinutes())}:${pad(value.getSeconds())}.` +
+      `${pad(value.getMilliseconds(), 3)}`
+    );
+  }
+  if (typeof value === 'string' || typeof value === 'number') {
+    return value;
+  }
+  return null;
+}
+
+/**
+ * Cursor-payload form of a sort value. Date-valued sorts carry `t: 'ts'` so
+ * the query can compare at millisecond precision (`date_trunc`), since JS
+ * Dates lose the microseconds Postgres stores and an exact equality would
+ * never match.
+ */
+export function cursorValueFor(
+  value: unknown,
+): { v: string | number | null; t?: 'ts' } | null {
+  if (value instanceof Date) {
+    return { v: serializeCursorValue(value), t: 'ts' };
+  }
+  if (typeof value === 'string' || typeof value === 'number') {
+    return { v: value };
+  }
+  return null;
 }
 
 export interface PaginateCursorOptions<T extends ObjectLiteral = any> {
@@ -106,6 +158,12 @@ export async function paginateWithCursor<T extends ObjectLiteral = any>(
   const aliasPrefix = entityAlias ? `${entityAlias}.` : '';
   const colSort = `${aliasPrefix}${sortField}`;
   const colId = `${aliasPrefix}${idField}`;
+  // JS Dates only hold milliseconds while Postgres timestamps hold
+  // microseconds — compare truncated so the cursor boundary can match.
+  const colSortExpr =
+    decodedCursor?.t === 'ts'
+      ? `date_trunc('milliseconds', ${colSort})`
+      : colSort;
 
   let total = 0;
 
@@ -141,7 +199,7 @@ export async function paginateWithCursor<T extends ObjectLiteral = any>(
 
       if (cursorVal !== undefined && cursorVal !== null) {
         qb.andWhere(
-          `(${colSort} ${opVal} :${paramValKey} OR (${colSort} = :${paramValKey} AND ${colId} ${opId} :${paramIdKey}))`,
+          `(${colSortExpr} ${opVal} :${paramValKey} OR (${colSortExpr} = :${paramValKey} AND ${colId} ${opId} :${paramIdKey}))`,
           {
             [paramValKey]: cursorVal,
             [paramIdKey]: decodedCursor.id,
@@ -196,27 +254,23 @@ export async function paginateWithCursor<T extends ObjectLiteral = any>(
     const firstItem = data[0];
 
     if (hasNextPage) {
+      const meta =
+        sortField in lastItem ? cursorValueFor(lastItem[sortField]) : null;
       nextCursor = encodeCursor({
         id: String(lastItem[idField]),
-        v:
-          sortField in lastItem
-            ? lastItem[sortField] instanceof Date
-              ? lastItem[sortField].toISOString()
-              : lastItem[sortField]
-            : null,
+        v: meta?.v ?? null,
+        t: meta?.t,
         d: sortOrder,
       });
     }
 
     if (page > 1 || decodedCursor) {
+      const meta =
+        sortField in firstItem ? cursorValueFor(firstItem[sortField]) : null;
       prevCursor = encodeCursor({
         id: String(firstItem[idField]),
-        v:
-          sortField in firstItem
-            ? firstItem[sortField] instanceof Date
-              ? firstItem[sortField].toISOString()
-              : firstItem[sortField]
-            : null,
+        v: meta?.v ?? null,
+        t: meta?.t,
         d: sortOrder,
       });
     }

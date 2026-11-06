@@ -10,8 +10,8 @@ import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
-import { UserRole } from '../users/entities/user.entity';
-import { FeedbackService } from './feedback.service';
+import { User, UserRole } from '../users/entities/user.entity';
+import { FeedbackService, type FeedbackScope } from './feedback.service';
 import { CreateFeedbackDto } from './dto/create-feedback.dto';
 
 @ApiTags('feedback')
@@ -21,10 +21,30 @@ import { CreateFeedbackDto } from './dto/create-feedback.dto';
 export class FeedbackController {
   constructor(private readonly feedbackService: FeedbackService) {}
 
+  /** Owners see the whole business; managers and staff their own branch. */
+  private scope(req: {
+    user?: {
+      role?: UserRole;
+      businessId?: string | null;
+      branchId?: string | null;
+    };
+  }): FeedbackScope {
+    const user = req.user;
+    const role = user?.role;
+    return {
+      businessId: user?.businessId ?? null,
+      branchId:
+        role === UserRole.MANAGER || role === UserRole.STAFF
+          ? (user?.branchId ?? null)
+          : null,
+      isAdmin: role === UserRole.ADMIN,
+    };
+  }
+
   @Post()
   @Roles(UserRole.CUSTOMER)
   @ApiOperation({ summary: 'Submit customer feedback' })
-  async create(@Request() req: any, @Body() dto: CreateFeedbackDto) {
+  async create(@Request() req: { user: User }, @Body() dto: CreateFeedbackDto) {
     return this.feedbackService.create(dto, req.user);
   }
 
@@ -32,17 +52,13 @@ export class FeedbackController {
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.ADMIN, UserRole.STAFF)
   @ApiOperation({ summary: 'Get feedback metrics and overview stats' })
   async getStats(@Request() req: any) {
-    const branchId =
-      req.user?.branchId || req.user?.activeBranchId || req.user?.businessId;
-    return this.feedbackService.getStats(branchId);
+    return this.feedbackService.getStats(this.scope(req));
   }
 
   @Get('reviews')
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.ADMIN, UserRole.STAFF)
   @ApiOperation({ summary: 'Get customer feedback reviews list' })
   async getReviews(@Request() req: any) {
-    const branchId =
-      req.user?.branchId || req.user?.activeBranchId || req.user?.businessId;
-    return this.feedbackService.getReviews(branchId);
+    return this.feedbackService.getReviews(this.scope(req));
   }
 }

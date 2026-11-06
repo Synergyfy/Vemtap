@@ -8,7 +8,6 @@ import {
   IsEmail,
   IsUrl,
   IsArray,
-  MinLength,
   IsStrongPassword,
 } from 'class-validator';
 import { BusinessStatus } from '../entities/business.entity';

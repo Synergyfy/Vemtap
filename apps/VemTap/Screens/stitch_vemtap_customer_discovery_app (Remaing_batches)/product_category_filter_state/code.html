@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Filter Products - Bottom Sheet</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Design System Tailwind Config -->
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "primary-fixed-dim": "#b0c6ff",
+                    "surface-container-lowest": "#ffffff",
+                    "background": "#f7f9fb",
+                    "on-background": "#191c1e",
+                    "error": "#ba1a1a",
+                    "on-secondary": "#ffffff",
+                    "on-error": "#ffffff",
+                    "secondary": "#505f76",
+                    "on-primary-container": "#fcfaff",
+                    "tertiary": "#535a71",
+                    "secondary-container": "#d0e1fb",
+                    "on-primary-fixed": "#001945",
+                    "on-tertiary-container": "#fcfaff",
+                    "on-primary": "#ffffff",
+                    "on-tertiary": "#ffffff",
+                    "on-tertiary-fixed-variant": "#3f465c",
+                    "primary": "#0055c4",
+                    "outline": "#727786",
+                    "inverse-primary": "#b0c6ff",
+                    "secondary-fixed-dim": "#b7c8e1",
+                    "surface-container-low": "#f2f4f6",
+                    "surface-container-high": "#e6e8ea",
+                    "inverse-on-surface": "#eff1f3",
+                    "on-primary-fixed-variant": "#00429b",
+                    "on-tertiary-fixed": "#131b2e",
+                    "surface-tint": "#0058cb",
+                    "tertiary-fixed-dim": "#bec6e0",
+                    "primary-container": "#066cf4",
+                    "on-surface": "#191c1e",
+                    "on-surface-variant": "#424655",
+                    "error-container": "#ffdad6",
+                    "surface-bright": "#f7f9fb",
+                    "tertiary-fixed": "#dae2fd",
+                    "surface-dim": "#d8dadc",
+                    "on-secondary-fixed-variant": "#38485d",
+                    "on-error-container": "#93000a",
+                    "tertiary-container": "#6b738a",
+                    "inverse-surface": "#2d3133",
+                    "primary-fixed": "#d9e2ff",
+                    "on-secondary-container": "#54647a",
+                    "surface-variant": "#e0e3e5",
+                    "surface-container": "#eceef0",
+                    "on-secondary-fixed": "#0b1c30",
+                    "secondary-fixed": "#d3e4fe",
+                    "outline-variant": "#c2c6d7",
+                    "surface": "#f7f9fb",
+                    "surface-container-highest": "#e0e3e5"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "stack-md": "1rem",
+                    "stack-lg": "1.5rem",
+                    "stack-sm": "0.5rem",
+                    "touch-target-min": "44px",
+                    "margin-main": "1.25rem",
+                    "gutter-grid": "1rem"
+            },
+            "fontFamily": {
+                    "headline-sm": ["Inter"],
+                    "label-sm": ["Inter"],
+                    "body-lg": ["Inter"],
+                    "body-md": ["Inter"],
+                    "currency-display": ["Inter"],
+                    "display-lg": ["Inter"],
+                    "label-lg": ["Inter"],
+                    "headline-md": ["Inter"]
+            },
+            "fontSize": {
+                    "headline-sm": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                    "label-sm": ["12px", {"lineHeight": "16px", "fontWeight": "500"}],
+                    "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                    "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                    "currency-display": ["20px", {"lineHeight": "24px", "fontWeight": "700"}],
+                    "display-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "label-lg": ["14px", {"lineHeight": "20px", "letterSpacing": "0.01em", "fontWeight": "600"}],
+                    "headline-md": ["24px", {"lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        
+        /* Custom toggle styles */
+        .toggle-checkbox:checked {
+            right: 0;
+            border-color: #0055c4;
+        }
+        .toggle-checkbox:checked + .toggle-label {
+            background-color: #0055c4;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-surface-dim font-sans antialiased min-h-screen relative flex items-center justify-center overflow-hidden">
+<!-- Mock Background Content to show overlay effect -->
+<div class="absolute inset-0 w-full h-full p-margin-main z-0 pointer-events-none opacity-40">
+<div class="grid grid-cols-2 gap-4">
+<div class="bg-surface-container-low h-48 rounded-xl shadow-sm border border-surface-variant flex items-center justify-center">
+<span class="material-symbols-outlined text-outline-variant text-display-lg" data-icon="image">image</span>
+</div>
+<div class="bg-surface-container-low h-48 rounded-xl shadow-sm border border-surface-variant flex items-center justify-center">
+<span class="material-symbols-outlined text-outline-variant text-display-lg" data-icon="image">image</span>
+</div>
+<div class="bg-surface-container-low h-48 rounded-xl shadow-sm border border-surface-variant flex items-center justify-center">
+<span class="material-symbols-outlined text-outline-variant text-display-lg" data-icon="image">image</span>
+</div>
+<div class="bg-surface-container-low h-48 rounded-xl shadow-sm border border-surface-variant flex items-center justify-center">
+<span class="material-symbols-outlined text-outline-variant text-display-lg" data-icon="image">image</span>
+</div>
+</div>
+</div>
+<!-- Scrim / Dimmed Background Overlay -->
+<div aria-hidden="true" class="fixed inset-0 bg-on-surface/40 z-40 transition-opacity"></div>
+<!-- Bottom Sheet -->
+<div aria-labelledby="modal-title" aria-modal="true" class="fixed bottom-0 w-full max-w-md bg-surface-container-lowest rounded-t-[24px] shadow-[0_-8px_24px_rgba(0,0,0,0.12)] z-50 flex flex-col transition-transform transform translate-y-0" role="dialog">
+<!-- Drag Handle -->
+<div class="w-full flex justify-center pt-3 pb-2 cursor-grab active:cursor-grabbing">
+<div class="w-10 h-1 bg-outline-variant rounded-full opacity-50"></div>
+</div>
+<!-- Header -->
+<div class="flex items-center justify-between px-margin-main pb-stack-md border-b border-surface-variant">
+<h2 class="font-headline-sm text-headline-sm text-on-surface" id="modal-title">Filter Products</h2>
+<button aria-label="Close filters" class="w-touch-target-min h-touch-target-min flex items-center justify-center rounded-full text-on-surface-variant hover:bg-surface-container-low transition-colors">
+<span class="material-symbols-outlined" data-icon="close">close</span>
+</button>
+</div>
+<!-- Filter Content Area -->
+<div class="px-margin-main py-stack-lg flex-1 overflow-y-auto">
+<!-- Category Chips Section -->
+<section class="mb-stack-lg">
+<h3 class="font-label-lg text-label-lg text-on-surface-variant mb-stack-sm">Categories</h3>
+<div class="flex flex-wrap gap-2">
+<!-- Active Chip -->
+<button class="px-4 py-2 h-touch-target-min rounded-full border border-primary bg-primary-container text-on-primary-container font-label-lg text-label-lg flex items-center justify-center transition-colors">
+                        All
+                    </button>
+<!-- Inactive Chips -->
+<button class="px-4 py-2 h-touch-target-min rounded-full border border-outline-variant bg-surface-container-lowest text-on-surface font-label-lg text-label-lg flex items-center justify-center hover:bg-surface-container-low transition-colors">
+                        Food
+                    </button>
+<button class="px-4 py-2 h-touch-target-min rounded-full border border-outline-variant bg-surface-container-lowest text-on-surface font-label-lg text-label-lg flex items-center justify-center hover:bg-surface-container-low transition-colors">
+                        Drinks
+                    </button>
+<button class="px-4 py-2 h-touch-target-min rounded-full border border-outline-variant bg-surface-container-lowest text-on-surface font-label-lg text-label-lg flex items-center justify-center hover:bg-surface-container-low transition-colors">
+                        Desserts
+                    </button>
+</div>
+</section>
+<!-- Availability Toggle Section -->
+<section class="mb-stack-lg border-t border-surface-variant pt-stack-lg flex items-center justify-between">
+<div>
+<h3 class="font-body-lg text-body-lg text-on-surface">Availability</h3>
+<p class="font-body-md text-body-md text-on-surface-variant">Show only currently available items</p>
+</div>
+<!-- Toggle Switch -->
+<div class="relative inline-block w-12 mr-2 align-middle select-none transition duration-200 ease-in h-touch-target-min flex items-center">
+<input class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-surface-container-lowest border-2 border-outline-variant appearance-none cursor-pointer z-10 top-1/2 -translate-y-1/2 left-0 transition-all duration-300 ease-in-out focus:ring-2 focus:ring-primary focus:ring-offset-2" id="availability-toggle" name="toggle" type="checkbox"/>
+<label class="toggle-label block overflow-hidden h-6 rounded-full bg-surface-container-highest cursor-pointer w-12 transition-colors duration-300 ease-in-out" for="availability-toggle"></label>
+</div>
+</section>
+<!-- Price Range Placeholder (To show realistic filter depth) -->
+<section class="border-t border-surface-variant pt-stack-lg">
+<h3 class="font-label-lg text-label-lg text-on-surface-variant mb-stack-md">Price Range</h3>
+<div class="flex items-center gap-4">
+<div class="flex-1 relative">
+<span class="absolute left-3 top-1/2 -translate-y-1/2 font-body-lg text-body-lg text-outline">₦</span>
+<input class="w-full h-12 pl-8 pr-3 rounded-lg border border-outline-variant bg-surface-container-lowest text-on-surface font-body-lg text-body-lg focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all" placeholder="Min" type="number"/>
+</div>
+<span class="text-on-surface-variant font-body-lg text-body-lg">-</span>
+<div class="flex-1 relative">
+<span class="absolute left-3 top-1/2 -translate-y-1/2 font-body-lg text-body-lg text-outline">₦</span>
+<input class="w-full h-12 pl-8 pr-3 rounded-lg border border-outline-variant bg-surface-container-lowest text-on-surface font-body-lg text-body-lg focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all" placeholder="Max" type="number"/>
+</div>
+</div>
+</section>
+</div>
+<!-- Action Buttons (Thumb Zone) -->
+<div class="p-margin-main bg-surface-container-lowest border-t border-surface-variant flex gap-4">
+<button class="flex-1 h-12 rounded-lg border border-outline-variant bg-surface-container-lowest text-on-surface font-label-lg text-label-lg flex items-center justify-center hover:bg-surface-container-low transition-colors focus:ring-2 focus:ring-outline focus:ring-offset-1">
+                Reset
+            </button>
+<button class="flex-1 h-12 rounded-lg bg-primary text-on-primary font-label-lg text-label-lg flex items-center justify-center hover:bg-primary-container hover:text-on-primary-container transition-colors focus:ring-2 focus:ring-primary focus:ring-offset-1 shadow-sm">
+                Apply Filters
+            </button>
+</div>
+</div>
+</body></html>

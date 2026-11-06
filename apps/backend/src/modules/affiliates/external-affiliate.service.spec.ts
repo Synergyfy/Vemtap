@@ -8,7 +8,6 @@ import { AxiosResponse, InternalAxiosRequestConfig } from 'axios';
 describe('ExternalAffiliateService', () => {
   let service: ExternalAffiliateService;
   let httpService: jest.Mocked<HttpService>;
-  let configService: jest.Mocked<ConfigService>;
 
   beforeEach(async () => {
     const mockHttpService = {
@@ -34,7 +33,6 @@ describe('ExternalAffiliateService', () => {
 
     service = module.get<ExternalAffiliateService>(ExternalAffiliateService);
     httpService = module.get(HttpService);
-    configService = module.get(ConfigService);
   });
 
   it('should be defined', () => {

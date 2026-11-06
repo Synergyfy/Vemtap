@@ -2,6 +2,8 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  ForbiddenException,
+  Optional,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Not, IsNull } from 'typeorm';
@@ -25,6 +27,7 @@ import { Visit } from '../visitors/entities/visit.entity';
 import { Device } from '../devices/entities/device.entity';
 import { LoyaltyService } from '../loyalty/loyalty.service';
 import { PushNotificationService } from '../notifications/push-notification.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import {
   CreateCatalogueOrderDto,
   CatalogueOrderQueryDto,
@@ -35,9 +38,21 @@ import * as bcrypt from 'bcrypt';
 import { VisitorsService } from '../visitors/visitors.service';
 import { MailService } from '../mail/mail.service';
 import { CatalogueService } from '../catalogue/catalogue.service';
+import { CatalogueBranchPricingService } from '../catalogue/catalogue-branch-pricing.service';
+import { effectiveUnitPrice } from '../catalogue/utils/catalogue-item.utils';
+import { CatalogueOfferService } from '../catalogue/catalogue-offer.service';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { v4 as uuidv4 } from 'uuid';
+import { EventEmitter2 } from '@nestjs/event-emitter';
+import { ORDER_EVENTS, OrderLifecycleEvent, stampStatus } from './order-events';
+
+/** Roles that may create catalogue items while entering a manual order. */
+const STAFF_ROLES: readonly UserRole[] = [
+  UserRole.OWNER,
+  UserRole.MANAGER,
+  UserRole.STAFF,
+];
 
 @Injectable()
 export class CatalogueOrderService {
@@ -60,12 +75,34 @@ export class CatalogueOrderService {
     private readonly deviceRepository: Repository<Device>,
     private readonly loyaltyService: LoyaltyService,
     private readonly pushNotificationService: PushNotificationService,
+    private readonly notificationsService: NotificationsService,
     private readonly visitorsService: VisitorsService,
     private readonly mailService: MailService,
     private readonly catalogueService: CatalogueService,
+    private readonly pricingService: CatalogueBranchPricingService,
     @InjectQueue('order-notifications')
     private readonly orderNotificationQueue: Queue,
+    @Optional()
+    private readonly catalogueOfferService?: CatalogueOfferService,
+    @Optional()
+    private readonly eventEmitter?: EventEmitter2,
   ) {}
+
+  private emitOrderEvent(
+    event: (typeof ORDER_EVENTS)[keyof typeof ORDER_EVENTS],
+    order: CatalogueOrder,
+  ) {
+    const payload: OrderLifecycleEvent = {
+      orderId: order.id,
+      businessId: order.businessId,
+      branchId: order.branchId,
+      status: order.status,
+      trackingToken: order.trackingToken ?? null,
+      tableNumber: order.tableNumber ?? null,
+      at: new Date().toISOString(),
+    };
+    this.eventEmitter?.emit(event, payload);
+  }
 
   async bulkCheckout(dto: BulkCheckoutDto, user?: User) {
     const results: CatalogueOrder[] = [];
@@ -112,13 +149,30 @@ export class CatalogueOrderService {
     });
     if (!branch) throw new NotFoundException('Branch not found');
 
+    // 1.1 `newItem` creates a catalogue item for this business, so only the
+    // business's own staff may send it. Checked before any side effect (guest
+    // account, visit) so a refused request leaves nothing behind.
+    if (dto.items.some((item) => item.newItem)) {
+      const isOwnStaff =
+        !!existingUser &&
+        STAFF_ROLES.includes(existingUser.role) &&
+        existingUser.businessId === branch.businessId;
+      if (!isOwnStaff) {
+        throw new ForbiddenException(
+          'Only staff of this business can add new items to an order',
+        );
+      }
+    }
+
     // 2. Resolve or Create customer (User)
     let customer: User | null = existingUser || null;
 
     if (!customer) {
-      customer = await this.userRepository.findOne({
-        where: { phone: dto.phone },
-      });
+      if (dto.phone && dto.phone !== 'N/A') {
+        customer = await this.userRepository.findOne({
+          where: { phone: dto.phone },
+        });
+      }
 
       if (!customer && dto.email) {
         customer = await this.userRepository.findOne({
@@ -132,14 +186,18 @@ export class CatalogueOrderService {
       const hashedPassword = await bcrypt.hash(defaultPassword, 10);
 
       // Use provided email or generate a dummy one
-      const dummyEmail = `guest_${dto.phone.replace(/\+/g, '')}@vemtap.dummy`;
+      const phoneClean =
+        dto.phone && dto.phone !== 'N/A'
+          ? dto.phone.replace(/\+/g, '')
+          : uuidv4().slice(0, 8);
+      const dummyEmail = `guest_${phoneClean}@vemtap.dummy`;
       const finalEmail = dto.email || dummyEmail;
       const isDummy = !dto.email;
 
       customer = this.userRepository.create({
         firstName: dto.firstName,
         lastName: dto.lastName,
-        phone: dto.phone,
+        phone: dto.phone && dto.phone !== 'N/A' ? dto.phone : undefined,
         email: finalEmail,
         role: UserRole.CUSTOMER,
         password: hashedPassword,
@@ -239,14 +297,21 @@ export class CatalogueOrderService {
           }
         }
 
+        // Charge what the customer was shown: the branch's own price when the
+        // item is priced per branch, less the item's discount.
+        const [priced] = await this.pricingService.applyBranchPrices(
+          [item],
+          branch.id,
+        );
+        const unitPrice = effectiveUnitPrice(priced);
         const orderItem = this.orderItemRepository.create({
           itemId: item.id,
           quantity: itemDto.quantity,
-          priceAtOrder: item.price,
+          priceAtOrder: unitPrice,
           loyaltyPointsAtOrder: item.loyaltyPoints,
         });
         orderItems.push(orderItem);
-        totalAmount += Number(item.price) * itemDto.quantity;
+        totalAmount += unitPrice * itemDto.quantity;
       } else if (itemDto.offerId) {
         const offer = await this.offerRepository.findOne({
           where: { id: itemDto.offerId, branchId: dto.branchId },
@@ -264,6 +329,33 @@ export class CatalogueOrderService {
           throw new BadRequestException(
             `Insufficient stock for offer ${offer.name}`,
           );
+        }
+
+        // Per-customer claim limit check
+        if (
+          offer.maxClaimsPerCustomer !== null &&
+          offer.maxClaimsPerCustomer !== undefined
+        ) {
+          const previousClaimsCount = await this.orderItemRepository
+            .createQueryBuilder('item')
+            .innerJoin('item.order', 'order')
+            .where('item.offerId = :offerId', { offerId: offer.id })
+            .andWhere('order.customerId = :customerId', {
+              customerId: customer.id,
+            })
+            .andWhere('order.status != :cancelled', {
+              cancelled: CatalogueOrderStatus.CANCELLED,
+            })
+            .getCount();
+
+          if (
+            previousClaimsCount + itemDto.quantity >
+            offer.maxClaimsPerCustomer
+          ) {
+            throw new BadRequestException(
+              `You have reached the maximum number of claims (${offer.maxClaimsPerCustomer}) for this deal.`,
+            );
+          }
         }
 
         // Check stock for ALL items in offer
@@ -288,8 +380,35 @@ export class CatalogueOrderService {
       }
     }
 
+    // Store ordering: tag the order with its source and the QR it came from
+    // (a QR of another business, or a paused one, is ignored).
+    let storeQrId: string | null = null;
+    if (dto.source && dto.storeQrCode) {
+      const [qr] = await this.orderRepository.manager.query<{ id: string }[]>(
+        `SELECT "id" FROM "store_qr_codes"
+         WHERE "code" = $1 AND "businessId" = $2 AND "isActive" = true AND "deletedAt" IS NULL`,
+        [dto.storeQrCode, branch.businessId],
+      );
+      storeQrId = qr?.id ?? null;
+    }
+    const storeFields = dto.source
+      ? {
+          source: dto.source,
+          storeQrId,
+          storeStatus: 'new',
+          storeHistory: [
+            {
+              status: 'new',
+              at: new Date().toISOString(),
+              note: `Order placed via ${dto.source.replace(/_/g, ' ')}`,
+            },
+          ],
+        }
+      : {};
+
     // 4. Create Order
     const order = this.orderRepository.create({
+      ...storeFields,
       businessId: branch.businessId,
       branchId: branch.id,
       customerId: customer.id,
@@ -302,19 +421,47 @@ export class CatalogueOrderService {
       sessionToken: effectiveSessionToken,
       bookingDate: dto.bookingDate,
       bookingTime: dto.bookingTime,
+      statusTimeline: stampStatus(null, CatalogueOrderStatus.NEW),
     });
 
     const savedOrder = await this.orderRepository.save(order);
+    this.emitOrderEvent(ORDER_EVENTS.CREATED, savedOrder);
 
     // Trigger notification to branch staff
+    // Shared with the in-app row below so the push tap and the bell entry for
+    // the same order resolve to the same destination.
+    const orderUrl = `/orders/${savedOrder.id}`;
     this.pushNotificationService
       .sendToBranchStaff(
         branch.id,
         'New Order Received',
         `A new order (#${savedOrder.id.slice(0, 8)}) has been placed by ${dto.firstName} ${dto.lastName}.`,
-        { orderId: savedOrder.id, type: 'NEW_ORDER' },
+        {
+          orderId: savedOrder.id,
+          url: orderUrl,
+          type: 'NEW_ORDER',
+          category: 'orderUpdates',
+        },
       )
       .catch((err) => console.error('Failed to send staff notification:', err));
+
+    // Staff also get an in-app row, not just a push: a push is missed
+    // whenever the device has no token or is offline, and the order would
+    // then leave no trace at all.
+    this.notificationsService
+      .createForBranchStaff(
+        branch.id,
+        branch.businessId,
+        'New Order Received',
+        `A new order (#${savedOrder.id.slice(0, 8)}) has been placed by ${dto.firstName} ${dto.lastName}.`,
+        'new_order',
+        orderUrl,
+        null,
+        'new_order',
+      )
+      .catch((err) =>
+        console.error('Failed to create staff notification row:', err),
+      );
 
     // 5. Deduct stock IMMEDIATELY (locking the spot)
     for (const orderItem of order.items) {
@@ -347,6 +494,18 @@ export class CatalogueOrderService {
         console.error('Failed to queue order placed email:', err),
       );
 
+    // If this order was claimed from a deal gift, mark the gift accepted
+    if (dto.giftToken && this.catalogueOfferService) {
+      await this.catalogueOfferService
+        .acceptDealGift(dto.giftToken)
+        .catch((err) =>
+          console.warn(
+            'Failed to mark deal gift as accepted:',
+            err?.message || err,
+          ),
+        );
+    }
+
     return savedOrder;
   }
 
@@ -363,11 +522,18 @@ export class CatalogueOrderService {
     });
     if (!order) throw new NotFoundException('Order not found');
 
+    // Record who handled the order. Forward steps of the fulfilment flow always
+    // attribute the order, and any transition *into* completed attributes the
+    // staff member who closed it (staff may complete without marking ready).
     if (
       (order.status === CatalogueOrderStatus.NEW &&
         status === CatalogueOrderStatus.PROCESSING) ||
       (order.status === CatalogueOrderStatus.PROCESSING &&
-        status === CatalogueOrderStatus.COMPLETED)
+        status === CatalogueOrderStatus.READY) ||
+      (order.status === CatalogueOrderStatus.READY &&
+        status === CatalogueOrderStatus.COMPLETED) ||
+      (status === CatalogueOrderStatus.COMPLETED &&
+        order.status !== CatalogueOrderStatus.COMPLETED)
     ) {
       order.attendedById = staff.id;
     }
@@ -510,80 +676,68 @@ export class CatalogueOrderService {
       order.loyaltyAwarded = true;
     }
 
+    order.statusTimeline = stampStatus(order.statusTimeline, order.status);
     const updatedOrder = await this.orderRepository.save(order);
+    this.emitOrderEvent(ORDER_EVENTS.STATUS_CHANGED, updatedOrder);
 
-    // Trigger notification to customer on status change
-    let title = '';
-    let body = '';
-
-    if (status === CatalogueOrderStatus.PROCESSING) {
-      title = 'Order Processing';
-      body = `Your order (#${order.id.slice(0, 8)}) is now being prepared.`;
-    } else if (status === CatalogueOrderStatus.COMPLETED) {
-      title = 'Order Completed';
-      body = `Your order (#${order.id.slice(0, 8)}) has been completed. Thank you!`;
-    } else if (status === CatalogueOrderStatus.CANCELLED) {
-      title = 'Order Cancelled';
-      body = `Your order (#${order.id.slice(0, 8)}) has been cancelled.`;
-    } else if (status === CatalogueOrderStatus.REJECTED) {
-      title = 'Order Rejected';
-      body = `Your order (#${order.id.slice(0, 8)}) has been rejected.`;
-    }
-
-    if (title && body) {
-      this.pushNotificationService
-        .sendNotification(
-          order.customerId,
-          title,
-          body,
-          { orderId: order.id, status, type: 'ORDER_STATUS_UPDATE' },
-          true,
-        )
-        .catch((err) =>
-          console.error('Failed to send customer notification:', err),
-        );
-    }
-
-    // Queue order status email
-    if (status === CatalogueOrderStatus.PROCESSING) {
+    // The queued 'send-order-email' job owns the customer's side of a status
+    // change: it writes the in-app row, sends the push and sends the email,
+    // in that one place. Sending a push here as well would deliver the same
+    // message twice.
+    const statusCopy = this.describeStatus(updatedOrder, status);
+    if (statusCopy) {
       this.orderNotificationQueue
         .add('send-order-email', {
           orderId: order.id,
-          status: 'processing',
+          status,
+          title: statusCopy.title,
+          body: statusCopy.body,
         })
         .catch((err) =>
-          console.error('Failed to queue order processing email:', err),
-        );
-    } else if (status === CatalogueOrderStatus.COMPLETED) {
-      this.orderNotificationQueue
-        .add('send-order-email', {
-          orderId: order.id,
-          status: 'completed',
-        })
-        .catch((err) =>
-          console.error('Failed to queue order completed email:', err),
-        );
-    } else if (status === CatalogueOrderStatus.CANCELLED) {
-      this.orderNotificationQueue
-        .add('send-order-email', {
-          orderId: order.id,
-          status: 'cancelled',
-        })
-        .catch((err) =>
-          console.error('Failed to queue order cancelled email:', err),
-        );
-    } else if (status === CatalogueOrderStatus.REJECTED) {
-      this.orderNotificationQueue
-        .add('send-order-email', {
-          orderId: order.id,
-          status: 'rejected',
-        })
-        .catch((err) =>
-          console.error('Failed to queue order rejected email:', err),
+          console.error(`Failed to queue ${status} notification:`, err),
         );
     }
 
     return updatedOrder;
+  }
+
+  /**
+   * Customer-facing copy for a status change, or null when there is nothing
+   * worth sending.
+   *
+   * Kept here so the queue is told what to say rather than deriving it again:
+   * the job writes the in-app row, the push and the email from this one copy,
+   * so the wording exists once instead of being rebuilt per channel.
+   */
+  private describeStatus(
+    order: CatalogueOrder,
+    status: CatalogueOrderStatus,
+  ): { title: string; body: string } | null {
+    const short = order.id.slice(0, 8);
+    switch (status) {
+      case CatalogueOrderStatus.PROCESSING:
+        return {
+          title: 'Order Processing',
+          body: `Your order (#${short}) is now being prepared.`,
+        };
+      case CatalogueOrderStatus.COMPLETED:
+        return {
+          title: 'Order Completed',
+          body: `Your order (#${short}) has been completed. Thank you!`,
+        };
+      case CatalogueOrderStatus.CANCELLED:
+        return {
+          title: 'Order Cancelled',
+          body: `Your order (#${short}) has been cancelled.`,
+        };
+      case CatalogueOrderStatus.REJECTED:
+        return {
+          title: 'Order Rejected',
+          body: `Your order (#${short}) has been rejected.`,
+        };
+      default:
+        return null;
+    }
   }
 
   private async deductStock(item: CatalogueItem, quantity: number) {
@@ -679,19 +833,41 @@ export class CatalogueOrderService {
     return { data, total, page, limit };
   }
 
-  async findAllByCustomer(customerId: string) {
-    return this.orderRepository.find({
+  async findAllByCustomer(
+    customerId: string,
+    query: { page?: number; limit?: number } = {},
+  ) {
+    const relations = [
+      'items',
+      'items.item',
+      'items.offer',
+      'branch',
+      'branch.business',
+      'attendedByUser',
+    ];
+    const order = { createdAt: 'DESC' } as const;
+
+    // Opt-in pagination: legacy callers (and the app's order-detail lookup)
+    // get the full bare array; page/limit callers get an envelope.
+    if (query.page === undefined && query.limit === undefined) {
+      return this.orderRepository.find({
+        where: { customerId },
+        relations,
+        order,
+      });
+    }
+
+    const page = query.page ?? 1;
+    const limit = query.limit ?? 10;
+    const [data, total] = await this.orderRepository.findAndCount({
       where: { customerId },
-      relations: [
-        'items',
-        'items.item',
-        'items.offer',
-        'branch',
-        'branch.business',
-        'attendedByUser',
-      ],
-      order: { createdAt: 'DESC' },
+      relations,
+      order,
+      skip: (page - 1) * limit,
+      take: limit,
     });
+
+    return { data, total, page, limit };
   }
 
   async findOneOrder(orderId: string, businessId: string) {

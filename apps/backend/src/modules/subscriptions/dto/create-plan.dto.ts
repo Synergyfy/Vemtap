@@ -361,4 +361,13 @@ export class CreatePlanDto {
   @IsNumber()
   @IsOptional()
   aiCredits?: number;
+
+  @ApiPropertyOptional({
+    description:
+      'Whether deals created by businesses on this plan are featured by default',
+    example: false,
+  })
+  @IsBoolean()
+  @IsOptional()
+  autoFeatureDeals?: boolean;
 }

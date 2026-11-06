@@ -2,15 +2,12 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { PaymentsService } from './payments.service';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Payment, PaymentPurpose } from './entities/payment.entity';
-import { Repository } from 'typeorm';
 import { HttpService } from '@nestjs/axios';
 import { of } from 'rxjs';
 import { ConflictException } from '@nestjs/common';
 
 describe('PaymentsService', () => {
   let service: PaymentsService;
-  let paymentRepo: Repository<Payment>;
-  let httpService: HttpService;
 
   const mockPaymentRepo = {
     create: jest.fn(),
@@ -33,8 +30,6 @@ describe('PaymentsService', () => {
     }).compile();
 
     service = module.get<PaymentsService>(PaymentsService);
-    paymentRepo = module.get<Repository<Payment>>(getRepositoryToken(Payment));
-    httpService = module.get<HttpService>(HttpService);
   });
 
   afterEach(() => {
@@ -47,15 +42,20 @@ describe('PaymentsService', () => {
         of({
           data: {
             status: true,
-            data: { status: 'success', amount: 5000, currency: 'NGN', channel: 'card' },
+            data: {
+              status: 'success',
+              amount: 5000,
+              currency: 'NGN',
+              channel: 'card',
+            },
           },
         }),
       );
 
       const result = await service.verifyTransaction('ref_123');
       expect(result).toBeTruthy();
-      expect(result.status).toBe('success');
-      expect(result.amount).toBe(5000);
+      expect(result?.status).toBe('success');
+      expect(result?.amount).toBe(5000);
     });
 
     it('should return failed status if paystack status is not success', async () => {
@@ -67,7 +67,7 @@ describe('PaymentsService', () => {
 
       const result = await service.verifyTransaction('ref_123');
       expect(result).toBeTruthy();
-      expect(result.status).toBe('failed');
+      expect(result?.status).toBe('failed');
     });
 
     it('should return pending status for async channels', async () => {
@@ -78,7 +78,7 @@ describe('PaymentsService', () => {
       );
 
       const result = await service.verifyTransaction('ref_123');
-      expect(result.status).toBe('pending');
+      expect(result?.status).toBe('pending');
     });
 
     it('should return null on error', async () => {
@@ -130,6 +130,31 @@ describe('PaymentsService', () => {
 
       await expect(service.recordPayment(dto as any)).rejects.toThrow(
         ConflictException,
+      );
+    });
+  });
+
+  describe('purpose handlers', () => {
+    const payment = (purpose: PaymentPurpose) =>
+      ({ reference: 'REF-1', purpose }) as any;
+
+    it('reports no handler for purposes nobody registered', async () => {
+      expect(
+        await service.dispatchSuccessfulPayment(payment(PaymentPurpose.ORDER)),
+      ).toBe(false);
+    });
+
+    it('runs the handler registered for the payment purpose', async () => {
+      const handler = jest.fn().mockResolvedValue(undefined);
+      service.registerPurposeHandler(PaymentPurpose.AD_WALLET_TOPUP, handler);
+
+      const handled = await service.dispatchSuccessfulPayment(
+        payment(PaymentPurpose.AD_WALLET_TOPUP),
+      );
+
+      expect(handled).toBe(true);
+      expect(handler).toHaveBeenCalledWith(
+        expect.objectContaining({ reference: 'REF-1' }),
       );
     });
   });

@@ -76,11 +76,8 @@ export const usePublicBusinessForm = (id?: string) =>
   useQuery<BusinessForm, Error>({
     queryKey: ['public-business-form', id],
     queryFn: async () => {
-      try {
-        return await api.get(`/visitor-forms/code/${id}`);
-      } catch {
-        return await api.get(`/visitor-forms/public/${id}`);
-      }
+      // Backend supports /visitor-forms/code/:code and /visitor-forms/device/:code
+      return await api.get(`/visitor-forms/code/${id}`);
     },
     enabled: !!id,
   });
@@ -228,12 +225,8 @@ export const useBusinessFormResponses = (id?: string, params: BusinessFormsQuery
               : undefined;
           return toList<BusinessFormResponseItem>(candidate);
         } catch {
-          const response = await api.get(`/visitor-forms/${id}`);
-          const candidate =
-            response && typeof response === 'object'
-              ? (response as { responses?: unknown }).responses
-              : undefined;
-          return toList<BusinessFormResponseItem>(candidate);
+          // No further fallback — backend only has /code/:code and /device/:code
+          return [];
         }
       }
     },

@@ -1,5 +1,10 @@
-import { HttpStatus, HttpException, BadRequestException } from '@nestjs/common';
+import {
+  HttpStatus,
+  BadRequestException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { AllExceptionsFilter } from './http-exception.filter';
+import { PLAN_ERRORS } from '../enums/plan-errors.enum';
 import { QueryFailedError } from 'typeorm';
 
 describe('AllExceptionsFilter', () => {
@@ -27,6 +32,27 @@ describe('AllExceptionsFilter', () => {
         getRequest: () => mockRequest,
       }),
     };
+  });
+
+  it('forwards a plan error slug so clients need not match on wording', () => {
+    // The client tells "your plan does not include this" apart from a generic
+    // forbidden by this slug, so the filter has to pass it through untouched
+    // while still sending the human sentence in `message`.
+    const error = new ForbiddenException({
+      statusCode: HttpStatus.FORBIDDEN,
+      error: PLAN_ERRORS.FEATURE_NOT_INCLUDED,
+      message: 'The branches feature is not included in your current plan.',
+    });
+    filter.catch(error, mockHost);
+
+    expect(mockStatus).toHaveBeenCalledWith(HttpStatus.FORBIDDEN);
+    expect(mockJson).toHaveBeenCalledWith(
+      expect.objectContaining({
+        statusCode: HttpStatus.FORBIDDEN,
+        error: PLAN_ERRORS.FEATURE_NOT_INCLUDED,
+        message: 'The branches feature is not included in your current plan.',
+      }),
+    );
   });
 
   it('should handle standard HttpException with original status', () => {
@@ -68,15 +94,11 @@ describe('AllExceptionsFilter', () => {
   });
 
   it('should translate PostgreSQL 23505 (unique violation) to 409 Conflict', () => {
-    const queryError = new QueryFailedError(
-      'INSERT INTO table',
-      [],
-      {
-        name: 'error',
-        code: '23505',
-        detail: 'Key (email)=(test@example.com) already exists.',
-      } as any,
-    );
+    const queryError = new QueryFailedError('INSERT INTO table', [], {
+      name: 'error',
+      code: '23505',
+      detail: 'Key (email)=(test@example.com) already exists.',
+    } as any);
 
     filter.catch(queryError, mockHost);
 
@@ -91,15 +113,12 @@ describe('AllExceptionsFilter', () => {
   });
 
   it('should translate PostgreSQL 23503 (foreign key violation) to 400 Bad Request', () => {
-    const queryError = new QueryFailedError(
-      'INSERT INTO table',
-      [],
-      {
-        name: 'error',
-        code: '23503',
-        detail: 'Key (business_id)=(non-existent) is not present in table "businesses".',
-      } as any,
-    );
+    const queryError = new QueryFailedError('INSERT INTO table', [], {
+      name: 'error',
+      code: '23503',
+      detail:
+        'Key (business_id)=(non-existent) is not present in table "businesses".',
+    } as any);
 
     filter.catch(queryError, mockHost);
 
@@ -108,7 +127,8 @@ describe('AllExceptionsFilter', () => {
       expect.objectContaining({
         success: false,
         statusCode: HttpStatus.BAD_REQUEST,
-        message: 'Key (business_id)=(non-existent) is not present in table "businesses".',
+        message:
+          'Key (business_id)=(non-existent) is not present in table "businesses".',
       }),
     );
   });

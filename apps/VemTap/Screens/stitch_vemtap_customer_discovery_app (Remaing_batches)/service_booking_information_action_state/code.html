@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Book Service - Bottom Sheet</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "primary-fixed-dim": "#b0c6ff",
+                    "surface-container-lowest": "#ffffff",
+                    "background": "#f7f9fb",
+                    "on-background": "#191c1e",
+                    "error": "#ba1a1a",
+                    "on-secondary": "#ffffff",
+                    "on-error": "#ffffff",
+                    "secondary": "#505f76",
+                    "on-primary-container": "#fcfaff",
+                    "tertiary": "#535a71",
+                    "secondary-container": "#d0e1fb",
+                    "on-primary-fixed": "#001945",
+                    "on-tertiary-container": "#fcfaff",
+                    "on-primary": "#ffffff",
+                    "on-tertiary": "#ffffff",
+                    "on-tertiary-fixed-variant": "#3f465c",
+                    "primary": "#0055c4",
+                    "outline": "#727786",
+                    "inverse-primary": "#b0c6ff",
+                    "secondary-fixed-dim": "#b7c8e1",
+                    "surface-container-low": "#f2f4f6",
+                    "surface-container-high": "#e6e8ea",
+                    "inverse-on-surface": "#eff1f3",
+                    "on-primary-fixed-variant": "#00429b",
+                    "on-tertiary-fixed": "#131b2e",
+                    "surface-tint": "#0058cb",
+                    "tertiary-fixed-dim": "#bec6e0",
+                    "primary-container": "#066cf4",
+                    "on-surface": "#191c1e",
+                    "on-surface-variant": "#424655",
+                    "error-container": "#ffdad6",
+                    "surface-bright": "#f7f9fb",
+                    "tertiary-fixed": "#dae2fd",
+                    "surface-dim": "#d8dadc",
+                    "on-secondary-fixed-variant": "#38485d",
+                    "on-error-container": "#93000a",
+                    "tertiary-container": "#6b738a",
+                    "inverse-surface": "#2d3133",
+                    "primary-fixed": "#d9e2ff",
+                    "on-secondary-container": "#54647a",
+                    "surface-variant": "#e0e3e5",
+                    "surface-container": "#eceef0",
+                    "on-secondary-fixed": "#0b1c30",
+                    "secondary-fixed": "#d3e4fe",
+                    "outline-variant": "#c2c6d7",
+                    "surface": "#f7f9fb",
+                    "surface-container-highest": "#e0e3e5"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "stack-md": "1rem",
+                    "stack-lg": "1.5rem",
+                    "stack-sm": "0.5rem",
+                    "touch-target-min": "44px",
+                    "margin-main": "1.25rem",
+                    "gutter-grid": "1rem"
+            },
+            "fontFamily": {
+                    "headline-sm": ["Inter"],
+                    "label-sm": ["Inter"],
+                    "body-lg": ["Inter"],
+                    "body-md": ["Inter"],
+                    "currency-display": ["Inter"],
+                    "display-lg": ["Inter"],
+                    "label-lg": ["Inter"],
+                    "headline-md": ["Inter"]
+            },
+            "fontSize": {
+                    "headline-sm": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                    "label-sm": ["12px", {"lineHeight": "16px", "fontWeight": "500"}],
+                    "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                    "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                    "currency-display": ["20px", {"lineHeight": "24px", "fontWeight": "700"}],
+                    "display-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "label-lg": ["14px", {"lineHeight": "20px", "letterSpacing": "0.01em", "fontWeight": "600"}],
+                    "headline-md": ["24px", {"lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600"}]
+            }
+          }
+        }
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background font-body-md min-h-screen flex items-end justify-center relative overflow-hidden md:items-center">
+<!-- Mock Background for Context -->
+<div class="absolute inset-0 z-0">
+<div class="bg-cover bg-center w-full h-full opacity-30" data-alt="A modern, high-end hair salon interior with comfortable leather chairs, large lit mirrors, and clean professional styling stations. Bright daylight streams in through large windows, creating a clean, professional, and welcoming corporate modern aesthetic suitable for a premium Nigerian service discovery app. The image features a bright, clean lighting scheme with subtle VEMTAP blue accents." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuCqe7KABW7V2VY1roQea2yiWrnhaOYf28YU0sMKTtCIu-VIJciB6xKNSvEUpqFezqDXjaNDA2GerX4Miw1BiSMciKmPdui9e_G3HuqjBZ689D2iuM8QGuuyIuCcKFmag0jUNNZMtDoDkvsrXvjm91oNWvIryWH9Leap5EdyaJOOL8WiXxLcBGp5RfLZWn2dpCK1nJU4wHykrNWfOKm2UUIVAM9DTc6nDJvkocd_5VcxUIwaFt9hsXbBgg')"></div>
+</div>
+<!-- Scrim Overlay -->
+<div aria-hidden="true" class="absolute inset-0 bg-on-background/40 z-10 backdrop-blur-sm"></div>
+<!-- Bottom Sheet Container -->
+<div class="w-full max-w-md bg-surface-container-lowest rounded-t-[1.5rem] md:rounded-[1.5rem] shadow-xl z-20 flex flex-col overflow-hidden animate-[slideUp_0.3s_ease-out]">
+<!-- Handle Bar (Mobile Only) -->
+<div class="w-full flex justify-center pt-3 pb-1 md:hidden">
+<div class="w-10 h-1 bg-surface-variant rounded-full"></div>
+</div>
+<!-- Content Area -->
+<div class="px-margin-main pt-stack-sm pb-margin-main flex flex-col gap-stack-lg">
+<!-- Header -->
+<div class="flex items-center justify-between">
+<h2 class="font-headline-sm text-headline-sm text-on-surface">Book this Service</h2>
+<button aria-label="Close" class="w-touch-target-min h-touch-target-min flex items-center justify-center text-on-surface-variant hover:bg-surface-container-low rounded-full transition-colors">
+<span class="material-symbols-outlined" data-icon="close">close</span>
+</button>
+</div>
+<!-- Service Details Card -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-stack-md flex flex-col gap-stack-md shadow-sm">
+<!-- Service Title & Provider -->
+<div class="flex items-start justify-between">
+<div>
+<h3 class="font-headline-sm text-headline-sm text-on-surface">Hair Styling</h3>
+<p class="font-body-md text-body-md text-on-surface-variant mt-1">Luxe Hair Lounge</p>
+</div>
+</div>
+<!-- Divider -->
+<div class="w-full h-[1px] bg-outline-variant/50"></div>
+<!-- Key Info Grid -->
+<div class="grid grid-cols-1 gap-y-stack-sm">
+<!-- Duration -->
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-full bg-secondary-container flex items-center justify-center text-primary flex-shrink-0">
+<span class="material-symbols-outlined text-[18px]" data-icon="schedule" data-weight="fill" style="font-variation-settings: 'FILL' 1;">schedule</span>
+</div>
+<div>
+<p class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Duration</p>
+<p class="font-body-md text-body-md text-on-surface font-medium">60 min</p>
+</div>
+</div>
+<!-- Price -->
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-full bg-secondary-container flex items-center justify-center text-primary flex-shrink-0">
+<span class="material-symbols-outlined text-[18px]" data-icon="payments">payments</span>
+</div>
+<div>
+<p class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Price</p>
+<p class="font-currency-display text-currency-display text-primary">From ₦15,000</p>
+</div>
+</div>
+<!-- Location Type -->
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-full bg-secondary-container flex items-center justify-center text-primary flex-shrink-0">
+<span class="material-symbols-outlined text-[18px]" data-icon="storefront">storefront</span>
+</div>
+<div>
+<p class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Location</p>
+<p class="font-body-md text-body-md text-on-surface font-medium">At Business</p>
+</div>
+</div>
+</div>
+</div>
+<!-- Trust Indicator -->
+<div class="flex items-center justify-center gap-2 text-on-surface-variant bg-surface px-4 py-2 rounded-lg border border-surface-container-highest">
+<span class="material-symbols-outlined text-[16px] text-primary" data-icon="verified" data-weight="fill" style="font-variation-settings: 'FILL' 1;">verified</span>
+<span class="font-label-sm text-label-sm">Booking through VEMTAP</span>
+</div>
+<!-- Action Buttons -->
+<div class="flex flex-col gap-stack-sm pt-2">
+<button class="w-full min-h-[48px] bg-primary text-on-primary font-label-lg text-label-lg rounded-full flex items-center justify-center transition-transform active:scale-[0.98] hover:bg-primary/90 shadow-md">
+                    Continue Booking
+                </button>
+<button class="w-full min-h-[48px] bg-transparent border border-outline-variant text-on-surface font-label-lg text-label-lg rounded-full flex items-center justify-center transition-colors hover:bg-surface-container-low">
+                    Back
+                </button>
+</div>
+</div>
+</div>
+<style>
+        @keyframes slideUp {
+            from {
+                transform: translateY(100%);
+            }
+            to {
+                transform: translateY(0);
+            }
+        }
+    </style>
+</body></html>

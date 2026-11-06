@@ -1,14 +1,8 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { DataSource, Repository } from 'typeorm';
-import {
-  FinancialTransaction,
-  FosTransactionType,
-} from './modules/fos-core/entities/financial-transaction.entity';
-import {
-  CashFlow,
-  CashFlowType,
-} from './modules/fos-core/entities/cash-flow.entity';
+import { FinancialTransaction } from './modules/fos-core/entities/financial-transaction.entity';
+import { CashFlow } from './modules/fos-core/entities/cash-flow.entity';
 import { Expense } from './modules/fos-core/entities/expense.entity';
 
 async function bootstrap() {

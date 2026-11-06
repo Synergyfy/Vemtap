@@ -1,12 +1,4 @@
-import {
-  Controller,
-  Post,
-  Body,
-  UseGuards,
-  Logger,
-  ConflictException,
-  HttpStatus,
-} from '@nestjs/common';
+import { Controller, Post, Body, UseGuards, Logger } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { BusinessesService } from '../businesses/businesses.service';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
@@ -16,6 +8,7 @@ import { UserRole, UserStatus } from './entities/user.entity';
 import { Public } from '../../common/decorators/public.decorator';
 import { BillingPeriod } from '../subscriptions/entities/subscription.entity';
 import * as bcrypt from 'bcrypt';
+import { MailService } from '../mail/mail.service';
 
 @ApiTags('Internal Integration')
 @ApiHeader({
@@ -31,6 +24,7 @@ export class IntegrationUsersController {
     private readonly usersService: UsersService,
     private readonly businessesService: BusinessesService,
     private readonly subscriptionsService: SubscriptionsService,
+    private readonly mailService: MailService,
   ) {}
 
   @Public()
@@ -59,9 +53,9 @@ export class IntegrationUsersController {
       );
     } else {
       // 2. Create User (Owner)
-      // Default password for integrated users (they should change it or use SSO)
-      const defaultPassword = 'IntegratedUser123!';
-      const hashedPassword = await bcrypt.hash(defaultPassword, 10);
+      // Owners sign in with a 6-digit PIN only: issue a random one and email it.
+      const pin = Math.floor(100000 + Math.random() * 900000).toString();
+      const hashedPassword = await bcrypt.hash(pin, 10);
 
       user = await this.usersService.create({
         email: dto.email.toLowerCase(),
@@ -74,6 +68,13 @@ export class IntegrationUsersController {
       });
 
       this.logger.log(`Created new owner account for ${dto.email}`);
+
+      // Delivery failure must not undo the account: the owner can still use Forgot PIN.
+      await this.mailService
+        .sendWelcomeEmail(user.email, `${dto.firstName} ${dto.lastName}`.trim(), pin)
+        .catch((error: Error) =>
+          this.logger.error(`Could not email the sign-in PIN to ${dto.email}: ${error.message}`),
+        );
     }
 
     // 3. Ensure Business exists

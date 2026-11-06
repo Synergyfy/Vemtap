@@ -1,3 +1,5 @@
+import { CatalogueBranchPricingService } from '../catalogue/catalogue-branch-pricing.service';
+import { effectiveUnitPrice } from '../catalogue/utils/catalogue-item.utils';
 import {
   Injectable,
   NotFoundException,
@@ -47,6 +49,7 @@ export class CatalogueCartService {
     private readonly branchRepository: Repository<Branch>,
     @Inject(forwardRef(() => CatalogueOrderService))
     private readonly ordersService: CatalogueOrderService,
+    private readonly pricingService: CatalogueBranchPricingService,
   ) {}
 
   async getOrCreateCart(
@@ -153,7 +156,12 @@ export class CatalogueCartService {
         );
       if (item.status !== CatalogueItemStatus.ACTIVE)
         throw new BadRequestException('Item is not active');
-      price = Number(item.price);
+      // The same unit price the order will charge (see createOrder).
+      const [priced] = await this.pricingService.applyBranchPrices(
+        [item],
+        branchId,
+      );
+      price = effectiveUnitPrice(priced);
       name = item.name;
       image = item.mainImage ?? null;
     } else if (dto.offerId) {

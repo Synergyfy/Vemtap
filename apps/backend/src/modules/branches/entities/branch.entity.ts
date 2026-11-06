@@ -86,6 +86,9 @@ export class Branch extends AbstractBaseEntity {
   logoUrl: string;
 
   @Column({ nullable: true })
+  coverUrl: string;
+
+  @Column({ nullable: true })
   website: string;
 
   @Column({ nullable: true })
@@ -93,6 +96,20 @@ export class Branch extends AbstractBaseEntity {
 
   @Column({ nullable: true })
   officialEmail: string;
+
+  /** Branch manager's contact, collected on the add-branch form. */
+  @Column({ type: 'varchar', length: 120, nullable: true })
+  managerName: string | null;
+
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  managerEmail: string | null;
+
+  @Column({ type: 'varchar', length: 40, nullable: true })
+  managerPhone: string | null;
+
+  /** Local area or district, e.g. "Abuja Municipal • Garki District". */
+  @Column({ type: 'varchar', length: 160, nullable: true })
+  district: string | null;
 
   @Column({ type: 'varchar', nullable: true, length: 255 })
   mainQrCodeId: string | null;
@@ -113,6 +130,14 @@ export class Branch extends AbstractBaseEntity {
   })
   @JoinColumn({ name: 'clusterId' })
   cluster: Cluster;
+
+  /** When the branch joined its current cluster from the business dashboard. */
+  @Column({ type: 'timestamp', nullable: true })
+  clusterJoinedAt: Date | null;
+
+  /** What the branch features in its cluster: all, deals, products, services or profile. */
+  @Column({ type: 'varchar', length: 20, default: 'all' })
+  clusterShowcase: string;
 
   @ApiProperty({
     example: '#2563EB',

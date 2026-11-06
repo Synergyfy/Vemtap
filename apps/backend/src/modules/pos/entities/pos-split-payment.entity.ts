@@ -27,4 +27,12 @@ export class PosSplitPayment extends AbstractBaseEntity {
     transformer: { to: (v: number) => v, from: (v: string) => parseFloat(v) },
   })
   amount: number;
+
+  @ApiProperty({
+    example: 'Tolu',
+    nullable: true,
+    description: 'Who paid this part',
+  })
+  @Column({ type: 'varchar', length: 60, nullable: true })
+  payer: string | null;
 }

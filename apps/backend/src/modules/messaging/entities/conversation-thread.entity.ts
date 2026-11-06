@@ -18,6 +18,19 @@ export enum ThreadStatus {
   RESOLVED = 'RESOLVED',
 }
 
+/**
+ * What the conversation is about. Set at thread start when the app opens a
+ * chat from a deal/claim/order/booking context; defaults to GENERAL. Threads
+ * keep one row per branch+customer+channel, so this is latest-context metadata.
+ */
+export enum ThreadSubjectType {
+  GENERAL = 'GENERAL',
+  DEAL = 'DEAL',
+  CLAIM = 'CLAIM',
+  ORDER = 'ORDER',
+  BOOKING = 'BOOKING',
+}
+
 @Entity('conversation_threads')
 @Unique(['branchId', 'customerId', 'channel'])
 export class ConversationThread extends AbstractBaseEntity {
@@ -73,6 +86,26 @@ export class ConversationThread extends AbstractBaseEntity {
   @ApiProperty({ example: 0 })
   @Column({ default: 0 })
   customerUnreadCount: number;
+
+  @ApiProperty({
+    enum: ThreadSubjectType,
+    example: ThreadSubjectType.GENERAL,
+    description: 'Latest conversation context',
+  })
+  @Column({
+    type: 'enum',
+    enum: ThreadSubjectType,
+    default: ThreadSubjectType.GENERAL,
+  })
+  subjectType: ThreadSubjectType;
+
+  @ApiPropertyOptional({ example: 'uuid-of-claim', nullable: true })
+  @Column({ type: 'uuid', nullable: true })
+  claimId: string | null;
+
+  @ApiPropertyOptional({ example: 'uuid-of-order', nullable: true })
+  @Column({ type: 'uuid', nullable: true })
+  orderId: string | null;
 
   @ApiPropertyOptional({ example: {} })
   @Column({ type: 'jsonb', nullable: true })

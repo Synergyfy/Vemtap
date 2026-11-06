@@ -4,6 +4,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { join } from 'path';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { CacheModule } from '@nestjs/cache-manager';
+import { EventEmitterModule } from '@nestjs/event-emitter';
 import { redisStore } from 'cache-manager-redis-yet';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -17,6 +18,11 @@ import { CampaignsModule } from './modules/campaigns/campaigns.module';
 import { SurveysModule } from './modules/surveys/surveys.module';
 import { ProductsModule } from './modules/products/products.module';
 import { AnalyticsModule } from './modules/analytics/analytics.module';
+import { BusinessAnalyticsModule } from './modules/business-analytics/business-analytics.module';
+import { BusinessCustomersModule } from './modules/business-customers/business-customers.module';
+import { ProductCommentsModule } from './modules/product-comments/product-comments.module';
+import { CustomerActivityModule } from './modules/customer-activity/customer-activity.module';
+import { BusinessNetworkModule } from './modules/business-network/business-network.module';
 import { SubscriptionsModule } from './modules/subscriptions/subscriptions.module';
 import { CouponsModule } from './modules/coupons/coupons.module';
 import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
@@ -42,13 +48,23 @@ import { ImpersonationGuard } from './modules/administration/impersonation.guard
 import { CustomerImpersonationGuard } from './modules/administration/customer-impersonation.guard';
 import { ScheduleModule } from '@nestjs/schedule';
 import { CatalogueModule } from './modules/catalogue/catalogue.module';
+import { UploadsModule } from './modules/uploads/uploads.module';
+import { VerificationModule } from './modules/verification/verification.module';
 import { CatalogueOrderModule } from './modules/catalogue-orders/catalogue-orders.module';
 import { BusinessProfilingModule } from './modules/business-profiling/business-profiling.module';
 import { AffiliatesModule } from './modules/affiliates/affiliates.module';
+import { ReferralsModule } from './modules/referrals/referrals.module';
 import { TrainingModule } from './modules/training/training.module';
 import { DiscoveryModule } from './modules/discovery/discovery.module';
+import { AdWalletModule } from './modules/ad-wallet/ad-wallet.module';
+import { PromotionsModule } from './modules/promotions/promotions.module';
 import { QrThriveModule } from './modules/qr-thrive/qr-thrive.module';
 import { BannersModule } from './modules/banners/banners.module';
+import { SavedModule } from './modules/saved/saved.module';
+import { AddressesModule } from './modules/addresses/addresses.module';
+import { StoreOrderingModule } from './modules/store-ordering/store-ordering.module';
+import { AccountPrivacyModule } from './modules/account-privacy/account-privacy.module';
+import { BookingsModule } from './modules/bookings/bookings.module';
 import { BusinessDashboardModule } from './modules/business-dashboard/business-dashboard.module';
 import { MarketingAssetsModule } from './modules/marketing-assets/marketing-assets.module';
 import { FosCoreModule } from './modules/fos-core/fos-core.module';
@@ -70,7 +86,6 @@ import { FosTransfersModule } from './modules/fos-transfers/fos-transfers.module
 import { FosPlanningModule } from './modules/fos-planning/fos-planning.module';
 import { FosProfileModule } from './modules/fos-profile/fos-profile.module';
 
-import { dataSourceOptions } from './database/data-source';
 import { CatalogueCartModule } from './modules/catalogue-cart/catalogue-cart.module';
 import { PosModule } from './modules/pos/pos.module';
 import { InventoryCountingModule } from './modules/inventory-counting/inventory-counting.module';
@@ -81,6 +96,9 @@ import { KnowledgeBaseModule } from './modules/knowledge-base/knowledge-base.mod
 import { ClustersModule } from './modules/clusters/clusters.module';
 import { RotatorModule } from './modules/rotator/rotator.module';
 import { SubscriptionRemindersModule } from './modules/subscription-reminders/subscription-reminders.module';
+import { DealEngagementModule } from './modules/deal-engagement/deal-engagement.module';
+import { PublicDiscoveryModule } from './modules/public-discovery/public-discovery.module';
+import { GeocodingModule } from './modules/geocoding/geocoding.module';
 
 @Module({
   imports: [
@@ -98,6 +116,7 @@ import { SubscriptionRemindersModule } from './modules/subscription-reminders/su
         join(__dirname, '..', '..', '.env'),
       ],
     }),
+    EventEmitterModule.forRoot(),
     CacheModule.registerAsync({
       isGlobal: true,
       imports: [ConfigModule],
@@ -179,6 +198,11 @@ import { SubscriptionRemindersModule } from './modules/subscription-reminders/su
     SurveysModule,
     ProductsModule,
     AnalyticsModule,
+    BusinessAnalyticsModule,
+    BusinessCustomersModule,
+    ProductCommentsModule,
+    CustomerActivityModule,
+    BusinessNetworkModule,
     SubscriptionsModule,
     CouponsModule,
     SettingsModule,
@@ -193,12 +217,17 @@ import { SubscriptionRemindersModule } from './modules/subscription-reminders/su
     ObservabilityModule,
     AdministrationModule,
     CatalogueModule,
+    UploadsModule,
+    VerificationModule,
     CatalogueOrderModule,
     CatalogueCartModule,
     BusinessProfilingModule,
     AffiliatesModule,
+    ReferralsModule,
     TrainingModule,
     DiscoveryModule,
+    AdWalletModule,
+    PromotionsModule,
     QrThriveModule,
     BannersModule,
     BusinessDashboardModule,
@@ -230,6 +259,14 @@ import { SubscriptionRemindersModule } from './modules/subscription-reminders/su
     ClustersModule,
     RotatorModule,
     SubscriptionRemindersModule,
+    DealEngagementModule,
+    PublicDiscoveryModule,
+    GeocodingModule,
+    SavedModule,
+    AddressesModule,
+    StoreOrderingModule,
+    AccountPrivacyModule,
+    BookingsModule,
     StatusModule,
     ScheduleModule.forRoot(),
   ],

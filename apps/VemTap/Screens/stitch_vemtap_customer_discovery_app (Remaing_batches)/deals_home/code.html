@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+
+<html class="h-full" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Deals - VEMTAP</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "on-secondary-fixed": "#0b1c30",
+                      "surface-container-highest": "#e0e3e5",
+                      "secondary-fixed": "#d3e4fe",
+                      "on-surface-variant": "#424655",
+                      "inverse-surface": "#2d3133",
+                      "on-primary-fixed": "#001945",
+                      "on-error-container": "#93000a",
+                      "secondary-container": "#d0e1fb",
+                      "on-primary-fixed-variant": "#00429b",
+                      "surface-dim": "#d8dadc",
+                      "surface-container-lowest": "#ffffff",
+                      "secondary": "#505f76",
+                      "tertiary": "#535a71",
+                      "tertiary-container": "#6b738a",
+                      "background": "#f7f9fb",
+                      "on-tertiary-fixed": "#131b2e",
+                      "primary": "#0055c4",
+                      "on-error": "#ffffff",
+                      "on-secondary-fixed-variant": "#38485d",
+                      "error": "#ba1a1a",
+                      "on-background": "#191c1e",
+                      "primary-container": "#066cf4",
+                      "surface-tint": "#0058cb",
+                      "inverse-on-surface": "#eff1f3",
+                      "on-tertiary-fixed-variant": "#3f465c",
+                      "tertiary-fixed": "#dae2fd",
+                      "surface-bright": "#f7f9fb",
+                      "surface-container": "#eceef0",
+                      "secondary-fixed-dim": "#b7c8e1",
+                      "outline": "#727786",
+                      "on-surface": "#191c1e",
+                      "error-container": "#ffdad6",
+                      "surface": "#f7f9fb",
+                      "tertiary-fixed-dim": "#bec6e0",
+                      "on-secondary-container": "#54647a",
+                      "on-secondary": "#ffffff",
+                      "on-tertiary-container": "#fcfaff",
+                      "outline-variant": "#c2c6d7",
+                      "surface-container-high": "#e6e8ea",
+                      "primary-fixed": "#d9e2ff",
+                      "on-primary-container": "#fcfaff",
+                      "inverse-primary": "#b0c6ff",
+                      "on-primary": "#ffffff",
+                      "on-tertiary": "#ffffff",
+                      "surface-container-low": "#f2f4f6",
+                      "primary-fixed-dim": "#b0c6ff",
+                      "surface-variant": "#e0e3e5"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "touch-target-min": "44px",
+                      "margin-main": "1.25rem",
+                      "stack-sm": "0.5rem",
+                      "gutter-grid": "1rem",
+                      "stack-lg": "1.5rem",
+                      "stack-md": "1rem"
+              },
+              "fontFamily": {
+                      "label-lg": ["Inter"],
+                      "headline-sm": ["Inter"],
+                      "headline-md": ["Inter"],
+                      "body-lg": ["Inter"],
+                      "display-lg": ["Inter"],
+                      "label-sm": ["Inter"],
+                      "currency-display": ["Inter"],
+                      "body-md": ["Inter"]
+              },
+              "fontSize": {
+                      "label-lg": ["14px", {"lineHeight": "20px", "letterSpacing": "0.01em", "fontWeight": "600"}],
+                      "headline-sm": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                      "headline-md": ["24px", {"lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                      "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                      "display-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                      "label-sm": ["12px", {"lineHeight": "16px", "fontWeight": "500"}],
+                      "currency-display": ["20px", {"lineHeight": "24px", "fontWeight": "700"}],
+                      "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}]
+              }
+            }
+          }
+        }
+    </script>
+<style>
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background h-full font-body-md overflow-x-hidden pt-[60px] pb-[80px]">
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full bg-surface dark:bg-on-surface-variant flex items-center justify-between px-margin-main h-touch-target-min w-full z-50 border-b border-outline-variant dark:border-outline flat no shadows text-primary dark:text-inverse-primary font-headline-sm text-headline-sm">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">location_on</span>
+<span class="font-bold tracking-tight">Wuse 2, Abuja</span>
+</div>
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined" data-icon="search">search</span>
+</div>
+</header>
+<!-- Search Bar Section -->
+<section class="px-margin-main pt-stack-md pb-stack-sm sticky top-[60px] bg-background z-40">
+<div class="relative w-full">
+<span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-outline">search</span>
+<input class="w-full h-12 pl-12 pr-4 bg-surface-container-low border border-outline-variant rounded-full text-on-surface placeholder:text-outline focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all font-body-md text-body-md" placeholder="Search deals, food, fashion..." type="text"/>
+</div>
+</section>
+<main class="flex flex-col gap-stack-lg">
+<!-- Hero Carousel (Featured Deals) -->
+<section class="pl-margin-main">
+<div class="flex overflow-x-auto hide-scrollbar gap-gutter-grid snap-x snap-mandatory pr-margin-main">
+<!-- Deal Card 1 -->
+<div class="snap-center shrink-0 w-[85vw] max-w-[320px] rounded-xl overflow-hidden bg-surface-container-lowest border border-outline-variant shadow-sm relative">
+<div class="h-40 w-full bg-cover bg-center" data-alt="A high-quality, bright photograph of an elegant dining setting in a modern Nigerian restaurant. A beautifully plated dish sits on a wooden table, illuminated by natural sunlight filtering through a large window. The atmosphere is warm, inviting, and premium. Colors are rich and vibrant, emphasizing the culinary experience." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuDU1vmjOivsTwZYCIReDgIDqGy1UmLNdHbcJWisDdmdel0X6YmQpSQKvxoUGDVkrJaSlebJg4azn0sm4VgDIuOYIEznREGr7jio74FS6cnIRzjxmk_bcG1sz0i1Mvxl7HKSHgyOH0WCl03pxvG0P-ZQ1LZ76EpBra329aGG489dTb1CoKhXzxXSaGRF7DgWa2a7do2lFYJw4xtHcCfzUg5AaV9LMAsDOjUK0RBXnPbF4NcfjyQ7tR8NqQ')"></div>
+<div class="absolute top-3 left-3 bg-error text-on-error px-2 py-1 rounded font-label-sm text-label-sm font-bold tracking-wide uppercase">Flash Sale</div>
+<div class="p-4">
+<div class="flex justify-between items-start mb-1">
+<h3 class="font-headline-sm text-headline-sm text-on-surface line-clamp-1">Dinner for Two</h3>
+<div class="flex items-center gap-1 text-on-surface-variant font-label-sm text-label-sm">
+<span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">star</span>
+<span>4.8</span>
+</div>
+</div>
+<p class="font-body-sm text-on-surface-variant mb-3">The Orchid Bistro</p>
+<div class="flex items-end gap-2">
+<span class="font-currency-display text-currency-display text-primary">₦15,000</span>
+<span class="font-body-md text-body-md text-outline line-through mb-[2px]">₦25,000</span>
+</div>
+</div>
+</div>
+<!-- Deal Card 2 -->
+<div class="snap-center shrink-0 w-[85vw] max-w-[320px] rounded-xl overflow-hidden bg-surface-container-lowest border border-outline-variant shadow-sm relative">
+<div class="h-40 w-full bg-cover bg-center" data-alt="A bright, inviting photo of a modern spa room interior in Nigeria. Soft lighting, clean white towels rolled on a massage bed, with subtle green plants in the background. The aesthetic is calm, clean, and luxurious, conveying a sense of relaxation and wellness." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuDV2BM6fFu7I2Wdr0GiD3iFmjFZRQMLDTa2D0pfXZklTwbssY3WLNXLw8OrG8k1E4zSzMprCrfVtYoutHFggLnq478NsHMFavKU1uA6vJwPDa00k2H-WmdjMfhoG5g16yMwzc230HMRep24pmu-EnHemWw14vDFkmHX6SniRJONk81RidgsfJmBrmbptUokcTTtTk9sH0hrer2KevQJfGruVK1IaG2FasV1AYjJmfEN1_ikpp1eg9e0MA')"></div>
+<div class="absolute top-3 left-3 bg-primary text-on-primary px-2 py-1 rounded font-label-sm text-label-sm font-bold tracking-wide uppercase">Daily Deal</div>
+<div class="p-4">
+<div class="flex justify-between items-start mb-1">
+<h3 class="font-headline-sm text-headline-sm text-on-surface line-clamp-1">Full Body Massage</h3>
+<div class="flex items-center gap-1 text-on-surface-variant font-label-sm text-label-sm">
+<span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">star</span>
+<span>4.9</span>
+</div>
+</div>
+<p class="font-body-sm text-on-surface-variant mb-3">Serenity Spa</p>
+<div class="flex items-end gap-2">
+<span class="font-currency-display text-currency-display text-primary">₦8,500</span>
+<span class="font-body-md text-body-md text-outline line-through mb-[2px]">₦12,000</span>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Categories Rail -->
+<section class="pl-margin-main">
+<h2 class="font-headline-sm text-headline-sm mb-stack-sm text-on-surface">Browse Categories</h2>
+<div class="flex overflow-x-auto hide-scrollbar gap-3 pr-margin-main pb-2">
+<button class="shrink-0 px-4 py-2 rounded-full bg-primary text-on-primary font-label-lg text-label-lg whitespace-nowrap">Nearby</button>
+<button class="shrink-0 px-4 py-2 rounded-full bg-surface-container-lowest border border-outline-variant text-on-surface-variant font-label-lg text-label-lg whitespace-nowrap">Flash Sales</button>
+<button class="shrink-0 px-4 py-2 rounded-full bg-surface-container-lowest border border-outline-variant text-on-surface-variant font-label-lg text-label-lg whitespace-nowrap">New Arrivals</button>
+<button class="shrink-0 px-4 py-2 rounded-full bg-surface-container-lowest border border-outline-variant text-on-surface-variant font-label-lg text-label-lg whitespace-nowrap">Food &amp; Hospitality</button>
+<button class="shrink-0 px-4 py-2 rounded-full bg-surface-container-lowest border border-outline-variant text-on-surface-variant font-label-lg text-label-lg whitespace-nowrap">Fashion</button>
+</div>
+</section>
+<!-- Grid Deals Near You -->
+<section class="px-margin-main">
+<h2 class="font-headline-sm text-headline-sm mb-stack-md text-on-surface">Deals Near You</h2>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-gutter-grid">
+<!-- Grid Item 1 -->
+<div class="flex bg-surface-container-lowest rounded-xl border border-outline-variant shadow-sm overflow-hidden h-[120px]">
+<div class="w-1/3 h-full bg-cover bg-center shrink-0" data-alt="Close up shot of a sleek, modern smartphone resting on a minimalist desk surface. Natural, bright lighting highlights the device's premium build quality. The setting is clean and professional, typical of a modern tech retail environment in Nigeria." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuDBIhCx9yjdVY9CmknFYFdak_w654QFJq0t0HigaoHOh35HAFXPwUyArAgdSBtbiovoT3DMbJOt6NMuUvIYI1_N9KzK4CaEWdxXcbtECT4MkKrNidkb9JW20K1O8weGC5fs71RkAXsgAPVU3kLIIk0gExmlLGXg-p5FMZTtY5qQdKXwK_fR5ZqSXx8cjTjN9LAJWji8vXVqN0tOpOk5PR1BDlxpTV37RVJiatPuGg_2zjYzEpTO-Wouog')"></div>
+<div class="p-3 flex flex-col justify-between w-full">
+<div>
+<div class="flex justify-between items-start">
+<h4 class="font-label-lg text-label-lg text-on-surface line-clamp-1">iPhone 13 Pro Max - 20% Off</h4>
+<span class="bg-secondary-container text-on-secondary-container px-1.5 py-0.5 rounded text-[10px] font-bold">2.5km</span>
+</div>
+<p class="font-label-sm text-label-sm text-on-surface-variant mt-0.5">Gadget Hub Ltd</p>
+</div>
+<div class="flex items-center justify-between">
+<div class="flex flex-col">
+<span class="font-label-lg text-label-lg text-primary font-bold">₦450,000</span>
+<span class="font-label-sm text-label-sm text-outline line-through">₦560,000</span>
+</div>
+<button class="w-8 h-8 rounded-full bg-surface-container-low flex items-center justify-center text-on-surface-variant">
+<span class="material-symbols-outlined text-sm">bookmark</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Grid Item 2 -->
+<div class="flex bg-surface-container-lowest rounded-xl border border-outline-variant shadow-sm overflow-hidden h-[120px]">
+<div class="w-1/3 h-full bg-cover bg-center shrink-0" data-alt="A vibrant shot of a colorful, fresh salad bowl served at a trendy Nigerian cafe. The ingredients are crisp and bright, shot from a slightly overhead angle in a well-lit, airy environment with wooden textures in the background, conveying healthy, premium dining." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuDAAOIuJzowcAVrmn_NmC9zOMORtHHKQr9JqZ_JiE7E0L2D-i0AwcooH4CsPEsLaSUtatsJsKhbKDJ5pdrNY3rikfudsbX5I4qigeWmM_UAFdyDb0Q-Jy2gDs0Gl17wkuRevzSeZ80-J4HGyNgt-Hi9BSbGT0wOEB1OS0dfVHc4ZuoOFPMujfWBSxwZ7cWtr7_MU33dMYJ9aYBeMhxQcPi6o7a33t_cdNKpgnTodo0BgiEmpOvGyQOsuw')"></div>
+<div class="p-3 flex flex-col justify-between w-full">
+<div>
+<div class="flex justify-between items-start">
+<h4 class="font-label-lg text-label-lg text-on-surface line-clamp-1">Healthy Lunch Combo</h4>
+<span class="bg-secondary-container text-on-secondary-container px-1.5 py-0.5 rounded text-[10px] font-bold">1.2km</span>
+</div>
+<p class="font-label-sm text-label-sm text-on-surface-variant mt-0.5">Green Bowl Cafe</p>
+</div>
+<div class="flex items-center justify-between">
+<div class="flex flex-col">
+<span class="font-label-lg text-label-lg text-primary font-bold">₦4,500</span>
+<span class="font-label-sm text-label-sm text-outline line-through">₦6,000</span>
+</div>
+<button class="w-8 h-8 rounded-full bg-surface-container-low flex items-center justify-center text-on-surface-variant">
+<span class="material-symbols-outlined text-sm">bookmark</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Grid Item 3 -->
+<div class="flex bg-surface-container-lowest rounded-xl border border-outline-variant shadow-sm overflow-hidden h-[120px]">
+<div class="w-1/3 h-full bg-cover bg-center shrink-0" data-alt="A crisp, stylish photograph of a pair of high-end sneakers displayed in a modern boutique setting in Nigeria. Soft, directional lighting highlights the shoe's design details against a clean, minimalist background, suggesting premium fashion and lifestyle." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuAQLSYI-O-JYiaXe8sw36dORZ3DIa3D71KGIdJsMyYRWjQRZN5yU0m3w0MyaglvSF6fM56mqfRQ0_4xqL4yDtEf0GxUpcrxiFHhcfEJbdYwir8xMbabLo1PhNUsGYZiLshlzD9pGv9dVh7_bBkTjbi2JNcj9uH5dpKwuhGqVWJhR7kKAlDAMr6UV8Lm6UO-VwFgK9AYf2faYjTWqt9Y2mVh7bfH1Nl5DrPhcC-Kar6P72tIeBAO_pFiHw')"></div>
+<div class="p-3 flex flex-col justify-between w-full">
+<div>
+<div class="flex justify-between items-start">
+<h4 class="font-label-lg text-label-lg text-on-surface line-clamp-1">Premium Sneakers</h4>
+<span class="bg-secondary-container text-on-secondary-container px-1.5 py-0.5 rounded text-[10px] font-bold">4.0km</span>
+</div>
+<p class="font-label-sm text-label-sm text-on-surface-variant mt-0.5">Urban Kicks</p>
+</div>
+<div class="flex items-center justify-between">
+<div class="flex flex-col">
+<span class="font-label-lg text-label-lg text-primary font-bold">₦35,000</span>
+<span class="font-label-sm text-label-sm text-outline line-through">₦50,000</span>
+</div>
+<button class="w-8 h-8 rounded-full bg-surface-container-low flex items-center justify-center text-on-surface-variant">
+<span class="material-symbols-outlined text-sm">bookmark</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- BottomNavBar -->
+<nav class="md:hidden fixed bottom-0 left-0 w-full z-50 flex justify-around items-center h-16 px-gutter-grid bg-surface dark:bg-on-surface-variant text-primary dark:text-inverse-primary font-label-sm text-label-sm font-display-lg text-display-lg text-primary rounded-t-xl border-t border-outline-variant shadow-sm">
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:text-primary transition-all active:scale-90 duration-200" href="#">
+<span class="material-symbols-outlined mb-1">home</span>
+<span>Home</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:text-primary transition-all active:scale-90 duration-200" href="#">
+<span class="material-symbols-outlined mb-1">explore</span>
+<span>Discover</span>
+</a>
+<a class="flex flex-col items-center justify-center text-primary bg-secondary-container rounded-full px-4 py-1 hover:text-primary transition-all active:scale-90 duration-200" href="#">
+<span class="material-symbols-outlined mb-1" style="font-variation-settings: 'FILL' 1;">local_offer</span>
+<span>Deals</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:text-primary transition-all active:scale-90 duration-200" href="#">
+<span class="material-symbols-outlined mb-1">bookmark</span>
+<span>Saved</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:text-primary transition-all active:scale-90 duration-200" href="#">
+<span class="material-symbols-outlined mb-1">person</span>
+<span>Account</span>
+</a>
+</nav>
+</body></html>

@@ -51,4 +51,9 @@ export class VerifyClaimDto {
   @IsString()
   @Length(4, 6)
   code: string;
+
+  @ApiPropertyOptional({ example: 'c67ab160-5895-46aa-b2b5-e6f778a87b28' })
+  @IsOptional()
+  @IsString()
+  giftToken?: string;
 }

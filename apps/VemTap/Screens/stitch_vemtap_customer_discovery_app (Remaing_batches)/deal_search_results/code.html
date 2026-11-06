@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Deal Search Results - VEMTAP</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-secondary-fixed": "#0b1c30",
+                        "surface-container-highest": "#e0e3e5",
+                        "secondary-fixed": "#d3e4fe",
+                        "on-surface-variant": "#424655",
+                        "inverse-surface": "#2d3133",
+                        "on-primary-fixed": "#001945",
+                        "on-error-container": "#93000a",
+                        "secondary-container": "#d0e1fb",
+                        "on-primary-fixed-variant": "#00429b",
+                        "surface-dim": "#d8dadc",
+                        "surface-container-lowest": "#ffffff",
+                        "secondary": "#505f76",
+                        "tertiary": "#535a71",
+                        "tertiary-container": "#6b738a",
+                        "background": "#f7f9fb",
+                        "on-tertiary-fixed": "#131b2e",
+                        "primary": "#0055c4",
+                        "on-error": "#ffffff",
+                        "on-secondary-fixed-variant": "#38485d",
+                        "error": "#ba1a1a",
+                        "on-background": "#191c1e",
+                        "primary-container": "#066cf4",
+                        "surface-tint": "#0058cb",
+                        "inverse-on-surface": "#eff1f3",
+                        "on-tertiary-fixed-variant": "#3f465c",
+                        "tertiary-fixed": "#dae2fd",
+                        "surface-bright": "#f7f9fb",
+                        "surface-container": "#eceef0",
+                        "secondary-fixed-dim": "#b7c8e1",
+                        "outline": "#727786",
+                        "on-surface": "#191c1e",
+                        "error-container": "#ffdad6",
+                        "surface": "#f7f9fb",
+                        "tertiary-fixed-dim": "#bec6e0",
+                        "on-secondary-container": "#54647a",
+                        "on-secondary": "#ffffff",
+                        "on-tertiary-container": "#fcfaff",
+                        "outline-variant": "#c2c6d7",
+                        "surface-container-high": "#e6e8ea",
+                        "primary-fixed": "#d9e2ff",
+                        "on-primary-container": "#fcfaff",
+                        "inverse-primary": "#b0c6ff",
+                        "on-primary": "#ffffff",
+                        "on-tertiary": "#ffffff",
+                        "surface-container-low": "#f2f4f6",
+                        "primary-fixed-dim": "#b0c6ff",
+                        "surface-variant": "#e0e3e5"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "touch-target-min": "44px",
+                        "margin-main": "1.25rem",
+                        "stack-sm": "0.5rem",
+                        "gutter-grid": "1rem",
+                        "stack-lg": "1.5rem",
+                        "stack-md": "1rem"
+                    },
+                    "fontFamily": {
+                        "label-lg": ["Inter"],
+                        "headline-sm": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "display-lg": ["Inter"],
+                        "label-sm": ["Inter"],
+                        "currency-display": ["Inter"],
+                        "body-md": ["Inter"]
+                    },
+                    "fontSize": {
+                        "label-lg": ["14px", { "lineHeight": "20px", "letterSpacing": "0.01em", "fontWeight": "600" }],
+                        "headline-sm": ["20px", { "lineHeight": "28px", "fontWeight": "600" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                        "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "display-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "label-sm": ["12px", { "lineHeight": "16px", "fontWeight": "500" }],
+                        "currency-display": ["20px", { "lineHeight": "24px", "fontWeight": "700" }],
+                        "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }]
+                    }
+                },
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .material-symbols-outlined[data-weight="fill"] {
+            font-variation-settings: 'FILL' 1;
+        }
+        
+        /* Hide scrollbar for horizontal scroll areas but keep functionality */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background antialiased pb-24">
+<!-- Top App Bar / Search Header -->
+<header class="sticky top-0 z-40 bg-surface border-b border-outline-variant pt-safe-top">
+<div class="px-margin-main py-3 flex flex-col gap-stack-sm">
+<!-- Back & Search Row -->
+<div class="flex items-center gap-3">
+<button aria-label="Go back" class="flex items-center justify-center w-10 h-10 rounded-full hover:bg-surface-container-low active:scale-95 transition-colors">
+<span class="material-symbols-outlined text-on-surface-variant">arrow_back</span>
+</button>
+<div class="flex-1 relative">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant">search</span>
+<input class="w-full h-11 pl-10 pr-10 bg-surface-container-lowest border border-outline-variant rounded-full font-body-md text-on-surface focus:border-primary focus:ring-1 focus:ring-primary transition-all outline-none placeholder:text-on-surface-variant" placeholder="Search deals..." type="text" value="restaurants"/>
+<button aria-label="Clear search" class="absolute right-3 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center rounded-full bg-surface-container-low hover:bg-surface-container-high transition-colors text-on-surface-variant">
+<span class="material-symbols-outlined text-[16px]">close</span>
+</button>
+</div>
+</div>
+<!-- Results Meta & Filters -->
+<div class="flex items-center justify-between pt-2">
+<h1 class="font-headline-sm text-headline-sm text-on-surface">24 Deals found</h1>
+<div class="flex gap-2">
+<button class="flex items-center gap-1 px-3 py-1.5 rounded-full border border-outline-variant bg-surface-container-lowest font-label-sm text-label-sm text-on-surface-variant hover:bg-surface-container-low active:scale-95 transition-all">
+<span class="material-symbols-outlined text-[18px]">tune</span>
+                        Filter
+                    </button>
+<button class="flex items-center gap-1 px-3 py-1.5 rounded-full border border-outline-variant bg-surface-container-lowest font-label-sm text-label-sm text-on-surface-variant hover:bg-surface-container-low active:scale-95 transition-all">
+<span class="material-symbols-outlined text-[18px]">sort</span>
+                        Sort
+                    </button>
+</div>
+</div>
+</div>
+<!-- Quick Filter Chips (Horizontal Scroll) -->
+<div class="px-margin-main pb-3 overflow-x-auto no-scrollbar flex gap-2">
+<button class="whitespace-nowrap px-4 py-1.5 rounded-full bg-secondary-container text-on-secondary-container font-label-sm text-label-sm font-medium border border-transparent">All Restaurants</button>
+<button class="whitespace-nowrap px-4 py-1.5 rounded-full bg-surface-container-lowest text-on-surface-variant font-label-sm text-label-sm border border-outline-variant hover:bg-surface-container-low transition-colors">Fast Food</button>
+<button class="whitespace-nowrap px-4 py-1.5 rounded-full bg-surface-container-lowest text-on-surface-variant font-label-sm text-label-sm border border-outline-variant hover:bg-surface-container-low transition-colors">Fine Dining</button>
+<button class="whitespace-nowrap px-4 py-1.5 rounded-full bg-surface-container-lowest text-on-surface-variant font-label-sm text-label-sm border border-outline-variant hover:bg-surface-container-low transition-colors">Cafes</button>
+<button class="whitespace-nowrap px-4 py-1.5 rounded-full bg-surface-container-lowest text-on-surface-variant font-label-sm text-label-sm border border-outline-variant hover:bg-surface-container-low transition-colors">Local Cuisine</button>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="px-margin-main py-stack-md flex flex-col gap-stack-md max-w-3xl mx-auto">
+<!-- Deal Card 1 -->
+<article class="flex bg-surface-container-lowest rounded-xl border border-outline-variant overflow-hidden shadow-sm active:scale-[0.98] transition-transform duration-200">
+<div class="w-32 h-auto relative shrink-0">
+<img class="w-full h-full object-cover" data-alt="A beautifully plated gourmet burger with truffle fries on a rustic wooden table in a warmly lit, modern restaurant. High-quality food photography with shallow depth of field, emphasizing the crisp texture of the fries and the juicy burger patty. Ambient lighting suggests an upscale dining experience in a Nigerian urban center, fitting a premium local discovery aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBylKoq3P8P1VBi3-zxcVi0jwgDNWiU1noC8FDrI7DPETpgAMhNLQpy7qFGqCtW0TsvgIJu_3aae8eYE4Snadi1m-3Yz0HMOQ82WaH_O_B0HWNPaHYNmgAEi2-2jUg7i84IFmEDEVrDnG0hXbz4uUG-N7AuD5bGElExszb9vlgISVSXK9qoVlQxBKPqBJD7PmgIT1n9ciostymuMTRv4Tig85KaOhVWtFRaarAfur5PWrXKZ1ZXDWA7tA"/>
+<div class="absolute top-2 left-2 bg-error text-on-error font-label-sm text-label-sm px-2 py-0.5 rounded-full font-bold">
+                    -30%
+                </div>
+<button class="absolute bottom-2 left-2 w-8 h-8 flex items-center justify-center rounded-full bg-surface-container-lowest/90 backdrop-blur-sm text-on-surface-variant hover:text-primary transition-colors shadow-sm">
+<span class="material-symbols-outlined text-[18px]">favorite</span>
+</button>
+</div>
+<div class="p-3 flex flex-col justify-between flex-1 min-w-0">
+<div>
+<div class="flex items-center gap-1 text-on-surface-variant mb-1">
+<span class="material-symbols-outlined text-[14px]">storefront</span>
+<span class="font-label-sm text-label-sm truncate">The Artisan Grill</span>
+</div>
+<h2 class="font-label-lg text-label-lg text-on-surface line-clamp-2 leading-tight mb-2">Signature Wagyu Burger Combo Meal for Two</h2>
+</div>
+<div class="flex items-end justify-between mt-2">
+<div>
+<div class="font-currency-display text-currency-display text-primary">₦12,500</div>
+<div class="font-body-sm text-[12px] text-outline line-through">₦18,000</div>
+</div>
+<div class="flex items-center gap-1 text-on-surface-variant bg-surface-container-low px-2 py-1 rounded-md">
+<span class="material-symbols-outlined text-[14px]">location_on</span>
+<span class="font-label-sm text-[11px]">1.2 km</span>
+</div>
+</div>
+</div>
+</article>
+<!-- Deal Card 2 -->
+<article class="flex bg-surface-container-lowest rounded-xl border border-outline-variant overflow-hidden shadow-sm active:scale-[0.98] transition-transform duration-200">
+<div class="w-32 h-auto relative shrink-0">
+<img class="w-full h-full object-cover" data-alt="A vibrant spread of traditional Nigerian cuisine, featuring a steaming bowl of Jollof rice, assorted meats, and fried plantains, presented elegantly in a contemporary restaurant setting. The lighting is bright and inviting, highlighting the rich red and orange tones of the dish. The setting reflects a modern, clean, and premium local dining atmosphere." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCsb3VkTXHOzZchCetbOHboMoomlar7O9qs_5ovT1tNr2Tt-E6GUCcKJeMTmV7flLtskCoqBGQUWSpjgJ5qQ2r-5DHQT0dpFZwb8G6zw-9Y4J-XsJCwTbN_h2-KZQz1n6taCOO5JnnnjyXaUvHqNA9QzGhjCNexROdNKLYm4pqmiixWvp1E6JLD_dZcpBxkEP21IQ8lAEiqQMawrCHi8Pb-wNmTF0Yk8W4nb8lnUHz9Bbh5_humhlmixw"/>
+<div class="absolute top-2 left-2 bg-error text-on-error font-label-sm text-label-sm px-2 py-0.5 rounded-full font-bold">
+                    -15%
+                </div>
+<button class="absolute bottom-2 left-2 w-8 h-8 flex items-center justify-center rounded-full bg-surface-container-lowest/90 backdrop-blur-sm text-primary transition-colors shadow-sm">
+<span class="material-symbols-outlined text-[18px]" data-weight="fill">favorite</span>
+</button>
+</div>
+<div class="p-3 flex flex-col justify-between flex-1 min-w-0">
+<div>
+<div class="flex items-center gap-1 text-on-surface-variant mb-1">
+<span class="material-symbols-outlined text-[14px]">storefront</span>
+<span class="font-label-sm text-label-sm truncate">Mama's Kitchen Premium</span>
+</div>
+<h2 class="font-label-lg text-label-lg text-on-surface line-clamp-2 leading-tight mb-2">Deluxe Fiesta Platter: Jollof &amp; Grill Assortment</h2>
+</div>
+<div class="flex items-end justify-between mt-2">
+<div>
+<div class="font-currency-display text-currency-display text-primary">₦8,500</div>
+<div class="font-body-sm text-[12px] text-outline line-through">₦10,000</div>
+</div>
+<div class="flex items-center gap-1 text-on-surface-variant bg-surface-container-low px-2 py-1 rounded-md">
+<span class="material-symbols-outlined text-[14px]">location_on</span>
+<span class="font-label-sm text-[11px]">3.4 km</span>
+</div>
+</div>
+</div>
+</article>
+<!-- Deal Card 3 -->
+<article class="flex bg-surface-container-lowest rounded-xl border border-outline-variant overflow-hidden shadow-sm active:scale-[0.98] transition-transform duration-200">
+<div class="w-32 h-auto relative shrink-0">
+<img class="w-full h-full object-cover" data-alt="An elegant, dimly lit fine dining setting showcasing a perfectly seared steak with sophisticated garnishes. The atmosphere is intimate and upscale, with soft glowing ambient light reflecting off polished cutlery and a pristine white plate. The visual style conveys premium quality and high-end restaurant discovery." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAK9lK2T-Rn-Rq7Eg4q1MCcpigTKrTD3jQOCpFlTQP92kqC7NUkEyjPkZqHe0TzVnA6OLh4Qubbt_o-AEuglCGJNgc-o-0-lpQyLY24v_4YSODVg4jRtc8HFaGbFut3p2cklQ2bnxBzac7Dmu6Jao8Yt167DL613cb1sqWgaEuyolBP-jEgXpq7pdWK8EYlnWCMVMAa3q2c8om0KecqmH5AU1T7V_suBjo3BuVl_rHJMvEPOd_DWD01-A"/>
+<div class="absolute top-2 left-2 bg-error text-on-error font-label-sm text-label-sm px-2 py-0.5 rounded-full font-bold">
+                    -40%
+                </div>
+<button class="absolute bottom-2 left-2 w-8 h-8 flex items-center justify-center rounded-full bg-surface-container-lowest/90 backdrop-blur-sm text-on-surface-variant hover:text-primary transition-colors shadow-sm">
+<span class="material-symbols-outlined text-[18px]">favorite</span>
+</button>
+</div>
+<div class="p-3 flex flex-col justify-between flex-1 min-w-0">
+<div>
+<div class="flex items-center gap-1 text-on-surface-variant mb-1">
+<span class="material-symbols-outlined text-[14px]">storefront</span>
+<span class="font-label-sm text-label-sm truncate">Le Petit Chateau</span>
+</div>
+<h2 class="font-label-lg text-label-lg text-on-surface line-clamp-2 leading-tight mb-2">3-Course Fine Dining Experience for Couples</h2>
+</div>
+<div class="flex items-end justify-between mt-2">
+<div>
+<div class="font-currency-display text-currency-display text-primary">₦45,000</div>
+<div class="font-body-sm text-[12px] text-outline line-through">₦75,000</div>
+</div>
+<div class="flex items-center gap-1 text-on-surface-variant bg-surface-container-low px-2 py-1 rounded-md">
+<span class="material-symbols-outlined text-[14px]">location_on</span>
+<span class="font-label-sm text-[11px]">5.1 km</span>
+</div>
+</div>
+</div>
+</article>
+</main>
+<!-- Bottom Navigation Bar (Mandatory Semantic Shell) -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center h-16 px-gutter-grid bg-surface dark:bg-on-surface-variant border-t border-outline-variant shadow-sm md:hidden">
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:text-primary transition-all active:scale-90 duration-200 w-16 h-full" href="#">
+<span class="material-symbols-outlined text-2xl mb-1">home</span>
+<span class="font-label-sm text-label-sm">Home</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:text-primary transition-all active:scale-90 duration-200 w-16 h-full" href="#">
+<span class="material-symbols-outlined text-2xl mb-1">explore</span>
+<span class="font-label-sm text-label-sm">Discover</span>
+</a>
+<!-- ACTIVE STATE: Deals -->
+<a class="flex flex-col items-center justify-center text-primary bg-secondary-container rounded-full px-4 py-1 active:scale-90 duration-200 h-auto my-auto" href="#">
+<span class="material-symbols-outlined text-2xl mb-0.5" data-weight="fill">local_offer</span>
+<span class="font-label-sm text-label-sm">Deals</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:text-primary transition-all active:scale-90 duration-200 w-16 h-full" href="#">
+<span class="material-symbols-outlined text-2xl mb-1">bookmark</span>
+<span class="font-label-sm text-label-sm">Saved</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:text-primary transition-all active:scale-90 duration-200 w-16 h-full" href="#">
+<span class="material-symbols-outlined text-2xl mb-1">person</span>
+<span class="font-label-sm text-label-sm">Account</span>
+</a>
+</nav>
+</body></html>

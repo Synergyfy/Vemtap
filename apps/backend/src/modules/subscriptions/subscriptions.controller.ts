@@ -12,7 +12,6 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { SubscriptionsService } from './subscriptions.service';
-import { SubscribeDto } from './dto/subscribe.dto';
 import {
   ApiTags,
   ApiOperation,
@@ -29,9 +28,15 @@ import { Public } from '../../common/decorators/public.decorator';
 import { BranchesService } from '../branches/branches.service';
 import { SubscribeWithAddonsDto } from './dto/addons/subscribe-with-addons.dto';
 import { SubscriptionTaxService } from './services/subscription-tax.service';
+import { TrialService } from './services/trial.service';
+import { StartTrialDto } from './dto/start-trial.dto';
 import { UpdateSubscriptionTaxDto } from './dto/tax/update-subscription-tax.dto';
 import { ToggleSubscriptionTaxDto } from './dto/tax/toggle-subscription-tax.dto';
 import { PricePreviewDto } from './dto/tax/price-preview.dto';
+import {
+  ActiveSubscriptionDto,
+  toActiveSubscriptionDto,
+} from './dto/active-subscription.dto';
 
 @ApiTags('Subscriptions (Owner / Capabilities)')
 @Controller('subscriptions')
@@ -42,6 +47,7 @@ export class SubscriptionsController {
     private readonly subscriptionsService: SubscriptionsService,
     private readonly branchesService: BranchesService,
     private readonly subscriptionTaxService: SubscriptionTaxService,
+    private readonly trialService: TrialService,
   ) {}
 
   private async getBusinessId(req: any): Promise<string> {
@@ -138,6 +144,7 @@ export class SubscriptionsController {
       promoCode: subscribeDto.promoCode,
       addonIds: subscribeDto.addonIds,
       addonQuantities: subscribeDto.addonQuantities,
+      callbackUrl: subscribeDto.callbackUrl,
     });
   }
 
@@ -146,13 +153,85 @@ export class SubscriptionsController {
   @Roles(UserRole.OWNER, UserRole.ADMIN, UserRole.MANAGER, UserRole.STAFF)
   @ApiOperation({
     summary: "Get current active plan for the branch's business",
+    description:
+      'Returns the active/trial subscription with every stored field plus ' +
+      '`isTrial`, `trialEndsAt` and a plan summary. Returns null when no ' +
+      'active subscription or free plan exists.',
   })
   @ApiOkResponse({
-    description: 'Return current active plan details',
+    description: 'Current active plan details',
+    type: ActiveSubscriptionDto,
   })
   async getActivePlan(@Request() req) {
     const businessId = await this.getBusinessId(req);
-    return this.subscriptionsService.activeSubscription(businessId);
+    const subscription =
+      await this.subscriptionsService.activeSubscription(businessId);
+    const dto = toActiveSubscriptionDto(subscription);
+    if (!dto) return dto;
+    const trial = await this.trialService.eligibility(businessId);
+    return {
+      ...dto,
+      daysRemaining: TrialService.daysRemaining(
+        dto.isTrial ? dto.trialEndsAt : dto.endDate,
+      ),
+      trialEligible: trial.eligible,
+      trialUsedAt: trial.trialUsedAt,
+    };
+  }
+
+  @Post('trial')
+  @SkipSubscriptionCheck()
+  @Roles(UserRole.OWNER, UserRole.MANAGER)
+  @ApiOperation({
+    summary: 'Start the free trial of a paid plan (no card, never charged)',
+    description:
+      'One trial per business. When it ends the business returns to the free plan. ' +
+      'Returns the new subscription in the GET /subscriptions/active shape.',
+  })
+  async startTrial(@Body() dto: StartTrialDto, @Request() req) {
+    const businessId = await this.getBusinessId(req);
+    await this.trialService.startTrial(
+      businessId,
+      dto.planId,
+      dto.billingPeriod,
+    );
+    return this.getActivePlan(req);
+  }
+
+  @Get('trial/eligibility')
+  @SkipSubscriptionCheck()
+  @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF)
+  @ApiOperation({
+    summary: 'Whether this business can still start a free trial',
+  })
+  async trialEligibility(@Request() req) {
+    return this.trialService.eligibility(await this.getBusinessId(req));
+  }
+
+  @Get('billing-history')
+  @SkipSubscriptionCheck()
+  @Roles(UserRole.OWNER, UserRole.MANAGER)
+  @ApiOperation({ summary: 'Subscription and add-on payments, newest first' })
+  async billingHistory(
+    @Request() req,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.trialService.billingHistory(
+      await this.getBusinessId(req),
+      Number(page) || 1,
+      Number(limit) || 20,
+    );
+  }
+
+  @Get('payment-method')
+  @SkipSubscriptionCheck()
+  @Roles(UserRole.OWNER, UserRole.MANAGER)
+  @ApiOperation({
+    summary: 'Card on file for the current subscription (display only)',
+  })
+  async paymentMethod(@Request() req) {
+    return this.trialService.paymentMethod(await this.getBusinessId(req));
   }
 
   @Post('cancel/:businessId')
@@ -218,18 +297,20 @@ export class SubscriptionsController {
   })
   @ApiResponse({
     status: 200,
-    description: 'Calculated breakdown of subtotal, discount, tax amount, and total',
+    description:
+      'Calculated breakdown of subtotal, discount, tax amount, and total',
   })
   async previewPrice(@Query() dto: PricePreviewDto, @Request() req: any) {
     let businessId: string | undefined;
     if (req?.user) {
       try {
         businessId = await this.getBusinessId(req);
-      } catch {}
+      } catch {
+        // No business yet: preview the price without business context.
+      }
     }
     return this.subscriptionsService.previewPrice(dto, businessId);
   }
-
 
   // --- Admin Tax Endpoints ---
 
@@ -266,16 +347,14 @@ export class SubscriptionsController {
   @Patch('admin/tax-config/toggle')
   @Roles(UserRole.ADMIN)
   @ApiOperation({
-    summary: 'Admin: Quick toggle to enable or disable VAT/Tax for subscriptions',
+    summary:
+      'Admin: Quick toggle to enable or disable VAT/Tax for subscriptions',
   })
   @ApiResponse({
     status: 200,
     description: 'Tax status toggled successfully and recorded in history',
   })
-  async toggleTax(
-    @Request() req: any,
-    @Body() dto: ToggleSubscriptionTaxDto,
-  ) {
+  async toggleTax(@Request() req: any, @Body() dto: ToggleSubscriptionTaxDto) {
     return this.subscriptionTaxService.toggleTax(req.user.id, dto);
   }
 

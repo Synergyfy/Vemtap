@@ -1,3 +1,4 @@
+import './utc';
 import { initializeTracing } from './observability/tracing';
 initializeTracing();
 
@@ -31,7 +32,7 @@ export function configureApp(app: INestApplication) {
     json({
       limit: '25mb',
       verify: (req: any, _res, buf) => {
-        (req as any).rawBody = buf;
+        req.rawBody = buf;
       },
     }),
   );
@@ -133,15 +134,16 @@ if (require.main === module) {
     //  1. Stop accepting new connections immediately.
     //  2. Give in-flight requests up to 10 seconds to complete.
     //  3. Then close the NestJS app (flushes queues, closes DB pool, etc.).
-    process.on('SIGTERM', async () => {
+    process.on('SIGTERM', () => {
       logger.log(
         '[Shutdown] SIGTERM received — draining in-flight requests (10s window)...',
       );
-      server.close(async () => {
+      server.close(() => {
         logger.log('[Shutdown] HTTP server closed. Closing application...');
-        await app.close();
-        logger.log('[Shutdown] Application closed cleanly.');
-        process.exit(0);
+        void app.close().then(() => {
+          logger.log('[Shutdown] Application closed cleanly.');
+          process.exit(0);
+        });
       });
 
       // Safety net: force-exit after 15 seconds if drain stalls

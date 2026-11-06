@@ -9,6 +9,7 @@ import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { AffiliatesService } from '../affiliates/affiliates.service';
 import { ExternalAffiliateService } from '../affiliates/external-affiliate.service';
+import { ReferralsService } from '../referrals/referrals.service';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Otp } from './entities/otp.entity';
 import { RegisterOwnerDto } from './dto/register-owner.dto';
@@ -37,13 +38,10 @@ describe('AuthService', () => {
   let service: AuthService;
   let usersService: any;
   let businessesService: any;
-  let devicesService: any;
   let mailService: any;
   let jwtService: any;
   let otpRepository: any;
   let subscriptionsService: any;
-  let affiliatesService: any;
-  let externalAffiliateService: any;
 
   const mockUsersService = {
     findByEmail: jest.fn(),
@@ -123,10 +121,15 @@ describe('AuthService', () => {
       .mockResolvedValue({ valid: false, affiliateId: null }),
   };
 
+  const mockReferralsService = {
+    resolveAndApplyReferral: jest.fn().mockResolvedValue(undefined),
+  };
+
   const mockOtpRepository = {
     create: jest.fn().mockImplementation((dto) => dto),
     save: jest.fn().mockImplementation((otp) => Promise.resolve(otp)),
     findOne: jest.fn(),
+    find: jest.fn(),
     remove: jest.fn(),
   };
 
@@ -152,19 +155,20 @@ describe('AuthService', () => {
           provide: ExternalAffiliateService,
           useValue: mockExternalAffiliateService,
         },
+        {
+          provide: ReferralsService,
+          useValue: mockReferralsService,
+        },
       ],
     }).compile();
 
     service = module.get<AuthService>(AuthService);
     usersService = module.get(UsersService);
     businessesService = module.get(BusinessesService);
-    devicesService = module.get(DevicesService);
     mailService = module.get(MailService);
     jwtService = module.get(JwtService);
     otpRepository = module.get(getRepositoryToken(Otp));
     subscriptionsService = module.get(SubscriptionsService);
-    affiliatesService = module.get(AffiliatesService);
-    externalAffiliateService = module.get(ExternalAffiliateService);
   });
 
   // ==================== requestOwnerOtp ====================
@@ -273,11 +277,11 @@ describe('AuthService', () => {
     it('should verify a valid OTP', async () => {
       otpRepository.findOne.mockResolvedValue({
         email: 'test@example.com',
-        code: '1234',
+        code: '123456',
         expiresAt: new Date(Date.now() + 10000),
       });
 
-      const result = await service.verifyOtp('test@example.com', '1234');
+      const result = await service.verifyOtp('test@example.com', '123456');
 
       expect(otpRepository.save).toHaveBeenCalledWith(
         expect.objectContaining({ isVerified: true }),
@@ -289,31 +293,31 @@ describe('AuthService', () => {
       otpRepository.findOne.mockResolvedValue(null);
 
       await expect(
-        service.verifyOtp('test@example.com', '1234'),
+        service.verifyOtp('test@example.com', '123456'),
       ).rejects.toThrow(BadRequestException);
     });
 
     it('should throw if OTP code does not match', async () => {
       otpRepository.findOne.mockResolvedValue({
         email: 'test@example.com',
-        code: '9999',
+        code: '999999',
         expiresAt: new Date(Date.now() + 10000),
       });
 
       await expect(
-        service.verifyOtp('test@example.com', '1234'),
+        service.verifyOtp('test@example.com', '123456'),
       ).rejects.toThrow(BadRequestException);
     });
 
     it('should throw if OTP is expired', async () => {
       otpRepository.findOne.mockResolvedValue({
         email: 'test@example.com',
-        code: '1234',
+        code: '123456',
         expiresAt: new Date(Date.now() - 10000),
       });
 
       await expect(
-        service.verifyOtp('test@example.com', '1234'),
+        service.verifyOtp('test@example.com', '123456'),
       ).rejects.toThrow(BadRequestException);
     });
   });
@@ -324,7 +328,7 @@ describe('AuthService', () => {
       firstName: 'John',
       lastName: 'Doe',
       email: 'john@example.com',
-      password: 'SecurePass123!',
+      password: '482913',
     };
 
     beforeEach(() => {
@@ -334,7 +338,7 @@ describe('AuthService', () => {
     it('should register a new customer successfully with OTP', async () => {
       otpRepository.findOne.mockResolvedValue({
         email: baseDto.email,
-        code: '1234',
+        code: '123456',
         expiresAt: new Date(Date.now() + 10000),
         isVerified: true,
         metadata: {},
@@ -366,7 +370,7 @@ describe('AuthService', () => {
     it('should throw if OTP not verified', async () => {
       otpRepository.findOne.mockResolvedValue({
         email: baseDto.email,
-        code: '1234',
+        code: '123456',
         expiresAt: new Date(Date.now() + 10000),
         isVerified: false,
       });
@@ -379,7 +383,7 @@ describe('AuthService', () => {
     it('should register as OWNER if businessName provided', async () => {
       otpRepository.findOne.mockResolvedValue({
         email: baseDto.email,
-        code: '1234',
+        code: '123456',
         expiresAt: new Date(Date.now() + 10000),
         isVerified: true,
         metadata: {},
@@ -418,7 +422,7 @@ describe('AuthService', () => {
       };
       otpRepository.findOne.mockResolvedValue({
         email: baseDto.email,
-        code: '1234',
+        code: '123456',
         expiresAt: new Date(Date.now() + 10000),
         isVerified: true,
         metadata: {},
@@ -449,7 +453,7 @@ describe('AuthService', () => {
       };
       otpRepository.findOne.mockResolvedValue({
         email: baseDto.email,
-        code: '1234',
+        code: '123456',
         expiresAt: new Date(Date.now() + 10000),
         isVerified: true,
         metadata: {},
@@ -462,7 +466,7 @@ describe('AuthService', () => {
   describe('registerOwner', () => {
     const dto: RegisterOwnerDto = {
       email: 'dan@owner.com',
-      password: 'SecurePass123!',
+      password: '482913',
       firstName: 'Dan',
       lastName: 'Owner',
       businessName: 'Dan Biz',
@@ -490,7 +494,7 @@ describe('AuthService', () => {
     it('should register a new owner with valid OTP', async () => {
       otpRepository.findOne.mockResolvedValue({
         email: dto.email,
-        code: '1234',
+        code: '123456',
         expiresAt: new Date(Date.now() + 10000),
         isVerified: true,
         metadata: storedMetadata,
@@ -528,7 +532,7 @@ describe('AuthService', () => {
     it('should throw if OTP is invalid', async () => {
       otpRepository.findOne.mockResolvedValue({
         email: dto.email,
-        code: '9999',
+        code: '999999',
         expiresAt: new Date(Date.now() + 10000),
       });
 
@@ -540,7 +544,7 @@ describe('AuthService', () => {
     it('should throw if OTP is expired', async () => {
       otpRepository.findOne.mockResolvedValue({
         email: dto.email,
-        code: '1234',
+        code: '123456',
         expiresAt: new Date(Date.now() - 10000),
       });
 
@@ -552,7 +556,7 @@ describe('AuthService', () => {
     it('should create PENDING user if businessName is omitted (resumption flow)', async () => {
       otpRepository.findOne.mockResolvedValue({
         email: dto.email,
-        code: '1234',
+        code: '123456',
         expiresAt: new Date(Date.now() + 10000),
         isVerified: true,
         metadata: storedMetadata,
@@ -561,7 +565,7 @@ describe('AuthService', () => {
 
       const result = await service.registerOwner({
         email: dto.email,
-        password: 'SecurePass123!',
+        password: '482913',
       });
 
       expect(usersService.create).toHaveBeenCalledWith(
@@ -578,7 +582,7 @@ describe('AuthService', () => {
     it('should throw if email exists as ACTIVE (non-Google)', async () => {
       otpRepository.findOne.mockResolvedValue({
         email: dto.email,
-        code: '1234',
+        code: '123456',
         expiresAt: new Date(Date.now() + 10000),
         isVerified: true,
         metadata: storedMetadata,
@@ -646,7 +650,7 @@ describe('AuthService', () => {
 
       const result = await service.login({
         identifier: 'test@example.com',
-        password: 'password123',
+        password: '482913',
       });
 
       expect(result.access_token).toBe('mock_token');
@@ -667,11 +671,14 @@ describe('AuthService', () => {
 
       const result = await service.login({
         identifier: 'owner@example.com',
-        password: 'password123',
+        password: '482913',
       });
 
       expect(result.access_token).toBe('mock_token');
-      expect(mockSubscriptionsService.subscribeToFreePlan).toHaveBeenCalledWith('biz-1', true);
+      expect(mockSubscriptionsService.subscribeToFreePlan).toHaveBeenCalledWith(
+        'biz-1',
+        true,
+      );
     });
 
     it('should throw for non-existent user', async () => {
@@ -699,6 +706,41 @@ describe('AuthService', () => {
           password: 'any',
         }),
       ).rejects.toThrow(UnauthorizedException);
+    });
+
+    it('rejects a password (not a 6-digit PIN) for a PIN-only account', async () => {
+      usersService.findByIdentifier.mockResolvedValue({
+        id: 'owner-1',
+        email: 'owner@example.com',
+        role: UserRole.OWNER,
+        password: 'hashed_password',
+      });
+      (bcrypt.compare as jest.Mock).mockResolvedValue(true);
+
+      await expect(
+        service.login({
+          identifier: 'owner@example.com',
+          password: 'Password1!',
+        }),
+      ).rejects.toThrow('Sign in with your 6-digit PIN');
+      expect(bcrypt.compare).not.toHaveBeenCalled();
+    });
+
+    it('still lets an admin sign in with a password', async () => {
+      usersService.findByIdentifier.mockResolvedValue({
+        id: 'admin-1',
+        email: 'admin@example.com',
+        role: UserRole.ADMIN,
+        password: 'hashed_password',
+      });
+      (bcrypt.compare as jest.Mock).mockResolvedValue(true);
+
+      const result = await service.login({
+        identifier: 'admin@example.com',
+        password: 'Password1!',
+      });
+
+      expect(result.access_token).toBe('mock_token');
     });
 
     it('should throw for wrong password', async () => {
@@ -775,6 +817,22 @@ describe('AuthService', () => {
 
   // ==================== changePassword ====================
   describe('changePassword', () => {
+    it('requires a 6-digit PIN as the new secret for a PIN-only account', async () => {
+      usersService.findOne.mockResolvedValue({
+        id: 'user-1',
+        role: UserRole.CUSTOMER,
+        password: 'old_hashed',
+      });
+      (bcrypt.compare as jest.Mock).mockResolvedValue(true);
+
+      await expect(
+        service.changePassword({ id: 'user-1' } as any, {
+          currentPassword: '111111',
+          newPassword: 'NewPass123!',
+        }),
+      ).rejects.toThrow('PIN must be exactly 6 digits');
+    });
+
     it('should change password successfully', async () => {
       const user = { id: 'user-1' } as any;
       usersService.findOne.mockResolvedValue({
@@ -934,6 +992,24 @@ describe('AuthService', () => {
 
   // ==================== switchRole ====================
   describe('switchRole', () => {
+    it('keeps the switched token on the same login session', async () => {
+      const user = {
+        id: 'owner-1',
+        email: 'owner@example.com',
+        role: UserRole.OWNER,
+        branchId: 'br-1',
+        sessionId: 'session-9',
+      } as any;
+      usersService.findOne.mockResolvedValue(user);
+      businessesService.findByOwner.mockResolvedValue({ id: 'biz-1' });
+
+      await service.switchRole(user, UserRole.CUSTOMER);
+
+      expect(jwtService.sign).toHaveBeenCalledWith(
+        expect.objectContaining({ sid: 'session-9' }),
+      );
+    });
+
     it('should switch Owner to Customer', async () => {
       const user = {
         id: 'owner-1',
@@ -952,6 +1028,130 @@ describe('AuthService', () => {
       expect(result.user.role).toBe(UserRole.CUSTOMER);
     });
 
+    it('should issue a CUSTOMER token with an explicit null business context', async () => {
+      const user = {
+        id: 'owner-1',
+        email: 'owner@example.com',
+        role: UserRole.OWNER,
+        branchId: 'br-1',
+      } as any;
+      usersService.findOne.mockResolvedValue(user);
+      businessesService.findByOwner.mockResolvedValue({ id: 'biz-1' });
+
+      const result = await service.switchRole(user, UserRole.CUSTOMER);
+
+      expect(jwtService.sign).toHaveBeenCalledWith(
+        expect.objectContaining({
+          role: UserRole.CUSTOMER,
+          businessId: null,
+          branchId: null,
+        }),
+      );
+      expect(result.user.businessId).toBeNull();
+      expect(result.user.password).toBeUndefined();
+    });
+
+    it('should let a dual-role user switch back to Owner with their business context', async () => {
+      const user = {
+        id: 'owner-1',
+        email: 'owner@example.com',
+        role: UserRole.CUSTOMER,
+        branchId: null,
+      } as any;
+      usersService.findOne.mockResolvedValue({
+        id: 'owner-1',
+        email: 'owner@example.com',
+        role: UserRole.OWNER,
+        branchId: 'br-1',
+      });
+      businessesService.findByOwner.mockResolvedValue({ id: 'biz-1' });
+
+      const result = await service.switchRole(user, UserRole.OWNER);
+
+      expect(result.user.role).toBe(UserRole.OWNER);
+      expect(result.user.businessId).toBe('biz-1');
+      expect(result.user.lastActiveShell).toBe('business');
+      expect(usersService.update).toHaveBeenCalledWith('owner-1', {
+        lastActiveShell: 'business',
+      });
+    });
+
+    it('lets an owner still in setup switch back without a business', async () => {
+      usersService.findOne.mockResolvedValue({
+        id: 'owner-2',
+        email: 'owner2@example.com',
+        role: UserRole.OWNER,
+      });
+      businessesService.findByOwner.mockResolvedValue(null);
+
+      const result = await service.switchRole(
+        { id: 'owner-2', role: UserRole.CUSTOMER } as any,
+        UserRole.OWNER,
+      );
+
+      expect(result.user.role).toBe(UserRole.OWNER);
+      expect(result.user.isOwnerAccount).toBe(true);
+      const claims = jwtService.sign.mock.calls.at(-1)[0];
+      expect(claims.businessId).toBeUndefined();
+    });
+
+    it('lets staff switch to customer and back to their own role', async () => {
+      usersService.findOne.mockResolvedValue({
+        id: 'staff-1',
+        email: 'staff@example.com',
+        role: UserRole.STAFF,
+        businessId: 'biz-1',
+        branchId: 'br-1',
+      });
+
+      const customer = await service.switchRole(
+        { id: 'staff-1', role: UserRole.STAFF } as any,
+        UserRole.CUSTOMER,
+      );
+      expect(customer.user.businessId).toBeNull();
+      expect(customer.user.businessRole).toBe(UserRole.STAFF);
+      expect(customer.user.lastActiveShell).toBe('customer');
+
+      const back = await service.switchRole(
+        { id: 'staff-1', role: UserRole.CUSTOMER } as any,
+        UserRole.STAFF,
+      );
+      expect(back.user.role).toBe(UserRole.STAFF);
+      expect(back.user.businessId).toBe('biz-1');
+    });
+
+    it('rejects a role the account does not have', async () => {
+      usersService.findOne.mockResolvedValue({
+        id: 'staff-1',
+        email: 'staff@example.com',
+        role: UserRole.STAFF,
+      });
+
+      await expect(
+        service.switchRole(
+          { id: 'staff-1', role: UserRole.STAFF } as any,
+          UserRole.MANAGER,
+        ),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('does not record a shell for a plain customer', async () => {
+      usersService.update.mockClear();
+      usersService.findOne.mockResolvedValue({
+        id: 'cust-1',
+        email: 'cust@example.com',
+        role: UserRole.CUSTOMER,
+      });
+
+      const result = await service.switchRole(
+        { id: 'cust-1', role: UserRole.CUSTOMER } as any,
+        UserRole.CUSTOMER,
+      );
+
+      expect(result.user.isOwnerAccount).toBe(false);
+      expect(usersService.update).not.toHaveBeenCalled();
+    });
+
     it('should throw if Owner tries to switch to non-Customer', async () => {
       const user = {
         id: 'owner-1',
@@ -961,6 +1161,139 @@ describe('AuthService', () => {
       await expect(service.switchRole(user, UserRole.ADMIN)).rejects.toThrow(
         BadRequestException,
       );
+    });
+
+  });
+
+  // ==================== upgradeToOwner ====================
+  describe('upgradeToOwner', () => {
+    const dto = {
+      password: '482913',
+      businessName: 'Cust Biz',
+      businessAddress: '1 Main St',
+      state: 'Lagos',
+      city: 'Ikeja',
+    };
+
+    const customer = {
+      id: 'cust-1',
+      email: 'cust@example.com',
+      role: UserRole.CUSTOMER,
+      status: UserStatus.ACTIVE,
+      password: 'hashed_password',
+      branchId: null,
+    };
+
+    it('should upgrade a customer after password confirmation', async () => {
+      (bcrypt.compare as jest.Mock).mockResolvedValue(true);
+      usersService.findOne
+        .mockResolvedValueOnce({ ...customer })
+        .mockResolvedValueOnce({
+          ...customer,
+          role: UserRole.OWNER,
+          businessId: 'biz-1',
+          branchId: 'br-1',
+        });
+      businessesService.findByOwner.mockResolvedValue(null);
+
+      const result = await service.upgradeToOwner({ id: 'cust-1' }, dto);
+
+      expect(bcrypt.compare).toHaveBeenCalledWith(
+        dto.password,
+        customer.password,
+      );
+      expect(usersService.create).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'cust-1', role: UserRole.OWNER }),
+      );
+      expect(businessesService.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: dto.businessName,
+          ownerId: 'cust-1',
+        }),
+      );
+      expect(result.access_token).toBe('mock_token');
+      expect(result.isNewUser).toBe(false);
+    });
+
+    it('upgrades the account only when no business name is sent', async () => {
+      // The setup wizard upgrades at its entry gate, before it has the
+      // business details; the business is created later via PATCH my-business.
+      (bcrypt.compare as jest.Mock).mockResolvedValue(true);
+      usersService.findOne
+        .mockResolvedValueOnce({ ...customer })
+        .mockResolvedValueOnce({ ...customer, role: UserRole.OWNER });
+      businessesService.findByOwner.mockResolvedValue(null);
+
+      const result = await service.upgradeToOwner(
+        { id: 'cust-1' },
+        { password: dto.password },
+      );
+
+      expect(usersService.create).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'cust-1', role: UserRole.OWNER }),
+      );
+      expect(businessesService.create).not.toHaveBeenCalled();
+      expect(result.access_token).toBe('mock_token');
+    });
+
+    it('should reject a wrong password', async () => {
+      usersService.findOne.mockResolvedValueOnce({ ...customer });
+      (bcrypt.compare as jest.Mock).mockResolvedValue(false);
+
+      await expect(
+        service.upgradeToOwner({ id: 'cust-1' }, dto),
+      ).rejects.toThrow(UnauthorizedException);
+      expect(businessesService.create).not.toHaveBeenCalled();
+    });
+
+    it('should require a password for local-auth accounts', async () => {
+      usersService.findOne.mockResolvedValueOnce({ ...customer });
+
+      await expect(
+        service.upgradeToOwner({ id: 'cust-1' }, { businessName: 'X' }),
+      ).rejects.toThrow(UnauthorizedException);
+    });
+
+    it('should allow Google-only accounts without a password check', async () => {
+      usersService.findOne
+        .mockResolvedValueOnce({ ...customer, password: null })
+        .mockResolvedValueOnce({
+          ...customer,
+          password: null,
+          role: UserRole.OWNER,
+          businessId: 'biz-1',
+        });
+      businessesService.findByOwner.mockResolvedValue(null);
+
+      const result = await service.upgradeToOwner(
+        { id: 'cust-1' },
+        { businessName: 'Cust Biz' },
+      );
+
+      expect(bcrypt.compare).not.toHaveBeenCalled();
+      expect(result.access_token).toBe('mock_token');
+    });
+
+    it('should reject an account that is already an owner', async () => {
+      usersService.findOne.mockResolvedValueOnce({
+        ...customer,
+        role: UserRole.OWNER,
+      });
+
+      await expect(
+        service.upgradeToOwner({ id: 'cust-1' }, dto),
+      ).rejects.toThrow(ConflictException);
+    });
+
+    it('should reject a customer who already has a business', async () => {
+      (bcrypt.compare as jest.Mock).mockResolvedValue(true);
+      usersService.findOne.mockResolvedValueOnce({ ...customer });
+      businessesService.findByOwner.mockResolvedValue({ id: 'biz-9' });
+
+      await expect(
+        service.upgradeToOwner({ id: 'cust-1' }, dto),
+      ).rejects.toThrow(ConflictException);
+      expect(businessesService.create).not.toHaveBeenCalled();
     });
   });
 
@@ -994,11 +1327,14 @@ describe('AuthService', () => {
 
   describe('resetPassword', () => {
     it('should reset password with valid OTP', async () => {
-      otpRepository.findOne.mockResolvedValue({
-        email: 'test@example.com',
-        code: '1234',
-        expiresAt: new Date(Date.now() + 10000),
-      });
+      otpRepository.find.mockResolvedValue([
+        {
+          email: 'test@example.com',
+          code: '123456',
+          expiresAt: new Date(Date.now() + 10000),
+          metadata: { type: 'password_reset' },
+        },
+      ]);
       usersService.findByEmail.mockResolvedValue({
         id: 'user-1',
         email: 'test@example.com',
@@ -1007,7 +1343,7 @@ describe('AuthService', () => {
       const result = await service.resetPassword(
         {
           email: 'test@example.com',
-          otp: '1234',
+          otp: '123456',
           newPassword: 'NewPass123!',
         },
         { ip: '127.0.0.1', userAgent: 'test' },
@@ -1019,19 +1355,502 @@ describe('AuthService', () => {
     });
 
     it('should throw if reset OTP is invalid', async () => {
-      otpRepository.findOne.mockResolvedValue({
-        email: 'test@example.com',
-        code: '9999',
-        expiresAt: new Date(Date.now() + 10000),
-      });
+      otpRepository.find.mockResolvedValue([
+        {
+          email: 'test@example.com',
+          code: '999999',
+          expiresAt: new Date(Date.now() + 10000),
+          metadata: { type: 'password_reset' },
+        },
+      ]);
 
       await expect(
         service.resetPassword({
           email: 'test@example.com',
-          otp: '1234',
+          otp: '123456',
           newPassword: 'NewPass123!',
         }),
       ).rejects.toThrow(BadRequestException);
+    });
+
+    it('should reject a code that was sent for another purpose', async () => {
+      otpRepository.find.mockResolvedValue([
+        {
+          email: 'test@example.com',
+          code: '123456',
+          expiresAt: new Date(Date.now() + 10000),
+          metadata: { purpose: 'customer-registration' },
+        },
+      ]);
+
+      await expect(
+        service.resetPassword({
+          email: 'test@example.com',
+          otp: '123456',
+          newPassword: 'NewPass123!',
+        }),
+      ).rejects.toThrow('Reset session not found');
+      expect(usersService.updatePassword).not.toHaveBeenCalled();
+    });
+  });
+
+  // ==================== Customer Auth & PIN Management ====================
+  describe('Customer Auth & PIN Management', () => {
+    describe('requestCustomerRegistrationOtp', () => {
+      it('should generate and send 6-digit OTP for unique email and phone', async () => {
+        usersService.findByEmail.mockResolvedValue(null);
+        usersService.findByPhone.mockResolvedValue(null);
+
+        const result = await service.requestCustomerRegistrationOtp({
+          firstName: 'Jane',
+          lastName: 'Doe',
+          email: 'jane@example.com',
+          phone: '+2348012345678',
+        });
+
+        expect(otpRepository.create).toHaveBeenCalledWith(
+          expect.objectContaining({
+            email: 'jane@example.com',
+            metadata: expect.objectContaining({
+              firstName: 'Jane',
+              lastName: 'Doe',
+              role: UserRole.CUSTOMER,
+            }),
+          }),
+        );
+        expect(result).toEqual({
+          message: 'OTP sent successfully to your email',
+          expiresInMinutes: 10,
+        });
+      });
+
+      it('should generate and send 6-digit OTP when only email is provided', async () => {
+        usersService.findByEmail.mockResolvedValue(null);
+
+        const result = await service.requestCustomerRegistrationOtp({
+          email: 'emailonly@example.com',
+        });
+
+        expect(otpRepository.create).toHaveBeenCalledWith(
+          expect.objectContaining({
+            email: 'emailonly@example.com',
+            metadata: expect.objectContaining({
+              firstName: 'Customer',
+              role: UserRole.CUSTOMER,
+            }),
+          }),
+        );
+        expect(result).toEqual({
+          message: 'OTP sent successfully to your email',
+          expiresInMinutes: 10,
+        });
+      });
+
+      it('should throw ConflictException if active customer already exists with email', async () => {
+        usersService.findByEmail.mockResolvedValue({
+          id: 'user-1',
+          email: 'jane@example.com',
+          status: UserStatus.ACTIVE,
+        });
+
+        await expect(
+          service.requestCustomerRegistrationOtp({
+            firstName: 'Jane',
+            lastName: 'Doe',
+            email: 'jane@example.com',
+          }),
+        ).rejects.toThrow(ConflictException);
+      });
+    });
+
+    describe('resendCustomerOtp', () => {
+      it('should issue a fresh OTP with 10-minute expiry', async () => {
+        otpRepository.findOne.mockResolvedValue({
+          email: 'jane@example.com',
+          code: '111111',
+          metadata: { purpose: 'customer-registration', firstName: 'Jane' },
+        });
+
+        const result = await service.resendCustomerOtp({
+          email: 'jane@example.com',
+        });
+
+        expect(otpRepository.create).toHaveBeenCalledWith(
+          expect.objectContaining({
+            email: 'jane@example.com',
+            metadata: expect.objectContaining({ firstName: 'Jane' }),
+          }),
+        );
+        expect(mailService.sendOtp).toHaveBeenCalled();
+        expect(result).toEqual({
+          message: 'A new OTP has been sent to your email',
+        });
+      });
+    });
+
+    describe('verifyOtpAndSetCustomerPin', () => {
+      it('should verify OTP, hash 6-digit PIN, create active customer and return auth token', async () => {
+        otpRepository.findOne.mockResolvedValue({
+          email: 'jane@example.com',
+          code: '123456',
+          expiresAt: new Date(Date.now() + 60000),
+          metadata: {
+            firstName: 'Jane',
+            lastName: 'Doe',
+            phone: '+2348012345678',
+          },
+        });
+        usersService.findByEmail.mockResolvedValue(null);
+        usersService.create.mockResolvedValue({
+          id: 'cust-1',
+          email: 'jane@example.com',
+          firstName: 'Jane',
+          lastName: 'Doe',
+          role: UserRole.CUSTOMER,
+          status: UserStatus.ACTIVE,
+          emailVerified: true,
+        });
+
+        const result = await service.verifyOtpAndSetCustomerPin({
+          email: 'jane@example.com',
+          code: '123456',
+          pin: '654321',
+        });
+
+        expect(bcrypt.hash).toHaveBeenCalledWith('654321', 10);
+        expect(usersService.create).toHaveBeenCalledWith(
+          expect.objectContaining({
+            email: 'jane@example.com',
+            role: UserRole.CUSTOMER,
+            status: UserStatus.ACTIVE,
+            emailVerified: true,
+          }),
+        );
+        expect(otpRepository.remove).toHaveBeenCalled();
+        expect(result.access_token).toBe('mock_token');
+      });
+
+      it('should throw BadRequestException if OTP is expired', async () => {
+        otpRepository.findOne.mockResolvedValue({
+          email: 'jane@example.com',
+          code: '123456',
+          expiresAt: new Date(Date.now() - 1000),
+        });
+
+        await expect(
+          service.verifyOtpAndSetCustomerPin({
+            email: 'jane@example.com',
+            code: '123456',
+            pin: '654321',
+          }),
+        ).rejects.toThrow(BadRequestException);
+      });
+
+      it('should record the referral code a new customer signed up with', async () => {
+        otpRepository.findOne.mockResolvedValue({
+          email: 'jane@example.com',
+          code: '123456',
+          expiresAt: new Date(Date.now() + 60000),
+          metadata: { firstName: 'Jane', lastName: 'Doe' },
+        });
+        usersService.findByEmail.mockResolvedValue(null);
+        usersService.create.mockResolvedValue({
+          id: 'cust-1',
+          email: 'jane@example.com',
+          firstName: 'Jane',
+          lastName: 'Doe',
+          role: UserRole.CUSTOMER,
+          status: UserStatus.ACTIVE,
+          referralCode: null,
+        });
+
+        await service.verifyOtpAndSetCustomerPin({
+          email: 'jane@example.com',
+          code: '123456',
+          pin: '654321',
+          referralCode: 'VEM-8OGUU4',
+        });
+
+        expect(mockReferralsService.resolveAndApplyReferral).toHaveBeenCalledWith(
+          'VEM-8OGUU4',
+          'cust-1',
+        );
+      });
+
+      it('should ignore an invalid referral code at customer sign-up', async () => {
+        otpRepository.findOne.mockResolvedValue({
+          email: 'jane@example.com',
+          code: '123456',
+          expiresAt: new Date(Date.now() + 60000),
+          metadata: { firstName: 'Jane', lastName: 'Doe' },
+        });
+        usersService.findByEmail.mockResolvedValue(null);
+        usersService.create.mockResolvedValue({
+          id: 'cust-1',
+          email: 'jane@example.com',
+          firstName: 'Jane',
+          lastName: 'Doe',
+          role: UserRole.CUSTOMER,
+          status: UserStatus.ACTIVE,
+        });
+
+        await service.verifyOtpAndSetCustomerPin({
+          email: 'jane@example.com',
+          code: '123456',
+          pin: '654321',
+          referralCode: 'not a code@!',
+        });
+
+        expect(
+          mockReferralsService.resolveAndApplyReferral,
+        ).not.toHaveBeenCalled();
+      });
+    });
+
+    describe('login - unverified customer interception', () => {
+      it('should send OTP and return requiresPinSetup if customer email is not verified', async () => {
+        usersService.findByIdentifier.mockResolvedValue({
+          id: 'cust-unverified',
+          email: 'pending@example.com',
+          role: UserRole.CUSTOMER,
+          emailVerified: false,
+          status: UserStatus.PENDING,
+          password: null,
+        });
+
+        const result = await service.login({
+          identifier: 'pending@example.com',
+          password: '123456',
+        });
+
+        expect(otpRepository.save).toHaveBeenCalled();
+        expect(mailService.sendOtp).toHaveBeenCalled();
+        expect(result.requiresPinSetup).toBe(true);
+        expect(result.email).toBe('pending@example.com');
+      });
+    });
+
+    describe('requestCustomerPinReset and resetCustomerPin', () => {
+      it('should send OTP for customer pin reset', async () => {
+        usersService.findByEmail.mockResolvedValue({
+          id: 'cust-1',
+          email: 'jane@example.com',
+          role: UserRole.CUSTOMER,
+        });
+
+        const result = await service.requestCustomerPinReset({
+          email: 'jane@example.com',
+        });
+
+        expect(otpRepository.save).toHaveBeenCalled();
+        expect(mailService.sendOtp).toHaveBeenCalled();
+        expect(result.message).toContain('reset OTP has been sent');
+      });
+
+      it('should reset customer PIN with valid OTP', async () => {
+        otpRepository.find.mockResolvedValue([
+          {
+            email: 'jane@example.com',
+            code: '123456',
+            expiresAt: new Date(Date.now() + 60000),
+            metadata: { purpose: 'customer-pin-reset' },
+          },
+        ]);
+        usersService.findByEmail.mockResolvedValue({
+          id: 'cust-1',
+          email: 'jane@example.com',
+          role: UserRole.CUSTOMER,
+        });
+
+        const result = await service.resetCustomerPin({
+          email: 'jane@example.com',
+          otp: '123456',
+          newPin: '999888',
+        });
+
+        expect(usersService.updatePassword).toHaveBeenCalled();
+        expect(otpRepository.remove).toHaveBeenCalled();
+        expect(result.message).toContain('PIN reset successfully');
+      });
+
+      it('should reset an owner PIN with valid OTP', async () => {
+        otpRepository.find.mockResolvedValue([
+          {
+            email: 'owner@example.com',
+            code: '123456',
+            expiresAt: new Date(Date.now() + 60000),
+            metadata: { purpose: 'customer-pin-reset' },
+          },
+        ]);
+        usersService.findByEmail.mockResolvedValue({
+          id: 'owner-1',
+          email: 'owner@example.com',
+          role: UserRole.OWNER,
+        });
+
+        const result = await service.resetCustomerPin({
+          email: 'owner@example.com',
+          otp: '123456',
+          newPin: '999888',
+        });
+
+        expect(usersService.updatePassword).toHaveBeenCalled();
+        expect(result.message).toContain('PIN reset successfully');
+      });
+
+      it('should not send a PIN reset OTP to admin accounts (they use passwords)', async () => {
+        usersService.findByEmail.mockResolvedValue({
+          id: 'admin-1',
+          email: 'admin@example.com',
+          role: UserRole.ADMIN,
+        });
+
+        const result = await service.requestCustomerPinReset({
+          email: 'admin@example.com',
+        });
+
+        expect(mailService.sendOtp).not.toHaveBeenCalled();
+        expect(result.message).toContain('reset OTP has been sent');
+      });
+
+      const pinResetRecord = (failedAttempts?: number) => ({
+        email: 'jane@example.com',
+        code: '123456',
+        expiresAt: new Date(Date.now() + 60000),
+        metadata: {
+          purpose: 'customer-pin-reset',
+          ...(failedAttempts !== undefined ? { failedAttempts } : {}),
+        },
+      });
+
+      it('should ignore a newer code sent for another purpose', async () => {
+        otpRepository.find.mockResolvedValue([
+          {
+            email: 'jane@example.com',
+            code: '111111',
+            expiresAt: new Date(Date.now() + 60000),
+            metadata: { purpose: 'customer-registration' },
+          },
+          pinResetRecord(),
+        ]);
+
+        await expect(
+          service.resetCustomerPin({
+            email: 'jane@example.com',
+            otp: '111111',
+            newPin: '999888',
+          }),
+        ).rejects.toThrow('Invalid reset OTP');
+        expect(usersService.updatePassword).not.toHaveBeenCalled();
+      });
+
+      it('should count a wrong code against the reset code', async () => {
+        otpRepository.find.mockResolvedValue([pinResetRecord()]);
+
+        await expect(
+          service.resetCustomerPin({
+            email: 'jane@example.com',
+            otp: '000000',
+            newPin: '999888',
+          }),
+        ).rejects.toThrow('Invalid reset OTP');
+        expect(otpRepository.save).toHaveBeenCalledWith(
+          expect.objectContaining({
+            metadata: expect.objectContaining({ failedAttempts: 1 }),
+          }),
+        );
+        expect(otpRepository.remove).not.toHaveBeenCalled();
+      });
+
+      it('should discard the code on the fifth wrong guess', async () => {
+        otpRepository.find.mockResolvedValue([pinResetRecord(4)]);
+
+        await expect(
+          service.resetCustomerPin({
+            email: 'jane@example.com',
+            otp: '000000',
+            newPin: '999888',
+          }),
+        ).rejects.toThrow('Too many incorrect attempts');
+        expect(otpRepository.remove).toHaveBeenCalled();
+      });
+
+      it('should reject even the correct code once attempts are used up', async () => {
+        otpRepository.find.mockResolvedValue([pinResetRecord(5)]);
+
+        await expect(
+          service.resetCustomerPin({
+            email: 'jane@example.com',
+            otp: '123456',
+            newPin: '999888',
+          }),
+        ).rejects.toThrow('Too many incorrect attempts');
+        expect(usersService.updatePassword).not.toHaveBeenCalled();
+      });
+    });
+  });
+  describe('googleLogin hardening', () => {
+    const googlePayload = {
+      email: 'new-google-user@example.com',
+      sub: 'google-sub-1',
+      name: 'New User',
+    };
+
+    beforeEach(() => {
+      mockConfigService.get.mockReturnValue('mock-google-client-id');
+      (service as any).googleClient.verifyIdToken = jest
+        .fn()
+        .mockResolvedValue({ getPayload: () => googlePayload });
+      usersService.findByGoogleId.mockResolvedValue(null);
+      usersService.findByEmail.mockResolvedValue(null);
+    });
+
+    afterAll(() => {
+      mockConfigService.get.mockReturnValue('mock-google-client-id');
+    });
+
+    it('refuses to verify tokens when GOOGLE_CLIENT_ID is not set', async () => {
+      mockConfigService.get.mockReturnValue('');
+      await expect(service.googleLogin({ token: 'id-token' })).rejects.toThrow(
+        'Google sign-in is not configured on this server.',
+      );
+      expect(
+        (service as any).googleClient.verifyIdToken,
+      ).not.toHaveBeenCalled();
+    });
+
+    it('checks the token audience against GOOGLE_CLIENT_ID', async () => {
+      await service.googleLogin({ token: 'id-token' }).catch(() => undefined);
+      expect((service as any).googleClient.verifyIdToken).toHaveBeenCalledWith({
+        idToken: 'id-token',
+        audience: 'mock-google-client-id',
+      });
+    });
+
+    it.each([
+      UserRole.ADMIN,
+      UserRole.SUPER_ADMIN,
+      UserRole.MANAGER,
+      UserRole.AGENT,
+    ])(
+      'creates a new Google user as a customer even when %s is requested',
+      async (role) => {
+        await service
+          .googleLogin({ token: 'id-token', role })
+          .catch(() => undefined);
+        expect(usersService.create).toHaveBeenCalledWith(
+          expect.objectContaining({ role: UserRole.CUSTOMER }),
+        );
+      },
+    );
+
+    it('creates a new Google user as an owner when owner is requested', async () => {
+      await service
+        .googleLogin({ token: 'id-token', role: UserRole.OWNER })
+        .catch(() => undefined);
+      expect(usersService.create).toHaveBeenCalledWith(
+        expect.objectContaining({ role: UserRole.OWNER }),
+      );
     });
   });
 });

@@ -3,6 +3,7 @@ import {
   NotFoundException,
   BadRequestException,
   ConflictException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, IsNull } from 'typeorm';
@@ -19,6 +20,23 @@ import { paginateWithCursor } from '../../common/utils/cursor-pagination.util';
 import { Branch } from '../branches/entities/branch.entity';
 import { Business } from '../businesses/entities/business.entity';
 
+import { Cluster, ClusterType } from '../clusters/entities/cluster.entity';
+import { PushToken } from '../notifications/entities/push-token.entity';
+import {
+  AccountDeletionRequest,
+  AccountDeletionStatus,
+} from './entities/account-deletion-request.entity';
+import {
+  AccountDeletionResponseDto,
+  CreateAccountDeletionDto,
+} from './dto/account-deletion.dto';
+
+/** Drafts are small text; this keeps stray inline images out of the row. */
+const BUSINESS_SETUP_PROGRESS_MAX_CHARS = 200_000;
+
+const ACCOUNT_DELETION_RETAINED_NOTE =
+  'Receipts and transaction records are retained for 24 months where legally required, then anonymised. Everything else is purged within 30 days.';
+
 @Injectable()
 export class UsersService {
   constructor(
@@ -28,6 +46,8 @@ export class UsersService {
     private passwordResetHistoryRepository: Repository<PasswordResetHistory>,
     @InjectRepository(UserSession)
     private userSessionRepository: Repository<UserSession>,
+    @InjectRepository(Cluster)
+    private clusterRepository: Repository<Cluster>,
     private readonly mailService: MailService,
     private readonly eventsGateway: EventsGateway,
   ) {}
@@ -56,7 +76,7 @@ export class UsersService {
       });
 
     let businessName = branch?.business?.name;
-    let branchName = branch?.name;
+    const branchName = branch?.name;
 
     if (!businessName && branch?.businessId) {
       const business = await this.usersRepository.manager
@@ -66,9 +86,8 @@ export class UsersService {
     }
 
     const trimmedFirstName = dto.firstName.trim();
-    const defaultPassword = Math.floor(
-      100000 + Math.random() * 900000,
-    ).toString();
+    const defaultPassword =
+      dto.pin ?? Math.floor(100000 + Math.random() * 900000).toString();
     const hashedPassword = await bcrypt.hash(defaultPassword, 10);
     const actualRole =
       dto.role.trim().toLowerCase() === 'manager'
@@ -102,6 +121,110 @@ export class UsersService {
     } catch (error) {
       console.error('Failed to send invitation email:', error);
     }
+
+    return savedUser;
+  }
+
+  /**
+   * Re-issue the invitation email for a row that is still waiting to be
+   * accepted.
+   *
+   * A fresh temporary password is generated instead of replaying the original:
+   * that one was written into the invitee's inbox once, and reusing it after a
+   * resend would leave a credential alive that the owner may believe was
+   * superseded.
+   */
+  async resendTeamInvite(id: string, branchId: string): Promise<User> {
+    const user = await this.usersRepository.findOne({
+      where: { id, branchId },
+    });
+    if (!user) {
+      throw new NotFoundException('Staff member not found in this branch');
+    }
+    if (user.status !== UserStatus.INVITED) {
+      throw new BadRequestException('Only pending invitations can be resent');
+    }
+
+    const defaultPassword = Math.floor(
+      100000 + Math.random() * 900000,
+    ).toString();
+    user.password = await bcrypt.hash(defaultPassword, 10);
+    const savedUser = await this.usersRepository.save(user);
+
+    const branch = await this.usersRepository.manager
+      .getRepository(Branch)
+      .findOne({
+        where: { id: branchId },
+        relations: ['business'],
+      });
+
+    try {
+      await this.mailService.sendWelcomeEmail(
+        savedUser.email,
+        savedUser.firstName,
+        defaultPassword,
+        branch?.business?.name,
+        branch?.name,
+      );
+    } catch (error) {
+      console.error('Failed to resend invitation email:', error);
+    }
+
+    return savedUser;
+  }
+
+  /**
+   * The owner resets a team member's sign-in PIN: a fresh one is emailed to
+   * them and their signed-in devices are signed out. A pending invite gets
+   * its invitation re-sent instead. The owner's own PIN is never reset here.
+   */
+  async resetTeamPin(id: string, branchId: string): Promise<User> {
+    const user = await this.usersRepository.findOne({
+      where: { id, branchId },
+    });
+    if (!user) {
+      throw new NotFoundException('Staff member not found in this branch');
+    }
+    if (user.role === UserRole.OWNER) {
+      throw new BadRequestException("The owner's PIN cannot be reset here");
+    }
+    if (user.status === UserStatus.INVITED) {
+      return this.resendTeamInvite(id, branchId);
+    }
+
+    const pin = Math.floor(100000 + Math.random() * 900000).toString();
+    user.password = await bcrypt.hash(pin, 10);
+    const savedUser = await this.usersRepository.save(user);
+    await this.userSessionRepository
+      .createQueryBuilder()
+      .update(UserSession)
+      .set({ revokedAt: new Date() })
+      .where('userId = :userId', { userId: user.id })
+      .andWhere('revokedAt IS NULL')
+      .execute();
+
+    const branch = await this.usersRepository.manager
+      .getRepository(Branch)
+      .findOne({ where: { id: branchId }, relations: ['business'] });
+    const escape = (value: string) =>
+      value.replace(
+        /[&<>"']/g,
+        (char) =>
+          ({
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#39;',
+          })[char] as string,
+      );
+    const place = escape(branch?.business?.name ?? 'your team');
+    await this.mailService.sendGenericEmail(
+      savedUser.email,
+      `Your new ${branch?.business?.name ?? 'VemTap'} sign-in PIN`,
+      `Hi ${escape(savedUser.firstName ?? 'there')},\n\nYour PIN for ${place} was reset. Your new sign-in PIN is <strong>${pin}</strong>.\n\nYou were signed out of your devices; sign in again with your email and this PIN.`,
+      { name: branch?.business?.name },
+    );
 
     return savedUser;
   }
@@ -185,7 +308,38 @@ export class UsersService {
       lastActiveAt: new Date(),
       revokedAt: null,
     });
-    return this.userSessionRepository.save(session);
+    const saved = await this.userSessionRepository.save(session);
+    if (saved.userAgent) {
+      await this.alertNewDevice(userId, saved).catch((err: Error) =>
+        console.error(`New-device alert for ${userId} failed:`, err.message),
+      );
+    }
+    return saved;
+  }
+
+  /**
+   * Emails the user when they opted into device alerts and this sign-in's
+   * browser/app (user agent) has never signed in to their account before.
+   */
+  private async alertNewDevice(userId: string, session: UserSession) {
+    const user = await this.usersRepository.findOne({
+      where: { id: userId },
+      select: ['id', 'email', 'firstName', 'securityPreferences'],
+    });
+    if (!user?.securityPreferences?.deviceAlerts || !user.email) return;
+    const seenBefore = await this.userSessionRepository
+      .createQueryBuilder('s')
+      .withDeleted()
+      .where('s.userId = :userId', { userId })
+      .andWhere('s.userAgent = :userAgent', { userAgent: session.userAgent })
+      .andWhere('s.id != :id', { id: session.id })
+      .getExists();
+    if (seenBefore) return;
+    await this.mailService.sendGenericEmail(
+      user.email,
+      'New sign-in to your VemTap account',
+      `Hi ${user.firstName || 'there'},\n\nYour VemTap account was just signed in from a new device:\n${session.userAgent}${session.ipAddress ? `\nIP address: ${session.ipAddress}` : ''}\nTime: ${session.createdAt.toISOString()}\n\nIf this was you, there is nothing to do. If not, change your password and sign that device out under Settings → Linked devices.`,
+    );
   }
 
   async findActiveSession(id: string, userId: string) {
@@ -194,8 +348,32 @@ export class UsersService {
     });
   }
 
-  async listSessions(userId: string) {
-    return this.userSessionRepository.find({
+  /**
+   * Fills in the session the caller is signed in with: the app names the
+   * device once after sign-in, because the login itself only knows a default.
+   */
+  async describeSession(
+    userId: string,
+    sessionId: string,
+    details: {
+      deviceName: string;
+      platform: string;
+      userAgent?: string | null;
+      ipAddress?: string | null;
+    },
+  ) {
+    const session = await this.findActiveSession(sessionId, userId);
+    if (!session) throw new NotFoundException('Linked device not found');
+    session.deviceName = details.deviceName;
+    session.platform = details.platform;
+    session.userAgent = details.userAgent ?? session.userAgent;
+    session.ipAddress = details.ipAddress ?? session.ipAddress;
+    session.lastActiveAt = new Date();
+    return this.userSessionRepository.save(session);
+  }
+
+  async listSessions(userId: string, currentSessionId?: string) {
+    const sessions = await this.userSessionRepository.find({
       where: { userId },
       order: { lastActiveAt: 'DESC' },
       select: [
@@ -209,6 +387,10 @@ export class UsersService {
         'createdAt',
       ],
     });
+    return sessions.map((session) => ({
+      ...session,
+      isCurrent: session.id === currentSessionId,
+    }));
   }
 
   async renameSession(userId: string, sessionId: string, deviceName: string) {
@@ -242,7 +424,47 @@ export class UsersService {
     return { success: true };
   }
 
+  /** An owner's saved (unfinished) business setup, or null. */
+  async getBusinessSetupProgress(
+    id: string,
+  ): Promise<Record<string, unknown> | null> {
+    const user = await this.usersRepository.findOne({
+      where: { id },
+      select: ['id', 'businessSetupProgress'],
+    });
+    if (!user) throw new NotFoundException('User not found');
+    return user.businessSetupProgress ?? null;
+  }
+
+  /** Replaces the saved setup run; stamped so the newest copy wins across devices. */
+  async saveBusinessSetupProgress(
+    id: string,
+    progress: Record<string, unknown>,
+  ): Promise<Record<string, unknown>> {
+    if (JSON.stringify(progress).length > BUSINESS_SETUP_PROGRESS_MAX_CHARS) {
+      throw new BadRequestException('Setup progress is too large to save.');
+    }
+    const stored = { ...progress, updatedAt: Date.now() };
+    await this.usersRepository.update(id, { businessSetupProgress: stored });
+    return stored;
+  }
+
+  async clearBusinessSetupProgress(id: string): Promise<void> {
+    await this.usersRepository.update(id, { businessSetupProgress: null });
+  }
+
   async updateProfile(id: string, updates: Partial<User>): Promise<User> {
+    if (updates.homeDistrictId) {
+      const district = await this.clusterRepository.findOne({
+        where: {
+          id: updates.homeDistrictId,
+          type: ClusterType.DISTRICT,
+          isActive: true,
+        },
+        select: ['id'],
+      });
+      if (!district) throw new BadRequestException('Unknown district');
+    }
     const {
       branch,
       business,
@@ -454,6 +676,77 @@ export class UsersService {
       role: updates.role || undefined,
     });
     return saved;
+  }
+
+  /**
+   * Self-service account deletion. Owners must close or hand over their
+   * business first; admin accounts are removed by another admin. The user row
+   * is anonymised (so the email/phone can sign up again) and soft-deleted,
+   * which makes every outstanding token fail the JWT strategy's lookup.
+   */
+  async deleteOwnAccount(
+    userId: string,
+    dto: CreateAccountDeletionDto,
+  ): Promise<AccountDeletionResponseDto> {
+    const user = await this.usersRepository.findOne({
+      where: { id: userId },
+      select: ['id', 'role'],
+    });
+    if (!user) throw new NotFoundException('User not found');
+    if (user.role === UserRole.ADMIN || user.role === UserRole.SUPER_ADMIN) {
+      throw new ForbiddenException(
+        'Admin accounts cannot be deleted from the account settings',
+      );
+    }
+    const ownsBusiness = await this.usersRepository.manager
+      .getRepository(Business)
+      .exists({ where: { ownerId: userId } });
+    if (ownsBusiness) {
+      throw new ConflictException(
+        'Close or transfer your business before deleting your account',
+      );
+    }
+
+    const now = new Date();
+    const request = await this.usersRepository.manager.transaction(
+      async (manager) => {
+        const saved = await manager.getRepository(AccountDeletionRequest).save(
+          manager.getRepository(AccountDeletionRequest).create({
+            userId,
+            role: user.role,
+            reasonId: dto.reasonId ?? null,
+            feedback: dto.feedback?.trim() || null,
+            status: AccountDeletionStatus.COMPLETED,
+            completedAt: now,
+          }),
+        );
+        await manager.getRepository(User).update(userId, {
+          email: `deleted+${userId}@deleted.vemtap.invalid`,
+          phone: null as unknown as string,
+          googleId: null as unknown as string,
+          password: null as unknown as string,
+          firstName: 'Deleted',
+          lastName: 'User',
+          avatar: null as unknown as string,
+          pushToken: null,
+          status: UserStatus.INACTIVE,
+        });
+        await manager
+          .getRepository(UserSession)
+          .update({ userId, revokedAt: IsNull() }, { revokedAt: now });
+        await manager.getRepository(PushToken).delete({ userId });
+        await manager.getRepository(User).softDelete(userId);
+        return saved;
+      },
+    );
+
+    return {
+      id: request.id,
+      status: request.status,
+      submittedAt: now,
+      completedAt: request.completedAt,
+      retainedNote: ACCOUNT_DELETION_RETAINED_NOTE,
+    };
   }
 
   async adminDeleteUser(id: string): Promise<void> {

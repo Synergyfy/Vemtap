@@ -1,40 +1,133 @@
+import * as QRCode from 'qrcode';
 import {
   Injectable,
   NotFoundException,
   BadRequestException,
   ForbiddenException,
+  UnauthorizedException,
   Inject,
   Logger,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, ILike, In } from 'typeorm';
+import { EntityManager, Repository, ILike, In, MoreThanOrEqual } from 'typeorm';
 import {
   CatalogueOffer,
   CatalogueOfferPricingType,
   CatalogueOfferStatus,
 } from './entities/catalogue-offer.entity';
-import { CatalogueItem } from './entities/catalogue-item.entity';
+import { OfferPriceChange } from './entities/offer-price-change.entity';
+import {
+  CatalogueItem,
+  CatalogueItemStatus,
+} from './entities/catalogue-item.entity';
 import {
   CreateCatalogueOfferDto,
   UpdateCatalogueOfferDto,
   CatalogueOfferQueryDto,
   PublicCatalogueOffersQueryDto,
   GenerateOfferTermsDto,
+  AdminDealsQueryDto,
+  AdminDealsSortBy,
+  AdminDealsStatusFilter,
+  AdminBusinessesQueryDto,
+  BranchOffersSortBy,
+  OwnerOffersQueryDto,
+  OwnerOffersSortBy,
+  UpdateOfferGroupDto,
+  OfferAudience,
+  PublicOffersSortBy,
 } from './dto/offer.dto';
 import { Branch } from '../branches/entities/branch.entity';
+import { Business } from '../businesses/entities/business.entity';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import {
   CatalogueOfferClaim,
   CatalogueOfferClaimStatus,
 } from './entities/catalogue-offer-claim.entity';
+import {
+  CatalogueDealGift,
+  DealGiftStatus,
+} from './entities/catalogue-deal-gift.entity';
+import { User } from '../users/entities/user.entity';
+import { v4 as uuidv4 } from 'uuid';
 import { paginateWithCursor } from '../../common/utils/cursor-pagination.util';
 import { Otp } from '../auth/entities/otp.entity';
 import { MailService } from '../mail/mail.service';
 import { RequestClaimOtpDto, VerifyClaimDto } from './dto/claim.dto';
+import { SendDealGiftDto } from './dto/send-deal-gift.dto';
+import { SetOfferBranchPricingDto } from './dto/branch-pricing.dto';
+import {
+  MyClaimDto,
+  MyClaimStatus,
+  MyClaimsPageDto,
+  MyClaimsQueryDto,
+} from './dto/my-claims.dto';
+import { MyGiftDto, MyGiftsPageDto, MyGiftsQueryDto } from './dto/my-gifts.dto';
 import { CACHE_MANAGER, type Cache } from '@nestjs/cache-manager';
 import { AiCreditService } from '../ai-copilot/services/ai-credit.service';
 import { OpenAIClient } from '../ai-copilot/openai/openai.client';
 import { ClustersService } from '../clusters/clusters.service';
+import {
+  claimLimitWindowStart,
+  describeRedemptionWindows,
+  isWithinRedemptionWindows,
+} from './utils/offer-rules.utils';
+import { haversineKm } from '../../common/utils/haversine';
+import { deleteCacheKeys } from '../../common/utils/delete-cache-keys';
+
+/**
+ * A deal is only sellable while every item in it is published: when an owner
+ * pauses, archives, deletes or has a product suspended, every deal built on it
+ * drops out of the customer feeds instead of advertising something they cannot
+ * buy. Shared by every public offer query so they cannot disagree.
+ */
+const ALL_OFFER_ITEMS_PUBLISHED_SQL = `NOT EXISTS (
+  SELECT 1 FROM "catalogue_offer_items" "publishedCheck"
+  JOIN "catalogue_items" "publishedItem" ON "publishedItem"."id" = "publishedCheck"."itemId"
+  WHERE "publishedCheck"."offerId" = offer.id
+    AND ("publishedItem"."status" <> :publishedItemStatus
+      OR "publishedItem"."isSuspended" = true
+      OR "publishedItem"."deletedAt" IS NOT NULL)
+)`;
+const PUBLISHED_ITEM_PARAMS = {
+  publishedItemStatus: CatalogueItemStatus.ACTIVE,
+};
+
+/**
+ * A deal's items in a fixed order (oldest first, id as tiebreak). The joins
+ * that load them have no ORDER BY, so Postgres could return them in a different
+ * order per query — and clients that fall back to "the first item's photo" then
+ * showed one picture on a feed card and another on the deal page.
+ */
+function sortOfferItems<
+  T extends { id: string; createdAt?: Date | string | null },
+>(items: T[] | null | undefined): T[] {
+  return [...(items ?? [])].sort((a, b) => {
+    const at = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+    const bt = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+    return at - bt || a.id.localeCompare(b.id);
+  });
+}
+
+function isPublishedItem(item: CatalogueItem): boolean {
+  return item.status === CatalogueItemStatus.ACTIVE && !item.isSuspended;
+}
+
+const UNPUBLISHED_ITEM_CLAIM_MESSAGE =
+  'This deal is no longer available. The business has paused an item in it.';
+
+/**
+ * Claim-time twin of the feed rule: a customer who still has the deal open (or
+ * a saved link) must not be issued a voucher for a product the owner has since
+ * unpublished. `offer.items` must be loaded; soft-deleted items never are, so a
+ * deal whose product was deleted simply has fewer items and the remaining ones
+ * are checked.
+ */
+function assertOfferItemsPublished(offer: CatalogueOffer): void {
+  if (!(offer.items ?? []).every(isPublishedItem)) {
+    throw new BadRequestException(UNPUBLISHED_ITEM_CLAIM_MESSAGE);
+  }
+}
 
 @Injectable()
 export class CatalogueOfferService {
@@ -47,10 +140,16 @@ export class CatalogueOfferService {
     private readonly itemRepository: Repository<CatalogueItem>,
     @InjectRepository(Branch)
     private readonly branchRepository: Repository<Branch>,
+    @InjectRepository(Business)
+    private readonly businessRepository: Repository<Business>,
     @InjectRepository(CatalogueOfferClaim)
     private readonly claimRepository: Repository<CatalogueOfferClaim>,
+    @InjectRepository(CatalogueDealGift)
+    private readonly dealGiftRepository: Repository<CatalogueDealGift>,
     @InjectRepository(Otp)
     private readonly otpRepository: Repository<Otp>,
+    @InjectRepository(User)
+    private readonly usersRepository: Repository<User>,
     private readonly subscriptionsService: SubscriptionsService,
     private readonly mailService: MailService,
     @Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
@@ -60,7 +159,20 @@ export class CatalogueOfferService {
     private readonly clustersService: ClustersService,
   ) {}
 
+  /**
+   * Create a deal. With `branchIds` it is published to every listed branch as
+   * one offer row per branch sharing a `dealGroupId` — so each branch keeps its
+   * own claims, voucher count and price, and every existing branch-scoped query
+   * keeps working unchanged. A single-branch deal still gets a `dealGroupId` so
+   * it can be extended to more branches later.
+   *
+   * Returns the first branch's offer (the historical response shape) with the
+   * group id and every created row attached.
+   */
   async createOffer(dto: CreateCatalogueOfferDto, businessId: string) {
+    const branchIds = [
+      ...new Set(dto.branchIds?.length ? dto.branchIds : [dto.branchId]),
+    ].filter(Boolean);
     const caps = await this.subscriptionsService.getCapabilities(businessId);
     if (!caps.capabilities.catalogueOffers.enabled) {
       throw new ForbiddenException(
@@ -71,48 +183,181 @@ export class CatalogueOfferService {
     if (
       caps.capabilities.catalogueOffers.limit !== 'unlimited' &&
       typeof caps.capabilities.catalogueOffers.remaining === 'number' &&
-      caps.capabilities.catalogueOffers.remaining <= 0
+      caps.capabilities.catalogueOffers.remaining < branchIds.length
     ) {
       throw new ForbiddenException(
-        'You have reached the limit for catalogue offers',
+        branchIds.length > 1
+          ? `Your plan allows ${caps.capabilities.catalogueOffers.remaining} more offer(s); this deal needs one per branch (${branchIds.length}).`
+          : 'You have reached the limit for catalogue offers',
       );
     }
 
-    const branch = await this.branchRepository.findOne({
-      where: { id: dto.branchId, businessId },
-    });
-    if (!branch)
+    if (branchIds.length === 0) {
+      throw new BadRequestException('branchId or branchIds is required');
+    }
+    this.assertPricingShape(dto);
+
+    const branches =
+      branchIds.length === 1
+        ? [
+            await this.branchRepository.findOne({
+              where: { id: branchIds[0], businessId },
+            }),
+          ].filter(Boolean)
+        : await this.branchRepository.find({
+            where: { id: In(branchIds), businessId },
+          });
+    if (branches.length !== branchIds.length) {
       throw new BadRequestException('Branch not found or unauthorized');
+    }
+
+    const itemIds =
+      dto.itemIds && dto.itemIds.length > 0
+        ? dto.itemIds
+        : dto.sourceProductId
+          ? [dto.sourceProductId]
+          : [];
+
+    if (itemIds.length === 0) {
+      throw new BadRequestException(
+        'Please select at least one catalogue item for this offer',
+      );
+    }
 
     const items = await this.itemRepository.find({
-      where: { id: In(dto.itemIds), businessId },
+      where: { id: In(itemIds), businessId },
       relations: ['branches'],
     });
 
-    if (items.length !== dto.itemIds.length) {
+    if (items.length !== itemIds.length) {
       throw new BadRequestException('Some items not found');
     }
 
-    // Verify items belong to the branch
-    for (const item of items) {
-      if (!item.branches.some((b) => b.id === dto.branchId)) {
-        throw new BadRequestException(
-          `Item ${item.name} is not available in branch ${dto.branchId}`,
-        );
+    // Every item must be stocked at every branch the deal goes live at.
+    for (const branchId of branchIds) {
+      for (const item of items) {
+        if (!item.branches.some((b) => b.id === branchId)) {
+          throw new BadRequestException(
+            `Item ${item.name} is not available in branch ${branchId}`,
+          );
+        }
       }
     }
 
-    const offer = this.offerRepository.create({
-      ...dto,
-      businessId,
-      items,
+    // Check active subscription plan to determine default isFeatured status
+    const activeSub =
+      await this.subscriptionsService.activeSubscription(businessId);
+    const autoFeatureDeals = Boolean(activeSub?.plan?.autoFeatureDeals);
+
+    // `branchIds` / `branchOverrides` are request-only; every row gets its own
+    // single `branchId` below.
+    const { branchIds: _requestedBranches, branchOverrides, ...fields } = dto;
+    void _requestedBranches;
+    const overrides = new Map(
+      (branchOverrides ?? []).map((override) => [override.branchId, override]),
+    );
+    const dealGroupId = uuidv4();
+
+    const offers = branchIds.map((branchId) => {
+      const override = overrides.get(branchId);
+      const offer = this.offerRepository.create({
+        ...fields,
+        branchId,
+        dealGroupId,
+        ...(override?.fixedPrice !== undefined && {
+          fixedPrice: override.fixedPrice,
+        }),
+        ...(override?.discountValue !== undefined && {
+          discountValue: override.discountValue,
+        }),
+        ...(override?.quantity !== undefined && {
+          quantity: override.quantity,
+        }),
+        sourceProductId:
+          dto.sourceProductId || (items.length === 1 ? items[0].id : null),
+        businessId,
+        items,
+      });
+      offer.isFeatured =
+        dto.isFeatured !== undefined ? dto.isFeatured : autoFeatureDeals;
+      offer.calculatedPrice = this.calculatePrice(offer, items);
+      return offer;
     });
 
-    offer.calculatedPrice = this.calculatePrice(offer, items);
+    // All branches or none: a half-published group would show the deal at some
+    // branches the owner chose and silently not at others.
+    const saved: CatalogueOffer[] = this.offerRepository.manager?.transaction
+      ? await this.offerRepository.manager.transaction((manager) =>
+          manager.save(CatalogueOffer, offers),
+        )
+      : await Promise.all(
+          offers.map((offer) => this.offerRepository.save(offer)),
+        );
+    await Promise.all(branchIds.map((branchId) => this.clearCache(branchId)));
 
-    const saved = await this.offerRepository.save(offer);
-    await this.clearCache(dto.branchId);
-    return saved;
+    // Plain copies: putting the rows on the first row itself would make the
+    // response circular (it is one of them) and break serialization.
+    const [first] = saved;
+    return {
+      ...first,
+      dealGroupId,
+      groupOffers: saved.map((offer) => ({ ...offer })),
+    };
+  }
+
+  /**
+   * Deactivate a deal once its last voucher is claimed, when the owner asked
+   * for that (`autoPauseWhenSoldOut`, on by default). Runs on the same manager
+   * as the claim so the count includes it.
+   */
+  private async pauseIfSoldOut(offer: CatalogueOffer, managerOrRepo: unknown) {
+    if (
+      offer.quantity === null ||
+      offer.quantity === undefined ||
+      offer.autoPauseWhenSoldOut === false
+    ) {
+      return;
+    }
+    const where = {
+      offerId: offer.id,
+      status: In([
+        CatalogueOfferClaimStatus.CLAIMED,
+        CatalogueOfferClaimStatus.REDEEMED,
+      ]),
+    };
+    const claimed =
+      managerOrRepo instanceof EntityManager
+        ? await managerOrRepo.count(CatalogueOfferClaim, { where })
+        : await this.claimRepository.count({ where });
+    if (claimed >= offer.quantity) {
+      await this.offerRepository.update(
+        { id: offer.id },
+        { status: CatalogueOfferStatus.INACTIVE },
+      );
+      this.logger.log(
+        `Offer ${offer.id} sold out (${claimed}/${offer.quantity}); paused`,
+      );
+    }
+  }
+
+  /** Reject pricing types whose required fields are missing. */
+  private assertPricingShape(dto: {
+    pricingType?: CatalogueOfferPricingType;
+    fixedPrice?: number;
+    tiers?: { minQuantity: number; discountValue: number }[];
+  }): void {
+    if (
+      dto.pricingType === CatalogueOfferPricingType.COMBO &&
+      (dto.fixedPrice === undefined || dto.fixedPrice === null)
+    ) {
+      throw new BadRequestException('A combo deal needs a fixedPrice');
+    }
+    if (
+      dto.pricingType === CatalogueOfferPricingType.TIERED &&
+      !dto.tiers?.length
+    ) {
+      throw new BadRequestException('A tiered deal needs at least one tier');
+    }
   }
 
   async updateOffer(
@@ -122,7 +367,7 @@ export class CatalogueOfferService {
   ) {
     const offer = await this.offerRepository.findOne({
       where: { id, businessId },
-      relations: ['items', 'items.branches'],
+      relations: ['items', 'items.branches', 'sourceProduct'],
     });
     if (!offer) throw new NotFoundException('Offer not found');
 
@@ -145,8 +390,18 @@ export class CatalogueOfferService {
       offer.items = items;
     }
 
+    if (dto.sourceProductId !== undefined) {
+      offer.sourceProductId = dto.sourceProductId || null;
+    }
+
     if (dto.mainImage) offer.mainImage = dto.mainImage;
     if (dto.galleryImages) offer.galleryImages = dto.galleryImages;
+
+    this.assertPricingShape({
+      pricingType: dto.pricingType ?? offer.pricingType,
+      fixedPrice: dto.fixedPrice ?? offer.fixedPrice,
+      tiers: dto.tiers ?? offer.tiers ?? undefined,
+    });
 
     Object.assign(offer, dto);
     offer.calculatedPrice = this.calculatePrice(offer, offer.items);
@@ -217,20 +472,443 @@ export class CatalogueOfferService {
     return { terms };
   }
 
-  async findAllOffersAdmin(businessId: string, branchId?: string) {
-    const where: any = { businessId };
-    if (branchId) where.branchId = branchId;
+  /**
+   * The business's own deals, any status. Always a bare array (the mobile hub
+   * validates it as one); filters, sort, paging and grouping are opt-in.
+   * Accepts a bare branch id for callers written before the query object.
+   */
+  async findAllOffersAdmin(
+    businessId: string,
+    queryOrBranchId: OwnerOffersQueryDto | string = {},
+  ) {
+    const query: OwnerOffersQueryDto =
+      typeof queryOrBranchId === 'string'
+        ? { branchId: queryOrBranchId }
+        : (queryOrBranchId ?? {});
+
+    const where: Record<string, unknown> = { businessId };
+    if (query.branchId) where.branchId = query.branchId;
+    if (query.status) where.status = query.status;
+    if (query.search?.trim()) where.name = ILike(`%${query.search.trim()}%`);
+
     const offers = await this.offerRepository.find({
       where,
-      relations: ['items', 'branch', 'reward'],
-      order: { createdAt: 'DESC' },
+      relations: ['items', 'branch', 'reward', 'sourceProduct'],
+      order: {
+        createdAt: query.sortBy === OwnerOffersSortBy.OLDEST ? 'ASC' : 'DESC',
+      },
     });
-    // Map offers to include computed fields
-    return offers.map((offer) => ({
-      ...offer,
-      maxClaims: offer.quantity,
-      claimedCount: 0, // Could be computed but skip for perf
+
+    const counts = await this.claimCountsByOffer(
+      offers.map((offer) => offer.id),
+    );
+
+    const rows = offers.map((offer) => {
+      const tally = counts.get(offer.id) ?? { claimed: 0, redeemed: 0 };
+      return {
+        id: offer.id,
+        dealGroupId: offer.dealGroupId,
+        name: offer.name,
+        description: offer.description,
+        mainImage: offer.mainImage,
+        galleryImages: offer.galleryImages,
+        pricingType: offer.pricingType,
+        discountValue: offer.discountValue,
+        fixedPrice: offer.fixedPrice,
+        calculatedPrice: offer.calculatedPrice,
+        tiers: offer.tiers ?? null,
+        quantity: offer.quantity,
+        itemIds: offer.items?.map((item) => item.id) ?? [],
+        // Names and prices let the owner's deal card and detail screen show
+        // what the deal bundles and its pre-discount price without a second
+        // round-trip per deal.
+        items: (offer.items ?? []).map((item) => ({
+          id: item.id,
+          name: item.name,
+          price: Number(item.price) || 0,
+          mainImage: item.mainImage ?? null,
+        })),
+        originalPrice:
+          Math.round(
+            (offer.items ?? []).reduce(
+              (sum, item) => sum + (Number(item.price) || 0),
+              0,
+            ) * 100,
+          ) / 100,
+        startDate: offer.startDate?.toISOString(),
+        endDate: offer.endDate?.toISOString(),
+        terms: offer.terms ?? [],
+        claimSteps: offer.claimSteps ?? [],
+        maxClaimsPerCustomer: offer.maxClaimsPerCustomer,
+        claimLimitPeriod: offer.claimLimitPeriod,
+        allowGifting: offer.allowGifting,
+        requireGiftRecipientVerification:
+          offer.requireGiftRecipientVerification,
+        socialSharingBonus: offer.socialSharingBonus,
+        autoPauseWhenSoldOut: offer.autoPauseWhenSoldOut,
+        redemptionChannels: offer.redemptionChannels ?? [],
+        redemptionWindows: offer.redemptionWindows ?? [],
+        offerType: offer.offerType,
+        loyaltyPoints: offer.loyaltyPoints,
+        rewardId: offer.rewardId,
+        branchId: offer.branchId,
+        branchName: offer.branch?.name,
+        status: offer.status,
+        createdAt: offer.createdAt?.toISOString(),
+        updatedAt: offer.updatedAt?.toISOString(),
+        maxClaims: offer.quantity,
+        claimedCount: tally.claimed,
+        redeemedCount: tally.redeemed,
+        views: offer.views ?? 0,
+        likesCount: offer.likesCount ?? 0,
+      };
+    });
+
+    if (query.sortBy === OwnerOffersSortBy.MOST_CLAIMED) {
+      rows.sort((a, b) => b.claimedCount - a.claimedCount);
+    } else if (query.sortBy === OwnerOffersSortBy.ENDING_SOON) {
+      const endOf = (row: { endDate?: string }) =>
+        row.endDate ? Date.parse(row.endDate) : Number.POSITIVE_INFINITY;
+      rows.sort((a, b) => endOf(a) - endOf(b));
+    }
+
+    let result: unknown[] = rows;
+    if (query.groupBy === 'deal') {
+      result = this.groupOfferRows(rows);
+    }
+
+    if (query.page) {
+      const limit = query.limit ?? 20;
+      result = result.slice((query.page - 1) * limit, query.page * limit);
+    }
+    return result;
+  }
+
+  /**
+   * Collapse the per-branch rows of each deal group into one entry. Shared
+   * fields come from the first row; counts are summed; `branches` lists each
+   * branch's own offer id, status, price and counts.
+   */
+  private groupOfferRows<
+    T extends {
+      id: string;
+      dealGroupId: string | null;
+      branchId: string;
+      branchName?: string;
+      status: CatalogueOfferStatus;
+      calculatedPrice: number;
+      quantity: number | null;
+      claimedCount: number;
+      redeemedCount: number;
+      views: number;
+    },
+  >(rows: T[]) {
+    const groups = new Map<string, T[]>();
+    for (const row of rows) {
+      const key = row.dealGroupId ?? row.id;
+      groups.set(key, [...(groups.get(key) ?? []), row]);
+    }
+    return [...groups.entries()].map(([key, members]) => ({
+      ...members[0],
+      dealGroupId: key,
+      claimedCount: members.reduce((sum, row) => sum + row.claimedCount, 0),
+      redeemedCount: members.reduce((sum, row) => sum + row.redeemedCount, 0),
+      views: members.reduce((sum, row) => sum + row.views, 0),
+      status: members.some((row) => row.status === CatalogueOfferStatus.ACTIVE)
+        ? CatalogueOfferStatus.ACTIVE
+        : CatalogueOfferStatus.INACTIVE,
+      branches: members.map((row) => ({
+        offerId: row.id,
+        branchId: row.branchId,
+        branchName: row.branchName,
+        status: row.status,
+        calculatedPrice: row.calculatedPrice,
+        quantity: row.quantity,
+        claimedCount: row.claimedCount,
+        redeemedCount: row.redeemedCount,
+      })),
     }));
+  }
+
+  /** Claimed (claimed + redeemed) and redeemed counts per offer, one query. */
+  private async claimCountsByOffer(
+    offerIds: string[],
+  ): Promise<Map<string, { claimed: number; redeemed: number }>> {
+    const counts = new Map<string, { claimed: number; redeemed: number }>();
+    if (offerIds.length === 0) return counts;
+    const raw: {
+      offerId: string;
+      status: CatalogueOfferClaimStatus;
+      count: string;
+    }[] = await this.claimRepository
+      .createQueryBuilder('claim')
+      .select('claim.offerId', 'offerId')
+      .addSelect('claim.status', 'status')
+      .addSelect('COUNT(*)', 'count')
+      .where('claim.offerId IN (:...offerIds)', { offerIds })
+      .groupBy('claim.offerId')
+      .addGroupBy('claim.status')
+      .getRawMany();
+    for (const row of raw) {
+      const tally = counts.get(row.offerId) ?? { claimed: 0, redeemed: 0 };
+      const n = Number(row.count) || 0;
+      if (row.status === CatalogueOfferClaimStatus.REDEEMED) {
+        tally.redeemed += n;
+        tally.claimed += n;
+      } else if (row.status === CatalogueOfferClaimStatus.CLAIMED) {
+        tally.claimed += n;
+      }
+      counts.set(row.offerId, tally);
+    }
+    return counts;
+  }
+
+  /** Every row of a deal group owned by this business; 404 when none. */
+  private async findGroupOffers(dealGroupId: string, businessId: string) {
+    const offers = await this.offerRepository.find({
+      where: [
+        { dealGroupId, businessId },
+        // A deal created before grouping existed is its own one-row group.
+        { id: dealGroupId, businessId },
+      ],
+      relations: ['items', 'items.branches', 'sourceProduct'],
+    });
+    if (offers.length === 0) throw new NotFoundException('Deal not found');
+    return offers;
+  }
+
+  /**
+   * Apply the same edit to every branch of a deal. Per-branch price and
+   * voucher count are left to the branch-pricing endpoint, so `fixedPrice`,
+   * `discountValue` and `quantity` here overwrite every branch alike.
+   */
+  async updateOfferGroup(
+    dealGroupId: string,
+    dto: UpdateOfferGroupDto,
+    businessId: string,
+  ) {
+    const offers = await this.findGroupOffers(dealGroupId, businessId);
+    const updated: CatalogueOffer[] = [];
+    for (const offer of offers) {
+      updated.push(await this.updateOffer(offer.id, dto, businessId));
+    }
+    return { dealGroupId, offers: updated };
+  }
+
+  /** A deal's recent per-branch price changes, newest first. */
+  async getOfferGroupPriceHistory(dealGroupId: string, businessId: string) {
+    const offers = await this.findGroupOffers(dealGroupId, businessId);
+    const groupId = offers[0].dealGroupId ?? offers[0].id;
+    return this.offerRepository.manager.getRepository(OfferPriceChange).find({
+      where: { businessId, dealGroupId: groupId },
+      order: { createdAt: 'DESC' },
+      take: 20,
+    });
+  }
+
+  /** Each branch of a deal with its own price, vouchers, status and claims. */
+  async getOfferGroupBranchPricing(dealGroupId: string, businessId: string) {
+    const offers = await this.findGroupOffers(dealGroupId, businessId);
+    const [branches, counts] = await Promise.all([
+      this.branchRepository.find({
+        where: { id: In(offers.map((offer) => offer.branchId)) },
+      }),
+      this.claimCountsByOffer(offers.map((offer) => offer.id)),
+    ]);
+    const nameOf = new Map(branches.map((branch) => [branch.id, branch.name]));
+    const template = offers[0];
+    return {
+      dealGroupId: template.dealGroupId ?? template.id,
+      name: template.name,
+      pricingType: template.pricingType,
+      branches: offers.map((offer) => ({
+        offerId: offer.id,
+        branchId: offer.branchId,
+        branchName: nameOf.get(offer.branchId) ?? null,
+        isActive: offer.status === CatalogueOfferStatus.ACTIVE,
+        fixedPrice: offer.fixedPrice ?? null,
+        discountValue: offer.discountValue ?? null,
+        calculatedPrice: Number(offer.calculatedPrice),
+        quantity: offer.quantity,
+        claimedCount: counts.get(offer.id)?.claimed ?? 0,
+        redeemedCount: counts.get(offer.id)?.redeemed ?? 0,
+      })),
+    };
+  }
+
+  /**
+   * Set each branch's price, vouchers and on/off state for a deal. Turning a
+   * branch off pauses its row (claims are kept); turning on a branch that is
+   * not in the deal yet adds it as a copy of the deal. Branches left out are
+   * not touched.
+   */
+  async setOfferGroupBranchPricing(
+    dealGroupId: string,
+    dto: SetOfferBranchPricingDto,
+    businessId: string,
+    changedById?: string,
+  ) {
+    const offers = await this.findGroupOffers(dealGroupId, businessId);
+    const template = offers[0];
+    const groupId = template.dealGroupId ?? template.id;
+    // New branches copy the deal as it was before this request: edits below to
+    // an existing branch's price or status must not leak into them.
+    const snapshot = { ...template };
+
+    const branchIds = [...new Set(dto.branches.map((entry) => entry.branchId))];
+    if (branchIds.length !== dto.branches.length) {
+      throw new BadRequestException('Each branch may appear only once');
+    }
+    const branches = await this.branchRepository.find({
+      where: { id: In(branchIds), businessId },
+    });
+    if (branches.length !== branchIds.length) {
+      throw new BadRequestException('Branch not found or unauthorized');
+    }
+
+    const byBranch = new Map(offers.map((offer) => [offer.branchId, offer]));
+    const additions = dto.branches.filter(
+      (entry) => entry.isActive && !byBranch.has(entry.branchId),
+    );
+
+    if (additions.length) {
+      const caps = await this.subscriptionsService.getCapabilities(businessId);
+      const offerCaps = caps.capabilities.catalogueOffers;
+      if (
+        offerCaps.limit !== 'unlimited' &&
+        typeof offerCaps.remaining === 'number' &&
+        offerCaps.remaining < additions.length
+      ) {
+        throw new ForbiddenException(
+          `Your plan allows ${offerCaps.remaining} more offer(s); adding ${additions.length} branch(es) needs one each.`,
+        );
+      }
+      for (const entry of additions) {
+        for (const item of template.items ?? []) {
+          if (!item.branches?.some((branch) => branch.id === entry.branchId)) {
+            throw new BadRequestException(
+              `Item ${item.name} is not available in branch ${entry.branchId}`,
+            );
+          }
+        }
+      }
+    }
+
+    const toSave: CatalogueOffer[] = [];
+    // Price moves on existing branches, kept as the deal's price-change history.
+    const priceChanges: Partial<OfferPriceChange>[] = [];
+    const branchName = new Map(
+      branches.map((branch) => [branch.id, branch.name]),
+    );
+    if (!template.dealGroupId) {
+      // A deal created before grouping becomes the group's first row.
+      template.dealGroupId = groupId;
+      toSave.push(template);
+    }
+
+    for (const entry of dto.branches) {
+      const existing = byBranch.get(entry.branchId);
+      if (existing) {
+        const previousPrice = Number(existing.calculatedPrice);
+        if (entry.fixedPrice !== undefined)
+          existing.fixedPrice = entry.fixedPrice;
+        if (entry.discountValue !== undefined) {
+          existing.discountValue = entry.discountValue;
+        }
+        if (entry.quantity !== undefined) existing.quantity = entry.quantity;
+        existing.status = entry.isActive
+          ? CatalogueOfferStatus.ACTIVE
+          : CatalogueOfferStatus.INACTIVE;
+        existing.calculatedPrice = this.calculatePrice(
+          existing,
+          existing.items,
+        );
+        if (Number(existing.calculatedPrice) !== previousPrice) {
+          priceChanges.push({
+            businessId,
+            dealGroupId: groupId,
+            offerId: existing.id,
+            branchId: existing.branchId,
+            branchName: branchName.get(existing.branchId) ?? null,
+            oldPrice: previousPrice,
+            newPrice: Number(existing.calculatedPrice),
+            changedById: changedById ?? null,
+          });
+        }
+        if (!toSave.includes(existing)) toSave.push(existing);
+      } else if (entry.isActive) {
+        const {
+          id: _id,
+          createdAt: _createdAt,
+          updatedAt: _updatedAt,
+          branch: _branch,
+          ...fields
+        } = snapshot as CatalogueOffer & { createdAt?: Date; updatedAt?: Date };
+        void [_id, _createdAt, _updatedAt, _branch];
+        const copy = this.offerRepository.create({
+          ...fields,
+          branchId: entry.branchId,
+          dealGroupId: groupId,
+          status: CatalogueOfferStatus.ACTIVE,
+          ...(entry.fixedPrice !== undefined && {
+            fixedPrice: entry.fixedPrice,
+          }),
+          ...(entry.discountValue !== undefined && {
+            discountValue: entry.discountValue,
+          }),
+          ...(entry.quantity !== undefined && { quantity: entry.quantity }),
+          // A new branch starts with its own engagement history.
+          views: 0,
+          visits: 0,
+          revenue: 0,
+          likesCount: 0,
+          dislikesCount: 0,
+          reviewsCount: 0,
+          averageRating: null,
+        });
+        copy.calculatedPrice = this.calculatePrice(copy, template.items);
+        toSave.push(copy);
+      }
+    }
+
+    if (toSave.length) {
+      await this.offerRepository.manager.transaction(async (manager) => {
+        await manager.save(CatalogueOffer, toSave);
+        if (priceChanges.length) {
+          await manager.save(
+            OfferPriceChange,
+            priceChanges.map((change) =>
+              manager.create(OfferPriceChange, change),
+            ),
+          );
+        }
+      });
+      await Promise.all(
+        toSave.map((offer) => this.clearCache(offer.branchId, offer.id)),
+      );
+    }
+
+    return this.getOfferGroupBranchPricing(groupId, businessId);
+  }
+
+  async updateOfferGroupStatus(
+    dealGroupId: string,
+    status: CatalogueOfferStatus,
+    businessId: string,
+  ) {
+    const offers = await this.findGroupOffers(dealGroupId, businessId);
+    await this.offerRepository.update(
+      { id: In(offers.map((offer) => offer.id)) },
+      { status },
+    );
+    await Promise.all(
+      offers.map((offer) => this.clearCache(offer.branchId, offer.id)),
+    );
+    return {
+      dealGroupId,
+      status,
+      offerIds: offers.map((offer) => offer.id),
+    };
   }
 
   async findAllOffersPublic(branchId: string, query: CatalogueOfferQueryDto) {
@@ -246,8 +924,6 @@ export class CatalogueOfferService {
       );
     }
 
-    const skip = (page - 1) * limit;
-
     const qb = this.offerRepository
       .createQueryBuilder('offer')
       .leftJoinAndSelect('offer.items', 'item')
@@ -255,7 +931,8 @@ export class CatalogueOfferService {
       .andWhere('offer.status = :status', {
         status: CatalogueOfferStatus.ACTIVE,
       })
-      .andWhere('(offer.endDate IS NULL OR offer.endDate >= NOW())');
+      .andWhere('(offer.endDate IS NULL OR offer.endDate >= NOW())')
+      .andWhere(ALL_OFFER_ITEMS_PUBLISHED_SQL, PUBLISHED_ITEM_PARAMS);
 
     if (search) {
       qb.andWhere('offer.name ILIKE :search', { search: `%${search}%` });
@@ -265,22 +942,26 @@ export class CatalogueOfferService {
     let sortOrder: 'ASC' | 'DESC' = 'DESC';
 
     switch (sortBy) {
-      case 'price_asc':
+      case BranchOffersSortBy.PRICE_ASC:
         sortField = 'calculatedPrice';
         sortOrder = 'ASC';
         break;
-      case 'price_desc':
+      case BranchOffersSortBy.PRICE_DESC:
         sortField = 'calculatedPrice';
         sortOrder = 'DESC';
         break;
-      case 'newest':
+      case BranchOffersSortBy.OLDEST:
+        sortField = 'createdAt';
+        sortOrder = 'ASC';
+        break;
+      case BranchOffersSortBy.NEWEST:
       default:
         sortField = 'createdAt';
         sortOrder = 'DESC';
         break;
     }
 
-    const cursorStr = (query as any).cursor || (query as any).nextCursor;
+    const cursorStr = query.cursor || query.nextCursor;
 
     const paginated = await paginateWithCursor({
       queryBuilder: qb,
@@ -293,7 +974,11 @@ export class CatalogueOfferService {
     });
 
     const result = {
-      data: paginated.data,
+      data: paginated.data.map((offer) => ({
+        ...offer,
+        items: sortOfferItems(offer.items),
+        galleryImages: offer.galleryImages || [],
+      })),
       total: paginated.total,
       page: paginated.page,
       limit: paginated.limit,
@@ -323,6 +1008,9 @@ export class CatalogueOfferService {
       lng,
       radius,
       audience,
+      minPrice,
+      maxPrice,
+      minDiscount,
     } = query;
 
     const skip = (page - 1) * limit;
@@ -332,12 +1020,14 @@ export class CatalogueOfferService {
       .leftJoinAndSelect('offer.items', 'item')
       .leftJoinAndSelect('offer.branch', 'branch')
       .leftJoinAndSelect('branch.business', 'business')
+      .leftJoinAndSelect('business.category', 'category')
       .where('offer.status = :status', { status: CatalogueOfferStatus.ACTIVE })
       .andWhere('(offer.endDate IS NULL OR offer.endDate >= NOW())')
       .andWhere('branch.joinDiscoveryNetwork = :joinDiscoveryNetwork', {
         joinDiscoveryNetwork: true,
       })
-      .andWhere('branch.isActive = :branchActive', { branchActive: true });
+      .andWhere('branch.isActive = :branchActive', { branchActive: true })
+      .andWhere(ALL_OFFER_ITEMS_PUBLISHED_SQL, PUBLISHED_ITEM_PARAMS);
 
     if (search) {
       qb.andWhere(
@@ -350,16 +1040,41 @@ export class CatalogueOfferService {
       qb.andWhere('business.categoryId = :categoryId', { categoryId });
     }
 
-    if (audience) {
-      qb.andWhere('offer.audience = :audience', { audience });
+    // `everyone_nearby`/`all` mean "no audience restriction"; the eligibility
+    // values filter on the same field enforced at claim time.
+    if (
+      audience === OfferAudience.NEW_CUSTOMERS ||
+      audience === OfferAudience.RETURNING_CUSTOMERS
+    ) {
+      qb.andWhere('offer.audienceTarget = :audienceTarget', {
+        audienceTarget: audience,
+      });
+    }
+
+    if (minPrice !== undefined) {
+      qb.andWhere('offer.calculatedPrice >= :minPrice', { minPrice });
+    }
+
+    if (maxPrice !== undefined) {
+      qb.andWhere('offer.calculatedPrice <= :maxPrice', { maxPrice });
+    }
+
+    if (minDiscount !== undefined && minDiscount > 0) {
+      const originalPriceSql = `(SELECT COALESCE(SUM(i.price), 0) FROM catalogue_offer_items oi JOIN catalogue_items i ON i.id = oi."itemId" WHERE oi."offerId" = offer.id)`;
+      qb.andWhere(
+        `(${originalPriceSql} > 0 AND (1 - offer.calculatedPrice / ${originalPriceSql}) * 100 >= :minDiscount)`,
+        { minDiscount },
+      );
     }
 
     if (lat !== undefined && lng !== undefined) {
       const earthRadius = 6371; // km
       const distanceFormula = `${earthRadius} * acos(
-        cos(radians(:lat)) * cos(radians(branch.latitude)) *
-        cos(radians(branch.longitude) - radians(:lng)) +
-        sin(radians(:lat)) * sin(radians(branch.latitude))
+        LEAST(1.0, GREATEST(-1.0,
+          cos(radians(:lat)) * cos(radians(branch.latitude)) *
+          cos(radians(branch.longitude) - radians(:lng)) +
+          sin(radians(:lat)) * sin(radians(branch.latitude))
+        ))
       )`;
 
       qb.addSelect(distanceFormula, 'distance');
@@ -367,28 +1082,89 @@ export class CatalogueOfferService {
       qb.setParameter('lng', lng);
 
       if (radius !== undefined && radius > 0) {
-        qb.andWhere(`${distanceFormula} <= :radius`, { radius });
+        // Branches without coordinates stay in the feed (after nearby ones
+        // when sorting by distance): missing data shouldn't hide a deal.
+        qb.andWhere(
+          `(branch.latitude IS NULL OR branch.longitude IS NULL OR ${distanceFormula} <= :radius)`,
+          { radius },
+        );
       }
+    }
+
+    const hasPoint = lat !== undefined && lng !== undefined;
+    if (sortBy === PublicOffersSortBy.NEAREST && hasPoint) {
+      qb.orderBy('distance', 'ASC', 'NULLS LAST').addOrderBy(
+        'offer.createdAt',
+        'DESC',
+      );
+      qb.skip(skip).take(limit);
+      const [rawOffers, total] = await qb.getManyAndCount();
+      const mappedOffers = await this.mapPublicOffers(rawOffers);
+      return {
+        data: this.withDistance(mappedOffers, rawOffers, lat, lng),
+        total,
+        page,
+        limit,
+      };
     }
 
     let sortField = 'createdAt';
     let sortOrder: 'ASC' | 'DESC' = 'DESC';
 
-    if (sortBy === 'price_asc') {
+    if (sortBy === PublicOffersSortBy.PRICE_ASC) {
       sortField = 'calculatedPrice';
       sortOrder = 'ASC';
-    } else if (sortBy === 'price_desc') {
+    } else if (sortBy === PublicOffersSortBy.PRICE_DESC) {
       sortField = 'calculatedPrice';
       sortOrder = 'DESC';
-    } else if (sortBy === 'trending') {
+    } else if (sortBy === PublicOffersSortBy.TRENDING) {
       sortField = 'views';
       sortOrder = 'DESC';
+    } else if (sortBy === PublicOffersSortBy.OLDEST) {
+      sortField = 'createdAt';
+      sortOrder = 'ASC';
     } else {
       sortField = 'createdAt';
       sortOrder = 'DESC';
     }
 
-    const cursorStr = (query as any).cursor || (query as any).nextCursor;
+    // `popular` / `featured` order by a computed claim count, which cannot be
+    // expressed through cursor pagination — use offset pagination instead.
+    // The score is added as a SELECT alias and ordered by that alias: ordering
+    // by the raw subquery string breaks TypeORM's alias resolution when
+    // `take()` embeds the query in a DISTINCT subquery.
+    if (
+      sortBy === PublicOffersSortBy.POPULAR ||
+      sortBy === PublicOffersSortBy.FEATURED
+    ) {
+      const claimStatuses = [
+        CatalogueOfferClaimStatus.CLAIMED,
+        CatalogueOfferClaimStatus.REDEEMED,
+      ];
+      const claimCountSql = `(SELECT COUNT(*) FROM "catalogue_offer_claims" "claim" WHERE "claim"."offerId" = "offer"."id" AND "claim"."status" IN (:...claimStatuses))`;
+      qb.setParameter('claimStatuses', claimStatuses);
+
+      if (sortBy === PublicOffersSortBy.POPULAR) {
+        qb.addSelect(claimCountSql, 'popularityscore');
+        qb.orderBy('popularityscore', 'DESC');
+      } else {
+        // Featured: rank by a weighted score of engagement (views + claims).
+        qb.addSelect(`(offer.views + ${claimCountSql} * 10)`, 'featuredscore');
+        qb.orderBy('featuredscore', 'DESC');
+      }
+
+      qb.skip(skip).take(limit);
+      const [rawOffers, total] = await qb.getManyAndCount();
+      const mappedOffers = await this.mapPublicOffers(rawOffers);
+      return {
+        data: this.withDistance(mappedOffers, rawOffers, lat, lng),
+        total,
+        page,
+        limit,
+      };
+    }
+
+    const cursorStr = query.cursor || query.nextCursor;
 
     const paginated = await paginateWithCursor({
       queryBuilder: qb,
@@ -403,69 +1179,10 @@ export class CatalogueOfferService {
     const rawOffers = paginated.data;
     const total = paginated.total;
 
-    const mappedOffers = await Promise.all(
-      rawOffers.map(async (offer) => {
-        const originalPrice = offer.items.reduce(
-          (acc, it) => acc + Number(it.price || 0),
-          0,
-        );
-
-        let discountPercent = 0;
-        if (originalPrice > 0 && offer.calculatedPrice < originalPrice) {
-          discountPercent = Math.round(
-            ((originalPrice - offer.calculatedPrice) / originalPrice) * 100,
-          );
-        }
-
-        const claimedCount = await this.claimRepository.count({
-          where: {
-            offerId: offer.id,
-            status: In([
-              CatalogueOfferClaimStatus.CLAIMED,
-              CatalogueOfferClaimStatus.REDEEMED,
-            ]),
-          },
-        });
-
-        return {
-          id: offer.id,
-          name: offer.name,
-          description: offer.description,
-          pricingType: offer.pricingType,
-          fixedPrice: offer.fixedPrice,
-          percentageOff: (offer as any).percentageOff ?? offer.discountValue,
-          calculatedPrice: offer.calculatedPrice,
-          originalPrice,
-          discountPercent,
-          status: offer.status,
-          branchId: offer.branchId,
-          branchName: offer.branch?.name,
-          categoryName: offer.branch?.business?.category?.name,
-          items: offer.items,
-          claimedCount,
-          totalLimit: (offer as any).totalLimit ?? offer.quantity,
-          remainingLimit:
-            ((offer as any).totalLimit ?? offer.quantity) != null
-              ? Math.max(
-                  0,
-                  ((offer as any).totalLimit ?? offer.quantity) - claimedCount,
-                )
-              : null,
-          startDate: offer.startDate,
-          endDate: offer.endDate,
-          isExpired: offer.endDate
-            ? new Date() > new Date(offer.endDate)
-            : false,
-          maxClaimsPerCustomer: offer.maxClaimsPerCustomer,
-          audienceTarget: offer.audienceTarget,
-          terms: offer.terms,
-          claimCodePrefix: offer.claimCodePrefix,
-        };
-      }),
-    );
+    const mappedOffers = await this.mapPublicOffers(rawOffers);
 
     return {
-      data: mappedOffers,
+      data: this.withDistance(mappedOffers, rawOffers, lat, lng),
       total,
       page,
       limit,
@@ -474,6 +1191,282 @@ export class CatalogueOfferService {
       prevCursor: paginated.prevCursor,
       hasNextPage: paginated.hasNextPage,
     };
+  }
+
+  /**
+   * Personalised recommendations: active nearby offers ranked featured-first,
+   * then by engagement (claim count), then newest. Offers the customer already
+   * claimed (by linked userId or email/phone) are excluded. Bounded queries:
+   * one ranking query + the shared batched claim-count mapping.
+   */
+  async findRecommendedOffers(
+    user: { id: string; email?: string; phone?: string | null },
+    query: { lat?: number; lng?: number; radius?: number; limit?: number },
+  ) {
+    const limit = query.limit ?? 10;
+    const claimStatuses = [
+      CatalogueOfferClaimStatus.CLAIMED,
+      CatalogueOfferClaimStatus.REDEEMED,
+    ];
+
+    const ownedByClaim = [
+      '"existing"."userId" = :userId',
+      'LOWER("existing"."email") = LOWER(:email)',
+    ];
+    const params: { userId: string; email: string; phone?: string } = {
+      userId: user.id,
+      email: user.email ?? '',
+    };
+    if (user.phone) {
+      ownedByClaim.push('"existing"."phone" = :phone');
+      params.phone = user.phone;
+    }
+
+    const popularitySql = `(SELECT COUNT(*) FROM "catalogue_offer_claims" "claim" WHERE "claim"."offerId" = offer.id AND "claim"."status" IN (:...claimStatuses))`;
+    const rankingSql = `((CASE WHEN offer."isFeatured" THEN 1 ELSE 0 END) * 1000000 + ${popularitySql} * 1000)`;
+
+    const qb = this.offerRepository
+      .createQueryBuilder('offer')
+      .leftJoinAndSelect('offer.items', 'item')
+      .leftJoinAndSelect('offer.branch', 'branch')
+      .leftJoinAndSelect('branch.business', 'business')
+      .leftJoinAndSelect('business.category', 'category')
+      .where('offer.status = :status', { status: CatalogueOfferStatus.ACTIVE })
+      .andWhere('(offer.endDate IS NULL OR offer.endDate >= NOW())')
+      .andWhere('branch.joinDiscoveryNetwork = :joinDiscoveryNetwork', {
+        joinDiscoveryNetwork: true,
+      })
+      .andWhere('branch.isActive = :branchActive', { branchActive: true })
+      .andWhere(ALL_OFFER_ITEMS_PUBLISHED_SQL, PUBLISHED_ITEM_PARAMS)
+      .andWhere(
+        `NOT EXISTS (SELECT 1 FROM "catalogue_offer_claims" "existing" WHERE "existing"."offerId" = offer.id AND (${ownedByClaim.join(' OR ')}))`,
+        params,
+      )
+      .addSelect(rankingSql, 'rankingscore')
+      .setParameter('claimStatuses', claimStatuses);
+
+    if (
+      query.lat !== undefined &&
+      query.lng !== undefined &&
+      query.radius !== undefined &&
+      query.radius > 0
+    ) {
+      const earthRadius = 6371; // km
+      const distanceFormula = `${earthRadius} * acos(
+        LEAST(1.0, GREATEST(-1.0,
+          cos(radians(:lat)) * cos(radians(branch.latitude)) *
+          cos(radians(branch.longitude) - radians(:lng)) +
+          sin(radians(:lat)) * sin(radians(branch.latitude))
+        ))
+      )`;
+
+      qb.setParameter('lat', query.lat);
+      qb.setParameter('lng', query.lng);
+      qb.andWhere(`${distanceFormula} <= :radius`, { radius: query.radius });
+    }
+
+    qb.orderBy('rankingscore', 'DESC')
+      .addOrderBy('offer.createdAt', 'DESC')
+      .addOrderBy('offer.id', 'ASC')
+      .take(limit);
+
+    const rawOffers = await qb.getMany();
+    const data = await this.mapPublicOffers(rawOffers);
+
+    return { data, total: data.length };
+  }
+
+  /**
+   * Public offer rows for specific ids (sponsored placements): the same
+   * filters and shape as the public feed, so a promoted card renders exactly
+   * like an organic one. Ids that are no longer public are left out.
+   */
+  async findPublicOffersByIds(ids: string[]) {
+    if (!ids.length) return [];
+    const rawOffers = await this.offerRepository
+      .createQueryBuilder('offer')
+      .leftJoinAndSelect('offer.items', 'item')
+      .leftJoinAndSelect('offer.branch', 'branch')
+      .leftJoinAndSelect('branch.business', 'business')
+      .leftJoinAndSelect('business.category', 'category')
+      .where('offer.id IN (:...ids)', { ids })
+      .andWhere('offer.status = :status', {
+        status: CatalogueOfferStatus.ACTIVE,
+      })
+      .andWhere('(offer.endDate IS NULL OR offer.endDate >= NOW())')
+      .andWhere('branch.joinDiscoveryNetwork = :joinDiscoveryNetwork', {
+        joinDiscoveryNetwork: true,
+      })
+      .andWhere('branch.isActive = :branchActive', { branchActive: true })
+      .andWhere(ALL_OFFER_ITEMS_PUBLISHED_SQL, PUBLISHED_ITEM_PARAMS)
+      .getMany();
+    return this.mapPublicOffers(rawOffers);
+  }
+
+  /**
+   * Adds `distanceKm` (to 0.1 km) from the searcher to each offer's branch;
+   * null when the branch has no coordinates or no point was given.
+   */
+  private withDistance<T extends { id: string }>(
+    mapped: T[],
+    rawOffers: CatalogueOffer[],
+    lat?: number,
+    lng?: number,
+  ): Array<T & { distanceKm: number | null }> {
+    const branchById = new Map(
+      rawOffers.map((offer) => [offer.id, offer.branch]),
+    );
+    return mapped.map((offer) => {
+      const branch = branchById.get(offer.id);
+      const hasPoint = lat !== undefined && lng !== undefined;
+      const distanceKm =
+        hasPoint && branch?.latitude != null && branch?.longitude != null
+          ? Math.round(
+              haversineKm(
+                lat,
+                lng,
+                Number(branch.latitude),
+                Number(branch.longitude),
+              ) * 10,
+            ) / 10
+          : null;
+      return { ...offer, distanceKm };
+    });
+  }
+
+  private async mapPublicOffers(rawOffers: CatalogueOffer[]) {
+    if (!rawOffers || rawOffers.length === 0) return [];
+
+    const offerIds = rawOffers.map((o) => o.id);
+    let claimCountMap = new Map<string, number>();
+
+    if (typeof this.claimRepository.createQueryBuilder === 'function') {
+      const claimCountsRaw = await this.claimRepository
+        .createQueryBuilder('claim')
+        .select('claim.offerId', 'offerId')
+        .addSelect('COUNT(claim.id)', 'count')
+        .where('claim.offerId IN (:...offerIds)', { offerIds })
+        .andWhere('claim.status IN (:...claimStatuses)', {
+          claimStatuses: [
+            CatalogueOfferClaimStatus.CLAIMED,
+            CatalogueOfferClaimStatus.REDEEMED,
+          ],
+        })
+        .groupBy('claim.offerId')
+        .getRawMany();
+
+      claimCountMap = new Map<string, number>(
+        claimCountsRaw.map((row) => [
+          row.offerId,
+          parseInt(row.count, 10) || 0,
+        ]),
+      );
+    } else if (typeof this.claimRepository.find === 'function') {
+      // Batched fallback for repository adapters/mocks without a query
+      // builder: one query for all offers instead of one count per offer.
+      const claims = await this.claimRepository.find({
+        where: {
+          offerId: In(offerIds),
+          status: In([
+            CatalogueOfferClaimStatus.CLAIMED,
+            CatalogueOfferClaimStatus.REDEEMED,
+          ]),
+        },
+        select: ['offerId'],
+      });
+
+      for (const claim of claims) {
+        claimCountMap.set(
+          claim.offerId,
+          (claimCountMap.get(claim.offerId) || 0) + 1,
+        );
+      }
+    }
+
+    return rawOffers.map((offer) => {
+      const originalPrice = (offer.items || []).reduce(
+        (acc, it) => acc + Number(it.price || 0),
+        0,
+      );
+      // The numeric columns come back from the driver as strings, so they are
+      // coerced once here: the discountPercent maths and the response payload
+      // both need real numbers.
+      const calculatedPrice = Number(offer.calculatedPrice || 0);
+      const fixedPrice =
+        offer.fixedPrice == null ? null : Number(offer.fixedPrice);
+      const rawPercentageOff =
+        (offer as any).percentageOff ?? offer.discountValue;
+
+      let discountPercent = 0;
+      if (originalPrice > 0 && calculatedPrice < originalPrice) {
+        discountPercent = Math.round(
+          ((originalPrice - calculatedPrice) / originalPrice) * 100,
+        );
+      }
+
+      const claimedCount = claimCountMap.get(offer.id) || 0;
+
+      return {
+        id: offer.id,
+        name: offer.name,
+        description: offer.description,
+        // The deal's own photo: the image a card should show. Without it the
+        // app fell back to an item photo picked by arbitrary join order.
+        mainImage: offer.mainImage ?? null,
+        galleryImages: offer.galleryImages ?? [],
+        pricingType: offer.pricingType,
+        fixedPrice,
+        percentageOff:
+          rawPercentageOff == null
+            ? rawPercentageOff
+            : Number(rawPercentageOff),
+        calculatedPrice,
+        originalPrice,
+        discountPercent,
+        status: offer.status,
+        branchId: offer.branchId,
+        branchName: offer.branch?.name,
+        categoryName: offer.branch?.business?.category?.name,
+        business: offer.branch?.business
+          ? {
+              id: offer.branch.business.id,
+              name: offer.branch.business.name,
+              slug: offer.branch.business.uniqueCode,
+              uniqueCode: offer.branch.business.uniqueCode,
+              logo: offer.branch.business.logoUrl ?? undefined,
+              categoryId: offer.branch.business.categoryId ?? undefined,
+              categoryName: offer.branch?.business?.category?.name ?? undefined,
+              address: offer.branch.business.address ?? undefined,
+              city: offer.branch.business.city ?? undefined,
+              latitude:
+                offer.branch.business.latitude ??
+                offer.branch?.latitude ??
+                undefined,
+              longitude:
+                offer.branch.business.longitude ??
+                offer.branch?.longitude ??
+                undefined,
+            }
+          : undefined,
+        items: sortOfferItems(offer.items),
+        claimedCount,
+        totalLimit: (offer as any).totalLimit ?? offer.quantity,
+        remainingLimit:
+          ((offer as any).totalLimit ?? offer.quantity) != null
+            ? Math.max(
+                0,
+                ((offer as any).totalLimit ?? offer.quantity) - claimedCount,
+              )
+            : null,
+        startDate: offer.startDate,
+        endDate: offer.endDate,
+        isExpired: offer.endDate ? new Date() > new Date(offer.endDate) : false,
+        maxClaimsPerCustomer: offer.maxClaimsPerCustomer,
+        audienceTarget: offer.audienceTarget,
+        terms: offer.terms,
+        claimCodePrefix: offer.claimCodePrefix,
+      };
+    });
   }
 
   async findOneOffer(id: string, branchId?: string) {
@@ -492,9 +1485,21 @@ export class CatalogueOfferService {
     if (branchId) where.branchId = branchId;
     const offer = await this.offerRepository.findOne({
       where,
-      relations: ['items', 'reward', 'branch', 'branch.business'],
+      relations: [
+        'items',
+        'reward',
+        'branch',
+        'branch.business',
+        'branch.business.category',
+        'sourceProduct',
+      ],
     });
     if (!offer) throw new NotFoundException('Offer not found');
+    // Same rule as the feeds: a deep link must not resurrect a deal whose
+    // product the owner has unpublished. (`items` loads non-deleted rows only.)
+    if (!offer.items.every(isPublishedItem)) {
+      throw new NotFoundException('Offer not found');
+    }
 
     const originalPrice = offer.items.reduce(
       (acc, it) => acc + Number(it.price || 0),
@@ -523,8 +1528,20 @@ export class CatalogueOfferService {
     const now = new Date();
     const isExpired = offer.endDate ? now > new Date(offer.endDate) : false;
 
+    const branchAddress =
+      offer.branch?.address || offer.branch?.business?.address || undefined;
+    const branchCity =
+      offer.branch?.city || offer.branch?.business?.city || undefined;
+    const branchState =
+      offer.branch?.state || offer.branch?.business?.state || undefined;
+    const branchLat =
+      offer.branch?.latitude ?? offer.branch?.business?.latitude ?? undefined;
+    const branchLng =
+      offer.branch?.longitude ?? offer.branch?.business?.longitude ?? undefined;
+
     const mappedOffer = {
       ...offer,
+      items: sortOfferItems(offer.items),
       originalPrice,
       dealPrice: offer.calculatedPrice,
       discountPercent,
@@ -541,6 +1558,37 @@ export class CatalogueOfferService {
       ],
       longDescription: offer.description,
       claimCodePrefix: offer.claimCodePrefix,
+      business: offer.branch?.business
+        ? {
+            id: offer.branch.business.id,
+            name: offer.branch.business.name,
+            slug:
+              offer.branch.uniqueCode ||
+              offer.branch.username ||
+              offer.branch.business.uniqueCode,
+            uniqueCode: offer.branch.business.uniqueCode,
+            logo: offer.branch.business.logoUrl ?? undefined,
+            categoryId: offer.branch.business.categoryId ?? undefined,
+            categoryName:
+              (offer.branch.business as any)?.category?.name ?? undefined,
+            address: branchAddress,
+            city: branchCity,
+            state: branchState,
+            latitude: branchLat,
+            longitude: branchLng,
+            phone: (offer.branch as any)?.phone ?? undefined,
+            isVerified: offer.branch.business.isVerified ?? false,
+          }
+        : undefined,
+      sourceProductId: offer.sourceProductId || null,
+      sourceProduct: offer.sourceProduct
+        ? {
+            id: offer.sourceProduct.id,
+            name: offer.sourceProduct.name,
+            itemType: offer.sourceProduct.itemType,
+            price: offer.sourceProduct.price,
+          }
+        : null,
     };
 
     try {
@@ -561,28 +1609,73 @@ export class CatalogueOfferService {
     });
   }
 
-  private calculatePrice(offer: CatalogueOffer, items: CatalogueItem[]) {
-    const sum = items.reduce((acc, item) => acc + Number(item.price), 0);
+  private calculatePrice(
+    offer: CatalogueOffer,
+    items: CatalogueItem[] = [],
+  ): number {
+    const sum = items.reduce((acc, item) => acc + Number(item.price || 0), 0);
     switch (offer.pricingType) {
       case CatalogueOfferPricingType.SUM:
-        return sum;
-      case CatalogueOfferPricingType.PERCENTAGE_DISCOUNT:
+        return Math.max(0, sum);
+      case CatalogueOfferPricingType.PERCENTAGE_DISCOUNT: {
         const discountValue = Number(offer.discountValue || 0);
-        return sum * (1 - discountValue / 100);
-      case CatalogueOfferPricingType.FIXED_DISCOUNT_PRICE:
-        return Number(offer.fixedPrice || sum);
+        if (discountValue > 100) {
+          // Defensive fallback: flat Naira amount sent instead of percentage
+          return Math.max(0, sum - discountValue);
+        }
+        return Math.max(0, sum * (1 - discountValue / 100));
+      }
+      case CatalogueOfferPricingType.FIXED_DISCOUNT_AMOUNT: {
+        const discountValue = Number(offer.discountValue || 0);
+        return Math.max(0, sum - discountValue);
+      }
+      case CatalogueOfferPricingType.COMBO:
+        // The bundle sells at its own price; without one it is just the sum.
+        return Math.max(
+          0,
+          offer.fixedPrice !== null && offer.fixedPrice !== undefined
+            ? Number(offer.fixedPrice)
+            : sum,
+        );
+      case CatalogueOfferPricingType.TIERED: {
+        // Listed at the entry tier — what a customer pays for the minimum
+        // quantity. Deeper tiers apply at checkout.
+        const entry = [...(offer.tiers ?? [])].sort(
+          (a, b) => a.minQuantity - b.minQuantity,
+        )[0];
+        const percent = Math.min(
+          100,
+          Math.max(0, Number(entry?.discountValue ?? 0)),
+        );
+        return Math.max(0, sum * (1 - percent / 100));
+      }
+      case CatalogueOfferPricingType.FIXED_DISCOUNT_PRICE: {
+        if (offer.fixedPrice !== null && offer.fixedPrice !== undefined) {
+          return Math.max(0, Number(offer.fixedPrice));
+        }
+        if (
+          offer.discountValue !== null &&
+          offer.discountValue !== undefined &&
+          Number(offer.discountValue) > 0
+        ) {
+          return Math.max(0, sum - Number(offer.discountValue));
+        }
+        return Math.max(0, sum);
+      }
       default:
-        return sum;
+        return Math.max(0, sum);
     }
   }
 
   async requestClaimOtp(dto: RequestClaimOtpDto) {
     const offer = await this.offerRepository.findOne({
       where: { id: dto.offerId, status: CatalogueOfferStatus.ACTIVE },
+      relations: ['items'],
     });
     if (!offer) {
       throw new NotFoundException('Promotion not found or inactive');
     }
+    assertOfferItemsPublished(offer);
 
     const now = new Date();
     if (offer.startDate && now < new Date(offer.startDate)) {
@@ -629,7 +1722,11 @@ export class CatalogueOfferService {
     return { message: 'Verification OTP sent successfully' };
   }
 
-  async verifyClaim(dto: VerifyClaimDto) {
+  async verifyClaim(
+    dto: VerifyClaimDto,
+    actorUserId?: string,
+    callerOrigin?: string,
+  ) {
     const email = dto.email.toLowerCase();
 
     const otpRecord = await this.otpRepository.findOne({
@@ -655,11 +1752,14 @@ export class CatalogueOfferService {
 
     const offer = await this.offerRepository.findOne({
       where: { id: dto.offerId, status: CatalogueOfferStatus.ACTIVE },
-      relations: ['branch', 'branch.business'],
+      relations: ['items', 'branch', 'branch.business'],
     });
     if (!offer) {
       throw new NotFoundException('Promotion not found or inactive');
     }
+    // Re-checked here, not only at OTP request: the owner can pause the
+    // product in the ten minutes between the two steps.
+    assertOfferItemsPublished(offer);
 
     // Check offer expiration by endDate
     if (offer.endDate && new Date() > new Date(offer.endDate)) {
@@ -713,6 +1813,7 @@ export class CatalogueOfferService {
         claim: {
           id: existingClaim.id,
           claimCode: existingClaim.claimCode,
+          redemptionCode: existingClaim.claimCode,
           expiresAt: existingClaim.expiresAt,
           status: existingClaim.status,
         },
@@ -724,6 +1825,7 @@ export class CatalogueOfferService {
       offer.maxClaimsPerCustomer !== null &&
       offer.maxClaimsPerCustomer !== undefined
     ) {
+      const windowStart = claimLimitWindowStart(offer.claimLimitPeriod);
       const customerClaimsCount = await this.claimRepository.count({
         where: {
           offerId: offer.id,
@@ -732,13 +1834,209 @@ export class CatalogueOfferService {
             CatalogueOfferClaimStatus.CLAIMED,
             CatalogueOfferClaimStatus.REDEEMED,
           ]),
+          ...(windowStart && { createdAt: MoreThanOrEqual(windowStart) }),
         },
       });
       if (customerClaimsCount >= offer.maxClaimsPerCustomer) {
         throw new BadRequestException(
-          `You have reached the maximum number of claims (${offer.maxClaimsPerCustomer}) for this deal.`,
+          windowStart
+            ? `You have reached the maximum number of claims (${offer.maxClaimsPerCustomer}) for this deal this ${offer.claimLimitPeriod}.`
+            : `You have reached the maximum number of claims (${offer.maxClaimsPerCustomer}) for this deal.`,
         );
       }
+    }
+
+    const executeSave = async (managerOrRepo: any) => {
+      // Re-check claim limit inside transaction to prevent race conditions
+      if (offer.quantity !== null && offer.quantity !== undefined) {
+        let claimedCount = 0;
+        if (typeof managerOrRepo.count === 'function') {
+          claimedCount =
+            managerOrRepo.count.length === 2
+              ? await managerOrRepo.count(CatalogueOfferClaim, {
+                  where: {
+                    offerId: offer.id,
+                    status: In([
+                      CatalogueOfferClaimStatus.CLAIMED,
+                      CatalogueOfferClaimStatus.REDEEMED,
+                    ]),
+                  },
+                })
+              : await managerOrRepo.count({
+                  where: {
+                    offerId: offer.id,
+                    status: In([
+                      CatalogueOfferClaimStatus.CLAIMED,
+                      CatalogueOfferClaimStatus.REDEEMED,
+                    ]),
+                  },
+                });
+        }
+        if (claimedCount >= offer.quantity) {
+          throw new BadRequestException(
+            'This promotion has reached its claim limit',
+          );
+        }
+      }
+
+      otpRecord.isVerified = true;
+      if (managerOrRepo.save && managerOrRepo.save.length === 2) {
+        await managerOrRepo.save(Otp, otpRecord);
+      } else {
+        await this.otpRepository.save(otpRecord);
+      }
+
+      const branchCode = offer.branch?.uniqueCode || 'XXXXX';
+      const prefix = offer.claimCodePrefix || 'VEM';
+      const randomString = Math.random()
+        .toString(36)
+        .substring(2, 6)
+        .toUpperCase();
+      const claimCode = `${prefix}-${branchCode}-${randomString}`;
+
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + 7);
+
+      // Claims are anonymous (OTP on email/phone). When the claimant already has
+      // an account, link it so `GET /me/claims` can list the claim reliably.
+      const meta = (otpRecord.metadata ?? {}) as {
+        email: string;
+        phone: string;
+        firstName: string;
+        lastName?: string;
+      };
+      const claimEmail = (meta.email || '').toLowerCase();
+      const claimPhone = meta.phone;
+      const linkedUser = await this.usersRepository.findOne({
+        where: [
+          ...(claimEmail ? [{ email: claimEmail }] : []),
+          ...(claimPhone ? [{ phone: claimPhone }] : []),
+        ],
+      });
+
+      const claimData = {
+        offerId: offer.id,
+        userId: linkedUser?.id ?? null,
+        // Signed in and claiming for another person: they keep sight of it.
+        claimedByUserId:
+          actorUserId && actorUserId !== linkedUser?.id ? actorUserId : null,
+        firstName: meta.firstName,
+        lastName: meta.lastName || undefined,
+        email: meta.email,
+        phone: meta.phone,
+        claimCode,
+        status: CatalogueOfferClaimStatus.CLAIMED,
+        expiresAt,
+      };
+
+      const claim = managerOrRepo.create
+        ? managerOrRepo.create.length === 2
+          ? managerOrRepo.create(CatalogueOfferClaim, claimData)
+          : managerOrRepo.create(claimData)
+        : this.claimRepository.create(claimData);
+
+      const savedClaim =
+        managerOrRepo.save && managerOrRepo.save.length === 2
+          ? await managerOrRepo.save(CatalogueOfferClaim, claim)
+          : await this.claimRepository.save(claim);
+
+      await this.pauseIfSoldOut(offer, managerOrRepo);
+
+      await this.clearCache(offer.branchId, offer.id);
+
+      if (dto.giftToken) {
+        await this.acceptDealGift(dto.giftToken).catch((err) => {
+          this.logger.warn(
+            `Failed to mark deal gift as accepted: ${err.message}`,
+          );
+        });
+      }
+
+      return {
+        message: 'Deal claimed successfully',
+        claim: {
+          id: savedClaim?.id || claim.id,
+          claimCode: savedClaim?.claimCode || claim.claimCode,
+          redemptionCode: savedClaim?.claimCode || claim.claimCode,
+          expiresAt: savedClaim?.expiresAt || claim.expiresAt,
+          status: savedClaim?.status || claim.status,
+        },
+      };
+    };
+
+    const result = this.claimRepository.manager?.transaction
+      ? await this.claimRepository.manager.transaction(executeSave)
+      : await executeSave(this.claimRepository);
+
+    // After commit, so a mail problem can never undo the claim.
+    await this.emailVoucherToRecipient(
+      offer,
+      otpRecord.metadata,
+      result.claim,
+      actorUserId,
+      callerOrigin,
+    ).catch((err) =>
+      this.logger.warn(`Failed to email claimed voucher: ${err.message}`),
+    );
+
+    return result;
+  }
+
+  /** A claim made for someone else: the recipient gets the code by email. */
+  private async emailVoucherToRecipient(
+    offer: CatalogueOffer,
+    meta: Record<string, any> | null | undefined,
+    claim: { id: string; claimCode: string; expiresAt: Date },
+    actorUserId?: string,
+    callerOrigin?: string,
+  ) {
+    const email = String(meta?.email ?? '').toLowerCase();
+    if (!actorUserId || !email) return;
+    const actor = await this.usersRepository.findOne({
+      where: { id: actorUserId },
+    });
+    if (!actor || actor.email?.toLowerCase() === email) return;
+
+    const base = this.mailService.resolveFrontendBaseUrl(callerOrigin);
+    await this.mailService.sendClaimedForYouEmail({
+      email,
+      recipientName: meta?.firstName || 'there',
+      senderName:
+        `${actor.firstName || ''} ${actor.lastName || ''}`.trim() ||
+        actor.email,
+      offerName: offer.name,
+      businessName: offer.branch?.business?.name ?? 'the business',
+      claimCode: claim.claimCode,
+      expiresAt: new Date(claim.expiresAt),
+      passUrl: `${base}/my/claimed-deal/${claim.id}`,
+    });
+  }
+
+  async sendDealGift(dto: SendDealGiftDto, user?: User, callerOrigin?: string) {
+    if (!user) {
+      throw new UnauthorizedException('You must be signed in to gift deals');
+    }
+
+    const offer = await this.offerRepository.findOne({
+      where: { id: dto.offerId, status: CatalogueOfferStatus.ACTIVE },
+      relations: ['items', 'branch', 'branch.business', 'business'],
+    });
+
+    if (!offer) {
+      throw new NotFoundException('Promotion not found or inactive');
+    }
+    assertOfferItemsPublished(offer);
+
+    if (offer.allowGifting === false) {
+      throw new ForbiddenException('This deal cannot be gifted');
+    }
+
+    const now = new Date();
+    if (offer.startDate && now < new Date(offer.startDate)) {
+      throw new BadRequestException('This promotion has not started yet');
+    }
+    if (offer.endDate && now > new Date(offer.endDate)) {
+      throw new BadRequestException('This promotion has expired');
     }
 
     if (offer.quantity !== null && offer.quantity !== undefined) {
@@ -753,47 +2051,285 @@ export class CatalogueOfferService {
       });
       if (claimedCount >= offer.quantity) {
         throw new BadRequestException(
-          'This promotion has reached its claim limit',
+          'This promotion has reached its maximum total claim limit',
         );
       }
     }
 
-    otpRecord.isVerified = true;
-    await this.otpRepository.save(otpRecord);
+    const recipientEmail = dto.recipientEmail.trim().toLowerCase();
 
-    const branchCode = offer.branch?.uniqueCode || 'XXXXX';
-    const prefix = offer.claimCodePrefix || 'VEM';
-    const randomString = Math.random()
-      .toString(36)
-      .substring(2, 6)
-      .toUpperCase();
-    const claimCode = `${prefix}-${branchCode}-${randomString}`;
+    // Check max claims per customer for the recipient
+    if (
+      offer.maxClaimsPerCustomer !== null &&
+      offer.maxClaimsPerCustomer !== undefined
+    ) {
+      const windowStart = claimLimitWindowStart(offer.claimLimitPeriod);
+      const recipientClaimsCount = await this.claimRepository.count({
+        where: {
+          offerId: offer.id,
+          email: recipientEmail,
+          status: In([
+            CatalogueOfferClaimStatus.CLAIMED,
+            CatalogueOfferClaimStatus.REDEEMED,
+          ]),
+          ...(windowStart && { createdAt: MoreThanOrEqual(windowStart) }),
+        },
+      });
+      if (recipientClaimsCount >= offer.maxClaimsPerCustomer) {
+        throw new BadRequestException(
+          `The recipient (${recipientEmail}) has already reached the maximum claim limit (${offer.maxClaimsPerCustomer}) for this deal.`,
+        );
+      }
+    }
 
-    const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 7);
+    const business = offer.branch?.business || offer.business;
+    let targetBranch = offer.branch;
+    if (dto.branchId && dto.branchId !== offer.branchId) {
+      const branchMatch = await this.branchRepository.findOne({
+        where: { id: dto.branchId },
+      });
+      if (branchMatch) {
+        targetBranch = branchMatch;
+      }
+    }
 
-    const claim = this.claimRepository.create({
+    const originalPrice = (offer.items || []).reduce(
+      (acc, it) => acc + Number(it.price || 0),
+      0,
+    );
+
+    let discountLabel = '';
+    if (
+      offer.discountValue &&
+      offer.pricingType === CatalogueOfferPricingType.PERCENTAGE_DISCOUNT
+    ) {
+      discountLabel = `${offer.discountValue}% OFF`;
+    } else if (
+      originalPrice > 0 &&
+      Number(offer.calculatedPrice) < originalPrice
+    ) {
+      const saved = originalPrice - Number(offer.calculatedPrice);
+      const pct = Math.round((saved / originalPrice) * 100);
+      discountLabel = `Save ₦${saved.toLocaleString('en-NG')} (${pct}% OFF)`;
+    }
+
+    const safeSenderName = (
+      dto.senderName?.trim() ||
+      `${user.firstName || ''} ${user.lastName || ''}`.trim() ||
+      user.email
+    ).trim();
+    const safeSenderEmail = user.email;
+    const safeSenderPhone = user.phone || undefined;
+
+    // Create tracking record for this gift
+    const giftToken = uuidv4();
+    const dealGift = this.dealGiftRepository.create({
       offerId: offer.id,
-      firstName: otpRecord.metadata.firstName,
-      lastName: otpRecord.metadata.lastName || null,
-      email: otpRecord.metadata.email,
-      phone: otpRecord.metadata.phone,
-      claimCode,
-      status: CatalogueOfferClaimStatus.CLAIMED,
-      expiresAt,
+      branchId: targetBranch?.id || offer.branchId,
+      businessId: business?.id || offer.businessId,
+      senderId: user.id,
+      senderName: safeSenderName,
+      senderEmail: safeSenderEmail,
+      senderPhone: safeSenderPhone,
+      recipientEmail,
+      note: dto.note?.trim() || null,
+      status: DealGiftStatus.PENDING,
+      token: giftToken,
+    });
+    await this.dealGiftRepository.save(dealGift);
+
+    const emailSent = await this.mailService.sendDealGiftEmail({
+      recipientEmail,
+      senderName: safeSenderName,
+      senderEmail: safeSenderEmail,
+      giftToken,
+      note: dto.note?.trim(),
+      frontendBaseUrl: dto.frontendBaseUrl || callerOrigin,
+      offer: {
+        id: offer.id,
+        name: offer.name,
+        description: offer.description || offer.longDescription || undefined,
+        mainImage:
+          offer.mainImage ||
+          (offer.galleryImages && offer.galleryImages[0]) ||
+          undefined,
+        calculatedPrice: Number(offer.calculatedPrice),
+        originalPrice: originalPrice > 0 ? originalPrice : undefined,
+        discountLabel,
+        endDate: offer.endDate || undefined,
+        terms: offer.terms || undefined,
+      },
+      business: {
+        name: business?.name || 'VemTap Partner',
+        slug: targetBranch?.uniqueCode || business?.uniqueCode || undefined,
+        phone: business?.phone || undefined,
+        address: business?.address || undefined,
+        logoUrl: business?.logoUrl || undefined,
+      },
+      branch: {
+        name: targetBranch?.name || undefined,
+        address: targetBranch?.address || undefined,
+        city: targetBranch?.city || undefined,
+        state: targetBranch?.state || undefined,
+        phone: targetBranch?.phone || undefined,
+      },
     });
 
-    await this.claimRepository.save(claim);
-    await this.clearCache(offer.branchId, offer.id);
+    if (!emailSent) {
+      await this.dealGiftRepository.delete({ id: dealGift.id });
+      throw new BadRequestException(
+        'Failed to dispatch deal gift email. Please try again.',
+      );
+    }
 
     return {
-      message: 'Deal claimed successfully',
-      claim: {
-        id: claim.id,
-        claimCode: claim.claimCode,
-        expiresAt: claim.expiresAt,
-        status: claim.status,
+      success: true,
+      message: `Deal invitation and instructions sent successfully to ${recipientEmail}`,
+      giftToken,
+    };
+  }
+
+  async getGiftByToken(token: string) {
+    const gift = await this.dealGiftRepository.findOne({
+      where: { token },
+      relations: ['offer', 'branch', 'business'],
+    });
+
+    if (!gift) {
+      throw new NotFoundException('Gift offer not found or no longer active');
+    }
+
+    return {
+      token: gift.token,
+      status: gift.status,
+      recipientEmail: gift.recipientEmail,
+      senderName: gift.senderName,
+      senderEmail: gift.senderEmail,
+      note: gift.note,
+      createdAt: gift.createdAt,
+      offer: {
+        id: gift.offer?.id,
+        name: gift.offer?.name,
+        description: gift.offer?.description || gift.offer?.longDescription,
+        mainImage: gift.offer?.mainImage,
+        calculatedPrice: gift.offer ? Number(gift.offer.calculatedPrice) : 0,
       },
+      business: {
+        name: gift.business?.name || 'VemTap Partner',
+        slug: gift.business?.uniqueCode || '',
+      },
+      branch: {
+        id: gift.branch?.id,
+        name: gift.branch?.name,
+      },
+    };
+  }
+
+  async rejectDealGift(token: string, reason: string) {
+    const gift = await this.dealGiftRepository.findOne({
+      where: { token },
+    });
+
+    if (!gift) {
+      throw new NotFoundException('Gift not found or already processed');
+    }
+
+    if (gift.status === DealGiftStatus.REJECTED) {
+      return {
+        success: true,
+        message: 'This gift has already been declined.',
+      };
+    }
+
+    gift.status = DealGiftStatus.REJECTED;
+    gift.rejectionReason = reason?.trim() || 'Declined by recipient';
+    gift.rejectedAt = new Date();
+    await this.dealGiftRepository.save(gift);
+    // Soft remove so recipient details are omitted from branch dashboard queries
+    await this.dealGiftRepository.softRemove(gift);
+
+    return {
+      success: true,
+      message: 'Gift declined successfully. Your details have been removed.',
+    };
+  }
+
+  async acceptDealGift(token: string) {
+    const gift = await this.dealGiftRepository.findOne({
+      where: { token },
+    });
+
+    if (gift && gift.status === DealGiftStatus.PENDING) {
+      gift.status = DealGiftStatus.ACCEPTED;
+      gift.acceptedAt = new Date();
+      await this.dealGiftRepository.save(gift);
+    }
+
+    return gift;
+  }
+
+  async getBranchGiftedDeals(
+    branchId: string,
+    query?: { page?: number; limit?: number; search?: string },
+  ) {
+    const page = Math.max(1, Number(query?.page) || 1);
+    const limit = Math.max(1, Math.min(100, Number(query?.limit) || 20));
+    const skip = (page - 1) * limit;
+
+    const qb = this.dealGiftRepository
+      .createQueryBuilder('gift')
+      .leftJoinAndSelect('gift.offer', 'offer')
+      .leftJoinAndSelect('gift.sender', 'sender')
+      .where('gift.branchId = :branchId', { branchId })
+      .orderBy('gift.createdAt', 'DESC');
+
+    if (query?.search?.trim()) {
+      const s = `%${query.search.trim().toLowerCase()}%`;
+      qb.andWhere(
+        '(LOWER(gift.recipientEmail) LIKE :s OR LOWER(gift.senderName) LIKE :s OR LOWER(offer.name) LIKE :s)',
+        { s },
+      );
+    }
+
+    const [items, total] = await qb.skip(skip).take(limit).getManyAndCount();
+
+    return {
+      data: items,
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
+  }
+
+  /** A scanned voucher, for the merchant's redeem step. */
+  async lookupClaim(id: string, businessId: string) {
+    if (!businessId) throw new NotFoundException('Voucher not found');
+    const claim = await this.claimRepository.findOne({
+      where: { id },
+      relations: ['offer'],
+    });
+    if (!claim || claim.offer?.businessId !== businessId) {
+      throw new NotFoundException('Voucher not found');
+    }
+    const status =
+      claim.status === CatalogueOfferClaimStatus.REDEEMED
+        ? MyClaimStatus.REDEEMED
+        : claim.status === CatalogueOfferClaimStatus.EXPIRED ||
+            claim.expiresAt < new Date()
+          ? MyClaimStatus.EXPIRED
+          : MyClaimStatus.ACTIVE;
+    return {
+      id: claim.id,
+      claimCode: claim.claimCode,
+      status,
+      expiresAt: claim.expiresAt,
+      customerName: [claim.firstName, claim.lastName].filter(Boolean).join(' '),
+      offerName: claim.offer.name,
+      offerImage: claim.offer.mainImage ?? null,
+      calculatedPrice: Number(claim.offer.calculatedPrice || 0),
     };
   }
 
@@ -851,7 +2387,16 @@ export class CatalogueOfferService {
       );
     }
 
+    if (!isWithinRedemptionWindows(claim.offer.redemptionWindows)) {
+      throw new BadRequestException(
+        `This deal can only be redeemed during: ${describeRedemptionWindows(
+          claim.offer.redemptionWindows ?? [],
+        )} (WAT).`,
+      );
+    }
+
     claim.status = CatalogueOfferClaimStatus.REDEEMED;
+    claim.redeemedAt = new Date();
     await this.claimRepository.save(claim);
 
     await this.offerRepository.increment({ id: claim.offerId }, 'visits', 1);
@@ -872,53 +2417,719 @@ export class CatalogueOfferService {
     };
   }
 
-  async getBusinessClaims(businessId: string) {
-    return this.claimRepository.find({
+  async getBusinessClaims(
+    businessId: string,
+    query: { page?: number; limit?: number } = {},
+  ) {
+    const relations = ['offer', 'offer.items'];
+    const order = { createdAt: 'DESC' } as const;
+
+    // Opt-in pagination: legacy callers get the bare array, paginated callers
+    // (page/limit supplied) get { data, total, page, limit }.
+    if (query.page === undefined && query.limit === undefined) {
+      return this.claimRepository.find({
+        where: { offer: { businessId } },
+        relations,
+        order,
+      });
+    }
+
+    const page = query.page ?? 1;
+    const limit = query.limit ?? 20;
+    const [data, total] = await this.claimRepository.findAndCount({
       where: { offer: { businessId } },
-      relations: ['offer', 'offer.items'],
-      order: { createdAt: 'DESC' },
+      relations,
+      order,
+      skip: (page - 1) * limit,
+      take: limit,
     });
+
+    return { data, total, page, limit };
+  }
+
+  /**
+   * Customer-facing list of the authenticated user's own claimed deal passes.
+   * Claims are created anonymously (OTP on email/phone) so a claim is matched
+   * by `userId` when it was linked at claim time, or by the account's email /
+   * phone for older claims that predate the link.
+   */
+  async findMyClaims(
+    user: User,
+    query: MyClaimsQueryDto,
+  ): Promise<MyClaimDto[] | MyClaimsPageDto> {
+    const now = new Date();
+
+    const qb = this.claimRepository
+      .createQueryBuilder('claim')
+      .innerJoinAndSelect('claim.offer', 'offer')
+      .leftJoinAndSelect('offer.items', 'offerItem')
+      .leftJoinAndSelect('offer.branch', 'branch')
+      .leftJoinAndSelect('branch.business', 'business');
+
+    const ownership = this.claimOwnership(user);
+    if (query.includeClaimedForOthers) {
+      qb.where(`(${ownership.sql} OR claim.claimedByUserId = :userId)`, ownership.params);
+    } else {
+      qb.where(ownership.sql, ownership.params);
+    }
+
+    if (query.status === MyClaimStatus.REDEEMED) {
+      qb.andWhere('claim.status = :redeemed', {
+        redeemed: CatalogueOfferClaimStatus.REDEEMED,
+      });
+    } else if (query.status === MyClaimStatus.EXPIRED) {
+      qb.andWhere(
+        '(claim.status = :expired OR (claim.status = :claimed AND claim.expiresAt < :now))',
+        {
+          expired: CatalogueOfferClaimStatus.EXPIRED,
+          claimed: CatalogueOfferClaimStatus.CLAIMED,
+          now,
+        },
+      );
+    } else if (query.status === MyClaimStatus.ACTIVE) {
+      qb.andWhere('claim.status = :claimed AND claim.expiresAt >= :now', {
+        claimed: CatalogueOfferClaimStatus.CLAIMED,
+        now,
+      });
+    }
+
+    // Search runs on the same builder as the count, so `total` reflects the
+    // same rows the page shows. Every column is case-folded rather than
+    // ILIKE-only because `claim.claimCode` is stored uppercase while the offer
+    // and business names are not, and one helper keeps them consistent.
+    if (query.q?.trim()) {
+      qb.andWhere(
+        '(LOWER(offer.name) LIKE :q OR LOWER(business.name) LIKE :q OR LOWER(branch.name) LIKE :q OR LOWER(claim.claimCode) LIKE :q)',
+        { q: `%${query.q.trim().toLowerCase()}%` },
+      );
+    }
+
+    // Opt-in pagination: legacy callers get the bare array, paginated callers
+    // (page/limit supplied) get { data, total, page, limit }.
+    const wantsPaging = query.page !== undefined || query.limit !== undefined;
+    const page = query.page ?? 1;
+    const limit = query.limit ?? 10;
+
+    qb.orderBy('claim.createdAt', 'DESC');
+    if (wantsPaging) {
+      qb.skip((page - 1) * limit).take(limit);
+    }
+
+    if (!wantsPaging) {
+      const claims = await qb.getMany();
+      return claims.map((claim) => this.toMyClaim(claim, now, user));
+    }
+
+    const [claims, total] = await qb.getManyAndCount();
+
+    return {
+      data: claims.map((claim) => this.toMyClaim(claim, now, user)),
+      total,
+      page,
+      limit,
+    };
+  }
+
+  /**
+   * Which claims belong to the caller: linked by `userId`, or matched on the
+   * account's email / phone for claims made before the link existed.
+   */
+  private claimOwnership(user: User): {
+    sql: string;
+    params: { userId: string; email: string; phone?: string };
+  } {
+    const clauses = [
+      'claim.userId = :userId',
+      'LOWER(claim.email) = LOWER(:email)',
+    ];
+    const params: { userId: string; email: string; phone?: string } = {
+      userId: user.id,
+      email: user.email,
+    };
+    if (user.phone) {
+      clauses.push('claim.phone = :phone');
+      params.phone = user.phone;
+    }
+    return { sql: `(${clauses.join(' OR ')})`, params };
+  }
+
+  /** One of the caller's own claims, or a 404 (never another customer's). */
+  private async findOwnClaim(
+    user: User,
+    claimId: string,
+  ): Promise<CatalogueOfferClaim> {
+    const ownership = this.claimOwnership(user);
+    const claim = await this.claimRepository
+      .createQueryBuilder('claim')
+      .where('claim.id = :claimId', { claimId })
+      .andWhere(ownership.sql, ownership.params)
+      .getOne();
+    if (!claim) throw new NotFoundException('Claim not found');
+    return claim;
+  }
+
+  /** The pass QR: an SVG encoding the claim code the merchant verifies. */
+  async myClaimQr(
+    user: User,
+    claimId: string,
+  ): Promise<{ claimCode: string; svg: string }> {
+    const claim = await this.findOwnClaim(user, claimId);
+    const svg = await QRCode.toString(claim.claimCode, {
+      type: 'svg',
+      errorCorrectionLevel: 'M',
+      margin: 1,
+    });
+    return { claimCode: claim.claimCode, svg };
+  }
+
+  /**
+   * Gives an unused claim back. The row is soft-deleted, so the offer's
+   * claimed count (and any sold-out pause) frees the slot for someone else. A
+   * redeemed or expired claim is history and cannot be released.
+   */
+  async releaseMyClaim(user: User, claimId: string): Promise<void> {
+    const claim = await this.findOwnClaim(user, claimId);
+    if (
+      claim.status !== CatalogueOfferClaimStatus.CLAIMED ||
+      claim.expiresAt < new Date()
+    ) {
+      throw new BadRequestException('Only an active claim can be released');
+    }
+    await this.claimRepository.softDelete(claim.id);
+  }
+
+  private toMyClaim(
+    claim: CatalogueOfferClaim,
+    now: Date,
+    user: User,
+  ): MyClaimDto {
+    // Made for someone else: the status is shown, but the code stays theirs.
+    const claimedForOther =
+      claim.claimedByUserId === user.id &&
+      claim.userId !== user.id &&
+      claim.email?.toLowerCase() !== user.email?.toLowerCase();
+    const offer = claim.offer;
+    const originalPrice = (offer.items ?? []).reduce(
+      (acc, item) => acc + Number(item.price || 0),
+      0,
+    );
+    const calculatedPrice = Number(offer.calculatedPrice || 0);
+    const discountPercent =
+      originalPrice > 0 && calculatedPrice < originalPrice
+        ? Math.round(((originalPrice - calculatedPrice) / originalPrice) * 100)
+        : 0;
+
+    const status =
+      claim.status === CatalogueOfferClaimStatus.REDEEMED
+        ? MyClaimStatus.REDEEMED
+        : claim.status === CatalogueOfferClaimStatus.EXPIRED ||
+            claim.expiresAt < now
+          ? MyClaimStatus.EXPIRED
+          : MyClaimStatus.ACTIVE;
+
+    const branch = offer.branch;
+    const business = branch?.business;
+
+    return {
+      id: claim.id,
+      claimCode: claimedForOther ? '' : claim.claimCode,
+      ...(claimedForOther
+        ? {
+            claimedForOther,
+            recipientName: [claim.firstName, claim.lastName]
+              .filter(Boolean)
+              .join(' '),
+            recipientEmail: claim.email,
+          }
+        : {}),
+      status,
+      expiresAt: claim.expiresAt,
+      claimedAt: claim.createdAt,
+      redeemedAt:
+        claim.status === CatalogueOfferClaimStatus.REDEEMED
+          ? claim.updatedAt
+          : null,
+      offer: {
+        id: offer.id,
+        name: offer.name,
+        description: offer.description || null,
+        items: (offer.items ?? []).map((item) => ({
+          id: item.id,
+          name: item.name,
+        })),
+        mainImage: offer.mainImage || offer.items?.[0]?.mainImage || null,
+        calculatedPrice,
+        originalPrice,
+        discountPercent,
+        pricingType: offer.pricingType,
+        // numeric columns reach JS as strings ("1500.00"); the DTO promises
+        // number | null, so coerce at the boundary — null stays null.
+        discountValue:
+          offer.discountValue == null ? null : Number(offer.discountValue),
+        businessId: business?.id ?? offer.branch?.businessId ?? '',
+        businessName: business?.name ?? '',
+        businessCode: business?.uniqueCode ?? null,
+        businessVerified: Boolean(business?.isVerified),
+        businessLogo: business?.logoUrl ?? null,
+        branchId: branch?.id ?? offer.branchId,
+        branchName: branch?.name ?? '',
+        branchAddress: branch?.address ?? business?.address ?? null,
+        branchPhone: branch?.phone ?? business?.phone ?? null,
+        branchLatitude:
+          branch?.latitude != null ? Number(branch.latitude) : null,
+        branchLongitude:
+          branch?.longitude != null ? Number(branch.longitude) : null,
+        endDate: offer.endDate,
+      },
+    };
+  }
+
+  /**
+   * Deals the authenticated customer has gifted away — the sender's side of
+   * `sendDealGift`.
+   *
+   * Declining a gift soft-removes the row so the branch dashboard stops seeing
+   * the recipient, so this query opts back in with `withDeleted()`. That is
+   * safe only because the scope is the caller's own `senderId`: the sender is
+   * the one party the row is not being hidden from.
+   */
+  async findMyGifts(
+    user: User,
+    query: MyGiftsQueryDto,
+  ): Promise<MyGiftDto[] | MyGiftsPageDto> {
+    const qb = this.dealGiftRepository
+      .createQueryBuilder('gift')
+      .leftJoinAndSelect('gift.offer', 'offer')
+      .leftJoinAndSelect('offer.items', 'offerItem')
+      .leftJoinAndSelect('gift.branch', 'branch')
+      .leftJoinAndSelect('gift.business', 'business')
+      .where('gift.senderId = :senderId', { senderId: user.id })
+      .withDeleted();
+
+    if (query.status) {
+      qb.andWhere('gift.status = :status', { status: query.status });
+    }
+
+    if (query.q?.trim()) {
+      qb.andWhere(
+        '(LOWER(gift.recipientEmail) LIKE :q OR LOWER(gift.recipientName) LIKE :q OR LOWER(gift.senderName) LIKE :q OR LOWER(offer.name) LIKE :q)',
+        { q: `%${query.q.trim().toLowerCase()}%` },
+      );
+    }
+
+    const wantsPaging = query.page !== undefined || query.limit !== undefined;
+    const page = query.page ?? 1;
+    const limit = query.limit ?? 10;
+
+    qb.orderBy('gift.createdAt', 'DESC');
+    if (wantsPaging) {
+      qb.skip((page - 1) * limit).take(limit);
+    }
+
+    if (!wantsPaging) {
+      const gifts = await qb.getMany();
+      return gifts.map((gift) => this.toMyGift(gift));
+    }
+
+    const [gifts, total] = await qb.getManyAndCount();
+
+    return {
+      data: gifts.map((gift) => this.toMyGift(gift)),
+      total,
+      page,
+      limit,
+    };
+  }
+
+  private toMyGift(gift: CatalogueDealGift): MyGiftDto {
+    const offer = gift.offer;
+    // `originalPrice` is not a column: it is the sum of the offer's item
+    // prices, derived the same way `toMyClaim` does it so a gift row and a
+    // claim row for the same deal report the same figures.
+    const originalPrice = offer
+      ? (offer.items ?? []).reduce(
+          (acc, item) => acc + Number(item.price || 0),
+          0,
+        )
+      : null;
+
+    return {
+      id: gift.id,
+      recipientEmail: gift.recipientEmail,
+      recipientName: gift.recipientName ?? null,
+      note: gift.note ?? null,
+      status: gift.status,
+      createdAt: gift.createdAt,
+      acceptedAt: gift.acceptedAt ?? null,
+      rejectedAt: gift.rejectedAt ?? null,
+      rejectionReason: gift.rejectionReason ?? null,
+      offer: offer
+        ? {
+            id: offer.id,
+            name: offer.name,
+            mainImage: offer.mainImage ?? null,
+            calculatedPrice: Number(offer.calculatedPrice || 0),
+            originalPrice: originalPrice === 0 ? null : originalPrice,
+          }
+        : {
+            id: gift.offerId,
+            name: '',
+            mainImage: null,
+            calculatedPrice: 0,
+            originalPrice: null,
+          },
+      businessName: gift.business?.name ?? null,
+      branchName: gift.branch?.name ?? null,
+    };
   }
 
   private async clearCache(branchId: string, offerId?: string) {
     try {
-      const cacheMgr = this.cacheManager as any;
-      const store =
-        cacheMgr.store || (cacheMgr.stores ? cacheMgr.stores[0] : null);
-
-      if (store && typeof store.keys === 'function') {
-        const branchKeys = await store.keys(
-          `*offers:public:branch:${branchId}:*`,
-        );
-        for (const key of branchKeys) {
-          if (typeof store.del === 'function') {
-            await store.del(key);
-          } else {
-            await this.cacheManager.del(key);
-          }
-        }
-
-        if (offerId) {
-          const detailKeys = await store.keys(
-            `*offers:public:details:${offerId}*`,
-          );
-          for (const key of detailKeys) {
-            if (typeof store.del === 'function') {
-              await store.del(key);
-            } else {
-              await this.cacheManager.del(key);
-            }
-          }
-        }
-      } else {
-        if (typeof (this.cacheManager as any).reset === 'function') {
-          await (this.cacheManager as any).reset();
-        }
-      }
+      await deleteCacheKeys(this.cacheManager, [
+        `*offers:public:branch:${branchId}:*`,
+        offerId && `*offers:public:details:${offerId}*`,
+      ]);
 
       await this.clustersService.invalidateForBranch(branchId);
     } catch (error) {
       this.logger.error(`Failed to clear offers cache: ${error.message}`);
     }
+  }
+
+  // --- Admin Deals Management ---
+
+  async getAdminDeals(query: AdminDealsQueryDto) {
+    const page = Math.max(1, Number(query.page) || 1);
+    const limit = Math.min(100, Math.max(1, Number(query.limit) || 10));
+    const skip = (page - 1) * limit;
+
+    const qb = this.offerRepository
+      .createQueryBuilder('offer')
+      .leftJoinAndSelect('offer.business', 'business')
+      .leftJoinAndSelect('offer.branch', 'branch')
+      .leftJoinAndSelect('offer.items', 'items')
+      .leftJoinAndSelect('offer.sourceProduct', 'sourceProduct');
+
+    // Search by deal name or business name
+    if (query.search && query.search.trim()) {
+      const term = `%${query.search.trim()}%`;
+      qb.andWhere(
+        '(LOWER(offer.name) LIKE LOWER(:term) OR LOWER(business.name) LIKE LOWER(:term))',
+        { term },
+      );
+    }
+
+    // Filter by businessId
+    if (query.businessId) {
+      qb.andWhere('offer.businessId = :businessId', {
+        businessId: query.businessId,
+      });
+    }
+
+    // Filter by status (active, inactive, expired)
+    const now = new Date();
+    if (query.status === AdminDealsStatusFilter.ACTIVE) {
+      qb.andWhere(
+        'offer.status = :activeStatus AND (offer.endDate IS NULL OR offer.endDate >= :now)',
+        {
+          activeStatus: CatalogueOfferStatus.ACTIVE,
+          now,
+        },
+      );
+    } else if (query.status === AdminDealsStatusFilter.INACTIVE) {
+      qb.andWhere('offer.status = :inactiveStatus', {
+        inactiveStatus: CatalogueOfferStatus.INACTIVE,
+      });
+    } else if (query.status === AdminDealsStatusFilter.EXPIRED) {
+      qb.andWhere('offer.endDate IS NOT NULL AND offer.endDate < :now', {
+        now,
+      });
+    }
+
+    // Filter by isFeatured
+    if (query.isFeatured !== undefined) {
+      qb.andWhere('offer.isFeatured = :isFeatured', {
+        isFeatured: query.isFeatured,
+      });
+    }
+
+    // Filter by price range
+    if (query.minPrice !== undefined) {
+      qb.andWhere('offer.calculatedPrice >= :minPrice', {
+        minPrice: query.minPrice,
+      });
+    }
+    if (query.maxPrice !== undefined) {
+      qb.andWhere('offer.calculatedPrice <= :maxPrice', {
+        maxPrice: query.maxPrice,
+      });
+    }
+
+    // Filter by date range (startDate / endDate)
+    if (query.startDate) {
+      qb.andWhere(
+        '(offer.startDate >= :filterStartDate OR (offer.startDate IS NULL AND offer.createdAt >= :filterStartDate))',
+        {
+          filterStartDate: new Date(query.startDate),
+        },
+      );
+    }
+    if (query.endDate) {
+      qb.andWhere(
+        '(offer.endDate <= :filterEndDate OR (offer.endDate IS NULL AND offer.createdAt <= :filterEndDate))',
+        {
+          filterEndDate: new Date(query.endDate),
+        },
+      );
+    }
+
+    // Filter by plan name or tier
+    if (query.plan && query.plan.trim()) {
+      const planTerm = `%${query.plan.trim()}%`;
+      qb.andWhere(
+        `EXISTS (
+          SELECT 1 FROM subscriptions sub
+          JOIN plans p ON p.id = sub."planId"
+          WHERE sub."businessId" = offer."businessId"
+            AND sub.status IN ('active', 'trial')
+            AND (LOWER(p.name) LIKE LOWER(:planTerm) OR LOWER(p.id::text) = LOWER(:exactPlanTerm))
+        )`,
+        { planTerm, exactPlanTerm: query.plan.trim() },
+      );
+    }
+
+    // Sorting
+    switch (query.sortBy) {
+      case AdminDealsSortBy.MOST_POPULAR:
+        qb.orderBy('offer.views', 'DESC').addOrderBy('offer.createdAt', 'DESC');
+        break;
+      case AdminDealsSortBy.FEATURED_FIRST:
+        qb.orderBy('offer.isFeatured', 'DESC').addOrderBy(
+          'offer.createdAt',
+          'DESC',
+        );
+        break;
+      case AdminDealsSortBy.PRICE_LOW_HIGH:
+        qb.orderBy('offer.calculatedPrice', 'ASC');
+        break;
+      case AdminDealsSortBy.PRICE_HIGH_LOW:
+        qb.orderBy('offer.calculatedPrice', 'DESC');
+        break;
+      case AdminDealsSortBy.ENDING_SOON:
+        qb.orderBy('offer.endDate', 'ASC', 'NULLS LAST');
+        break;
+      case AdminDealsSortBy.NEWEST:
+      default:
+        qb.orderBy('offer.createdAt', 'DESC');
+        break;
+    }
+
+    qb.skip(skip).take(limit);
+
+    const [offers, total] = await qb.getManyAndCount();
+
+    const offerIds = offers.map((o) => o.id);
+    const businessIds = Array.from(
+      new Set(offers.map((o) => o.businessId).filter(Boolean)),
+    );
+
+    // Fetch claims count per offer
+    let claimsCountMap: Record<string, number> = {};
+    if (offerIds.length > 0) {
+      const claimsCounts = await this.claimRepository
+        .createQueryBuilder('claim')
+        .select('claim.offerId', 'offerId')
+        .addSelect('COUNT(claim.id)', 'count')
+        .where('claim.offerId IN (:...offerIds)', { offerIds })
+        .groupBy('claim.offerId')
+        .getRawMany();
+
+      claimsCountMap = claimsCounts.reduce((acc, row) => {
+        acc[row.offerId] = parseInt(row.count, 10) || 0;
+        return acc;
+      }, {});
+    }
+
+    // Fetch active subscription plan per business
+    const businessPlanMap: Record<
+      string,
+      { id: string; name: string; isFree: boolean } | null
+    > = {};
+    for (const bId of businessIds) {
+      try {
+        const sub = await this.subscriptionsService.activeSubscription(bId);
+        if (sub && sub.plan) {
+          businessPlanMap[bId] = {
+            id: sub.plan.id,
+            name: sub.plan.name,
+            isFree: sub.plan.isFree,
+          };
+        } else {
+          businessPlanMap[bId] = null;
+        }
+      } catch {
+        businessPlanMap[bId] = null;
+      }
+    }
+
+    const data = offers.map((offer) => {
+      let computedStatus: 'active' | 'inactive' | 'expired' = 'active';
+      if (offer.status === CatalogueOfferStatus.INACTIVE) {
+        computedStatus = 'inactive';
+      } else if (offer.endDate && new Date(offer.endDate) < now) {
+        computedStatus = 'expired';
+      }
+
+      const originalPrice = (offer.items || []).reduce(
+        (sum, item) => sum + (Number(item.price) || 0),
+        0,
+      );
+
+      const dealPrice = Number(offer.calculatedPrice);
+      let discount = 0;
+      if (offer.pricingType === CatalogueOfferPricingType.PERCENTAGE_DISCOUNT) {
+        discount = Number(offer.discountValue) || 0;
+      } else if (
+        offer.pricingType === CatalogueOfferPricingType.FIXED_DISCOUNT_PRICE
+      ) {
+        discount = Math.max(0, originalPrice - dealPrice);
+      } else if (
+        offer.pricingType === CatalogueOfferPricingType.FIXED_DISCOUNT_AMOUNT
+      ) {
+        discount =
+          Number(offer.discountValue) || Math.max(0, originalPrice - dealPrice);
+      }
+
+      return {
+        id: offer.id,
+        name: offer.name,
+        description: offer.description,
+        image: offer.mainImage,
+        mainImage: offer.mainImage,
+        galleryImages: offer.galleryImages || [],
+        status: computedStatus,
+        sourceProductId: offer.sourceProductId || null,
+        sourceProduct: offer.sourceProduct
+          ? {
+              id: offer.sourceProduct.id,
+              name: offer.sourceProduct.name,
+              itemType: offer.sourceProduct.itemType,
+              price: offer.sourceProduct.price,
+            }
+          : null,
+        pricing: {
+          pricingType: offer.pricingType,
+          originalPrice: originalPrice > 0 ? originalPrice : dealPrice,
+          dealPrice,
+          discount,
+          discountValue: offer.discountValue
+            ? Number(offer.discountValue)
+            : null,
+          fixedPrice: offer.fixedPrice ? Number(offer.fixedPrice) : null,
+        },
+        dates: {
+          startDate: offer.startDate,
+          endDate: offer.endDate,
+          createdAt: offer.createdAt,
+        },
+        claimsCount: claimsCountMap[offer.id] || 0,
+        viewsCount: offer.views || 0,
+        isFeatured: offer.isFeatured || false,
+        business: {
+          id: offer.business?.id || offer.businessId,
+          name: offer.business?.name || 'Unknown Business',
+        },
+        branch: {
+          id: offer.branch?.id || offer.branchId,
+          name: offer.branch?.name || 'Unknown Branch',
+        },
+        subscriptionPlan: businessPlanMap[offer.businessId] || {
+          id: 'free',
+          name: 'Free Plan',
+          isFree: true,
+        },
+      };
+    });
+
+    return {
+      data,
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit) || 1,
+      },
+    };
+  }
+
+  async getAdminDealsStats() {
+    const now = new Date();
+
+    const totalDeals = await this.offerRepository.count();
+
+    const activeDeals = await this.offerRepository
+      .createQueryBuilder('offer')
+      .where(
+        'offer.status = :status AND (offer.endDate IS NULL OR offer.endDate >= :now)',
+        {
+          status: CatalogueOfferStatus.ACTIVE,
+          now,
+        },
+      )
+      .getCount();
+
+    const featuredDeals = await this.offerRepository.count({
+      where: { isFeatured: true },
+    });
+
+    const expiredDeals = await this.offerRepository
+      .createQueryBuilder('offer')
+      .where('offer.endDate IS NOT NULL AND offer.endDate < :now', { now })
+      .getCount();
+
+    return {
+      totalDeals,
+      activeDeals,
+      featuredDeals,
+      expiredDeals,
+    };
+  }
+
+  async toggleDealFeatured(id: string) {
+    const offer = await this.offerRepository.findOne({ where: { id } });
+    if (!offer) {
+      throw new NotFoundException(`Deal with ID ${id} not found`);
+    }
+
+    offer.isFeatured = !offer.isFeatured;
+    const saved = await this.offerRepository.save(offer);
+
+    if (offer.branchId) {
+      await this.clearCache(offer.branchId, id);
+    }
+
+    return {
+      id: saved.id,
+      isFeatured: saved.isFeatured,
+      message: `Deal ${saved.isFeatured ? 'marked as featured' : 'unfeatured'} successfully`,
+    };
+  }
+
+  async getAdminBusinessesList(query: AdminBusinessesQueryDto) {
+    const qb = this.businessRepository
+      .createQueryBuilder('business')
+      .select(['business.id', 'business.name'])
+      .orderBy('business.name', 'ASC');
+
+    if (query.search && query.search.trim()) {
+      const term = `%${query.search.trim()}%`;
+      qb.where('LOWER(business.name) LIKE LOWER(:term)', { term });
+    }
+
+    const businesses = await qb.getMany();
+    return businesses.map((b) => ({
+      id: b.id,
+      name: b.name,
+    }));
   }
 }

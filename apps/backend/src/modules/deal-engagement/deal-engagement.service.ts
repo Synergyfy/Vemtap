@@ -1,0 +1,874 @@
+import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+  Inject,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
+import { CACHE_MANAGER, type Cache } from '@nestjs/cache-manager';
+import { createHmac } from 'crypto';
+import {
+  DataSource,
+  EntityManager,
+  FindOptionsWhere,
+  In,
+  Repository,
+} from 'typeorm';
+import { CatalogueOffer } from '../catalogue/entities/catalogue-offer.entity';
+import { DealReview, DealReviewStatus } from './entities/deal-review.entity';
+import { DealReviewLike } from './entities/deal-review-like.entity';
+import {
+  DealReaction,
+  DealReactionType,
+} from './entities/deal-reaction.entity';
+import { DealSave } from './entities/deal-save.entity';
+import { DealShare } from './entities/deal-share.entity';
+import {
+  BusinessReviewsQueryDto,
+  CreateDealReviewDto,
+  ListReviewsQueryDto,
+  UpdateDealReviewDto,
+} from './dto/deal-review.dto';
+import { deleteCacheKeys } from '../../common/utils/delete-cache-keys';
+
+@Injectable()
+export class DealEngagementService {
+  private readonly logger = new Logger(DealEngagementService.name);
+
+  constructor(
+    @InjectRepository(CatalogueOffer)
+    private readonly offerRepository: Repository<CatalogueOffer>,
+    @InjectRepository(DealReview)
+    private readonly reviewRepository: Repository<DealReview>,
+    @InjectRepository(DealReviewLike)
+    private readonly reviewLikeRepository: Repository<DealReviewLike>,
+    @InjectRepository(DealReaction)
+    private readonly reactionRepository: Repository<DealReaction>,
+    @InjectRepository(DealSave)
+    private readonly saveRepository: Repository<DealSave>,
+    @InjectRepository(DealShare)
+    private readonly shareRepository: Repository<DealShare>,
+    @InjectDataSource()
+    private readonly dataSource: DataSource,
+    private readonly configService: ConfigService,
+    @Inject(CACHE_MANAGER)
+    private readonly cacheManager: Cache,
+  ) {}
+
+  // --- Helpers ---
+
+  private async getOfferOrThrow(offerId: string): Promise<CatalogueOffer> {
+    const offer = await this.offerRepository.findOne({
+      where: { id: offerId },
+      relations: ['business'],
+    });
+    if (!offer) throw new NotFoundException('Deal not found');
+    return offer;
+  }
+
+  private hashIp(ip: string): string {
+    const secret =
+      this.configService.get<string>('IP_HASH_SECRET') ||
+      this.configService.get<string>('JWT_SECRET');
+    return createHmac('sha256', secret ?? '')
+      .update(ip)
+      .digest('hex');
+  }
+
+  /**
+   * Invalidate the cached public offer payloads (detail + branch feed) that
+   * spread the offer entity and therefore carry the denormalized engagement
+   * counters. Mirrors CatalogueOfferService.clearCache key enumeration.
+   */
+  private async clearOfferCaches(
+    offerId: string,
+    branchId?: string,
+  ): Promise<void> {
+    try {
+      await deleteCacheKeys(this.cacheManager, [
+        `*offers:public:details:${offerId}*`,
+        branchId && `*offers:public:branch:${branchId}*`,
+      ]);
+    } catch (error) {
+      this.logger.error(
+        `Failed to clear deal engagement cache: ${(error as Error).message}`,
+      );
+    }
+  }
+
+  private async syncReviewLikeCount(
+    manager: EntityManager,
+    reviewId: string,
+  ): Promise<number> {
+    const likes = await manager.count(DealReviewLike, { where: { reviewId } });
+    await manager.update(DealReview, { id: reviewId }, { likesCount: likes });
+    return likes;
+  }
+
+  private async syncReactionCounts(
+    manager: EntityManager,
+    offerId: string,
+  ): Promise<{ likesCount: number; dislikesCount: number }> {
+    const likesCount = await manager.count(DealReaction, {
+      where: { offerId, type: DealReactionType.LIKE },
+    });
+    const dislikesCount = await manager.count(DealReaction, {
+      where: { offerId, type: DealReactionType.DISLIKE },
+    });
+    await manager.update(
+      CatalogueOffer,
+      { id: offerId },
+      { likesCount, dislikesCount },
+    );
+    return { likesCount, dislikesCount };
+  }
+
+  private async syncReviewsCount(offerId: string): Promise<number> {
+    const count = await this.reviewRepository.count({
+      where: { offerId, status: DealReviewStatus.APPROVED },
+    });
+    await this.offerRepository.update(offerId, { reviewsCount: count });
+    return count;
+  }
+
+  private async syncAverageRating(offerId: string): Promise<number | null> {
+    const raw = await this.reviewRepository
+      .createQueryBuilder('review')
+      .select('AVG(review.rating)', 'avg')
+      .where('review.offerId = :offerId', { offerId })
+      .andWhere('review.status = :status', {
+        status: DealReviewStatus.APPROVED,
+      })
+      .andWhere('review.rating IS NOT NULL')
+      .getRawOne<{ avg: string | null }>();
+
+    const avg =
+      raw?.avg != null ? parseFloat(Number(raw.avg).toFixed(2)) : null;
+    await this.offerRepository.update(offerId, { averageRating: avg });
+    return avg;
+  }
+
+  // --- Reviews ---
+
+  async createReview(
+    user: { id: string; firstName?: string; lastName?: string } | undefined,
+    offerId: string,
+    dto: CreateDealReviewDto,
+    ip?: string,
+  ) {
+    const offer = await this.getOfferOrThrow(offerId);
+
+    const reviewerName =
+      dto.name?.trim() ||
+      (user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() : '');
+    if (!reviewerName) {
+      throw new BadRequestException('A reviewer name is required');
+    }
+
+    let ipHash: string | null = null;
+    if (user?.id) {
+      const existing = await this.reviewRepository.findOne({
+        where: { offerId, userId: user.id },
+      });
+      if (existing) {
+        throw new ConflictException('You have already reviewed this deal');
+      }
+    } else {
+      if (!ip) {
+        throw new BadRequestException('Unable to determine request origin');
+      }
+      ipHash = this.hashIp(ip);
+      const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
+      const existing = await this.reviewRepository
+        .createQueryBuilder('review')
+        .where('review.offerId = :offerId', { offerId })
+        .andWhere('review.ipHash = :ipHash', { ipHash })
+        .andWhere('review.createdAt >= :since', { since })
+        .getOne();
+      if (existing) {
+        throw new ConflictException(
+          'A review from this device was already submitted in the last 24 hours',
+        );
+      }
+    }
+
+    // Auto-approve reviews unless the business has enabled moderation
+    const requireApproval = Boolean(offer.business?.requireReviewApproval);
+    const initialStatus = requireApproval
+      ? DealReviewStatus.PENDING
+      : DealReviewStatus.APPROVED;
+
+    const review = this.reviewRepository.create({
+      offerId,
+      userId: user?.id ?? null,
+      ipHash,
+      reviewerName,
+      comment: dto.comment,
+      rating: dto.rating ?? null,
+      status: initialStatus,
+    });
+    const saved = await this.reviewRepository.save(review);
+
+    if (initialStatus === DealReviewStatus.APPROVED) {
+      await this.syncReviewsCount(offerId);
+      await this.syncAverageRating(offerId);
+      await this.clearOfferCaches(offer.id, offer.branchId);
+    }
+
+    return {
+      id: saved.id,
+      reviewerName: saved.reviewerName,
+      comment: saved.comment,
+      rating: saved.rating,
+      status: saved.status,
+      createdAt: saved.createdAt,
+    };
+  }
+
+  async listReviews(
+    offerId: string,
+    query: ListReviewsQueryDto,
+    user?: { id: string },
+  ) {
+    await this.getOfferOrThrow(offerId);
+    const page = query.page ?? 1;
+    const limit = query.limit ?? 10;
+
+    const [data, total] = await this.reviewRepository.findAndCount({
+      where: { offerId, status: DealReviewStatus.APPROVED },
+      relations: ['user'],
+      order: { createdAt: 'DESC' },
+      skip: (page - 1) * limit,
+      take: limit,
+    });
+
+    let likedIds = new Set<string>();
+    if (user?.id && data.length > 0) {
+      const likes = await this.reviewLikeRepository.find({
+        where: { userId: user.id, reviewId: In(data.map((r) => r.id)) },
+      });
+      likedIds = new Set(likes.map((l) => l.reviewId));
+    }
+
+    return {
+      reviews: data.map((r) => ({
+        id: r.id,
+        reviewerName: r.reviewerName,
+        reviewerAvatar: r.user?.avatar ?? null,
+        comment: r.comment,
+        rating: r.rating,
+        likesCount: r.likesCount,
+        merchantReply: r.merchantReply,
+        repliedAt: r.repliedAt,
+        createdAt: r.createdAt,
+        ...(user?.id ? { isLiked: likedIds.has(r.id) } : {}),
+      })),
+      total,
+      page,
+    };
+  }
+
+  async previewReviews(offerId: string) {
+    await this.getOfferOrThrow(offerId);
+    const data = await this.reviewRepository.find({
+      where: { offerId, status: DealReviewStatus.APPROVED },
+      relations: ['user'],
+      order: { likesCount: 'DESC', createdAt: 'DESC' },
+      take: 3,
+    });
+    return {
+      reviews: data.map((r) => ({
+        id: r.id,
+        reviewerName: r.reviewerName,
+        reviewerAvatar: r.user?.avatar ?? null,
+        comment: r.comment,
+        rating: r.rating,
+        likesCount: r.likesCount,
+        merchantReply: r.merchantReply,
+        repliedAt: r.repliedAt,
+        createdAt: r.createdAt,
+      })),
+    };
+  }
+
+  /**
+   * Single review detail. Approved reviews are public; a non-approved review is
+   * only visible to its author (who must be authenticated), and everyone else
+   * gets a 404 so moderation state is never leaked.
+   */
+  async findReviewById(
+    offerId: string,
+    reviewId: string,
+    user?: { id: string },
+  ) {
+    await this.getOfferOrThrow(offerId);
+    const review = await this.reviewRepository.findOne({
+      where: { id: reviewId, offerId },
+      relations: ['user'],
+    });
+    if (!review) throw new NotFoundException('Review not found');
+
+    const isAuthor = Boolean(
+      user?.id && review.userId && review.userId === user.id,
+    );
+    if (review.status !== DealReviewStatus.APPROVED && !isAuthor) {
+      throw new NotFoundException('Review not found');
+    }
+
+    return {
+      id: review.id,
+      offerId: review.offerId,
+      reviewerName: review.reviewerName,
+      reviewerAvatar: review.user?.avatar ?? null,
+      comment: review.comment,
+      rating: review.rating,
+      likesCount: review.likesCount,
+      status: review.status,
+      isAuthor,
+      merchantReply: review.merchantReply,
+      repliedAt: review.repliedAt,
+      createdAt: review.createdAt,
+      updatedAt: review.updatedAt,
+    };
+  }
+
+  /**
+   * Update the authenticated author's own review. Editing re-enters moderation
+   * when the business requires review approval, and counters/caches are
+   * re-synced so the offer aggregate stays accurate.
+   */
+  async updateOwnReview(
+    offerId: string,
+    reviewId: string,
+    userId: string,
+    dto: UpdateDealReviewDto,
+  ) {
+    const offer = await this.getOfferOrThrow(offerId);
+    const review = await this.reviewRepository.findOne({
+      where: { id: reviewId, offerId },
+    });
+    if (!review) throw new NotFoundException('Review not found');
+    if (!review.userId || review.userId !== userId) {
+      throw new ForbiddenException('You can only edit your own review');
+    }
+
+    if (dto.comment !== undefined) review.comment = dto.comment;
+    if (dto.rating !== undefined) review.rating = dto.rating;
+
+    const requireApproval = Boolean(offer.business?.requireReviewApproval);
+    review.status = requireApproval
+      ? DealReviewStatus.PENDING
+      : DealReviewStatus.APPROVED;
+
+    const saved = await this.reviewRepository.save(review);
+    await this.syncReviewsCount(offerId);
+    await this.syncAverageRating(offerId);
+    await this.clearOfferCaches(offer.id, offer.branchId);
+
+    return {
+      id: saved.id,
+      offerId: saved.offerId,
+      reviewerName: saved.reviewerName,
+      comment: saved.comment,
+      rating: saved.rating,
+      likesCount: saved.likesCount,
+      status: saved.status,
+      isAuthor: true,
+      createdAt: saved.createdAt,
+      updatedAt: saved.updatedAt,
+    };
+  }
+
+  /** Soft-delete the authenticated author's own review and re-sync aggregates. */
+  async deleteOwnReview(offerId: string, reviewId: string, userId: string) {
+    const offer = await this.getOfferOrThrow(offerId);
+    const review = await this.reviewRepository.findOne({
+      where: { id: reviewId, offerId },
+    });
+    if (!review) throw new NotFoundException('Review not found');
+    if (!review.userId || review.userId !== userId) {
+      throw new ForbiddenException('You can only delete your own review');
+    }
+
+    await this.reviewRepository.softDelete(reviewId);
+    await this.syncReviewsCount(offerId);
+    await this.syncAverageRating(offerId);
+    await this.clearOfferCaches(offer.id, offer.branchId);
+  }
+
+  async toggleReviewLike(userId: string, offerId: string, reviewId: string) {
+    return this.dataSource.transaction(async (manager) => {
+      const review = await manager.findOne(DealReview, {
+        where: { id: reviewId },
+      });
+      // Do not reveal the existence of reviews that are not publicly visible
+      // or that belong to a different offer than the one in the path.
+      if (
+        !review ||
+        review.offerId !== offerId ||
+        review.status !== DealReviewStatus.APPROVED
+      ) {
+        throw new NotFoundException('Review not found');
+      }
+
+      const existing = await manager.findOne(DealReviewLike, {
+        where: { reviewId, userId },
+      });
+
+      if (existing) {
+        await manager.remove(existing);
+      } else {
+        await manager.save(
+          manager.create(DealReviewLike, { reviewId, userId }),
+        );
+      }
+
+      const likesCount = await this.syncReviewLikeCount(manager, reviewId);
+      return { liked: !existing, likesCount };
+    });
+  }
+
+  // --- Reactions ---
+
+  async setReaction(userId: string, offerId: string, type: DealReactionType) {
+    const offer = await this.getOfferOrThrow(offerId);
+    const result = await this.dataSource.transaction(async (manager) => {
+      const existing = await manager.findOne(DealReaction, {
+        where: { offerId, userId },
+      });
+
+      if (!existing) {
+        await manager.save(
+          manager.create(DealReaction, { offerId, userId, type }),
+        );
+      } else if (existing.type === type) {
+        await manager.remove(existing);
+      } else {
+        await manager.update(DealReaction, { id: existing.id }, { type });
+      }
+
+      const counts = await this.syncReactionCounts(manager, offerId);
+      return {
+        type: existing?.type === type ? null : type,
+        likesCount: counts.likesCount,
+        dislikesCount: counts.dislikesCount,
+      };
+    });
+    await this.clearOfferCaches(offer.id, offer.branchId);
+    return result;
+  }
+
+  async getReactionStatus(userId: string, offerId: string) {
+    const offer = await this.getOfferOrThrow(offerId);
+    const reaction = await this.reactionRepository.findOne({
+      where: { offerId, userId },
+    });
+    return {
+      type: reaction?.type ?? null,
+      likesCount: Number(offer.likesCount || 0),
+      dislikesCount: Number(offer.dislikesCount || 0),
+    };
+  }
+
+  // --- Saves ---
+
+  async toggleSave(userId: string, offerId: string) {
+    await this.getOfferOrThrow(offerId);
+    const existing = await this.saveRepository.findOne({
+      where: { offerId, userId },
+    });
+    if (existing) {
+      await this.saveRepository.remove(existing);
+      return { saved: false };
+    }
+    await this.saveRepository.save(
+      this.saveRepository.create({ offerId, userId }),
+    );
+    return { saved: true };
+  }
+
+  async getSaveStatus(userId: string, offerId: string) {
+    await this.getOfferOrThrow(offerId);
+    const existing = await this.saveRepository.findOne({
+      where: { offerId, userId },
+    });
+    return { isSaved: !!existing };
+  }
+
+  async listSavedDeals(userId: string) {
+    const saves = await this.saveRepository.find({
+      where: { userId },
+      relations: ['offer', 'offer.branch', 'offer.branch.business'],
+      order: { createdAt: 'DESC' },
+    });
+
+    return {
+      deals: saves
+        .filter((s) => s.offer)
+        .map((s) => ({
+          id: s.offer.id,
+          name: s.offer.name,
+          description: s.offer.description,
+          mainImage: s.offer.mainImage,
+          galleryImages: s.offer.galleryImages || [],
+          calculatedPrice: s.offer.calculatedPrice,
+          discountValue: s.offer.discountValue,
+          startDate: s.offer.startDate,
+          endDate: s.offer.endDate,
+          branchId: s.offer.branchId,
+          branchName: s.offer.branch?.name,
+          categoryName: s.offer.branch?.business?.category?.name ?? null,
+          savedAt: s.createdAt,
+        })),
+    };
+  }
+
+  // --- Shares ---
+
+  async recordShare(
+    userId: string,
+    offerId: string,
+    platform?: string,
+    ip?: string,
+  ) {
+    const offer = await this.getOfferOrThrow(offerId);
+
+    let ipHash: string | null = null;
+    if (ip) {
+      ipHash = this.hashIp(ip);
+    }
+
+    const share = this.shareRepository.create({
+      offerId,
+      userId,
+      platform: platform || null,
+      ipHash,
+    });
+    await this.shareRepository.save(share);
+
+    const sharesCount = await this.shareRepository.count({
+      where: { offerId },
+    });
+    await this.offerRepository.update(offerId, { sharesCount });
+    await this.clearOfferCaches(offer.id, offer.branchId);
+
+    return { sharesCount };
+  }
+
+  // --- Engagement summary ---
+
+  async getEngagement(offerId: string, user?: { id: string }) {
+    const offer = await this.getOfferOrThrow(offerId);
+    const result: Record<string, unknown> = {
+      likesCount: Number(offer.likesCount || 0),
+      dislikesCount: Number(offer.dislikesCount || 0),
+      reviewsCount: Number(offer.reviewsCount || 0),
+      sharesCount: Number(offer.sharesCount || 0),
+      averageRating:
+        offer.averageRating != null ? Number(offer.averageRating) : null,
+    };
+    if (user?.id) {
+      const reaction = await this.reactionRepository.findOne({
+        where: { offerId, userId: user.id },
+      });
+      result.type = reaction?.type ?? null;
+      result.isSaved = !!(await this.saveRepository.findOne({
+        where: { offerId, userId: user.id },
+      }));
+    }
+    return result;
+  }
+
+  // --- Business review management ---
+
+  async findReviewsForBusiness(
+    businessId: string,
+    query: BusinessReviewsQueryDto,
+  ) {
+    const page = query.page ?? 1;
+    const limit = query.limit ?? 20;
+
+    const qb = this.reviewRepository
+      .createQueryBuilder('review')
+      .innerJoinAndSelect('review.offer', 'offer')
+      .leftJoinAndSelect('review.user', 'user')
+      .where('offer.businessId = :businessId', { businessId })
+      .orderBy('review.createdAt', 'DESC')
+      .skip((page - 1) * limit)
+      .take(limit);
+
+    if (query.status) {
+      qb.andWhere('review.status = :status', { status: query.status });
+    }
+
+    if (query.offerId) {
+      qb.andWhere('review.offerId = :offerId', { offerId: query.offerId });
+    }
+
+    const [data, total] = await qb.getManyAndCount();
+
+    return {
+      reviews: data.map((r) => ({
+        id: r.id,
+        offerId: r.offerId,
+        offerName: r.offer?.name,
+        reviewerName: r.reviewerName,
+        reviewerAvatar: r.user?.avatar ?? null,
+        comment: r.comment,
+        rating: r.rating,
+        likesCount: r.likesCount,
+        status: r.status,
+        userId: r.userId,
+        ipHash: r.ipHash,
+        merchantReply: r.merchantReply,
+        repliedAt: r.repliedAt,
+        createdAt: r.createdAt,
+      })),
+      total,
+      page,
+      limit,
+    };
+  }
+
+  /**
+   * Rating summary for the merchant's reviews: APPROVED only feeds the average,
+   * the total and the per-star distribution (that is what customers see), pending
+   * is a moderation counter.
+   *
+   * The distribution is returned as a fixed 1–5 map rather than a sparse array
+   * so the screen can render five bars without re-indexing whatever the database
+   * happens to return, and unrated approved reviews (a rating is optional) simply
+   * contribute nothing.
+   */
+  async getReviewsSummaryForBusiness(businessId: string) {
+    const approved = await this.reviewRepository
+      .createQueryBuilder('review')
+      .innerJoin('review.offer', 'offer')
+      .where('offer.businessId = :businessId', { businessId })
+      .andWhere('review.status = :status', {
+        status: DealReviewStatus.APPROVED,
+      })
+      .select('COUNT(review.id)', 'count')
+      .addSelect('AVG(review.rating)', 'average')
+      .getRawOne<{ count: string; average: string | null }>();
+
+    const pending = await this.reviewRepository
+      .createQueryBuilder('review')
+      .innerJoin('review.offer', 'offer')
+      .where('offer.businessId = :businessId', { businessId })
+      .andWhere('review.status = :status', {
+        status: DealReviewStatus.PENDING,
+      })
+      .select('COUNT(review.id)', 'count')
+      .getRawOne<{ count: string }>();
+
+    const distributionRows = await this.reviewRepository
+      .createQueryBuilder('review')
+      .innerJoin('review.offer', 'offer')
+      .where('offer.businessId = :businessId', { businessId })
+      .andWhere('review.status = :status', {
+        status: DealReviewStatus.APPROVED,
+      })
+      .select('review.rating', 'rating')
+      .addSelect('COUNT(review.id)', 'count')
+      .groupBy('review.rating')
+      .getRawMany<{ rating: number | string | null; count: string }>();
+
+    const ratingDistribution: Record<number, number> = {
+      1: 0,
+      2: 0,
+      3: 0,
+      4: 0,
+      5: 0,
+    };
+    for (const row of distributionRows) {
+      const stars = Number(row.rating);
+      if (stars >= 1 && stars <= 5) {
+        ratingDistribution[stars] = parseInt(row.count, 10) || 0;
+      }
+    }
+
+    const totalReviews = parseInt(approved?.count ?? '0', 10) || 0;
+    const average = approved?.average != null ? Number(approved.average) : null;
+
+    return {
+      totalReviews,
+      averageRating:
+        totalReviews > 0 && average !== null && Number.isFinite(average)
+          ? Math.round(average * 10) / 10
+          : null,
+      pendingReviews: parseInt(pending?.count ?? '0', 10) || 0,
+      ratingDistribution,
+    };
+  }
+
+  async approveReviewByBusiness(businessId: string, reviewId: string) {
+    return this.setReviewStatusForBusiness(
+      businessId,
+      reviewId,
+      DealReviewStatus.APPROVED,
+    );
+  }
+
+  async rejectReviewByBusiness(businessId: string, reviewId: string) {
+    return this.setReviewStatusForBusiness(
+      businessId,
+      reviewId,
+      DealReviewStatus.REJECTED,
+    );
+  }
+
+  async setReviewStatusForBusiness(
+    businessId: string,
+    reviewId: string,
+    status: DealReviewStatus,
+  ) {
+    const review = await this.reviewRepository.findOne({
+      where: { id: reviewId },
+      relations: ['offer'],
+    });
+    if (!review || review.offer?.businessId !== businessId) {
+      throw new NotFoundException('Review not found');
+    }
+    review.status = status;
+    await this.reviewRepository.save(review);
+    await this.syncReviewsCount(review.offerId);
+    await this.syncAverageRating(review.offerId);
+    if (review.offer) {
+      await this.clearOfferCaches(review.offer.id, review.offer.branchId);
+    }
+    return { id: review.id, status: review.status };
+  }
+
+  async removeReviewByBusiness(businessId: string, reviewId: string) {
+    const review = await this.reviewRepository.findOne({
+      where: { id: reviewId },
+      relations: ['offer'],
+    });
+    if (!review || review.offer?.businessId !== businessId) {
+      throw new NotFoundException('Review not found');
+    }
+    await this.reviewRepository.softDelete(reviewId);
+    await this.syncReviewsCount(review.offerId);
+    await this.syncAverageRating(review.offerId);
+    if (review.offer) {
+      await this.clearOfferCaches(review.offer.id, review.offer.branchId);
+    }
+  }
+
+  /** Set (or replace) the business's public reply on one of its reviews. */
+  async replyToReviewByBusiness(
+    businessId: string,
+    reviewId: string,
+    staffId: string | null,
+    reply: string,
+  ) {
+    const review = await this.reviewRepository.findOne({
+      where: { id: reviewId },
+      relations: ['offer'],
+    });
+    if (!review || review.offer?.businessId !== businessId) {
+      throw new NotFoundException('Review not found');
+    }
+    review.merchantReply = reply;
+    review.repliedAt = new Date();
+    review.repliedById = staffId;
+    await this.reviewRepository.save(review);
+    if (review.offer) {
+      await this.clearOfferCaches(review.offer.id, review.offer.branchId);
+    }
+    return {
+      id: review.id,
+      merchantReply: review.merchantReply,
+      repliedAt: review.repliedAt,
+    };
+  }
+
+  async removeReplyByBusiness(businessId: string, reviewId: string) {
+    const review = await this.reviewRepository.findOne({
+      where: { id: reviewId },
+      relations: ['offer'],
+    });
+    if (!review || review.offer?.businessId !== businessId) {
+      throw new NotFoundException('Review not found');
+    }
+    review.merchantReply = null;
+    review.repliedAt = null;
+    review.repliedById = null;
+    await this.reviewRepository.save(review);
+    if (review.offer) {
+      await this.clearOfferCaches(review.offer.id, review.offer.branchId);
+    }
+  }
+
+  // --- Admin moderation ---
+
+  async findReviewsAdmin(status?: DealReviewStatus, page = 1, limit = 20) {
+    const where: FindOptionsWhere<DealReview> = {};
+    if (status) where.status = status;
+    const [data, total] = await this.reviewRepository.findAndCount({
+      where,
+      relations: ['offer', 'user'],
+      order: { createdAt: 'DESC' },
+      skip: (page - 1) * limit,
+      take: limit,
+    });
+    return {
+      reviews: data.map((r) => ({
+        id: r.id,
+        offerId: r.offerId,
+        offerName: r.offer?.name,
+        reviewerName: r.reviewerName,
+        reviewerAvatar: r.user?.avatar ?? null,
+        comment: r.comment,
+        rating: r.rating,
+        likesCount: r.likesCount,
+        status: r.status,
+        userId: r.userId,
+        ipHash: r.ipHash,
+        createdAt: r.createdAt,
+      })),
+      total,
+      page,
+      limit,
+    };
+  }
+
+  async approveReview(id: string) {
+    return this.setReviewStatus(id, DealReviewStatus.APPROVED);
+  }
+
+  async rejectReview(id: string) {
+    return this.setReviewStatus(id, DealReviewStatus.REJECTED);
+  }
+
+  async setReviewStatus(id: string, status: DealReviewStatus) {
+    const review = await this.reviewRepository.findOne({ where: { id } });
+    if (!review) throw new NotFoundException('Review not found');
+    review.status = status;
+    await this.reviewRepository.save(review);
+    await this.syncReviewsCount(review.offerId);
+    await this.syncAverageRating(review.offerId);
+    const offer = await this.offerRepository.findOne({
+      where: { id: review.offerId },
+    });
+    if (offer) await this.clearOfferCaches(offer.id, offer.branchId);
+    return { id: review.id, status: review.status };
+  }
+
+  async removeReview(id: string) {
+    const review = await this.reviewRepository.findOne({ where: { id } });
+    if (!review) throw new NotFoundException('Review not found');
+    await this.reviewRepository.softDelete(id);
+    await this.syncReviewsCount(review.offerId);
+    await this.syncAverageRating(review.offerId);
+    const offer = await this.offerRepository.findOne({
+      where: { id: review.offerId },
+    });
+    if (offer) await this.clearOfferCaches(offer.id, offer.branchId);
+  }
+}

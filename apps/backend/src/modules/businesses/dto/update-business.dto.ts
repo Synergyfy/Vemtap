@@ -1,3 +1,4 @@
+import type { PosSettings } from '../../pos/pos-settings.types';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsString,
@@ -10,7 +11,6 @@ import {
   Min,
   Max,
 } from 'class-validator';
-import { Transform } from 'class-transformer';
 
 export class UpdateBusinessDto {
   @ApiPropertyOptional({ example: 'The Azure Bistro' })
@@ -62,6 +62,19 @@ export class UpdateBusinessDto {
   @IsString()
   logoUrl?: string;
 
+  @ApiPropertyOptional({ example: 'https://example.com/cover.png' })
+  @IsOptional()
+  @IsString()
+  coverImage?: string;
+
+  @ApiPropertyOptional({
+    example: ['https://example.com/shop-1.png'],
+    description: 'Gallery image URLs (Interior & Product Photos)',
+  })
+  @IsOptional()
+  @IsString({ each: true })
+  gallery?: string[];
+
   @ApiPropertyOptional({ example: '123 Business Ave, Lagos' })
   @IsOptional()
   @IsString()
@@ -112,6 +125,14 @@ export class UpdateBusinessDto {
   @IsOptional()
   @IsObject()
   socials?: Record<string, string>;
+
+  @ApiPropertyOptional({
+    example: ['Outdoor Seating', 'Free Wi-Fi', 'POS Ready'],
+    description: 'Store features / amenities shown on the business hub',
+  })
+  @IsOptional()
+  @IsString({ each: true })
+  amenities?: string[];
 
   @ApiPropertyOptional({ example: 'https://facebook.com/mybusiness' })
   @IsOptional()
@@ -175,23 +196,7 @@ export class UpdateBusinessDto {
   })
   @IsOptional()
   @IsObject()
-  posSettings?: {
-    currency?: string;
-    receiptHeader?: string;
-    receiptFooter?: string;
-    autoPrintReceipt?: boolean;
-    showLogo?: boolean;
-    taxEnabled?: boolean;
-    taxRate?: number;
-    taxLabel?: string;
-    pricesIncludeTax?: boolean;
-    loyaltyEnabled?: boolean;
-    loyaltyRedeemThreshold?: number;
-    lowStockAlerts?: boolean;
-    dailySalesSummary?: boolean;
-    newOrderAlert?: boolean;
-    staffActivityAlerts?: boolean;
-  };
+  posSettings?: PosSettings;
 
   @ApiPropertyOptional({
     example: 'VEM-ABC-1234',
@@ -200,4 +205,13 @@ export class UpdateBusinessDto {
   @IsOptional()
   @IsString()
   referralCode?: string;
+
+  @ApiPropertyOptional({
+    example: false,
+    description:
+      'When true, reviews submitted for deals require owner approval before being published (Platinum feature)',
+  })
+  @IsOptional()
+  @IsBoolean()
+  requireReviewApproval?: boolean;
 }

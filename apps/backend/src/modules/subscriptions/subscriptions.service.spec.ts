@@ -9,7 +9,6 @@ import {
 import { Business } from '../businesses/entities/business.entity';
 import { PlansService } from './plans.service';
 import { PaymentsService } from '../payments/payments.service';
-import { Repository } from 'typeorm';
 import { BadRequestException } from '@nestjs/common';
 import { User } from '../users/entities/user.entity';
 import { Branch } from '../branches/entities/branch.entity';
@@ -241,7 +240,10 @@ describe('SubscriptionsService', () => {
         { provide: PaymentsService, useValue: mockPaymentsService },
         { provide: CreditService, useValue: mockCreditService },
         { provide: AddonsService, useValue: mockAddonsService },
-        { provide: SubscriptionTaxService, useValue: mockSubscriptionTaxService },
+        {
+          provide: SubscriptionTaxService,
+          useValue: mockSubscriptionTaxService,
+        },
         { provide: AffiliatesService, useValue: mockAffiliatesService },
         {
           provide: AffiliateSyncService,
@@ -303,6 +305,42 @@ describe('SubscriptionsService', () => {
           isTrial: true,
         }),
       ).rejects.toThrow(BadRequestException);
+    });
+
+    it('refuses a second free trial for the same business', async () => {
+      mockPlansService.findOne.mockResolvedValue(mockTrialPlan);
+      mockSubRepository.findOne.mockImplementation(({ where }: any) =>
+        Promise.resolve(
+          where?.trialEndDate
+            ? { id: 'old-trial', startDate: new Date('2026-01-01') }
+            : null,
+        ),
+      );
+
+      await expect(
+        service.subscribe({
+          planId: '3',
+          businessId: 'b1',
+          billingPeriod: BillingPeriod.MONTHLY,
+          isTrial: true,
+        }),
+      ).rejects.toThrow('already used its free trial');
+      mockSubRepository.findOne.mockReset();
+    });
+
+    it('reports when and whether a business used its trial', async () => {
+      mockSubRepository.findOne.mockResolvedValueOnce({
+        startDate: new Date('2026-02-01'),
+      });
+      await expect(service.trialUsage('b1')).resolves.toEqual({
+        used: true,
+        usedAt: new Date('2026-02-01'),
+      });
+      mockSubRepository.findOne.mockResolvedValueOnce(null);
+      await expect(service.trialUsage('b1')).resolves.toEqual({
+        used: false,
+        usedAt: null,
+      });
     });
 
     it('should apply customEndDate if isAdminOverride is true and customEndDate is provided', async () => {
@@ -439,7 +477,10 @@ describe('SubscriptionsService', () => {
 
       mockPlansService.findFreePlan = jest.fn().mockResolvedValue(mockFreePlan);
       mockPlansService.findOne = jest.fn().mockResolvedValue(mockFreePlan);
-      mockBusRepository.findOne.mockResolvedValue({ id: 'b1', owner: { id: 'u1' } });
+      mockBusRepository.findOne.mockResolvedValue({
+        id: 'b1',
+        owner: { id: 'u1' },
+      });
       mockSubRepository.create.mockReturnValue({
         ...mockSubscription,
         id: 'new-free-sub',
@@ -473,9 +514,15 @@ describe('SubscriptionsService', () => {
       // 5th findOne: fetch created free sub with relation -> returns created free sub
       mockSubRepository.findOne
         .mockResolvedValueOnce(expiredSub)
-        .mockResolvedValueOnce({ ...expiredSub, status: SubscriptionStatus.EXPIRED })
+        .mockResolvedValueOnce({
+          ...expiredSub,
+          status: SubscriptionStatus.EXPIRED,
+        })
         .mockResolvedValueOnce(null)
-        .mockResolvedValueOnce({ ...expiredSub, status: SubscriptionStatus.EXPIRED })
+        .mockResolvedValueOnce({
+          ...expiredSub,
+          status: SubscriptionStatus.EXPIRED,
+        })
         .mockResolvedValueOnce({
           ...mockSubscription,
           id: 'downgraded-free-sub',
@@ -565,7 +612,7 @@ describe('SubscriptionsService', () => {
       expect(mockSubRepository.save).toHaveBeenCalledWith(expiredTrial);
     });
 
-    it('should charge and activate trial subscriptions that have auth code', async () => {
+    it('never charges an ending trial, even with a saved card, and moves it to the free plan', async () => {
       const trialWithAuth = {
         ...mockSubscription,
         status: SubscriptionStatus.TRIAL,
@@ -573,22 +620,19 @@ describe('SubscriptionsService', () => {
         paystackAuthorizationCode: 'AUTH_TRIAL',
         billingPeriod: BillingPeriod.MONTHLY,
       };
-
       mockSubRepository.find.mockResolvedValueOnce([trialWithAuth]);
-      mockPaymentsService.chargeAuthorization.mockResolvedValue({
-        status: 'success',
-        reference: 'REF_TRIAL',
-      });
-      mockBranchRepo.find.mockResolvedValue([]);
+      const toFree = jest
+        .spyOn(service, 'subscribeToFreePlan')
+        .mockResolvedValue(null);
+      const listener = jest.fn().mockResolvedValue(undefined);
+      service.onTrialExpired(listener);
 
       await service.processExpiredTrials();
 
-      expect(mockPaymentsService.chargeAuthorization).toHaveBeenCalledWith(
-        mockPlan.monthlyPrice,
-        'billing@latap.com',
-        'AUTH_TRIAL',
-      );
-      expect(trialWithAuth.status).toBe(SubscriptionStatus.ACTIVE);
+      expect(mockPaymentsService.chargeAuthorization).not.toHaveBeenCalled();
+      expect(trialWithAuth.status).toBe(SubscriptionStatus.EXPIRED);
+      expect(toFree).toHaveBeenCalledWith(trialWithAuth.businessId, true);
+      expect(listener).toHaveBeenCalledWith(trialWithAuth);
     });
   });
 
@@ -734,9 +778,27 @@ describe('SubscriptionsService', () => {
         Promise.resolve(sub),
       );
 
+      const freePlan = jest
+        .spyOn(service, 'subscribeToFreePlan')
+        .mockResolvedValueOnce(null);
+
       const result = await service.cancelSubscription('b1');
       expect(result.message).toBe('Subscription cancelled successfully');
       expect(result.subscription.status).toBe(SubscriptionStatus.CANCELED);
+      expect(freePlan).toHaveBeenCalledWith('b1');
+    });
+
+    it('refuses to cancel the free plan', async () => {
+      mockSubRepository.findOne.mockResolvedValueOnce({
+        ...mockSubscription,
+        plan: { ...(mockSubscription as any).plan, isFree: true },
+      });
+      await expect(service.cancelSubscription('b1')).rejects.toThrow(
+        'The free plan cannot be cancelled',
+      );
+      expect(mockSubRepository.save).not.toHaveBeenCalledWith(
+        expect.objectContaining({ status: SubscriptionStatus.CANCELED }),
+      );
     });
   });
 
@@ -785,7 +847,7 @@ describe('SubscriptionsService', () => {
       const result = await service.previewPrice({
         planId: 'plan-1',
         billingPeriod: BillingPeriod.MONTHLY,
-        addonIds: [] as any,
+        addonIds: [],
         promoCode: '   ',
       });
 
@@ -797,6 +859,27 @@ describe('SubscriptionsService', () => {
   });
 
   describe('initializePayment', () => {
+    it('refuses to take a payment for a free trial', async () => {
+      mockPlansService.findOne.mockResolvedValueOnce({
+        ...mockTrialPlan,
+        isActive: true,
+      });
+      mockBusRepository.findOne.mockResolvedValueOnce({
+        id: 'b1',
+        officialEmail: 'test@business.com',
+        ownerId: 'u1',
+      });
+
+      await expect(
+        service.initializePayment({
+          planId: '3',
+          businessId: 'b1',
+          billingPeriod: BillingPeriod.MONTHLY,
+          isTrial: true,
+        }),
+      ).rejects.toThrow('Free trials need no payment');
+    });
+
     it('should calculate discounted amount and pass promo metadata to Paystack when promoCode is applied', async () => {
       mockPlansService.findOne.mockResolvedValueOnce({
         id: 'plan-1',
@@ -814,7 +897,12 @@ describe('SubscriptionsService', () => {
 
       mockCouponEngineService.validatePromotion.mockResolvedValueOnce({
         isValid: true,
-        coupon: { id: 'c1', name: 'SAVE5K Discount', discountType: 'FIXED_AMOUNT', amount: 5000 },
+        coupon: {
+          id: 'c1',
+          name: 'SAVE5K Discount',
+          discountType: 'FIXED_AMOUNT',
+          amount: 5000,
+        },
         promotionCode: { id: 'promo-1', code: 'SAVE5K' },
         originalPlanPrice: 7999,
         discountAmount: 5000,
@@ -823,7 +911,12 @@ describe('SubscriptionsService', () => {
         netSubtotal: 2999,
         taxAmount: 0,
         total: 2999,
-        taxRule: { name: 'VAT', isEnabled: false, rate: 0, taxType: 'percentage' },
+        taxRule: {
+          name: 'VAT',
+          isEnabled: false,
+          rate: 0,
+          taxType: 'percentage',
+        },
       });
 
       mockPaymentsService.initializeTransaction.mockResolvedValueOnce({

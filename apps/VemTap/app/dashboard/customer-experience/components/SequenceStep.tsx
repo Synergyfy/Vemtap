@@ -47,7 +47,7 @@ export function SequenceStep({ branchId }: SequenceStepProps) {
     const { data: rewards = [], isLoading: rewardsLoading } = useQuery<any[]>({
         queryKey: ['loyalty-rewards', resolvedBranchId],
         queryFn: async () => {
-            const response = await api.get(`/loyalty/rewards/branches/${resolvedBranchId}`);
+            const response = await api.get(`/loyalty/rewards/branch/${resolvedBranchId}`);
             return response?.data || response || [];
         },
         enabled: !!resolvedBranchId

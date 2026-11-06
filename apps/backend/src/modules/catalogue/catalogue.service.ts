@@ -1,11 +1,15 @@
 import {
+  Inject,
   Injectable,
+  Logger,
   NotFoundException,
   BadRequestException,
   ForbiddenException,
+  Optional,
 } from '@nestjs/common';
+import { CACHE_MANAGER, type Cache } from '@nestjs/cache-manager';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Brackets, In } from 'typeorm';
+import { Repository, Brackets } from 'typeorm';
 import { CatalogueCategory } from './entities/catalogue-category.entity';
 import {
   CatalogueItem,
@@ -22,11 +26,33 @@ import {
   UpdateCatalogueItemDto,
   CatalogueQueryDto,
   BulkImportItemsDto,
+  PublicProductsQueryDto,
+  PublicProductSortOrder,
 } from './dto/item.dto';
 import { Branch } from '../branches/entities/branch.entity';
 import { Business } from '../businesses/entities/business.entity';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { paginateWithCursor } from '../../common/utils/cursor-pagination.util';
+
+import {
+  assertCompareAtPrice,
+  normalizeVariants,
+} from './utils/catalogue-item.utils';
+import { deleteCacheKeys } from '../../common/utils/delete-cache-keys';
+
+/**
+ * The fields a PATCH actually sent. The build targets ES2023, so every field
+ * declared on the DTO class exists on the transformed body as an own
+ * `undefined` property; assigning those onto the entity blanks the columns the
+ * client did not touch in the returned item (e.g. `status`, `itemType`).
+ * Control fields that are not columns are dropped too.
+ */
+function definedUpdates(dto: UpdateCatalogueItemDto) {
+  const { branchId, applyGlobally, variants, ...updates } = dto;
+  return Object.fromEntries(
+    Object.entries(updates).filter(([, value]) => value !== undefined),
+  ) as Partial<CatalogueItem>;
+}
 
 @Injectable()
 export class CatalogueService {
@@ -40,7 +66,27 @@ export class CatalogueService {
     @InjectRepository(Business)
     private readonly businessRepository: Repository<Business>,
     private readonly subscriptionsService: SubscriptionsService,
+    @Optional() @Inject(CACHE_MANAGER) private readonly cacheManager?: Cache,
   ) {}
+
+  private readonly logger = new Logger(CatalogueService.name);
+
+  /**
+   * Public deal lists and details are cached for up to an hour, and a deal is
+   * only listed while every item in it is published. When an item's publish
+   * state changes, drop those caches so the deal appears/disappears now rather
+   * than when the TTL runs out.
+   */
+  private async invalidatePublicOfferCaches(): Promise<void> {
+    if (!this.cacheManager) return;
+    try {
+      await deleteCacheKeys(this.cacheManager, ['*offers:public:*']);
+    } catch (err) {
+      this.logger.warn(
+        `Failed to clear public offer caches: ${(err as Error).message}`,
+      );
+    }
+  }
 
   // --- Categories ---
 
@@ -78,14 +124,53 @@ export class CatalogueService {
       where: { id, businessId },
     });
     if (!category) throw new NotFoundException('Category not found');
+
+    // Items reference a category by nullable FK; detach them first so deleting
+    // a category that still holds items doesn't blow up on the constraint.
+    await this.itemRepository.update(
+      { categoryId: id },
+      { categoryId: null as unknown as string },
+    );
     return this.categoryRepository.remove(category);
   }
 
   async findAllCategories(businessId: string) {
     return this.categoryRepository.find({
       where: { businessId },
-      order: { name: 'ASC' },
+      order: { sortOrder: 'ASC', name: 'ASC' },
     });
+  }
+
+  /**
+   * Persists a full re-order: the client sends every category id in its new
+   * sequence and each id's index becomes its sortOrder. Lists must be complete
+   * so a stale client can't silently drop a category's position.
+   */
+  async reorderCategories(businessId: string, orderedIds: string[]) {
+    const categories = await this.categoryRepository.find({
+      where: { businessId },
+    });
+    const byId = new Map(categories.map((category) => [category.id, category]));
+
+    const unknown = orderedIds.filter((id) => !byId.has(id));
+    if (unknown.length > 0) {
+      throw new BadRequestException(
+        'Reorder list contains a category that does not exist',
+      );
+    }
+    const missing = categories.filter(
+      (category) => !orderedIds.includes(category.id),
+    );
+    if (missing.length > 0) {
+      throw new BadRequestException('Reorder list must include every category');
+    }
+
+    orderedIds.forEach((id, index) => {
+      byId.get(id)!.sortOrder = index;
+    });
+    await this.categoryRepository.save(categories);
+
+    return this.findAllCategories(businessId);
   }
 
   // --- Items ---
@@ -140,8 +225,11 @@ export class CatalogueService {
       dto.sku = `SKU-${randomPart}`;
     }
 
+    assertCompareAtPrice(dto.price, dto.compareAtPrice);
+    const { variants, ...fields } = dto;
     const item = this.itemRepository.create({
-      ...dto,
+      ...fields,
+      variants: normalizeVariants(variants, dto.price) ?? null,
       businessId,
       branches: [branch],
     });
@@ -159,6 +247,17 @@ export class CatalogueService {
       relations: ['branches'],
     });
     if (!item) throw new NotFoundException('Item not found');
+
+    assertCompareAtPrice(
+      dto.price ?? item.price,
+      dto.compareAtPrice !== undefined
+        ? dto.compareAtPrice
+        : item.compareAtPrice,
+    );
+    const normalizedVariants = normalizeVariants(
+      dto.variants,
+      dto.price ?? item.price,
+    );
 
     // cloning logic
     if (!dto.applyGlobally && dto.branchId && item.branches.length > 1) {
@@ -180,16 +279,21 @@ export class CatalogueService {
       delete (newItem as any).updatedAt;
 
       // Apply updates to the new instance
-      const { branchId, applyGlobally, ...updates } = dto;
-      Object.assign(newItem, updates);
+      Object.assign(newItem, definedUpdates(dto));
+      if (normalizedVariants !== undefined)
+        newItem.variants = normalizedVariants;
 
-      return this.itemRepository.save(newItem);
+      const isolated = await this.itemRepository.save(newItem);
+      if (dto.status !== undefined) await this.invalidatePublicOfferCaches();
+      return isolated;
     }
 
     // Global update or single-branch item update
-    const { branchId, applyGlobally, ...updates } = dto;
-    Object.assign(item, updates);
-    return this.itemRepository.save(item);
+    Object.assign(item, definedUpdates(dto));
+    if (normalizedVariants !== undefined) item.variants = normalizedVariants;
+    const saved = await this.itemRepository.save(item);
+    if (dto.status !== undefined) await this.invalidatePublicOfferCaches();
+    return saved;
   }
 
   async deleteItem(
@@ -205,7 +309,9 @@ export class CatalogueService {
     if (!item) throw new NotFoundException('Item not found');
 
     if (applyGlobally) {
-      return this.itemRepository.remove(item);
+      const removed = await this.itemRepository.remove(item);
+      await this.invalidatePublicOfferCaches();
+      return removed;
     }
 
     if (branchId) {
@@ -442,7 +548,9 @@ export class CatalogueService {
     item.isSuspended = true;
     item.suspensionNote = reason;
     item.status = CatalogueItemStatus.SUSPENDED;
-    return this.itemRepository.save(item);
+    const saved = await this.itemRepository.save(item);
+    await this.invalidatePublicOfferCaches();
+    return saved;
   }
 
   async unsuspendItem(id: string) {
@@ -452,7 +560,9 @@ export class CatalogueService {
     item.isSuspended = false;
     item.suspensionNote = null;
     item.status = CatalogueItemStatus.ACTIVE;
-    return this.itemRepository.save(item);
+    const saved = await this.itemRepository.save(item);
+    await this.invalidatePublicOfferCaches();
+    return saved;
   }
 
   private async ensureBranchItemAssociations(branchId: string): Promise<void> {
@@ -473,14 +583,22 @@ export class CatalogueService {
         .getMany();
 
       if (unassociatedItems.length > 0) {
-        for (const item of unassociatedItems) {
-          item.branches = [branch];
-          await this.itemRepository.save(item);
-        }
+        // Single bulk insert into the join table instead of saving each item
+        // (which would issue one UPDATE + one join insert per row).
+        await this.itemRepository
+          .createQueryBuilder()
+          .relation(CatalogueItem, 'branches')
+          .of(unassociatedItems.map((item) => item.id))
+          .add(branch.id);
       }
     } catch {
       // Non-blocking best-effort association
     }
+  }
+
+  /** The branch id public routes resolve a branch id / code / business id to. */
+  resolvePublicBranchId(branchIdOrCode: string): Promise<string> {
+    return this.resolveBranchId(branchIdOrCode);
   }
 
   private async resolveBranchId(branchIdOrCode: string): Promise<string> {
@@ -537,9 +655,7 @@ export class CatalogueService {
       if (mainBranch) return mainBranch.id;
     }
 
-    throw new NotFoundException(
-      `Branch with code ${branchIdOrCode} not found`,
-    );
+    throw new NotFoundException(`Branch with code ${branchIdOrCode} not found`);
   }
 
   // --- Public Listing ---
@@ -639,6 +755,100 @@ export class CatalogueService {
     };
   }
 
+  /**
+   * App-facing published products feed (`GET /api/v1/products`): active,
+   * non-suspended catalogue items across every branch, in the envelope the app
+   * expects (`{ data, total, page, limit, totalPages, hasNextPage,
+   * hasPrevPage }`). Replaces the legacy empty products feed for consumers
+   * while the legacy module keeps its admin/quote/order endpoints.
+   */
+  async findPublishedItemsPublic(query: PublicProductsQueryDto) {
+    const page = query.page ?? 1;
+    const limit = query.limit ?? 10;
+
+    const qb = this.itemRepository
+      .createQueryBuilder('item')
+      .leftJoinAndSelect('item.category', 'category')
+      .leftJoinAndSelect('item.business', 'business')
+      .where('item.status = :status', { status: CatalogueItemStatus.ACTIVE })
+      .andWhere('item.isSuspended = :isSuspended', { isSuspended: false });
+
+    if (query.search) {
+      qb.andWhere(
+        new Brackets((inner) => {
+          inner
+            .where('item.name ILIKE :search', { search: `%${query.search}%` })
+            .orWhere('item.shortDescription ILIKE :search', {
+              search: `%${query.search}%`,
+            })
+            .orWhere('item.description ILIKE :search', {
+              search: `%${query.search}%`,
+            });
+        }),
+      );
+    }
+
+    if (query.categoryId) {
+      qb.andWhere('item.categoryId = :categoryId', {
+        categoryId: query.categoryId,
+      });
+    }
+
+    if (query.itemType) {
+      qb.andWhere('item.itemType = :itemType', { itemType: query.itemType });
+    }
+
+    if (query.minPrice !== undefined) {
+      qb.andWhere('item.price >= :minPrice', { minPrice: query.minPrice });
+    }
+
+    if (query.maxPrice !== undefined) {
+      qb.andWhere('item.price <= :maxPrice', { maxPrice: query.maxPrice });
+    }
+
+    let sortField = 'createdAt';
+    let sortOrder: 'ASC' | 'DESC' =
+      query.sortOrder === PublicProductSortOrder.ASC ? 'ASC' : 'DESC';
+
+    switch (query.sortBy) {
+      case 'oldest':
+        sortField = 'createdAt';
+        sortOrder = 'ASC';
+        break;
+      case 'price_asc':
+        sortField = 'price';
+        sortOrder = 'ASC';
+        break;
+      case 'price_desc':
+        sortField = 'price';
+        sortOrder = 'DESC';
+        break;
+      case 'newest':
+      case 'most_popular':
+      default:
+        sortField = 'createdAt';
+        sortOrder = 'DESC';
+        break;
+    }
+
+    qb.orderBy(`item.${sortField}`, sortOrder)
+      .skip((page - 1) * limit)
+      .take(limit);
+
+    const [data, total] = await qb.getManyAndCount();
+    const totalPages = limit > 0 ? Math.ceil(total / limit) : 0;
+
+    return {
+      data,
+      total,
+      page,
+      limit,
+      totalPages,
+      hasNextPage: page < totalPages,
+      hasPrevPage: page > 1,
+    };
+  }
+
   async findAllCategoriesByBranch(branchId: string) {
     const resolvedBranchId = await this.resolveBranchId(branchId);
     await this.ensureBranchItemAssociations(resolvedBranchId);
@@ -652,8 +862,10 @@ export class CatalogueService {
       })
       .where('item.status = :status', { status: CatalogueItemStatus.ACTIVE })
       .andWhere('item.isSuspended = :isSuspended', { isSuspended: false })
-      .select(['category.id', 'category.name'])
+      .select(['category.id', 'category.name', 'category.sortOrder'])
       .distinct(true)
+      .orderBy('category.sortOrder', 'ASC')
+      .addOrderBy('category.name', 'ASC')
       .getMany();
 
     return categories;

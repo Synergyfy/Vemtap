@@ -1,6 +1,5 @@
 import * as dotenv from 'dotenv';
 import { join } from 'path';
-import { GoogleGenerativeAI } from '@google/generative-ai';
 
 // Load env variables
 const targetPath = join(process.cwd(), '.env');

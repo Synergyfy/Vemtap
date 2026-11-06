@@ -53,6 +53,15 @@ export class ClustersPublicController {
   constructor(private readonly clustersService: ClustersService) {}
 
   @Public()
+  @Get('districts')
+  @ApiOperation({
+    summary: 'Districts boosts, campaigns and home areas can target',
+  })
+  listDistricts() {
+    return this.clustersService.listDistricts();
+  }
+
+  @Public()
   @Get('context/:uniqueCode')
   @ApiOperation({
     summary: 'Resolve a cluster QR code scan',

@@ -48,6 +48,7 @@ type EditablePlanForm = Omit<PricingPlan, 'id' | 'quarterlyPrice' | 'yearlyPrice
     automationsLimit: string;
     qrThrivePlanId?: string;
     badge?: 'free' | 'silver' | 'gold' | 'platinum';
+    autoFeatureDeals?: boolean;
 };
 
 type EditableAddOnForm = {
@@ -101,6 +102,7 @@ const defaultNewPlan: EditablePlanForm = {
     isPopular: false,
     qrThrivePlanId: '',
     badge: undefined,
+    autoFeatureDeals: false,
 };
 
 const defaultNewAddOn: EditableAddOnForm = {
@@ -168,6 +170,7 @@ const toEditablePlan = (plan: PricingPlan): EditablePlanForm => ({
     isPopular: !!plan.isPopular,
     qrThrivePlanId: plan.qrThrivePlanId || '',
     badge: plan.badge || undefined,
+    autoFeatureDeals: plan.autoFeatureDeals ?? false,
 });
 
 const toEditableAddOn = (addon: AddOn): EditableAddOnForm => ({
@@ -638,6 +641,7 @@ export default function AdminPricingPage() {
         isPopular: !!plan.isPopular,
         qrThrivePlanId: plan.qrThrivePlanId || undefined,
         badge: plan.badge || undefined,
+        autoFeatureDeals: plan.autoFeatureDeals ?? false,
     });
 
     const handleSave = async () => {
@@ -675,7 +679,7 @@ export default function AdminPricingPage() {
                 'analyticsLevel', 'catalogueEnabled', 'maxCatalogueItems',
                 'maxCatalogueCategories', 'maxCatalogueOffers',
                 'automationsEnabled', 'maxAutomations',
-                'isActive', 'description', 'isPopular', 'qrThrivePlanId'
+                'isActive', 'description', 'isPopular', 'qrThrivePlanId', 'autoFeatureDeals'
             ];
 
             editableFields.forEach((k) => {
@@ -1610,6 +1614,20 @@ export default function AdminPricingPage() {
                                     <label className="text-sm font-bold text-text-main flex items-center gap-1">
                                         Active Status
                                         <Tooltip content="Only active plans are visible to businesses during signup or upgrade.">
+                                            <Info size={12} className="text-slate-400 cursor-help" />
+                                        </Tooltip>
+                                    </label>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                    <input
+                                        type="checkbox"
+                                        checked={currentPlan.autoFeatureDeals ?? false}
+                                        onChange={(e) => setEditingPlan((prev) => (prev ? { ...prev, autoFeatureDeals: e.target.checked } : prev))}
+                                        className="w-5 h-5 rounded border-gray-300 text-amber-500 focus:ring-amber-500"
+                                    />
+                                    <label className="text-sm font-bold text-text-main flex items-center gap-1">
+                                        Auto-Feature Deals
+                                        <Tooltip content="Deals created by businesses on this plan will be automatically featured on the homepage.">
                                             <Info size={12} className="text-slate-400 cursor-help" />
                                         </Tooltip>
                                     </label>

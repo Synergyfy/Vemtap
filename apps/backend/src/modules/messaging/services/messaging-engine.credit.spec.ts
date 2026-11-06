@@ -12,7 +12,7 @@ import { BranchesService } from '../../branches/branches.service';
 import { DataSource } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
 
-import { User, UserRole } from '../../users/entities/user.entity';
+import { User } from '../../users/entities/user.entity';
 import { Message } from '../entities/message.entity';
 import { MessageLog } from '../entities/message-log.entity';
 import { ConversationThread } from '../entities/conversation-thread.entity';
@@ -25,6 +25,7 @@ import { CreditPlanService } from './credit-plan.service';
 import { PaymentsService } from '../../payments/payments.service';
 import { MessagingGateway } from '../messaging.gateway';
 import { PushNotificationService } from '../../notifications/push-notification.service';
+import { NotificationsService } from '../../notifications/notifications.service';
 import { LoyaltyService } from '../../loyalty/loyalty.service';
 
 describe('MessagingEngineService Credit Logic', () => {
@@ -32,7 +33,6 @@ describe('MessagingEngineService Credit Logic', () => {
   let branchRepoMock: any;
   let userRepoMock: any;
   let creditServiceMock: any;
-  let creditPlanService: CreditPlanService;
   let paymentsServiceMock: any;
 
   const mockIndividualQueue = {
@@ -115,11 +115,11 @@ describe('MessagingEngineService Credit Logic', () => {
         { provide: 'CreditPlanRepository', useValue: { findOne: jest.fn() } },
         { provide: MessagingGateway, useValue: {} },
         { provide: PushNotificationService, useValue: {} },
+        { provide: NotificationsService, useValue: {} },
       ],
     }).compile();
 
     service = module.get<MessagingEngineService>(MessagingEngineService);
-    creditPlanService = module.get<CreditPlanService>(CreditPlanService);
   });
 
   it('should throw BadRequestException if credits are insufficient', async () => {

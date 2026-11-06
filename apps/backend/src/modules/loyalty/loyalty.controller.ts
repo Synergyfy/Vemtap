@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Controller,
   Get,
   Post,
@@ -49,6 +50,10 @@ import {
   RewardQueryDto,
   CustomerPointLogsQueryDto,
 } from './dto/loyalty-query.dto';
+import {
+  CustomerAnalyticsDto,
+  LoyaltyTierDto,
+} from './dto/loyalty-analytics.dto';
 import {
   LegacyVisitorPointsEarnDto,
   VisitorPointsEarnDto,
@@ -187,6 +192,46 @@ export class LoyaltyController {
     return this.loyaltyService.getCustomerPoints(req.user.id, businessId);
   }
 
+  @Get('me/wallet')
+  @Roles(UserRole.CUSTOMER)
+  @ApiOperation({
+    summary: "The customer's points at each business",
+    description:
+      'Returns `[{ businessId, businessName, businessLogo, points }]`, one row per business with a non-zero balance, highest first. Access: CUSTOMER',
+  })
+  async getMyWallet(@Request() req: { user: User }) {
+    return this.loyaltyService.getCustomerWallet(req.user.id);
+  }
+
+  @Get('me/redemptions')
+  @Roles(UserRole.CUSTOMER)
+  @ApiOperation({
+    summary: 'Rewards the customer has redeemed',
+    description:
+      'Newest first: the code to show staff, the reward, points spent, business and branch, and when the reward expires. Access: CUSTOMER',
+  })
+  async getMyRedemptions(@Request() req: { user: User }) {
+    return this.loyaltyService.getCustomerRedemptions(req.user.id);
+  }
+
+  @Get('points/tier')
+  @Roles(UserRole.CUSTOMER)
+  @ApiOperation({
+    summary: 'Customer loyalty tier and progress',
+    description:
+      'Derives the customer tier from their global points balance. ' +
+      'Thresholds: Bronze 0 · Silver 1,000 · Gold 2,000 · Platinum 3,000 · ' +
+      'Diamond 6,000. Access: CUSTOMER',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Current tier, next tier and progress',
+    type: LoyaltyTierDto,
+  })
+  async getTier(@Request() req: { user: User }) {
+    return this.loyaltyService.getCustomerTier(req.user.id);
+  }
+
   @Get('points/logs')
   @Roles(UserRole.CUSTOMER)
   @ApiOperation({
@@ -284,9 +329,7 @@ export class LoyaltyController {
     @Request() req: { user: User },
     @Query('branchId') branchId?: string,
   ) {
-    const user = req.user as any;
-    const businessId =
-      user?.businessId || user?.business?.id || user?.branch?.businessId;
+    const businessId = this.resolveBusinessId(req.user);
     return this.loyaltyService.getBusinessLoyaltyStats(businessId, branchId);
   }
 
@@ -298,8 +341,7 @@ export class LoyaltyController {
     @Request() req: { user: User },
     @Query('branchId') branchId?: string,
   ) {
-    const user = req.user as any;
-    const businessId = user?.businessId || user?.business?.id;
+    const businessId = this.resolveBusinessId(req.user);
     return this.loyaltyService.getRules(businessId, branchId);
   }
 
@@ -312,8 +354,7 @@ export class LoyaltyController {
     @Body() dto: UpdateLoyaltyRuleDto,
     @Query('branchId') branchId?: string,
   ) {
-    const user = req.user as any;
-    const businessId = user?.businessId || user?.business?.id;
+    const businessId = this.resolveBusinessId(req.user);
     return this.loyaltyService.upsertRules(businessId, dto, branchId);
   }
 
@@ -533,9 +574,13 @@ export class LoyaltyController {
   @Public()
   @Get('rewards')
   @ApiOperation({
-    summary: 'Publicly fetch rewards for a branch',
+    summary: 'Publicly fetch rewards for a branch or platform-wide',
     description:
-      'Retrieves a paginated list of redeemable rewards for a specific branch. Supports filtering and sorting. Public access.',
+      'Retrieves a paginated list of redeemable rewards. Normally scoped by ' +
+      'branchId/branchCode or businessId; pass `global=true` for a ' +
+      'platform-wide listing across all businesses (each row then carries ' +
+      '`{ branch: {id,name}, business: {id,name} }`). Supports filtering and ' +
+      'sorting. Public access.',
   })
   @ApiResponse({
     status: 200,
@@ -736,46 +781,50 @@ export class LoyaltyController {
   @ApiOperation({
     summary: 'Fetch overall customer analytics (visits, points, savings)',
     description:
-      'Retrieves aggregated loyalty data for the authenticated customer across all businesses. Access: CUSTOMER',
+      'Aggregated loyalty data for the authenticated customer across all ' +
+      'businesses. `netSavings` is real naira from redeemed catalogue claims ' +
+      '(the previous points proxy is `redeemedPoints`). Growth vs the previous ' +
+      'same-length window is structured under `growthVsPreviousPeriod`. ' +
+      'Pass `allTime=true` to suppress the window (growth becomes null). ' +
+      'Access: CUSTOMER',
   })
   @ApiQuery({
     name: 'days',
     required: false,
     type: Number,
-    description: 'Number of past days to include in analytics',
+    description: 'Number of past days to include in analytics (default 30)',
+  })
+  @ApiQuery({
+    name: 'allTime',
+    required: false,
+    type: Boolean,
+    description: 'All-time mode: suppresses the days window',
   })
   @ApiResponse({
     status: 200,
     description: 'Analytics data retrieved successfully',
-    schema: {
-      example: {
-        totalVisits: 12,
-        currentPointsBalance: 450,
-        netSavings: 1500,
-        visitTrends: [
-          { month: 'Jan', visits: 4 },
-          { month: 'Feb', visits: 5 },
-          { month: 'Mar', visits: 3 },
-        ],
-        pointsByVenue: [
-          { venueName: 'Starbucks Downtown', points: 300 },
-          { venueName: 'Burger King Main', points: 150 },
-        ],
-        topVenues: [
-          { venueName: 'Starbucks Downtown', points: 8 },
-          { venueName: 'Burger King Main', points: 4 },
-        ],
-        trends: {
-          totalVisits: '+25%',
-          rewardPoints: '+10%',
-        },
-      },
-    },
+    type: CustomerAnalyticsDto,
   })
   async getAnalytics(
     @Request() req: { user: User },
     @Query() query: CustomerAnalyticsQueryDto,
   ) {
-    return this.loyaltyService.getCustomerAnalytics(req.user.id, query.days);
+    return this.loyaltyService.getCustomerAnalytics(req.user, {
+      days: query.days,
+      allTime: query.allTime,
+    });
+  }
+
+  /**
+   * Staff users may carry the business either directly on the user row, on the
+   * loaded business relation, or (rarely) only via their branch.
+   */
+  private resolveBusinessId(user: User): string {
+    const businessId =
+      user?.businessId ?? user?.business?.id ?? user?.branch?.businessId;
+    if (!businessId) {
+      throw new BadRequestException('User is not associated with a business');
+    }
+    return businessId;
   }
 }

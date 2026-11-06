@@ -5,10 +5,7 @@ import {
   FinancialTransaction,
   FosTransactionType,
 } from '../fos-core/entities/financial-transaction.entity';
-import {
-  FinancialTarget,
-  TargetPeriodType,
-} from './entities/financial-target.entity';
+import { FinancialTarget } from './entities/financial-target.entity';
 import {
   CreateTargetDto,
   TargetFilterDto,
@@ -101,7 +98,7 @@ export class FosFinancialPlanningService {
     };
   }
 
-  async simulateScenario(
+  simulateScenario(
     dto: ScenarioSimulationRequestDto,
   ): Promise<ScenarioSimulationResponseDto> {
     const runProjection = (
@@ -173,6 +170,6 @@ export class FosFinancialPlanningService {
       dto.profitMargin,
     );
 
-    return { best, expected, worst };
+    return Promise.resolve({ best, expected, worst });
   }
 }

@@ -81,6 +81,9 @@ describe('BusinessesService', () => {
   const mockVisitRepository = {
     count: jest.fn().mockResolvedValue(0),
     find: jest.fn().mockResolvedValue([]),
+    manager: {
+      query: jest.fn().mockResolvedValue([{ total: 0, new_this_week: 0 }]),
+    },
     createQueryBuilder: jest.fn(() => ({
       where: jest.fn().mockReturnThis(),
       select: jest.fn().mockReturnThis(),
@@ -103,6 +106,10 @@ describe('BusinessesService', () => {
 
   const mockSubscriptionsService = {
     subscribeToFreePlan: jest.fn().mockResolvedValue({}),
+  };
+
+  const mockSubscriptionRepository = {
+    findOne: jest.fn().mockResolvedValue(null),
   };
 
   beforeEach(async () => {
@@ -143,7 +150,7 @@ describe('BusinessesService', () => {
         },
         {
           provide: getRepositoryToken(Subscription),
-          useValue: mockRepository,
+          useValue: mockSubscriptionRepository,
         },
         {
           provide: getRepositoryToken(Plan),
@@ -169,6 +176,7 @@ describe('BusinessesService', () => {
     repository = module.get(getRepositoryToken(Business));
     usersRepository = module.get(getRepositoryToken(User));
     rotatorInvalidation = module.get(RotatorInvalidationService);
+    mockRepository.findOne.mockResolvedValue(mockBusiness);
   });
 
   it('should be defined', () => {
@@ -223,6 +231,33 @@ describe('BusinessesService', () => {
       expect(result.name).toBe(updateDto.name);
       expect(result.logoUrl).toBe(updateDto.logoUrl);
       expect(repository.save).toHaveBeenCalled();
+    });
+
+    it('should allow enabling requireReviewApproval on Platinum plan', async () => {
+      mockSubscriptionRepository.findOne.mockResolvedValueOnce({
+        id: 'sub-1',
+        plan: { name: 'Platinum Plan' },
+      });
+      const updateDto = {
+        requireReviewApproval: true,
+      };
+
+      const result = await service.update('biz-1', updateDto);
+      expect(result.requireReviewApproval).toBe(true);
+    });
+
+    it('should forbid enabling requireReviewApproval on non-Platinum plan', async () => {
+      mockSubscriptionRepository.findOne.mockResolvedValueOnce({
+        id: 'sub-1',
+        plan: { name: 'Starter Plan' },
+      });
+      const updateDto = {
+        requireReviewApproval: true,
+      };
+
+      await expect(service.update('biz-1', updateDto)).rejects.toThrow(
+        'Deal review moderation control is exclusively available on the Platinum plan',
+      );
     });
 
     it('should throw NotFoundException if business not found', async () => {
@@ -307,6 +342,46 @@ describe('BusinessesService', () => {
       expect(rotatorInvalidation.invalidateForBusiness).toHaveBeenCalledWith(
         'biz-1',
       );
+    });
+  });
+
+  describe('getCustomersSummary', () => {
+    it('returns the totals from the visit/branch union', async () => {
+      mockVisitRepository.manager.query.mockResolvedValueOnce([
+        { total: 482, new_this_week: 38 },
+      ]);
+
+      const result = await service.getCustomersSummary('biz-1');
+
+      expect(result).toEqual({ totalCustomers: 482, newThisWeek: 38 });
+      expect(mockVisitRepository.manager.query).toHaveBeenCalledWith(
+        expect.stringContaining('FROM per_user'),
+        ['biz-1', expect.any(Date), UserRole.CUSTOMER],
+      );
+
+      const args = mockVisitRepository.manager.query.mock.calls[0][1] as [
+        string,
+        Date,
+        UserRole,
+      ];
+      const since = args[1].getTime();
+      expect(Date.now() - since).toBeGreaterThan(6 * 24 * 60 * 60 * 1000);
+      expect(Date.now() - since).toBeLessThan(8 * 24 * 60 * 60 * 1000);
+    });
+
+    it('coerces string counts and tolerates an empty result', async () => {
+      mockVisitRepository.manager.query
+        .mockResolvedValueOnce([{ total: '7', new_this_week: '2' }])
+        .mockResolvedValueOnce([]);
+
+      await expect(service.getCustomersSummary('biz-1')).resolves.toEqual({
+        totalCustomers: 7,
+        newThisWeek: 2,
+      });
+      await expect(service.getCustomersSummary('biz-1')).resolves.toEqual({
+        totalCustomers: 0,
+        newThisWeek: 0,
+      });
     });
   });
 });

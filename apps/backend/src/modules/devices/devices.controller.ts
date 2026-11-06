@@ -227,6 +227,21 @@ export class DevicesController {
     );
   }
 
+  @Get(':id')
+  @Permissions('settings')
+  @ApiOperation({ summary: 'Get a single device by ID' })
+  @ApiResponse({ status: 200, description: 'Device found', type: Device })
+  @ApiResponse({ status: 404, description: 'Device not found' })
+  async findOne(
+    @Request() req: { user: User },
+    @Param('id', ParseUUIDPipe) id: string,
+    @Query() filter: BranchFilterDto,
+  ) {
+    const context = await this.getResolvedContext(req, filter);
+    const branchId = context.branchId || req.user.branchId;
+    return this.devicesService.findOne(id, branchId);
+  }
+
   @Patch(':id')
   @Permissions('settings')
   @ApiOperation({ summary: 'Update device configuration' })

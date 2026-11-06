@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { api } from '@/lib/api';
-import { RegisterOwnerRequest, AuthResponse, LoginRequest, RegisterRequest, RequestOwnerOtpRequest, ChangePasswordRequest, TwoFactorSetupResponse } from './types';
+import { RegisterOwnerRequest, AuthResponse, LoginRequest, RegisterRequest, RequestOwnerOtpRequest, ChangePasswordRequest, TwoFactorSetupResponse, CustomerRegisterRequestOtpRequest, CustomerResendRegistrationOtpRequest, CustomerRegisterVerifyAndSetPinRequest, ForgotPinRequest, ResetPinRequest } from './types';
 
 export const useRegisterOwner = () => {
     const [isLoading, setIsLoading] = useState(false);
@@ -136,6 +136,116 @@ export const useRegister = () => {
         isLoading,
         error
     };
+};
+
+export const useCustomerRegisterRequestOtp = () => {
+    const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+
+    const requestOtp = async (payload: CustomerRegisterRequestOtpRequest): Promise<any> => {
+        setIsLoading(true);
+        setError(null);
+        try {
+            const response = await api.post('/auth/customer/register/request-otp', payload);
+            return response;
+        } catch (err: any) {
+            const errorMessage = err.message || 'Failed to send verification code';
+            setError(errorMessage);
+            throw new Error(errorMessage);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    return { requestOtp, isLoading, error };
+};
+
+export const useCustomerResendRegistrationOtp = () => {
+    const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+
+    const resendOtp = async (payload: CustomerResendRegistrationOtpRequest): Promise<any> => {
+        setIsLoading(true);
+        setError(null);
+        try {
+            const response = await api.post('/auth/customer/otp/resend', payload);
+            return response;
+        } catch (err: any) {
+            const errorMessage = err.message || 'Failed to resend verification code';
+            setError(errorMessage);
+            throw new Error(errorMessage);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    return { resendOtp, isLoading, error };
+};
+
+export const useCustomerRegisterVerifyAndSetPin = () => {
+    const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+
+    const verifyAndSetPin = async (payload: CustomerRegisterVerifyAndSetPinRequest): Promise<AuthResponse> => {
+        setIsLoading(true);
+        setError(null);
+        try {
+            const response = await api.post('/auth/customer/register/verify-and-set-pin', payload);
+            return response;
+        } catch (err: any) {
+            const errorMessage = err.message || 'Verification failed';
+            setError(errorMessage);
+            throw new Error(errorMessage);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    return { verifyAndSetPin, isLoading, error };
+};
+
+export const useForgotPin = () => {
+    const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+
+    const requestOtp = async (payload: ForgotPinRequest): Promise<any> => {
+        setIsLoading(true);
+        setError(null);
+        try {
+            const response = await api.post('/auth/customer/pin/forgot', payload);
+            return response;
+        } catch (err: any) {
+            const errorMessage = err.message || 'Failed to send PIN reset code';
+            setError(errorMessage);
+            throw new Error(errorMessage);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    return { requestOtp, isLoading, error };
+};
+
+export const useResetPin = () => {
+    const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+
+    const resetPin = async (payload: ResetPinRequest): Promise<any> => {
+        setIsLoading(true);
+        setError(null);
+        try {
+            const response = await api.post('/auth/customer/pin/reset', payload);
+            return response;
+        } catch (err: any) {
+            const errorMessage = err.message || 'Failed to reset PIN';
+            setError(errorMessage);
+            throw new Error(errorMessage);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    return { resetPin, isLoading, error };
 };
 
 export const useChangePassword = () => {

@@ -4,15 +4,9 @@ import { NotFoundException, BadRequestException } from '@nestjs/common';
 import { DataSource, In } from 'typeorm';
 import { AffiliatesService } from './affiliates.service';
 import { AffiliateSyncService } from './affiliate-sync.service';
-import {
-  AffiliateProfile,
-  KycStatus,
-} from './entities/affiliate-profile.entity';
+import { AffiliateProfile } from './entities/affiliate-profile.entity';
 import { AffiliateReferral, ReferralStatus } from './entities/referral.entity';
-import {
-  AffiliateCommission,
-  CommissionStatus,
-} from './entities/commission.entity';
+import { AffiliateCommission } from './entities/commission.entity';
 import {
   AffiliateWithdrawalRequest,
   WithdrawalStatus,
@@ -293,13 +287,11 @@ describe('AffiliatesService', () => {
       referralRepository.findOne.mockResolvedValue(null);
 
       dataSource.getRepository.mockReturnValue({
-        findOne: jest
-          .fn()
-          .mockResolvedValue({
-            id: 'b1',
-            referralCode: 'VEM-ABC-1234',
-            ownerId: 'u1',
-          }),
+        findOne: jest.fn().mockResolvedValue({
+          id: 'b1',
+          referralCode: 'VEM-ABC-1234',
+          ownerId: 'u1',
+        }),
       });
       profileRepository.findOne.mockResolvedValue({
         id: 'p1',
@@ -329,7 +321,11 @@ describe('AffiliatesService', () => {
         findOne: jest
           .fn()
           .mockResolvedValueOnce({ id: 'b1', referralCode: 'REFBIZ' })
-          .mockResolvedValueOnce({ id: 'b0', uniqueCode: 'REFBIZ', balance: 0 }),
+          .mockResolvedValueOnce({
+            id: 'b0',
+            uniqueCode: 'REFBIZ',
+            balance: 0,
+          }),
       };
       const ledgerRepo = {
         findOne: jest.fn().mockResolvedValue(null),

@@ -1,13 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
-import {
-  IsOptional,
-  IsString,
-  IsEnum,
-  IsInt,
-  Min,
-  IsBoolean,
-} from 'class-validator';
-import { Type, Transform } from 'class-transformer';
+import { IsOptional, IsString, IsEnum, IsInt, Min } from 'class-validator';
+import { Type } from 'class-transformer';
 import { BranchFilterDto } from '../../../common/dto/branch-filter.dto';
 
 export enum VisitorStatus {

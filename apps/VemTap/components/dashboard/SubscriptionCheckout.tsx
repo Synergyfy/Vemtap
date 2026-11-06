@@ -77,6 +77,34 @@ export default function SubscriptionCheckout({ isOpen, onClose, plan, billingPer
 
         setIsProcessing(true);
 
+        // Free trials need no card and no payment: start it directly.
+        if (isTrial) {
+            subscribeMutation.mutate({
+                businessId: resolvedBusinessId,
+                planId: plan.id,
+                billingPeriod,
+                isTrial: true,
+            }, {
+                onSuccess: () => {
+                    toast.success(`Trial started! Enjoy ${plan.name} free for ${plan.trialDurationDays} days.`);
+                    setIsProcessing(false);
+                    if (onSuccess) {
+                        onSuccess();
+                    } else {
+                        setTimeout(() => {
+                            router.push('/dashboard/business-link');
+                            onClose();
+                        }, 100);
+                    }
+                },
+                onError: (error: Error) => {
+                    setIsProcessing(false);
+                    toast.error(error?.message || 'Could not start your free trial.');
+                },
+            });
+            return;
+        }
+
         const publicKey = process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY;
 
         if (!publicKey || publicKey.includes('placeholder')) {
@@ -117,7 +145,7 @@ export default function SubscriptionCheckout({ isOpen, onClose, plan, billingPer
             return;
         }
 
-        const amountToCharge = isTrial ? 50 : (breakdown?.total || 0); // Charge NGN 50 for trial verification
+        const amountToCharge = breakdown?.total || 0;
         paymentSuccessful.current = false;
 
         await loadPaystackScript();
@@ -145,13 +173,12 @@ export default function SubscriptionCheckout({ isOpen, onClose, plan, billingPer
                     planId: plan.id,
                     billingPeriod,
                     paymentReference: response.reference,
-                    isTrial: isTrial,
                     addonIds: selectedAddonIds,
                     addonQuantities: selectedAddonIds.map(() => 1),
                     promoCode: activePromo,
                 }, {
                     onSuccess: () => {
-                        toast.success(isTrial ? `Trial started! You won't be charged for ${plan.trialDurationDays} days.` : `Welcome to the ${plan.name} plan!`);
+                        toast.success(`Welcome to the ${plan.name} plan!`);
                         
                         // Local cleanup before calling parent onSuccess
                         setIsProcessing(false);
@@ -274,8 +301,8 @@ export default function SubscriptionCheckout({ isOpen, onClose, plan, billingPer
                         <div className="text-right shrink-0">
                             {isTrial ? (
                                 <>
-                                    <p className="text-xl sm:text-2xl font-black text-primary tracking-tight whitespace-nowrap">₦50</p>
-                                    <p className="text-[9px] sm:text-[10px] text-text-secondary font-black uppercase tracking-wider leading-tight">Verification Fee</p>
+                                    <p className="text-xl sm:text-2xl font-black text-primary tracking-tight whitespace-nowrap">₦0</p>
+                                    <p className="text-[9px] sm:text-[10px] text-text-secondary font-black uppercase tracking-wider leading-tight">Free Trial</p>
                                 </>
                             ) : breakdown ? (
                                 <>
@@ -457,9 +484,9 @@ export default function SubscriptionCheckout({ isOpen, onClose, plan, billingPer
                             <Info className="text-amber-500" size={18} />
                         </div>
                         <div className="min-w-0">
-                            <p className="text-xs font-bold text-amber-900 mb-0.5">Card Verification</p>
+                            <p className="text-xs font-bold text-amber-900 mb-0.5">No Card Required</p>
                             <p className="text-[10px] font-medium text-amber-700 leading-relaxed">
-                                A small fee of <span className="font-bold">₦50</span> will be charged to verify your card and secure your trial. Your subscription will automatically start after {plan.trialDurationDays} days.
+                                Your trial is free for {plan.trialDurationDays} days and you will never be charged automatically. When it ends your business moves to the free plan, and you can subscribe any time.
                             </p>
                         </div>
                     </div>

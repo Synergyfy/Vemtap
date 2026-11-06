@@ -74,18 +74,18 @@ export default function FAQPage() {
 
             <main className="pt-40 pb-32">
                 <section className="px-4 sm:px-6 lg:px-8">
-                    <div className="max-w-4xl mx-auto text-center mb-20">
+                    <div className="vemtap-container text-center mb-20">
                         <span className="text-primary font-bold tracking-wider text-[10px] uppercase mb-4 block">Help Center</span>
                         <h1 className="text-[30px] sm:text-4xl md:text-5xl lg:text-6xl font-bold text-text-main mb-8 leading-[1.15] tracking-tight">
                             Frequently Asked <br />
                             <span className="text-gradient">Questions</span>
                         </h1>
-                        <p className="text-lg text-text-secondary font-medium leading-relaxed max-w-2xl mx-auto">
+                        <p className="text-lg text-text-secondary font-medium leading-relaxed vemtap-container">
                             Find answers to common questions about VemTap's NFC technology, platform integrations, and data security.
                         </p>
                     </div>
 
-                    <div className="max-w-4xl mx-auto">
+                    <div className="vemtap-container">
                         <div className="space-y-16">
                             {categories.map((category) => (
                                 <div key={category.id} className="space-y-8">

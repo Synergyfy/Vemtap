@@ -151,7 +151,7 @@ export default function AdminBusinessesPage() {
                 const q = new URLSearchParams();
                 if (affiliateSearchQuery) q.set('search', affiliateSearchQuery);
                 q.set('status', 'ACTIVE');
-                const res = await fetch(`http://localhost:4005/api/external/affiliates?${q.toString()}`, {
+                const res = await fetch(`${process.env.NEXT_PUBLIC_AFFILIATE_SERVICE_URL || ''}/api/external/affiliates?${q.toString()}`, {
                     headers: {
                         'x-api-key': process.env.NEXT_PUBLIC_VEMTAP_AFFILIATE_KEY ?? ''
                     }
@@ -182,7 +182,7 @@ export default function AdminBusinessesPage() {
                 const q = new URLSearchParams();
                 if (registerAffiliateSearchQuery) q.set('search', registerAffiliateSearchQuery);
                 q.set('status', 'ACTIVE');
-                const res = await fetch(`http://localhost:4005/api/external/affiliates?${q.toString()}`, {
+                const res = await fetch(`${process.env.NEXT_PUBLIC_AFFILIATE_SERVICE_URL || ''}/api/external/affiliates?${q.toString()}`, {
                     headers: {
                         'x-api-key': process.env.NEXT_PUBLIC_VEMTAP_AFFILIATE_KEY ?? ''
                     }
@@ -218,7 +218,7 @@ export default function AdminBusinessesPage() {
                 address: attachBusinessTarget.address || 'N/A',
                 businessType: 'Retail'
             };
-            const res = await fetch('http://localhost:4005/api/external/businesses/attach', {
+            const res = await fetch(`${process.env.NEXT_PUBLIC_AFFILIATE_SERVICE_URL || ''}/api/external/businesses/attach`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -456,7 +456,7 @@ export default function AdminBusinessesPage() {
                         address: payload.address || 'N/A',
                         businessType: 'Retail'
                     };
-                    const attachRes = await fetch('http://localhost:4005/api/external/businesses/attach', {
+                    const attachRes = await fetch(`${process.env.NEXT_PUBLIC_AFFILIATE_SERVICE_URL || ''}/api/external/businesses/attach`, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',

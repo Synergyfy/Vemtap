@@ -1,3 +1,4 @@
+import type { PosSettings } from '../../pos/pos-settings.types';
 import {
   Entity,
   Column,
@@ -15,6 +16,16 @@ import { Category } from './category.entity';
 import { Subcategory } from './subcategory.entity';
 import { ApiProperty } from '@nestjs/swagger';
 import { generateUniqueCode } from '../../../common/utils/random.util';
+
+export enum BusinessVerificationStatus {
+  UNVERIFIED = 'unverified',
+  /** Checks started but not finished. */
+  IN_PROGRESS = 'in_progress',
+  /** Waiting for a person at VEMTAP. */
+  NEEDS_REVIEW = 'needs_review',
+  VERIFIED = 'verified',
+  REJECTED = 'rejected',
+}
 
 export enum BusinessStatus {
   ACTIVE = 'active',
@@ -93,6 +104,12 @@ export class Business extends AbstractBaseEntity {
   logoUrl: string;
 
   @Column({ nullable: true })
+  coverImage: string;
+
+  @Column({ type: 'json', nullable: true })
+  gallery: string[];
+
+  @Column({ nullable: true })
   address: string;
 
   @Column({ nullable: true })
@@ -103,6 +120,13 @@ export class Business extends AbstractBaseEntity {
 
   @Column({ type: 'json', nullable: true })
   socials: Record<string, string>;
+
+  /**
+   * Store features / amenities shown on the Business hub (Outdoor Seating,
+   * Free Wi-Fi, …). Free-form strings; no catalogue table yet.
+   */
+  @Column({ type: 'json', nullable: true })
+  amenities: string[];
 
   @Column({ type: 'json', nullable: true })
   openingHours: Record<string, any>;
@@ -150,28 +174,39 @@ export class Business extends AbstractBaseEntity {
   verifiedAt: Date | null;
 
   @ApiProperty({
+    enum: BusinessVerificationStatus,
+    description: 'Where the business is in identity + CAC verification',
+  })
+  @Column({
+    type: 'varchar',
+    length: 20,
+    default: BusinessVerificationStatus.UNVERIFIED,
+  })
+  verificationStatus: BusinessVerificationStatus;
+
+  @ApiProperty({
+    example: false,
+    description:
+      'When true, reviews submitted for deals require owner approval before being published (Platinum feature)',
+  })
+  @Column({ default: false })
+  requireReviewApproval: boolean;
+
+  @ApiProperty({
     example: { loyaltyEnabled: true, loyaltyRedeemThreshold: 100 },
     nullable: true,
     description: 'POS-specific settings for this business',
   })
   @Column({ type: 'jsonb', nullable: true, default: () => "'{}'" })
-  posSettings: {
-    currency?: string;
-    receiptHeader?: string;
-    receiptFooter?: string;
-    autoPrintReceipt?: boolean;
-    showLogo?: boolean;
-    taxEnabled?: boolean;
-    taxRate?: number;
-    taxLabel?: string;
-    pricesIncludeTax?: boolean;
-    loyaltyEnabled?: boolean;
-    loyaltyRedeemThreshold?: number;
-    lowStockAlerts?: boolean;
-    dailySalesSummary?: boolean;
-    newOrderAlert?: boolean;
-    staffActivityAlerts?: boolean;
-  };
+  posSettings: PosSettings;
+
+  /**
+   * NDPR processing choices for the business: `restrictProcessing` stops all
+   * optional AI processing of its data; `analytics: false` stops AI analysis
+   * of its dashboards. Missing keys mean the defaults (not restricted, on).
+   */
+  @Column({ type: 'jsonb', nullable: true })
+  privacySettings: { restrictProcessing?: boolean; analytics?: boolean } | null;
 
   // Relation to the owner
   @OneToOne(() => User, (user) => user.ownedBusiness, {

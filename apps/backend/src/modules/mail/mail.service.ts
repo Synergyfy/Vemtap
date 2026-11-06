@@ -9,7 +9,20 @@ export class MailService {
   private readonly fromEmail = 'VemTap <hello@vemtap.com>';
 
   constructor(private configService: ConfigService) {
-    this.resend = new Resend(this.configService.get<string>('RESEND_API_KEY'));
+    const apiKey = this.configService.get<string>('RESEND_API_KEY');
+    // Without a key (local dev, CI) the app must still boot: every send below is
+    // inside try/catch, so it is logged and reported as not sent instead.
+    if (!apiKey) {
+      this.logger.warn('RESEND_API_KEY is not set — emails will not be sent.');
+    }
+    this.resend = apiKey
+      ? new Resend(apiKey)
+      : ({
+          emails: {
+            send: () =>
+              Promise.reject(new Error('Email is not configured (RESEND_API_KEY is missing)')),
+          },
+        } as unknown as Resend);
   }
 
   async sendOtp(email: string, otp: string) {
@@ -84,7 +97,13 @@ export class MailService {
           <div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">
             <h2 style="color: #4A90E2;">Welcome to ${placeName}, ${name}!</h2>
             <p>We are excited to have you on board. Your account has been successfully created.</p>
-            ${password ? `<p>Your default login password is: <strong>${password}</strong></p><p>We recommend changing it after your first login.</p>` : ''}
+            ${
+              password
+                ? /^\d{6}$/.test(password)
+                  ? `<p>Your sign-in PIN is: <strong>${password}</strong></p><p>We recommend changing it after your first sign-in.</p>`
+                  : `<p>Your default login password is: <strong>${password}</strong></p><p>We recommend changing it after your first login.</p>`
+                : ''
+            }
             <p>You can now sign in to your dashboard to manage your visits and explore our features.</p>
             <div style="text-align: center; margin: 30px 0;">
               <a href="https://vemtap.vercel.app/login" style="background-color: #4A90E2; color: white; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;">Sign In to VemTap</a>
@@ -132,10 +151,23 @@ export class MailService {
     }
   }
 
-  async sendGenericEmail(email: string, subject: string, content: string) {
+  /**
+   * `sender.name` shows as "<name> via VemTap" (the address stays ours so SPF
+   * and DKIM still pass); `sender.replyTo` is where replies go.
+   */
+  async sendGenericEmail(
+    email: string,
+    subject: string,
+    content: string,
+    sender?: { name?: string | null; replyTo?: string | null },
+  ) {
+    const displayName = sender?.name?.replace(/[<>"\r\n]/g, '').trim();
     try {
       await this.resend.emails.send({
-        from: this.fromEmail,
+        from: displayName
+          ? `${displayName} via VemTap <hello@vemtap.com>`
+          : this.fromEmail,
+        ...(sender?.replyTo ? { replyTo: sender.replyTo } : {}),
         to: email,
         subject,
         html: `
@@ -709,6 +741,87 @@ export class MailService {
     return { subject, html };
   }
 
+  /**
+   * Free-trial reminder: a few days before the trial ends, or on the day it
+   * ended. Trials are never charged, so the email asks the owner to subscribe
+   * rather than warning about a payment.
+   */
+  async sendTrialEndingReminder(params: {
+    email: string;
+    customerName: string;
+    businessName: string;
+    planName: string;
+    /** 0 means the trial has ended. */
+    daysLeft: number;
+    subscribeUrl?: string;
+  }) {
+    const { subject, html } = this.generateTrialEndingReminderHtml(params);
+    try {
+      const { data } = await this.resend.emails.send({
+        from: this.fromEmail,
+        to: params.email,
+        subject,
+        html,
+      });
+      this.logger.log(
+        `Trial reminder email sent to ${params.email}, id: ${data?.id}`,
+      );
+      return true;
+    } catch (error) {
+      this.logger.error(
+        `Error sending trial reminder email to ${params.email}:`,
+        error,
+      );
+      return false;
+    }
+  }
+
+  public generateTrialEndingReminderHtml(params: {
+    customerName: string;
+    businessName: string;
+    planName: string;
+    daysLeft: number;
+    subscribeUrl?: string;
+  }): { subject: string; html: string } {
+    const esc = (value: string) =>
+      value.replace(/[&<>"']/g, (ch) => `&#${ch.charCodeAt(0)};`);
+    const name = esc(params.customerName || 'there');
+    const business = esc(params.businessName);
+    const plan = esc(params.planName);
+    const ended = params.daysLeft <= 0;
+    const daysText = `${params.daysLeft} ${params.daysLeft === 1 ? 'day' : 'days'}`;
+    const subject = ended
+      ? `Your ${params.planName} trial has ended`
+      : `Your ${params.planName} trial ends in ${daysText}`;
+    const title = ended
+      ? 'Your free trial has ended'
+      : `Trial ends in ${daysText}`;
+    const body = ended
+      ? `Your free <strong>${plan}</strong> trial for <strong>${business}</strong> has ended and your account is back on the free plan. Nothing was charged. Subscribe to get your ${plan} features back.`
+      : `Your free <strong>${plan}</strong> trial for <strong>${business}</strong> ends in <strong>${daysText}</strong>. You will not be charged automatically — subscribe before it ends to keep your ${plan} features without interruption.`;
+    const button = params.subscribeUrl
+      ? `<tr><td style="padding: 0 32px 36px; text-align: center;"><a href="${esc(params.subscribeUrl)}" style="display: inline-block; background: #066CF4; color: #ffffff; text-decoration: none; font-weight: 700; padding: 14px 28px; border-radius: 12px;">Subscribe now</a></td></tr>`
+      : '';
+    const html = `
+      <!DOCTYPE html>
+      <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>${esc(subject)}</title></head>
+      <body style="margin: 0; padding: 0; background-color: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #0f172a;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color: #f8fafc; padding: 40px 12px;"><tr><td align="center">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width: 600px; background-color: #ffffff; border-radius: 24px; overflow: hidden; border: 1px solid #e2e8f0;">
+            <tr><td style="background: ${ended ? 'linear-gradient(135deg, #DC2626 0%, #F87171 100%)' : 'linear-gradient(135deg, #066CF4 0%, #60A5FA 100%)'}; padding: 40px 32px; text-align: center;">
+              <h1 style="color: #ffffff; margin: 0; font-size: 24px; font-weight: 800;">${title}</h1>
+            </td></tr>
+            <tr><td style="padding: 32px; font-size: 15px; line-height: 1.6;">
+              <p style="margin: 0 0 16px;">Hi ${name},</p>
+              <p style="margin: 0;">${body}</p>
+            </td></tr>
+            ${button}
+          </table>
+        </td></tr></table>
+      </body></html>`;
+    return { subject, html };
+  }
+
   async sendSubscriptionRenewalReminder(params: {
     email: string;
     customerName: string;
@@ -908,4 +1021,560 @@ export class MailService {
 
     return { subject, html };
   }
+
+  /** Tells someone a voucher was claimed for them, with the code to redeem it. */
+  async sendClaimedForYouEmail(params: {
+    email: string;
+    recipientName: string;
+    senderName: string;
+    offerName: string;
+    businessName: string;
+    claimCode: string;
+    expiresAt: Date;
+    passUrl: string;
+  }): Promise<boolean> {
+    const escape = (value: string) =>
+      value
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    const expires = params.expiresAt.toLocaleDateString('en-NG', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+    });
+    try {
+      await this.resend.emails.send({
+        from: this.fromEmail,
+        to: params.email,
+        subject: `${params.senderName} claimed a VemTap voucher for you`,
+        html: `
+          <div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">
+            <h2>A voucher was claimed for you</h2>
+            <p>Hi ${escape(params.recipientName)}, ${escape(params.senderName)} claimed <strong>${escape(params.offerName)}</strong> at ${escape(params.businessName)} for you.</p>
+            <p>Show this code at the business before you pay:</p>
+            <h1 style="background: #f4f4f4; display: inline-block; padding: 10px 20px; border-radius: 8px; letter-spacing: 2px;">${escape(params.claimCode)}</h1>
+            <p>This voucher expires on ${escape(expires)}.</p>
+            <p><a href="${escape(params.passUrl)}" style="color: #066cf4;">Open your voucher</a> (sign in with this email address).</p>
+          </div>
+        `,
+      });
+      this.logger.log(`Claimed-for-you voucher sent to ${params.email}`);
+      return true;
+    } catch (error) {
+      this.logger.error(
+        `Error sending claimed-for-you email to ${params.email}:`,
+        error,
+      );
+      return false;
+    }
+  }
+
+  async sendDealGiftEmail(params: DealGiftEmailParams): Promise<boolean> {
+    try {
+      const {
+        recipientEmail,
+        senderName,
+        senderEmail,
+        giftToken,
+        note,
+        offer,
+        business,
+        branch,
+      } = params;
+      const safeSender = (senderName || 'A customer').trim();
+      const safeBusinessName = business.name || 'VemTap Partner';
+      const subject = `${safeSender} sent you a deal: ${offer.name} at ${safeBusinessName}!`;
+
+      const frontendUrl = this.resolveFrontendBaseUrl(params.frontendBaseUrl);
+
+      const businessSlug = business.slug || 'deal';
+      const tokenQuery = giftToken
+        ? `&giftToken=${encodeURIComponent(giftToken)}`
+        : '';
+      const claimUrl = `${frontendUrl}/deals/${businessSlug}/${offer.id}?ref=gift&email=${encodeURIComponent(recipientEmail)}&sender=${encodeURIComponent(safeSender)}${tokenQuery}`;
+      const rejectUrl = giftToken
+        ? `${frontendUrl}/deals/gift-reject?token=${encodeURIComponent(giftToken)}`
+        : `${frontendUrl}/deals/${businessSlug}/${offer.id}`;
+
+      const formatNaira = (val?: number) => {
+        if (val === undefined || val === null || isNaN(val)) return null;
+        return `₦${Number(val).toLocaleString('en-NG')}`;
+      };
+
+      const dealPriceStr = formatNaira(offer.calculatedPrice);
+      const originalPriceStr = formatNaira(offer.originalPrice);
+
+      let savingsText = '';
+      if (offer.discountLabel) {
+        savingsText = offer.discountLabel;
+      } else if (
+        offer.originalPrice &&
+        offer.calculatedPrice &&
+        offer.originalPrice > offer.calculatedPrice
+      ) {
+        const saved = offer.originalPrice - offer.calculatedPrice;
+        const pct = Math.round((saved / offer.originalPrice) * 100);
+        savingsText = `Save ${formatNaira(saved)} (${pct}% OFF)`;
+      }
+
+      const branchAddress = branch?.address || business.address || '';
+      const branchLocation = [branchAddress, branch?.city, branch?.state]
+        .filter(Boolean)
+        .join(', ');
+      const branchPhone = branch?.phone || business.phone || '';
+
+      const expiryStr = offer.endDate
+        ? new Date(offer.endDate).toLocaleDateString('en-NG', {
+            day: 'numeric',
+            month: 'short',
+            year: 'numeric',
+          })
+        : 'Ongoing Promotion';
+
+      const escapeHtml = (str: string = '') =>
+        str
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#039;');
+
+      const html = `
+      <!DOCTYPE html>
+      <html lang="en">
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>${escapeHtml(subject)}</title>
+      </head>
+      <body style="margin: 0; padding: 0; background-color: #f1f5f9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; -webkit-font-smoothing: antialiased;">
+        <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #f1f5f9; padding: 32px 16px;">
+          <tr>
+            <td align="center">
+              <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 600px; background-color: #ffffff; border-radius: 16px; overflow: hidden; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);">
+                
+                <!-- Vibrant Solid Brand Header (VemTap Royal Blue) -->
+                <tr>
+                  <td style="padding: 32px 32px 28px 32px; background-color: #066CF4; text-align: center;">
+                    <table border="0" cellpadding="0" cellspacing="0" width="100%">
+                      <tr>
+                        <td align="center">
+                          <div style="display: inline-block; background-color: #7C3AED; color: #ffffff; font-size: 11px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; padding: 6px 16px; border-radius: 9999px; margin-bottom: 14px;">
+                            Special Gift Voucher
+                          </div>
+                          <h1 style="color: #ffffff; margin: 0 0 8px 0; font-size: 24px; font-weight: 800; letter-spacing: -0.02em; line-height: 1.25;">
+                            You Received a Deal Voucher
+                          </h1>
+                          <p style="color: #dbeafe; margin: 0; font-size: 14px; font-weight: 500; line-height: 1.5;">
+                            Gifted to you by <strong>${escapeHtml(safeSender)}</strong>
+                          </p>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+
+                <!-- Content Body -->
+                <tr>
+                  <td style="padding: 32px 28px;">
+
+                    <!-- Sender Callout Card -->
+                    <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #eff6ff; border: 1px solid #bfdbfe; border-left: 4px solid #066cf4; border-radius: 8px; padding: 14px 18px; margin-bottom: 24px;">
+                      <tr>
+                        <td>
+                          <span style="display: block; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; color: #066cf4; margin-bottom: 4px;">
+                            Gifted From
+                          </span>
+                          <span style="font-size: 14px; font-weight: 700; color: #0f172a;">
+                            ${escapeHtml(safeSender)}
+                          </span>
+                          ${
+                            senderEmail
+                              ? `<span style="font-size: 13px; color: #475569;"> &bull; <a href="mailto:${escapeHtml(senderEmail)}" style="color: #066cf4; text-decoration: none; font-weight: 500;">${escapeHtml(senderEmail)}</a></span>`
+                              : ''
+                          }
+                        </td>
+                      </tr>
+                    </table>
+
+                    ${
+                      note
+                        ? `
+                    <!-- Personal Note Card (Warm Solid Amber) -->
+                    <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #fffbeb; border: 1px solid #fde68a; border-left: 4px solid #f59e0b; border-radius: 8px; padding: 14px 18px; margin-bottom: 24px;">
+                      <tr>
+                        <td>
+                          <span style="display: block; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; color: #b45309; margin-bottom: 6px;">
+                            Personal Message from ${escapeHtml(safeSender)}
+                          </span>
+                          <p style="margin: 0; font-size: 14px; color: #78350f; line-height: 1.5; font-style: italic;">
+                            &ldquo;${escapeHtml(note)}&rdquo;
+                          </p>
+                        </td>
+                      </tr>
+                    </table>
+                    `
+                        : ''
+                    }
+
+                    <!-- Deal Showcase Box -->
+                    <div style="border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; background-color: #ffffff; margin-bottom: 28px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+                      ${
+                        offer.mainImage
+                          ? `
+                      <div style="width: 100%; height: 210px; overflow: hidden; background-color: #f1f5f9;">
+                        <img src="${offer.mainImage}" alt="${escapeHtml(offer.name)}" style="width: 100%; height: 210px; object-fit: cover; display: block;" />
+                      </div>
+                      `
+                          : ''
+                      }
+                      
+                      <div style="padding: 22px 20px;">
+                        ${
+                          savingsText
+                            ? `
+                        <div style="display: inline-block; background-color: #10b981; color: #ffffff; font-size: 11px; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; padding: 4px 10px; border-radius: 6px; margin-bottom: 12px;">
+                          ${savingsText}
+                        </div>
+                        `
+                            : ''
+                        }
+
+                        <h2 style="margin: 0 0 8px 0; font-size: 20px; font-weight: 800; color: #0f172a; line-height: 1.3;">
+                          ${escapeHtml(offer.name)}
+                        </h2>
+
+                        <p style="margin: 0 0 14px 0; font-size: 13px; font-weight: 600; color: #7c3aed;">
+                          Offered by ${escapeHtml(safeBusinessName)}
+                        </p>
+
+                        ${
+                          offer.description
+                            ? `
+                        <p style="margin: 0 0 18px 0; font-size: 13px; color: #475569; line-height: 1.6;">
+                          ${escapeHtml(offer.description)}
+                        </p>
+                        `
+                            : ''
+                        }
+
+                        <!-- Pricing & Validity Info Card -->
+                        <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px 16px; margin-bottom: 16px;">
+                          <tr>
+                            <td valign="middle">
+                              <span style="font-size: 11px; color: #64748b; text-transform: uppercase; font-weight: 700; letter-spacing: 0.05em; display: block; margin-bottom: 2px;">
+                                Deal Price
+                              </span>
+                              <span style="font-size: 22px; font-weight: 800; color: #066cf4;">
+                                ${dealPriceStr || 'Exclusive Offer'}
+                              </span>
+                              ${
+                                originalPriceStr
+                                  ? `
+                              <span style="font-size: 13px; color: #94a3b8; text-decoration: line-through; margin-left: 6px; font-weight: 500;">
+                                ${originalPriceStr}
+                              </span>
+                              `
+                                  : ''
+                              }
+                            </td>
+                            <td align="right" valign="middle">
+                              <span style="font-size: 11px; color: #64748b; text-transform: uppercase; font-weight: 700; letter-spacing: 0.05em; display: block; margin-bottom: 4px;">
+                                Validity
+                              </span>
+                              <span style="display: inline-block; background-color: #fef3c7; color: #92400e; font-size: 12px; font-weight: 700; padding: 3px 8px; border-radius: 4px;">
+                                ${expiryStr}
+                              </span>
+                            </td>
+                          </tr>
+                        </table>
+
+                        <!-- Location & Contact Table -->
+                        <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="font-size: 13px; color: #334155;">
+                          <tr>
+                            <td style="padding: 4px 0; vertical-align: top; width: 80px; font-weight: 700; color: #64748b;">
+                              Location:
+                            </td>
+                            <td style="padding: 4px 0; vertical-align: top; font-weight: 500;">
+                              ${escapeHtml(branchLocation || safeBusinessName)}
+                            </td>
+                          </tr>
+                          ${
+                            branchPhone
+                              ? `
+                          <tr>
+                            <td style="padding: 4px 0; vertical-align: top; font-weight: 700; color: #64748b;">
+                              Contact:
+                            </td>
+                            <td style="padding: 4px 0; vertical-align: top; font-weight: 500;">
+                              <a href="tel:${branchPhone}" style="color: #066cf4; text-decoration: none; font-weight: 600;">${branchPhone}</a>
+                            </td>
+                          </tr>
+                          `
+                              : ''
+                          }
+                        </table>
+                      </div>
+                    </div>
+
+                    <!-- Detailed Step-by-Step Instructions -->
+                    <div style="background-color: #f8fafc; border: 1px solid #cbd5e1; border-radius: 12px; padding: 22px 20px; margin-bottom: 28px;">
+                      <div style="margin-bottom: 14px;">
+                        <span style="font-size: 12px; font-weight: 800; text-transform: uppercase; color: #0f172a; letter-spacing: 0.06em; display: block;">
+                          How to Claim &amp; Redeem Your Deal
+                        </span>
+                        <span style="font-size: 12px; color: #64748b; font-weight: 500;">
+                          Follow these 4 simple steps to enjoy your gift voucher:
+                        </span>
+                      </div>
+
+                      <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%">
+                        <!-- Step 1 -->
+                        <tr>
+                          <td style="width: 32px; vertical-align: top; padding: 6px 0 12px 0;">
+                            <div style="width: 24px; height: 24px; border-radius: 9999px; background-color: #066cf4; color: #ffffff; font-size: 12px; font-weight: 800; text-align: center; line-height: 24px;">
+                              1
+                            </div>
+                          </td>
+                          <td style="vertical-align: top; padding: 6px 0 12px 10px;">
+                            <strong style="color: #0f172a; font-size: 13px; display: block; margin-bottom: 2px;">
+                              Open Your Voucher
+                            </strong>
+                            <span style="font-size: 12px; color: #475569; line-height: 1.5; display: block;">
+                              Click the <strong>Claim Deal Now</strong> button below to open your personalized voucher page. Your gift is pre-linked to your email address (${escapeHtml(recipientEmail)}).
+                            </span>
+                          </td>
+                        </tr>
+
+                        <!-- Step 2 -->
+                        <tr>
+                          <td style="width: 32px; vertical-align: top; padding: 6px 0 12px 0;">
+                            <div style="width: 24px; height: 24px; border-radius: 9999px; background-color: #066cf4; color: #ffffff; font-size: 12px; font-weight: 800; text-align: center; line-height: 24px;">
+                              2
+                            </div>
+                          </td>
+                          <td style="vertical-align: top; padding: 6px 0 12px 10px;">
+                            <strong style="color: #0f172a; font-size: 13px; display: block; margin-bottom: 2px;">
+                              Sign In or Confirm Account
+                            </strong>
+                            <span style="font-size: 12px; color: #475569; line-height: 1.5; display: block;">
+                              Sign in with your VemTap account or enter your name and phone number to accept the voucher. Claiming is completely free with zero hidden fees.
+                            </span>
+                          </td>
+                        </tr>
+
+                        <!-- Step 3 -->
+                        <tr>
+                          <td style="width: 32px; vertical-align: top; padding: 6px 0 12px 0;">
+                            <div style="width: 24px; height: 24px; border-radius: 9999px; background-color: #066cf4; color: #ffffff; font-size: 12px; font-weight: 800; text-align: center; line-height: 24px;">
+                              3
+                            </div>
+                          </td>
+                          <td style="vertical-align: top; padding: 6px 0 12px 10px;">
+                            <strong style="color: #0f172a; font-size: 13px; display: block; margin-bottom: 2px;">
+                              Obtain Your Digital Claim Code
+                            </strong>
+                            <span style="font-size: 12px; color: #475569; line-height: 1.5; display: block;">
+                              Upon claiming, an instant unique claim reference code (e.g. VEM-XXXX) is generated and safely stored in your VemTap customer wallet.
+                            </span>
+                          </td>
+                        </tr>
+
+                        <!-- Step 4 -->
+                        <tr>
+                          <td style="width: 32px; vertical-align: top; padding: 6px 0 4px 0;">
+                            <div style="width: 24px; height: 24px; border-radius: 9999px; background-color: #066cf4; color: #ffffff; font-size: 12px; font-weight: 800; text-align: center; line-height: 24px;">
+                              4
+                            </div>
+                          </td>
+                          <td style="vertical-align: top; padding: 6px 0 4px 10px;">
+                            <strong style="color: #0f172a; font-size: 13px; display: block; margin-bottom: 2px;">
+                              Present &amp; Redeem In-Store
+                            </strong>
+                            <span style="font-size: 12px; color: #475569; line-height: 1.5; display: block;">
+                              Visit <strong>${escapeHtml(safeBusinessName)}</strong> at the branch address before the expiry date. Present your digital claim voucher or code to the staff at checkout to enjoy your discounted deal.
+                            </span>
+                          </td>
+                        </tr>
+                      </table>
+                    </div>
+
+                    <!-- Primary Action Button -->
+                    <div style="text-align: center; margin: 32px 0 20px 0;">
+                      <a href="${claimUrl}" style="display: inline-block; background-color: #066cf4; color: #ffffff; padding: 16px 44px; border-radius: 12px; text-decoration: none; font-weight: 800; font-size: 16px; letter-spacing: 0.02em; box-shadow: 0 4px 12px rgba(6, 108, 244, 0.35);">
+                        Claim Deal Now
+                      </a>
+                    </div>
+
+                    <!-- Decline Option -->
+                    <div style="text-align: center; margin-bottom: 24px;">
+                      <p style="margin: 0; font-size: 13px; color: #64748b; line-height: 1.5;">
+                        Not interested or received this by mistake?<br>
+                        <a href="${rejectUrl}" style="color: #dc2626; text-decoration: underline; font-weight: 600;">
+                          Decline this gift voucher
+                        </a>
+                      </p>
+                      <p style="margin: 4px 0 0 0; font-size: 11px; color: #94a3b8;">
+                        Declining removes your contact details from this gift and notifies the sender.
+                      </p>
+                    </div>
+
+                    <!-- Direct Link Box -->
+                    <div style="background-color: #f8fafc; border-radius: 8px; padding: 12px 16px; text-align: center; border: 1px solid #e2e8f0;">
+                      <p style="margin: 0 0 4px 0; font-size: 11px; color: #64748b; font-weight: 600;">
+                        Having trouble with the button? Copy and paste this link into your browser:
+                      </p>
+                      <a href="${claimUrl}" style="color: #066cf4; font-size: 11px; word-break: break-all; text-decoration: underline;">
+                        ${claimUrl}
+                      </a>
+                    </div>
+
+                  </td>
+                </tr>
+
+                <!-- Clean Footer -->
+                <tr>
+                  <td style="background-color: #f8fafc; padding: 24px 32px; text-align: center; border-top: 1px solid #e2e8f0;">
+                    <p style="margin: 0 0 6px 0; font-size: 13px; font-weight: 700; color: #1e293b;">
+                      VemTap Deals
+                    </p>
+                    <p style="margin: 0; font-size: 11px; color: #94a3b8; line-height: 1.6;">
+                      &copy; ${new Date().getFullYear()} VemTap Technologies. All rights reserved.<br>
+                      This message was sent to ${escapeHtml(recipientEmail)} because ${escapeHtml(safeSender)} gifted you a deal on VemTap.
+                    </p>
+                  </td>
+                </tr>
+
+              </table>
+            </td>
+          </tr>
+        </table>
+      </body>
+      </html>
+      `;
+
+      await this.resend.emails.send({
+        from: `${safeBusinessName} via VemTap <hello@vemtap.com>`,
+        to: recipientEmail,
+        subject,
+        html,
+      });
+
+      this.logger.log(
+        `Deal gift email sent to ${recipientEmail} from ${safeSender} for offer ${offer.id}`,
+      );
+      return true;
+    } catch (error) {
+      this.logger.error(
+        `Error sending deal gift email to ${params.recipientEmail}:`,
+        error,
+      );
+      return false;
+    }
+  }
+
+  /**
+   * Dynamically resolves the frontend base URL based on caller/request origin,
+   * environment variables, and deployment environment:
+   * - Localhost: preserves exact scheme, host, and serving port (e.g. http://localhost:3000, http://localhost:3002)
+   * - Staging: https://vemtap.vercel.app
+   * - Production: https://vemtap.com
+   */
+  resolveFrontendBaseUrl(candidateUrl?: string): string {
+    if (candidateUrl && typeof candidateUrl === 'string') {
+      const trimmed = candidateUrl.trim().replace(/\/+$/, '');
+      if (trimmed) {
+        try {
+          const parsed = new URL(
+            trimmed.startsWith('http://') || trimmed.startsWith('https://')
+              ? trimmed
+              : `https://${trimmed}`,
+          );
+
+          // If localhost / 127.0.0.1, preserve the exact scheme and port
+          if (
+            parsed.hostname === 'localhost' ||
+            parsed.hostname === '127.0.0.1' ||
+            parsed.hostname === '0.0.0.0'
+          ) {
+            return parsed.origin;
+          }
+
+          // If valid protocol and host, return origin
+          if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
+            return parsed.origin;
+          }
+        } catch {
+          // Fall through if URL parsing fails
+        }
+      }
+    }
+
+    // Check explicit configuration from environment
+    const envUrl =
+      this.configService.get<string>('FRONTEND_URL') ||
+      this.configService.get<string>('VEMTAP_APP_URL') ||
+      this.configService.get<string>('APP_URL');
+    if (envUrl && typeof envUrl === 'string') {
+      const trimmedEnv = envUrl.trim().replace(/\/+$/, '');
+      if (trimmedEnv) {
+        return trimmedEnv.startsWith('http')
+          ? trimmedEnv
+          : `https://${trimmedEnv}`;
+      }
+    }
+
+    // Detect environment from NODE_ENV
+    const nodeEnv = (
+      this.configService.get<string>('NODE_ENV') ||
+      process.env.NODE_ENV ||
+      'development'
+    ).toLowerCase();
+
+    if (nodeEnv === 'production' || nodeEnv === 'prod') {
+      return 'https://vemtap.com';
+    }
+    if (nodeEnv === 'staging') {
+      return 'https://vemtap.vercel.app';
+    }
+
+    // Default for local development
+    return 'http://localhost:3000';
+  }
+}
+
+export interface DealGiftEmailParams {
+  recipientEmail: string;
+  senderName?: string;
+  senderEmail?: string;
+  giftToken?: string;
+  note?: string;
+  frontendBaseUrl?: string;
+  offer: {
+    id: string;
+    name: string;
+    description?: string;
+    mainImage?: string;
+    calculatedPrice?: number;
+    originalPrice?: number;
+    discountLabel?: string;
+    endDate?: Date | string;
+    terms?: string[];
+  };
+  business: {
+    name: string;
+    slug?: string;
+    phone?: string;
+    address?: string;
+    logoUrl?: string;
+  };
+  branch?: {
+    name?: string;
+    address?: string;
+    city?: string;
+    state?: string;
+    phone?: string;
+  };
 }

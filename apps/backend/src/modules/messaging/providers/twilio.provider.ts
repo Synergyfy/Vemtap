@@ -98,15 +98,15 @@ export class TwilioProvider implements MessagingProvider {
     }
   }
 
-  async parseWebhook(payload: TwilioWebhookPayload): Promise<{
+  parseWebhook(payload: TwilioWebhookPayload): Promise<{
     type: 'inbound' | 'delivery';
     data: InboundMessage | DeliveryReport;
   } | null> {
-    if (!payload) return null;
+    if (!payload) return Promise.resolve(null);
 
     // Twilio Inbound Message (SmsSid is provided for inbound, MessageSid for status callbacks)
     if (payload.SmsSid && payload.Body && payload.From) {
-      return {
+      return Promise.resolve({
         type: 'inbound',
         data: {
           from: payload.From.replace('whatsapp:', ''),
@@ -117,12 +117,12 @@ export class TwilioProvider implements MessagingProvider {
           timestamp: new Date(),
           rawPayload: payload,
         },
-      };
+      });
     }
 
     // Twilio Delivery Report
     if (payload.MessageSid && payload.MessageStatus) {
-      return {
+      return Promise.resolve({
         type: 'delivery',
         data: {
           messageId: payload.MessageSid,
@@ -130,10 +130,10 @@ export class TwilioProvider implements MessagingProvider {
           rawPayload: payload,
           error: payload.ErrorMessage || payload.ErrorCode,
         } as DeliveryReport,
-      };
+      });
     }
 
-    return null;
+    return Promise.resolve(null);
   }
 
   /**
@@ -154,7 +154,7 @@ export class TwilioProvider implements MessagingProvider {
     }
   }
 
-  estimateCost(payload: SendMessagePayload): number {
+  estimateCost(_payload: SendMessagePayload): number {
     // Default Twilio WhatsApp cost estimate
     return 15.0;
   }

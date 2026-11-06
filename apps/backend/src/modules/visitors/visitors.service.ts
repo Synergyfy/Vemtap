@@ -6,18 +6,11 @@ import {
   HttpStatus,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import {
-  Repository,
-  DataSource,
-  In,
-  FindOptionsWhere,
-  MoreThan,
-  LessThan,
-} from 'typeorm';
+import { Repository, DataSource, In, MoreThan } from 'typeorm';
 import { v4 as uuidv4 } from 'uuid';
-import { User, UserRole } from '../users/entities/user.entity';
+import { User, UserRole, UserStatus } from '../users/entities/user.entity';
 import { Visit } from './entities/visit.entity';
-import { Device, DeviceStatus } from '../devices/entities/device.entity';
+import { Device } from '../devices/entities/device.entity';
 import { Branch } from '../branches/entities/branch.entity';
 import { Contact } from '../contacts/entities/contact.entity';
 import { VisitorQueryDto } from './dto/visitor-query.dto';
@@ -39,7 +32,6 @@ import { TriggerType } from '../messaging/enums/automation.enum';
 import { Channel } from '../messaging/enums/channel.enum';
 import { CampaignsService } from '../campaigns/campaigns.service';
 import * as bcrypt from 'bcrypt';
-import { randomBytes } from 'crypto';
 import { MailService } from '../mail/mail.service';
 import { MessageLog } from '../messaging/entities/message-log.entity';
 import { BranchesService } from '../branches/branches.service';
@@ -47,7 +39,6 @@ import { LoyaltyService } from '../loyalty/loyalty.service';
 import { AuthService } from '../auth/auth.service';
 import { PointTransaction } from '../loyalty/entities/point-transaction.entity';
 import { RedemptionCode } from '../loyalty/entities/redemption-code.entity';
-import { Reward } from '../loyalty/entities/reward.entity';
 
 export class SendCampaignBody {
   channel: Channel;
@@ -567,16 +558,15 @@ export class VisitorsService {
       }
     }
 
-    // New customers receive a per-account random password (emailed to them)
-    // instead of a shared default, so the constant can never be used as a
-    // universal backdoor. Immediate auto-login is provided by the auth token
-    // returned from this endpoint (see buildAuthResponse below).
-    const defaultPassword = randomBytes(9).toString('base64url').slice(0, 12);
+    const providedPin = (dto as any).pin;
     let isNewCustomer = false;
 
     if (!user) {
       isNewCustomer = true;
-      const hashedPassword = await bcrypt.hash(defaultPassword, 10);
+      const hashedPassword = providedPin
+        ? await bcrypt.hash(providedPin, 10)
+        : undefined;
+
       user = this.userRepository.create({
         email: dto.email,
         firstName: dto.firstName,
@@ -584,6 +574,9 @@ export class VisitorsService {
         phone: dto.phone,
         password: hashedPassword,
         role: UserRole.CUSTOMER,
+        status: providedPin ? UserStatus.ACTIVE : UserStatus.PENDING,
+        emailVerified: !!providedPin,
+        isPasswordChanged: !!providedPin,
         uniqueCode: `CUST-${Math.floor(100000 + Math.random() * 900000)}`,
       });
       await this.userRepository.save(user);
@@ -591,7 +584,6 @@ export class VisitorsService {
       await this.mailService.sendWelcomeEmail(
         user.email,
         `${user.firstName} ${user.lastName}`.trim() || 'Visitor',
-        defaultPassword,
       );
     } else if (user.role === UserRole.CUSTOMER) {
       // Update existing customer details if they are provided and currently empty
@@ -1295,8 +1287,6 @@ export class VisitorsService {
     limit: number = 20,
     cursor?: string,
   ): Promise<PaginatedActivityFeedResponseDto> {
-    const skip = (page - 1) * limit;
-
     const qb = this.visitRepository
       .createQueryBuilder('visit')
       .leftJoinAndSelect('visit.customer', 'customer')
@@ -1676,12 +1666,18 @@ export class VisitorsService {
     }
 
     // 4. Create/Update Contact
-    let contact = await this.contactRepository.findOne({
-      where: [
-        { branchId, email: user.email },
-        { branchId, phone: user.phone },
-      ],
-    });
+    const contactConditions: any[] = [];
+    if (user.email) contactConditions.push({ branchId, email: user.email });
+    if (user.phone && user.phone !== 'N/A') {
+      contactConditions.push({ branchId, phone: user.phone });
+    }
+
+    let contact =
+      contactConditions.length > 0
+        ? await this.contactRepository.findOne({
+            where: contactConditions,
+          })
+        : null;
 
     if (!contact) {
       contact = this.contactRepository.create({

@@ -9,26 +9,26 @@ import {
 
 @Injectable()
 export class InHouseProvider implements MessagingProvider {
-  async sendMessage(payload: SendMessagePayload): Promise<ProviderResponse> {
+  sendMessage(_payload: SendMessagePayload): Promise<ProviderResponse> {
     // In-house messaging doesn't need external delivery
     // It's already saved in our DB by the MessagingEngineService
-    return {
+    return Promise.resolve({
       status: 'sent',
       messageId: `inhouse-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       cost: 0,
       units: 0,
       reference: 'IN_HOUSE',
-    };
+    });
   }
 
-  estimateCost(payload: SendMessagePayload): number {
+  estimateCost(_payload: SendMessagePayload): number {
     return 0;
   }
 
-  async parseWebhook(payload: any): Promise<{
+  parseWebhook(_payload: any): Promise<{
     type: 'inbound' | 'delivery';
     data: InboundMessage | DeliveryReport;
   } | null> {
-    return null;
+    return Promise.resolve(null);
   }
 }

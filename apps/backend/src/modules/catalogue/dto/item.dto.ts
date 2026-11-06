@@ -9,13 +9,21 @@ import {
   IsArray,
   IsBoolean,
   Min,
+  MaxLength,
   ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
+import { BookingRulesDto } from './booking-rules.dto';
 import {
+  CatalogueFulfillmentMode,
+  CatalogueItemCondition,
+  CatalogueItemPricingMode,
   CatalogueItemStatus,
   CatalogueItemType,
   DiscountType,
+  ServicePriceType,
+  ServiceMode,
+  ServiceBookingMethod,
 } from '../entities/catalogue-item.entity';
 
 export class CreateCatalogueItemDto {
@@ -24,17 +32,17 @@ export class CreateCatalogueItemDto {
   @IsString()
   name: string;
 
-  @ApiProperty({ example: 15.99 })
-  @IsNotEmpty()
+  @ApiPropertyOptional({ example: 15.99, default: 0 })
+  @IsOptional()
   @IsNumber()
   @Type(() => Number)
   @Min(0)
-  price: number;
+  price?: number = 0;
 
-  @ApiProperty({ example: 'Delicious cheeseburger' })
-  @IsNotEmpty()
+  @ApiPropertyOptional({ example: 'Delicious cheeseburger' })
+  @IsOptional()
   @IsString()
-  shortDescription: string;
+  shortDescription?: string;
 
   @ApiProperty({ example: 'Full description...' })
   @IsNotEmpty()
@@ -123,9 +131,59 @@ export class CreateCatalogueItemDto {
   @IsString()
   dimensions?: string;
 
-  @ApiPropertyOptional({ example: [{ type: 'size', value: 'large' }] })
+  @ApiPropertyOptional({
+    description:
+      'Purchasable variants: `{ id?, name, price, compareAtPrice?, sku?, stockQuantity? }`. ' +
+      'The legacy `{ type, value }` shape is still accepted and converted.',
+    example: [{ name: 'Large', price: 4500, stockQuantity: 12 }],
+  })
   @IsOptional()
-  variants?: { type: string; value: string }[];
+  @IsArray()
+  variants?: Record<string, unknown>[];
+
+  @ApiPropertyOptional({
+    example: 18000,
+    description:
+      'Original "was" price. Must be greater than or equal to `price`.',
+  })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  compareAtPrice?: number | null;
+
+  @ApiPropertyOptional({ enum: CatalogueItemCondition })
+  @IsOptional()
+  @IsEnum(CatalogueItemCondition)
+  condition?: CatalogueItemCondition | null;
+
+  @ApiPropertyOptional({ enum: CatalogueFulfillmentMode, isArray: true })
+  @IsOptional()
+  @IsArray()
+  @IsEnum(CatalogueFulfillmentMode, { each: true })
+  fulfillmentModes?: CatalogueFulfillmentMode[];
+
+  @ApiPropertyOptional({ enum: CatalogueItemPricingMode, default: 'uniform' })
+  @IsOptional()
+  @IsEnum(CatalogueItemPricingMode)
+  pricingMode?: CatalogueItemPricingMode;
+
+  @ApiPropertyOptional({
+    type: BookingRulesDto,
+    description: 'When a bookable service can be booked (services only)',
+  })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => BookingRulesDto)
+  bookingRules?: BookingRulesDto;
+
+  @ApiPropertyOptional({
+    example: 'women',
+    description: 'Who a service is for',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(40)
+  audience?: string | null;
 
   @ApiPropertyOptional({ example: ['burger', 'beef'] })
   @IsOptional()
@@ -156,6 +214,56 @@ export class CreateCatalogueItemDto {
   @Type(() => Number)
   @Min(0)
   loyaltyPointsValue?: number;
+
+  @ApiPropertyOptional({
+    enum: ServicePriceType,
+    default: ServicePriceType.FIXED,
+  })
+  @IsOptional()
+  @IsEnum(ServicePriceType)
+  priceType?: ServicePriceType = ServicePriceType.FIXED;
+
+  @ApiPropertyOptional({ example: 5000 })
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  @Min(0)
+  priceRangeMin?: number;
+
+  @ApiPropertyOptional({ example: 15000 })
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  @Min(0)
+  priceRangeMax?: number;
+
+  @ApiPropertyOptional({ example: '45 mins' })
+  @IsOptional()
+  @IsString()
+  duration?: string;
+
+  @ApiPropertyOptional({
+    enum: ServiceMode,
+    default: ServiceMode.LOCATION,
+  })
+  @IsOptional()
+  @IsEnum(ServiceMode)
+  serviceMode?: ServiceMode = ServiceMode.LOCATION;
+
+  @ApiPropertyOptional({ example: false, default: false })
+  @IsOptional()
+  @IsBoolean()
+  isBookable?: boolean = false;
+
+  @ApiPropertyOptional({ enum: ServiceBookingMethod })
+  @IsOptional()
+  @IsEnum(ServiceBookingMethod)
+  bookingMethod?: ServiceBookingMethod;
+
+  @ApiPropertyOptional({ example: 'https://calendly.com/my-booking' })
+  @IsOptional()
+  @IsString()
+  externalBookingLink?: string;
 
   @ApiProperty({ example: 'uuid-of-branch' })
   @IsNotEmpty()
@@ -270,9 +378,59 @@ export class UpdateCatalogueItemDto {
   @IsString()
   dimensions?: string;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({
+    description:
+      'Purchasable variants: `{ id?, name, price, compareAtPrice?, sku?, stockQuantity? }`. ' +
+      'The legacy `{ type, value }` shape is still accepted and converted.',
+    example: [{ name: 'Large', price: 4500, stockQuantity: 12 }],
+  })
   @IsOptional()
-  variants?: { type: string; value: string }[];
+  @IsArray()
+  variants?: Record<string, unknown>[];
+
+  @ApiPropertyOptional({
+    example: 18000,
+    description:
+      'Original "was" price. Must be greater than or equal to `price`.',
+  })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  compareAtPrice?: number | null;
+
+  @ApiPropertyOptional({ enum: CatalogueItemCondition })
+  @IsOptional()
+  @IsEnum(CatalogueItemCondition)
+  condition?: CatalogueItemCondition | null;
+
+  @ApiPropertyOptional({ enum: CatalogueFulfillmentMode, isArray: true })
+  @IsOptional()
+  @IsArray()
+  @IsEnum(CatalogueFulfillmentMode, { each: true })
+  fulfillmentModes?: CatalogueFulfillmentMode[];
+
+  @ApiPropertyOptional({ enum: CatalogueItemPricingMode, default: 'uniform' })
+  @IsOptional()
+  @IsEnum(CatalogueItemPricingMode)
+  pricingMode?: CatalogueItemPricingMode;
+
+  @ApiPropertyOptional({
+    type: BookingRulesDto,
+    description: 'When a bookable service can be booked (services only)',
+  })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => BookingRulesDto)
+  bookingRules?: BookingRulesDto;
+
+  @ApiPropertyOptional({
+    example: 'women',
+    description: 'Who a service is for',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(40)
+  audience?: string | null;
 
   @ApiPropertyOptional()
   @IsOptional()
@@ -303,6 +461,50 @@ export class UpdateCatalogueItemDto {
   @Type(() => Number)
   @Min(0)
   loyaltyPointsValue?: number;
+
+  @ApiPropertyOptional({ enum: ServicePriceType })
+  @IsOptional()
+  @IsEnum(ServicePriceType)
+  priceType?: ServicePriceType;
+
+  @ApiPropertyOptional({ example: 5000 })
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  @Min(0)
+  priceRangeMin?: number;
+
+  @ApiPropertyOptional({ example: 15000 })
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  @Min(0)
+  priceRangeMax?: number;
+
+  @ApiPropertyOptional({ example: '45 mins' })
+  @IsOptional()
+  @IsString()
+  duration?: string;
+
+  @ApiPropertyOptional({ enum: ServiceMode })
+  @IsOptional()
+  @IsEnum(ServiceMode)
+  serviceMode?: ServiceMode;
+
+  @ApiPropertyOptional({ example: false })
+  @IsOptional()
+  @IsBoolean()
+  isBookable?: boolean;
+
+  @ApiPropertyOptional({ enum: ServiceBookingMethod })
+  @IsOptional()
+  @IsEnum(ServiceBookingMethod)
+  bookingMethod?: ServiceBookingMethod;
+
+  @ApiPropertyOptional({ example: 'https://calendly.com/my-booking' })
+  @IsOptional()
+  @IsString()
+  externalBookingLink?: string;
 
   @ApiPropertyOptional({
     description: 'If provided, the edit will be isolated to this branch',
@@ -435,4 +637,26 @@ export class BulkImportItemsDto {
   @ValidateNested({ each: true })
   @Type(() => BulkImportItemRowDto)
   items: BulkImportItemRowDto[];
+}
+
+export enum PublicProductSortOrder {
+  ASC = 'ASC',
+  DESC = 'DESC',
+}
+
+/**
+ * Query for the app-facing published products feed (`GET /api/v1/products`),
+ * backed by catalogue items. Mirrors the app's `CatalogueItemQuery`
+ * plus the legacy `sortOrder` alias.
+ */
+export class PublicProductsQueryDto extends CatalogueQueryDto {
+  @ApiPropertyOptional({
+    enum: PublicProductSortOrder,
+    default: PublicProductSortOrder.DESC,
+    description:
+      'Legacy alias for sort direction used when `sortBy` is not sent: ASC maps to oldest-first, DESC to newest-first.',
+  })
+  @IsOptional()
+  @IsEnum(PublicProductSortOrder)
+  sortOrder?: PublicProductSortOrder = PublicProductSortOrder.DESC;
 }

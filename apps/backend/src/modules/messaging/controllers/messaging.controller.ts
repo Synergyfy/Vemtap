@@ -1,5 +1,4 @@
 import {
-  BadRequestException,
   Controller,
   Delete,
   Post,
@@ -8,6 +7,9 @@ import {
   Param,
   UseGuards,
   Query,
+  NotFoundException,
+  BadRequestException,
+  ForbiddenException,
   Request,
   Patch,
   ParseEnumPipe,
@@ -43,6 +45,8 @@ import { TrialRestrictionGuard } from '../../subscriptions/guards/trial-restrict
 import { BranchFilterDto } from '../../../common/dto/branch-filter.dto';
 import { MessagingAnalyticsFilterDto } from '../dto/messaging-analytics-filter.dto';
 import { MessagingHelperService } from '../services/messaging-helper.service';
+import { BusinessCustomersService } from '../../business-customers/business-customers.service';
+import { InitThreadDto } from '../dto/init-thread.dto';
 import { BranchesService } from '../../branches/branches.service';
 import { IdDto } from '../dto/id.dto';
 import { ThreadIdDto } from '../dto/thread-id.dto';
@@ -59,6 +63,7 @@ export class MessagingController {
     private readonly inboxService: InboxService,
     private readonly branchesService: BranchesService,
     private readonly messagingHelperService: MessagingHelperService,
+    private readonly businessCustomers: BusinessCustomersService,
   ) {}
 
   private async getBranchId(
@@ -76,7 +81,7 @@ export class MessagingController {
   @ApiOperation({
     summary: 'Send a single message or start a campaign',
     description:
-      'Enqueues a message for delivery or initiates a bulk campaign. Access: OWNER, MANAGER, STAFF',
+      "Enqueues a message for delivery or initiates a bulk campaign. Credits are charged to the caller's business (a body businessId is ignored), and customerIds that are not the business's customers are dropped (400 when none remain). Access: OWNER, MANAGER, STAFF",
   })
   @ApiBody({ type: SendMessageDto })
   @ApiResponse({
@@ -89,6 +94,23 @@ export class MessagingController {
   ) {
     const branchId = await this.getBranchId(req, dto.branchId);
     dto.branchId = branchId;
+    // The business (whose credits pay for the send) comes from the token,
+    // never the body, and a business may only message its own customers.
+    const businessId = req.user.businessId;
+    if (!businessId)
+      throw new ForbiddenException('No business on this account');
+    dto.businessId = businessId;
+    if (dto.customerIds?.length) {
+      dto.customerIds = await this.businessCustomers.filterKnownCustomers(
+        businessId,
+        dto.customerIds,
+      );
+      if (!dto.customerIds.length) {
+        throw new BadRequestException(
+          'None of these customers belong to this business',
+        );
+      }
+    }
     return this.messagingEngine.sendMessage(dto);
   }
 
@@ -236,6 +258,55 @@ export class MessagingController {
     return this.analyticsService.getDashboardMetrics(branchId, filter.channel);
   }
 
+  @Get('inbox/unread-summary')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard, TrialRestrictionGuard)
+  @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF, UserRole.ADMIN)
+  @Permissions('messages')
+  @ApiOperation({
+    summary: 'Unread conversation counts per branch',
+    description:
+      'For every branch the caller can read (all business branches for an owner, otherwise their own): unread messages and conversations waiting, zeros included. Channel defaults to IN_HOUSE. Access: OWNER, MANAGER, STAFF, ADMIN',
+  })
+  @ApiQuery({ name: 'channel', required: false, enum: Channel })
+  @ApiResponse({
+    status: 200,
+    schema: { example: [{ branchId: 'uuid', unread: 3, threads: 2 }] },
+  })
+  async getUnreadSummary(
+    @Query('channel') channel: Channel | undefined,
+    @Request() req: { user: User },
+  ) {
+    const resolved =
+      channel && Object.values(Channel).includes(channel)
+        ? channel
+        : Channel.IN_HOUSE;
+    const branchIds = await this.messagingHelperService.accessibleBranchIds(
+      req.user,
+    );
+    return this.inboxService.getUnreadSummary(branchIds, resolved);
+  }
+
+  @Get('inbox/threads/:threadId/context')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard, TrialRestrictionGuard)
+  @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF, UserRole.ADMIN)
+  @Permissions('messages')
+  @ApiOperation({
+    summary: 'What a conversation is about',
+    description:
+      'The order / booking (reference, status, total, items, booking date) or deal claim (code, status, dates, offer) the thread was opened from; null when it is a general chat. Access: OWNER, MANAGER, STAFF, ADMIN',
+  })
+  @ApiQuery({ name: 'branchId', required: false })
+  async getThreadContext(
+    @Param() params: ThreadIdDto,
+    @Query() filter: BranchFilterDto,
+    @Request() req: { user: User },
+  ) {
+    const branchId = await this.getBranchId(req, filter.branchId);
+    return this.inboxService.getThreadContext(params.threadId, branchId);
+  }
+
   @Get('inbox/:channel')
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard, TrialRestrictionGuard)
@@ -318,6 +389,7 @@ export class MessagingController {
       branchId,
       dto.replyToId,
       dto.metadata,
+      { url: dto.mediaUrl, mimeType: dto.mediaMimeType },
     );
   }
 
@@ -351,12 +423,49 @@ export class MessagingController {
   @ApiOperation({
     summary: 'Initialize an empty conversation thread with a customer',
   })
-  async initThread(
-    @Body() dto: { branchId?: string; customerId: string },
+  async initThread(@Body() dto: InitThreadDto, @Request() req: { user: User }) {
+    const branchId = await this.getBranchId(req, dto.branchId);
+    // An existing conversation can always be reopened; a new one only with
+    // someone who is already this business's customer, so a business cannot
+    // message arbitrary users by id.
+    const existing = await this.inboxService.findBranchConversation(
+      branchId,
+      dto.customerId,
+    );
+    if (existing) return existing;
+    const businessId = req.user.businessId;
+    if (
+      !businessId ||
+      !(await this.businessCustomers.isKnownCustomer(
+        businessId,
+        dto.customerId,
+      ))
+    ) {
+      throw new NotFoundException('Customer not found');
+    }
+    return this.inboxService.initBranchConversation(branchId, dto.customerId);
+  }
+
+  @Delete('inbox/threads/:threadId')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard, TrialRestrictionGuard)
+  @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF, UserRole.ADMIN)
+  @Permissions('messages')
+  @ApiOperation({
+    summary: 'Delete an in-house conversation thread',
+    description:
+      'Permanently removes a conversation thread and all of its messages. Access: OWNER, MANAGER, STAFF, ADMIN',
+  })
+  @ApiParam({ name: 'threadId', description: 'Conversation thread UUID' })
+  @ApiQuery({ name: 'branchId', required: false })
+  @ApiResponse({ status: 200, description: 'Thread deleted successfully' })
+  async deleteThread(
+    @Param() { threadId }: ThreadIdDto,
+    @Query() filter: BranchFilterDto,
     @Request() req: { user: User },
   ) {
-    const branchId = await this.getBranchId(req, dto.branchId);
-    return this.inboxService.initBranchConversation(branchId, dto.customerId);
+    const branchId = await this.getBranchId(req, filter.branchId);
+    return this.inboxService.deleteThread(threadId, { branchId });
   }
 
   @Delete('templates/:id')

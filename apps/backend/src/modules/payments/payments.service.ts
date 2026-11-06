@@ -1,17 +1,18 @@
 import { Injectable, ConflictException, Logger } from '@nestjs/common';
 import * as crypto from 'crypto';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { Payment, PaymentStatus } from './entities/payment.entity';
+import { In, Repository } from 'typeorm';
+import {
+  Payment,
+  PaymentPurpose,
+  PaymentStatus,
+} from './entities/payment.entity';
 import { CreatePaymentDto } from './dto/create-payment.dto';
 import { HttpService } from '@nestjs/axios';
 import { firstValueFrom } from 'rxjs';
 
 export type PaystackTransactionStatus =
-  | 'success'
-  | 'pending'
-  | 'failed'
-  | 'abandoned';
+  'success' | 'pending' | 'failed' | 'abandoned';
 
 export interface VerifiedTransaction {
   reference: string;
@@ -25,6 +26,13 @@ export interface VerifiedTransaction {
     authorization_code?: string;
     reusable?: boolean;
     channel?: string;
+    // Card details Paystack returns with the authorization.
+    last4?: string;
+    exp_month?: string;
+    exp_year?: string;
+    card_type?: string;
+    brand?: string;
+    bank?: string;
   } | null;
   paidAt?: string;
 }
@@ -73,7 +81,9 @@ export class PaymentsService {
    * `pending` covers async payment channels (bank transfer, USSD, etc.) whose
    * status is `ongoing`, `pending`, `processing`, or `queued`.
    */
-  async verifyTransaction(reference: string): Promise<VerifiedTransaction | null> {
+  async verifyTransaction(
+    reference: string,
+  ): Promise<VerifiedTransaction | null> {
     try {
       const secretKey = process.env.PAYSTACK_SECRET_KEY;
       if (!secretKey) {
@@ -146,6 +156,31 @@ export class PaymentsService {
   }
 
   /**
+   * Feature modules that own a payment purpose (e.g. the ad wallet) register a
+   * handler here instead of the payments module importing them, which would
+   * be circular. The webhook dispatches successful charges to it.
+   */
+  private readonly purposeHandlers = new Map<
+    PaymentPurpose,
+    (payment: Payment) => Promise<void>
+  >();
+
+  registerPurposeHandler(
+    purpose: PaymentPurpose,
+    handler: (payment: Payment) => Promise<void>,
+  ): void {
+    this.purposeHandlers.set(purpose, handler);
+  }
+
+  /** Run the registered handler for a confirmed payment. False when none. */
+  async dispatchSuccessfulPayment(payment: Payment): Promise<boolean> {
+    const handler = this.purposeHandlers.get(payment.purpose);
+    if (!handler) return false;
+    await handler(payment);
+    return true;
+  }
+
+  /**
    * Initialize a transaction server-side so the frontend only needs the
    * returned access_code (never the secret key), and so we can attach
    * identifying metadata for webhook reconciliation.
@@ -204,6 +239,8 @@ export class PaymentsService {
     amount: number,
     email: string,
     authorization_code: string,
+    /** Our own reference (so the charge can be verified) and metadata. */
+    options: { reference?: string; metadata?: Record<string, unknown> } = {},
   ): Promise<any> {
     const secretKey = process.env.PAYSTACK_SECRET_KEY;
     if (!secretKey) {
@@ -218,6 +255,8 @@ export class PaymentsService {
             amount: Math.round(amount * 100), // Convert to kobo
             email,
             authorization_code,
+            ...(options.reference && { reference: options.reference }),
+            ...(options.metadata && { metadata: options.metadata }),
           },
           {
             headers: {
@@ -237,6 +276,44 @@ export class PaymentsService {
       this.logger.error(`Paystack Charge Error: ${error.message}`, error.stack);
       return null;
     }
+  }
+
+  /**
+   * A business's payments, newest first, optionally limited to some purposes
+   * (e.g. the subscription billing screen).
+   */
+  async listForBusiness(
+    businessId: string,
+    options: {
+      purposes?: PaymentPurpose[];
+      page?: number;
+      limit?: number;
+    } = {},
+  ): Promise<{ data: Payment[]; total: number; page: number; limit: number }> {
+    const page = Math.max(1, options.page ?? 1);
+    const limit = Math.min(100, Math.max(1, options.limit ?? 20));
+    const [data, total] = await this.paymentRepository.findAndCount({
+      where: {
+        businessId,
+        ...(options.purposes?.length && { purpose: In(options.purposes) }),
+      },
+      order: { createdAt: 'DESC' },
+      skip: (page - 1) * limit,
+      take: limit,
+    });
+    return { data, total, page, limit };
+  }
+
+  /**
+   * Flip a pending payment to success. True only for the one caller that made
+   * the change, so whatever it pays for is granted once.
+   */
+  async claimPending(reference: string): Promise<boolean> {
+    const result = await this.paymentRepository.update(
+      { reference, status: PaymentStatus.PENDING },
+      { status: PaymentStatus.SUCCESS },
+    );
+    return (result.affected ?? 0) > 0;
   }
 
   async findByReference(reference: string): Promise<Payment | null> {
@@ -263,7 +340,8 @@ export class PaymentsService {
         ) {
           existing.status = createPaymentDto.status;
           existing.metadata = createPaymentDto.metadata ?? existing.metadata;
-          existing.businessId = createPaymentDto.businessId ?? existing.businessId;
+          existing.businessId =
+            createPaymentDto.businessId ?? existing.businessId;
           existing.userId = createPaymentDto.userId ?? existing.userId;
           return this.paymentRepository.save(existing);
         }

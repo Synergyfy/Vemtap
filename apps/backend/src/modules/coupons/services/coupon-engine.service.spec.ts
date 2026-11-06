@@ -1,8 +1,12 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { BadRequestException } from '@nestjs/common';
 import { CouponEngineService } from './coupon-engine.service';
-import { Coupon, DiscountType, CouponDuration } from '../entities/coupon.entity';
+import {
+  Coupon,
+  DiscountType,
+  CouponDuration,
+} from '../entities/coupon.entity';
 import { PromotionCode } from '../entities/promotion-code.entity';
 import { CouponRedemption } from '../entities/coupon-redemption.entity';
 import { Plan } from '../../subscriptions/entities/plan.entity';
@@ -10,10 +14,7 @@ import {
   Subscription,
   BillingPeriod,
 } from '../../subscriptions/entities/subscription.entity';
-import {
-  SubscriptionTaxService,
-  TaxCalculationResult,
-} from '../../subscriptions/services/subscription-tax.service';
+import { SubscriptionTaxService } from '../../subscriptions/services/subscription-tax.service';
 import { TaxType } from '../../subscriptions/entities/subscription-tax-config.entity';
 
 describe('CouponEngineService', () => {
@@ -52,6 +53,7 @@ describe('CouponEngineService', () => {
     maxCatalogueCategories: 10,
     maxCatalogueOffers: 5,
     automationsEnabled: true,
+    autoFeatureDeals: false,
     maxAutomations: 10,
     isActive: true,
     description: 'Pro plan for businesses',
@@ -128,7 +130,9 @@ describe('CouponEngineService', () => {
 
   beforeEach(async () => {
     promoCodeRepo = {
-      findOne: jest.fn().mockResolvedValue({ ...mockPromoCode, coupon: { ...mockCoupon } }),
+      findOne: jest
+        .fn()
+        .mockResolvedValue({ ...mockPromoCode, coupon: { ...mockCoupon } }),
       createQueryBuilder: jest.fn(() => ({
         update: jest.fn().mockReturnThis(),
         set: jest.fn().mockReturnThis(),
@@ -144,7 +148,9 @@ describe('CouponEngineService', () => {
     redemptionRepo = {
       count: jest.fn().mockResolvedValue(0),
       create: jest.fn().mockImplementation((dto) => dto),
-      save: jest.fn().mockImplementation(async (dto) => ({ id: 'redemption-uuid', ...dto })),
+      save: jest
+        .fn()
+        .mockImplementation(async (dto) => ({ id: 'redemption-uuid', ...dto })),
     };
 
     subscriptionRepo = {
@@ -184,8 +190,14 @@ describe('CouponEngineService', () => {
         CouponEngineService,
         { provide: getRepositoryToken(Coupon), useValue: couponRepo },
         { provide: getRepositoryToken(PromotionCode), useValue: promoCodeRepo },
-        { provide: getRepositoryToken(CouponRedemption), useValue: redemptionRepo },
-        { provide: getRepositoryToken(Subscription), useValue: subscriptionRepo },
+        {
+          provide: getRepositoryToken(CouponRedemption),
+          useValue: redemptionRepo,
+        },
+        {
+          provide: getRepositoryToken(Subscription),
+          useValue: subscriptionRepo,
+        },
         { provide: getRepositoryToken(Plan), useValue: planRepo },
         { provide: SubscriptionTaxService, useValue: taxService },
       ],

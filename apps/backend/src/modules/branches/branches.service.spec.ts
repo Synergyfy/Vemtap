@@ -1,7 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { BranchesService } from './branches.service';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { Repository, QueryBuilder, SelectQueryBuilder } from 'typeorm';
 import { Branch } from './entities/branch.entity';
 import { Business } from '../businesses/entities/business.entity';
 import {

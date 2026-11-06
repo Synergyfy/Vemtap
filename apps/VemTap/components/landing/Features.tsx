@@ -97,8 +97,8 @@ export default function Features() {
 
     return (
         <section id="features" className="py-12 md:py-16 bg-white overflow-hidden">
-            <div className="max-w-7xl mx-auto px-6 sm:px-6 lg:px-8">
-                <div className="text-center max-w-3xl mx-auto mb-16 md:mb-20">
+            <div className="vemtap-container">
+                <div className="text-center vemtap-container mb-16 md:mb-20">
                     <span className="text-primary font-black tracking-[0.3em] text-[10px] uppercase mb-4 block">Power Solutions</span>
                     <h2 className="text-4xl md:text-5xl font-display font-bold text-text-main leading-tight mb-4">
                         Connect with your customers <br className="hidden sm:block" /> digitally

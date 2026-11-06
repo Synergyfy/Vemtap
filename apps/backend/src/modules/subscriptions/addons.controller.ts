@@ -8,7 +8,6 @@ import {
   Param,
   UseGuards,
   Request,
-  Query,
 } from '@nestjs/common';
 import { AddonsService } from './services/addons.service';
 import { CreateAddonDto } from './dto/addons/create-addon.dto';

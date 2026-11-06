@@ -2,10 +2,9 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
-  ConflictException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, DataSource, In, MoreThan } from 'typeorm';
+import { Repository, DataSource, In } from 'typeorm';
 import {
   AffiliateProfile,
   KycStatus,
@@ -65,7 +64,7 @@ export class AffiliatesService {
    * Helper to get or auto-create affiliate profile (Agents only).
    * Business owners/managers bypass this — their data lives in the Business table.
    */
-  private async getOrCreateProfile(userId: string): Promise<AffiliateProfile> {
+  async getOrCreateProfile(userId: string): Promise<AffiliateProfile> {
     let profile = await this.profileRepository.findOne({
       where: { userId },
       relations: ['user'],
@@ -445,7 +444,7 @@ export class AffiliatesService {
 
       return referred.map((b) => ({
         id: b.id,
-        status: b.status === 'active' ? 'Converted' : 'Pending',
+        status: b.status === BusinessStatus.ACTIVE ? 'Converted' : 'Pending',
         createdAt: b.createdAt,
         referredBusiness: b,
       }));
@@ -1005,7 +1004,7 @@ export class AffiliatesService {
     return this.settingsService.updateSettings({
       affiliateDirectCommission: directRate,
       affiliateIndirectCommission: indirectRate,
-    } as any);
+    });
   }
 
   /**

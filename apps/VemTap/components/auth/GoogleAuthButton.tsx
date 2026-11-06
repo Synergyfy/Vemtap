@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
-import { GoogleLogin } from '@react-oauth/google';
+import React, { useState, useEffect } from 'react';
+import { GoogleLogin, type CredentialResponse } from '@react-oauth/google';
 import { useGoogleLogin as useBackendGoogleLogin } from '@/services/auth/hooks';
 import { useAuthStore } from '@/store/useAuthStore';
 import Spinner from '@/components/ui/Spinner';
@@ -9,22 +9,27 @@ import { toast } from 'react-hot-toast';
 import { AuthResponse } from '@/services/auth/types';
 
 interface GoogleAuthButtonProps {
-    role?: 'customer' | 'owner';
+    role?: 'Customer' | 'Owner';
     onSuccess?: (data: AuthResponse) => void;
     label?: string;
     className?: string;
 }
 
 export const GoogleAuthButton: React.FC<GoogleAuthButtonProps> = ({
-    role = 'customer',
+    role = 'Customer',
     onSuccess,
     className = ""
 }) => {
     const { googleLogin, isLoading } = useBackendGoogleLogin();
     const { login } = useAuthStore();
     const [isProcessing, setIsProcessing] = useState(false);
+    const [mounted, setMounted] = useState(false);
 
-    const handleGoogleSuccess = async (credentialResponse: any) => {
+    useEffect(() => {
+        setMounted(true);
+    }, []);
+
+    const handleGoogleSuccess = async (credentialResponse: CredentialResponse) => {
         if (!credentialResponse?.credential) {
             toast.error('Google authentication failed — no credential received');
             return;
@@ -42,14 +47,15 @@ export const GoogleAuthButton: React.FC<GoogleAuthButtonProps> = ({
             if (onSuccess) {
                 onSuccess(res);
             }
-        } catch (err: any) {
-            toast.error(err.message || 'Google authentication failed');
+        } catch (err: unknown) {
+            const message = err instanceof Error ? err.message : 'Google authentication failed';
+            toast.error(message);
         } finally {
             setIsProcessing(false);
         }
     };
 
-    const loading = isLoading || isProcessing;
+    const loading = isLoading || isProcessing || !mounted;
 
     return (
         <div className={`w-full flex justify-center items-center ${className}`}>

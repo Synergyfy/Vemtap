@@ -51,6 +51,25 @@ export class BusinessesController {
     return this.businessesService.findById(req.user.businessId);
   }
 
+  @Get('my-business/customers-summary')
+  @SkipSubscriptionCheck()
+  @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF)
+  @ApiOperation({
+    summary: 'Customer totals for the current business (CRM hub card)',
+    description:
+      'Distinct customers linked by visits or branch assignment, plus how many first linked within the last 7 days.',
+  })
+  @ApiOkResponse({
+    description: 'Customer totals',
+    schema: { example: { totalCustomers: 482, newThisWeek: 38 } },
+  })
+  async getCustomersSummary(@Request() req: RequestWithUser) {
+    if (!req.user.businessId) {
+      throw new BadRequestException('User is not associated with a business');
+    }
+    return this.businessesService.getCustomersSummary(req.user.businessId);
+  }
+
   @Patch('my-business')
   @Roles(UserRole.OWNER)
   @ApiOperation({

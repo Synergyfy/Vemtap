@@ -33,6 +33,8 @@ export class CreateClusterDto {
     enum: ClusterType,
     example: ClusterType.MARKET,
     default: ClusterType.MARKET,
+    description:
+      '`district` makes a targeting area (Wuse 2, Maitama…) for boosts, campaigns and home districts: it defaults to a 2,500 m radius with no scannable QR, and never holds branches.',
   })
   @IsOptional()
   @IsEnum(ClusterType)
@@ -206,6 +208,14 @@ export class AdminClusterQueryDto {
   @IsOptional()
   @IsString()
   search?: string;
+
+  @ApiPropertyOptional({
+    enum: ClusterType,
+    description: 'Only clusters of this type (e.g. `district`)',
+  })
+  @IsOptional()
+  @IsEnum(ClusterType)
+  type?: ClusterType;
 }
 
 export enum AutoAssignScope {

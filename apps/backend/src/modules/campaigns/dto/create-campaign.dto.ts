@@ -4,8 +4,11 @@ import {
   IsOptional,
   IsDateString,
   IsNotEmpty,
+  MaxLength,
+  IsUrl,
+  IsEmail,
 } from 'class-validator';
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export enum CampaignType {
   WHATSAPP = 'WhatsApp',
@@ -52,10 +55,53 @@ export class CreateCampaignDto {
   @IsDateString()
   scheduledFor?: string;
 
-  @ApiProperty({ enum: CampaignStatus, example: 'Scheduled', required: false })
+  @ApiProperty({
+    enum: CampaignStatus,
+    example: 'Scheduled',
+    required: false,
+    description:
+      'Defaults to Draft on create; left unchanged on update when omitted',
+  })
   @IsOptional()
   @IsEnum(CampaignStatus)
-  status?: CampaignStatus = CampaignStatus.DRAFT;
+  status?: CampaignStatus;
+
+  @ApiPropertyOptional({
+    example: 'This weekend only',
+    description: 'Email subject line (Email campaigns)',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  subject?: string;
+
+  @ApiPropertyOptional({
+    example: 'https://urbangrill.ng/menu',
+    description:
+      'Link the campaign promotes. Sent messages carry a tracked `/c/:id` URL that counts the click and redirects here.',
+  })
+  @IsOptional()
+  @IsUrl({ protocols: ['https', 'http'], require_protocol: true })
+  @MaxLength(500)
+  link?: string;
+
+  @ApiPropertyOptional({
+    example: 'Urban Grill',
+    description: 'Email sender name, shown as "<name> via VemTap"',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(80)
+  senderName?: string;
+
+  @ApiPropertyOptional({
+    example: 'hello@urbangrill.ng',
+    description: 'Where email replies go',
+  })
+  @IsOptional()
+  @IsEmail()
+  @MaxLength(254)
+  replyTo?: string;
 
   @ApiProperty({
     example: 'branch-uuid',

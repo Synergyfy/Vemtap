@@ -1,4 +1,4 @@
-const fileToBase64 = (file: File): Promise<string> => {
+const fileToBase64 = (file: File | Blob): Promise<string> => {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
         reader.readAsDataURL(file);
@@ -7,12 +7,12 @@ const fileToBase64 = (file: File): Promise<string> => {
     });
 };
 
-export async function uploadToCloudinary(fileOrBase64: string | File): Promise<string> {
+export async function uploadToCloudinary(fileOrBase64: string | File | Blob): Promise<string> {
     try {
-        let fileData = fileOrBase64;
+        let fileData: string | File | Blob = fileOrBase64;
 
-        if (fileOrBase64 instanceof File) {
-            fileData = await fileToBase64(fileOrBase64);
+        if (fileOrBase64 instanceof Blob) {
+            fileData = await fileToBase64(fileOrBase64 as File);
         }
 
         const response = await fetch('/api/upload', {
@@ -34,8 +34,8 @@ export async function uploadToCloudinary(fileOrBase64: string | File): Promise<s
         console.error('Cloudinary upload error:', error);
         console.warn('Falling back to base64 encoding due to upload error.');
         // If fileData is somehow not resolved to base64 string, we do it here
-        if (fileOrBase64 instanceof File) {
-            return await fileToBase64(fileOrBase64);
+        if (fileOrBase64 instanceof Blob) {
+            return await fileToBase64(fileOrBase64 as File);
         }
         return fileOrBase64 as string;
     }

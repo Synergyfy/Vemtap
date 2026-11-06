@@ -4,19 +4,19 @@ import { Zap, QrCode, CheckCircle2, Lightbulb, Focus, Nfc } from 'lucide-react';
 export default function SpeedComparison() {
     return (
         <section className="py-12 md:py-16 bg-white overflow-hidden">
-            <div className="container mx-auto px-6 relative z-10">
+            <div className="vemtap-container relative z-10">
                 {/* Section Header */}
-                <div className="text-center max-w-3xl mx-auto mb-16 md:mb-20">
+                <div className="text-center vemtap-container mb-16 md:mb-20">
                     <span className="text-primary font-black tracking-[0.3em] text-[10px] uppercase mb-4 block">Speed Comparison</span>
                     <h2 className="text-4xl md:text-5xl font-display font-bold text-text-main leading-tight mb-6">
                         Built for speed and reliability
                     </h2>
-                    <p className="text-text-secondary text-base md:text-lg max-w-2xl mx-auto font-medium">
+                    <p className="text-text-secondary text-base md:text-lg vemtap-container font-medium">
                         Eliminate the friction of QR codes. No need for camera focus, lighting adjustments, or finding the right app.
                     </p>
                 </div>
 
-                <div className="flex flex-col lg:flex-row items-center gap-12 lg:gap-24 max-w-7xl mx-auto">
+                <div className="flex flex-col lg:flex-row items-center gap-12 lg:gap-24 vemtap-container">
 
                     {/* Left Column: Visual Card */}
                     <div className="flex-1 w-full max-w-xl relative">

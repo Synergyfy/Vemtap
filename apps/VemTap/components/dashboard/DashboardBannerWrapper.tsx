@@ -12,9 +12,10 @@ import { resolveBannerText } from '@/lib/utils';
 
 interface DashboardBannerWrapperProps {
     onAnalyzeDashboard?: () => void;
+    className?: string;
 }
 
-export default function DashboardBannerWrapper({ onAnalyzeDashboard }: DashboardBannerWrapperProps) {
+export default function DashboardBannerWrapper({ onAnalyzeDashboard, className }: DashboardBannerWrapperProps) {
     const { businessSlides, fetchBanners } = useBannerStore();
     const { percentage, isComplete, nextPendingItem } = useOnboarding();
     const { activeBranchId } = useActiveBranch();
@@ -93,5 +94,5 @@ export default function DashboardBannerWrapper({ onAnalyzeDashboard }: Dashboard
         return [businessAdvisorSlide, ...bannerSlides];
     }, [businessAdvisorSlide, bannerSlides]);
 
-    return <DashboardBanner slides={allSlides} />;
+    return <DashboardBanner slides={allSlides} className={className} />;
 }

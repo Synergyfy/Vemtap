@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Mobile Bottom Sheet - Royal Spice</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-primary-fixed": "#001945",
+                    "surface-bright": "#f7f9fb",
+                    "surface-variant": "#e0e3e5",
+                    "on-tertiary-fixed-variant": "#3f465c",
+                    "surface-container": "#eceef0",
+                    "surface-container-highest": "#e0e3e5",
+                    "primary-container": "#066cf4",
+                    "on-tertiary-fixed": "#131b2e",
+                    "secondary-fixed": "#d3e4fe",
+                    "error": "#ba1a1a",
+                    "on-secondary": "#ffffff",
+                    "on-secondary-fixed-variant": "#38485d",
+                    "on-surface-variant": "#424655",
+                    "outline-variant": "#c2c6d7",
+                    "on-background": "#191c1e",
+                    "tertiary-container": "#6b738a",
+                    "tertiary-fixed": "#dae2fd",
+                    "on-surface": "#191c1e",
+                    "inverse-primary": "#b0c6ff",
+                    "on-primary": "#ffffff",
+                    "inverse-surface": "#2d3133",
+                    "surface-dim": "#d8dadc",
+                    "tertiary-fixed-dim": "#bec6e0",
+                    "secondary-fixed-dim": "#b7c8e1",
+                    "primary-fixed-dim": "#b0c6ff",
+                    "inverse-on-surface": "#eff1f3",
+                    "surface-tint": "#0058cb",
+                    "primary": "#0055c4",
+                    "outline": "#727786",
+                    "on-tertiary": "#ffffff",
+                    "on-secondary-fixed": "#0b1c30",
+                    "on-error-container": "#93000a",
+                    "on-secondary-container": "#54647a",
+                    "on-primary-fixed-variant": "#00429b",
+                    "tertiary": "#535a71",
+                    "on-primary-container": "#fcfaff",
+                    "secondary-container": "#d0e1fb",
+                    "primary-fixed": "#d9e2ff",
+                    "surface-container-lowest": "#ffffff",
+                    "surface": "#f7f9fb",
+                    "surface-container-low": "#f2f4f6",
+                    "secondary": "#505f76",
+                    "error-container": "#ffdad6",
+                    "on-tertiary-container": "#fcfaff",
+                    "surface-container-high": "#e6e8ea",
+                    "background": "#f7f9fb",
+                    "on-error": "#ffffff"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "margin-main": "1.25rem",
+                    "stack-lg": "1.5rem",
+                    "stack-md": "1rem",
+                    "gutter-grid": "1rem",
+                    "touch-target-min": "44px",
+                    "stack-sm": "0.5rem"
+            },
+            "fontFamily": {
+                    "body-md": ["Inter"],
+                    "label-lg": ["Inter"],
+                    "currency-display": ["Inter"],
+                    "body-lg": ["Inter"],
+                    "headline-sm": ["Inter"],
+                    "headline-md": ["Inter"],
+                    "display-lg": ["Inter"],
+                    "label-sm": ["Inter"]
+            },
+            "fontSize": {
+                    "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                    "label-lg": ["14px", {"lineHeight": "20px", "letterSpacing": "0.01em", "fontWeight": "600"}],
+                    "currency-display": ["20px", {"lineHeight": "24px", "fontWeight": "700"}],
+                    "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                    "headline-sm": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                    "headline-md": ["24px", {"lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                    "display-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "label-sm": ["12px", {"lineHeight": "16px", "fontWeight": "500"}]
+            }
+          }
+        }
+      }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background flex justify-center min-h-screen">
+<!-- Mobile Device Simulator Container -->
+<div class="relative w-full max-w-md bg-surface h-[884px] overflow-hidden shadow-2xl flex flex-col">
+<!-- TopAppBar (from JSON) -->
+<header class="bg-surface border-b border-outline-variant flex items-center justify-between px-margin-main h-touch-target-min w-full max-w-full z-10 shrink-0">
+<button class="hover:bg-surface-container-low transition-colors active:scale-95 transition-transform duration-200 p-2 -ml-2 rounded-full flex items-center justify-center">
+<span class="material-symbols-outlined text-primary">arrow_back</span>
+</button>
+<h1 class="font-headline-sm text-headline-sm font-bold text-primary truncate">Business Profile</h1>
+<button class="hover:bg-surface-container-low transition-colors active:scale-95 transition-transform duration-200 p-2 -mr-2 rounded-full flex items-center justify-center">
+<span class="material-symbols-outlined text-primary">share</span>
+</button>
+</header>
+<!-- Main Content (Background Context) -->
+<main class="flex-1 overflow-y-auto relative z-0 pb-24">
+<!-- Hero Image -->
+<div class="w-full h-64 relative bg-surface-container-high">
+<img class="w-full h-full object-cover" data-alt="A high-quality, professional photograph of a premium, modern Nigerian restaurant interior. The setting is 'Royal Spice Restaurant', featuring warm ambient lighting, elegant table settings with crisp white linens, and tasteful local art on the walls. The aesthetic is clean, inviting, and upscale corporate modern. Shot in a bright, light-mode friendly style with vibrant accents against a neutral backdrop." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCeebOj6n6q0zg1iLuPZ10Gf0Au3Kv27GhomXYSxVUoxuYPgNkh02B8C8Ai9gsiR4hYgEF8FzLTfGp5o8Ob8nMIx63ye6Q2frSk4HGu92ApA_3BM4SqzJbpEL8SCj8KiSvboZdf2LcaOzWdeIqz1Qpf4BYUjLgnuIZVuN_3L6g3vS20hqOeraUyeYXWpMRGtYto5QaWGeuI6LSMfezg0xjDAChq8MbANDchGyhGQokgd0uBbFhheBxURw"/>
+</div>
+<!-- Profile Info -->
+<div class="px-margin-main py-stack-lg">
+<div class="flex justify-between items-start mb-2">
+<div>
+<h2 class="font-headline-md text-headline-md font-bold text-on-surface mb-1">Royal Spice Restaurant</h2>
+<p class="font-body-md text-body-md text-on-surface-variant flex items-center">
+<span class="material-symbols-outlined text-[16px] mr-1">location_on</span>
+                            Victoria Island, Lagos
+                        </p>
+</div>
+<div class="bg-primary-container text-on-primary-container px-2 py-1 rounded flex items-center gap-1">
+<span class="font-label-sm text-label-sm font-bold">4.8</span>
+<span class="material-symbols-outlined text-[14px]" style="font-variation-settings: 'FILL' 1;">star</span>
+</div>
+</div>
+</div>
+</main>
+<!-- BottomNavBar (from JSON - Semantic Shell) -->
+<!-- Placed behind the overlay to show realistic context -->
+<nav class="bg-surface border-t border-outline-variant shadow-lg flex justify-around items-center w-full h-16 pb-safe px-gutter-grid z-10 shrink-0 rounded-t-xl absolute bottom-0">
+<div class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-secondary-container transition-colors active:scale-95 transition-transform duration-150 p-2 rounded-lg">
+<span class="material-symbols-outlined">home</span>
+<span class="font-label-sm text-label-sm mt-1">Home</span>
+</div>
+<div class="flex flex-col items-center justify-center text-primary font-bold hover:bg-secondary-container transition-colors active:scale-95 transition-transform duration-150 p-2 rounded-lg">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">explore</span>
+<span class="font-label-sm text-label-sm mt-1">Discover</span>
+</div>
+<div class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-secondary-container transition-colors active:scale-95 transition-transform duration-150 p-2 rounded-lg">
+<span class="material-symbols-outlined">local_offer</span>
+<span class="font-label-sm text-label-sm mt-1">Deals</span>
+</div>
+<div class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-secondary-container transition-colors active:scale-95 transition-transform duration-150 p-2 rounded-lg">
+<span class="material-symbols-outlined">bookmark</span>
+<span class="font-label-sm text-label-sm mt-1">Saved</span>
+</div>
+<div class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-secondary-container transition-colors active:scale-95 transition-transform duration-150 p-2 rounded-lg">
+<span class="material-symbols-outlined">person</span>
+<span class="font-label-sm text-label-sm mt-1">Account</span>
+</div>
+</nav>
+<!-- BOTTOM SHEET OVERLAY (Active State) -->
+<div class="absolute inset-0 z-50 flex flex-col justify-end pointer-events-auto">
+<!-- Scrim/Backdrop -->
+<div class="absolute inset-0 bg-on-background/40 backdrop-blur-[2px] transition-opacity duration-300"></div>
+<!-- Sheet Content -->
+<div class="relative w-full bg-surface-container-lowest rounded-t-xl shadow-[0_-16px_32px_rgba(0,0,0,0.08)] flex flex-col pb-safe animate-[slideUp_0.3s_ease-out]">
+<!-- Drag Handle -->
+<div class="w-10 h-1.5 bg-outline-variant rounded-full mx-auto mt-4 mb-2"></div>
+<!-- Header -->
+<div class="px-margin-main py-4 text-center border-b border-surface-container">
+<h3 class="font-headline-sm text-headline-sm text-on-surface">What would you like to do?</h3>
+<p class="font-body-md text-body-md text-on-surface-variant mt-1">Royal Spice Restaurant</p>
+</div>
+<!-- Actions List -->
+<div class="flex flex-col py-2">
+<button class="w-full flex items-center px-margin-main py-3.5 hover:bg-surface-container-low active:bg-surface-container transition-colors group">
+<div class="w-10 h-10 rounded-full bg-secondary-container text-primary flex items-center justify-center mr-4 group-hover:scale-105 transition-transform">
+<span class="material-symbols-outlined">directions</span>
+</div>
+<span class="font-label-lg text-label-lg text-on-surface text-left flex-1">Get Directions</span>
+</button>
+<button class="w-full flex items-center px-margin-main py-3.5 hover:bg-surface-container-low active:bg-surface-container transition-colors group">
+<div class="w-10 h-10 rounded-full bg-secondary-container text-primary flex items-center justify-center mr-4 group-hover:scale-105 transition-transform">
+<span class="material-symbols-outlined">call</span>
+</div>
+<span class="font-label-lg text-label-lg text-on-surface text-left flex-1">Call</span>
+</button>
+<button class="w-full flex items-center px-margin-main py-3.5 hover:bg-surface-container-low active:bg-surface-container transition-colors group">
+<div class="w-10 h-10 rounded-full bg-secondary-container text-primary flex items-center justify-center mr-4 group-hover:scale-105 transition-transform">
+<span class="material-symbols-outlined">forum</span>
+</div>
+<span class="font-label-lg text-label-lg text-on-surface text-left flex-1">WhatsApp</span>
+</button>
+<button class="w-full flex items-center px-margin-main py-3.5 hover:bg-surface-container-low active:bg-surface-container transition-colors group">
+<div class="w-10 h-10 rounded-full bg-secondary-container text-primary flex items-center justify-center mr-4 group-hover:scale-105 transition-transform">
+<span class="material-symbols-outlined">mail</span>
+</div>
+<span class="font-label-lg text-label-lg text-on-surface text-left flex-1">Email</span>
+</button>
+<!-- Divider -->
+<div class="h-px w-[calc(100%-2.5rem)] bg-surface-container mx-auto my-2"></div>
+<button class="w-full flex items-center px-margin-main py-3.5 hover:bg-surface-container-low active:bg-surface-container transition-colors group">
+<div class="w-10 h-10 rounded-full bg-surface-container-highest text-on-surface-variant flex items-center justify-center mr-4 group-hover:scale-105 transition-transform">
+<span class="material-symbols-outlined">share</span>
+</div>
+<span class="font-label-lg text-label-lg text-on-surface text-left flex-1">Share Business</span>
+</button>
+<button class="w-full flex items-center px-margin-main py-3.5 hover:bg-surface-container-low active:bg-surface-container transition-colors group">
+<div class="w-10 h-10 rounded-full bg-surface-container-highest text-on-surface-variant flex items-center justify-center mr-4 group-hover:scale-105 transition-transform">
+<span class="material-symbols-outlined">bookmark</span>
+</div>
+<span class="font-label-lg text-label-lg text-on-surface text-left flex-1">Save Business</span>
+</button>
+</div>
+<!-- Extra padding for bottom safe area -->
+<div class="h-6"></div>
+</div>
+</div>
+</div>
+<style>
+        @keyframes slideUp {
+            from { transform: translateY(100%); }
+            to { transform: translateY(0); }
+        }
+    </style>
+</body></html>

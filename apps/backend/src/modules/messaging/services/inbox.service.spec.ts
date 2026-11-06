@@ -16,6 +16,7 @@ import { User } from '../../users/entities/user.entity';
 import { Channel } from '../enums/channel.enum';
 import { MessagingGateway } from '../messaging.gateway';
 import { PushNotificationService } from '../../notifications/push-notification.service';
+import { NotificationsService } from '../../notifications/notifications.service';
 import { Visit } from '../../visitors/entities/visit.entity';
 import { Branch } from '../../branches/entities/branch.entity';
 import { MessageDirection } from '../enums/message.enum';
@@ -31,6 +32,7 @@ describe('InboxService', () => {
   let engineMock: any;
   let gatewayMock: any;
   let pushMock: any;
+  let notificationsMock: any;
   let automationMock: any;
 
   beforeEach(async () => {
@@ -45,6 +47,8 @@ describe('InboxService', () => {
       update: jest.fn().mockResolvedValue({ affected: 1 }),
       increment: jest.fn().mockResolvedValue({ affected: 1 }),
       create: jest.fn().mockImplementation((t) => t),
+      remove: jest.fn().mockImplementation((t) => Promise.resolve(t)),
+      delete: jest.fn().mockResolvedValue({ affected: 1 }),
     };
 
     threadRepoMock.createQueryBuilder = jest.fn(() => ({
@@ -62,6 +66,7 @@ describe('InboxService', () => {
       save: jest
         .fn()
         .mockImplementation((m) => Promise.resolve({ id: 'new-msg-id', ...m })),
+      delete: jest.fn().mockResolvedValue({ affected: 1 }),
     };
 
     userRepoMock = {
@@ -89,11 +94,19 @@ describe('InboxService', () => {
     gatewayMock = {
       emitMessage: jest.fn(),
       emitMessageUpdate: jest.fn(),
+      emitThreadDeleted: jest.fn(),
+      markThreadRead: jest.fn().mockResolvedValue(undefined),
     };
 
     pushMock = {
       sendNotification: jest.fn().mockResolvedValue({ success: true }),
       sendToBranchStaff: jest.fn().mockResolvedValue({ success: true }),
+    };
+
+    notificationsMock = {
+      create: jest.fn().mockResolvedValue({}),
+      createMany: jest.fn().mockResolvedValue([]),
+      createForBranchStaff: jest.fn().mockResolvedValue([]),
     };
 
     automationMock = {
@@ -136,6 +149,7 @@ describe('InboxService', () => {
           provide: PushNotificationService,
           useValue: pushMock,
         },
+        { provide: NotificationsService, useValue: notificationsMock },
         {
           provide: AutomationService,
           useValue: automationMock,
@@ -343,6 +357,8 @@ describe('InboxService', () => {
         'hello',
         undefined,
         undefined,
+        // `media` is forwarded as-is; this call carries none.
+        undefined,
       );
       expect(threadRepoMock.update).toHaveBeenCalledWith(
         't1',
@@ -418,6 +434,34 @@ describe('InboxService', () => {
       expect(automationMock.trigger).toHaveBeenCalled();
       expect(result.content).toBe('reply content');
     });
+
+    it('should persist an attached image onto the saved message', async () => {
+      const mockThread = {
+        id: 't1',
+        branchId: 'br1',
+        customerId: 'c1',
+        channel: Channel.IN_HOUSE,
+        status: ThreadStatus.OPEN,
+        branchUnreadCount: 0,
+        customer: { firstName: 'Visitor', phone: '+123' },
+      } as any;
+      threadRepoMock.findOne.mockResolvedValue(mockThread);
+      messageRepoMock.create.mockImplementation((m: any) => m);
+      messageRepoMock.save.mockImplementation((m: any) => Promise.resolve(m));
+
+      const result = await service.sendCustomerReply(
+        't1',
+        '',
+        'c1',
+        undefined,
+        undefined,
+        { url: 'https://cdn.test/photo.jpg', mimeType: 'image/jpeg' },
+      );
+
+      // An image may travel on its own, so the saved row must carry the media.
+      expect(result.mediaUrl).toBe('https://cdn.test/photo.jpg');
+      expect(result.mediaMimeType).toBe('image/jpeg');
+    });
   });
 
   describe('editMessage', () => {
@@ -468,6 +512,100 @@ describe('InboxService', () => {
       expect(mockMsg.isDeleted).toBe(true);
       expect(mockMsg.content).toBe('Message deleted');
       expect(gatewayMock.emitMessageUpdate).toHaveBeenCalled();
+    });
+  });
+
+  describe('deleteThread', () => {
+    it('should delete messages and thread, then broadcast (staff context)', async () => {
+      const mockThread = {
+        id: 't1',
+        branchId: 'br1',
+        customerId: 'c1',
+      };
+      threadRepoMock.findOne.mockResolvedValue(mockThread);
+
+      await service.deleteThread('t1', { branchId: 'br1' });
+
+      expect(threadRepoMock.findOne).toHaveBeenCalledWith({
+        where: { id: 't1', branchId: 'br1' },
+      });
+      expect(messageRepoMock.delete).toHaveBeenCalledWith({ threadId: 't1' });
+      expect(threadRepoMock.remove).toHaveBeenCalledWith(mockThread);
+      expect(gatewayMock.emitThreadDeleted).toHaveBeenCalledWith(
+        't1',
+        'br1',
+        'c1',
+      );
+    });
+
+    it('should scope lookup to the customer when in customer context', async () => {
+      const mockThread = {
+        id: 't1',
+        branchId: 'br1',
+        customerId: 'c1',
+      };
+      threadRepoMock.findOne.mockResolvedValue(mockThread);
+
+      await service.deleteThread('t1', { customerId: 'c1' });
+
+      expect(threadRepoMock.findOne).toHaveBeenCalledWith({
+        where: { id: 't1', customerId: 'c1' },
+      });
+      expect(threadRepoMock.remove).toHaveBeenCalled();
+      expect(gatewayMock.emitThreadDeleted).toHaveBeenCalled();
+    });
+
+    it('should throw NotFoundException when thread does not exist', async () => {
+      threadRepoMock.findOne.mockResolvedValue(null);
+
+      await expect(
+        service.deleteThread('missing', { branchId: 'br1' }),
+      ).rejects.toThrow(NotFoundException);
+
+      expect(messageRepoMock.delete).not.toHaveBeenCalled();
+      expect(threadRepoMock.remove).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('markAsRead', () => {
+    const thread = {
+      id: 'thread-1',
+      branchId: 'branch-1',
+      customerId: 'cust-1',
+    };
+
+    it('clears the staff counter and marks the customer messages read', async () => {
+      threadRepoMock.findOne.mockResolvedValue({
+        ...thread,
+        branchUnreadCount: 3,
+      });
+
+      await service.markAsRead('thread-1', 'branch-1');
+
+      expect(threadRepoMock.save).toHaveBeenCalledWith(
+        expect.objectContaining({ branchUnreadCount: 0 }),
+      );
+      expect(gatewayMock.markThreadRead).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'thread-1' }),
+        'INBOUND',
+      );
+    });
+
+    it('clears the customer counter and marks the business replies read', async () => {
+      threadRepoMock.findOne.mockResolvedValue({
+        ...thread,
+        customerUnreadCount: 2,
+      });
+
+      await service.markAsRead('thread-1', undefined, 'cust-1');
+
+      expect(threadRepoMock.save).toHaveBeenCalledWith(
+        expect.objectContaining({ customerUnreadCount: 0 }),
+      );
+      expect(gatewayMock.markThreadRead).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'thread-1' }),
+        'OUTBOUND',
+      );
     });
   });
 });

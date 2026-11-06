@@ -16,7 +16,6 @@ import {
   ApiOperation,
   ApiBearerAuth,
   ApiOkResponse,
-  ApiBody,
 } from '@nestjs/swagger';
 import { AffiliatesService } from './affiliates.service';
 import { VemtapAffiliateAgentsService } from './vemtap-affiliate-agents.service';
@@ -157,7 +156,7 @@ export class AffiliatesController {
   @Get('admin/withdrawals')
   @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Admin: List withdrawal requests' })
-  async getWithdrawals(@Req() req) {
+  async getWithdrawals(@Req() _req) {
     return this.affiliatesService.getAllWithdrawals();
   }
 

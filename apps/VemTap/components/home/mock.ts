@@ -1,0 +1,77 @@
+import type { HomeBusinessCard, HomeCategory } from './types';
+
+export const HOME_CATEGORIES: HomeCategory[] = [
+  { id: 'food', name: 'Food', href: '/deals?q=food' },
+  { id: 'fashion', name: 'Fashion', href: '/deals?q=fashion' },
+  { id: 'beauty', name: 'Beauty', href: '/deals?q=beauty' },
+  { id: 'electronics', name: 'Electronics', href: '/deals?q=electronics' },
+  { id: 'home', name: 'Home', href: '/deals?q=home' },
+  { id: 'automotive', name: 'Automotive', href: '/deals?q=auto' },
+  { id: 'services', name: 'Services', href: '/deals?q=services' },
+  { id: 'events', name: 'Events', href: '/deals?q=events' },
+  { id: 'more', name: 'More', href: '/deals' },
+];
+
+/** Nigerian/local fallback businesses when API yields none */
+export const MOCK_HOME_BUSINESSES: HomeBusinessCard[] = [
+  {
+    id: 'biz-bella',
+    name: 'Bella Restaurant',
+    image: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=600&q=80',
+    category: 'Food & Drinks',
+    location: 'Wuse 2, Abuja',
+    rating: 4.6,
+    activeDeals: 2,
+    href: '/deals?q=Bella',
+  },
+  {
+    id: 'biz-stylehub',
+    name: 'StyleHub Fashion',
+    image: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=600&q=80',
+    category: 'Fashion',
+    location: 'Apo, Abuja',
+    rating: 4.4,
+    activeDeals: 3,
+    href: '/deals?q=Fashion',
+  },
+  {
+    id: 'biz-glow',
+    name: 'Glow Beauty Lounge',
+    image: 'https://images.unsplash.com/photo-1560066984-138dadb4c035?w=600&q=80',
+    category: 'Beauty',
+    location: 'Garki, Abuja',
+    rating: 4.8,
+    activeDeals: 1,
+    href: '/deals?q=Beauty',
+  },
+  {
+    id: 'biz-techcity',
+    name: 'TechCity Electronics',
+    image: 'https://images.unsplash.com/photo-1531297484001-80022131f5a1?w=600&q=80',
+    category: 'Electronics',
+    location: 'Wuse Zone 4',
+    rating: 4.3,
+    activeDeals: 4,
+    href: '/deals?q=Electronics',
+  },
+  {
+    id: 'biz-freshmart',
+    name: 'FreshMart Supermarket',
+    image: 'https://images.unsplash.com/photo-1578916171728-46686eac8d58?w=600&q=80',
+    category: 'Supermarket',
+    location: 'Jabi Lake Mall',
+    rating: 4.2,
+    activeDeals: 2,
+    href: '/deals?q=Supermarket',
+  },
+  {
+    id: 'biz-swift',
+    name: 'Swift Auto Care',
+    image: 'https://images.unsplash.com/photo-1486262715619-67b85e0b08d3?w=600&q=80',
+    category: 'Automotive',
+    location: 'Utako, Abuja',
+    rating: 4.5,
+    activeDeals: 1,
+    href: '/deals?q=Auto',
+  },
+];

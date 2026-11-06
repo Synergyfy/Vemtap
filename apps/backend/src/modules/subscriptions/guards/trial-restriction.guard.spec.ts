@@ -1,11 +1,9 @@
 import { TrialRestrictionGuard } from './trial-restriction.guard';
-import { SubscriptionsService } from '../subscriptions.service';
 import { ExecutionContext, ForbiddenException } from '@nestjs/common';
 import { SubscriptionStatus } from '../entities/subscription.entity';
 
 describe('TrialRestrictionGuard', () => {
   let guard: TrialRestrictionGuard;
-  let subscriptionsService: SubscriptionsService;
 
   const mockSubscriptionsService = {
     activeSubscription: jest.fn(),

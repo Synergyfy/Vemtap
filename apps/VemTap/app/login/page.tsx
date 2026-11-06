@@ -8,7 +8,7 @@ import { GoogleLogin, type CredentialResponse } from '@react-oauth/google';
 import { 
     Mail, Lock, Eye, EyeOff,
     ShieldCheck, 
-    Zap, AlertCircle
+    Zap, AlertCircle, ArrowLeft
 } from 'lucide-react';
 
 import Logo from '@/components/brand/Logo';
@@ -17,6 +17,8 @@ import { cn } from '@/lib/utils';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/store/useAuthStore';
 import { getFirstPermittedDashboardRoute, isRouteAllowed } from '@/lib/utils/nav-filter';
+import RegisterChoiceModal from '@/components/public/RegisterChoiceModal';
+import PinSetupModal from '@/components/auth/PinSetupModal';
 
 const isEmail = (v: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim());
 const isPhone = (v: string) => /^[\+\d][\d\s\-\(\)]{7,20}$/.test(v.trim());
@@ -40,6 +42,7 @@ function LoginPageContent() {
     const storeLogin = useAuthStore((s) => s.login);
     const [showPassword, setShowPassword] = useState(false);
     const [isLoggingIn, setIsLoggingIn] = useState(false);
+    const [showRegister, setShowRegister] = useState(false);
     const [formData, setFormData] = useState({
         email: '',
         password: '',
@@ -49,6 +52,7 @@ function LoginPageContent() {
     const [requires2FA, setRequires2FA] = useState(false);
     const [twoFACode, setTwoFACode] = useState('');
     const [pendingLogin, setPendingLogin] = useState<{ identifier: string; password: string } | null>(null);
+    const [pinSetup, setPinSetup] = useState<{ open: boolean; email: string }>({ open: false, email: '' });
 
     const validate = () => {
         const errors: { email?: string; password?: string } = {};
@@ -61,9 +65,9 @@ function LoginPageContent() {
         }
 
         if (!formData.password) {
-            errors.password = 'Password is required';
+            errors.password = 'Enter your 6-digit PIN';
         } else if (formData.password.length < 6) {
-            errors.password = 'Password must be at least 6 characters';
+            errors.password = 'Must be at least 6 characters';
         }
 
         setFieldErrors(errors);
@@ -141,6 +145,12 @@ function LoginPageContent() {
                 password: formData.password,
             });
 
+            if (response?.requiresPinSetup) {
+                setPinSetup({ open: true, email: response?.email || formData.email.trim() });
+                setIsLoggingIn(false);
+                return;
+            }
+
             if (response?.requiresTwoFactor) {
                 setRequires2FA(true);
                 setPendingLogin({ identifier: formData.email.trim(), password: formData.password });
@@ -187,6 +197,7 @@ function LoginPageContent() {
     };
 
     return (
+        <>
         <div className="min-h-screen bg-white flex flex-col lg:flex-row overflow-hidden">
             {/* LEFT COLUMN: Visual Branding */}
             <div className="hidden lg:flex lg:w-[40%] bg-[#066CF4] items-center justify-center p-20 relative overflow-hidden">
@@ -224,6 +235,15 @@ function LoginPageContent() {
             {/* RIGHT COLUMN: Minimal Login Form */}
             <div className="flex-1 flex flex-col justify-center p-6 md:p-12 lg:p-24 bg-white relative">
                 <div className="max-w-md w-full mx-auto">
+                    {/* Back Button */}
+                    <button
+                        onClick={() => router.back()}
+                        className="flex items-center gap-2 text-sm font-semibold text-gray-500 hover:text-[#066CF4] transition-colors mb-6 cursor-pointer"
+                    >
+                        <ArrowLeft size={18} />
+                        Back
+                    </button>
+
                     {/* Mobile Logo */}
                     <div className="lg:hidden flex justify-center mb-12">
                         <Link href="/">
@@ -325,8 +345,11 @@ function LoginPageContent() {
 
                         <div className="space-y-2">
                             <div className="flex justify-between items-center">
-                                <label className="text-xs font-medium text-text-secondary">Password</label>
-                                <Link href="/forgot-password" title="reset password" className="text-xs font-semibold text-primary hover:underline">Forgot?</Link>
+                                <label className="text-xs font-medium text-text-secondary">PIN</label>
+                                <div className="flex items-center gap-3">
+                                    {/* <Link href="/forgot-password" title="reset password" className="text-xs font-semibold text-primary hover:underline">Forgot password?</Link> */}
+                                    <Link href="/forgot-pin" title="reset pin" className="text-xs font-semibold text-primary hover:underline">Forgot Password?</Link>
+                                </div>
                             </div>
                             <div className="relative">
                                 <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
@@ -405,11 +428,29 @@ function LoginPageContent() {
                     {/* Sign Up Link */}
                     <div className="mt-10 text-center">
                         <p className="text-sm text-text-secondary font-medium">
-                            Don&apos;t have an account? <Link href="/get-started" className="text-primary font-bold uppercase tracking-wider text-[10px] ml-2 hover:underline">Create Account</Link>
+                            Don&apos;t have an account?{' '}
+                            <button
+                                onClick={() => setShowRegister(true)}
+                                className="text-primary font-bold uppercase tracking-wider text-[10px] ml-2 hover:underline"
+                            >
+                                Create Account
+                            </button>
                         </p>
                     </div>
                 </div>
             </div>
         </div>
+
+        <RegisterChoiceModal
+            isOpen={showRegister}
+            onClose={() => setShowRegister(false)}
+        />
+
+        <PinSetupModal
+            isOpen={pinSetup.open}
+            email={pinSetup.email}
+            onClose={() => setPinSetup({ open: false, email: '' })}
+        />
+        </>
     );
 }

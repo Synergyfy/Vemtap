@@ -7,9 +7,6 @@ import { Channel } from '../enums/channel.enum';
 const mockTwilioMessages = {
   create: jest.fn(),
 };
-const mockTwilioClientInstance = {
-  messages: mockTwilioMessages,
-};
 
 jest.mock('twilio', () => {
   return jest.fn().mockReturnValue({
@@ -23,7 +20,6 @@ import twilio from 'twilio';
 
 describe('TwilioProvider', () => {
   let provider: TwilioProvider;
-  let configService: ConfigService;
 
   beforeEach(async () => {
     jest.clearAllMocks();
@@ -46,7 +42,6 @@ describe('TwilioProvider', () => {
     }).compile();
 
     provider = module.get<TwilioProvider>(TwilioProvider);
-    configService = module.get<ConfigService>(ConfigService);
   });
 
   it('should be defined', () => {

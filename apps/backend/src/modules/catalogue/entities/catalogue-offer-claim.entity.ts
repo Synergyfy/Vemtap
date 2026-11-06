@@ -1,6 +1,7 @@
 import { Entity, Column, ManyToOne, JoinColumn, Index } from 'typeorm';
 import { AbstractBaseEntity } from '../../../common/entities/base.entity';
 import { CatalogueOffer } from './catalogue-offer.entity';
+import { User } from '../../users/entities/user.entity';
 import { ApiProperty } from '@nestjs/swagger';
 
 export enum CatalogueOfferClaimStatus {
@@ -10,14 +11,38 @@ export enum CatalogueOfferClaimStatus {
 }
 
 @Entity('catalogue_offer_claims')
+@Index(['offerId', 'status'])
+@Index(['offerId', 'email'])
 export class CatalogueOfferClaim extends AbstractBaseEntity {
   @ApiProperty({ example: 'uuid-of-offer' })
   @Column({ type: 'uuid' })
+  @Index()
   offerId: string;
 
   @ManyToOne(() => CatalogueOffer, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'offerId' })
   offer: CatalogueOffer;
+
+  @ApiProperty({
+    example: 'uuid-of-user',
+    nullable: true,
+    description:
+      'Linked customer account, resolved from the claimant email/phone when one exists. Nullable because claims are anonymous (OTP-verified email only).',
+  })
+  @ManyToOne(() => User, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'userId' })
+  user: User | null;
+
+  @Column({ type: 'uuid', nullable: true })
+  @Index()
+  userId: string | null;
+
+  @ApiProperty({
+    nullable: true,
+    description: 'The signed-in customer who claimed this for someone else',
+  })
+  @Column({ type: 'uuid', nullable: true })
+  claimedByUserId: string | null;
 
   @ApiProperty({ example: 'Chidi' })
   @Column()
@@ -54,4 +79,8 @@ export class CatalogueOfferClaim extends AbstractBaseEntity {
   @ApiProperty({ example: '2026-07-07T10:00:00.000Z' })
   @Column({ type: 'timestamp' })
   expiresAt: Date;
+
+  @ApiProperty({ example: '2026-07-03T12:40:00.000Z', nullable: true })
+  @Column({ type: 'timestamp', nullable: true })
+  redeemedAt: Date | null;
 }

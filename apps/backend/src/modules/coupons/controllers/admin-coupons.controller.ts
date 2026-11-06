@@ -10,12 +10,7 @@ import {
   UseGuards,
   Request,
 } from '@nestjs/common';
-import {
-  ApiTags,
-  ApiOperation,
-  ApiBearerAuth,
-  ApiResponse,
-} from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../../common/guards/roles.guard';
 import { Roles } from '../../../common/decorators/roles.decorator';
@@ -58,28 +53,25 @@ export class AdminCouponsController {
   }
 
   @Get(':id')
-  @ApiOperation({ summary: 'Admin: Get single Coupon details with promo codes' })
+  @ApiOperation({
+    summary: 'Admin: Get single Coupon details with promo codes',
+  })
   async findOneCoupon(@Param('id') id: string) {
     return this.couponsService.findOne(id);
   }
 
   @Patch(':id')
   @ApiOperation({ summary: 'Admin: Update Coupon settings' })
-  async updateCoupon(
-    @Param('id') id: string,
-    @Body() dto: UpdateCouponDto,
-  ) {
+  async updateCoupon(@Param('id') id: string, @Body() dto: UpdateCouponDto) {
     return this.couponsService.update(id, dto);
   }
 
   @Patch(':id/toggle')
   @ApiOperation({
-    summary: 'Admin: Suspend or Reactivate a Coupon (affects all its promo codes)',
+    summary:
+      'Admin: Suspend or Reactivate a Coupon (affects all its promo codes)',
   })
-  async toggleCoupon(
-    @Param('id') id: string,
-    @Body() dto: ToggleStatusDto,
-  ) {
+  async toggleCoupon(@Param('id') id: string, @Body() dto: ToggleStatusDto) {
     return this.couponsService.toggleActive(id, dto.isActive);
   }
 
@@ -131,10 +123,7 @@ export class AdminCouponsController {
   @ApiOperation({
     summary: 'Admin: Suspend or Reactivate a single Promotion Code',
   })
-  async togglePromoCode(
-    @Param('id') id: string,
-    @Body() dto: ToggleStatusDto,
-  ) {
+  async togglePromoCode(@Param('id') id: string, @Body() dto: ToggleStatusDto) {
     return this.promotionCodesService.toggleActive(id, dto.isActive);
   }
 
@@ -152,7 +141,8 @@ export class AdminCouponsController {
 
   @Get('analytics/redemptions')
   @ApiOperation({
-    summary: 'Admin: View immutable redemption log for all discounted subscriptions',
+    summary:
+      'Admin: View immutable redemption log for all discounted subscriptions',
   })
   async getRedemptions(@Query() query: QueryRedemptionsDto) {
     return this.promotionCodesService.findRedemptions(query);

@@ -1,15 +1,18 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import PageHeader from '@/components/dashboard/PageHeader';
 import DataTable, { Column } from '@/components/dashboard/DataTable';
 import EmptyState from '@/components/dashboard/EmptyState';
-import { Plus, Edit2, Trash2, Search, ShoppingBag, Eye, Coins, MoreVertical, ChevronLeft, ChevronRight, AlertCircle } from 'lucide-react';
-import { useCatalogueItems, useDeleteCatalogueItem, CatalogueItem } from '@/services/catalogue/hooks';
+import { Plus, Edit2, Trash2, Search, ShoppingBag, Eye, Coins, MoreVertical, ChevronLeft, ChevronRight, AlertCircle, Flame } from 'lucide-react';
+import { useCatalogueItems, useDeleteCatalogueItem, CatalogueItem, useCatalogueOffersAdmin } from '@/services/catalogue/hooks';
 import { useActiveBranch } from '@/hooks/useActiveBranch';
 import toast from 'react-hot-toast';
 import ProductModal from '@/components/dashboard/catalogue/ProductModal';
+import ServiceForm from '@/components/dashboard/catalogue/ServiceForm';
 import AddProductMethodModal from '@/components/dashboard/catalogue/AddProductMethodModal';
+import MakeDealFlow from '@/components/dashboard/catalogue/MakeDealFlow';
 import PageLockWrapper from '@/components/dashboard/PageLockWrapper';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { cn } from '@/lib/utils';
@@ -21,9 +24,14 @@ export default function ProductsPage() {
     const [searchQuery, setSearchQuery] = useState('');
     const [activeCategory, setActiveCategory] = useState<string>('all');
     const [page, setPage] = useState(1);
+    const [activeTab, setActiveTab] = useState<'products' | 'services'>('products');
     const perPage = 10;
     
     const { data: items = [], isLoading } = useCatalogueItems({ 
+        branchId: activeBranchId || undefined 
+    });
+
+    const { data: offers = [] } = useCatalogueOffersAdmin({ 
         branchId: activeBranchId || undefined 
     });
 
@@ -31,7 +39,27 @@ export default function ProductsPage() {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isMethodOpen, setIsMethodOpen] = useState(false);
     const [selectedProduct, setSelectedProduct] = useState<CatalogueItem | null>(null);
+    const [makeDealProduct, setMakeDealProduct] = useState<CatalogueItem | null>(null);
     const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+    const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null);
+
+    // Build a map of product ID -> active deals for deal status display
+    const productDealMap = useMemo(() => {
+        const map = new Map<string, { count: number; hasActive: boolean; deal?: any }>();
+        for (const offer of offers) {
+            if (!offer.items) continue;
+            for (const item of offer.items) {
+                const existing = map.get(item.id) || { count: 0, hasActive: false };
+                const isActive = offer.status === 'active' && (!offer.endDate || new Date(offer.endDate) > new Date());
+                map.set(item.id, {
+                    count: existing.count + 1,
+                    hasActive: existing.hasActive || isActive,
+                    deal: isActive ? offer : existing.deal,
+                });
+            }
+        }
+        return map;
+    }, [offers]);
 
     useEffect(() => {
         if (searchParams?.get('action') === 'add' || searchParams?.get('add') === 'true') {
@@ -41,19 +69,40 @@ export default function ProductsPage() {
 
     useEffect(() => {
         if (!openMenuId) return;
-        const handler = () => setOpenMenuId(null);
+        const handler = (e: MouseEvent) => {
+            const target = e.target as HTMLElement;
+            if (!target.closest('[data-menu-dropdown]') && !target.closest('[data-menu-trigger]')) {
+                setOpenMenuId(null);
+                setMenuPos(null);
+            }
+        };
+        const scrollHandler = () => { setOpenMenuId(null); setMenuPos(null); };
         document.addEventListener('mousedown', handler);
-        return () => document.removeEventListener('mousedown', handler);
+        window.addEventListener('scroll', scrollHandler, true);
+        return () => {
+            document.removeEventListener('mousedown', handler);
+            window.removeEventListener('scroll', scrollHandler, true);
+        };
     }, [openMenuId]);
 
     const toggleMenu = (id: string, e: React.MouseEvent) => {
         e.stopPropagation();
-        setOpenMenuId(prev => (prev === id ? null : id));
+        if (openMenuId === id) {
+            setOpenMenuId(null);
+            setMenuPos(null);
+            return;
+        }
+        const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+        setMenuPos({ top: rect.bottom + 8, left: Math.max(8, rect.right - 160) });
+        setOpenMenuId(id);
     };
 
     const handleEdit = (e: React.MouseEvent, item: CatalogueItem) => {
         e.stopPropagation();
         setSelectedProduct(item);
+        if (item.itemType === 'service') {
+            setActiveTab('services');
+        }
         setIsModalOpen(true);
     };
 
@@ -73,7 +122,12 @@ export default function ProductsPage() {
     };
 
     const handleAdd = () => {
-        setIsMethodOpen(true);
+        if (activeTab === 'services') {
+            setSelectedProduct(null);
+            setIsModalOpen(true);
+        } else {
+            setIsMethodOpen(true);
+        }
     };
 
     const handleSelectMethod = (method: 'manual' | 'bulk' | 'barcode') => {
@@ -102,10 +156,13 @@ export default function ProductsPage() {
     };
 
     const filteredItems = items.filter(item => {
+        const matchesType = activeTab === 'products' 
+            ? (item.itemType || 'product') === 'product'
+            : item.itemType === 'service';
         const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
             (item.sku && item.sku.toLowerCase().includes(searchQuery.toLowerCase()));
         const matchesCategory = activeCategory === 'all' || item.categoryId === activeCategory;
-        return matchesSearch && matchesCategory;
+        return matchesType && matchesSearch && matchesCategory;
     });
 
     const totalPages = Math.max(1, Math.ceil(filteredItems.length / perPage));
@@ -125,8 +182,8 @@ export default function ProductsPage() {
             accessor: (item: CatalogueItem) => (
                 <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-lg bg-slate-50 border border-slate-100 overflow-hidden flex items-center justify-center shrink-0">
-                        {item.mainImage ? (
-                            <img src={item.mainImage} alt={item.name} className="w-full h-full object-cover" />
+                        {item.mainImage && (item.mainImage.startsWith('http') || item.mainImage.startsWith('data:') || item.mainImage.startsWith('blob:')) ? (
+                            <img src={item.mainImage} alt={item.name} className="w-full h-full object-cover" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} />
                         ) : (
                             <ShoppingBag className="text-slate-300" size={18} />
                         )}
@@ -149,6 +206,28 @@ export default function ProductsPage() {
         {
             header: 'Price',
             accessor: (item: CatalogueItem) => {
+                // Handle service pricing types
+                if (item.itemType === 'service' && item.priceType) {
+                    switch (item.priceType) {
+                        case 'contact':
+                            return <span className="text-xs font-bold text-slate-500 italic">Contact for price</span>;
+                        case 'range':
+                            return (
+                                <div className="flex flex-col">
+                                    <span className="font-bold text-primary text-sm">₦{Number(item.priceRangeMin || 0).toLocaleString()} - ₦{Number(item.priceRangeMax || 0).toLocaleString()}</span>
+                                </div>
+                            );
+                        case 'starting_from':
+                            return (
+                                <div className="flex flex-col">
+                                    <span className="text-[9px] text-slate-400 font-medium">From</span>
+                                    <span className="font-bold text-primary text-sm">₦{Number(item.priceRangeMin || item.price).toLocaleString()}</span>
+                                </div>
+                            );
+                        default: // fixed
+                            break;
+                    }
+                }
                 const hasDiscount = item.discountType && item.discountType !== 'none' && item.discountValue;
                 const finalPrice = hasDiscount
                     ? (item.discountType === 'percentage'
@@ -188,13 +267,16 @@ export default function ProductsPage() {
         {
             header: 'Total Value',
             accessor: (item: CatalogueItem) => {
+                if (item.itemType === 'service') {
+                    return <span className="text-[10px] text-slate-400 font-medium">—</span>;
+                }
                 const hasDiscount = item.discountType && item.discountType !== 'none' && item.discountValue;
                 const finalPrice = hasDiscount
                     ? (item.discountType === 'percentage'
                         ? Number(item.price) - (Number(item.price) * (Number(item.discountValue) / 100))
                         : Number(item.price) - Number(item.discountValue))
                     : Number(item.price);
-                const qty = item.itemType === 'service' ? 0 : (item.stockQuantity ?? 0);
+                const qty = item.stockQuantity ?? 0;
                 return (
                     <div className="flex flex-col">
                         <span className="font-bold text-text-main text-sm">₦{(finalPrice * qty).toLocaleString()}</span>
@@ -206,58 +288,57 @@ export default function ProductsPage() {
             }
         },
         {
+            header: 'Deal',
+            accessor: (item: CatalogueItem) => {
+                const dealInfo = productDealMap.get(item.id);
+                if (!dealInfo || dealInfo.count === 0) {
+                    return <span className="text-[10px] text-slate-400 font-medium">—</span>;
+                }
+                if (dealInfo.hasActive) {
+                    return (
+                        <button
+                            onClick={(e) => { e.stopPropagation(); setMakeDealProduct(item); }}
+                            className="flex items-center gap-1 px-2 py-1 bg-amber-50 text-amber-700 rounded-lg text-[10px] font-bold uppercase tracking-wider hover:bg-amber-100 transition-colors cursor-pointer"
+                        >
+                            <Flame size={10} />
+                            Active Deal
+                        </button>
+                    );
+                }
+                return (
+                    <span className="flex items-center gap-1 px-2 py-1 bg-slate-100 text-slate-500 rounded-lg text-[10px] font-bold uppercase tracking-wider">
+                        {dealInfo.count} Paused
+                    </span>
+                );
+            }
+        },
+        {
             header: 'Status',
             accessor: (item: CatalogueItem) => getStatusBadge(item.status)
         },
         {
             header: 'Actions',
             accessor: (item: CatalogueItem) => (
-                <div className="relative">
-                    <button
-                        onClick={(e) => toggleMenu(item.id, e)}
-                        className="p-2 text-text-secondary hover:text-primary hover:bg-primary/5 rounded-lg transition-all cursor-pointer"
-                    >
-                        <MoreVertical size={15} />
-                    </button>
-                    {openMenuId === item.id && (
-                        <div
-                            className="absolute right-0 top-full mt-1 bg-white rounded-xl border border-slate-100 shadow-xl z-50 py-1 min-w-[140px] overflow-hidden"
-                            onMouseDown={(e) => e.stopPropagation()}
-                        >
-                            <button
-                                onClick={() => { router.push(`/dashboard/catalogue/products/${item.id}`); setOpenMenuId(null); }}
-                                className="w-full flex items-center gap-2.5 px-4 py-2.5 text-xs font-bold text-text-secondary hover:bg-slate-50 hover:text-primary transition-colors text-left"
-                            >
-                                <Eye size={14} />
-                                View Details
-                            </button>
-                            <button
-                                onClick={(e) => { handleEdit(e, item); setOpenMenuId(null); }}
-                                className="w-full flex items-center gap-2.5 px-4 py-2.5 text-xs font-bold text-text-secondary hover:bg-slate-50 hover:text-primary transition-colors text-left"
-                            >
-                                <Edit2 size={14} />
-                                Edit
-                            </button>
-                            <button
-                                onClick={(e) => { handleDelete(e, item); setOpenMenuId(null); }}
-                                className="w-full flex items-center gap-2.5 px-4 py-2.5 text-xs font-bold text-text-secondary hover:bg-red-50 hover:text-red-500 transition-colors text-left"
-                            >
-                                <Trash2 size={14} />
-                                Delete
-                            </button>
-                        </div>
-                    )}
-                </div>
+                <button
+                    data-menu-trigger
+                    onClick={(e) => toggleMenu(item.id, e)}
+                    className="p-2 text-text-secondary hover:text-primary hover:bg-primary/5 rounded-lg transition-all cursor-pointer"
+                >
+                    <MoreVertical size={15} />
+                </button>
             )
         }
     ];
 
+    const productCount = items.filter(i => (i.itemType || 'product') === 'product').length;
+    const serviceCount = items.filter(i => i.itemType === 'service').length;
+
     return (
         <PageLockWrapper feature="catalogue" featureName="Catalogue">
-            <div className="p-4 md:p-8 space-y-6">
+            <div className="p-4 md:p-8 pb-28 md:pb-8 space-y-6">
                 <PageHeader
-                    title="Products & Services"
-                    description="Configure your active menu and services"
+                    title="Catalogue"
+                    description="Manage your products and services"
                     isSticky={false}
                     actions={
                         <button 
@@ -265,17 +346,39 @@ export default function ProductsPage() {
                             className="flex items-center gap-2 h-10 px-5 bg-primary text-white font-semibold text-xs uppercase tracking-wider rounded-xl hover:bg-primary-hover transition-all shadow-sm shadow-primary/20 cursor-pointer"
                         >
                             <Plus size={16} />
-                            Add Product
+                            Add {activeTab === 'services' ? 'Service' : 'Product'}
                         </button>
                     }
                 />
+
+                {/* Tab Switcher */}
+                <div className="flex items-center gap-1 p-1 bg-slate-100 rounded-xl w-fit">
+                    <button
+                        onClick={() => { setActiveTab('products'); setPage(1); }}
+                        className={cn(
+                            "px-5 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all",
+                            activeTab === 'products' ? 'bg-white text-primary shadow-sm' : 'text-slate-500 hover:text-slate-700'
+                        )}
+                    >
+                        Products ({productCount})
+                    </button>
+                    <button
+                        onClick={() => { setActiveTab('services'); setPage(1); }}
+                        className={cn(
+                            "px-5 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all",
+                            activeTab === 'services' ? 'bg-white text-primary shadow-sm' : 'text-slate-500 hover:text-slate-700'
+                        )}
+                    >
+                        Services ({serviceCount})
+                    </button>
+                </div>
 
                 <div className="bg-white rounded-2xl p-6 border border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div className="relative max-w-md flex-1">
                         <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                         <input
                             type="text"
-                            placeholder="Search products by name or SKU..."
+                            placeholder={`Search ${activeTab === 'services' ? 'services' : 'products'} by name...`}
                             className="w-full h-12 bg-slate-50 border border-slate-100 rounded-xl pl-12 pr-5 font-medium outline-none focus:ring-2 focus:ring-primary/20 focus:bg-white transition-all text-sm text-slate-900"
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
@@ -298,14 +401,95 @@ export default function ProductsPage() {
                     columns={columns}
                     data={paginatedItems}
                     isLoading={isLoading}
+                    onRowClick={(item) => router.push(`/dashboard/catalogue/products/${(item as CatalogueItem).id}`)}
+                    renderMobileRow={(item: any) => {
+                        const ci = item as CatalogueItem;
+                        const isValidImg = ci.mainImage && (ci.mainImage.startsWith('http') || ci.mainImage.startsWith('data:') || ci.mainImage.startsWith('blob:'));
+                        let priceLabel = '';
+                        if (ci.itemType === 'service' && ci.priceType) {
+                            if (ci.priceType === 'contact') priceLabel = 'Contact for price';
+                            else if (ci.priceType === 'range') priceLabel = `₦${Number(ci.priceRangeMin || 0).toLocaleString()} - ₦${Number(ci.priceRangeMax || 0).toLocaleString()}`;
+                            else if (ci.priceType === 'starting_from') priceLabel = `From ₦${Number(ci.priceRangeMin || ci.price).toLocaleString()}`;
+                            else priceLabel = `₦${Number(ci.price).toLocaleString()}`;
+                        } else {
+                            priceLabel = `₦${Number(ci.price).toLocaleString()}`;
+                        }
+                        return (
+                            <div className="flex items-center gap-3 p-3 bg-white rounded-2xl border border-slate-100 active:scale-[0.98] transition-all">
+                                <div className="w-14 h-14 rounded-xl bg-slate-50 border border-slate-100 overflow-hidden flex items-center justify-center shrink-0">
+                                    {isValidImg ? (
+                                        <img src={ci.mainImage} alt={ci.name} className="w-full h-full object-cover" />
+                                    ) : (
+                                        <ShoppingBag className="text-slate-300" size={20} />
+                                    )}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <p className="font-bold text-sm text-slate-900 truncate">{ci.name}</p>
+                                    <p className="text-[11px] text-slate-500 truncate">{ci.shortDescription || ci.category?.name || ''}</p>
+                                    <p className="text-xs font-bold text-primary mt-0.5 truncate">{priceLabel}</p>
+                                </div>
+                                <div className="w-9 h-9 rounded-full bg-slate-50 border border-slate-100 flex items-center justify-center shrink-0">
+                                    <ChevronRight size={16} className="text-slate-400" />
+                                </div>
+                            </div>
+                        );
+                    }}
                     emptyState={
                         <EmptyState
                             icon="shopping-bag"
-                            title="Your catalogue is ready for its first product"
-                            description="List your products so customers can discover what you offer."
+                            title={activeTab === 'services' ? 'No services yet' : 'Your catalogue is ready for its first product'}
+                            description={activeTab === 'services' 
+                                ? 'Add the services your business provides so customers can discover and engage with them.'
+                                : 'List your products so customers can discover what you offer.'}
                         />
                     }
                 />
+
+                {/* Portaled action menu — floats above scroll container */}
+                {openMenuId && menuPos && typeof window !== 'undefined' && createPortal(
+                    (() => {
+                        const item = items.find(i => i.id === openMenuId);
+                        if (!item) return null;
+                        return (
+                            <div
+                                data-menu-dropdown
+                                className="fixed bg-white rounded-xl border border-slate-100 shadow-2xl py-1 min-w-[160px] overflow-hidden z-[9999]"
+                                style={{ top: menuPos.top, left: menuPos.left }}
+                                onMouseDown={(e) => e.stopPropagation()}
+                            >
+                                <button
+                                    onClick={() => { router.push(`/dashboard/catalogue/products/${item.id}`); setOpenMenuId(null); setMenuPos(null); }}
+                                    className="w-full flex items-center gap-2.5 px-4 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-50 hover:text-primary transition-colors text-left"
+                                >
+                                    <Eye size={14} />
+                                    View Details
+                                </button>
+                                <button
+                                    onClick={(e) => { handleEdit(e as any, item); setOpenMenuId(null); setMenuPos(null); }}
+                                    className="w-full flex items-center gap-2.5 px-4 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-50 hover:text-primary transition-colors text-left"
+                                >
+                                    <Edit2 size={14} />
+                                    Edit
+                                </button>
+                                <button
+                                    onClick={() => { setMakeDealProduct(item); setOpenMenuId(null); setMenuPos(null); }}
+                                    className="w-full flex items-center gap-2.5 px-4 py-2.5 text-xs font-bold text-amber-600 hover:bg-amber-50 transition-colors text-left"
+                                >
+                                    <Flame size={14} />
+                                    Make Deal
+                                </button>
+                                <button
+                                    onClick={(e) => { handleDelete(e as any, item); setOpenMenuId(null); setMenuPos(null); }}
+                                    className="w-full flex items-center gap-2.5 px-4 py-2.5 text-xs font-bold text-slate-600 hover:bg-red-50 hover:text-red-500 transition-colors text-left"
+                                >
+                                    <Trash2 size={14} />
+                                    Delete
+                                </button>
+                            </div>
+                        );
+                    })(),
+                    document.body
+                )}
 
                 {filteredItems.length > 0 && (
                     <div className="flex items-center justify-center gap-4 bg-white rounded-xl border border-slate-100 px-4 py-3">
@@ -346,12 +530,31 @@ export default function ProductsPage() {
                     onClose={() => setIsMethodOpen(false)}
                 />
 
-                <ProductModal
-                    isOpen={isModalOpen}
-                    onClose={() => setIsModalOpen(false)}
-                    product={selectedProduct}
-                    activeBranchId={activeBranchId || undefined}
-                />
+                {activeTab === 'services' ? (
+                    <ServiceForm
+                        isOpen={isModalOpen}
+                        onClose={() => setIsModalOpen(false)}
+                        service={selectedProduct}
+                        activeBranchId={activeBranchId || undefined}
+                    />
+                ) : (
+                    <ProductModal
+                        isOpen={isModalOpen}
+                        onClose={() => setIsModalOpen(false)}
+                        product={selectedProduct}
+                        activeBranchId={activeBranchId || undefined}
+                        itemType="product"
+                    />
+                )}
+
+                {makeDealProduct && (
+                    <MakeDealFlow
+                        isOpen={!!makeDealProduct}
+                        onClose={() => setMakeDealProduct(null)}
+                        product={makeDealProduct}
+                        activeBranchId={activeBranchId || undefined}
+                    />
+                )}
             </div>
         </PageLockWrapper>
     );

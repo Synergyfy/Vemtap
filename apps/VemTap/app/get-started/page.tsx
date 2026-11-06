@@ -105,19 +105,13 @@ export default function GetStartedPage() {
         return () => clearInterval(interval);
     }, [resendTimer]);
 
-    // Password rules checker
-    const getPasswordRules = (pwd: string) => {
-        return {
-            minLength: pwd.length >= 8,
-            hasLowercase: /[a-z]/.test(pwd),
-            hasUppercase: /[A-Z]/.test(pwd),
-            hasNumber: /[0-9]/.test(pwd),
-            hasSymbol: /[^A-Za-z0-9]/.test(pwd),
-        };
+    // Owners sign up and sign in with a 6-digit PIN (the API accepts nothing else).
+    const pinRules = {
+        sixDigits: /^\d{6}$/.test(formData.password),
+        matches: formData.password.length > 0 && formData.password === formData.confirmPassword,
     };
-
-    const pwdRules = getPasswordRules(formData.password);
-    const isPasswordStrong = Object.values(pwdRules).every(Boolean);
+    const isPinValid = pinRules.sixDigits && pinRules.matches;
+    const digitsOnly = (value: string) => value.replace(/\D/g, '').slice(0, 6);
 
     const handleBack = () => setStep(s => s - 1);
 
@@ -368,7 +362,7 @@ export default function GetStartedPage() {
                                                 ) : (
                                                     <>
                                                         <GoogleAuthButton
-                                                            role="owner"
+                                                            role="Owner"
                                                             onSuccess={handleGoogleSuccess}
                                                             label="Sign up with Google"
                                                         />
@@ -427,20 +421,21 @@ export default function GetStartedPage() {
                                                         Verify Your Email
                                                     </h1>
                                                     <p className="text-sm font-normal text-text-secondary leading-relaxed">
-                                                        We sent a 4-digit code to <span className="text-primary font-medium break-all">{formData.email}</span>. Enter it below to continue.
+                                                        We sent a 6-digit code to <span className="text-primary font-medium break-all">{formData.email}</span>. Enter it below to continue.
                                                     </p>
                                                 </div>
                                             </div>
 
                                             <div className="space-y-5">
                                                 <div>
-                                                    <Label>4-Digit Security Code</Label>
+                                                    <Label>6-Digit Security Code</Label>
                                                     <input
                                                         type="text"
-                                                        maxLength={4}
+                                                        maxLength={6}
+                                                        inputMode="numeric"
                                                         value={otpCode}
-                                                        onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ''))}
-                                                        placeholder="• • • •"
+                                                        onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                                                        placeholder="• • • • • •"
                                                         className="w-full h-12 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white text-lg font-medium tracking-[0.7em] text-center text-text-main placeholder:text-text-secondary/20 outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary/40 transition-all"
                                                         autoFocus
                                                     />
@@ -450,7 +445,7 @@ export default function GetStartedPage() {
 
                                                 <Button
                                                     onClick={handleVerifyOtp}
-                                                    disabled={otpLoading || otpCode.length !== 4}
+                                                    disabled={otpLoading || otpCode.length !== 6}
                                                     className="w-full h-12 bg-primary hover:bg-primary-hover text-white font-semibold uppercase tracking-[0.14em] text-xs rounded-xl shadow-lg shadow-primary/20 transition-all flex items-center justify-center gap-2.5 cursor-pointer disabled:opacity-50 disabled:pointer-events-none"
                                                 >
                                                     {otpLoading ? <div className="size-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : 'Verify & Continue'}
@@ -561,14 +556,16 @@ export default function GetStartedPage() {
 
                                                         <div className="pt-2 border-t border-gray-100 space-y-4">
                                                             <div>
-                                                                <Label>Create Password</Label>
+                                                                <Label>Create 6-digit PIN</Label>
                                                                 <div className="relative">
                                                                     <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
                                                                     <input
                                                                         type={showPassword ? 'text' : 'password'}
                                                                         value={formData.password}
-                                                                        onChange={(e) => setFormData({...formData, password: e.target.value})}
-                                                                        placeholder="••••••••"
+                                                                        onChange={(e) => setFormData({...formData, password: digitsOnly(e.target.value)})}
+                                                                        placeholder="••••••"
+                                                                        inputMode="numeric"
+                                                                        maxLength={6}
                                                                         autoComplete="new-password"
                                                                         className={cn(fieldBase, "pr-12")}
                                                                     />
@@ -576,7 +573,7 @@ export default function GetStartedPage() {
                                                                         type="button"
                                                                         onClick={() => setShowPassword(!showPassword)}
                                                                         className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-primary cursor-pointer"
-                                                                        aria-label={showPassword ? 'Hide password' : 'Show password'}
+                                                                        aria-label={showPassword ? 'Hide PIN' : 'Show PIN'}
                                                                     >
                                                                         {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                                                                     </button>
@@ -584,14 +581,16 @@ export default function GetStartedPage() {
                                                             </div>
 
                                                             <div>
-                                                                <Label>Confirm Password</Label>
+                                                                <Label>Confirm PIN</Label>
                                                                 <div className="relative">
                                                                     <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
                                                                     <input
                                                                         type={showPassword ? 'text' : 'password'}
                                                                         value={formData.confirmPassword}
-                                                                        onChange={(e) => setFormData({...formData, confirmPassword: e.target.value})}
-                                                                        placeholder="••••••••"
+                                                                        onChange={(e) => setFormData({...formData, confirmPassword: digitsOnly(e.target.value)})}
+                                                                        placeholder="••••••"
+                                                                        inputMode="numeric"
+                                                                        maxLength={6}
                                                                         autoComplete="new-password"
                                                                         className={cn(fieldBase, "pr-12")}
                                                                     />
@@ -599,22 +598,19 @@ export default function GetStartedPage() {
                                                                         type="button"
                                                                         onClick={() => setShowPassword(!showPassword)}
                                                                         className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-primary cursor-pointer"
-                                                                        aria-label={showPassword ? 'Hide password' : 'Show password'}
+                                                                        aria-label={showPassword ? 'Hide PIN' : 'Show PIN'}
                                                                     >
                                                                         {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                                                                     </button>
                                                                 </div>
                                                             </div>
 
-                                                            {/* Password strength checklist */}
+                                                            {/* PIN checklist */}
                                                             <div className="p-4 bg-gray-50/60 rounded-xl border border-gray-100 space-y-2 mt-2">
-                                                                <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-text-secondary/70 mb-2">Password Rules</p>
+                                                                <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-text-secondary/70 mb-2">PIN Rules</p>
                                                                 {[
-                                                                    { label: 'Minimum 8 characters', pass: pwdRules.minLength },
-                                                                    { label: 'At least 1 lowercase letter', pass: pwdRules.hasLowercase },
-                                                                    { label: 'At least 1 uppercase letter', pass: pwdRules.hasUppercase },
-                                                                    { label: 'At least 1 digit (0-9)', pass: pwdRules.hasNumber },
-                                                                    { label: 'At least 1 special character', pass: pwdRules.hasSymbol },
+                                                                    { label: 'Exactly 6 digits', pass: pinRules.sixDigits },
+                                                                    { label: 'Both PINs match', pass: pinRules.matches },
                                                                 ].map((rule, idx) => (
                                                                     <div key={idx} className="flex items-center gap-2.5 text-xs">
                                                                         {rule.pass ? (
@@ -636,7 +632,7 @@ export default function GetStartedPage() {
 
                                                 <Button
                                                     onClick={isGoogleUser ? handleGoogleComplete : handleFinalSubmit}
-                                                    disabled={isLoading || !formData.firstName || !formData.lastName || (!isGoogleUser && (!formData.password || formData.password !== formData.confirmPassword || !isPasswordStrong))}
+                                                    disabled={isLoading || !formData.firstName || !formData.lastName || (!isGoogleUser && !isPinValid)}
                                                     className="w-full h-auto min-h-12 bg-primary hover:bg-primary-hover text-white font-semibold uppercase tracking-[0.12em] text-xs leading-snug whitespace-normal rounded-xl shadow-lg shadow-primary/20 transition-all flex items-center justify-center gap-2.5 cursor-pointer disabled:opacity-50 disabled:pointer-events-none mt-1 px-4 py-4 text-center"
                                                 >
                                                     {isLoading ? <div className="size-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : (isGoogleUser ? 'Complete Registration' : 'Create My Account')}

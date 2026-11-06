@@ -20,8 +20,6 @@ import {
   RevenueTrendDto,
   CashFlowRunwayResponseDto,
   CostBreakEvenResponseDto,
-  ExpenseResponseDto,
-  CashFlowEntryDto,
 } from './dto/pnl-response.dto';
 import { paginateWithCursor } from '../../common/utils/cursor-pagination.util';
 
@@ -465,7 +463,7 @@ export class FosPnlService {
     }
 
     const trends: RevenueTrendDto[] = Array.from(monthlyMap.entries())
-      .map(([month, { revenue, profit, costs }]) => ({
+      .map(([month, { revenue, costs }]) => ({
         month,
         revenue: Math.round(revenue * 100) / 100,
         costs: Math.round(costs * 100) / 100,
@@ -638,13 +636,10 @@ export class FosPnlService {
     const cashflows = await this.cashFlowRepo.find();
     const transactions = await this.transactionRepo.find();
 
-    let totalOutflow = 0;
     let opexTotal = 0;
     const monthsSet = new Set<string>();
 
     for (const cf of cashflows) {
-      const amount = this.toNumber(cf.amount);
-      totalOutflow += amount;
       monthsSet.add(cf.date.substring(0, 7));
     }
 

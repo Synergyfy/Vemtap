@@ -6,7 +6,6 @@ import {
   IsString,
   IsDateString,
 } from 'class-validator';
-import { Type } from 'class-transformer';
 import { PaginationQueryDto } from '../../../common/dto/pagination.dto';
 import { PaymentMethod, SaleStatus } from '../entities/pos-enums';
 
@@ -30,6 +29,13 @@ export class PosSaleQueryDto extends PaginationQueryDto {
   @IsOptional()
   @IsUUID()
   cashierId?: string;
+
+  @ApiPropertyOptional({
+    description: 'Only sales rung up in this register session (shift)',
+  })
+  @IsOptional()
+  @IsUUID()
+  sessionId?: string;
 
   @ApiPropertyOptional()
   @IsOptional()

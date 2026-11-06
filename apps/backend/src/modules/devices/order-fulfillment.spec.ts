@@ -1,18 +1,14 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { DevicesService } from './devices.service';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { Device, DeviceStatus } from './entities/device.entity';
+import { Device } from './entities/device.entity';
 import { Order, OrderStatus } from '../products/entities/order.entity';
 import { Branch } from '../branches/entities/branch.entity';
-import { Repository } from 'typeorm';
 import { NotFoundException, ConflictException } from '@nestjs/common';
 import { BranchesService } from '../branches/branches.service';
 
 describe('DevicesService - Order Fulfillment', () => {
   let service: DevicesService;
-  let deviceRepo: Repository<Device>;
-  let orderRepo: Repository<Order>;
-  let branchRepo: Repository<Branch>;
 
   const mockDeviceRepo = {
     create: jest.fn(),
@@ -49,9 +45,6 @@ describe('DevicesService - Order Fulfillment', () => {
     }).compile();
 
     service = module.get<DevicesService>(DevicesService);
-    deviceRepo = module.get<Repository<Device>>(getRepositoryToken(Device));
-    orderRepo = module.get<Repository<Order>>(getRepositoryToken(Order));
-    branchRepo = module.get<Repository<Branch>>(getRepositoryToken(Branch));
   });
 
   afterEach(() => {

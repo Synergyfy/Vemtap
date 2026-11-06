@@ -7,13 +7,120 @@ import {
   IsNumber,
   IsEnum,
   IsArray,
+  IsBoolean,
+  Max,
   Min,
+  Matches,
+  ArrayMaxSize,
+  ArrayUnique,
+  ValidateNested,
 } from 'class-validator';
-import { Type } from 'class-transformer';
+import { Type, Transform } from 'class-transformer';
 import {
   CatalogueOfferPricingType,
   CatalogueOfferStatus,
+  OfferClaimLimitPeriod,
+  OfferRedemptionChannel,
 } from '../entities/catalogue-offer.entity';
+
+const HH_MM = /^([01]\d|2[0-3]):[0-5]\d$/;
+
+export class OfferRedemptionWindowDto {
+  @ApiProperty({
+    example: [1, 2, 3, 4, 5],
+    description: '0 = Sunday … 6 = Saturday; empty = every day',
+  })
+  @IsArray()
+  @IsNumber({}, { each: true })
+  @Min(0, { each: true })
+  @Max(6, { each: true })
+  weekdays: number[];
+
+  @ApiProperty({ example: '12:00' })
+  @Matches(HH_MM, { message: 'start must be HH:mm' })
+  start: string;
+
+  @ApiProperty({ example: '16:30' })
+  @Matches(HH_MM, { message: 'end must be HH:mm' })
+  end: string;
+}
+
+export class OfferPricingTierDto {
+  @ApiProperty({ example: 2 })
+  @IsNumber()
+  @Min(1)
+  minQuantity: number;
+
+  @ApiProperty({ example: 10, description: 'Percentage off at this tier' })
+  @IsNumber()
+  @Min(0)
+  @Max(100)
+  discountValue: number;
+}
+
+export class OfferBranchOverrideDto {
+  @ApiProperty({ example: 'uuid-of-branch' })
+  @IsUUID()
+  branchId: string;
+
+  @ApiPropertyOptional({ example: 9600 })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  fixedPrice?: number;
+
+  @ApiPropertyOptional({ example: 25 })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  discountValue?: number;
+
+  @ApiPropertyOptional({
+    example: 50,
+    description: 'Vouchers available at this branch',
+  })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  quantity?: number;
+}
+
+/**
+ * Sort values supported by the global public offers feed.
+ * Unknown values are rejected with 400 (nothing silently falls back).
+ */
+export enum PublicOffersSortBy {
+  NEWEST = 'newest',
+  OLDEST = 'oldest',
+  PRICE_ASC = 'price_asc',
+  PRICE_DESC = 'price_desc',
+  TRENDING = 'trending',
+  POPULAR = 'popular',
+  FEATURED = 'featured',
+  /** Closest branch first (needs `lat` + `lng`); branches without coordinates last. */
+  NEAREST = 'nearest',
+}
+
+/** Sort values supported by the branch-scoped public offers feed. */
+export enum BranchOffersSortBy {
+  NEWEST = 'newest',
+  OLDEST = 'oldest',
+  PRICE_ASC = 'price_asc',
+  PRICE_DESC = 'price_desc',
+}
+
+/**
+ * Audience values accepted by the public offers feed:
+ * - `everyone_nearby` / `all` → no audience filter (everyone sees it)
+ * - `new_customers` / `returning_customers` → filters on the offer's
+ *   `audienceTarget` eligibility (the same field enforced at claim time)
+ */
+export enum OfferAudience {
+  EVERYONE_NEARBY = 'everyone_nearby',
+  ALL = 'all',
+  NEW_CUSTOMERS = 'new_customers',
+  RETURNING_CUSTOMERS = 'returning_customers',
+}
 
 export class CreateCatalogueOfferDto {
   @ApiProperty({ example: 'Summer Deal' })
@@ -21,10 +128,27 @@ export class CreateCatalogueOfferDto {
   @IsString()
   name: string;
 
-  @ApiProperty({ example: 'Get 2 burgers and a drink for less!' })
-  @IsNotEmpty()
+  @ApiPropertyOptional({
+    example: 'Get 2 burgers and a drink for less!',
+    default: '',
+  })
+  @IsOptional()
   @IsString()
-  description: string;
+  @Transform(({ value }) => (typeof value === 'string' ? value : ''))
+  description?: string = '';
+
+  @ApiPropertyOptional({
+    example: 'uuid-of-source-item',
+    description: 'Source catalogue item ID if created from a product/service',
+  })
+  @IsOptional()
+  @Transform(({ value }) =>
+    typeof value === 'string' && value.trim() === ''
+      ? undefined
+      : value?.trim(),
+  )
+  @IsUUID('4', { message: 'sourceProductId must be a valid UUID v4' })
+  sourceProductId?: string;
 
   @ApiPropertyOptional({ example: 'https://image.com/offer.jpg' })
   @IsOptional()
@@ -83,11 +207,11 @@ export class CreateCatalogueOfferDto {
   @IsUUID()
   branchId: string;
 
-  @ApiProperty({ example: ['uuid-of-item-1', 'uuid-of-item-2'] })
-  @IsNotEmpty()
+  @ApiPropertyOptional({ example: ['uuid-of-item-1', 'uuid-of-item-2'] })
+  @IsOptional()
   @IsArray()
   @IsUUID(undefined, { each: true })
-  itemIds: string[];
+  itemIds?: string[];
 
   @ApiPropertyOptional({ example: '2026-06-01T00:00:00.000Z' })
   @IsOptional()
@@ -172,6 +296,99 @@ export class CreateCatalogueOfferDto {
   @IsOptional()
   @IsString()
   longDescription?: string;
+
+  @ApiPropertyOptional({
+    description: 'Whether the offer is featured',
+    example: false,
+  })
+  @IsOptional()
+  @IsBoolean()
+  isFeatured?: boolean;
+
+  @ApiPropertyOptional({
+    example: true,
+    default: true,
+    description: 'Deactivate the deal once `quantity` claims are reached',
+  })
+  @IsOptional()
+  @IsBoolean()
+  autoPauseWhenSoldOut?: boolean;
+
+  @ApiPropertyOptional({
+    enum: OfferClaimLimitPeriod,
+    default: 'lifetime',
+    description: 'Window `maxClaimsPerCustomer` is counted over',
+  })
+  @IsOptional()
+  @IsEnum(OfferClaimLimitPeriod)
+  claimLimitPeriod?: OfferClaimLimitPeriod;
+
+  @ApiPropertyOptional({ example: true, default: true })
+  @IsOptional()
+  @IsBoolean()
+  allowGifting?: boolean;
+
+  @ApiPropertyOptional({ example: false, default: false })
+  @IsOptional()
+  @IsBoolean()
+  requireGiftRecipientVerification?: boolean;
+
+  @ApiPropertyOptional({ example: false, default: false })
+  @IsOptional()
+  @IsBoolean()
+  socialSharingBonus?: boolean;
+
+  @ApiPropertyOptional({ enum: OfferRedemptionChannel, isArray: true })
+  @IsOptional()
+  @IsArray()
+  @IsEnum(OfferRedemptionChannel, { each: true })
+  redemptionChannels?: OfferRedemptionChannel[];
+
+  @ApiPropertyOptional({ example: ['Show the pass at the counter'] })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  @ArrayMaxSize(10)
+  claimSteps?: string[];
+
+  @ApiPropertyOptional({ type: [OfferRedemptionWindowDto] })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => OfferRedemptionWindowDto)
+  redemptionWindows?: OfferRedemptionWindowDto[];
+
+  @ApiPropertyOptional({
+    type: [OfferPricingTierDto],
+    description: 'Required when pricingType is `tiered`',
+  })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => OfferPricingTierDto)
+  tiers?: OfferPricingTierDto[];
+
+  @ApiPropertyOptional({
+    example: ['uuid-branch-1', 'uuid-branch-2'],
+    description:
+      'Publish to several branches at once: one offer per branch is created, sharing a `dealGroupId`. ' +
+      '`branchId` is used when this is omitted.',
+  })
+  @IsOptional()
+  @IsArray()
+  @ArrayUnique()
+  @IsUUID('4', { each: true })
+  branchIds?: string[];
+
+  @ApiPropertyOptional({
+    type: [OfferBranchOverrideDto],
+    description: 'Per-branch price / voucher overrides',
+  })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => OfferBranchOverrideDto)
+  branchOverrides?: OfferBranchOverrideDto[];
 }
 
 export class UpdateCatalogueOfferDto {
@@ -179,6 +396,27 @@ export class UpdateCatalogueOfferDto {
   @IsOptional()
   @IsString()
   name?: string;
+
+  @ApiPropertyOptional({
+    description: 'Whether the offer is featured',
+    example: false,
+  })
+  @IsOptional()
+  @IsBoolean()
+  isFeatured?: boolean;
+
+  @ApiPropertyOptional({
+    example: 'uuid-of-source-item',
+    description: 'Source catalogue item ID if created from a product/service',
+  })
+  @IsOptional()
+  @Transform(({ value }) =>
+    typeof value === 'string' && value.trim() === ''
+      ? undefined
+      : value?.trim(),
+  )
+  @IsUUID('4', { message: 'sourceProductId must be a valid UUID v4' })
+  sourceProductId?: string;
 
   @ApiPropertyOptional()
   @IsOptional()
@@ -323,6 +561,69 @@ export class UpdateCatalogueOfferDto {
   @IsOptional()
   @IsString()
   longDescription?: string;
+
+  @ApiPropertyOptional({
+    example: true,
+    default: true,
+    description: 'Deactivate the deal once `quantity` claims are reached',
+  })
+  @IsOptional()
+  @IsBoolean()
+  autoPauseWhenSoldOut?: boolean;
+
+  @ApiPropertyOptional({
+    enum: OfferClaimLimitPeriod,
+    default: 'lifetime',
+    description: 'Window `maxClaimsPerCustomer` is counted over',
+  })
+  @IsOptional()
+  @IsEnum(OfferClaimLimitPeriod)
+  claimLimitPeriod?: OfferClaimLimitPeriod;
+
+  @ApiPropertyOptional({ example: true, default: true })
+  @IsOptional()
+  @IsBoolean()
+  allowGifting?: boolean;
+
+  @ApiPropertyOptional({ example: false, default: false })
+  @IsOptional()
+  @IsBoolean()
+  requireGiftRecipientVerification?: boolean;
+
+  @ApiPropertyOptional({ example: false, default: false })
+  @IsOptional()
+  @IsBoolean()
+  socialSharingBonus?: boolean;
+
+  @ApiPropertyOptional({ enum: OfferRedemptionChannel, isArray: true })
+  @IsOptional()
+  @IsArray()
+  @IsEnum(OfferRedemptionChannel, { each: true })
+  redemptionChannels?: OfferRedemptionChannel[];
+
+  @ApiPropertyOptional({ example: ['Show the pass at the counter'] })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  @ArrayMaxSize(10)
+  claimSteps?: string[];
+
+  @ApiPropertyOptional({ type: [OfferRedemptionWindowDto] })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => OfferRedemptionWindowDto)
+  redemptionWindows?: OfferRedemptionWindowDto[];
+
+  @ApiPropertyOptional({
+    type: [OfferPricingTierDto],
+    description: 'Required when pricingType is `tiered`',
+  })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => OfferPricingTierDto)
+  tiers?: OfferPricingTierDto[];
 }
 
 export class GenerateOfferTermsDto {
@@ -364,15 +665,33 @@ export class CatalogueOfferQueryDto {
   @IsString()
   search?: string;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({
+    enum: BranchOffersSortBy,
+    default: BranchOffersSortBy.NEWEST,
+    description: 'Sort order: newest | oldest | price_asc | price_desc',
+  })
   @IsOptional()
-  @IsString()
-  sortBy?: string;
+  @IsEnum(BranchOffersSortBy)
+  sortBy?: BranchOffersSortBy = BranchOffersSortBy.NEWEST;
 
   @ApiPropertyOptional()
   @IsOptional()
   @IsUUID()
   branchId?: string;
+
+  @ApiPropertyOptional({
+    description: 'Opaque cursor from a previous page (or `nextCursor`)',
+  })
+  @IsOptional()
+  @IsString()
+  cursor?: string;
+
+  @ApiPropertyOptional({
+    description: 'Alias of `cursor` accepted for convenience',
+  })
+  @IsOptional()
+  @IsString()
+  nextCursor?: string;
 }
 
 export class PublicCatalogueOffersQueryDto {
@@ -395,15 +714,47 @@ export class PublicCatalogueOffersQueryDto {
   @IsString()
   search?: string;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({
+    enum: PublicOffersSortBy,
+    default: PublicOffersSortBy.NEWEST,
+    description:
+      'Sort order: newest | oldest | price_asc | price_desc | trending | popular | featured | nearest. Invalid values return 400. `popular`/`featured`/`nearest` use offset pagination (no cursor); `nearest` needs `lat` + `lng`.',
+  })
   @IsOptional()
-  @IsString()
-  sortBy?: string;
+  @IsEnum(PublicOffersSortBy)
+  sortBy?: PublicOffersSortBy = PublicOffersSortBy.NEWEST;
 
   @ApiPropertyOptional()
   @IsOptional()
   @IsUUID()
   categoryId?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  minPrice?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  maxPrice?: number;
+
+  @ApiPropertyOptional({
+    description:
+      'Minimum effective discount percent (0–100), computed from the sum of the offer item prices vs the deal price. 0 disables the filter.',
+    minimum: 0,
+    maximum: 100,
+  })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  @Max(100)
+  minDiscount?: number;
 
   @ApiPropertyOptional()
   @IsOptional()
@@ -424,8 +775,334 @@ export class PublicCatalogueOffersQueryDto {
   @Min(0)
   radius?: number;
 
+  @ApiPropertyOptional({
+    enum: OfferAudience,
+    description:
+      'Audience filter. `everyone_nearby`/`all` apply no filter; `new_customers`/`returning_customers` filter on the claim-time eligibility (`audienceTarget`).',
+  })
+  @IsOptional()
+  @IsEnum(OfferAudience)
+  audience?: OfferAudience;
+
+  @ApiPropertyOptional({
+    description: 'Opaque cursor from a previous page (or `nextCursor`)',
+  })
+  @IsOptional()
+  @IsString()
+  cursor?: string;
+
+  @ApiPropertyOptional({
+    description: 'Alias of `cursor` accepted for convenience',
+  })
+  @IsOptional()
+  @IsString()
+  nextCursor?: string;
+}
+
+export enum AdminDealsSortBy {
+  NEWEST = 'newest',
+  MOST_POPULAR = 'most_popular',
+  FEATURED_FIRST = 'featured_first',
+  PRICE_LOW_HIGH = 'price_low_high',
+  PRICE_HIGH_LOW = 'price_high_low',
+  ENDING_SOON = 'ending_soon',
+}
+
+export enum AdminDealsStatusFilter {
+  ACTIVE = 'active',
+  INACTIVE = 'inactive',
+  EXPIRED = 'expired',
+}
+
+export class AdminDealsQueryDto {
+  @ApiPropertyOptional({ default: 1, minimum: 1 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(1)
+  page?: number = 1;
+
+  @ApiPropertyOptional({ default: 10, minimum: 1, maximum: 100 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(1)
+  limit?: number = 10;
+
+  @ApiPropertyOptional({ description: 'Search by deal name or business name' })
+  @IsOptional()
+  @IsString()
+  search?: string;
+
+  @ApiPropertyOptional({ description: 'Filter by business UUID' })
+  @IsOptional()
+  @IsUUID()
+  businessId?: string;
+
+  @ApiPropertyOptional({
+    description:
+      'Filter by subscription plan name or tier (e.g. platinum, gold, silver, free)',
+  })
+  @IsOptional()
+  @IsString()
+  plan?: string;
+
+  @ApiPropertyOptional({
+    enum: AdminDealsStatusFilter,
+    description: 'Filter by deal status (active, inactive, expired)',
+  })
+  @IsOptional()
+  @IsEnum(AdminDealsStatusFilter)
+  status?: AdminDealsStatusFilter;
+
+  @ApiPropertyOptional({ description: 'Filter by featured flag (true/false)' })
+  @IsOptional()
+  @Transform(({ value }) => {
+    if (value === 'true' || value === true) return true;
+    if (value === 'false' || value === false) return false;
+    return undefined;
+  })
+  @IsBoolean()
+  isFeatured?: boolean;
+
+  @ApiPropertyOptional({ description: 'Minimum price filter' })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  minPrice?: number;
+
+  @ApiPropertyOptional({ description: 'Maximum price filter' })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  maxPrice?: number;
+
+  @ApiPropertyOptional({ description: 'Start date filter (ISO format)' })
+  @IsOptional()
+  @IsString()
+  startDate?: string;
+
+  @ApiPropertyOptional({ description: 'End date filter (ISO format)' })
+  @IsOptional()
+  @IsString()
+  endDate?: string;
+
+  @ApiPropertyOptional({
+    enum: AdminDealsSortBy,
+    default: AdminDealsSortBy.NEWEST,
+    description:
+      'Sort order: newest, most_popular, featured_first, price_low_high, price_high_low, ending_soon',
+  })
+  @IsOptional()
+  @IsEnum(AdminDealsSortBy)
+  sortBy?: AdminDealsSortBy = AdminDealsSortBy.NEWEST;
+}
+
+/**
+ * Admin-facing offer response DTO — explicit contract for `GET /catalogue/offers/admin`.
+ * Exposes discount/voucher fields for the business hub; hides internal columns.
+ */
+export class AdminCatalogueOfferDto {
+  @ApiProperty()
+  @IsUUID()
+  id: string;
+
+  @ApiProperty()
+  @IsString()
+  name: string;
+
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
-  audience?: string;
+  description?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  mainImage?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  galleryImages?: string[];
+
+  @ApiProperty({ enum: CatalogueOfferPricingType })
+  @IsEnum(CatalogueOfferPricingType)
+  pricingType: CatalogueOfferPricingType;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  @Min(0)
+  discountValue?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  @Min(0)
+  fixedPrice?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  @Min(0)
+  calculatedPrice?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  @Min(0)
+  quantity?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsArray()
+  @IsUUID(undefined, { each: true })
+  itemIds?: string[];
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  startDate?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  endDate?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  terms?: string[];
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  @Min(0)
+  maxClaimsPerCustomer?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  offerType?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  @Min(0)
+  loyaltyPoints?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsUUID()
+  rewardId?: string;
+
+  @ApiProperty({ example: 'uuid-of-branch' })
+  @IsUUID()
+  branchId: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  branchName?: string;
+
+  @ApiPropertyOptional({ enum: CatalogueOfferStatus })
+  @IsOptional()
+  @IsEnum(CatalogueOfferStatus)
+  status?: CatalogueOfferStatus;
+
+  @ApiProperty()
+  @IsString()
+  createdAt: string;
+
+  @ApiProperty()
+  @IsString()
+  updatedAt: string;
+}
+
+export class AdminBusinessesQueryDto {
+  @ApiPropertyOptional({ description: 'Search businesses by name' })
+  @IsOptional()
+  @IsString()
+  search?: string;
+}
+
+export enum OwnerOffersSortBy {
+  NEWEST = 'newest',
+  OLDEST = 'oldest',
+  MOST_CLAIMED = 'most_claimed',
+  ENDING_SOON = 'ending_soon',
+}
+
+/**
+ * Filters for the business's own deal list (`GET /catalogue/offers/admin`).
+ * Every param is optional; with none the response is the full list, exactly as
+ * before these filters existed.
+ */
+export class OwnerOffersQueryDto {
+  @ApiPropertyOptional({ description: 'Only offers at this branch' })
+  @IsOptional()
+  @IsUUID()
+  branchId?: string;
+
+  @ApiPropertyOptional({ enum: CatalogueOfferStatus })
+  @IsOptional()
+  @IsEnum(CatalogueOfferStatus)
+  status?: CatalogueOfferStatus;
+
+  @ApiPropertyOptional({ description: 'Case-insensitive match on name' })
+  @IsOptional()
+  @IsString()
+  search?: string;
+
+  @ApiPropertyOptional({
+    enum: OwnerOffersSortBy,
+    default: OwnerOffersSortBy.NEWEST,
+  })
+  @IsOptional()
+  @IsEnum(OwnerOffersSortBy)
+  sortBy?: OwnerOffersSortBy;
+
+  @ApiPropertyOptional({
+    enum: ['deal'],
+    description:
+      '`deal` collapses the per-branch rows of a multi-branch deal into one entry with a `branches` list',
+  })
+  @IsOptional()
+  @IsEnum(['deal'])
+  groupBy?: 'deal';
+
+  @ApiPropertyOptional({ description: '1-based page; omit to get every offer' })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(1)
+  page?: number;
+
+  @ApiPropertyOptional({ default: 20 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(1)
+  @Max(100)
+  limit?: number;
+}
+
+/** Fields shared by every row of a deal group (`PATCH /catalogue/offers/groups/:id`). */
+export class UpdateOfferGroupDto extends UpdateCatalogueOfferDto {}
+
+export class UpdateOfferGroupStatusDto {
+  @ApiProperty({ enum: CatalogueOfferStatus })
+  @IsEnum(CatalogueOfferStatus)
+  status: CatalogueOfferStatus;
 }

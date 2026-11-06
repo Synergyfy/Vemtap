@@ -17,7 +17,6 @@ import { BotConversationContext } from './entities/conversation-context.entity';
 import { User } from '../users/entities/user.entity';
 import { BusinessCreditWallet } from '../messaging/entities/business-credit-wallet.entity';
 
-import { MessagingModule } from '../messaging/messaging.module';
 import { SupportGateway } from './support.gateway';
 import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
@@ -39,7 +38,7 @@ import { SupportFaqController } from './support-faq.controller';
     KnowledgeBaseModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
-      useFactory: async (configService: ConfigService) => ({
+      useFactory: (configService: ConfigService) => ({
         secret: configService.get<string>('JWT_SECRET'),
         signOptions: {
           expiresIn: configService.get<string>('JWT_EXPIRATION') as any,

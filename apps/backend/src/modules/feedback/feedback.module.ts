@@ -3,9 +3,10 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { Feedback } from './entities/feedback.entity';
 import { FeedbackService } from './feedback.service';
 import { FeedbackController } from './feedback.controller';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Feedback])],
+  imports: [TypeOrmModule.forFeature([Feedback]), NotificationsModule],
   controllers: [FeedbackController],
   providers: [FeedbackService],
   exports: [FeedbackService],

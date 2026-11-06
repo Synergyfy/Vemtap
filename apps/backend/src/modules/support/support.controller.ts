@@ -20,7 +20,6 @@ import { BotQueryDto, CreateKnowledgeDto } from './dto/support-bot.dto';
 import { FindTicketsAdminDto } from './dto/find-tickets-admin.dto';
 import { SupportSessionQueryDto } from './dto/support-session-query.dto';
 import { AddTicketAttachmentsDto } from './dto/ticket-attachment.dto';
-import { TicketStatus, TicketType } from './entities/support-ticket.entity';
 import {
   UpdateTicketStatusAdminDto,
   AssignTicketDto,
@@ -28,13 +27,7 @@ import {
 } from './dto/update-ticket-admin.dto';
 import { PaginationQueryDto } from '../../common/dto/pagination.dto';
 import { ParseUUIDPipe } from '@nestjs/common';
-import {
-  ApiTags,
-  ApiOperation,
-  ApiBearerAuth,
-  ApiBody,
-  ApiQuery,
-} from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiBearerAuth, ApiBody } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -133,7 +126,10 @@ export class SupportController {
     @Request() req: AuthRequest,
     @Query() query: SupportSessionQueryDto,
   ) {
-    return this.conversationContextService.getContext(req.user.id, query.sessionId);
+    return this.conversationContextService.getContext(
+      req.user.id,
+      query.sessionId,
+    );
   }
 
   @Delete('bot/context')
@@ -150,7 +146,10 @@ export class SupportController {
     @Request() req: AuthRequest,
     @Query() query: SupportSessionQueryDto,
   ) {
-    await this.conversationContextService.clearContext(req.user.id, query.sessionId);
+    await this.conversationContextService.clearContext(
+      req.user.id,
+      query.sessionId,
+    );
     return { success: true, message: 'Context cleared' };
   }
 
@@ -171,7 +170,12 @@ export class SupportController {
     @Request() req: AuthRequest,
     @Query() query: PaginationQueryDto,
   ) {
-    return this.supportService.findAll(req.user.id, query.page, query.limit, query.cursor);
+    return this.supportService.findAll(
+      req.user.id,
+      query.page,
+      query.limit,
+      query.cursor,
+    );
   }
 
   @Get('tickets/:id')
@@ -297,20 +301,13 @@ export class SupportController {
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: CreateKnowledgeDto,
   ) {
-    const { InjectRepository } = require('@nestjs/typeorm');
-    const { SupportKnowledge } = require('./entities/support-bot.entity');
-    const supportModule = require('./support.module');
-    const moduleRef = require('../../app.module');
-    return {
-      success: true,
-      message: 'Update endpoint - implement repository injection',
-    };
+    return this.botService.updateKnowledge(id, dto);
   }
 
   @Delete('admin/bot/knowledge/:id')
   @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Admin: Delete knowledge base entry' })
   async deleteKnowledge(@Param('id', ParseUUIDPipe) id: string) {
-    return this.botService.getKnowledgeStats();
+    return this.botService.deleteKnowledge(id);
   }
 }

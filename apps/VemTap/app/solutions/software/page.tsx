@@ -31,13 +31,13 @@ export default function SoftwareSolutionPage() {
                         maskImage: 'linear-gradient(to right, black 20%, transparent 80%)',
                     }}></div>
 
-                    <div className="container mx-auto px-4 text-center z-10 relative">
-                        <h1 className="font-bold text-[30px] sm:text-4xl md:text-5xl leading-[1.15] text-text-main max-w-5xl mx-auto mb-8 tracking-tight">
+                    <div className="vemtap-container text-center z-10 relative">
+                        <h1 className="font-bold text-[30px] sm:text-4xl md:text-5xl leading-[1.15] text-text-main vemtap-container mb-8 tracking-tight">
                             The Intelligence <br />
                             <span className="text-gradient">Control Center</span>
                         </h1>
 
-                        <p className="text-lg md:text-xl text-text-secondary max-w-3xl mx-auto mb-12 leading-relaxed font-medium">
+                        <p className="text-lg md:text-xl text-text-secondary vemtap-container mb-12 leading-relaxed font-medium">
                             Turn physical foot traffic into actionable digital data. Our merchant dashboard provides the tools to measure, manage, and grow your customer base with automated precision.
                         </p>
 
@@ -52,7 +52,7 @@ export default function SoftwareSolutionPage() {
                         </div>
 
                         {/* Software Visualization */}
-                        <div className="relative max-w-5xl mx-auto group perspective-[2000px]">
+                        <div className="relative vemtap-container group perspective-[2000px]">
                             <div className="absolute -inset-1 bg-linear-to-r from-purple-500/30 to-primary/30 rounded-[3rem] blur opacity-20 animate-pulse"></div>
                             <div className="relative bg-white rounded-4xl shadow-2xl border border-gray-100 p-8 md:p-12 flex flex-col md:flex-row items-center gap-12 overflow-hidden">
                                 <div className="absolute top-0 left-0 w-full h-full bg-gray-50/50 -z-10 -rotate-1 translate-y-12"></div>
@@ -109,7 +109,7 @@ export default function SoftwareSolutionPage() {
 
                 {/* CORE PILLARS SECTION */}
                 <section className="py-32 px-4 bg-white">
-                    <div className="max-w-7xl mx-auto">
+                    <div className="vemtap-container">
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-24 items-center">
                             <div className="order-2 lg:order-1 relative">
                                 <div className="absolute -inset-10 bg-primary/5 blur-[100px] -z-10"></div>
@@ -173,7 +173,7 @@ export default function SoftwareSolutionPage() {
 
                 {/* ANALYTICS PREVIEW SECTION */}
                 <section className="py-32 px-4 bg-gray-50 border-y border-gray-100">
-                    <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+                    <div className="vemtap-container grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
                         <div className="space-y-10">
                             <h2 className="text-2xl md:text-4xl lg:text-5xl font-bold tracking-tight">Decisions driven by <br /> pure visitor data.</h2>
                             <p className="text-lg text-text-secondary font-medium leading-relaxed">
@@ -228,12 +228,12 @@ export default function SoftwareSolutionPage() {
 
                 {/* FINAL CALL TO ACTION */}
                 <section className="py-48 px-4 bg-white text-center">
-                    <div className="max-w-4xl mx-auto space-y-12">
+                    <div className="vemtap-container space-y-12">
                         <div className="size-24 bg-primary/10 text-primary rounded-4xl flex items-center justify-center mx-auto mb-8">
                             <Sparkles size={48} />
                         </div>
                         <h2 className="text-2xl md:text-4xl lg:text-5xl font-bold tracking-tight">Ready to activate your space?</h2>
-                        <p className="text-xl text-text-secondary font-medium max-w-2xl mx-auto leading-relaxed">
+                        <p className="text-xl text-text-secondary font-medium vemtap-container leading-relaxed">
                             Join over 500+ businesses who have transformed their offline environment into a digital growth engine. No credit card required to start.
                         </p>
                         <div className="flex flex-col sm:flex-row items-center justify-center gap-6">

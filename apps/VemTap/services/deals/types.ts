@@ -11,9 +11,12 @@ export interface DealBusiness {
     hours?: DealHours[];
     rating?: number;
     totalReviews?: number;
+    isVerified?: boolean;
     phone?: string;
     email?: string;
     website?: string;
+    latitude?: number;
+    longitude?: number;
 }
 
 export interface DealHours {
@@ -115,3 +118,172 @@ export interface ClaimVerifyResponse {
         status: string;
     };
 }
+
+// ─── Engagement Types ──────────────────────────────────────────────────────────
+
+export type DealReviewStatus = 'pending' | 'approved' | 'rejected';
+
+export interface DealReview {
+    id: string;
+    offerId?: string;
+    offerName?: string;
+    reviewerName: string;
+    comment: string;
+    rating: number | null;
+    likesCount: number;
+    status?: DealReviewStatus;
+    createdAt: string;
+    isLiked?: boolean;
+}
+
+export interface DealReviewsResponse {
+    reviews: DealReview[];
+    total: number;
+    page: number;
+}
+
+export interface DealEngagementResponse {
+    likesCount: number;
+    dislikesCount: number;
+    reviewsCount: number;
+    averageRating: number | null;
+    type?: 'like' | 'dislike' | null;
+    isSaved?: boolean;
+}
+
+export interface DealReactionResponse {
+    type: 'like' | 'dislike' | null;
+    likesCount: number;
+    dislikesCount: number;
+}
+
+export interface DealSaveResponse {
+    saved: boolean;
+}
+
+export interface CreateReviewDto {
+    comment: string;
+    name?: string;
+    rating?: number;
+}
+
+export interface BusinessReviewsQueryParams {
+    status?: DealReviewStatus;
+    offerId?: string;
+    page?: number;
+    limit?: number;
+}
+
+export interface BusinessReviewsResponse {
+    reviews: DealReview[];
+    total: number;
+    page: number;
+    limit: number;
+}
+
+// ─── Public Discovery Types ────────────────────────────────────────────────────
+
+export interface PublicBusiness {
+    id: string;
+    name: string;
+    logoUrl?: string;
+    description?: string;
+    address?: string;
+    state?: string;
+    city?: string;
+    categoryId?: string;
+    categoryName?: string;
+    isVerified?: boolean;
+    slug: string;
+    branchCode?: string;
+}
+
+export interface PublicBusinessesResponse {
+    businesses: PublicBusiness[];
+}
+
+export interface PublicSearchResponse {
+    deals: DealOffer[];
+    businesses: PublicBusiness[];
+    categories: { id: string; name: string; description?: string }[];
+}
+
+export interface PublicStatsResponse {
+    totalBusinesses: number;
+    totalActiveDeals: number;
+    totalClaims: number;
+    totalBranches: number;
+}
+
+export interface SendDealGiftPayload {
+    offerId: string;
+    recipientEmail: string;
+    senderName?: string;
+    senderEmail?: string;
+    note?: string;
+    branchId?: string;
+    frontendBaseUrl?: string;
+}
+
+export interface SendDealGiftResponse {
+    success: boolean;
+    message: string;
+    giftToken?: string;
+}
+
+export interface GiftDealDetails {
+    token: string;
+    status: 'pending' | 'accepted' | 'rejected';
+    recipientEmail: string;
+    senderName?: string;
+    senderEmail?: string;
+    note?: string;
+    createdAt: string;
+    offer: {
+        id: string;
+        name: string;
+        description?: string;
+        mainImage?: string;
+        calculatedPrice: number;
+    };
+    business: {
+        name: string;
+        slug?: string;
+    };
+    branch?: {
+        id: string;
+        name?: string;
+    };
+}
+
+export interface RejectDealGiftPayload {
+    token: string;
+    reason: string;
+}
+
+export interface BranchGiftedDeal {
+    id: string;
+    offerId: string;
+    branchId: string;
+    senderName: string;
+    senderEmail: string;
+    recipientEmail: string;
+    note?: string;
+    status: 'pending' | 'accepted';
+    createdAt: string;
+    acceptedAt?: string;
+    offer?: {
+        id: string;
+        name: string;
+        mainImage?: string;
+        calculatedPrice?: number;
+    };
+}
+
+export interface BranchGiftedDealsResponse {
+    data: BranchGiftedDeal[];
+    total: number;
+    page: number;
+    limit: number;
+}
+

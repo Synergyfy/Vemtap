@@ -10,13 +10,20 @@ import {
   Req,
   ParseUUIDPipe,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiBearerAuth,
+  ApiResponse,
+} from '@nestjs/swagger';
 import { CatalogueOrderService } from './catalogue-orders.service';
+import { CatalogueOrderReceiptService } from './catalogue-order-receipt.service';
 import {
   CreateCatalogueOrderDto,
   UpdateCatalogueOrderStatusDto,
   CatalogueOrderQueryDto,
   BulkCheckoutDto,
+  MyOrdersQueryDto,
 } from './dto/catalogue-order.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
@@ -33,13 +40,16 @@ interface RequestWithUser extends Request {
 @ApiTags('Catalogue Orders')
 @Controller('catalogue/orders')
 export class CatalogueOrdersController {
-  constructor(private readonly orderService: CatalogueOrderService) {}
+  constructor(
+    private readonly orderService: CatalogueOrderService,
+    private readonly receiptService: CatalogueOrderReceiptService,
+  ) {}
 
   @Public()
   @Post()
   @ApiOperation({ summary: 'Place a new catalogue order (Public)' })
-  async createOrder(@Body() dto: CreateCatalogueOrderDto) {
-    return this.orderService.createOrder(dto);
+  async createOrder(@Body() dto: CreateCatalogueOrderDto, @Req() req: any) {
+    return this.orderService.createOrder(dto, req?.user);
   }
 
   @ApiBearerAuth()
@@ -60,9 +70,39 @@ export class CatalogueOrdersController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Get('my-orders')
   @Roles(UserRole.CUSTOMER)
-  @ApiOperation({ summary: 'List orders for the authenticated customer' })
-  async getMyOrders(@Req() req: RequestWithUser) {
-    return this.orderService.findAllByCustomer(req.user.id);
+  @ApiOperation({
+    summary: 'List orders for the authenticated customer',
+    description:
+      'Pagination is opt-in: without `page`/`limit` the legacy bare array is ' +
+      'returned (the app resolves order detail from this full list); ' +
+      'supplying either returns `{ data, total, page, limit }`.',
+  })
+  @ApiResponse({
+    status: 200,
+    description:
+      'Customer orders (array, or paginated envelope when requested)',
+  })
+  async getMyOrders(
+    @Req() req: RequestWithUser,
+    @Query() query: MyOrdersQueryDto,
+  ) {
+    return this.orderService.findAllByCustomer(req.user.id, query);
+  }
+
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Get('my-orders/:id/receipt')
+  @Roles(UserRole.CUSTOMER)
+  @ApiOperation({
+    summary: 'PDF receipt for one of the customer’s own orders',
+    description:
+      'Returns `{ filename, mimeType, contentBase64 }`. Another customer’s order is a 404.',
+  })
+  async getMyOrderReceipt(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Req() req: RequestWithUser,
+  ) {
+    return this.receiptService.buildForCustomer(req.user.id, id);
   }
 
   @ApiBearerAuth()

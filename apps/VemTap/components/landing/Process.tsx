@@ -64,8 +64,8 @@ export default function Process() {
 
     return (
         <section id="process" className="py-12 md:py-16 bg-white overflow-hidden">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <div className="text-center max-w-3xl mx-auto mb-16 px-4">
+            <div className="vemtap-container">
+                <div className="text-center vemtap-container mb-16 px-4">
                     <span className="text-primary font-black uppercase tracking-[0.3em] text-[10px] mb-4 block">Process</span>
                     <h2 className="text-4xl md:text-5xl font-display font-bold text-text-main leading-tight mb-6">
                         Start collecting data in 3 steps

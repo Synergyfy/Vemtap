@@ -5,7 +5,6 @@ import {
   MessageTemplate,
   TemplateStatus,
 } from '../entities/message-template.entity';
-import { BadRequestException } from '@nestjs/common';
 import { Channel } from '../enums/channel.enum';
 import { BranchesService } from '../../branches/branches.service';
 

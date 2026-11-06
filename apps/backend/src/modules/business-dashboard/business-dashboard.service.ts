@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Between, In } from 'typeorm';
+import { Repository, Between, In, Not, IsNull } from 'typeorm';
 import { Visit } from '../visitors/entities/visit.entity';
 import { Device } from '../devices/entities/device.entity';
 import { User } from '../users/entities/user.entity';
@@ -9,10 +9,26 @@ import { Campaign } from '../campaigns/entities/campaign.entity';
 import { Reward } from '../loyalty/entities/reward.entity';
 import { Branch } from '../branches/entities/branch.entity';
 import { Business } from '../businesses/entities/business.entity';
+import { CatalogueOffer } from '../catalogue/entities/catalogue-offer.entity';
+import {
+  CatalogueOfferClaim,
+  CatalogueOfferClaimStatus,
+} from '../catalogue/entities/catalogue-offer-claim.entity';
+import { PosSale } from '../pos/entities/pos-sale.entity';
+import { SaleStatus } from '../pos/entities/pos-enums';
+import { ConversationThread } from '../messaging/entities/conversation-thread.entity';
+import {
+  CatalogueOrder,
+  CatalogueOrderStatus,
+} from '../catalogue-orders/entities/catalogue-order.entity';
 import type {
   BusinessDashboardResponseDto,
+  DashboardInsightDto,
   DashboardStatsDto,
+  DashboardWeeklyDto,
 } from './dto/business-dashboard.dto';
+
+const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 
 @Injectable()
 export class BusinessDashboardService {
@@ -35,6 +51,16 @@ export class BusinessDashboardService {
     private readonly branchRepo: Repository<Branch>,
     @InjectRepository(Business)
     private readonly businessRepo: Repository<Business>,
+    @InjectRepository(CatalogueOffer)
+    private readonly offerRepo: Repository<CatalogueOffer>,
+    @InjectRepository(CatalogueOfferClaim)
+    private readonly claimRepo: Repository<CatalogueOfferClaim>,
+    @InjectRepository(PosSale)
+    private readonly posSaleRepo: Repository<PosSale>,
+    @InjectRepository(ConversationThread)
+    private readonly threadRepo: Repository<ConversationThread>,
+    @InjectRepository(CatalogueOrder)
+    private readonly orderRepo: Repository<CatalogueOrder>,
   ) {}
 
   async getDashboard(
@@ -42,6 +68,7 @@ export class BusinessDashboardService {
     branchId?: string,
   ): Promise<BusinessDashboardResponseDto> {
     const stats = await this.computeStats(businessId, branchId);
+    const weekly = await this.computeWeekly(businessId, branchId);
     const recentVisitors = await this.getRecentVisitors(businessId, branchId);
     const activityData = await this.getActivityData(businessId, branchId);
     const rewards = await this.getRewards(businessId);
@@ -49,6 +76,8 @@ export class BusinessDashboardService {
     const messages = await this.getMessages(businessId);
     const staffMembers = await this.getStaff(businessId, branchId);
     const devices = await this.getDevices(businessId, branchId);
+    const unreadMessages = await this.countUnreadMessages(businessId, branchId);
+    const insights = this.computeInsights(stats, weekly, devices, messages);
 
     const business = await this.businessRepo.findOne({
       where: { id: businessId },
@@ -57,12 +86,16 @@ export class BusinessDashboardService {
     const businessLogo = business?.logoUrl || '';
 
     return {
+      generatedAt: new Date().toISOString(),
       stats,
+      weekly,
+      insights,
       recentVisitors,
       activityData,
       rewards,
       notifications,
       messages,
+      unreadMessages,
       staffMembers,
       devices,
       businessName,
@@ -70,33 +103,289 @@ export class BusinessDashboardService {
     };
   }
 
+  /**
+   * Conversation messages the branch has not opened yet. `branchUnreadCount`
+   * is the business-side counter (it advances when a customer writes in), so
+   * the dashboard sums that column — not `messages[]`, which is broadcast
+   * campaign history and never tracks whether anyone read it.
+   */
+  private async countUnreadMessages(
+    businessId: string,
+    branchId?: string,
+  ): Promise<number> {
+    const sum = await this.threadRepo.sum('branchUnreadCount', {
+      ...(branchId ? { branchId } : {}),
+      businessId,
+    });
+    return Number(sum ?? 0) || 0;
+  }
+
   private async computeStats(
     businessId: string,
     branchId?: string,
   ): Promise<DashboardStatsDto> {
-    const where: any = branchId ? { branchId } : { businessId };
+    // `scoped` pins all queries to the caller's businessId even when a
+    // foreign branchId arrives, so they can never read another tenant (IDOR fix).
+    const scoped = { ...(branchId ? { branchId } : {}), businessId };
 
-    const totalVisitors = await this.visitRepo.count({ where });
+    const totalVisitors = await this.visitRepo.count({ where: scoped });
     const newVisitors = await this.visitRepo.count({
-      where: { ...where, status: 'new' },
+      where: { ...scoped, status: 'new' },
     });
     const repeatVisitors = await this.visitRepo.count({
-      where: { ...where, status: 'returning' },
+      where: { ...scoped, status: 'returning' },
     });
 
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
     const todaysVisits = await this.visitRepo.count({
-      where: { ...where, createdAt: Between(todayStart, new Date()) },
+      where: { ...scoped, createdAt: Between(todayStart, new Date()) },
     });
 
-    return { totalVisitors, newVisitors, repeatVisitors, todaysVisits };
+    // Lifetime catalogue figures. `views` is a lifetime counter on the offer
+    // (there is no view-event table), so it intentionally has no delta.
+    const totalViewsRaw = await this.offerRepo
+      .createQueryBuilder('offer')
+      .select('COALESCE(SUM(offer.views), 0)', 'sum')
+      .where(
+        branchId
+          ? 'offer.branchId = :branchId'
+          : 'offer.businessId = :businessId',
+        {
+          branchId,
+          businessId,
+        },
+      )
+      .getRawOne();
+    const totalViews = parseInt(totalViewsRaw?.sum || '0', 10);
+    const totalClaims = await this.countClaims(businessId, branchId);
+    const excludedOrderStatuses = [
+      CatalogueOrderStatus.CANCELLED,
+      CatalogueOrderStatus.REJECTED,
+      CatalogueOrderStatus.REFUNDED,
+    ];
+    const ordersRevenueRaw = await this.orderRepo.sum('totalAmount', {
+      ...scoped,
+      status: Not(In(excludedOrderStatuses)),
+    });
+    const ordersRevenue = Number(ordersRevenueRaw ?? 0) || 0;
+    const bookingsCount = await this.orderRepo.count({
+      where: {
+        ...scoped,
+        status: Not(In(excludedOrderStatuses)),
+        bookingDate: Not(IsNull()),
+      },
+    });
+
+    // Deltas compare the last 7 days with the previous 7 days.
+    const now = new Date();
+    const weekStart = new Date(now.getTime() - WEEK_MS);
+    const prevWeekStart = new Date(now.getTime() - 2 * WEEK_MS);
+
+    const visitorsCurrent = await this.visitRepo.count({
+      where: { ...scoped, createdAt: Between(weekStart, now) },
+    });
+    const visitorsPrevious = await this.visitRepo.count({
+      where: { ...scoped, createdAt: Between(prevWeekStart, weekStart) },
+    });
+    const claimsCurrent = await this.countClaims(
+      businessId,
+      branchId,
+      weekStart,
+      now,
+    );
+    const claimsPrevious = await this.countClaims(
+      businessId,
+      branchId,
+      prevWeekStart,
+      weekStart,
+    );
+    const revenueCurrent = await this.sumPosRevenue(
+      businessId,
+      branchId,
+      weekStart,
+      now,
+    );
+    const revenuePrevious = await this.sumPosRevenue(
+      businessId,
+      branchId,
+      prevWeekStart,
+      weekStart,
+    );
+
+    return {
+      totalVisitors,
+      newVisitors,
+      repeatVisitors,
+      todaysVisits,
+      totalViews,
+      totalClaims,
+      ordersRevenue,
+      bookingsCount,
+      visitorsDelta: this.percentChange(visitorsCurrent, visitorsPrevious),
+      claimsDelta: this.percentChange(claimsCurrent, claimsPrevious),
+      revenueDelta: this.percentChange(revenueCurrent, revenuePrevious),
+    };
+  }
+
+  private async computeWeekly(
+    businessId: string,
+    branchId?: string,
+  ): Promise<DashboardWeeklyDto> {
+    const now = new Date();
+    const weekStart = new Date(now.getTime() - WEEK_MS);
+    const scoped = { ...(branchId ? { branchId } : {}), businessId };
+
+    const visits = await this.visitRepo.count({
+      where: { ...scoped, createdAt: Between(weekStart, now) },
+    });
+    const claims = await this.countClaims(businessId, branchId, weekStart, now);
+    const revenue = await this.sumPosRevenue(
+      businessId,
+      branchId,
+      weekStart,
+      now,
+    );
+
+    return { visits, claims, revenue };
+  }
+
+  private async countClaims(
+    businessId: string,
+    branchId?: string,
+    from?: Date,
+    to?: Date,
+  ): Promise<number> {
+    const qb = this.claimRepo
+      .createQueryBuilder('claim')
+      .innerJoin('claim.offer', 'offer')
+      .where(
+        branchId
+          ? 'offer.branchId = :branchId'
+          : 'offer.businessId = :businessId',
+        { branchId, businessId },
+      )
+      .andWhere('claim.status IN (:...statuses)', {
+        statuses: [
+          CatalogueOfferClaimStatus.CLAIMED,
+          CatalogueOfferClaimStatus.REDEEMED,
+        ],
+      });
+
+    if (from && to) {
+      qb.andWhere('claim.createdAt BETWEEN :from AND :to', { from, to });
+    }
+
+    return qb.getCount();
+  }
+
+  private async sumPosRevenue(
+    businessId: string,
+    branchId?: string,
+    from?: Date,
+    to?: Date,
+  ): Promise<number> {
+    const qb = this.posSaleRepo
+      .createQueryBuilder('sale')
+      .select('COALESCE(SUM(sale.total), 0)', 'sum')
+      .where('sale.status = :status', { status: SaleStatus.COMPLETED })
+      .andWhere(
+        branchId
+          ? 'sale.branchId = :branchId'
+          : 'sale.businessId = :businessId',
+        { branchId, businessId },
+      );
+
+    if (from && to) {
+      qb.andWhere('sale.createdAt BETWEEN :from AND :to', { from, to });
+    }
+
+    const row = await qb.getRawOne();
+    return Number(row?.sum || 0);
+  }
+
+  private percentChange(current: number, previous: number): number | null {
+    if (previous === 0) return null;
+    return Math.round(((current - previous) / previous) * 100);
+  }
+
+  private computeInsights(
+    stats: DashboardStatsDto,
+    weekly: DashboardWeeklyDto,
+    devices: { status?: string }[],
+    messages: { status?: string }[],
+  ): DashboardInsightDto[] {
+    const insights: DashboardInsightDto[] = [];
+
+    if (weekly.revenue > 0) {
+      insights.push({
+        id: 'revenue-momentum',
+        title: 'POS momentum this week',
+        message: `You took ₦${Math.round(weekly.revenue).toLocaleString()} in completed sales over the last 7 days.`,
+        priority: 'medium',
+      });
+    }
+
+    if (weekly.visits > 0 && stats.totalClaims === 0) {
+      insights.push({
+        id: 'convert-visitors',
+        title: 'Turn visitors into claims',
+        message:
+          'You have visits but no deal claims yet — publish a promotion so visitors can claim a pass.',
+        priority: 'high',
+      });
+    }
+
+    if (stats.todaysVisits === 0) {
+      insights.push({
+        id: 'quiet-day',
+        title: 'Quiet day so far',
+        message:
+          'No visits recorded today. Share your quick link or push a notification to bring people in.',
+        priority: 'low',
+      });
+    }
+
+    const onlineDevices = devices.filter(
+      (device) => (device.status || '').toLowerCase() === 'active',
+    ).length;
+    if (devices.length === 0) {
+      insights.push({
+        id: 'add-device',
+        title: 'Add an NFC device',
+        message:
+          'No devices are linked to this branch yet — add one to start tapping customers in.',
+        priority: 'high',
+      });
+    } else if (onlineDevices === 0) {
+      insights.push({
+        id: 'devices-offline',
+        title: 'Check your devices',
+        message: 'None of your devices are currently active.',
+        priority: 'medium',
+      });
+    }
+
+    const scheduledMessages = messages.filter(
+      (message) => (message.status || '').toLowerCase() === 'scheduled',
+    ).length;
+    if (scheduledMessages > 0) {
+      insights.push({
+        id: 'scheduled-campaigns',
+        title: `${scheduledMessages} campaign${scheduledMessages > 1 ? 's' : ''} scheduled`,
+        message:
+          'Scheduled campaigns will send automatically — review their audience before they go out.',
+        priority: 'low',
+      });
+    }
+
+    return insights.slice(0, 4);
   }
 
   private async getRecentVisitors(businessId: string, branchId?: string) {
-    const where: any = branchId ? { branchId } : { businessId };
+    const scoped = { ...(branchId ? { branchId } : {}), businessId };
     const visits = await this.visitRepo.find({
-      where,
+      where: scoped,
       relations: ['customer'],
       order: { createdAt: 'DESC' },
       take: 10,
@@ -118,32 +407,32 @@ export class BusinessDashboardService {
     }));
   }
 
+  /**
+   * Seven weekday buckets for the "Weekly Footfall Distribution" chart. The
+   * card is weekly, so it is fed by the last 7 days of visits grouped by
+   * weekday and zero-filled — the old hourly-today buckets could never fill
+   * a Mon–Sun axis, so the app always fell back to its design copy.
+   */
   private async getActivityData(businessId: string, branchId?: string) {
-    const where: any = branchId ? { branchId } : { businessId };
-    const todayStart = new Date();
-    todayStart.setHours(0, 0, 0, 0);
+    const scoped = { ...(branchId ? { branchId } : {}), businessId };
+    const weekAgo = new Date(Date.now() - WEEK_MS);
 
     const visits = await this.visitRepo.find({
-      where: { ...where, createdAt: Between(todayStart, new Date()) },
+      where: { ...scoped, createdAt: Between(weekAgo, new Date()) },
     });
 
-    const hourBuckets: Record<string, number> = {};
+    const bucketFor = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const counts: Record<string, number> = {};
     for (const v of visits) {
-      const hour = v.createdAt.getHours();
-      const label =
-        hour === 0
-          ? '12 AM'
-          : hour < 12
-            ? `${hour} AM`
-            : hour === 12
-              ? '12 PM'
-              : `${hour - 12} PM`;
-      hourBuckets[label] = (hourBuckets[label] || 0) + 1;
+      const day = bucketFor[v.createdAt.getDay()];
+      if (!day) continue;
+      counts[day] = (counts[day] || 0) + 1;
     }
 
-    return Object.entries(hourBuckets).map(([hour, visits]) => ({
-      hour,
-      visits,
+    const weekOrder = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    return weekOrder.map((day) => ({
+      hour: day,
+      visits: counts[day] || 0,
       branchId: branchId || undefined,
     }));
   }

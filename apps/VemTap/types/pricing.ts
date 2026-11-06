@@ -53,6 +53,7 @@ export interface PricingPlan {
     aiCredits?: number | null;
     permissionsConfiguredAt?: string | null;
     badge?: 'free' | 'silver' | 'gold' | 'platinum';
+    autoFeatureDeals?: boolean;
     // Tax-aware pricing returned by GET /plans (VAT system)
     monthlyTax?: number;
     monthlyPriceWithTax?: number;

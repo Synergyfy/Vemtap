@@ -28,7 +28,7 @@ export default function CookiePolicy() {
             <Navbar />
             
             <header className="pt-48 pb-20 bg-white border-b border-gray-100">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div className="vemtap-container">
                     <div className="max-w-3xl">
                         <div className="flex items-center gap-3 mb-6">
                             <span className="px-3 py-1 bg-primary/10 text-primary text-[10px] font-bold uppercase tracking-wider rounded-full">Policy Document</span>
@@ -38,12 +38,12 @@ export default function CookiePolicy() {
                         <h1 className="text-[30px] sm:text-4xl md:text-5xl lg:text-6xl font-bold text-text-main mb-8 leading-[1.15] tracking-tight">
                             Cookie <span className="blue-text-gradient">Policy</span>
                         </h1>
-                        <p className="text-text-secondary font-medium italic">Effective Date: [Insert Date] | Last Updated: [Insert Date]</p>
+                        <p className="text-text-secondary font-medium italic">Effective Date: September 14, 2026 | Last Updated: September 14, 2026</p>
                     </div>
                 </div>
             </header>
 
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
+            <div className="vemtap-container py-20">
                 <div className="flex flex-col lg:flex-row gap-20">
                     <aside className="hidden lg:block w-64 flex-shrink-0">
                         <div className="sticky top-32">
@@ -135,8 +135,8 @@ export default function CookiePolicy() {
                             <section id="contact" className="scroll-mt-32">
                                 <h2 className="text-3xl font-display font-bold text-text-main mb-6">10. Contact Us</h2>
                                 <p className="text-lg leading-relaxed text-text-secondary font-medium">If you have questions about this Cookie Policy, contact us:</p>
-                                <p className="text-lg font-bold mt-4">Email: <a href="mailto:[Insert Email]" className="text-primary hover:underline">[Insert Email]</a></p>
-                                <p className="text-lg font-bold">Website: <a href="[Insert Website]" className="text-primary hover:underline">[Insert Website]</a></p>
+                                <p className="text-lg font-bold mt-4">Email: <a href="mailto:support@vemtap.com" className="text-primary hover:underline">support@vemtap.com</a></p>
+                                <p className="text-lg font-bold">Website: <a href="vemtap.com" className="text-primary hover:underline">vemtap.com</a></p>
                             </section>
 
                             <section id="compliance" className="scroll-mt-32">

@@ -4,11 +4,7 @@ import { KnowledgeBaseService } from './knowledge-base.service';
 import { KbCategory } from './entities/kb-category.entity';
 import { KbSection } from './entities/kb-section.entity';
 import { KbPage } from './entities/kb-page.entity';
-import {
-  NotFoundException,
-  ConflictException,
-  BadRequestException,
-} from '@nestjs/common';
+import { NotFoundException, ConflictException } from '@nestjs/common';
 
 describe('KnowledgeBaseService', () => {
   let service: KnowledgeBaseService;

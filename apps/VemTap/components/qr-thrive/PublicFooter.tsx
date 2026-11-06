@@ -11,8 +11,8 @@ function SocialIcon({ icon: Icon }: { icon: LucideIcon }) {
 
 export default function PublicFooter() {
   return (
-    <footer className="bg-blue-600 py-24 px-4 text-white font-sans mt-auto border-t border-blue-500">
-      <div className="max-w-7xl mx-auto">
+    <footer className="bg-blue-600 py-24 text-white font-sans mt-auto border-t border-blue-500">
+      <div className="vemtap-container">
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-16 mb-24">
           <div className="col-span-2">
             <div className="flex items-center gap-2 mb-8">

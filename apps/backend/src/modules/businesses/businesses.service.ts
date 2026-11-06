@@ -3,6 +3,7 @@ import {
   NotFoundException,
   ConflictException,
   BadRequestException,
+  ForbiddenException,
   Inject,
   forwardRef,
 } from '@nestjs/common';
@@ -11,7 +12,11 @@ import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { Repository, In, IsNull, Not } from 'typeorm';
 import { Cron } from '@nestjs/schedule';
-import { Business, BusinessStatus } from './entities/business.entity';
+import {
+  Business,
+  BusinessStatus,
+  BusinessVerificationStatus,
+} from './entities/business.entity';
 import { UpdateBusinessDto } from './dto/update-business.dto';
 import { AdminCreateBusinessDto } from './dto/admin-create-business.dto';
 import { User, UserRole, UserStatus } from '../users/entities/user.entity';
@@ -128,9 +133,8 @@ export class BusinessesService {
     const savedBusiness = await this.businessesRepository.save(business);
 
     // Automatically create Main Branch
-    const mainBranchUsername = await this.generateUniqueBranchUsername(
-      'Main Branch',
-    );
+    const mainBranchUsername =
+      await this.generateUniqueBranchUsername('Main Branch');
     const mainBranch = this.branchRepository.create({
       name: 'Main Branch',
       username: mainBranchUsername,
@@ -205,11 +209,64 @@ export class BusinessesService {
     return this.businessesRepository.findOne({ where: { ownerId } });
   }
 
+  /**
+   * Customer totals for the CRM hub card.
+   *
+   * A customer counts for the business when they have visited any of its
+   * branches (`visits.businessId`) or were registered/imported at one of its
+   * branches (`users.branchId`). "New this week" uses each customer's earliest
+   * link so an older customer with a recent visit is not counted as new.
+   */
+  async getCustomersSummary(
+    businessId: string,
+  ): Promise<{ totalCustomers: number; newThisWeek: number }> {
+    const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+
+    const rows: { total: number; new_this_week: number }[] =
+      await this.visitRepository.manager.query(
+        `
+        WITH branch_ids AS (
+          SELECT id FROM branches WHERE "businessId" = $1
+        ),
+        links AS (
+          SELECT v."customerId" AS user_id, MIN(v."createdAt") AS first_link
+          FROM visits v
+          WHERE v."businessId" = $1
+          GROUP BY v."customerId"
+          UNION ALL
+          SELECT u.id AS user_id, u."createdAt" AS first_link
+          FROM users u
+          WHERE u.role = $3
+            AND u."branchId" IN (SELECT id FROM branch_ids)
+        ),
+        per_user AS (
+          SELECT user_id, MIN(first_link) AS first_link
+          FROM links
+          GROUP BY user_id
+        )
+        SELECT
+          COUNT(*)::int AS total,
+          COUNT(*) FILTER (WHERE first_link >= $2)::int AS new_this_week
+        FROM per_user
+        `,
+        [businessId, since, UserRole.CUSTOMER],
+      );
+
+    return {
+      totalCustomers: Number(rows[0]?.total ?? 0),
+      newThisWeek: Number(rows[0]?.new_this_week ?? 0),
+    };
+  }
+
   async findByPhone(phone: string): Promise<Business | null> {
     return this.businessesRepository.findOne({ where: { phone } });
   }
 
   async findById(id: string): Promise<Business> {
+    // TypeORM drops an empty `where` value, which would match the first business.
+    if (!id) {
+      throw new NotFoundException('Business not found');
+    }
     const business = await this.businessesRepository.findOne({
       where: { id },
       relations: ['branches', 'category', 'subcategory'],
@@ -276,6 +333,11 @@ export class BusinessesService {
       ...businessData,
       owner: safeOwner,
       rewards: activeRewards,
+      showSocial: businessData.branches?.[0]?.showSocial ?? false,
+      rewardEnabled: businessData.branches?.[0]?.rewardEnabled ?? false,
+      rewardMessage: businessData.branches?.[0]?.rewardMessage ?? null,
+      rewardVisitThreshold:
+        businessData.branches?.[0]?.rewardVisitThreshold ?? 5,
     };
   }
 
@@ -321,6 +383,25 @@ export class BusinessesService {
     delete (updateBusinessDto as any).businessHours;
     for (const field of socialFields) {
       delete (updateBusinessDto as any)[field];
+    }
+
+    if (updateBusinessDto.requireReviewApproval === true) {
+      const activeSub = await this.subscriptionRepository.findOne({
+        where: {
+          businessId: id,
+          status: SubscriptionStatus.ACTIVE,
+        },
+        relations: ['plan'],
+      });
+
+      const planName = activeSub?.plan?.name?.toLowerCase() || '';
+      const isPlatinum = planName.includes('platinum');
+
+      if (!isPlatinum) {
+        throw new ForbiddenException(
+          'Deal review moderation control is exclusively available on the Platinum plan. Please upgrade to enable this feature.',
+        );
+      }
     }
 
     Object.assign(business, updateBusinessDto);
@@ -979,6 +1060,7 @@ export class BusinessesService {
     const business = await this.findById(id);
     business.isVerified = true;
     business.verifiedAt = new Date();
+    business.verificationStatus = BusinessVerificationStatus.VERIFIED;
     return this.businessesRepository.save(business);
   }
 
@@ -986,6 +1068,7 @@ export class BusinessesService {
     const business = await this.findById(id);
     business.isVerified = false;
     business.verifiedAt = null;
+    business.verificationStatus = BusinessVerificationStatus.UNVERIFIED;
     return this.businessesRepository.save(business);
   }
 

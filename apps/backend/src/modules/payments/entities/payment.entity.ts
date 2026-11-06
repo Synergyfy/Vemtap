@@ -14,6 +14,7 @@ export enum PaymentPurpose {
   CREDIT_TOPUP = 'Credit Topup',
   ADDON = 'Addon',
   PLAN_WITH_ADDONS = 'Plan With Addons',
+  AD_WALLET_TOPUP = 'Ad Wallet Topup',
 }
 
 @Entity('payments')

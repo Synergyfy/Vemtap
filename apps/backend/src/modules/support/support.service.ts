@@ -4,7 +4,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Between, Not, IsNull, FindOptionsWhere } from 'typeorm';
+import { Repository, Between } from 'typeorm';
 import {
   SupportTicket,
   TicketPriority,

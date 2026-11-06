@@ -38,6 +38,7 @@ import { MailModule } from '../mail/mail.module';
 import { BranchesModule } from '../branches/branches.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { LoyaltyModule } from '../loyalty/loyalty.module';
+import { BusinessCustomersModule } from '../business-customers/business-customers.module';
 
 import { MessagingEngineService } from './services/messaging-engine.service';
 import { TemplateService } from './services/template.service';
@@ -55,6 +56,8 @@ import { MessagingHelperService } from './services/messaging-helper.service';
 
 import { MessagingController } from './controllers/messaging.controller';
 import { CustomerMessagingController } from './controllers/customer-messaging.controller';
+import { CustomerMessagingMediaController } from './controllers/customer-messaging-media.controller';
+import { UploadsModule } from '../uploads/uploads.module';
 import { ChatSettingsController } from './controllers/chat-settings.controller';
 import { FlowController } from './controllers/flow.controller';
 import { AdminFlowEngineController } from './controllers/admin-flow-engine.controller';
@@ -75,6 +78,7 @@ import { AutomationProcessor } from './processors/automation.processor';
 import { TwilioWebhookController } from './controllers/twilio.controller';
 
 import { MessagingGateway } from './messaging.gateway';
+import { PresenceService } from './services/presence.service';
 import { JwtModule } from '@nestjs/jwt';
 
 import { MessagingChannelSetting } from './entities/messaging-channel-setting.entity';
@@ -119,10 +123,12 @@ import { ChannelSettingsController } from './controllers/channel-settings.contro
     MailModule,
     forwardRef(() => BranchesModule),
     NotificationsModule,
+    UploadsModule,
     forwardRef(() => LoyaltyModule),
+    forwardRef(() => BusinessCustomersModule),
     JwtModule.registerAsync({
       imports: [ConfigModule],
-      useFactory: async (configService: ConfigService) => ({
+      useFactory: (configService: ConfigService) => ({
         secret: configService.get<string>('JWT_SECRET'),
         signOptions: {
           expiresIn: configService.get<string>('JWT_EXPIRATION') as any,
@@ -132,15 +138,13 @@ import { ChannelSettingsController } from './controllers/channel-settings.contro
     }),
     BullModule.forRootAsync({
       imports: [ConfigModule],
-      useFactory: async (configService: ConfigService) => {
+      useFactory: (configService: ConfigService) => {
         const host = configService.get<string>('REDIS_HOST', 'localhost');
         const port = configService.get<number>('REDIS_PORT', 6379);
         const password = configService.get<string>('REDIS_PASSWORD');
         const useTls =
           configService.get<string>('REDIS_TLS') === 'true' ||
           host.includes('upstash.io');
-
-        const isUpstash = host.includes('upstash.io');
 
         return {
           connection: {
@@ -203,11 +207,13 @@ import { ChannelSettingsController } from './controllers/channel-settings.contro
     ChatSettingsService,
     ChannelSettingsService,
     MessagingHelperService,
+    PresenceService,
     MessagingGateway,
   ],
   controllers: [
     MessagingController,
     CustomerMessagingController,
+    CustomerMessagingMediaController,
     ChatSettingsController,
     ChannelSettingsController,
     FlowController,

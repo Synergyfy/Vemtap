@@ -8,7 +8,6 @@ import { Observable } from 'rxjs';
 import { tap } from 'rxjs/operators';
 import { AdministrationService } from './administration.service';
 import { BackendModule } from '../../common/enums/backend-module.enum';
-import { UserRole } from '../users/entities/user.entity';
 
 @Injectable()
 export class AuditInterceptor implements NestInterceptor {
@@ -24,8 +23,6 @@ export class AuditInterceptor implements NestInterceptor {
     const isCustomerImpersonated =
       !!request.headers['x-customer-impersonation-token'];
     const isImpersonated = !!impersonationTokenStr || isCustomerImpersonated;
-    const isAdminOrAgent =
-      user && (user.role === UserRole.ADMIN || user.role === UserRole.AGENT);
 
     // LOG: Mutations by anyone, OR any request (including GET) by Admin/Agent if impersonating
     if (!isMutation && !isImpersonated) {
@@ -38,59 +35,63 @@ export class AuditInterceptor implements NestInterceptor {
     }
 
     return next.handle().pipe(
-      tap(async (responseData) => {
-        try {
-          const statusCode = context.switchToHttp().getResponse().statusCode;
+      tap(() => {
+        // Audit writes run beside the response; failures are caught inside.
+        void (async () => {
+          try {
+            const statusCode = context.switchToHttp().getResponse().statusCode;
 
-          // Determine module from URL or custom decorator (simplified for now)
-          const module = this.determineModule(url);
+            // Determine module from URL or custom decorator (simplified for now)
+            const module = this.determineModule(url);
 
-          // We need the branchId/businessId context which might be in the request or from token validation
-          // If impersonated, the AdministrationService can provide context
-          let businessId = user?.businessId;
-          let branchId = user?.branchId;
-          let actorId = user?.id;
-          let impersonationTokenId: string | undefined = undefined;
+            // We need the branchId/businessId context which might be in the request or from token validation
+            // If impersonated, the AdministrationService can provide context
+            let businessId = user?.businessId;
+            let branchId = user?.branchId;
+            let actorId = user?.id;
+            let impersonationTokenId: string | undefined = undefined;
 
-          const impersonationToken = request.impersonationToken;
-          const customerImpersonationToken = request.customerImpersonationToken;
+            const impersonationToken = request.impersonationToken;
+            const customerImpersonationToken =
+              request.customerImpersonationToken;
 
-          if (impersonationToken) {
-            actorId = impersonationToken.actorId;
-            branchId = impersonationToken.targetBranchId;
-            businessId =
-              impersonationToken.targetBranch?.business?.id ??
-              impersonationToken.targetBranch.businessId;
-            impersonationTokenId = impersonationToken.id;
-          } else if (customerImpersonationToken) {
-            actorId = customerImpersonationToken.actorId;
-            branchId = customerImpersonationToken.targetBranchId;
-            // The branch might not have the business loaded on the customer token,
-            // but we can try to fall back to the original actor's context if present,
-            // or leave businessId empty if not strictly needed here.
-            businessId = request.originalActor?.businessId;
-            impersonationTokenId = customerImpersonationToken.id;
+            if (impersonationToken) {
+              actorId = impersonationToken.actorId;
+              branchId = impersonationToken.targetBranchId;
+              businessId =
+                impersonationToken.targetBranch?.business?.id ??
+                impersonationToken.targetBranch.businessId;
+              impersonationTokenId = impersonationToken.id;
+            } else if (customerImpersonationToken) {
+              actorId = customerImpersonationToken.actorId;
+              branchId = customerImpersonationToken.targetBranchId;
+              // The branch might not have the business loaded on the customer token,
+              // but we can try to fall back to the original actor's context if present,
+              // or leave businessId empty if not strictly needed here.
+              businessId = request.originalActor?.businessId;
+              impersonationTokenId = customerImpersonationToken.id;
+            }
+
+            if (actorId) {
+              await this.adminService.logAction({
+                actorId,
+                businessId,
+                branchId,
+                module,
+                method,
+                endpoint: url,
+                payload: method !== 'GET' ? this.sanitisePayload(body) : null,
+                statusCode,
+                ipAddress: ip,
+                userAgent: headers['user-agent'],
+                impersonationTokenId,
+              });
+            }
+          } catch (error) {
+            console.error('Audit Log Error:', error);
+            // Don't fail the request if logging fails
           }
-
-          if (actorId) {
-            await this.adminService.logAction({
-              actorId,
-              businessId,
-              branchId,
-              module,
-              method,
-              endpoint: url,
-              payload: method !== 'GET' ? this.sanitisePayload(body) : null,
-              statusCode,
-              ipAddress: ip,
-              userAgent: headers['user-agent'],
-              impersonationTokenId,
-            });
-          }
-        } catch (error) {
-          console.error('Audit Log Error:', error);
-          // Don't fail the request if logging fails
-        }
+        })();
       }),
     );
   }

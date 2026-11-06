@@ -8,9 +8,17 @@ interface LocationModalProps {
     isOpen: boolean;
     onClose: () => void;
     onLocationSet: (coords: GeolocationCoordinates, label?: string) => void;
+    title?: string;
+    description?: string;
 }
 
-export default function LocationModal({ isOpen, onClose, onLocationSet }: LocationModalProps) {
+export default function LocationModal({
+    isOpen,
+    onClose,
+    onLocationSet,
+    title = "Find what's around you",
+    description = 'Allow VEMTAP to use your location to show nearby businesses and deals.',
+}: LocationModalProps) {
     const [mode, setMode] = useState<'pick' | 'manual'>('pick');
     const [manualAddress, setManualAddress] = useState('');
     const [loading, setLoading] = useState(false);
@@ -58,18 +66,19 @@ export default function LocationModal({ isOpen, onClose, onLocationSet }: Locati
                 <button
                     onClick={onClose}
                     className="absolute top-4 right-4 p-2 hover:bg-gray-100 rounded-full transition-colors z-10"
+                    aria-label="Close"
                 >
                     <X size={18} className="text-gray-400" />
                 </button>
 
                 {mode === 'pick' ? (
                     <div className="p-8 text-center">
-                        <div className="w-16 h-16 mx-auto bg-primary/10 rounded-full flex items-center justify-center mb-6">
-                            <MapPin size={28} className="text-primary" />
+                        <div className="w-16 h-16 mx-auto bg-[#066CF4]/10 rounded-full flex items-center justify-center mb-6">
+                            <MapPin size={28} className="text-[#066CF4]" />
                         </div>
-                        <h2 className="text-xl font-black text-gray-900 mb-2">Where are you shopping?</h2>
+                        <h2 className="text-xl font-black text-gray-900 mb-2">{title}</h2>
                         <p className="text-sm text-gray-500 font-medium mb-8">
-                            We'll show you the best deals from businesses near you.
+                            {description}
                         </p>
 
                         {error && (
@@ -80,30 +89,30 @@ export default function LocationModal({ isOpen, onClose, onLocationSet }: Locati
                             <button
                                 onClick={handleUseCurrentLocation}
                                 disabled={loading}
-                                className="w-full flex items-center justify-center gap-3 h-14 bg-primary text-white rounded-2xl font-bold text-sm shadow-lg shadow-primary/20 hover:bg-primary/90 transition-all active:scale-[0.98] disabled:opacity-60"
+                                className="w-full flex items-center justify-center gap-3 h-14 bg-[#066CF4] text-white rounded-2xl font-bold text-sm shadow-lg shadow-blue-500/20 hover:bg-[#066CF4]/90 transition-all active:scale-[0.98] disabled:opacity-60"
                             >
                                 {loading ? (
                                     <Loader2 size={18} className="animate-spin" />
                                 ) : (
                                     <Navigation size={18} />
                                 )}
-                                {loading ? 'Detecting...' : 'Yes, I\'m here'}
+                                {loading ? 'Detecting...' : 'Use my location'}
                             </button>
                             <button
                                 onClick={() => setMode('manual')}
                                 className="w-full flex items-center justify-center gap-3 h-14 bg-gray-50 text-gray-700 rounded-2xl font-bold text-sm border border-gray-200 hover:bg-gray-100 transition-all active:scale-[0.98]"
                             >
                                 <Search size={18} />
-                                No, let me search
+                                Search a location instead
                             </button>
                         </div>
                     </div>
                 ) : (
                     <div className="p-8">
-                        <div className="w-16 h-16 mx-auto bg-primary/10 rounded-full flex items-center justify-center mb-6">
-                            <Search size={28} className="text-primary" />
+                        <div className="w-16 h-16 mx-auto bg-[#066CF4]/10 rounded-full flex items-center justify-center mb-6">
+                            <Search size={28} className="text-[#066CF4]" />
                         </div>
-                        <h2 className="text-xl font-black text-gray-900 text-center mb-2">Search your location</h2>
+                        <h2 className="text-xl font-black text-gray-900 text-center mb-2">Search a location instead</h2>
                         <p className="text-sm text-gray-500 font-medium text-center mb-6">
                             Enter your city, area, or address to find deals nearby.
                         </p>
@@ -118,14 +127,14 @@ export default function LocationModal({ isOpen, onClose, onLocationSet }: Locati
                                 value={manualAddress}
                                 onChange={(e) => setManualAddress(e.target.value)}
                                 onKeyDown={(e) => e.key === 'Enter' && handleManualSearch()}
-                                placeholder="e.g. Ikeja, Lagos"
-                                className="w-full h-14 px-5 bg-gray-50 border border-gray-200 rounded-2xl font-bold text-sm focus:ring-2 focus:ring-primary/20 outline-none"
+                                placeholder="e.g. Apo, Abuja"
+                                className="w-full h-14 px-5 bg-gray-50 border border-gray-200 rounded-2xl font-bold text-sm focus:ring-2 focus:ring-[#066CF4]/20 outline-none"
                                 autoFocus
                             />
                             <button
                                 onClick={handleManualSearch}
                                 disabled={loading || !manualAddress.trim()}
-                                className="w-full h-14 bg-primary text-white rounded-2xl font-bold text-sm shadow-lg shadow-primary/20 hover:bg-primary/90 transition-all active:scale-[0.98] disabled:opacity-60 flex items-center justify-center gap-2"
+                                className="w-full h-14 bg-[#066CF4] text-white rounded-2xl font-bold text-sm shadow-lg shadow-blue-500/20 hover:bg-[#066CF4]/90 transition-all active:scale-[0.98] disabled:opacity-60 flex items-center justify-center gap-2"
                             >
                                 {loading ? <Loader2 size={18} className="animate-spin" /> : <Search size={18} />}
                                 {loading ? 'Searching...' : 'Search Location'}

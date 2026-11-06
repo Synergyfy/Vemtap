@@ -8,11 +8,50 @@ import {
   IsArray,
   ValidateNested,
   Min,
+  Max,
   IsEmail,
   IsEnum,
+  IsInt,
+  IsIn,
+  MaxLength,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { CatalogueOrderStatus } from '../entities/catalogue-order.entity';
+
+/** Where a store-ordering order came from (`CatalogueOrder.source`). */
+export const STORE_ORDER_SOURCES = [
+  'storefront',
+  'store_qr',
+  'category_qr',
+  'product_qr',
+  'section_qr',
+  'placement_qr',
+  'deal',
+  'pos',
+] as const;
+export type StoreOrderSource = (typeof STORE_ORDER_SOURCES)[number];
+
+/**
+ * Customer order list. Pagination is opt-in: without `page`/`limit` the
+ * endpoint keeps returning the legacy bare array; supplying either returns
+ * `{ data, total, page, limit }`.
+ */
+export class MyOrdersQueryDto {
+  @ApiPropertyOptional({ example: 1, minimum: 1 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  page?: number;
+
+  @ApiPropertyOptional({ example: 10, minimum: 1, maximum: 50 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(50)
+  limit?: number;
+}
 
 export class CreateQuickItemDto {
   @ApiProperty({ example: 'New Item' })
@@ -87,6 +126,25 @@ export class CreateCatalogueOrderDto {
   @IsString()
   tableNumber?: string;
 
+  @ApiPropertyOptional({
+    example: 'store_qr',
+    enum: STORE_ORDER_SOURCES,
+    description:
+      'Marks a store-ordering (scan, pick, pay at the counter) order and where it came from',
+  })
+  @IsOptional()
+  @IsIn(STORE_ORDER_SOURCES)
+  source?: StoreOrderSource;
+
+  @ApiPropertyOptional({
+    example: 'SQ7KX2P9',
+    description: 'Code of the store QR the order was placed from',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(20)
+  storeQrCode?: string;
+
   @ApiProperty({ type: [OrderItemDto] })
   @IsArray()
   @ValidateNested({ each: true })
@@ -121,6 +179,11 @@ export class CreateCatalogueOrderDto {
   @IsOptional()
   @IsString()
   bookingTime?: string;
+
+  @ApiPropertyOptional({ example: 'c67ab160-5895-46aa-b2b5-e6f778a87b28' })
+  @IsOptional()
+  @IsString()
+  giftToken?: string;
 }
 
 export class BulkOrderDto {

@@ -1,8 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class CreateCouponsAndPromotionCodesTables1786930000000
-  implements MigrationInterface
-{
+export class CreateCouponsAndPromotionCodesTables1786930000000 implements MigrationInterface {
   name = 'CreateCouponsAndPromotionCodesTables1786930000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {

@@ -1,6 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
 import { FosDashboardService } from './fos-dashboard.service';
 import {
   FinancialTransaction,
@@ -12,8 +11,6 @@ import { MetricsSnapshot } from './entities/metrics-snapshot.entity';
 
 describe('FosDashboardService', () => {
   let service: FosDashboardService;
-  let transactionRepo: Repository<FinancialTransaction>;
-  let snapshotRepo: Repository<MetricsSnapshot>;
 
   const mockTransactionRepo = {
     find: jest.fn(),
@@ -48,12 +45,6 @@ describe('FosDashboardService', () => {
     }).compile();
 
     service = module.get<FosDashboardService>(FosDashboardService);
-    transactionRepo = module.get<Repository<FinancialTransaction>>(
-      getRepositoryToken(FinancialTransaction),
-    );
-    snapshotRepo = module.get<Repository<MetricsSnapshot>>(
-      getRepositoryToken(MetricsSnapshot),
-    );
   });
 
   afterEach(() => {

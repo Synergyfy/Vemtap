@@ -5,7 +5,6 @@ import {
   IsString,
   IsOptional,
   IsEnum,
-  MinLength,
   IsStrongPassword,
   ValidateIf,
 } from 'class-validator';

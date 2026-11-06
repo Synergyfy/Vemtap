@@ -2,8 +2,8 @@ import {
   IsString,
   IsNotEmpty,
   IsOptional,
-  IsEnum,
   Length,
+  IsIn,
 } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { UserRole } from '../../users/entities/user.entity';
@@ -19,9 +19,10 @@ export class GoogleLoginDto {
   token: string;
 
   @ApiProperty({
-    enum: UserRole,
+    enum: [UserRole.CUSTOMER, UserRole.OWNER],
     example: UserRole.CUSTOMER,
-    description: 'The intended role for a new user (customer or owner)',
+    description:
+      'The intended role for a new user: customer or owner. Staff and admin roles are never granted here.',
     required: false,
   })
   @IsOptional()
@@ -32,7 +33,9 @@ export class GoogleLoginDto {
       value.charAt(0).toUpperCase() + value.slice(1).toLowerCase();
     return normalized;
   })
-  @IsEnum(UserRole)
+  @IsIn([UserRole.CUSTOMER, UserRole.OWNER], {
+    message: 'role must be Customer or Owner',
+  })
   role?: UserRole;
 
   @ApiProperty({ example: '123456', required: false })

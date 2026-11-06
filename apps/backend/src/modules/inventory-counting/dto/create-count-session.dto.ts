@@ -6,10 +6,7 @@ import {
   IsOptional,
   IsString,
   IsArray,
-  IsNumber,
-  Min,
 } from 'class-validator';
-import { Type } from 'class-transformer';
 
 export class CreateCountSessionDto {
   @ApiProperty({ example: 'uuid-of-branch' })

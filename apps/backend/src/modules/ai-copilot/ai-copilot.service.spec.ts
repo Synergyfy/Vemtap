@@ -24,6 +24,8 @@ import { PromptBuilder } from './prompts/prompt-builder';
 import { ResponseParser } from './prompts/response-parser';
 import { OpenAIClient } from './openai/openai.client';
 import { LocalFallbackService } from './services/local-fallback.service';
+import { PaymentsService } from '../payments/payments.service';
+import { CreditService } from '../messaging/services/credit.service';
 
 import { AiCreditService } from './services/ai-credit.service';
 
@@ -80,6 +82,27 @@ describe('AiCopilotService', () => {
         {
           provide: DataSource,
           useValue: mockDataSource,
+        },
+        {
+          provide: PaymentsService,
+          useValue: {
+            findByReference: jest.fn().mockResolvedValue(null),
+            verifyTransaction: jest.fn().mockResolvedValue({
+              reference: 'test-ref',
+              status: 'success',
+              amount: 50000,
+              currency: 'NGN',
+              channel: 'card',
+            }),
+            recordPayment: jest.fn().mockResolvedValue({}),
+          },
+        },
+        {
+          provide: CreditService,
+          useValue: {
+            getOrCreateWallet: jest.fn().mockResolvedValue({ businessId: 'test-business-id' }),
+            addCredits: jest.fn().mockResolvedValue(undefined),
+          },
         },
       ],
     }).compile();

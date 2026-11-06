@@ -109,6 +109,26 @@ export class CreateBranchDto {
   @IsOptional()
   officialEmail?: string;
 
+  @ApiPropertyOptional({ example: 'Chidinma Okafor' })
+  @IsString()
+  @IsOptional()
+  managerName?: string;
+
+  @ApiPropertyOptional({ example: 'chidinma@example.com' })
+  @IsEmail()
+  @IsOptional()
+  managerEmail?: string;
+
+  @ApiPropertyOptional({ example: '+2348030000000' })
+  @IsString()
+  @IsOptional()
+  managerPhone?: string;
+
+  @ApiPropertyOptional({ example: 'Abuja Municipal • Garki District' })
+  @IsString()
+  @IsOptional()
+  district?: string;
+
   @ApiPropertyOptional({
     example: {
       instagram: 'https://instagram.com/branch',
@@ -225,6 +245,26 @@ export class UpdateBranchDto {
   @IsOptional()
   officialEmail?: string;
 
+  @ApiPropertyOptional({ example: 'Chidinma Okafor' })
+  @IsString()
+  @IsOptional()
+  managerName?: string;
+
+  @ApiPropertyOptional({ example: 'chidinma@example.com' })
+  @IsEmail()
+  @IsOptional()
+  managerEmail?: string;
+
+  @ApiPropertyOptional({ example: '+2348030000000' })
+  @IsString()
+  @IsOptional()
+  managerPhone?: string;
+
+  @ApiPropertyOptional({ example: 'Abuja Municipal • Garki District' })
+  @IsString()
+  @IsOptional()
+  district?: string;
+
   @ApiPropertyOptional()
   @IsString()
   @IsOptional()
@@ -284,6 +324,16 @@ export class UpdateBranchDto {
   @IsBoolean()
   @IsOptional()
   isMainBranch?: boolean;
+
+  @ApiPropertyOptional({
+    example: true,
+    description:
+      'Pause (false) or reactivate (true) the location. Pausing hides the ' +
+      'branch from consumer discovery while preserving its ledger.',
+  })
+  @IsBoolean()
+  @IsOptional()
+  isActive?: boolean;
 
   @ApiPropertyOptional({
     example: {

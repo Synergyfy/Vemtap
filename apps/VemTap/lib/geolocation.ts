@@ -3,9 +3,22 @@ export interface GeolocationCoordinates {
   lng: number;
 }
 
-export function getBrowserLocation(): Promise<GeolocationCoordinates> {
+export class GeolocationDeniedError extends Error {
+  constructor(message = 'Location permission denied') {
+    super(message);
+    this.name = 'GeolocationDeniedError';
+  }
+}
+
+export interface BrowserLocationOptions {
+  enableHighAccuracy?: boolean;
+  timeout?: number;
+  maximumAge?: number;
+}
+
+export function getBrowserLocation(options?: BrowserLocationOptions): Promise<GeolocationCoordinates> {
   return new Promise((resolve, reject) => {
-    if (!navigator.geolocation) {
+    if (typeof navigator === 'undefined' || !navigator.geolocation) {
       reject(new Error('Geolocation is not supported by this browser'));
       return;
     }
@@ -18,16 +31,50 @@ export function getBrowserLocation(): Promise<GeolocationCoordinates> {
         });
       },
       (error) => {
+        if (error.code === error.PERMISSION_DENIED) {
+          reject(new GeolocationDeniedError());
+          return;
+        }
         const messages: Record<number, string> = {
-          [error.PERMISSION_DENIED]: 'Location permission denied',
           [error.POSITION_UNAVAILABLE]: 'Location information is unavailable',
           [error.TIMEOUT]: 'Location request timed out',
         };
         reject(new Error(messages[error.code] || 'Unknown geolocation error'));
       },
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 300000 },
+      {
+        enableHighAccuracy: options?.enableHighAccuracy ?? true,
+        timeout: options?.timeout ?? 10000,
+        maximumAge: options?.maximumAge ?? 300000,
+      },
     );
   });
+}
+
+export interface IpLocationResult extends GeolocationCoordinates {
+  city: string | null;
+  region: string | null;
+}
+
+/** Approximate location from the user's IP — last-resort fallback when GPS/WiFi positioning fails. */
+export async function getIpLocation(timeoutMs = 8000): Promise<IpLocationResult> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch('https://ipapi.co/json/', { signal: controller.signal });
+    if (!res.ok) throw new Error(`IP geolocation returned ${res.status}`);
+    const data = await res.json();
+    if (typeof data?.latitude !== 'number' || typeof data?.longitude !== 'number') {
+      throw new Error('IP geolocation returned no coordinates');
+    }
+    return {
+      lat: data.latitude,
+      lng: data.longitude,
+      city: typeof data.city === 'string' ? data.city : null,
+      region: typeof data.region === 'string' ? data.region : null,
+    };
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 interface NominatimResult {

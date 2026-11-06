@@ -14,6 +14,7 @@ import {
 import { User } from '../users/entities/user.entity';
 import { ProfilingLogicHelper } from './profiling-logic.helper';
 import { GeminiService } from './gemini.service';
+import { UserRole } from '../users/entities/user.entity';
 
 @Injectable()
 export class BusinessProfilingService {
@@ -84,7 +85,7 @@ export class BusinessProfilingService {
       .leftJoinAndSelect('profile.createdBy', 'createdBy');
 
     // Agents only see their own profiles
-    if (user.role === 'Agent') {
+    if (user.role === UserRole.AGENT) {
       qb.andWhere('profile.createdById = :userId', { userId: user.id });
     }
 
@@ -182,7 +183,7 @@ export class BusinessProfilingService {
 
   async getStats(user: User) {
     const qb = this.profileRepository.createQueryBuilder('profile');
-    if (user.role === 'Agent') {
+    if (user.role === UserRole.AGENT) {
       qb.where('profile.createdById = :userId', { userId: user.id });
     }
 

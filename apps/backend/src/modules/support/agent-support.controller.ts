@@ -15,7 +15,6 @@ import {
   ApiOperation,
   ApiResponse,
   ApiBearerAuth,
-  ApiQuery,
 } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
@@ -43,7 +42,11 @@ export class AgentSupportController {
   @Get('all')
   @ApiOperation({ summary: 'Get all agents (for assignment/listing)' })
   async getAgents(@Query() query: PaginationQueryDto) {
-    return this.supportService.findAllAgents(query.page, query.limit, query.cursor);
+    return this.supportService.findAllAgents(
+      query.page,
+      query.limit,
+      query.cursor,
+    );
   }
 
   @Get('stats')

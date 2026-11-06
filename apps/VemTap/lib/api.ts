@@ -1,5 +1,5 @@
 export const normalizeBaseUrl = (raw?: string) => {
-    if (!raw) return 'http://localhost:3001/api/v1';
+    if (!raw) return 'https://testapi.vemtap.com/api/v1';
     const trimmed = raw.replace(/\/+$/, '');
     if (trimmed.endsWith('/api/v1')) return trimmed;
     return `${trimmed}/api/v1`;
@@ -240,4 +240,32 @@ export const api = {
         apiCall(endpoint, { ...options, method: 'PATCH', body: JSON.stringify(data) }),
     delete: (endpoint: string, data?: any, options: ExtendedRequestInit = {}) =>
         apiCall(endpoint, { ...options, method: 'DELETE', body: data ? JSON.stringify(data) : undefined }),
+};
+
+/**
+ * Public fetch — no auth headers attached.
+ * Use for endpoints that should return public data regardless of who's calling.
+ */
+export const publicApi = {
+    get: async (endpoint: string, params?: Record<string, any>): Promise<any> => {
+        const normalizedEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+        let url = `${BASE_URL}${normalizedEndpoint}`;
+        if (params) {
+            const query = Object.entries(params)
+                .filter(([_, v]) => v !== undefined && v !== null && v !== '')
+                .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`)
+                .join('&');
+            if (query) url += `?${query}`;
+        }
+        const response = await fetch(url, {
+            method: 'GET',
+            headers: { 'Content-Type': 'application/json' },
+        });
+        if (!response.ok) {
+            const text = await response.text();
+            throw new Error(text || `API Error: ${response.status}`);
+        }
+        const text = await response.text();
+        return text ? JSON.parse(text) : {};
+    },
 };

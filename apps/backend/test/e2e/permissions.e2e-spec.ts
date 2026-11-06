@@ -8,14 +8,12 @@ import { DataSource } from 'typeorm';
 describe('Module Permissions Enforcement (e2e)', () => {
   let app: INestApplication;
   let dataSource: DataSource;
-  let ownerToken: string;
   let branchId: string;
 
   beforeAll(async () => {
     app = await createTestApp();
     dataSource = app.get(DataSource);
     const ownerRes = await createAuthenticatedUser(app, UserRole.OWNER);
-    ownerToken = ownerRes.token;
     branchId = ownerRes.user.branchId;
   });
 

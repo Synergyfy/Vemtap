@@ -11,10 +11,7 @@ import {
   Min,
   ValidateIf,
 } from 'class-validator';
-import {
-  DiscountType,
-  CouponDuration,
-} from '../entities/coupon.entity';
+import { DiscountType, CouponDuration } from '../entities/coupon.entity';
 
 export class CreateCouponDto {
   @ApiProperty({

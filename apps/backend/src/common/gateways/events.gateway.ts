@@ -29,7 +29,7 @@ export class EventsGateway
     private readonly userRepo: Repository<User>,
   ) {}
 
-  afterInit(server: Server) {
+  afterInit(_server: Server) {
     this.logger.log('Events Gateway Initialized');
   }
 

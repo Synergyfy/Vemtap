@@ -4,14 +4,17 @@ export class AddRenewalReminderColumns1787100000000 implements MigrationInterfac
   name = 'AddRenewalReminderColumns1787100000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
+    // Idempotent guards: this migration can be run against a database where
+    // the columns were already provisioned out-of-band (e.g. via synchronize),
+    // and it must never block the migration queue for other deployments.
     await queryRunner.query(
-      `ALTER TABLE "subscriptions" ADD "lastRenewalReminderAt" TIMESTAMP`,
+      `ALTER TABLE "subscriptions" ADD COLUMN IF NOT EXISTS "lastRenewalReminderAt" TIMESTAMP`,
     );
     await queryRunner.query(
-      `ALTER TABLE "subscriptions" ADD "lastRenewalReminderStage" integer`,
+      `ALTER TABLE "subscriptions" ADD COLUMN IF NOT EXISTS "lastRenewalReminderStage" integer`,
     );
     await queryRunner.query(
-      `ALTER TABLE "notifications" ADD "actionUrl" character varying`,
+      `ALTER TABLE "notifications" ADD COLUMN IF NOT EXISTS "actionUrl" character varying`,
     );
   }
 

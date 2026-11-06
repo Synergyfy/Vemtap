@@ -12,8 +12,11 @@ import {
   IsBoolean,
   IsObject,
   IsDateString,
+  MaxLength,
+  IsIn,
 } from 'class-validator';
 import { Type } from 'class-transformer';
+import type { PosOrderType } from '../pos-settings.types';
 import { PaymentMethod } from '../entities/pos-enums';
 
 export class PosSaleItemDto {
@@ -46,6 +49,15 @@ export class SplitPaymentDto {
   @IsNumber()
   @Min(1)
   amount: number;
+
+  @ApiPropertyOptional({
+    example: 'Tolu',
+    description: 'Who paid this part of a split bill',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(60)
+  payer?: string;
 }
 
 export class PaymentDetailsDto {
@@ -123,4 +135,31 @@ export class CreatePosSaleDto {
   @IsNotEmpty()
   @IsUUID()
   branchId: string;
+
+  @ApiPropertyOptional({
+    enum: ['dine_in', 'takeaway'],
+    default: 'dine_in',
+    description:
+      'Decides takeaway VAT exemption and packaging fee from the POS settings.',
+  })
+  @IsOptional()
+  @IsIn(['dine_in', 'takeaway'])
+  orderType?: PosOrderType;
+
+  @ApiPropertyOptional({
+    example: false,
+    description:
+      'Drop the service charge for this ticket. Ignored unless the settings allow waiving it.',
+  })
+  @IsOptional()
+  @IsBoolean()
+  waiveServiceCharge?: boolean;
+
+  @ApiPropertyOptional({
+    description:
+      'Supervisor approval from POST /pos/staff-pins/verify, when the POS permission policy requires one',
+  })
+  @IsOptional()
+  @IsString()
+  overrideToken?: string;
 }

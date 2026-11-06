@@ -22,7 +22,7 @@ export class AddBookingToQrTypeEnum1777826682000 implements MigrationInterface {
     `);
   }
 
-  public async down(queryRunner: QueryRunner): Promise<void> {
+  public async down(_queryRunner: QueryRunner): Promise<void> {
     // Note: PostgreSQL does not support removing values from an enum.
     // To maintain data integrity and follow safety best practices, we do nothing in down.
   }

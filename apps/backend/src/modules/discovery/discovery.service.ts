@@ -22,32 +22,14 @@ import {
 import { Plan } from '../subscriptions/entities/plan.entity';
 import { Notification } from '../notifications/entities/notification.entity';
 import { User, UserRole } from '../users/entities/user.entity';
-import {
-  SponsoredCampaign,
-  SponsoredCampaignStatus,
-} from './entities/sponsored-campaign.entity';
+import { SponsoredCampaign } from './entities/sponsored-campaign.entity';
 import { SponsoredCampaignTransaction } from './entities/sponsored-campaign-transaction.entity';
-import {
-  DiscoveryInvoice,
-  InvoiceStatus,
-} from './entities/discovery-invoice.entity';
+import { DiscoveryInvoice } from './entities/discovery-invoice.entity';
 import { InvoiceLineItem } from './entities/invoice-line-item.entity';
-import {
-  FraudAlert,
-  FraudSeverity,
-  FraudAlertStatus,
-} from './entities/fraud-alert.entity';
+import { FraudAlert, FraudAlertStatus } from './entities/fraud-alert.entity';
 import { Report, ReportStatus } from './entities/report.entity';
-import {
-  NotificationLog,
-  NotificationChannel,
-  NotificationDeliveryStatus,
-  NotificationOpenStatus,
-} from './entities/notification-log.entity';
-import {
-  OfferCategoryType,
-  CategoryTypeStatus,
-} from './entities/offer-category-type.entity';
+import { NotificationLog } from './entities/notification-log.entity';
+import { OfferCategoryType } from './entities/offer-category-type.entity';
 import { AuditLog } from '../administration/entities/audit-log.entity';
 import { Setting } from '../settings/entities/setting.entity';
 import { CatalogueOrder } from '../catalogue-orders/entities/catalogue-order.entity';
@@ -444,8 +426,6 @@ export class DiscoveryService {
     limit: number,
     cursor?: string,
   ) {
-    const skip = (page - 1) * limit;
-
     const qb = this.visitRepository
       .createQueryBuilder('visit')
       .leftJoinAndSelect('visit.customer', 'customer')
@@ -516,16 +496,16 @@ export class DiscoveryService {
     };
   }
 
-  async submitRecommendation(branchId: string, dto: RecommendBusinessDto) {
+  submitRecommendation(branchId: string, dto: RecommendBusinessDto) {
     console.log(
       `[Discovery Recommendation] Branch ${branchId} recommended business:`,
       dto,
     );
-    return {
+    return Promise.resolve({
       success: true,
       message: 'Recommendation submitted successfully',
       data: dto,
-    };
+    });
   }
 
   async getAdminStats() {
@@ -830,6 +810,16 @@ export class DiscoveryService {
     if (status) {
       qb.andWhere('offer.status = :status', { status });
     }
+    if (category) {
+      // The list prints a missing offer type as "N/A", so that filters too.
+      if (category.trim().toUpperCase() === 'N/A') {
+        qb.andWhere("COALESCE(offer.offerType, '') = ''");
+      } else {
+        qb.andWhere('LOWER(offer.offerType) = LOWER(:category)', {
+          category: category.trim(),
+        });
+      }
+    }
 
     const result = await paginateWithCursor({
       queryBuilder: qb,
@@ -978,7 +968,6 @@ export class DiscoveryService {
 
   async getAdminReferrals(query: AdminReferralQueryDto) {
     const { page = 1, limit = 10, search, status } = query;
-    const skip = (page - 1) * limit;
 
     const qb = this.visitRepository
       .createQueryBuilder('visit')
@@ -994,6 +983,12 @@ export class DiscoveryService {
         '(customer.firstName ILIKE :search OR customer.lastName ILIKE :search OR referredByBranch.name ILIKE :search OR branch.name ILIKE :search)',
         { search: `%${search}%` },
       );
+    }
+    // Mirrors the row label: patronage visits read "Purchased", others "Visited".
+    if (status === 'purchased') {
+      qb.andWhere("visit.visitType = 'patronage'");
+    } else if (status === 'visited') {
+      qb.andWhere("COALESCE(visit.visitType, 'portal') <> 'patronage'");
     }
 
     const result = await paginateWithCursor({
@@ -1116,25 +1111,23 @@ export class DiscoveryService {
     );
 
     return {
-      data: await Promise.all(
-        partnerships.map(async (p) => {
-          return {
-            id: p.id?.substring(0, 8) || p.id,
-            businessA:
-              p.initiatorBranch?.business?.name ||
-              p.initiatorBranch?.name ||
-              'Unknown',
-            businessB:
-              p.recipientBranch?.business?.name ||
-              p.recipientBranch?.name ||
-              'Unknown',
-            status: p.status,
-            customersShared: 0,
-            revenueGenerated: 0,
-            dateCreated: p.createdAt?.toISOString()?.split('T')[0] || '',
-          };
-        }),
-      ),
+      data: partnerships.map((p) => {
+        return {
+          id: p.id?.substring(0, 8) || p.id,
+          businessA:
+            p.initiatorBranch?.business?.name ||
+            p.initiatorBranch?.name ||
+            'Unknown',
+          businessB:
+            p.recipientBranch?.business?.name ||
+            p.recipientBranch?.name ||
+            'Unknown',
+          status: p.status,
+          customersShared: 0,
+          revenueGenerated: 0,
+          dateCreated: p.createdAt?.toISOString()?.split('T')[0] || '',
+        };
+      }),
       meta: { total, page, limit },
     };
   }
@@ -1381,7 +1374,6 @@ export class DiscoveryService {
 
   async getAdminCustomers(query: AdminCustomerQueryDto) {
     const { page = 1, limit = 10, search, status } = query;
-    const skip = (page - 1) * limit;
 
     const qb = this.userRepository
       .createQueryBuilder('user')
@@ -1733,7 +1725,7 @@ export class DiscoveryService {
     if (status) where.status = status;
     if (severity) where.severity = severity;
 
-    const [alerts, total] = await this.fraudAlertRepository.findAndCount({
+    const [alerts] = await this.fraudAlertRepository.findAndCount({
       where,
       relations: ['business', 'customer'],
       order: { timestamp: 'DESC' },

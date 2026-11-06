@@ -9,7 +9,7 @@ export class AddAiToCreditTransactionsChannelEnum1785530000000 implements Migrat
     );
   }
 
-  public async down(queryRunner: QueryRunner): Promise<void> {
+  public async down(_queryRunner: QueryRunner): Promise<void> {
     // Enum values cannot be removed easily in PostgreSQL without recreating the enum type
   }
 }

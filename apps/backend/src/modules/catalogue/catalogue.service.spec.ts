@@ -4,7 +4,10 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { CatalogueCategory } from './entities/catalogue-category.entity';
 import {
   CatalogueItem,
-  CatalogueItemStatus,
+  CatalogueItemType,
+  ServicePriceType,
+  ServiceMode,
+  ServiceBookingMethod,
 } from './entities/catalogue-item.entity';
 import { Branch } from '../branches/entities/branch.entity';
 import { Business } from '../businesses/entities/business.entity';
@@ -46,6 +49,7 @@ describe('CatalogueService', () => {
     findOne: jest.fn(),
     createQueryBuilder: jest.fn(() => mockQueryBuilder),
     remove: jest.fn(),
+    update: jest.fn().mockResolvedValue({ affected: 1 }),
   };
 
   const mockBranchRepo = {
@@ -120,6 +124,71 @@ describe('CatalogueService', () => {
       await expect(
         service.updateCategory('1', { name: 'X' }, 'B'),
       ).rejects.toThrow(NotFoundException);
+    });
+
+    it('should detach items before removing a category', async () => {
+      mockCategoryRepo.findOne.mockResolvedValue({ id: 'cat-1', name: 'Old' });
+      mockCategoryRepo.remove.mockResolvedValue({ id: 'cat-1' });
+
+      await service.deleteCategory('cat-1', 'bus-1');
+
+      expect(mockItemRepo.update).toHaveBeenCalledWith(
+        { categoryId: 'cat-1' },
+        { categoryId: null },
+      );
+      expect(mockCategoryRepo.remove).toHaveBeenCalledWith({
+        id: 'cat-1',
+        name: 'Old',
+      });
+    });
+
+    it('should throw NotFound if category not found on delete', async () => {
+      mockCategoryRepo.findOne.mockResolvedValue(null);
+      await expect(service.deleteCategory('1', 'B')).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+
+    it('should persist the submitted order as sortOrder', async () => {
+      const categories = [
+        { id: 'a', name: 'A', sortOrder: 0 },
+        { id: 'b', name: 'B', sortOrder: 0 },
+        { id: 'c', name: 'C', sortOrder: 0 },
+      ];
+      mockCategoryRepo.find
+        .mockResolvedValueOnce(categories)
+        .mockResolvedValueOnce([{ id: 'c', sortOrder: 2 }]);
+
+      const result = await service.reorderCategories('bus-1', ['c', 'a', 'b']);
+
+      expect(categories.map((category) => category.sortOrder)).toEqual([
+        1, 2, 0,
+      ]);
+      expect(mockCategoryRepo.save).toHaveBeenCalledWith(categories);
+      expect(result).toEqual([{ id: 'c', sortOrder: 2 }]);
+    });
+
+    it('should reject a reorder list containing an unknown category', async () => {
+      mockCategoryRepo.find.mockResolvedValueOnce([
+        { id: 'a', name: 'A', sortOrder: 0 },
+      ]);
+
+      await expect(
+        service.reorderCategories('bus-1', ['a', 'someone-elses']),
+      ).rejects.toThrow(BadRequestException);
+      expect(mockCategoryRepo.save).not.toHaveBeenCalled();
+    });
+
+    it('should reject a reorder list that omits a category', async () => {
+      mockCategoryRepo.find.mockResolvedValueOnce([
+        { id: 'a', name: 'A', sortOrder: 0 },
+        { id: 'b', name: 'B', sortOrder: 0 },
+      ]);
+
+      await expect(service.reorderCategories('bus-1', ['a'])).rejects.toThrow(
+        BadRequestException,
+      );
+      expect(mockCategoryRepo.save).not.toHaveBeenCalled();
     });
   });
 
@@ -331,6 +400,69 @@ describe('CatalogueService', () => {
       });
       expect(result.results[1].success).toBe(false);
       expect(result.results[1].row).toBe(3);
+    });
+
+    it('should create a service item with all service-specific fields', async () => {
+      const serviceDto = {
+        name: 'Full Body Massage',
+        price: 15000,
+        shortDescription: '1 hour therapeutic massage',
+        description: 'Deep tissue full body massage with aromatherapy oils',
+        itemType: CatalogueItemType.SERVICE,
+        priceType: ServicePriceType.STARTING_FROM,
+        priceRangeMin: 15000,
+        priceRangeMax: 25000,
+        duration: '1 hour',
+        serviceMode: ServiceMode.LOCATION,
+        isBookable: true,
+        bookingMethod: ServiceBookingMethod.WHATSAPP,
+        externalBookingLink: 'https://wa.me/2348012345678',
+        branchId: 'br-1',
+      };
+
+      mockBranchRepo.findOne.mockResolvedValue({
+        id: 'br-1',
+        businessId: 'bus-1',
+      });
+
+      const result = await service.createItem(serviceDto, 'bus-1');
+      expect(result.name).toBe('Full Body Massage');
+      expect(result.itemType).toBe(CatalogueItemType.SERVICE);
+      expect(result.priceType).toBe(ServicePriceType.STARTING_FROM);
+      expect(result.duration).toBe('1 hour');
+      expect(result.serviceMode).toBe(ServiceMode.LOCATION);
+      expect(result.isBookable).toBe(true);
+      expect(result.bookingMethod).toBe(ServiceBookingMethod.WHATSAPP);
+      expect(result.externalBookingLink).toBe('https://wa.me/2348012345678');
+      expect(mockItemRepo.save).toHaveBeenCalled();
+    });
+
+    it('should update service details correctly', async () => {
+      const existingService = {
+        id: 'service-1',
+        name: 'Haircut',
+        itemType: CatalogueItemType.SERVICE,
+        priceType: ServicePriceType.FIXED,
+        duration: '30 mins',
+        serviceMode: ServiceMode.LOCATION,
+        isBookable: false,
+        branches: [{ id: 'br-1' }],
+        businessId: 'bus-1',
+      };
+      mockItemRepo.findOne.mockResolvedValue(existingService);
+
+      const updateDto = {
+        duration: '45 mins',
+        isBookable: true,
+        bookingMethod: ServiceBookingMethod.VEMTAP,
+        serviceMode: ServiceMode.FLEXIBLE,
+      };
+
+      const result = await service.updateItem('service-1', updateDto, 'bus-1');
+      expect(result.duration).toBe('45 mins');
+      expect(result.isBookable).toBe(true);
+      expect(result.bookingMethod).toBe(ServiceBookingMethod.VEMTAP);
+      expect(result.serviceMode).toBe(ServiceMode.FLEXIBLE);
     });
   });
 });

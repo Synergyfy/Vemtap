@@ -21,7 +21,6 @@ import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../../common/guards/roles.guard';
 import { Roles } from '../../../common/decorators/roles.decorator';
 import { UserRole } from '../../users/entities/user.entity';
-import { Channel } from '../enums/channel.enum';
 import { CreditTransactionType } from '../enums/credit-transaction-type.enum';
 import { AdjustCreditsDto } from '../dto/adjust-credits.dto';
 import { BusinessIdDto } from '../dto/business-id.dto';

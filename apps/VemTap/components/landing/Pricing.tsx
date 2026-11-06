@@ -126,8 +126,8 @@ export default function Pricing() {
 
     return (
         <section id="pricing" className="py-12 md:py-16 bg-white overflow-hidden relative border-t border-gray-100">
-            <div className="max-w-7xl mx-auto px-6 sm:px-10 py-10">
-                <div className="text-center max-w-2xl mx-auto mb-10">
+            <div className="vemtap-container py-10">
+                <div className="text-center vemtap-container mb-10">
                     <h2 className="text-2xl md:text-4xl font-bold text-text-main mb-3">Enterprise-Grade <span className="text-primary">Licensing</span></h2>
                     <p className="text-base text-text-secondary font-normal">Clear pricing with no hidden fees.</p>
                 </div>
@@ -291,7 +291,7 @@ export default function Pricing() {
                     const price = getPriceByCycle(enterprisePlan, billingPeriod);
 
                     return (
-                        <div className="max-w-5xl mx-auto">
+                        <div className="vemtap-container">
                             <div className="relative flex flex-col md:flex-row items-center gap-8 p-6 md:p-8 rounded-2xl bg-primary text-white shadow-xl shadow-primary/10 border border-white/10">
                                 <div className="flex-1 text-center md:text-left">
                                     <div className="inline-block px-2.5 py-1 bg-white/20 text-white text-[8px] font-black rounded-full uppercase tracking-widest mb-3">
@@ -334,7 +334,7 @@ export default function Pricing() {
                 {/* Add-ons Preview */}
                 {addons.length > 0 && (
                     <div className="mt-24">
-                        <div className="text-center max-w-2xl mx-auto mb-12">
+                        <div className="text-center vemtap-container mb-12">
                             <div className="inline-flex items-center gap-2 px-3 py-1 bg-primary/10 text-primary rounded-full text-[10px] font-bold uppercase tracking-wider mb-4">
                                 <Sparkles size={12} />
                                 Power-Ups

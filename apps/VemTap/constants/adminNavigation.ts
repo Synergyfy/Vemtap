@@ -1,7 +1,7 @@
 import {
     Home, Store, Users, Nfc, CreditCard, BarChart, MessageSquare, Activity,
     Settings, ShieldCheck, Gift, Package, FileText, Tag, Workflow, Eye, Zap, ClipboardList, Headset, Megaphone, Palette,
-    Handshake, BookOpen, MapPin,
+    Handshake, BookOpen, MapPin, Bell,
     type LucideIcon
 } from 'lucide-react';
 
@@ -118,6 +118,14 @@ export const ADMIN_MENU_ITEMS: MenuItem[] = [
         keywords: ['discovery', 'network', 'referrals', 'attribution', 'partnerships', 'nearby']
     },
     {
+        id: 'deals',
+        label: 'Deals',
+        icon: Tag,
+        href: '/admin/deals',
+        permission: 'admin:all',
+        keywords: ['deals', 'offers', 'promotions', 'featured', 'discounts', 'coupons']
+    },
+    {
         id: 'clusters',
         label: 'Cluster Management',
         icon: MapPin,
@@ -180,6 +188,14 @@ export const ADMIN_MENU_ITEMS: MenuItem[] = [
         href: '/admin/forms',
         permission: 'admin:forms',
         keywords: ['campaigns', 'promotions', 'blasts', 'triggers', 'activity']
+    },
+    {
+        id: 'notifications',
+        label: 'Broadcasts & Alerts',
+        icon: Bell,
+        href: '/admin/notifications',
+        permission: 'admin:all',
+        keywords: ['notifications', 'broadcast', 'push', 'alerts', 'reminders', 'templates', 'announcements', 'messages']
     },
     {
         id: 'messaging',

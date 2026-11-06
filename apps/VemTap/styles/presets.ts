@@ -18,4 +18,17 @@ export const designPresets = {
     // Grid/Layout
     sectionPadding: "py-24 px-4 sm:px-6 lg:px-8",
     containerMaxWidth: "max-w-7xl mx-auto",
+
+    // Homepage sections
+    homeSection: "py-8 md:py-12 px-4 sm:px-6 lg:px-8",
+    homeSectionInner: "max-w-7xl mx-auto",
+    homeSectionTitle: "text-xl md:text-2xl font-bold text-gray-900 tracking-tight",
+    homeSectionSubtitle: "text-sm text-gray-500 mt-1",
+    homeSectionLink: "text-sm font-semibold text-primary hover:text-primary/80 transition-colors shrink-0",
+
+    // Horizontal scroll containers
+    snapContainer: "flex gap-4 overflow-x-auto snap-x snap-mandatory scrollbar-hide -mx-4 px-4 md:mx-0 md:px-0 pb-4",
+    snapItem: "snap-start shrink-0",
+    scrollContainer: "flex gap-4 overflow-x-auto scrollbar-hide -mx-4 px-4 md:mx-0 md:px-0 pb-4",
+    scrollItem: "shrink-0",
 };

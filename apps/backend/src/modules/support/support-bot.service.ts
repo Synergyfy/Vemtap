@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import {
@@ -54,7 +54,7 @@ export class SupportBotService {
     userId: string | null,
     dto: BotQueryDto,
   ): Promise<BotResponseDto> {
-    const { query, context, sessionId, guestName, guestEmail } = dto;
+    const { query, context, sessionId, guestName } = dto;
     this.logger.log(
       `🔍 [BOT] Handling query for ${userId ? `user ${userId}` : 'anonymous visitor'}: "${query}" (sessionId: ${sessionId || 'new'})`,
     );
@@ -411,12 +411,7 @@ export class SupportBotService {
         await this.conversationContext.setPath(userId, sessionId, pathTrigger);
         convContext.currentPath = pathTrigger;
         return this.logPathResponse(
-          await this.getPathResponse(
-            pathTrigger,
-            originalQuery,
-            userId,
-            sessionId,
-          ),
+          this.getPathResponse(pathTrigger, originalQuery, userId, sessionId),
           userId,
           originalQuery,
           sessionId,
@@ -531,12 +526,10 @@ export class SupportBotService {
 
   private getPathResponse(
     path: string,
-    query: string,
-    userId: string | null,
-    sessionId: string | null,
+    _query: string,
+    _userId: string | null,
+    _sessionId: string | null,
   ): BotResponseDto {
-    const buttons: ChatButton[] = [];
-
     switch (path) {
       case 'grow_business':
         return {
@@ -785,10 +778,10 @@ export class SupportBotService {
 
   private handleNeedHelpPath(
     query: string,
-    originalQuery: string,
-    convContext: any,
-    userId: string | null,
-    sessionId: string | null,
+    _originalQuery: string,
+    _convContext: any,
+    _userId: string | null,
+    _sessionId: string | null,
   ): BotResponseDto | null {
     if (
       query.includes('human') ||
@@ -929,12 +922,10 @@ export class SupportBotService {
       const itemWords = itemText.split(/\s+/).filter((w) => w.length > 2);
 
       let score = 0;
-      let keywordMatches = 0;
 
       for (const word of queryWords) {
         if (itemKeywords.includes(word)) {
           score += 3;
-          keywordMatches++;
         }
         if (itemWords.includes(word)) {
           score += 1;
@@ -1341,7 +1332,7 @@ User's question: ${query}`;
 
     try {
       const result = await model.generateContent(prompt);
-      const response = await result.response;
+      const response = result.response;
       const text = response.text();
 
       const jsonMatch = text.match(/\{[\s\S]*\}/);
@@ -1827,7 +1818,7 @@ User's question: ${query}`;
     ];
   }
 
-  private getFallbackMessage(query: string): string {
+  private getFallbackMessage(_query: string): string {
     const messages = [
       "I'm not quite sure about that. Would you like me to connect you with a human agent?",
       "That's an interesting question! For specific assistance, I can connect you with our support team.",
@@ -1889,6 +1880,21 @@ User's question: ${query}`;
       isAiGenerated: false,
     });
     return this.knowledgeRepo.save(item);
+  }
+
+  async updateKnowledge(id: string, dto: Partial<SupportKnowledge>) {
+    const item = await this.knowledgeRepo.findOne({ where: { id } });
+    if (!item) throw new NotFoundException('Knowledge entry not found');
+    Object.assign(item, dto);
+    return this.knowledgeRepo.save(item);
+  }
+
+  async deleteKnowledge(id: string) {
+    const result = await this.knowledgeRepo.delete(id);
+    if (!result.affected) {
+      throw new NotFoundException('Knowledge entry not found');
+    }
+    return { success: true };
   }
 
   async getMissedQuestions() {

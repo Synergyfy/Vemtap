@@ -8,7 +8,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
-import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiBearerAuth, ApiBody } from '@nestjs/swagger';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { UserRole } from '../users/entities/user.entity';
 import { RolesGuard } from '../../common/guards/roles.guard';
@@ -16,6 +16,11 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { AiCopilotService } from './ai-copilot.service';
 import { AnalyzeRequestDto } from './dto/analyze-request.dto';
 import { AIAnalysisResponse } from './dto/ai-analysis-response.dto';
+import {
+  ProcessingConsentGuard,
+  RequiresProcessingConsent,
+} from '../account-privacy/processing-consent.guard';
+import { PurchaseAiCreditsDto } from './dto/purchase-ai-credits.dto';
 
 @ApiTags('AI Copilot')
 @ApiBearerAuth()
@@ -26,6 +31,8 @@ export class AiCopilotController {
   constructor(private readonly aiCopilotService: AiCopilotService) {}
 
   @Post('analyze')
+  @UseGuards(ProcessingConsentGuard)
+  @RequiresProcessingConsent('analytics')
   @Throttle({ default: { limit: 10, ttl: 60000 } })
   @ApiOperation({ summary: 'Analyze a dashboard page using AI copilot' })
   async analyze(
@@ -47,5 +54,24 @@ export class AiCopilotController {
     if (!branchId)
       throw new BadRequestException('Branch or Business ID is required');
     return this.aiCopilotService.getCredits(branchId);
+  }
+
+  @Post('credits/purchase')
+  @ApiOperation({ summary: 'Purchase AI credits after payment verification' })
+  @ApiBody({ type: PurchaseAiCreditsDto })
+  async purchaseCredits(
+    @Request() req: any,
+    @Body() dto: PurchaseAiCreditsDto,
+  ) {
+    const branchId =
+      req.user?.branchId || req.user?.activeBranchId || req.user?.businessId;
+    if (!branchId)
+      throw new BadRequestException('Branch or Business ID is required');
+    return this.aiCopilotService.purchaseCredits(
+      branchId,
+      dto.credits,
+      dto.amount,
+      dto.reference,
+    );
   }
 }

@@ -18,7 +18,9 @@ import { RequestQuoteDto } from './dto/request-quote.dto';
 import { NegotiateQuoteDto } from './dto/negotiate-quote.dto';
 import { CreateProductTypeDto } from './dto/create-product-type.dto';
 import { UpdateProductTypeDto } from './dto/update-product-type.dto';
-import { AdminProductQueryDto, ProductQueryDto } from './dto/product-query.dto';
+import { AdminProductQueryDto } from './dto/product-query.dto';
+import { PublicProductsQueryDto } from '../catalogue/dto/item.dto';
+import { CatalogueService } from '../catalogue/catalogue.service';
 import {
   CreateProductReviewDto,
   ProductReviewsAdminQueryDto,
@@ -48,7 +50,10 @@ import {
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('products')
 export class ProductsController {
-  constructor(private readonly productsService: ProductsService) {}
+  constructor(
+    private readonly productsService: ProductsService,
+    private readonly catalogueService: CatalogueService,
+  ) {}
 
   @Roles(UserRole.ADMIN)
   @ApiBearerAuth()
@@ -66,14 +71,21 @@ export class ProductsController {
 
   @Public()
   @Get()
-  @ApiOperation({ summary: 'Get all published products (Public)' })
+  @ApiOperation({
+    summary: 'List published products (Public)',
+    description:
+      'Feed of active catalogue items (products and services) across all ' +
+      'branches, backed by the catalogue module. Supports `page`, `limit`, ' +
+      '`search`, `categoryId`, `itemType`, `minPrice`, `maxPrice` and ' +
+      '`sortBy` (newest | oldest | price_asc | price_desc). Returns ' +
+      '`{ data, total, page, limit, totalPages, hasNextPage, hasPrevPage }`.',
+  })
   @ApiResponse({
     status: 200,
-    description:
-      'Return paginated published products with search/filter/sort support.',
+    description: 'Paginated published catalogue items.',
   })
-  findAll(@Query() query: ProductQueryDto) {
-    return this.productsService.findAllPublished(query);
+  findAll(@Query() query: PublicProductsQueryDto) {
+    return this.catalogueService.findPublishedItemsPublic(query);
   }
 
   // --- Product Types Endpoints ---

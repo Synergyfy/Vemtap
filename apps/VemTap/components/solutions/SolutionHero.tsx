@@ -12,13 +12,13 @@ export default function SolutionHero() {
                 WebkitMaskImage: 'linear-gradient(to right, black 20%, transparent 80%)'
             }}></div>
 
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center z-10 relative">
+            <div className="vemtap-container text-center z-10 relative">
                 <span className="inline-block py-1 px-4 rounded-full bg-primary/5 text-primary text-[10px] font-black uppercase tracking-[0.2em] mb-6">Use Cases</span>
-                <h1 className="font-display font-bold text-5xl md:text-7xl leading-[1.1] text-text-main max-w-4xl mx-auto mb-8 tracking-tight">
+                <h1 className="font-display font-bold text-5xl md:text-7xl leading-[1.1] text-text-main vemtap-container mb-8 tracking-tight">
                     Solutions for every <br />
                     <span className="text-gradient">physical space</span>
                 </h1>
-                <p className="text-lg md:text-xl text-text-secondary max-w-2xl mx-auto leading-relaxed font-medium">
+                <p className="text-lg md:text-xl text-text-secondary vemtap-container leading-relaxed font-medium">
                     From high-street retail to exclusive events, discover how VemTap transforms visitor interactions into valuable digital connections.
                 </p>
             </div>

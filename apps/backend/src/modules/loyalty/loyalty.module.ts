@@ -18,6 +18,7 @@ import { BranchesModule } from '../branches/branches.module';
 import { UsersModule } from '../users/users.module';
 
 import { Visit } from '../visitors/entities/visit.entity';
+import { CatalogueOfferClaim } from '../catalogue/entities/catalogue-offer-claim.entity';
 
 @Module({
   imports: [
@@ -32,6 +33,7 @@ import { Visit } from '../visitors/entities/visit.entity';
       Branch,
       Business,
       Visit,
+      CatalogueOfferClaim,
     ]),
     forwardRef(() => DevicesModule),
     forwardRef(() => CampaignsModule),

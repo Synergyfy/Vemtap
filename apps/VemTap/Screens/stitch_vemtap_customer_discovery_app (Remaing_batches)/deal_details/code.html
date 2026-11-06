@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Deal Details - VEMTAP</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                            "on-secondary-fixed": "#0b1c30",
+                            "surface-container-highest": "#e0e3e5",
+                            "secondary-fixed": "#d3e4fe",
+                            "on-surface-variant": "#424655",
+                            "inverse-surface": "#2d3133",
+                            "on-primary-fixed": "#001945",
+                            "on-error-container": "#93000a",
+                            "secondary-container": "#d0e1fb",
+                            "on-primary-fixed-variant": "#00429b",
+                            "surface-dim": "#d8dadc",
+                            "surface-container-lowest": "#ffffff",
+                            "secondary": "#505f76",
+                            "tertiary": "#535a71",
+                            "tertiary-container": "#6b738a",
+                            "background": "#f7f9fb",
+                            "on-tertiary-fixed": "#131b2e",
+                            "primary": "#0055c4",
+                            "on-error": "#ffffff",
+                            "on-secondary-fixed-variant": "#38485d",
+                            "error": "#ba1a1a",
+                            "on-background": "#191c1e",
+                            "primary-container": "#066cf4",
+                            "surface-tint": "#0058cb",
+                            "inverse-on-surface": "#eff1f3",
+                            "on-tertiary-fixed-variant": "#3f465c",
+                            "tertiary-fixed": "#dae2fd",
+                            "surface-bright": "#f7f9fb",
+                            "surface-container": "#eceef0",
+                            "secondary-fixed-dim": "#b7c8e1",
+                            "outline": "#727786",
+                            "on-surface": "#191c1e",
+                            "error-container": "#ffdad6",
+                            "surface": "#f7f9fb",
+                            "tertiary-fixed-dim": "#bec6e0",
+                            "on-secondary-container": "#54647a",
+                            "on-secondary": "#ffffff",
+                            "on-tertiary-container": "#fcfaff",
+                            "outline-variant": "#c2c6d7",
+                            "surface-container-high": "#e6e8ea",
+                            "primary-fixed": "#d9e2ff",
+                            "on-primary-container": "#fcfaff",
+                            "inverse-primary": "#b0c6ff",
+                            "on-primary": "#ffffff",
+                            "on-tertiary": "#ffffff",
+                            "surface-container-low": "#f2f4f6",
+                            "primary-fixed-dim": "#b0c6ff",
+                            "surface-variant": "#e0e3e5"
+                    },
+                    "borderRadius": {
+                            "DEFAULT": "0.25rem",
+                            "lg": "0.5rem",
+                            "xl": "0.75rem",
+                            "full": "9999px"
+                    },
+                    "spacing": {
+                            "touch-target-min": "44px",
+                            "margin-main": "1.25rem",
+                            "stack-sm": "0.5rem",
+                            "gutter-grid": "1rem",
+                            "stack-lg": "1.5rem",
+                            "stack-md": "1rem"
+                    },
+                    "fontFamily": {
+                            "label-lg": ["Inter"],
+                            "headline-sm": ["Inter"],
+                            "headline-md": ["Inter"],
+                            "body-lg": ["Inter"],
+                            "display-lg": ["Inter"],
+                            "label-sm": ["Inter"],
+                            "currency-display": ["Inter"],
+                            "body-md": ["Inter"]
+                    },
+                    "fontSize": {
+                            "label-lg": ["14px", {"lineHeight": "20px", "letterSpacing": "0.01em", "fontWeight": "600"}],
+                            "headline-sm": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                            "headline-md": ["24px", {"lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                            "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                            "display-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                            "label-sm": ["12px", {"lineHeight": "16px", "fontWeight": "500"}],
+                            "currency-display": ["20px", {"lineHeight": "24px", "fontWeight": "700"}],
+                            "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-surface text-on-surface antialiased min-h-screen pb-32">
+<!-- Top App Bar (Modified for Detail Screen context: Back & Share actions) -->
+<header class="fixed top-0 w-full z-50 bg-transparent transition-colors duration-300" id="top-bar">
+<div class="flex items-center justify-between px-margin-main h-touch-target-min w-full">
+<button class="w-10 h-10 rounded-full bg-surface-container-lowest/80 backdrop-blur-sm flex items-center justify-center text-on-surface hover:bg-surface-container-low transition-colors active:scale-95 duration-100 shadow-sm border border-outline-variant/30">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">arrow_back</span>
+</button>
+<div class="flex gap-2">
+<button class="w-10 h-10 rounded-full bg-surface-container-lowest/80 backdrop-blur-sm flex items-center justify-center text-on-surface hover:bg-surface-container-low transition-colors active:scale-95 duration-100 shadow-sm border border-outline-variant/30">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">share</span>
+</button>
+<button class="w-10 h-10 rounded-full bg-surface-container-lowest/80 backdrop-blur-sm flex items-center justify-center text-on-surface hover:bg-surface-container-low transition-colors active:scale-95 duration-100 shadow-sm border border-outline-variant/30">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">bookmark</span>
+</button>
+</div>
+</div>
+</header>
+<!-- Hero Image -->
+<div class="relative w-full h-[397px] min-h-[300px]">
+<img class="w-full h-full object-cover" data-alt="A high-quality, mouth-watering close-up photograph of a lavish weekend brunch spread at a premium Nigerian restaurant. The scene features fluffy pancakes, fresh fruits, eggs, and freshly brewed coffee in elegant ceramic cups. Soft, natural morning light pours in from a large window, creating a warm, inviting, and sophisticated atmosphere consistent with a clean, modern corporate discovery app aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAWvSIJM3ejiM5X-OtDV1uggzicq1axuyGWL1NDDjZBQZOxJotgqP-oflsxIuENgCVSR3xg4aJUDa1K2SQBWEYbuz0vBQSD9K2zMlb3_J61JJqtI5lEtSdaJIrSd9_BESStbD-O-0K5LMFPDtblv6G2mG6PPw7GGfFrWjVEPoMc4h6oRJ7bFxWEVjhcSGiEG7PybjR_2jIc486M67KT-wVEUdvLesJ4Qo866WKrbYHmmgIBJLmZ1otaAw"/>
+<div class="absolute inset-0 bg-gradient-to-t from-on-surface/80 via-transparent to-transparent"></div>
+<!-- Badge -->
+<div class="absolute top-margin-main left-margin-main bg-error text-on-error px-3 py-1 rounded-full font-label-sm text-label-sm shadow-md mt-12 z-40 flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">local_offer</span>
+             20% OFF
+        </div>
+</div>
+<!-- Main Content Canvas -->
+<main class="relative z-10 -mt-6 bg-surface-container-lowest rounded-t-xl px-margin-main pt-stack-lg pb-margin-main shadow-[0_-4px_16px_rgba(0,0,0,0.05)]">
+<!-- Header Info -->
+<div class="mb-stack-lg">
+<div class="flex justify-between items-start mb-2">
+<h1 class="font-headline-md text-headline-md text-on-surface max-w-[75%] leading-tight">Weekend Brunch at Royal Spice Restaurant</h1>
+<div class="flex items-center gap-1 bg-surface-container-low px-2 py-1 rounded-lg">
+<span class="material-symbols-outlined text-primary text-[16px]" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="font-label-lg text-label-lg text-on-surface">4.8</span>
+</div>
+</div>
+<div class="flex items-center gap-4 text-on-surface-variant font-body-md text-body-md">
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]">location_on</span>
+                    Wuse 2, Abuja (1.4 km)
+                </div>
+<div class="flex items-center gap-1 text-primary">
+<span class="material-symbols-outlined text-[16px]">verified</span>
+                    Verified
+                </div>
+</div>
+</div>
+<!-- Price Bento Card -->
+<div class="bg-primary/5 border border-primary/10 rounded-xl p-stack-md mb-stack-lg flex justify-between items-center relative overflow-hidden">
+<!-- Decorative background accent -->
+<div class="absolute -right-8 -top-8 w-24 h-24 bg-primary/10 rounded-full blur-xl"></div>
+<div>
+<p class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider mb-1">Deal Price</p>
+<div class="flex items-end gap-2">
+<span class="font-currency-display text-currency-display text-primary">₦9,600</span>
+<span class="font-body-md text-body-md text-outline line-through mb-0.5">₦12,000</span>
+</div>
+</div>
+<div class="bg-primary text-on-primary font-label-lg text-label-lg px-3 py-1.5 rounded-lg shadow-sm">
+                 SAVE ₦2,400
+             </div>
+</div>
+<!-- Details Grid -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-stack-lg mb-stack-lg">
+<!-- Description -->
+<section>
+<h2 class="font-headline-sm text-headline-sm text-on-surface mb-stack-sm flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-[20px]">info</span>
+                    Deal Description
+                </h2>
+<p class="font-body-lg text-body-lg text-on-surface-variant leading-relaxed">
+                    Elevate your weekend with our signature brunch experience. Enjoy a vast spread of continental and local delicacies, bottomless freshly brewed coffee, and complimentary chilled juices. Perfect for family outings or catching up with friends in our serene, air-conditioned dining lounge.
+                </p>
+</section>
+<!-- Metadata Cards -->
+<div class="flex flex-col gap-stack-md">
+<!-- Validity -->
+<div class="bg-surface-container-low p-stack-md rounded-xl border border-outline-variant/30 flex items-start gap-3">
+<div class="w-10 h-10 rounded-full bg-surface-container-highest flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-on-surface">event</span>
+</div>
+<div>
+<h3 class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider mb-0.5">Valid Until</h3>
+<p class="font-body-lg text-body-lg text-on-surface">30 September 2026</p>
+</div>
+</div>
+<!-- Location Preview -->
+<div class="bg-surface-container-low p-stack-md rounded-xl border border-outline-variant/30 flex items-start gap-3">
+<div class="w-10 h-10 rounded-full bg-surface-container-highest flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-on-surface">map</span>
+</div>
+<div class="flex-grow">
+<h3 class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider mb-0.5">Location</h3>
+<p class="font-body-lg text-body-lg text-on-surface">Royal Spice Restaurant</p>
+<p class="font-body-md text-body-md text-on-surface-variant">14 Aminu Kano Cres, Wuse 2, Abuja</p>
+</div>
+<button class="text-primary hover:bg-primary/10 p-2 rounded-full transition-colors active:scale-95">
+<span class="material-symbols-outlined">directions</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Terms & Conditions (Expandable) -->
+<section class="border-t border-outline-variant/40 pt-stack-md">
+<details class="group cursor-pointer [&amp;_summary::-webkit-details-marker]:hidden">
+<summary class="flex items-center justify-between font-label-lg text-label-lg text-on-surface py-2 select-none">
+<span class="flex items-center gap-2">
+<span class="material-symbols-outlined text-on-surface-variant text-[20px]">gavel</span>
+                        Terms &amp; Conditions
+                    </span>
+<span class="material-symbols-outlined transition-transform duration-200 group-open:rotate-180">expand_more</span>
+</summary>
+<div class="mt-stack-sm pb-stack-sm text-body-md font-body-md text-on-surface-variant space-y-2">
+<p>• Valid only for dine-in customers on Saturdays and Sundays between 10:00 AM and 2:00 PM.</p>
+<p>• Prior reservation is required at least 24 hours in advance.</p>
+<p>• Cannot be combined with any other existing offers, promotions, or loyalty discounts.</p>
+<p>• Deal code must be presented to the server before ordering.</p>
+</div>
+</details>
+</section>
+</main>
+<!-- Sticky Bottom Action Bar -->
+<div class="fixed bottom-0 left-0 w-full bg-surface-container-lowest border-t border-outline-variant/30 p-margin-main z-50 shadow-[0_-4px_16px_rgba(0,0,0,0.05)] pb-6">
+<button class="w-full h-12 bg-primary text-on-primary font-label-lg text-label-lg rounded-xl shadow-sm flex items-center justify-center gap-2 hover:bg-primary-container transition-colors active:scale-95 duration-100">
+<span class="material-symbols-outlined">local_activity</span>
+            CLAIM DEAL
+        </button>
+</div>
+<!-- Scroll behavior script for top bar -->
+<script>
+        document.addEventListener('scroll', () => {
+            const topBar = document.getElementById('top-bar');
+            if (window.scrollY > 50) {
+                topBar.classList.remove('bg-transparent');
+                topBar.classList.add('bg-surface-container-lowest/90', 'backdrop-blur-md', 'shadow-sm');
+            } else {
+                topBar.classList.add('bg-transparent');
+                topBar.classList.remove('bg-surface-container-lowest/90', 'backdrop-blur-md', 'shadow-sm');
+            }
+        });
+    </script>
+</body></html>

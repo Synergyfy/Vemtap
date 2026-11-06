@@ -56,4 +56,30 @@ export class CatalogueOrderItem extends AbstractBaseEntity {
   })
   @Column({ type: 'int', default: 0 })
   refundedQuantity: number;
+
+  /** Store ordering: false when staff marked the line out of stock. */
+  @ApiProperty({ example: true })
+  @Column({ default: true })
+  available: boolean;
+
+  /** Store ordering: staff removed the line from the order. */
+  @ApiProperty({ example: false })
+  @Column({ default: false })
+  removed: boolean;
+
+  /** Store ordering: the line was swapped for another product. */
+  @ApiProperty({
+    example: {
+      originalName: 'Ribeye',
+      replacementName: 'Sirloin',
+      priceDiff: -1500,
+    },
+    nullable: true,
+  })
+  @Column({ type: 'jsonb', nullable: true })
+  substitution: {
+    originalName: string;
+    replacementName: string;
+    priceDiff: number;
+  } | null;
 }

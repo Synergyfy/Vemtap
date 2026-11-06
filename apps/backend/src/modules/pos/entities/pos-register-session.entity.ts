@@ -5,9 +5,11 @@ import { Branch } from '../../branches/entities/branch.entity';
 import { User } from '../../users/entities/user.entity';
 import { ApiProperty } from '@nestjs/swagger';
 import { RegisterSessionStatus } from './pos-enums';
+import { PosTill } from './pos-till.entity';
 
 @Entity('pos_register_sessions')
 @Index(['businessId', 'cashierId'])
+@Index(['tillId', 'status'])
 export class PosRegisterSession extends AbstractBaseEntity {
   @ManyToOne(() => Business, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'businessId' })
@@ -29,6 +31,15 @@ export class PosRegisterSession extends AbstractBaseEntity {
 
   @Column({ type: 'uuid' })
   cashierId: string;
+
+  /** The till this shift runs on. Null for sessions opened without one. */
+  @ManyToOne(() => PosTill, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'tillId' })
+  till: PosTill | null;
+
+  @ApiProperty({ nullable: true })
+  @Column({ type: 'uuid', nullable: true })
+  tillId: string | null;
 
   @ApiProperty()
   @Column({ type: 'timestamp' })
@@ -82,4 +93,32 @@ export class PosRegisterSession extends AbstractBaseEntity {
     default: RegisterSessionStatus.OPEN,
   })
   status: RegisterSessionStatus;
+
+  /**
+   * Physical cash counted out of the drawer at close, and how far that landed
+   * from `expectedCash` (counted minus expected, so negative is a shortfall).
+   *
+   * Both nullable: a shift closed without reading the till was never
+   * reconciled, and a default of 0 would report a perfectly balanced drawer
+   * that nobody counted.
+   */
+  @ApiProperty({ example: 342850, nullable: true })
+  @Column({
+    type: 'decimal',
+    precision: 12,
+    scale: 2,
+    nullable: true,
+    transformer: { to: (v: number) => v, from: (v: string) => parseFloat(v) },
+  })
+  countedCash: number | null;
+
+  @ApiProperty({ example: 0, nullable: true })
+  @Column({
+    type: 'decimal',
+    precision: 12,
+    scale: 2,
+    nullable: true,
+    transformer: { to: (v: number) => v, from: (v: string) => parseFloat(v) },
+  })
+  variance: number | null;
 }

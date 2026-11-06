@@ -15,7 +15,7 @@ import { AFFILIATE_EXTERNAL_SYNC_QUEUE } from './external-affiliate.constants';
     // Messaging/Notifications modules. forRoot is idempotent across modules.
     BullModule.forRootAsync({
       imports: [ConfigModule],
-      useFactory: async (configService: ConfigService) => {
+      useFactory: (configService: ConfigService) => {
         const host = configService.get<string>('REDIS_HOST', 'localhost');
         const port = configService.get<number>('REDIS_PORT', 6379);
         const password = configService.get<string>('REDIS_PASSWORD');

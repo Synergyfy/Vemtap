@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Deal Reviews - VEMTAP</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "on-secondary-fixed": "#0b1c30",
+                      "surface-container-highest": "#e0e3e5",
+                      "secondary-fixed": "#d3e4fe",
+                      "on-surface-variant": "#424655",
+                      "inverse-surface": "#2d3133",
+                      "on-primary-fixed": "#001945",
+                      "on-error-container": "#93000a",
+                      "secondary-container": "#d0e1fb",
+                      "on-primary-fixed-variant": "#00429b",
+                      "surface-dim": "#d8dadc",
+                      "surface-container-lowest": "#ffffff",
+                      "secondary": "#505f76",
+                      "tertiary": "#535a71",
+                      "tertiary-container": "#6b738a",
+                      "background": "#f7f9fb",
+                      "on-tertiary-fixed": "#131b2e",
+                      "primary": "#0055c4",
+                      "on-error": "#ffffff",
+                      "on-secondary-fixed-variant": "#38485d",
+                      "error": "#ba1a1a",
+                      "on-background": "#191c1e",
+                      "primary-container": "#066cf4",
+                      "surface-tint": "#0058cb",
+                      "inverse-on-surface": "#eff1f3",
+                      "on-tertiary-fixed-variant": "#3f465c",
+                      "tertiary-fixed": "#dae2fd",
+                      "surface-bright": "#f7f9fb",
+                      "surface-container": "#eceef0",
+                      "secondary-fixed-dim": "#b7c8e1",
+                      "outline": "#727786",
+                      "on-surface": "#191c1e",
+                      "error-container": "#ffdad6",
+                      "surface": "#f7f9fb",
+                      "tertiary-fixed-dim": "#bec6e0",
+                      "on-secondary-container": "#54647a",
+                      "on-secondary": "#ffffff",
+                      "on-tertiary-container": "#fcfaff",
+                      "outline-variant": "#c2c6d7",
+                      "surface-container-high": "#e6e8ea",
+                      "primary-fixed": "#d9e2ff",
+                      "on-primary-container": "#fcfaff",
+                      "inverse-primary": "#b0c6ff",
+                      "on-primary": "#ffffff",
+                      "on-tertiary": "#ffffff",
+                      "surface-container-low": "#f2f4f6",
+                      "primary-fixed-dim": "#b0c6ff",
+                      "surface-variant": "#e0e3e5"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "touch-target-min": "44px",
+                      "margin-main": "1.25rem",
+                      "stack-sm": "0.5rem",
+                      "gutter-grid": "1rem",
+                      "stack-lg": "1.5rem",
+                      "stack-md": "1rem"
+              },
+              "fontFamily": {
+                      "label-lg": ["Inter"],
+                      "headline-sm": ["Inter"],
+                      "headline-md": ["Inter"],
+                      "body-lg": ["Inter"],
+                      "display-lg": ["Inter"],
+                      "label-sm": ["Inter"],
+                      "currency-display": ["Inter"],
+                      "body-md": ["Inter"]
+              },
+              "fontSize": {
+                      "label-lg": ["14px", {"lineHeight": "20px", "letterSpacing": "0.01em", "fontWeight": "600"}],
+                      "headline-sm": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                      "headline-md": ["24px", {"lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                      "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                      "display-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                      "label-sm": ["12px", {"lineHeight": "16px", "fontWeight": "500"}],
+                      "currency-display": ["20px", {"lineHeight": "24px", "fontWeight": "700"}],
+                      "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}]
+              }
+            }
+          }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+          font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .star-filled { color: #0055c4; } /* primary */
+        .star-empty { color: #c2c6d7; } /* outline-variant */
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background min-h-screen flex flex-col font-sans">
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full bg-surface text-primary font-headline-sm text-headline-sm border-b border-outline-variant flex items-center justify-between px-margin-main h-touch-target-min w-full z-50">
+<button aria-label="Back" class="w-10 h-10 flex items-center justify-center hover:bg-surface-container-low transition-colors active:scale-95 duration-100 rounded-full">
+<span class="material-symbols-outlined" data-icon="arrow_back">arrow_back</span>
+</button>
+<div class="flex flex-col items-center flex-1">
+<h1 class="font-headline-sm text-headline-sm text-on-surface truncate max-w-[200px]">Spa Day Package</h1>
+<span class="font-label-sm text-label-sm text-on-surface-variant truncate max-w-[200px]">Serenity Spa &amp; Wellness</span>
+</div>
+<div class="w-10 h-10"></div> <!-- Spacer for centering -->
+</header>
+<!-- Main Content Canvas -->
+<main class="flex-1 mt-touch-target-min pb-32 pt-stack-md px-margin-main flex flex-col gap-stack-lg max-w-2xl mx-auto w-full">
+<!-- Overall Rating Section (Bento Card) -->
+<section class="bg-surface-container-lowest rounded-xl p-6 border border-outline-variant shadow-sm flex flex-col md:flex-row items-center gap-stack-lg text-center md:text-left">
+<div class="flex flex-col items-center md:items-start gap-1">
+<div class="font-display-lg text-display-lg text-on-surface flex items-baseline gap-2">
+                    4.8
+                    <span class="font-label-lg text-label-lg text-on-surface-variant">/ 5</span>
+</div>
+<div aria-label="4.8 out of 5 stars" class="flex gap-1">
+<span class="material-symbols-outlined star-filled text-2xl">star</span>
+<span class="material-symbols-outlined star-filled text-2xl">star</span>
+<span class="material-symbols-outlined star-filled text-2xl">star</span>
+<span class="material-symbols-outlined star-filled text-2xl">star</span>
+<span class="material-symbols-outlined star-filled text-2xl" style="font-variation-settings: 'FILL' 0;">star_half</span>
+</div>
+<div class="font-body-md text-body-md text-on-surface-variant mt-2">
+                    Based on 124 reviews
+                </div>
+</div>
+<div class="flex-1 w-full flex flex-col gap-2 border-t md:border-t-0 md:border-l border-outline-variant pt-4 md:pt-0 md:pl-6">
+<!-- Rating Bars -->
+<div class="flex items-center gap-2">
+<span class="font-label-sm text-label-sm text-on-surface-variant w-4">5</span>
+<div class="h-2 bg-surface-container-high rounded-full flex-1 overflow-hidden">
+<div class="h-full bg-primary rounded-full" style="width: 80%"></div>
+</div>
+<span class="font-label-sm text-label-sm text-on-surface-variant w-8 text-right">80%</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="font-label-sm text-label-sm text-on-surface-variant w-4">4</span>
+<div class="h-2 bg-surface-container-high rounded-full flex-1 overflow-hidden">
+<div class="h-full bg-primary rounded-full" style="width: 15%"></div>
+</div>
+<span class="font-label-sm text-label-sm text-on-surface-variant w-8 text-right">15%</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="font-label-sm text-label-sm text-on-surface-variant w-4">3</span>
+<div class="h-2 bg-surface-container-high rounded-full flex-1 overflow-hidden">
+<div class="h-full bg-primary rounded-full" style="width: 3%"></div>
+</div>
+<span class="font-label-sm text-label-sm text-on-surface-variant w-8 text-right">3%</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="font-label-sm text-label-sm text-on-surface-variant w-4">2</span>
+<div class="h-2 bg-surface-container-high rounded-full flex-1 overflow-hidden">
+<div class="h-full bg-primary rounded-full" style="width: 1%"></div>
+</div>
+<span class="font-label-sm text-label-sm text-on-surface-variant w-8 text-right">1%</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="font-label-sm text-label-sm text-on-surface-variant w-4">1</span>
+<div class="h-2 bg-surface-container-high rounded-full flex-1 overflow-hidden">
+<div class="h-full bg-primary rounded-full" style="width: 1%"></div>
+</div>
+<span class="font-label-sm text-label-sm text-on-surface-variant w-8 text-right">1%</span>
+</div>
+</div>
+</section>
+<!-- Reviews List -->
+<section class="flex flex-col gap-stack-md">
+<h2 class="font-headline-sm text-headline-sm text-on-surface">Customer Reviews</h2>
+<div class="flex flex-col gap-4">
+<!-- Review Card 1 -->
+<div class="bg-surface-container-lowest rounded-xl p-5 border border-outline-variant shadow-sm flex flex-col gap-3">
+<div class="flex justify-between items-start">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-secondary-container flex items-center justify-center text-on-secondary-container font-label-lg text-label-lg">
+                                SA
+                            </div>
+<div class="flex flex-col">
+<span class="font-label-lg text-label-lg text-on-surface">Sarah Ahmed</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">2 days ago</span>
+</div>
+</div>
+<div class="flex gap-0.5">
+<span class="material-symbols-outlined star-filled text-lg">star</span>
+<span class="material-symbols-outlined star-filled text-lg">star</span>
+<span class="material-symbols-outlined star-filled text-lg">star</span>
+<span class="material-symbols-outlined star-filled text-lg">star</span>
+<span class="material-symbols-outlined star-filled text-lg">star</span>
+</div>
+</div>
+<p class="font-body-md text-body-md text-on-surface">
+                        Great deal! The spa was incredibly clean and the staff were very professional. The massage was exactly what I needed. Highly recommend booking this if you need a relaxing weekend.
+                    </p>
+</div>
+<!-- Review Card 2 -->
+<div class="bg-surface-container-lowest rounded-xl p-5 border border-outline-variant shadow-sm flex flex-col gap-3">
+<div class="flex justify-between items-start">
+<div class="flex items-center gap-3">
+<img alt="User Avatar" class="w-10 h-10 rounded-full object-cover border border-outline-variant" data-alt="A close up, vibrant portrait of a young Nigerian man with short natural hair, wearing a clean white t-shirt, smiling warmly. The lighting is bright and even, creating a friendly and approachable mood. Corporate modern aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAXzmM4K7bp9g7Or7QihM92Ngk6cfis6payMjyA5_vZzP4NpCwOnKOgIY37V4k614gz601KfYVy75TCfPvRDCOPL3zeu1qE1c6Mgd5seiQbxVERx86BjQC0SsbFkTI2fKqUJLTlYSw77pX750CB1_ReDclOPIx2zgVPCq8CEt5YnMA9MEtlYEzOvZKoAzXZvq8ZGLQeq_DZ69pbBqlkvFTslBC3ujovICtGzlPv4M2_82SKaGZvtYnopg"/>
+<div class="flex flex-col">
+<span class="font-label-lg text-label-lg text-on-surface">Chuka Obi</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">1 week ago</span>
+</div>
+</div>
+<div class="flex gap-0.5">
+<span class="material-symbols-outlined star-filled text-lg">star</span>
+<span class="material-symbols-outlined star-filled text-lg">star</span>
+<span class="material-symbols-outlined star-filled text-lg">star</span>
+<span class="material-symbols-outlined star-filled text-lg">star</span>
+<span class="material-symbols-outlined star-empty text-lg" style="font-variation-settings: 'FILL' 0;">star</span>
+</div>
+</div>
+<p class="font-body-md text-body-md text-on-surface">
+                        Really good value for money. The facilities are top-notch. Only giving 4 stars because we had to wait about 15 minutes past our appointment time, but the service made up for it.
+                    </p>
+</div>
+</div>
+</section>
+</main>
+<!-- Floating Action Button Area / Sticky Footer CTA -->
+<div class="fixed bottom-0 left-0 w-full p-margin-main bg-surface border-t border-outline-variant md:hidden">
+<button class="w-full bg-primary text-on-primary font-label-lg text-label-lg h-12 rounded-full flex items-center justify-center gap-2 active:scale-95 transition-transform duration-100 shadow-sm">
+<span class="material-symbols-outlined" data-icon="edit">edit</span>
+            Write a Review
+        </button>
+</div>
+</body></html>

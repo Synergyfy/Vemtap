@@ -156,7 +156,7 @@ export class InventoryCountingService {
     return session;
   }
 
-  async startSession(sessionId: string, businessId: string, user: User) {
+  async startSession(sessionId: string, businessId: string, _user: User) {
     const session = await this.sessionRepository.findOne({
       where: { id: sessionId, businessId },
       relations: ['items'],
@@ -288,7 +288,7 @@ export class InventoryCountingService {
     sessionId: string,
     businessId: string,
     user: User,
-    dto: CompleteCountDto,
+    _dto: CompleteCountDto,
   ) {
     const session = await this.sessionRepository.findOne({
       where: { id: sessionId, businessId },
@@ -332,7 +332,7 @@ export class InventoryCountingService {
     sessionId: string,
     businessId: string,
     user: User,
-    dto: ApproveVarianceDto,
+    _dto: ApproveVarianceDto,
   ) {
     const session = await this.sessionRepository.findOne({
       where: { id: sessionId, businessId },

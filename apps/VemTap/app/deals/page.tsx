@@ -1,528 +1,1207 @@
 'use client';
 
-import React, { useState, useMemo, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Search, Sparkles, MapPin, X } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import Navbar from '@/components/layout/Navbar';
-import Footer from '@/components/layout/Footer';
-import CategoryDropdown from '@/components/promotions/CategoryStep';
-import TrendingSection from '@/components/promotions/TrendingSection';
-import PromotionCard from '@/components/promotions/PromotionCard';
-import LocationModal from '@/components/promotions/LocationModal';
+import React, { useState, useMemo, useEffect, Suspense } from 'react';
+import Link from 'next/link';
+import { useSearchParams, useRouter } from 'next/navigation';
+import { useQuery } from '@tanstack/react-query';
+import { useLocation } from '@/hooks/useLocation';
 import { usePublicOffers } from '@/services/deals/hooks';
-import type { DealOffer } from '@/services/deals/types';
-import type { Promotion, PromotionBusiness } from '@/lib/promotions';
-import type { MockPromotion } from '@/lib/mock/promotions';
-import { reverseGeocode, type GeolocationCoordinates } from '@/lib/geolocation';
+import { publicApi } from '@/lib/api';
+import { offerToHomeDeal, formatNaira } from '@/components/home/mappers';
+import { haversineDistance, formatDistance, getDirectionsUrl } from '@/lib/distance';
+import LocationPrompt from '@/components/home/LocationPrompt';
+import SearchModal from '@/components/home/SearchModal';
+import DealEngagementBar from '@/components/deals/DealEngagementBar';
+import ImageGallery from '@/components/ui/ImageGallery';
+import DealsToolbar from '@/components/deals/DealsToolbar';
+import PublicBottomNav from '@/components/public/PublicBottomNav';
+import Footer from '@/components/layout/Footer';
+import { useBannerStore } from '@/store/useBannerStore';
+import { useAuthStore } from '@/store/useAuthStore';
+import type { HomeDealCard } from '@/components/home/types';
+import DistanceNoticeBanner from '@/components/deals/DistanceNoticeBanner';
 
-function toPromotionBusiness(offer: DealOffer): PromotionBusiness {
-    const branch = offer.branch;
-    if (branch) {
-        return {
-            id: branch.id,
-            name: branch.name,
-            slug: branch.username || branch.uniqueCode || '',
-            logo: branch.logoUrl || '',
-            photos: [],
-            categoryId: '',
-            categoryName: '',
-            address: branch.address || '',
-            hours: [],
-            rating: 0,
-            totalReviews: 0,
-        };
-    }
-    return {
-        id: offer.branchId || '',
-        name: offer.branchName || offer.business?.name || 'Unknown Business',
-        slug: '',
-        logo: offer.business?.logo || '',
-        photos: [],
-        categoryId: '',
-        categoryName: '',
-        address: offer.business?.address || '',
-        hours: [],
-        rating: 0,
-        totalReviews: 0,
-    };
+/* ─── Stitch colour tokens ─── */
+const C = {
+  bg: '#f7f9fb',
+  surface: '#f7f9fb',
+  primary: '#0055c4',
+  onSurface: '#191c1e',
+  onSurfaceVariant: '#424655',
+  outline: '#727786',
+  outlineVariant: '#c2c6d7',
+  error: '#ba1a1a',
+  primaryContainer: '#066cf4',
+  onPrimaryContainer: '#fcfaff',
+  secondaryContainer: '#d0e1fb',
+  onSecondaryContainer: '#191c1e',
+  tertiaryContainer: '#6b738a',
+  onTertiaryContainer: '#fcfaff',
+  surfaceContainerLow: '#f2f4f6',
+} as const;
+
+/* ─── Sort options ─── */
+const SORT_OPTIONS = [
+  { id: 'trending', label: 'Trending', icon: 'trending_up' },
+  { id: 'newest', label: 'Newest', icon: 'schedule' },
+  { id: 'price_asc', label: 'Price: Low → High', icon: 'arrow_upward' },
+  { id: 'price_desc', label: 'Price: High → Low', icon: 'arrow_downward' },
+  { id: 'discount', label: 'Biggest Discount', icon: 'local_offer' },
+] as const;
+
+/* ─── Quick filter options ─── */
+const QUICK_FILTER_OPTIONS = [
+  { id: 'flash_sales', label: 'Flash Sales', icon: 'bolt' },
+  { id: 'free', label: 'Free Deals', icon: 'redeem' },
+  { id: 'ending_soon', label: 'Ending Soon', icon: 'timer' },
+  { id: 'new_arrivals', label: 'New Arrivals', icon: 'fiber_new' },
+] as const;
+
+/* ─── Badge helper ─── */
+function getBadge(offer: HomeDealCard): { label: string; color: string } | null {
+  if (offer.discountPercent && offer.discountPercent >= 40) return { label: 'FLASH SALE', color: C.error };
+  if (offer.discountLabel === 'FREE') return { label: 'FREE', color: '#16a34a' };
+  if (offer.discountPercent && offer.discountPercent >= 20) return { label: `${offer.discountPercent}% OFF`, color: C.error };
+  if (offer.discountLabel) return { label: offer.discountLabel, color: C.primaryContainer };
+  return null;
 }
 
-function toPromotion(offer: DealOffer): Promotion {
-    const discountPercent = offer.pricingType === 'percentage_discount' && offer.discountValue
-        ? Number(offer.discountValue) : undefined;
-    const discountAmount = offer.pricingType === 'fixed_discount_price' && offer.discountValue
-        ? Number(offer.discountValue) : undefined;
-    const calcPrice = Number(offer.calculatedPrice);
-    const originalPrice = discountPercent
-        ? Math.round(calcPrice / (1 - discountPercent / 100))
-        : discountAmount
-            ? calcPrice + discountAmount
-            : calcPrice;
-
-    // Fallback: use first item's image if mainImage is missing
-    const image = offer.mainImage || offer.items?.[0]?.mainImage || '';
-    const galleryImages = offer.galleryImages || offer.items?.flatMap(i => i.galleryImages || []) || [];
-
-    return {
-        id: offer.id,
-        business: toPromotionBusiness(offer),
-        title: offer.name,
-        description: offer.description,
-        longDescription: offer.longDescription || offer.description,
-        terms: offer.terms || [],
-        discountPercent: discountPercent || offer.discountPercent || undefined,
-        discountAmount,
-        originalPrice: offer.originalPrice || originalPrice,
-        dealPrice: Number(offer.dealPrice || offer.calculatedPrice),
-        image,
-        galleryImages,
-        startDate: offer.startDate || '',
-        endDate: offer.endDate || '',
-        claimedCount: offer.claimedCount,
-        maxClaims: offer.maxClaims,
-        isTrending: offer.isTrending || false,
-        audience: offer.audience,
-        maxClaimsPerCustomer: offer.maxClaimsPerCustomer,
-        claimCodePrefix: offer.claimCodePrefix,
-    };
-}
-
-function toMockPromotion(p: Promotion): MockPromotion {
-    return {
-        id: p.id,
-        name: p.title,
-        description: p.description,
-        longDescription: p.longDescription,
-        terms: p.terms,
-        businessName: p.business.name,
-        businessSlug: p.business.slug,
-        businessLogo: p.business.logo,
-        category: p.business.categoryName as MockPromotion['category'],
-        discountPercent: p.discountPercent,
-        discountAmount: p.discountAmount,
-        originalPrice: p.originalPrice,
-        dealPrice: p.dealPrice,
-        image: p.image,
-        galleryImages: p.galleryImages || [],
-        startDate: p.startDate,
-        endDate: p.endDate,
-        audience: p.audience || '',
-        location: p.business.address,
-        claimedCount: p.claimedCount,
-        maxClaims: p.maxClaims,
-        maxClaimsPerCustomer: p.maxClaimsPerCustomer,
-        claimCodePrefix: p.claimCodePrefix,
-    };
-}
-
-const HERO_SLIDES = [
-    {
-        emoji: '✨',
-        badge: 'Deal Fest · Fresh drops daily',
-        title: (
-            <>
-                Deals so good,
-                <br />
-                <span className="bg-gradient-to-r from-primary via-blue-500 to-fuchsia-500 bg-clip-text text-transparent">
-                    they feel like gifts
-                </span>
-            </>
-        ),
-        body: 'Browse exclusive promotions from the best businesses around you. Check VemTap before you shop.',
-    },
-    {
-        emoji: '📍',
-        badge: 'Nearby & ready to claim',
-        title: (
-            <>
-                Fresh deals,
-                <br />
-                <span className="bg-gradient-to-r from-sky-500 via-blue-500 to-emerald-500 bg-clip-text text-transparent">
-                    right outside your door
-                </span>
-            </>
-        ),
-        body: 'From cafés to salons to electronics — set your location and we’ll surface the hottest promotions closest to you.',
-    },
-    {
-        emoji: '🔥',
-        badge: 'Limited time only',
-        title: (
-            <>
-                Grab them
-                <br />
-                <span className="bg-gradient-to-r from-rose-500 via-orange-500 to-amber-500 bg-clip-text text-transparent">
-                    before they’re gone
-                </span>
-            </>
-        ),
-        body: 'Featured deals rotate every 60 seconds and claim limits are tight. Find something you love and don’t let it slip away.',
-    },
+/* ─── Unsplash fallback images for featured cards ─── */
+const FALLBACK_IMAGES = [
+  'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=600&h=400&fit=crop',
+  'https://images.unsplash.com/photo-1544148103-0773bf10d330?w=600&h=400&fit=crop',
+  'https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=600&h=400&fit=crop',
 ];
 
-export default function PromotionsPage() {
-    const [search, setSearch] = useState('');
-    const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-    const [location, setLocation] = useState<GeolocationCoordinates | null>(null);
-    const [locationLabel, setLocationLabel] = useState('');
-    const [showLocationModal, setShowLocationModal] = useState(false);
-    const [heroSlide, setHeroSlide] = useState(0);
-    const [heroPaused, setHeroPaused] = useState(false);
+/* ─── Default deals-page banners (used when admin has not published any yet) ─── */
+const DEFAULT_DEALS_BANNERS: {
+  id: string;
+  image: string;
+  tag: string;
+  tagIcon: string;
+  heading: string;
+  sub: string;
+  cta: string;
+  actionUrl: string;
+  gradient: string;
+}[] = [
+  {
+    id: 'default-deals-1',
+    image: 'https://images.unsplash.com/photo-1607082349566-187342175e2f?w=1400&q=80',
+    tag: 'Hot Deals',
+    tagIcon: 'local_fire_department',
+    heading: 'Up to 70% Off',
+    sub: 'Discover the best deals from businesses around you. Updated daily.',
+    cta: 'Shop Now',
+    actionUrl: '/deals',
+    gradient: 'linear-gradient(90deg, rgba(0,29,107,0.92) 0%, rgba(0,29,107,0.5) 50%, rgba(0,0,0,0) 100%)',
+  },
+  {
+    id: 'default-deals-2',
+    image: 'https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=1400&q=80',
+    tag: 'New Arrivals',
+    tagIcon: 'fiber_new',
+    heading: 'Fresh Finds Every Week',
+    sub: 'Be the first to grab new products and services from top businesses.',
+    cta: 'Explore',
+    actionUrl: '/deals?sortBy=trending',
+    gradient: 'linear-gradient(90deg, rgba(16,50,30,0.92) 0%, rgba(16,50,30,0.5) 50%, rgba(0,0,0,0) 100%)',
+  },
+  {
+    id: 'default-deals-3',
+    image: 'https://images.unsplash.com/photo-1556742393-d75f468bfcb0?w=1400&q=80',
+    tag: 'Free Deals',
+    tagIcon: 'redeem',
+    heading: 'Grab Freebies Near You',
+    sub: 'No cost, all benefit. Find free deals from local businesses today.',
+    cta: 'View Free Deals',
+    actionUrl: '/deals?sortBy=newest',
+    gradient: 'linear-gradient(90deg, rgba(80,20,0,0.92) 0%, rgba(80,20,0,0.5) 50%, rgba(0,0,0,0) 100%)',
+  },
+];
 
-    useEffect(() => {
-        if (heroPaused) return;
-        const t = setTimeout(
-            () => setHeroSlide(s => (s + 1) % HERO_SLIDES.length),
-            6000,
-        );
-        return () => clearTimeout(t);
-    }, [heroSlide, heroPaused]);
-    const queryParams = useMemo(() => ({
-        search: search || undefined,
-        categoryId: selectedCategory || undefined,
-        lat: location?.lat,
-        lng: location?.lng,
-    }), [search, selectedCategory, location]);
+function DealsPageInner() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const { label: userLocationLabel, hasLocation, lat, lng, requestLocation, setManualLocation } = useLocation();
+  const { isAuthenticated, user } = useAuthStore();
+  const userRole = user?.role?.toLowerCase();
+  const dashboardHref = userRole === 'admin' ? '/admin/dashboard' : userRole === 'agent' ? '/agent/dashboard' : userRole === 'customer' ? '/customer/dashboard' : '/dashboard';
+  const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
+  const [locationChecked, setLocationChecked] = useState(false);
+  const [locationError, setLocationError] = useState<string | null>(null);
+  const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [landingSearch, setLandingSearch] = useState('');
+  const [showFilterModal, setShowFilterModal] = useState(false);
+  const [sortBy, setSortBy] = useState<string>('trending');
+  const [quickFilter, setQuickFilter] = useState<string | null>(null);
+  const [priceRange, setPriceRange] = useState<{ min: string; max: string }>({ min: '', max: '' });
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [bannerIndex, setBannerIndex] = useState(0);
 
-    const { data: offersData, isLoading, isError, refetch } = usePublicOffers(queryParams);
+  const { dealsSlides, fetchBanners: fetchDealsBanners } = useBannerStore();
 
-    useEffect(() => {
-        const saved = localStorage.getItem('vemtap_user_location');
-        const savedLabel = localStorage.getItem('vemtap_user_location_label');
-        if (saved) {
-            try {
-                setLocation(JSON.parse(saved));
-                setLocationLabel(savedLabel || '');
-            } catch {
-                setShowLocationModal(true);
-            }
-        } else {
-            setShowLocationModal(true);
+  const bannerSlides = useMemo(() => {
+    if (dealsSlides.length > 0) {
+      return dealsSlides.map((s) => ({
+        id: s.id,
+        image: s.imageUrl || 'https://images.unsplash.com/photo-1607082349566-187342175e2f?w=1400&q=80',
+        tag: s.title || 'Hot Deals',
+        tagIcon: 'local_fire_department',
+        heading: s.title || 'Discover Deals Near You',
+        sub: s.description || 'Discover the best deals from businesses around you. Updated daily.',
+        cta: (s.ctaText || s.actionLabel || 'Browse Deals'),
+        actionUrl: s.actionUrl || '/deals',
+        actionLabel: s.actionLabel,
+        gradient: 'linear-gradient(90deg, rgba(0,29,107,0.92) 0%, rgba(0,29,107,0.5) 50%, rgba(0,0,0,0) 100%)',
+      }));
+    }
+    return DEFAULT_DEALS_BANNERS;
+  }, [dealsSlides]);
+
+  useEffect(() => {
+    fetchDealsBanners('deals-page');
+  }, [fetchDealsBanners]);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setBannerIndex((prev) => (prev + 1) % bannerSlides.length);
+    }, 5000);
+    return () => clearInterval(timer);
+  }, [bannerSlides.length]);
+
+  // Only prompt for location on deals page when no location is stored
+  useEffect(() => {
+    // If location is already set (from localStorage), never show the modal.
+    // hasLocation starts false until the useLocation hydration effect applies
+    // the persisted location, so it must be tracked here to cancel the prompt.
+    if (hasLocation) return;
+    const t = setTimeout(() => {
+      setLocationChecked(true);
+      setIsLocationModalOpen(true);
+    }, 500);
+    return () => clearTimeout(t);
+  }, [hasLocation]);
+
+  const [activeLocation, setActiveLocation] = useState('');
+  useEffect(() => {
+    setActiveLocation(userLocationLabel || '');
+  }, [userLocationLabel]);
+
+  // Seed search/filter from URL (category landing links, search modal)
+  useEffect(() => {
+    const t = setTimeout(() => {
+      const q = searchParams.get('q') || searchParams.get('search') || '';
+      if (q) setSearchQuery(q);
+      const cat = searchParams.get('category');
+      if (cat) setSelectedCategory(cat);
+      const sort = searchParams.get('sortBy');
+      if (sort) setSortBy(sort);
+    }, 0);
+    return () => clearTimeout(t);
+  }, [searchParams]);
+
+  // Fetch live deals
+  const { data: dealsData, isLoading } = usePublicOffers({
+    limit: 20,
+    sortBy: 'trending',
+    lat: lat ?? undefined,
+    lng: lng ?? undefined,
+  });
+
+  // Fetch public categories
+  const { data: categoriesData } = useQuery({
+    queryKey: ['public-categories'],
+    queryFn: () => publicApi.get('/categories'),
+    staleTime: 10 * 60 * 1000,
+  });
+
+  interface CategorySource {
+    id?: string;
+    _id?: string;
+    slug?: string;
+    name?: string;
+    label?: string;
+    title?: string;
+  }
+
+  const categoriesList = useMemo(() => {
+    const raw = categoriesData?.items ?? categoriesData?.data ?? categoriesData?.categories ?? categoriesData;
+    if (Array.isArray(raw) && raw.length > 0) {
+      return raw
+        .filter((c: CategorySource) => c.name && !c.name.toLowerCase().includes('frank'))
+        .map((c: CategorySource) => ({
+          id: c.id || c._id || c.slug,
+          label: c.name || c.label || c.title || 'Category',
+          slug: c.slug || c.name?.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, ''),
+        }));
+    }
+    return [];
+  }, [categoriesData]);
+
+  const dealsList = useMemo(() => {
+    const fromApi = (dealsData?.data ?? []).map(offerToHomeDeal);
+    if (fromApi.length > 0) {
+      return fromApi.map((d: HomeDealCard, idx: number) => ({
+        ...d,
+        image: d.image || FALLBACK_IMAGES[idx % FALLBACK_IMAGES.length],
+      }));
+    }
+    return [];
+  }, [dealsData]);
+
+  // Text + filter + category combined
+  const createdAtOf = (d: HomeDealCard): number => {
+    const raw = (d as Partial<HomeDealCard> & { createdAt?: string }).createdAt;
+    return raw ? new Date(raw).getTime() : 0;
+  };
+
+  const filteredDeals = useMemo(() => {
+    let result = dealsList;
+
+    // Text search filter
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      result = result.filter(d =>
+        d.title?.toLowerCase().includes(q) ||
+        d.businessName?.toLowerCase().includes(q) ||
+        d.description?.toLowerCase().includes(q)
+      );
+    }
+
+    // Category filter
+    if (selectedCategory) {
+      result = result.filter(d => {
+        const dealCat = (d.category || '').toLowerCase().replace(/\s+/g, '-');
+        const dealTitle = (d.title || '').toLowerCase();
+        const dealDesc = (d.description || '').toLowerCase();
+        return dealCat.includes(selectedCategory.toLowerCase()) ||
+               dealTitle.includes(selectedCategory.toLowerCase()) ||
+               dealDesc.includes(selectedCategory.toLowerCase());
+      });
+    }
+
+    // Price range filter
+    const minPrice = priceRange.min ? Number(priceRange.min) : null;
+    const maxPrice = priceRange.max ? Number(priceRange.max) : null;
+    if (minPrice !== null || maxPrice !== null) {
+      result = result.filter(d => {
+        const price = d.dealPrice != null ? Number(d.dealPrice) : null;
+        if (price === null) return true;
+        if (minPrice !== null && price < minPrice) return false;
+        if (maxPrice !== null && price > maxPrice) return false;
+        return true;
+      });
+    }
+
+    // Quick filter logic
+    switch (quickFilter) {
+      case 'flash_sales':
+        result = result.filter(d => d.discountPercent && d.discountPercent >= 40);
+        break;
+      case 'new_arrivals':
+        result = [...result].sort((a, b) => createdAtOf(b) - createdAtOf(a));
+        break;
+      case 'free':
+        result = result.filter(d => d.dealPrice != null && Number(d.dealPrice) === 0);
+        break;
+      case 'ending_soon':
+        result = [...result].sort((a, b) => {
+          const endA = a.endDate ? new Date(a.endDate).getTime() : Infinity;
+          const endB = b.endDate ? new Date(b.endDate).getTime() : Infinity;
+          return endA - endB;
+        });
+        break;
+    }
+
+    // Sort logic
+    switch (sortBy) {
+      case 'newest':
+        result = [...result].sort((a, b) => createdAtOf(b) - createdAtOf(a));
+        break;
+      case 'price_asc':
+        result = [...result].sort((a, b) => {
+          const priceA = a.dealPrice != null ? Number(a.dealPrice) : Infinity;
+          const priceB = b.dealPrice != null ? Number(b.dealPrice) : Infinity;
+          return priceA - priceB;
+        });
+        break;
+      case 'price_desc':
+        result = [...result].sort((a, b) => {
+          const priceA = a.dealPrice != null ? Number(a.dealPrice) : -Infinity;
+          const priceB = b.dealPrice != null ? Number(b.dealPrice) : -Infinity;
+          return priceB - priceA;
+        });
+        break;
+      case 'discount':
+        result = [...result].sort((a, b) => (b.discountPercent || 0) - (a.discountPercent || 0));
+        break;
+      case 'trending':
+      default:
+        break;
+    }
+
+    return result;
+  }, [dealsList, searchQuery, selectedCategory, priceRange, quickFilter, sortBy]);
+
+  const allDeals = filteredDeals;
+
+  const closestDealDistanceKm = useMemo(() => {
+    if (!hasLocation || lat == null || lng == null || allDeals.length === 0) return null;
+    let min: number | null = null;
+    for (const d of allDeals) {
+      if (d.lat != null && d.lng != null) {
+        const dist = haversineDistance(lat, lng, d.lat, d.lng);
+        if (min === null || dist < min) {
+          min = dist;
         }
-    }, []);
+      }
+    }
+    return min;
+  }, [hasLocation, lat, lng, allDeals]);
 
-    useEffect(() => {
-        if (!location || locationLabel) return;
-        let cancelled = false;
-        reverseGeocode(location)
-            .then((label) => {
-                if (cancelled) return;
-                setLocationLabel(label);
-                localStorage.setItem('vemtap_user_location_label', label);
-            })
-            .catch((err) => {
-                if (cancelled) return;
-                console.warn('Reverse geocoding failed:', err);
-            });
-        return () => { cancelled = true; };
-    }, [location, locationLabel]);
+  const showFarDistanceNotice = closestDealDistanceKm !== null && closestDealDistanceKm > 15;
 
-    const handleLocationSet = (coords: GeolocationCoordinates, label?: string) => {
-        setLocation(coords);
-        setLocationLabel(label || '');
-        localStorage.setItem('vemtap_user_location', JSON.stringify(coords));
-        if (label) localStorage.setItem('vemtap_user_location_label', label);
-    };
+  // True when the user has actively chosen a filter or typed a search,
+  // as opposed to merely browsing the default deals grid.
+  const hasActiveFilter =
+    !!searchQuery.trim() ||
+    !!selectedCategory ||
+    !!quickFilter ||
+    !!priceRange.min ||
+    !!priceRange.max ||
+    sortBy !== 'trending';
 
-    const handleClearLocation = () => {
-        setLocation(null);
-        setLocationLabel('');
-        localStorage.removeItem('vemtap_user_location');
-        localStorage.removeItem('vemtap_user_location_label');
-    };
+  // Loose matches for "other deals you may like" when the active filter
+  // excludes everything — prefer deals tied to the current search/category,
+  // falling back to the general list so the empty state never feels dead.
+  const suggestedDeals = useMemo(() => {
+    if (dealsList.length === 0) return [];
+    const q = searchQuery.trim().toLowerCase();
+    const cat = (selectedCategory || '').toLowerCase();
+    const loose = dealsList.filter((d) => {
+      if (!q && !cat) return false;
+      const title = (d.title || '').toLowerCase();
+      const desc = (d.description || '').toLowerCase();
+      const biz = (d.businessName || '').toLowerCase();
+      const dealCat = (d.category || '').toLowerCase();
+      if (q && (title.includes(q) || desc.includes(q) || biz.includes(q))) return true;
+      if (cat && (dealCat.includes(cat) || title.includes(cat) || desc.includes(cat))) return true;
+      return false;
+    });
+    return (loose.length > 0 ? loose : dealsList).slice(0, 8);
+  }, [dealsList, searchQuery, selectedCategory]);
 
-    const promotions = useMemo(() => {
-        if (!offersData?.data) return [];
-        const now = new Date();
-        return offersData.data
-            .filter((offer): offer is DealOffer => {
-                if (!offer || !offer.id || (!offer.branch && !offer.branchId)) return false;
-                if (offer.endDate && new Date(offer.endDate) < now) return false;
-                if (offer.startDate && new Date(offer.startDate) > now) return false;
-                return true;
-            })
-            .map(toPromotion);
-    }, [offersData]);
+  const clearAllFilters = () => {
+    setSearchQuery('');
+    setSelectedCategory(null);
+    setQuickFilter(null);
+    setPriceRange({ min: '', max: '' });
+    setSortBy('trending');
+    router.replace('/deals');
+  };
 
-    const filteredPromotions = useMemo(() => {
-        if (!promotions.length) return [];
-        let result = promotions;
-        if (search.trim()) {
-            const q = search.toLowerCase();
-            result = result.filter(p =>
-                p.title.toLowerCase().includes(q) ||
-                p.business.name.toLowerCase().includes(q) ||
-                p.business.address.toLowerCase().includes(q) ||
-                p.description.toLowerCase().includes(q)
-            );
-        }
-        return result;
-    }, [promotions, search]);
+  const handleSearchSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!searchQuery.trim()) return;
+    const ok = await setManualLocation(searchQuery.trim());
+    if (ok) setIsLocationModalOpen(false);
+  };
 
-    const trendingPromotions = useMemo(() => {
-        return promotions
-            .filter(p => p.isTrending)
-            .sort((a, b) => b.claimedCount - a.claimedCount)
-            .slice(0, 5);
-    }, [promotions]);
+  return (
+    <div className="min-h-screen flex flex-col font-sans" style={{ background: C.bg, color: C.onSurface }}>
+      {/* ─── TopAppBar ─── */}
+      <DealsToolbar
+        searchQuery={searchQuery}
+        onSearchQueryChange={setSearchQuery}
+        onSearchSubmit={handleSearchSubmit}
+        activeLocation={activeLocation}
+        onOpenLocation={() => setIsLocationModalOpen(true)}
+        isAuthenticated={isAuthenticated}
+        dashboardHref={dashboardHref}
+        onOpenFilter={() => setShowFilterModal(true)}
+        onOpenMobileSearch={() => setIsSearchModalOpen(true)}
+        hasActiveFilters={!!(quickFilter || selectedCategory || priceRange.min || priceRange.max || sortBy !== 'trending')}
+        selectedCategory={selectedCategory}
+        onSelectCategory={setSelectedCategory}
+      />
 
-    return (
-        <div className="min-h-screen bg-[#f4f5f6] font-body text-text-main">
-            <Navbar />
+      {/* ─── Location Required: Explore Deals Near You Landing ─── */}
+      {locationChecked && !hasLocation && (
+        <div className="flex-1" style={{ background: C.bg }}>
+          <div className="max-w-xl mx-auto text-center space-y-6 w-full px-4 pt-10 pb-16">
+            <div className="space-y-3">
+              <div className="inline-flex items-center gap-2 rounded-full px-4 py-1.5" style={{ background: `${C.primary}08`, border: `1px solid ${C.primary}15` }}>
+                <span className="material-symbols-outlined" style={{ fontSize: 14, color: C.primary }}>local_offer</span>
+                <span className="text-xs font-bold uppercase tracking-wider" style={{ color: C.primary }}>
+                  Offers Near You
+                </span>
+              </div>
+              <h1 className="text-[30px] sm:text-4xl md:text-5xl font-bold tracking-tight leading-[1.15]" style={{ color: C.onSurface }}>
+                Explore Deals
+                <br />
+                <span style={{ color: C.primary }}>Near You</span>
+              </h1>
+              <p className="font-bold text-sm md:text-base max-w-md mx-auto px-4" style={{ color: C.onSurfaceVariant }}>
+                Find the best promotions, discounts, and offers from businesses around you.
+              </p>
+            </div>
 
-            {/* Hero Section */}
-            <section className="relative overflow-hidden bg-gradient-to-b from-amber-50/80 via-white to-white border-b border-black/[0.03]">
-                {/* Decorative drifting light flares */}
-                <motion.div
-                    animate={{ x: [0, 60, -40, 24, 0], y: [0, -40, 34, -22, 0] }}
-                    transition={{ duration: 26, repeat: Infinity, ease: 'easeInOut' }}
-                    className="absolute -top-24 -left-24 size-80 bg-primary/10 rounded-full blur-3xl pointer-events-none"
+            {/* Location Search */}
+            <div className="space-y-3 px-4 md:px-0">
+              <div className="relative max-w-md mx-auto">
+                <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2" style={{ fontSize: 18, color: '#9ca3af' }}>search</span>
+                <input
+                  type="text"
+                  value={landingSearch}
+                  onChange={(e) => setLandingSearch(e.target.value)}
+                  onKeyDown={async (e) => {
+                    if (e.key === 'Enter' && landingSearch.trim()) {
+                      const ok = await setManualLocation(landingSearch.trim());
+                      if (!ok) setLocationError('Could not find that location. Please try another area.');
+                    }
+                  }}
+                  placeholder="Search location (e.g. Wuse 2, Abuja)..."
+                  className="w-full h-14 pl-12 pr-4 bg-gray-50 border border-gray-200 rounded-2xl text-sm font-bold text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 transition-all"
+                  style={{ '--tw-ring-color': `${C.primary}20` } as any}
                 />
-                <motion.div
-                    animate={{ x: [0, -52, 34, -14, 0], y: [0, 32, -44, 22, 0] }}
-                    transition={{ duration: 33, repeat: Infinity, ease: 'easeInOut' }}
-                    className="absolute -top-20 right-6 size-72 bg-rose-400/10 rounded-full blur-3xl pointer-events-none"
-                />
-                <motion.div
-                    animate={{ x: [0, 44, -36, 18, 0], y: [0, -28, 38, -16, 0] }}
-                    transition={{ duration: 39, repeat: Infinity, ease: 'easeInOut' }}
-                    className="absolute bottom-0 left-1/3 size-64 bg-orange-300/10 rounded-full blur-3xl pointer-events-none"
-                />
+              </div>
+              {locationError && <p className="text-xs text-center font-medium" style={{ color: C.error }}>{locationError}</p>}
 
-                {/* Floating deal stickers (desktop) */}
-                <div className="hidden lg:flex absolute right-28 top-28 rotate-6 rounded-xl bg-white shadow-xl shadow-black/5 ring-1 ring-black/5 px-3 py-2 text-[11px] font-black text-rose-500">
-                    -50% OFF
-                </div>
-                <div className="hidden lg:flex absolute right-72 top-16 -rotate-6 rounded-xl bg-gradient-to-br from-primary to-blue-500 text-white shadow-xl shadow-primary/20 px-3 py-2 text-[11px] font-black items-center gap-1">
-                    <span className="text-[13px]">🔥</span> HOT DEALS
-                </div>
-                <div className="hidden lg:flex absolute right-16 bottom-24 -rotate-12 rounded-xl bg-white shadow-xl shadow-black/5 ring-1 ring-black/5 px-3 py-2 text-[11px] font-black text-emerald-500">
-                    FREE ₦2,500
-                </div>
+              <button
+                onClick={async () => {
+                  setLocationError(null);
+                  const res = await requestLocation();
+                  if (!res.ok) setLocationError(res.message);
+                }}
+                className="w-full max-w-md mx-auto flex items-center justify-center gap-2 h-12 text-white font-bold uppercase tracking-wider text-xs rounded-2xl shadow-lg transition-all"
+                style={{ background: C.primary, boxShadow: `0 8px 24px ${C.primary}33` }}
+              >
+                <span className="material-symbols-outlined" style={{ fontSize: 16 }}>my_location</span>
+                Use My Current Location
+              </button>
+            </div>
 
-                <div className="max-w-7xl mx-auto px-4 md:px-8 pt-28 pb-12 md:pt-36 md:pb-16">
-                    <div
-                        className="max-w-2xl"
-                        onMouseEnter={() => setHeroPaused(true)}
-                        onMouseLeave={() => setHeroPaused(false)}
-                    >
-                        {/* Slideshow */}
-                        <div className="relative min-h-[14rem] sm:min-h-[13.5rem] lg:min-h-[16.5rem]">
-                            <AnimatePresence mode="wait">
-                                <motion.div
-                                    key={heroSlide}
-                                    initial={{ opacity: 0, y: 26 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    exit={{ opacity: 0, y: -26 }}
-                                    transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
-                                >
-                                    <div className="inline-flex items-center gap-1.5 bg-white/70 backdrop-blur border border-amber-200/70 rounded-full px-3 py-1 mb-5 shadow-sm">
-                                        <span className="text-[12px]">{HERO_SLIDES[heroSlide].emoji}</span>
-                                        <span className="text-[10px] font-black text-amber-700 uppercase tracking-wider">
-                                            {HERO_SLIDES[heroSlide].badge}
-                                        </span>
-                                    </div>
+            {/* Popular Categories */}
+            <div className="space-y-4 pt-2 px-4 md:px-0">
+              <p className="text-xs font-bold uppercase tracking-wider" style={{ color: '#9ca3af' }}>Popular Categories</p>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 max-w-md mx-auto">
+                {[
+                  { icon: 'local_cafe', label: 'Cafes' },
+                  { icon: 'devices', label: 'Electronics' },
+                  { icon: 'restaurant', label: 'Food & Drinks' },
+                  { icon: 'home_repair_service', label: 'Services' },
+                  { icon: 'shopping_cart', label: 'Supermarket' },
+                  { icon: 'fitness_center', label: 'Gym' },
+                  { icon: 'checkroom', label: 'Fashion' },
+                  { icon: 'local_pharmacy', label: 'Pharmacy' },
+                ].map((cat) => (
+                  <button
+                    key={cat.label}
+                    onClick={() => { setSelectedCategory(cat.label.toLowerCase().split(' ')[0]); setIsLocationModalOpen(true); }}
+                    className="flex flex-col items-center gap-1.5 p-4 bg-gray-50 border border-gray-200 rounded-2xl hover:border-gray-300 transition-all group"
+                  >
+                    <span className="material-symbols-outlined" style={{ fontSize: 28, color: C.onSurfaceVariant }}>{cat.icon}</span>
+                    <span className="text-[10px] font-bold leading-tight" style={{ color: C.onSurface }}>{cat.label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
 
-                                    <h1 className="text-[32px] sm:text-4xl md:text-5xl lg:text-6xl font-headline font-bold text-gray-900 tracking-tight leading-[1.12]">
-                                        {HERO_SLIDES[heroSlide].title}
-                                    </h1>
-
-                                    <p className="text-gray-500 font-normal text-sm md:text-base mt-3 max-w-lg">
-                                        {HERO_SLIDES[heroSlide].body}
-                                    </p>
-                                </motion.div>
-                            </AnimatePresence>
-
-                            {/* Slide dots */}
-                            <div className="flex items-center gap-1.5 mt-6">
-                                {HERO_SLIDES.map((_, i) => {
-                                    const active = i === heroSlide;
-                                    return (
-                                        <button
-                                            key={i}
-                                            onClick={() => setHeroSlide(i)}
-                                            aria-label={`Hero slide ${i + 1}`}
-                                            className={cn(
-                                                'h-1.5 rounded-full transition-all duration-500',
-                                                active
-                                                    ? 'w-8 bg-gradient-to-r from-primary to-blue-500'
-                                                    : 'w-1.5 bg-gray-300 hover:bg-gray-400',
-                                            )}
-                                        />
-                                    );
-                                })}
-                            </div>
-                        </div>
-
-                        {!location && (
-                            <motion.button
-                                initial={{ opacity: 0, y: 10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: 0.15 }}
-                                onClick={() => setShowLocationModal(true)}
-                                className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-primary hover:underline"
-                            >
-                                <MapPin size={14} />
-                                Set your location for nearby deals
-                            </motion.button>
-                        )}
-                    </div>
-                </div>
-            </section>
-
-            {/* Search + Filters */}
-            <section className="sticky top-0 z-30 bg-white/85 backdrop-blur-xl border-b border-black/[0.04]">
-                <div className="max-w-7xl mx-auto px-4 md:px-8 py-3">
-                    <div className="flex flex-col sm:flex-row gap-2.5">
-                        <div className="relative flex-1">
-                            <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
-                            <input
-                                type="text"
-                                value={search}
-                                onChange={(e) => setSearch(e.target.value)}
-                                placeholder="Search deals, businesses, or location..."
-                                className="w-full h-12 pl-11 pr-4 bg-white border border-gray-200 rounded-full text-sm font-bold text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary/30 shadow-sm transition-all"
-                            />
-                        </div>
-
-                        <div className="w-full sm:w-64">
-                            <CategoryDropdown
-                                selected={selectedCategory}
-                                onSelect={setSelectedCategory}
-                            />
-                        </div>
-                    </div>
-
-                    {location && (
-                        <div className="flex items-center gap-2 mt-2">
-                            <div className="inline-flex items-center gap-2 bg-primary/5 border border-primary/10 rounded-full pl-3 pr-1 py-1.5 max-w-xs sm:max-w-md">
-                                <MapPin size={12} className="text-primary shrink-0" />
-                                <span
-                                    className="text-[10px] font-bold text-primary truncate"
-                                    title={locationLabel || `${location.lat.toFixed(4)}, ${location.lng.toFixed(4)}`}
-                                >
-                                    {locationLabel || `${location.lat.toFixed(4)}, ${location.lng.toFixed(4)}`}
-                                </span>
-                                <button
-                                    onClick={handleClearLocation}
-                                    className="p-1 hover:bg-primary/10 rounded-full transition-colors shrink-0"
-                                    aria-label="Clear location"
-                                >
-                                    <X size={10} className="text-primary" />
-                                </button>
-                            </div>
-                        </div>
-                    )}
-                </div>
-            </section>
-
-            {/* Main Content */}
-            <section className="max-w-7xl mx-auto px-4 md:px-8 py-8 pb-20">
-                <div className="space-y-8">
-                    {/* Loading */}
-                    {isLoading && (
-                        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-5">
-                            {Array.from({ length: 8 }).map((_, i) => (
-                                <div key={i} className="rounded-[1.15rem] bg-white ring-1 ring-black/[0.04] overflow-hidden animate-pulse">
-                                    <div className="aspect-square bg-gradient-to-br from-slate-50 to-slate-100" />
-                                    <div className="p-3 space-y-2.5">
-                                        <div className="h-2.5 bg-slate-100 rounded w-1/3" />
-                                        <div className="h-3.5 bg-slate-100 rounded w-3/4" />
-                                        <div className="h-5 bg-slate-100 rounded w-1/2" />
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    )}
-
-                    {/* Error */}
-                    {isError && (
-                        <div className="flex flex-col items-center justify-center py-24 space-y-4">
-                            <div className="relative">
-                                <div className="absolute inset-0 bg-amber-400/10 rounded-3xl rotate-6" />
-                                <div className="relative size-16 bg-white rounded-3xl shadow-xl shadow-black/5 ring-1 ring-black/5 flex items-center justify-center text-3xl">
-                                    🫥
-                                </div>
-                            </div>
-                            <p className="text-sm font-black text-gray-600">Deals took a break</p>
-                            <p className="text-xs text-gray-400 font-medium">Couldn&apos;t reach the deal shelf. Give it another shot.</p>
-                            <button
-                                onClick={() => refetch()}
-                                className="text-xs font-black text-primary hover:underline"
-                            >
-                                Try again
-                            </button>
-                        </div>
-                    )}
-
-                    {/* Data loaded */}
-                    {!isLoading && !isError && (
-                        <>
-                            {/* Trending */}
-                            {!selectedCategory && !search && trendingPromotions.length > 0 && (
-                                <TrendingSection promotions={trendingPromotions} />
-                            )}
-
-                            {/* Results header */}
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-2">
-                                    <span className="size-7 rounded-lg bg-gradient-to-br from-amber-400 to-orange-500 text-white flex items-center justify-center shadow-md shadow-orange-500/20">
-                                        <Sparkles size={13} />
-                                    </span>
-                                    <span className="text-xs font-black text-gray-700 uppercase tracking-wider">
-                                        {filteredPromotions.length} {filteredPromotions.length === 1 ? 'deal' : 'deals'}
-                                        {selectedCategory && (
-                                            <> in <span className="text-primary">this category</span></>
-                                        )}
-                                    </span>
-                                </div>
-                                {filteredPromotions.length > 0 && (
-                                    <span className="text-[10px] font-bold text-gray-400">
-                                        Sorted by popularity
-                                    </span>
-                                )}
-                            </div>
-
-                            {/* Grid */}
-                            {filteredPromotions.length > 0 ? (
-                                <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-5">
-                                    {filteredPromotions.map((promo, i) => (
-                                        <PromotionCard key={promo.id} promotion={toMockPromotion(promo)} index={i} />
-                                    ))}
-                                </div>
-                            ) : (
-                                <div className="py-20 text-center space-y-4">
-                                    <div className="relative mx-auto size-20">
-                                        <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-rose-500/10 rounded-3xl -rotate-6" />
-                                        <div className="relative size-20 bg-white rounded-3xl shadow-xl shadow-black/5 ring-1 ring-black/5 flex items-center justify-center text-3xl">
-                                            🛍️
-                                        </div>
-                                    </div>
-                                    <p className="text-gray-600 font-black text-sm">No deals found</p>
-                                    <p className="text-xs text-gray-400 font-medium">
-                                        Try a different search or category — new deals drop daily.
-                                    </p>
-                                    <button
-                                        onClick={() => { setSelectedCategory(null); setSearch(''); }}
-                                        className="inline-flex items-center gap-1.5 text-xs font-black text-white bg-gradient-to-r from-primary to-blue-500 rounded-full px-5 py-2.5 shadow-md shadow-primary/25 hover:shadow-lg hover:-translate-y-0.5 transition-all"
-                                    >
-                                        <Sparkles size={12} /> Clear all filters
-                                    </button>
-                                </div>
-                            )}
-                        </>
-                    )}
-                </div>
-            </section>
-
-            <LocationModal
-                isOpen={showLocationModal}
-                onClose={() => setShowLocationModal(false)}
-                onLocationSet={handleLocationSet}
-            />
-
-            <Footer />
+            {/* Deals not active here yet */}
+            <div className="mt-10 rounded-2xl p-6 text-center" style={{ background: `${C.primary}0a`, border: `1px solid ${C.primary}22` }}>
+              <p className="text-xl">🏪</p>
+              <p className="font-bold text-sm mt-1.5" style={{ color: C.onSurface }}>Deals not active here yet?</p>
+              <p className="text-xs mt-1.5 leading-relaxed max-w-md mx-auto" style={{ color: C.onSurfaceVariant }}>
+                Be the first to tell businesses about deals — connect with us to learn how you and the businesses around you can get started on VemTap.
+              </p>
+              <Link
+                href="/contact"
+                className="mt-4 inline-flex items-center gap-1.5 rounded-xl px-5 py-2.5 text-[11px] font-bold uppercase tracking-wider text-white active:scale-95 transition-all"
+                style={{ background: C.primary }}
+              >
+                Connect with us
+              </Link>
+            </div>
+          </div>
         </div>
-    );
+      )}
+
+      {/* ─── Main Content (only when location is set) ─── */}
+      {hasLocation && (
+      <div className="vemtap-container flex flex-1">
+        {/* ─── Desktop Sidebar Filters (Collapsible) ─── */}
+        <aside className="hidden md:block shrink-0 sticky top-[108px] h-[calc(100vh-108px)] border-r transition-all duration-300" style={{ borderColor: C.outlineVariant, background: '#ffffff', width: sidebarOpen ? 260 : 48 }}>
+          <button
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            className="w-full flex items-center gap-2 px-4 h-12 text-[13px] font-bold uppercase tracking-wider border-b transition-colors hover:bg-gray-50"
+            style={{ borderColor: C.outlineVariant, color: C.onSurface }}
+          >
+            <span className="material-symbols-outlined" style={{ fontSize: 20, transition: 'transform 0.3s', transform: sidebarOpen ? 'rotate(0)' : 'rotate(180deg)' }}>filter_list</span>
+            {sidebarOpen && <span>Filters</span>}
+          </button>
+          {sidebarOpen && (
+            <div className="p-5 space-y-5 overflow-y-auto h-[calc(100vh-152px)]">
+              {/* Sort By */}
+              <div>
+                <h4 className="text-[10px] font-bold uppercase tracking-[0.15em] mb-2.5" style={{ color: '#727786' }}>Sort By</h4>
+                <div className="flex flex-col gap-1.5">
+                  {[
+                    { key: 'trending', label: 'Trending', icon: 'trending_up' },
+                    { key: 'newest', label: 'Newest', icon: 'schedule' },
+                    { key: 'price_asc', label: 'Price: Low → High', icon: 'arrow_upward' },
+                    { key: 'price_desc', label: 'Price: High → Low', icon: 'arrow_downward' },
+                    { key: 'discount', label: 'Biggest Discount', icon: 'local_offer' },
+                  ].map((opt) => (
+                    <button key={opt.key} onClick={() => setSortBy(opt.key)} className="flex items-center gap-2 px-3 py-2 rounded-lg text-[12px] font-medium transition-all text-left" style={{ background: sortBy === opt.key ? `${C.primary}10` : 'transparent', color: sortBy === opt.key ? C.primary : C.onSurfaceVariant }}>
+                      <span className="material-symbols-outlined" style={{ fontSize: 16 }}>{opt.icon}</span>
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="h-px" style={{ background: C.outlineVariant }} />
+
+              {/* Quick Filters */}
+              <div>
+                <h4 className="text-[10px] font-bold uppercase tracking-[0.15em] mb-2.5" style={{ color: '#727786' }}>Quick Filters</h4>
+                <div className="flex flex-col gap-1.5">
+                  {[
+                    { key: 'flash_sales', label: 'Flash Sales', icon: 'bolt' },
+                    { key: 'free_deals', label: 'Free Deals', icon: 'redeem' },
+                    { key: 'ending_soon', label: 'Ending Soon', icon: 'timer' },
+                    { key: 'new_arrivals', label: 'New Arrivals', icon: 'fiber_new' },
+                  ].map((f) => (
+                    <button key={f.key} onClick={() => setQuickFilter(quickFilter === f.key ? null : f.key)} className="flex items-center gap-2 px-3 py-2 rounded-lg text-[12px] font-medium transition-all text-left" style={{ background: quickFilter === f.key ? `${C.primary}10` : 'transparent', color: quickFilter === f.key ? C.primary : C.onSurfaceVariant }}>
+                      <span className="material-symbols-outlined" style={{ fontSize: 16 }}>{f.icon}</span>
+                      {f.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="h-px" style={{ background: C.outlineVariant }} />
+
+              {/* Category */}
+              <div>
+                <h4 className="text-[10px] font-bold uppercase tracking-[0.15em] mb-2.5" style={{ color: '#727786' }}>Category</h4>
+                <div className="relative">
+                  <button onClick={() => setShowCategoryDropdown(!showCategoryDropdown)} className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-[13px] font-medium transition-colors" style={{ border: `1px solid ${C.outlineVariant}`, background: '#ffffff', color: C.onSurface }}>
+                    <span>{selectedCategory ? categoriesList.find(c => c.slug === selectedCategory)?.label || 'Category' : 'All Categories'}</span>
+                    <span className="material-symbols-outlined" style={{ fontSize: 18, transition: 'transform 0.2s', transform: showCategoryDropdown ? 'rotate(180deg)' : 'none' }}>expand_more</span>
+                  </button>
+                  {showCategoryDropdown && (
+                    <div className="absolute top-full left-0 right-0 mt-1 rounded-lg shadow-lg z-20 max-h-48 overflow-y-auto" style={{ background: '#ffffff', border: `1px solid ${C.outlineVariant}` }}>
+                      <button onClick={() => { setSelectedCategory(null); setShowCategoryDropdown(false); }} className="w-full flex items-center gap-2 px-3 py-2.5 text-[13px] font-medium text-left" style={{ background: !selectedCategory ? `${C.primary}10` : '#ffffff', color: !selectedCategory ? C.primary : C.onSurface }}>
+                        All Categories
+                      </button>
+                      {categoriesList.map((cat) => (
+                        <button key={cat.id} onClick={() => { setSelectedCategory(cat.slug ?? null); setShowCategoryDropdown(false); }} className="w-full flex items-center gap-2 px-3 py-2.5 text-[13px] font-medium text-left" style={{ background: selectedCategory === cat.slug ? `${C.primary}10` : '#ffffff', color: selectedCategory === cat.slug ? C.primary : C.onSurface }}>
+                          {cat.label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="h-px" style={{ background: C.outlineVariant }} />
+
+              {/* Price Range */}
+              <div>
+                <h4 className="text-[10px] font-bold uppercase tracking-[0.15em] mb-2.5" style={{ color: '#727786' }}>Price Range</h4>
+                <div className="flex items-center gap-2">
+                  <div className="flex-1 relative">
+                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[13px]" style={{ color: '#727786' }}>₦</span>
+                    <input type="number" value={priceRange.min} onChange={(e) => setPriceRange({ ...priceRange, min: e.target.value })} placeholder="Min" className="w-full h-9 pl-7 pr-2 rounded-lg text-[13px] focus:outline-none focus:ring-1" style={{ border: `1px solid ${C.outlineVariant}`, color: '#191c1e' }} />
+                  </div>
+                  <span className="text-[12px]" style={{ color: '#727786' }}>—</span>
+                  <div className="flex-1 relative">
+                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[13px]" style={{ color: '#727786' }}>₦</span>
+                    <input type="number" value={priceRange.max} onChange={(e) => setPriceRange({ ...priceRange, max: e.target.value })} placeholder="Max" className="w-full h-9 pl-7 pr-2 rounded-lg text-[13px] focus:outline-none focus:ring-1" style={{ border: `1px solid ${C.outlineVariant}`, color: '#191c1e' }} />
+                  </div>
+                </div>
+              </div>
+
+              {/* Clear + count */}
+              <div className="pt-2 space-y-2">
+                {(quickFilter || selectedCategory || priceRange.min || priceRange.max || sortBy !== 'trending') && (
+                  <button onClick={() => { setQuickFilter(null); setSelectedCategory(null); setPriceRange({ min: '', max: '' }); setSortBy('trending'); }} className="w-full py-2 rounded-lg text-[12px] font-semibold border transition-colors" style={{ borderColor: C.outlineVariant, color: C.onSurfaceVariant }}>Clear all filters</button>
+                )}
+                <p className="text-[12px] font-medium text-center" style={{ color: C.onSurfaceVariant }}>
+                  {hasActiveFilter &&
+                    `${allDeals.length} ${allDeals.length === 1 ? 'deal' : 'deals'} found`}
+                </p>
+              </div>
+            </div>
+          )}
+        </aside>
+
+        {/* ─── Right Content ─── */}
+        <main className="flex-1 min-w-0">
+          {/* Desktop Banner Slider */}
+          <div className="hidden md:block px-6 pt-5">
+            <div className="relative rounded-2xl overflow-hidden group" style={{ minHeight: 220 }}>
+              {bannerSlides.map((slide, i) => (
+                <div
+                  key={i}
+                  className="absolute inset-0 transition-opacity duration-700"
+                  style={{ opacity: i === bannerIndex ? 1 : 0, zIndex: i === bannerIndex ? 1 : 0 }}
+                >
+                  <img src={slide.image} alt={slide.tag} className="w-full h-full object-cover" style={{ minHeight: 220 }} />
+                  <div className="absolute inset-0" style={{ background: slide.gradient }} />
+                </div>
+              ))}
+              <div className="relative z-10 flex items-center p-8 lg:p-10" style={{ minHeight: 220 }}>
+                <div className="flex-1 max-w-lg">
+                  <span className="inline-flex items-center gap-1.5 bg-white/15 backdrop-blur-sm text-white px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider mb-4">
+                    <span className="material-symbols-outlined text-[14px]" style={{ fontVariationSettings: "'FILL' 1" }}>{bannerSlides[bannerIndex].tagIcon}</span>
+                    {bannerSlides[bannerIndex].tag}
+                  </span>
+                  <h2 className="text-[28px] lg:text-[34px] font-black text-white leading-tight mb-2">{bannerSlides[bannerIndex].heading}</h2>
+                  <p className="text-[14px] text-white/70 mb-5">{bannerSlides[bannerIndex].sub}</p>
+                  <button
+                    onClick={() => router.push(bannerSlides[bannerIndex].actionUrl || '/deals')}
+                    className="px-6 py-2.5 rounded-full bg-white font-bold text-[12px] uppercase tracking-wider"
+                    style={{ color: C.primary }}
+                  >
+                    {bannerSlides[bannerIndex].cta}
+                  </button>
+                </div>
+              </div>
+              {/* Left Arrow */}
+              <button
+                onClick={() => setBannerIndex((prev) => (prev - 1 + bannerSlides.length) % bannerSlides.length)}
+                className="absolute left-3 top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 hover:scale-110"
+                style={{ background: 'rgba(255,255,255,0.9)', color: C.onSurface, boxShadow: '0 2px 8px rgba(0,0,0,0.15)' }}
+              >
+                <span className="material-symbols-outlined" style={{ fontSize: 22 }}>chevron_left</span>
+              </button>
+              {/* Right Arrow */}
+              <button
+                onClick={() => setBannerIndex((prev) => (prev + 1) % bannerSlides.length)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 hover:scale-110"
+                style={{ background: 'rgba(255,255,255,0.9)', color: C.onSurface, boxShadow: '0 2px 8px rgba(0,0,0,0.15)' }}
+              >
+                <span className="material-symbols-outlined" style={{ fontSize: 22 }}>chevron_right</span>
+              </button>
+              {/* Dots */}
+              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2">
+                {bannerSlides.map((_, i) => (
+                  <button
+                    key={i}
+                    onClick={() => setBannerIndex(i)}
+                    className="transition-all duration-300 rounded-full"
+                    style={{
+                      width: i === bannerIndex ? 24 : 8,
+                      height: 8,
+                      background: i === bannerIndex ? '#ffffff' : 'rgba(255,255,255,0.4)',
+                    }}
+                  />
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Deals Grid */}
+          <div className="p-6 space-y-5">
+            {hasLocation && showFarDistanceNotice && (
+              <DistanceNoticeBanner
+                locationName={userLocationLabel}
+                minDistanceKm={closestDealDistanceKm}
+                onOpenLocationModal={() => setIsLocationModalOpen(true)}
+              />
+            )}
+
+            {isLoading ? (
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                {Array.from({ length: 8 }).map((_, i) => (
+                  <div key={i} className="rounded-xl overflow-hidden animate-pulse" style={{ background: C.surface, border: `1px solid ${C.outlineVariant}` }}>
+                    <div className="h-32 lg:h-40 w-full" style={{ background: C.outlineVariant }} />
+                    <div className="p-3 space-y-2">
+                      <div className="h-4 rounded w-3/4" style={{ background: C.outlineVariant }} />
+                      <div className="h-3 rounded w-1/2" style={{ background: C.outlineVariant }} />
+                      <div className="h-5 rounded w-1/3" style={{ background: C.outlineVariant }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : allDeals.length > 0 ? (
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                {allDeals.map(deal => {
+                  const badge = getBadge(deal);
+                  const distance =
+                    hasLocation && lat != null && lng != null && deal.lat != null && deal.lng != null
+                      ? formatDistance(haversineDistance(lat, lng, deal.lat, deal.lng))
+                      : null;
+                  const directionsHref =
+                    hasLocation && lat != null && lng != null && deal.lat != null && deal.lng != null
+                      ? getDirectionsUrl(lat, lng, deal.lat, deal.lng)
+                      : null;
+                  return (
+                    <div key={deal.id} className="rounded-xl overflow-hidden shadow-sm relative group transition-all hover:shadow-lg hover:-translate-y-0.5" style={{ background: C.surface, border: `1px solid ${C.outlineVariant}` }}>
+                      <Link href={deal.href} className="block cursor-pointer">
+                        <div className="h-32 lg:h-40 relative w-full overflow-hidden" style={{ background: C.outlineVariant }}>
+                          <ImageGallery
+                            images={deal.images || [deal.image]}
+                            alt={deal.title}
+                            aspectClass="h-full"
+                            showDots={true}
+                            showArrows={false}
+                          />
+                          {badge && (
+                            <div className="absolute top-2 left-2 px-2 py-0.5 rounded-md font-bold" style={{ background: badge.color, color: '#ffffff', fontSize: 10, lineHeight: '14px' }}>
+                              {badge.label}
+                            </div>
+                          )}
+                        </div>
+                        <div className="p-3 flex flex-col gap-1.5">
+                          <div className="min-w-0">
+                            <h3 className="text-[13px] lg:text-[14px] font-semibold leading-[18px] line-clamp-1" style={{ color: C.onSurface }}>{deal.title}</h3>
+                            <p className="text-[11px] leading-[14px] line-clamp-1 mt-0.5" style={{ color: C.onSurfaceVariant }}>{deal.businessName}</p>
+                          </div>
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            {deal.dealPrice != null && (
+                              <span className="text-[15px] lg:text-[16px] font-bold" style={{ color: C.primary }}>
+                                {Number(deal.dealPrice) === 0 ? 'FREE' : formatNaira(deal.dealPrice)}
+                              </span>
+                            )}
+                            {deal.originalPrice && deal.dealPrice && Number(deal.originalPrice) > Number(deal.dealPrice) && (
+                              <span className="text-[11px] line-through" style={{ color: C.outline }}>{formatNaira(deal.originalPrice)}</span>
+                            )}
+                          </div>
+                          {distance && directionsHref && (
+                            <div className="flex items-center gap-1">
+                              <span className="text-[10px]" style={{ color: C.outline }}>{distance} away</span>
+                              <button
+                                type="button"
+                                aria-label="Get Directions"
+                                className="flex items-center p-0.5"
+                                style={{ color: C.primary }}
+                                onClick={e => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  window.open(directionsHref, '_blank', 'noopener,noreferrer');
+                                }}
+                              >
+                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                  <polygon points="3 11 22 2 13 21 11 13 3 11" />
+                                </svg>
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </Link>
+                      <div className="px-3 pb-3">
+                        <DealEngagementBar offerId={deal.id} offerTitle={deal.title} offerDescription={deal.description || ''} dealUrl={deal.href} businessName={deal.businessName} compact />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="py-12">
+                {/* No-results message */}
+                <div className="text-center">
+                  <div className="relative mx-auto size-16 mb-4">
+                    <div className="absolute inset-0 rounded-2xl -rotate-6" style={{ background: `${C.primary}15` }} />
+                    <div className="relative size-16 rounded-2xl flex items-center justify-center text-2xl" style={{ background: '#fff', border: `1px solid ${C.outlineVariant}` }}>🛍️</div>
+                  </div>
+                  <p className="font-bold text-sm" style={{ color: C.onSurface }}>
+                    {userLocationLabel ? `No deals found in ${userLocationLabel}` : 'No deals found'}
+                  </p>
+                  <p className="text-xs mt-1" style={{ color: C.outline }}>
+                    {userLocationLabel
+                      ? 'Try a different location or search — new deals drop daily.'
+                      : 'Try a different search or filter — new deals drop daily.'}
+                  </p>
+
+                  {/* View in other locations — first action */}
+                  <button
+                    onClick={() => { clearAllFilters(); setIsLocationModalOpen(true); }}
+                    className="mt-4 inline-flex items-center gap-1.5 rounded-xl px-5 py-2.5 text-[11px] font-bold uppercase tracking-wider text-white active:scale-95 transition-all"
+                    style={{ background: C.primary }}
+                  >
+                    <span className="material-symbols-outlined" style={{ fontSize: 14 }}>location_on</span>
+                    View in other locations
+                  </button>
+
+                  {userLocationLabel && (
+                    <button
+                      onClick={() => { clearAllFilters(); setIsLocationModalOpen(true); }}
+                      className="mt-3 inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-[11px] font-bold uppercase tracking-wider border transition-colors"
+                      style={{ borderColor: C.outlineVariant, color: C.onSurfaceVariant }}
+                    >
+                      <span className="material-symbols-outlined" style={{ fontSize: 14 }}>my_location</span>
+                      Change Location
+                    </button>
+                  )}
+                  <button
+                    onClick={clearAllFilters}
+                    className="mt-3 inline-flex items-center gap-1.5 rounded-xl px-5 py-2.5 text-[11px] font-bold uppercase tracking-wider border transition-colors"
+                    style={{ borderColor: C.outlineVariant, color: C.onSurfaceVariant }}
+                  >
+                    View all deals
+                  </button>
+                </div>
+
+                {/* List your business CTA */}
+                <div className="mt-10 rounded-2xl p-6 text-center" style={{ background: `${C.primary}08`, border: `1px solid ${C.primary}20` }}>
+                  <div className="size-12 mx-auto rounded-xl flex items-center justify-center mb-3" style={{ background: `${C.primary}15` }}>
+                    <span className="material-symbols-outlined text-2xl" style={{ color: C.primary }}>storefront</span>
+                  </div>
+                  <h3 className="font-bold text-sm mb-1" style={{ color: C.onSurface }}>Own a business?</h3>
+                  <p className="text-xs mb-4" style={{ color: C.outline }}>List your business on VemTap and reach thousands of customers in your area.</p>
+                  <Link
+                    href="/business"
+                    className="inline-flex items-center gap-1.5 rounded-xl px-5 py-2.5 text-[11px] font-bold uppercase tracking-wider text-white active:scale-95 transition-all"
+                    style={{ background: C.primary }}
+                  >
+                    Get Started — It&apos;s Free
+                  </Link>
+                </div>
+
+                {/* Other deals you may like */}
+                {suggestedDeals.length > 0 && (
+                  <div className="mt-10">
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="text-[13px] font-bold uppercase tracking-[0.12em]" style={{ color: C.onSurfaceVariant }}>
+                        Other deals you may like
+                      </h3>
+                      <button onClick={clearAllFilters} className="text-[12px] font-semibold hover:underline" style={{ color: C.primary }}>
+                        View all deals
+                      </button>
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                      {suggestedDeals.map(deal => {
+                        const badge = getBadge(deal);
+                        return (
+                          <Link key={deal.id} href={deal.href} className="rounded-xl overflow-hidden shadow-sm relative group cursor-pointer transition-all hover:shadow-lg hover:-translate-y-0.5" style={{ background: C.surface, border: `1px solid ${C.outlineVariant}` }}>
+                            <div className="h-32 lg:h-36 relative w-full overflow-hidden" style={{ background: C.outlineVariant }}>
+                              <ImageGallery
+                                images={deal.images || [deal.image]}
+                                alt={deal.title}
+                                aspectClass="h-full"
+                                showDots={true}
+                                showArrows={false}
+                              />
+                              {badge && (
+                                <div className="absolute top-2 left-2 px-2 py-0.5 rounded-md font-bold" style={{ background: badge.color, color: '#ffffff', fontSize: 10, lineHeight: '14px' }}>
+                                  {badge.label}
+                                </div>
+                              )}
+                            </div>
+                            <div className="p-3 flex flex-col gap-1.5">
+                              <div className="min-w-0">
+                                <h4 className="text-[13px] font-semibold leading-[18px] line-clamp-1" style={{ color: C.onSurface }}>{deal.title}</h4>
+                                <p className="text-[11px] leading-[14px] line-clamp-1 mt-0.5" style={{ color: C.onSurfaceVariant }}>{deal.businessName}</p>
+                              </div>
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                {deal.dealPrice != null && (
+                                  <span className="text-[15px] font-bold" style={{ color: C.primary }}>
+                                    {Number(deal.dealPrice) === 0 ? 'FREE' : formatNaira(deal.dealPrice)}
+                                  </span>
+                                )}
+                                {deal.originalPrice && deal.dealPrice && Number(deal.originalPrice) > Number(deal.dealPrice) && (
+                                  <span className="text-[11px] line-through" style={{ color: C.outline }}>{formatNaira(deal.originalPrice)}</span>
+                                )}
+                              </div>
+                            </div>
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Deals not active here yet */}
+                <div className="mt-10 rounded-2xl p-6 text-center" style={{ background: `${C.primary}0a`, border: `1px solid ${C.primary}22` }}>
+                  <p className="text-xl">🏪</p>
+                  <p className="font-bold text-sm mt-1.5" style={{ color: C.onSurface }}>Deals not active here yet?</p>
+                  <p className="text-xs mt-1.5 leading-relaxed max-w-md mx-auto" style={{ color: C.onSurfaceVariant }}>
+                    Be the first to tell businesses about deals — connect with us to learn how you and the businesses around you can get started on VemTap.
+                  </p>
+                  <Link
+                    href="/contact"
+                    className="mt-4 inline-flex items-center gap-1.5 rounded-xl px-5 py-2.5 text-[11px] font-bold uppercase tracking-wider text-white active:scale-95 transition-all"
+                    style={{ background: C.primary }}
+                  >
+                    Connect with us
+                  </Link>
+                </div>
+              </div>
+            )}
+          </div>
+        </main>
+
+      </div>
+      )}
+
+        {/* Consumer Footer */}
+        <Footer />
+
+      <PublicBottomNav />
+
+      {/* ─── Location Modal (unclosable until location is set) ─── */}
+      {isLocationModalOpen && (
+        <LocationPrompt
+          isOpen={isLocationModalOpen}
+          onClose={() => {
+            // Only allow closing if user already has a location set
+            if (hasLocation) {
+              setIsLocationModalOpen(false);
+              setLocationError(null);
+            }
+          }}
+          closable={hasLocation}
+          isLoading={false}
+          error={locationError}
+          onAllowLocation={async () => {
+            setLocationError(null);
+            const res = await requestLocation();
+            if (res.ok) setIsLocationModalOpen(false);
+          }}
+          onSearchLocation={async (q: string) => {
+            setLocationError(null);
+            const ok = await setManualLocation(q);
+            if (ok) setIsLocationModalOpen(false);
+            else setLocationError('Could not find that location. Please try another area.');
+          }}
+        />
+      )}
+
+      {/* ─── Search Modal ─── */}
+      {isSearchModalOpen && (
+        <SearchModal
+          isOpen={isSearchModalOpen}
+          onClose={() => setIsSearchModalOpen(false)}
+        />
+      )}
+
+      {/* ─── Advanced Filter Modal ─── */}
+      {showFilterModal && (
+        <div
+          className="fixed inset-0 z-[60] flex items-end justify-center"
+          style={{ background: 'rgba(0,0,0,0.4)' }}
+          onClick={() => setShowFilterModal(false)}
+        >
+          <div
+            className="w-full max-w-lg rounded-t-2xl overflow-hidden max-h-[85vh] overflow-y-auto"
+            style={{ background: '#ffffff' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Handle */}
+            <div className="flex justify-center pt-3 pb-2 sticky top-0" style={{ background: '#ffffff' }}>
+              <div className="w-10 h-1 rounded-full" style={{ background: '#c2c6d7' }} />
+            </div>
+
+            {/* Title */}
+            <div className="px-5 pb-4 flex items-center justify-between sticky top-3" style={{ background: '#ffffff' }}>
+              <h3 className="text-[18px] font-semibold" style={{ color: '#191c1e' }}>
+                Filter Deals
+              </h3>
+              <button
+                onClick={() => { setQuickFilter(null); setSelectedCategory(null); setPriceRange({ min: '', max: '' }); setSortBy('trending'); setShowCategoryDropdown(false); }}
+                className="text-[13px] font-semibold"
+                style={{ color: '#0055c4' }}
+              >
+                Reset all
+              </button>
+            </div>
+
+            <div className="px-5 pb-6 space-y-6">
+              {/* Sort By */}
+              <div>
+                <h4 className="text-[11px] font-bold uppercase tracking-widest mb-3" style={{ color: '#727786' }}>
+                  Sort By
+                </h4>
+                <div className="flex flex-wrap gap-2">
+                  {SORT_OPTIONS.map((opt) => (
+                    <button
+                      key={opt.id}
+                      onClick={() => setSortBy(opt.id)}
+                      className="flex items-center gap-1.5 px-4 py-2 rounded-full text-[13px] font-semibold transition-all"
+                      style={{
+                        border: `1px solid ${sortBy === opt.id ? '#0055c4' : '#c2c6d7'}`,
+                        background: sortBy === opt.id ? '#0055c4' : '#ffffff',
+                        color: sortBy === opt.id ? '#ffffff' : '#191c1e',
+                      }}
+                    >
+                      <span className="material-symbols-outlined" style={{ fontSize: 16 }}>{opt.icon}</span>
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Quick Filters */}
+              <div>
+                <h4 className="text-[11px] font-bold uppercase tracking-widest mb-3" style={{ color: '#727786' }}>
+                  Quick Filters
+                </h4>
+                <div className="flex flex-wrap gap-2">
+                  {QUICK_FILTER_OPTIONS.map((opt) => (
+                    <button
+                      key={opt.id}
+                      onClick={() => setQuickFilter(quickFilter === opt.id ? null : opt.id)}
+                      className="flex items-center gap-1.5 px-4 py-2 rounded-full text-[13px] font-semibold transition-all"
+                      style={{
+                        border: `1px solid ${quickFilter === opt.id ? '#0055c4' : '#c2c6d7'}`,
+                        background: quickFilter === opt.id ? '#0055c4' : '#ffffff',
+                        color: quickFilter === opt.id ? '#ffffff' : '#191c1e',
+                      }}
+                    >
+                      <span className="material-symbols-outlined" style={{ fontSize: 16 }}>{opt.icon}</span>
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Category */}
+              <div>
+                <h4 className="text-[11px] font-bold uppercase tracking-widest mb-3" style={{ color: '#727786' }}>
+                  Category
+                </h4>
+                <button
+                  onClick={() => setShowCategoryDropdown(!showCategoryDropdown)}
+                  className="w-full flex items-center justify-between px-4 py-3 rounded-xl text-[14px] font-medium transition-all"
+                  style={{
+                    border: `1px solid ${selectedCategory ? '#0055c4' : '#c2c6d7'}`,
+                    background: selectedCategory ? 'rgba(0, 85, 196, 0.05)' : '#ffffff',
+                    color: '#191c1e',
+                  }}
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="material-symbols-outlined" style={{ fontSize: 20, color: selectedCategory ? '#0055c4' : '#727786' }}>
+                      category
+                    </span>
+                    {selectedCategory
+                      ? categoriesList.find(c => c.slug === selectedCategory)?.label || selectedCategory
+                      : 'All Categories'
+                    }
+                  </div>
+                  <span
+                    className="material-symbols-outlined transition-transform"
+                    style={{
+                      fontSize: 20,
+                      color: '#727786',
+                      transform: showCategoryDropdown ? 'rotate(180deg)' : 'rotate(0deg)',
+                    }}
+                  >
+                    expand_more
+                  </span>
+                </button>
+
+                {/* Scrollable dropdown */}
+                {showCategoryDropdown && (
+                  <div
+                    className="mt-2 rounded-xl overflow-hidden max-h-[240px] overflow-y-auto"
+                    style={{ border: '1px solid #c2c6d7' }}
+                  >
+                    <button
+                      onClick={() => { setSelectedCategory(null); setShowCategoryDropdown(false); }}
+                      className="w-full flex items-center gap-3 px-4 py-3 text-[14px] font-medium transition-colors text-left"
+                      style={{
+                        background: !selectedCategory ? 'rgba(0, 85, 196, 0.08)' : '#ffffff',
+                        color: !selectedCategory ? '#0055c4' : '#191c1e',
+                        borderBottom: '1px solid #e6e8ea',
+                      }}
+                    >
+                      <span className="material-symbols-outlined" style={{ fontSize: 20 }}>
+                        apps
+                      </span>
+                      All Categories
+                      {!selectedCategory && (
+                        <span className="material-symbols-outlined ml-auto" style={{ fontSize: 20, color: '#0055c4' }}>check</span>
+                      )}
+                    </button>
+                    {categoriesList.map((cat) => (
+                      <button
+                        key={cat.id}
+                        onClick={() => { setSelectedCategory(cat.slug ?? null); setShowCategoryDropdown(false); }}
+                        className="w-full flex items-center gap-3 px-4 py-3 text-[14px] font-medium transition-colors text-left"
+                        style={{
+                          background: selectedCategory === cat.slug ? 'rgba(0, 85, 196, 0.08)' : '#ffffff',
+                          color: selectedCategory === cat.slug ? '#0055c4' : '#191c1e',
+                          borderBottom: '1px solid #e6e8ea',
+                        }}
+                      >
+                        <span className="material-symbols-outlined" style={{ fontSize: 20 }}>
+                          label
+                        </span>
+                        {cat.label}
+                        {selectedCategory === cat.slug && (
+                          <span className="material-symbols-outlined ml-auto" style={{ fontSize: 20, color: '#0055c4' }}>check</span>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Price Range */}
+              <div>
+                <h4 className="text-[11px] font-bold uppercase tracking-widest mb-3" style={{ color: '#727786' }}>
+                  Price Range
+                </h4>
+                <div className="flex items-center gap-3">
+                  <div className="flex-1 relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[14px]" style={{ color: '#727786' }}>₦</span>
+                    <input
+                      type="number"
+                      value={priceRange.min}
+                      onChange={(e) => setPriceRange({ ...priceRange, min: e.target.value })}
+                      placeholder="Min"
+                      className="w-full h-11 pl-8 pr-3 rounded-xl text-[14px] focus:outline-none focus:ring-2"
+                      style={{
+                        border: '1px solid #c2c6d7',
+                        color: '#191c1e',
+                      }}
+                    />
+                  </div>
+                  <span className="text-[14px]" style={{ color: '#727786' }}>—</span>
+                  <div className="flex-1 relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[14px]" style={{ color: '#727786' }}>₦</span>
+                    <input
+                      type="number"
+                      value={priceRange.max}
+                      onChange={(e) => setPriceRange({ ...priceRange, max: e.target.value })}
+                      placeholder="Max"
+                      className="w-full h-11 pl-8 pr-3 rounded-xl text-[14px] focus:outline-none focus:ring-2"
+                      style={{
+                        border: '1px solid #c2c6d7',
+                        color: '#191c1e',
+                      }}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Apply Button */}
+              <button
+                onClick={() => setShowFilterModal(false)}
+                className="w-full h-12 rounded-full text-[14px] font-semibold active:scale-[0.98] transition-transform"
+                style={{ background: '#0055c4', color: '#ffffff' }}
+              >
+                Show {filteredDeals.length} {filteredDeals.length === 1 ? 'deal' : 'deals'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default function DealsPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen" style={{ background: C.bg }} />}>
+      <DealsPageInner />
+    </Suspense>
+  );
 }

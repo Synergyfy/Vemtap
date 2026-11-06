@@ -17,7 +17,7 @@ const categories = [
 export default function TrustSection() {
     return (
         <section className="py-20 bg-gray-50/50">
-            <div className="container mx-auto px-6">
+            <div className="vemtap-container">
                 <div className="text-center mb-12">
                     <h2 className="text-xs font-black uppercase tracking-[0.2em] text-text-secondary opacity-50 mb-4">
                         Trusted By Growing Businesses

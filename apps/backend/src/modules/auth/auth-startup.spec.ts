@@ -8,6 +8,8 @@ import { DataSource } from 'typeorm';
 
 describe('AuthModule Startup', () => {
   beforeAll(() => {
+    process.env.RESEND_API_KEY = 're_test_key';
+    process.env.JWT_SECRET = 'test-jwt-secret';
     jest.spyOn(DataSource.prototype, 'initialize').mockImplementation(function (
       this: any,
     ) {
@@ -24,7 +26,12 @@ describe('AuthModule Startup', () => {
   it('should compile AuthModule', async () => {
     const module = await Test.createTestingModule({
       imports: [
-        ConfigModule.forRoot({ isGlobal: true }),
+        // Same result locally and in CI: ignore any .env and supply what the module needs.
+        ConfigModule.forRoot({
+          isGlobal: true,
+          ignoreEnvFile: true,
+          load: [() => ({ JWT_SECRET: 'auth-startup-test-secret' })],
+        }),
         CacheModule.register({ isGlobal: true }),
         TypeOrmModule.forRoot({
           type: 'postgres',

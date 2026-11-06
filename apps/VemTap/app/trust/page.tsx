@@ -85,7 +85,7 @@ export default function TrustSecurity() {
             
             <header className="pt-48 pb-24 bg-white border-b border-gray-100 overflow-hidden relative">
                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-primary/5 rounded-full blur-3xl opacity-50 pointer-events-none"></div>
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
+                <div className="vemtap-container relative">
                     <div className="max-w-3xl">
                         <div className="flex items-center gap-3 mb-8">
                             <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary rotate-3 shadow-inner">
@@ -105,7 +105,7 @@ export default function TrustSecurity() {
                 </div>
             </header>
 
-            <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
+            <main className="vemtap-container py-24">
                 <div className="max-w-3xl mb-32">
                     <p className="text-2xl leading-relaxed text-text-main font-medium italic mb-10 border-l-4 border-primary pl-8">
                         "At Vemtap, we understand that data is not just information — it is trust. That is why we have built our platform with enterprise-grade security, privacy, and compliance from the ground up."
@@ -145,7 +145,7 @@ export default function TrustSecurity() {
                             <span className="text-4xl">🤝</span>
                         </div>
                         <h2 className="text-2xl md:text-4xl lg:text-5xl font-bold mb-10 tracking-tight">Built for Trust</h2>
-                        <p className="text-gray-300 font-medium italic text-xl mb-16 max-w-3xl mx-auto leading-relaxed">
+                        <p className="text-gray-300 font-medium italic text-xl mb-16 vemtap-container leading-relaxed">
                             Whether you’re a small business or a large enterprise, Vemtap is designed to give you confidence in how your data is handled.
                         </p>
                         <div className="flex flex-col sm:flex-row items-center justify-center gap-8">

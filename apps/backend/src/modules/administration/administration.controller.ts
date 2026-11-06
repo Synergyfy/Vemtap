@@ -6,7 +6,6 @@ import {
   Query,
   UseGuards,
   Request,
-  UseInterceptors,
   Delete,
   Param,
   ParseUUIDPipe,
@@ -25,13 +24,11 @@ import {
   ApiOperation,
   ApiResponse,
   ApiBearerAuth,
-  ApiHeader,
 } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { UserRole } from '../users/entities/user.entity';
-import { AuditInterceptor } from './audit.interceptor';
 import { SkipSubscriptionCheck } from '../subscriptions/decorators/skip-subscription-check.decorator';
 
 @ApiTags('Administration')

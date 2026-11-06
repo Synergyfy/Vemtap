@@ -9,6 +9,7 @@ import { QuoteNegotiation } from './entities/quote-negotiation.entity';
 import { Order } from './entities/order.entity';
 import { ProductType } from './entities/product-type.entity';
 import { PaymentsModule } from '../payments/payments.module';
+import { CatalogueModule } from '../catalogue/catalogue.module';
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { PaymentsModule } from '../payments/payments.module';
       ProductType,
     ]),
     PaymentsModule,
+    CatalogueModule,
   ],
   controllers: [ProductsController],
   providers: [ProductsService],

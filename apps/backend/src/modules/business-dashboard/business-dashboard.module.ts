@@ -10,6 +10,11 @@ import { Campaign } from '../campaigns/entities/campaign.entity';
 import { Reward } from '../loyalty/entities/reward.entity';
 import { Branch } from '../branches/entities/branch.entity';
 import { Business } from '../businesses/entities/business.entity';
+import { CatalogueOffer } from '../catalogue/entities/catalogue-offer.entity';
+import { CatalogueOfferClaim } from '../catalogue/entities/catalogue-offer-claim.entity';
+import { PosSale } from '../pos/entities/pos-sale.entity';
+import { ConversationThread } from '../messaging/entities/conversation-thread.entity';
+import { CatalogueOrder } from '../catalogue-orders/entities/catalogue-order.entity';
 
 @Module({
   imports: [
@@ -22,6 +27,11 @@ import { Business } from '../businesses/entities/business.entity';
       Reward,
       Branch,
       Business,
+      CatalogueOffer,
+      CatalogueOfferClaim,
+      PosSale,
+      ConversationThread,
+      CatalogueOrder,
     ]),
   ],
   controllers: [BusinessDashboardController],

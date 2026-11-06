@@ -5,12 +5,10 @@ import { AppModule } from '../src/app.module';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Branch } from '../src/modules/branches/entities/branch.entity';
-import { Business } from '../src/modules/businesses/entities/business.entity';
 
 describe('Branch Username Backfill & Uniqueness (e2e)', () => {
   let app: INestApplication;
   let branchRepo: Repository<Branch>;
-  let businessRepo: Repository<Business>;
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -21,7 +19,6 @@ describe('Branch Username Backfill & Uniqueness (e2e)', () => {
     await app.init();
 
     branchRepo = app.get<Repository<Branch>>(getRepositoryToken(Branch));
-    businessRepo = app.get<Repository<Business>>(getRepositoryToken(Business));
   });
 
   it('should have all branches with unique usernames', async () => {

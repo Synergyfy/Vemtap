@@ -4,6 +4,7 @@ import {
   ConflictException,
   BadRequestException,
   NotFoundException,
+  ServiceUnavailableException,
   Inject,
   forwardRef,
 } from '@nestjs/common';
@@ -16,14 +17,27 @@ import { DevicesService } from '../devices/devices.service';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { MailService } from '../mail/mail.service';
 import { AffiliatesService } from '../affiliates/affiliates.service';
-import { ExternalAffiliateService } from '../affiliates/external-affiliate.service';
+import { ReferralsService } from '../referrals/referrals.service';
 import * as bcrypt from 'bcrypt';
-import { User, UserRole, UserStatus } from '../users/entities/user.entity';
+import {
+  BUSINESS_SHELL_ROLES,
+  User,
+  UserRole,
+  UserStatus,
+} from '../users/entities/user.entity';
 import { Otp } from './entities/otp.entity';
 import { RegisterOwnerDto } from './dto/register-owner.dto';
+import { UpgradeToOwnerDto } from './dto/upgrade-to-owner.dto';
 import { RegisterAdminDto } from './dto/register-admin.dto';
 import { RequestOtpDto } from './dto/request-otp.dto';
 import { PasswordResetOtpDto } from './dto/password-reset-otp.dto';
+import {
+  RequestCustomerSignupOtpDto,
+  ResendCustomerOtpDto,
+  VerifyAndSetCustomerPinDto,
+  RequestCustomerPinResetDto,
+  ResetCustomerPinDto,
+} from './dto/customer-auth.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { LoginDto } from './dto/login.dto';
@@ -33,7 +47,13 @@ import { GoogleLoginDto } from './dto/google-login.dto';
 import { OAuth2Client } from 'google-auth-library';
 import { ConfigService } from '@nestjs/config';
 import { AuthProvider } from '../users/entities/user.entity';
-import { Business } from '../businesses/entities/business.entity';
+import {
+  PIN_FORMAT_MESSAGE,
+  PIN_ROLES,
+  PIN_SIGN_IN_MESSAGE,
+  isPin,
+  isPinRole,
+} from './pin-policy';
 import { TwoFactorCodeDto } from './dto/two-factor.dto';
 import { VerifyEmailDto } from './dto/verify-email.dto';
 import {
@@ -42,6 +62,7 @@ import {
   createDecipheriv,
   createHmac,
 } from 'crypto';
+import * as QRCode from 'qrcode';
 
 const BASE32 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
 
@@ -51,9 +72,7 @@ function isValidReferralCode(value: string | null | undefined): boolean {
   if (!value) return false;
   const trimmed = value.trim();
   return (
-    trimmed.length > 0 &&
-    trimmed === value &&
-    /^[A-Za-z0-9-]+$/.test(trimmed)
+    trimmed.length > 0 && trimmed === value && /^[A-Za-z0-9-]+$/.test(trimmed)
   );
 }
 
@@ -107,6 +126,12 @@ function totp(secret: string, timestamp = Date.now()): string {
   return String(code % 1000000).padStart(6, '0');
 }
 
+/** Every PIN-only account can reset its sign-in PIN by email (see pin-policy). */
+const PIN_RESET_ROLES: UserRole[] = PIN_ROLES;
+
+/** Wrong guesses allowed per emailed reset code before it is discarded. */
+const MAX_RESET_OTP_ATTEMPTS = 5;
+
 @Injectable()
 export class AuthService {
   private googleClient: OAuth2Client;
@@ -124,7 +149,8 @@ export class AuthService {
     @InjectRepository(Otp)
     private otpRepository: Repository<Otp>,
     private affiliatesService: AffiliatesService,
-    private externalAffiliateService: ExternalAffiliateService,
+    @Inject(forwardRef(() => ReferralsService))
+    private referralsService: ReferralsService,
   ) {
     this.googleClient = new OAuth2Client(
       this.configService.get<string>('GOOGLE_CLIENT_ID'),
@@ -155,7 +181,7 @@ export class AuthService {
       }
     }
 
-    const code = Math.floor(1000 + Math.random() * 9000).toString(); // 4 digit OTP
+    const code = Math.floor(100000 + Math.random() * 900000).toString(); // 6-digit OTP
     const expiresAt = new Date();
     expiresAt.setMinutes(expiresAt.getMinutes() + 10); // 10 min expiry
 
@@ -181,7 +207,7 @@ export class AuthService {
       throw new ConflictException('User with this email already exists');
     }
 
-    const code = Math.floor(1000 + Math.random() * 9000).toString(); // 4 digit OTP
+    const code = Math.floor(100000 + Math.random() * 900000).toString(); // 6-digit OTP
     const expiresAt = new Date();
     expiresAt.setMinutes(expiresAt.getMinutes() + 10); // 10 min expiry
 
@@ -241,7 +267,11 @@ export class AuthService {
     return this.generateAuthResponse(user, isNewUser);
   }
 
-  private async generateAuthResponse(user: Partial<User>, isNewUser = false) {
+  private async generateAuthResponse(
+    user: Partial<User>,
+    isNewUser = false,
+    device?: { userAgent?: string | null; ip?: string | null },
+  ) {
     let businessId: string | undefined;
     let branchId: string | undefined = user.branchId;
 
@@ -303,7 +333,12 @@ export class AuthService {
       }
     }
 
-    const session = await this.usersService.createSession(user.id as string);
+    const session = await this.usersService.createSession(
+      user.id as string,
+      device
+        ? { userAgent: device.userAgent ?? null, ipAddress: device.ip ?? null }
+        : undefined,
+    );
     const payload = {
       email: user.email,
       sub: user.id,
@@ -334,12 +369,20 @@ export class AuthService {
         businessId: effectiveBusinessId,
         branchId: branchId,
         referralCode,
+        isOwnerAccount: user.role === UserRole.OWNER,
+        hasBusiness: Boolean(effectiveBusinessId),
+        businessRole: BUSINESS_SHELL_ROLES.includes(user.role as UserRole)
+          ? user.role
+          : null,
       },
       isNewUser,
     };
   }
 
-  async login(dto: LoginDto): Promise<any> {
+  async login(
+    dto: LoginDto,
+    device?: { userAgent?: string | null; ip?: string | null },
+  ): Promise<any> {
     const user = await this.usersService.findByIdentifier(dto.identifier);
     if (!user) {
       throw new UnauthorizedException('Invalid email/phone or password');
@@ -347,6 +390,46 @@ export class AuthService {
 
     if (!user.password && user.authProvider === AuthProvider.GOOGLE) {
       throw new UnauthorizedException('Please log in using Google');
+    }
+
+    // Check for unverified or unset PIN customer
+    if (
+      user.role === UserRole.CUSTOMER &&
+      (user.emailVerified === false ||
+        user.status === UserStatus.PENDING ||
+        !user.password)
+    ) {
+      const code = Math.floor(100000 + Math.random() * 900000).toString();
+      const expiresAt = new Date();
+      expiresAt.setMinutes(expiresAt.getMinutes() + 10);
+
+      const otp = this.otpRepository.create({
+        email: user.email,
+        code,
+        expiresAt,
+        metadata: {
+          purpose: 'customer-registration',
+          userId: user.id,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          phone: user.phone,
+          branchId: user.branchId,
+        },
+      });
+      await this.otpRepository.save(otp);
+      await this.mailService.sendOtp(user.email, code);
+
+      return {
+        requiresPinSetup: true,
+        email: user.email,
+        message:
+          'Your account is not verified. An OTP has been sent to your email to set your 6-digit PIN.',
+      };
+    }
+
+    // Customer and business accounts sign in with their 6-digit PIN only.
+    if (isPinRole(user.role) && !isPin(dto.password)) {
+      throw new UnauthorizedException(PIN_SIGN_IN_MESSAGE);
     }
 
     if (
@@ -369,7 +452,7 @@ export class AuthService {
     }
 
     const { password: _password, ...result } = user;
-    return this.generateAuthResponse(result);
+    return this.generateAuthResponse(result, false, device);
   }
 
   async sendVerificationEmail(userId: string) {
@@ -378,7 +461,7 @@ export class AuthService {
     if (user.emailVerified)
       return { verified: true, message: 'Email is already verified' };
 
-    const code = Math.floor(1000 + Math.random() * 9000).toString();
+    const code = Math.floor(100000 + Math.random() * 900000).toString(); // 6-digit code
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
     await this.otpRepository.save(
       this.otpRepository.create({
@@ -423,14 +506,28 @@ export class AuthService {
   async setupTwoFactor(userId: string) {
     const user = await this.usersService.findById(userId);
     if (!user) throw new NotFoundException('User not found');
+    // Re-running setup would replace the secret and switch 2FA off without a
+    // code, so an enabled account must turn it off (with a code) first.
+    if (user.twoFactorEnabled) {
+      throw new ConflictException(
+        'Two-factor authentication is already on; turn it off first',
+      );
+    }
     const secret = encodeBase32(randomBytes(20));
     await this.usersService.update(userId, {
       twoFactorEnabled: false,
       twoFactorSecret: this.encryptTwoFactorSecret(secret),
     });
+    const otpauthUrl = `otpauth://totp/VemTap:${encodeURIComponent(user.email)}?secret=${secret}&issuer=VemTap`;
     return {
       secret,
-      otpauthUrl: `otpauth://totp/VemTap:${encodeURIComponent(user.email)}?secret=${secret}&issuer=VemTap`,
+      otpauthUrl,
+      /** Scannable QR of `otpauthUrl` for authenticator apps. */
+      qrSvg: await QRCode.toString(otpauthUrl, {
+        type: 'svg',
+        errorCorrectionLevel: 'M',
+        margin: 1,
+      }),
     };
   }
 
@@ -500,10 +597,18 @@ export class AuthService {
   }
 
   async googleLogin(dto: GoogleLoginDto) {
+    // Without a client ID, verifyIdToken skips the audience check and would
+    // accept an ID token Google issued to any other app.
+    const audience = this.configService.get<string>('GOOGLE_CLIENT_ID')?.trim();
+    if (!audience) {
+      throw new ServiceUnavailableException(
+        'Google sign-in is not configured on this server.',
+      );
+    }
     try {
       const ticket = await this.googleClient.verifyIdToken({
         idToken: dto.token,
-        audience: this.configService.get<string>('GOOGLE_CLIENT_ID'),
+        audience,
       });
 
       const payload = ticket.getPayload();
@@ -573,7 +678,9 @@ export class AuthService {
           googleId,
           avatar: picture,
           authProvider: AuthProvider.GOOGLE,
-          role: dto.role || UserRole.CUSTOMER,
+          // Self sign-up only ever makes a customer or an owner.
+          role:
+            dto.role === UserRole.OWNER ? UserRole.OWNER : UserRole.CUSTOMER,
           status: UserStatus.ACTIVE,
           isPasswordChanged: true,
         });
@@ -632,6 +739,14 @@ export class AuthService {
       role = UserRole.OWNER;
     }
 
+    if (
+      registrationData.password &&
+      isPinRole(role) &&
+      !isPin(registrationData.password)
+    ) {
+      throw new BadRequestException(PIN_FORMAT_MESSAGE);
+    }
+
     // 1. Create or Update User
     const hashedPassword = registrationData.password
       ? await bcrypt.hash(registrationData.password, 10)
@@ -651,6 +766,7 @@ export class AuthService {
       existingUser.role =
         (registrationData.role as UserRole) || existingUser.role;
       existingUser.status = UserStatus.ACTIVE;
+      existingUser.emailVerified = true;
       existingUser.phone =
         registrationData.phone || metadata.phone || existingUser.phone;
       user = await this.usersService.create(existingUser);
@@ -666,6 +782,7 @@ export class AuthService {
       existingUser.role =
         (registrationData.role as UserRole) || existingUser.role;
       existingUser.status = UserStatus.ACTIVE;
+      existingUser.emailVerified = true;
       existingUser.phone =
         registrationData.phone || metadata.phone || existingUser.phone;
       existingUser.referralCode =
@@ -683,6 +800,7 @@ export class AuthService {
         password: hashedPassword,
         role: role as UserRole,
         status: UserStatus.ACTIVE,
+        emailVerified: true,
         phone: registrationData.phone || metadata.phone,
         branchId: registrationData.branchId, // Use branchId instead of businessId
         referralCode: registrationData.referralCode || metadata.referralCode,
@@ -725,23 +843,10 @@ export class AuthService {
     }
 
     if (registrationData.referralCode) {
-      const affiliate = await this.affiliatesService.findByReferralCode(
+      await this.referralsService.resolveAndApplyReferral(
         registrationData.referralCode,
+        user.id,
       );
-
-      if (affiliate) {
-        const business = await this.businessesService.findByOwner(user.id);
-        await this.affiliatesService.recordReferral(
-          affiliate.id,
-          business?.id,
-          user.id,
-        );
-      } else {
-        await this.handleB2BReferralAndPartnership(
-          registrationData.referralCode,
-          user.id,
-        );
-      }
     }
 
     // Consume OTP session
@@ -927,29 +1032,441 @@ export class AuthService {
       }
     }
 
-    // --- Post-Registration Affiliate Logic (for Owners) ---
+    // --- Post-Registration Affiliate/Business Referral Logic (for Owners) ---
     if (referralCode) {
-      const affiliate =
-        await this.affiliatesService.findByReferralCode(referralCode);
+      await this.referralsService.resolveAndApplyReferral(
+        referralCode,
+        updatedUser.id,
+      );
+    }
 
-      if (affiliate) {
-        const business = await this.businessesService.findByOwner(
-          updatedUser.id,
+    return this.generateAuthResponse(updatedUser, isNewUser);
+  }
+
+  /**
+   * Upgrade an already-authenticated CUSTOMER to a business owner without
+   * creating a second account. The user keeps their customer history (visits,
+   * loyalty, claims are keyed by userId) and can later flip between the two
+   * modes via `switchRole`.
+   *
+   * Local-auth accounts must confirm their password; Google-only accounts
+   * (no password hash) upgrade on the strength of their session alone.
+   *
+   * `businessName` is optional, as in `registerOwner`: without it only the
+   * account is upgraded, and the business is created later by
+   * `PATCH /businesses/my-business` once the setup wizard has its details.
+   */
+  async upgradeToOwner(userRef: Partial<User>, dto: UpgradeToOwnerDto) {
+    const dbUser = await this.usersService.findOne(userRef.id as string);
+    if (!dbUser) {
+      throw new NotFoundException('User not found');
+    }
+
+    if (dbUser.role === UserRole.OWNER) {
+      throw new ConflictException(
+        'This account is already a business owner. Switch to business mode instead.',
+      );
+    }
+    if (dbUser.role !== UserRole.CUSTOMER) {
+      throw new BadRequestException(
+        'Only customer accounts can be upgraded to a business owner.',
+      );
+    }
+
+    if (dbUser.password) {
+      if (!dto.password) {
+        throw new UnauthorizedException(
+          'Password confirmation is required to add a business to this account.',
         );
-        await this.affiliatesService.recordReferral(
-          affiliate.id,
-          business?.id,
-          updatedUser.id,
-        );
-      } else {
-        await this.handleB2BReferralAndPartnership(
-          referralCode,
-          updatedUser.id,
+      }
+      const passwordMatches = await bcrypt.compare(
+        dto.password,
+        dbUser.password,
+      );
+      if (!passwordMatches) {
+        throw new UnauthorizedException('Incorrect password');
+      }
+    }
+
+    const existingBusiness = await this.businessesService.findByOwner(
+      dbUser.id,
+    );
+    if (existingBusiness) {
+      throw new ConflictException('Owner already has a business');
+    }
+
+    const referralCode = isValidReferralCode(dto.referralCode)
+      ? dto.referralCode
+      : undefined;
+    const goalString = Array.isArray(dto.goals)
+      ? dto.goals.join(', ')
+      : dto.goals;
+
+    const businessName = dto.businessName?.trim();
+    const business = businessName
+      ? await this.businessesService.create({
+          name: businessName,
+          categoryId: dto.categoryId,
+          subcategoryId: dto.subcategoryId,
+          otherSubcategoryName: dto.otherSubcategoryName,
+          monthlyVisitors: dto.visitors,
+          goal: goalString,
+          logoUrl: dto.businessLogo,
+          ownerId: dbUser.id,
+          address: dto.businessAddress,
+          website: dto.businessWebsite,
+          state: dto.state,
+          city: dto.city,
+          latitude: dto.latitude,
+          longitude: dto.longitude,
+          whatsappNumber: dto.whatsappNumber,
+          officialEmail: dto.officialEmail,
+          phone: dto.businessNumber,
+          isRegistered: dto.isRegistered,
+          engagement: dto.engagement,
+        })
+      : null;
+
+    // Flip the account to owner; customer-side data is untouched.
+    dbUser.role = UserRole.OWNER;
+    if (referralCode && !dbUser.referralCode) {
+      dbUser.referralCode = referralCode;
+    }
+    const upgradedUser = await this.usersService.create(dbUser);
+
+    // Match registration behaviour: land the business on the free plan until
+    // the owner picks a paid plan.
+    // An account-only upgrade has no business yet; the plan is assigned when
+    // the business exists (login auto-subscribes a business with no plan).
+    if (business) {
+      try {
+        await this.subscriptionsService.subscribeToFreePlan(business.id);
+      } catch (error) {
+        console.error(
+          'Failed to auto-subscribe upgraded business to free plan:',
+          error,
         );
       }
     }
 
-    return this.generateAuthResponse(updatedUser, isNewUser);
+    if (referralCode) {
+      await this.referralsService.resolveAndApplyReferral(
+        referralCode,
+        upgradedUser.id,
+        // An account-only upgrade records nothing yet — the code stays on
+        // the user for when their business is created.
+        { affiliateRequiresBusiness: true },
+      );
+    }
+
+    const freshUser = await this.usersService.findOne(upgradedUser.id);
+    if (!freshUser) {
+      throw new NotFoundException('User not found after upgrade');
+    }
+
+    return this.generateAuthResponse(freshUser, false);
+  }
+
+  // --- Dedicated Customer Registration & PIN Management ---
+
+  async requestCustomerRegistrationOtp(dto: RequestCustomerSignupOtpDto) {
+    const email = dto.email.toLowerCase();
+    const existingUserByEmail = await this.usersService.findByEmail(email);
+    if (
+      existingUserByEmail &&
+      existingUserByEmail.status !== UserStatus.PENDING
+    ) {
+      throw new ConflictException('User with this email already exists');
+    }
+
+    if (dto.phone) {
+      const existingUserByPhone = await this.usersService.findByPhone(
+        dto.phone,
+      );
+      if (
+        existingUserByPhone &&
+        existingUserByPhone.status !== UserStatus.PENDING
+      ) {
+        throw new ConflictException(
+          'User with this phone number already exists',
+        );
+      }
+    }
+
+    const firstName = (dto.firstName || '').trim() || 'Customer';
+    const lastName = (dto.lastName || '').trim();
+    const fullName = `${firstName} ${lastName}`.trim();
+
+    const code = Math.floor(100000 + Math.random() * 900000).toString(); // 6-digit OTP
+    const expiresAt = new Date();
+    expiresAt.setMinutes(expiresAt.getMinutes() + 10); // 10 min expiry
+
+    const otp = this.otpRepository.create({
+      email,
+      code,
+      expiresAt,
+      metadata: {
+        purpose: 'customer-registration',
+        name: fullName,
+        firstName,
+        lastName,
+        phone: dto.phone,
+        branchId: dto.branchId,
+        role: UserRole.CUSTOMER,
+      },
+    });
+    await this.otpRepository.save(otp);
+
+    await this.mailService.sendOtp(email, code);
+
+    return {
+      message: 'OTP sent successfully to your email',
+      expiresInMinutes: 10,
+    };
+  }
+
+  async resendCustomerOtp(dto: ResendCustomerOtpDto) {
+    const email = dto.email.toLowerCase();
+    const latestOtp = await this.otpRepository.findOne({
+      where: { email },
+      order: { createdAt: 'DESC' },
+    });
+
+    const code = Math.floor(100000 + Math.random() * 900000).toString(); // fresh 6-digit OTP
+    const expiresAt = new Date();
+    expiresAt.setMinutes(expiresAt.getMinutes() + 10); // 10 min expiry
+
+    const metadata = latestOtp?.metadata || {
+      purpose: dto.purpose || 'customer-registration',
+    };
+
+    const newOtp = this.otpRepository.create({
+      email,
+      code,
+      expiresAt,
+      metadata,
+    });
+    await this.otpRepository.save(newOtp);
+
+    await this.mailService.sendOtp(email, code);
+
+    return { message: 'A new OTP has been sent to your email' };
+  }
+
+  async verifyOtpAndSetCustomerPin(dto: VerifyAndSetCustomerPinDto) {
+    const email = dto.email.toLowerCase();
+    const otpRecord = await this.otpRepository.findOne({
+      where: { email },
+      order: { createdAt: 'DESC' },
+    });
+
+    if (!otpRecord) {
+      throw new BadRequestException('Verification session not found');
+    }
+
+    if (otpRecord.code !== dto.code) {
+      throw new BadRequestException('Invalid OTP code');
+    }
+
+    if (new Date() > otpRecord.expiresAt) {
+      throw new BadRequestException(
+        'OTP has expired. Please request a new code.',
+      );
+    }
+
+    const metadata = otpRecord.metadata || {};
+    const existingUser = await this.usersService.findByEmail(email);
+
+    if (existingUser && existingUser.status !== UserStatus.PENDING) {
+      if (existingUser.role !== UserRole.CUSTOMER) {
+        throw new BadRequestException('Action only allowed for customers');
+      }
+    }
+
+    const hashedPassword = await bcrypt.hash(dto.pin, 10);
+    const branchId = dto.branchId || metadata.branchId;
+
+    let user: User;
+    const isNewUser = !existingUser;
+
+    if (existingUser) {
+      existingUser.password = hashedPassword;
+      existingUser.emailVerified = true;
+      existingUser.status = UserStatus.ACTIVE;
+      existingUser.isPasswordChanged = true;
+      const firstName = dto.firstName || metadata.firstName;
+      const lastName = dto.lastName || metadata.lastName;
+      const phone = dto.phone || metadata.phone;
+      if (
+        firstName &&
+        (!existingUser.firstName || existingUser.firstName === 'Customer')
+      ) {
+        existingUser.firstName = firstName;
+      }
+      if (lastName && !existingUser.lastName) {
+        existingUser.lastName = lastName;
+      }
+      if (phone && !existingUser.phone) {
+        existingUser.phone = phone;
+      }
+      if (branchId && !existingUser.branchId) {
+        existingUser.branchId = branchId;
+      }
+      user = await this.usersService.create(existingUser);
+    } else {
+      user = await this.usersService.create({
+        email,
+        firstName: dto.firstName || metadata.firstName || 'Customer',
+        lastName: dto.lastName || metadata.lastName || '',
+        phone: dto.phone || metadata.phone,
+        password: hashedPassword,
+        role: UserRole.CUSTOMER,
+        status: UserStatus.ACTIVE,
+        emailVerified: true,
+        isPasswordChanged: true,
+        branchId,
+        uniqueCode: `CUST-${Math.floor(100000 + Math.random() * 900000)}`,
+      });
+    }
+
+    // Apply the referral code the customer signed up with, if any (invalid
+    // values are ignored so they never block sign-up).
+    const referralCode = isValidReferralCode(dto.referralCode)
+      ? dto.referralCode
+      : undefined;
+    if (referralCode) {
+      await this.referralsService.resolveAndApplyReferral(
+        referralCode,
+        user.id,
+      );
+    }
+
+    // Consume OTP session
+    await this.otpRepository.remove(otpRecord);
+
+    const { password: _password, ...result } = user;
+    return this.generateAuthResponse(result, isNewUser);
+  }
+
+  async requestCustomerPinReset(dto: RequestCustomerPinResetDto) {
+    const email = dto.email.toLowerCase();
+    const user = await this.usersService.findByEmail(email);
+
+    const genericResponse = {
+      message:
+        'If an account exists with this email, a reset OTP has been sent.',
+    };
+
+    if (!user || !PIN_RESET_ROLES.includes(user.role)) {
+      return genericResponse;
+    }
+
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = new Date();
+    expiresAt.setMinutes(expiresAt.getMinutes() + 10);
+
+    const otp = this.otpRepository.create({
+      email,
+      code,
+      expiresAt,
+      metadata: { purpose: 'customer-pin-reset', userId: user.id },
+    });
+    await this.otpRepository.save(otp);
+
+    await this.mailService.sendOtp(email, code);
+
+    return genericResponse;
+  }
+
+  /**
+   * Finds the newest reset code sent for this flow (codes issued for other
+   * purposes never count) and checks it. Wrong guesses are counted in the
+   * record's metadata; after MAX_RESET_OTP_ATTEMPTS the code is discarded.
+   */
+  private async consumeResetOtp(
+    email: string,
+    code: string,
+    matchesPurpose: (record: Otp) => boolean,
+    messages: { invalid: string; expired: string },
+  ): Promise<Otp> {
+    const records = await this.otpRepository.find({
+      where: { email },
+      order: { createdAt: 'DESC' },
+    });
+    const otpRecord = records.find(matchesPurpose);
+
+    if (!otpRecord) {
+      throw new BadRequestException('Reset session not found');
+    }
+
+    const failedAttempts = Number(otpRecord.metadata?.failedAttempts ?? 0);
+    if (failedAttempts >= MAX_RESET_OTP_ATTEMPTS) {
+      await this.otpRepository.remove(otpRecord);
+      throw new BadRequestException(
+        'Too many incorrect attempts. Request a new code.',
+      );
+    }
+
+    if (otpRecord.code !== code) {
+      const attempts = failedAttempts + 1;
+      if (attempts >= MAX_RESET_OTP_ATTEMPTS) {
+        await this.otpRepository.remove(otpRecord);
+        throw new BadRequestException(
+          'Too many incorrect attempts. Request a new code.',
+        );
+      }
+      otpRecord.metadata = {
+        ...(otpRecord.metadata ?? {}),
+        failedAttempts: attempts,
+      };
+      await this.otpRepository.save(otpRecord);
+      throw new BadRequestException(messages.invalid);
+    }
+
+    if (new Date() > otpRecord.expiresAt) {
+      throw new BadRequestException(messages.expired);
+    }
+
+    return otpRecord;
+  }
+
+  async resetCustomerPin(
+    dto: ResetCustomerPinDto,
+    meta?: { ip?: string; userAgent?: string },
+  ) {
+    const email = dto.email.toLowerCase();
+    const otpRecord = await this.consumeResetOtp(
+      email,
+      dto.otp,
+      (record) => record.metadata?.purpose === 'customer-pin-reset',
+      {
+        invalid: 'Invalid reset OTP',
+        expired: 'Reset OTP has expired. Please request a new code.',
+      },
+    );
+
+    const user = await this.usersService.findByEmail(email);
+    if (!user || !PIN_RESET_ROLES.includes(user.role)) {
+      throw new NotFoundException('Account not found');
+    }
+
+    const hashedPassword = await bcrypt.hash(dto.newPin, 10);
+    await this.usersService.updatePassword(user.id, hashedPassword, {
+      ipAddress: meta?.ip,
+      userAgent: meta?.userAgent,
+    });
+
+    user.password = hashedPassword;
+    user.emailVerified = true;
+    user.status = UserStatus.ACTIVE;
+    user.isPasswordChanged = true;
+    await this.usersService.create(user);
+
+    await this.otpRepository.remove(otpRecord);
+
+    return {
+      message: 'PIN reset successfully. You can now log in with your new PIN.',
+    };
   }
 
   // --- New Dedicated Admin Registration ---
@@ -1003,7 +1520,7 @@ export class AuthService {
       };
     }
 
-    const code = Math.floor(1000 + Math.random() * 9000).toString();
+    const code = Math.floor(100000 + Math.random() * 900000).toString(); // 6-digit code
     const expiresAt = new Date();
     expiresAt.setMinutes(expiresAt.getMinutes() + 10);
 
@@ -1027,19 +1544,18 @@ export class AuthService {
     dto: ResetPasswordDto,
     meta?: { ip: string; userAgent: string },
   ) {
-    const otpRecord = await this.otpRepository.findOne({
-      where: { email: dto.email },
-      order: { createdAt: 'DESC' },
-    });
-
-    if (!otpRecord) throw new BadRequestException('Reset session not found');
-    if (otpRecord.code !== dto.otp)
-      throw new BadRequestException('Invalid reset code');
-    if (new Date() > otpRecord.expiresAt)
-      throw new BadRequestException('Reset code expired');
+    const otpRecord = await this.consumeResetOtp(
+      dto.email,
+      dto.otp,
+      (record) => record.metadata?.type === 'password_reset',
+      { invalid: 'Invalid reset code', expired: 'Reset code expired' },
+    );
 
     const user = await this.usersService.findByEmail(dto.email);
     if (!user) throw new NotFoundException('User no longer exists');
+    if (isPinRole(user.role) && !isPin(dto.newPassword)) {
+      throw new BadRequestException(PIN_FORMAT_MESSAGE);
+    }
 
     const hashedPassword = await bcrypt.hash(dto.newPassword, 10);
     await this.usersService.updatePassword(user.id, hashedPassword, {
@@ -1052,38 +1568,91 @@ export class AuthService {
     return { message: 'Password reset successfully' };
   }
 
-  async switchRole(user: User, targetRole: UserRole) {
-    // Only Owners can switch to Customer
-    if (user.role === UserRole.OWNER && targetRole !== UserRole.CUSTOMER) {
-      throw new BadRequestException('Owners can only switch to Customer role');
+  /**
+   * Ends the session the token was signed for, so the token (and any copy of
+   * it) stops authenticating. Tokens without a session id predate linked
+   * devices and simply expire.
+   */
+  async logout(user: User & { sessionId?: string }) {
+    if (user.sessionId) {
+      await this.usersService.revokeSession(user.id, user.sessionId);
+    }
+    return { message: 'Signed out' };
+  }
+
+  async switchRole(user: User & { sessionId?: string }, targetRole: UserRole) {
+    // Customer, or the account's own business role. Admin roles are assigned
+    // and never self-selected.
+    if (
+      targetRole !== UserRole.CUSTOMER &&
+      !BUSINESS_SHELL_ROLES.includes(targetRole)
+    ) {
+      throw new BadRequestException(
+        'Only Owner, Manager, Staff and Customer roles can be switched',
+      );
     }
 
-    // A user who is currently a CUSTOMER in their JWT but is an OWNER in DB can switch back
     const dbUser = await this.usersService.findOne(user.id);
     if (!dbUser) throw new NotFoundException('User not found');
 
     if (targetRole === UserRole.OWNER && dbUser.role !== UserRole.OWNER) {
       throw new BadRequestException('You are not an owner');
     }
+    if (targetRole !== UserRole.CUSTOMER && targetRole !== dbUser.role) {
+      throw new BadRequestException('You do not have that role');
+    }
 
-    // Generate new token with target role
+    const businessShell = targetRole !== UserRole.CUSTOMER;
+    const business =
+      targetRole === UserRole.OWNER
+        ? await this.businessesService.findByOwner(dbUser.id)
+        : null;
+
+    // Explicit nulls matter: JwtStrategy treats an explicit null claim as
+    // "no business context" (customer mode) and only falls back to the DB
+    // businessId when the claim is absent (legacy tokens). An owner still in
+    // setup has no business yet, so that claim stays absent and the business
+    // setup creates is picked up from the DB.
     const payload = {
       email: dbUser.email,
       sub: dbUser.id,
       role: targetRole,
-      branchId: dbUser.branchId,
-      // If switching to OWNER, we need businessId
-      businessId:
-        targetRole === UserRole.OWNER
-          ? (await this.businessesService.findByOwner(dbUser.id))?.id
-          : undefined,
+      branchId: businessShell ? (dbUser.branchId ?? undefined) : null,
+      businessId: !businessShell
+        ? null
+        : targetRole === UserRole.OWNER
+          ? business?.id
+          : (dbUser.businessId ?? undefined),
+      // Same sign-in, same device: keeps the switched token revocable from
+      // "Your devices" instead of outliving its session.
+      ...(user.sessionId ? { sid: user.sessionId } : {}),
     };
 
+    const isOwnerAccount = dbUser.role === UserRole.OWNER;
+    const businessRole = BUSINESS_SHELL_ROLES.includes(dbUser.role)
+      ? dbUser.role
+      : null;
+    const lastActiveShell: User['lastActiveShell'] = businessRole
+      ? businessShell
+        ? 'business'
+        : 'customer'
+      : dbUser.lastActiveShell;
+    if (businessRole) {
+      await this.usersService.update(dbUser.id, { lastActiveShell });
+    }
+
+    delete (dbUser as Partial<User>).password;
     return {
       access_token: this.jwtService.sign(payload),
       user: {
         ...dbUser,
         role: targetRole,
+        businessId: payload.businessId,
+        branchId: payload.branchId,
+        isOwnerAccount,
+        businessRole,
+        hasBusiness: Boolean(business?.id ?? dbUser.businessId),
+        lastActiveShell,
       },
     };
   }
@@ -1096,9 +1665,17 @@ export class AuthService {
     const dbUser = await this.usersService.findOne(user.id);
     if (!dbUser) throw new NotFoundException('User not found');
 
+    const pinAccount = isPinRole(dbUser.role);
     const isMatch = await bcrypt.compare(dto.currentPassword, dbUser.password);
     if (!isMatch) {
-      throw new BadRequestException('Current password is incorrect');
+      throw new BadRequestException(
+        pinAccount
+          ? 'Current PIN is incorrect'
+          : 'Current password is incorrect',
+      );
+    }
+    if (pinAccount && !isPin(dto.newPassword)) {
+      throw new BadRequestException(PIN_FORMAT_MESSAGE);
     }
 
     const hashedPassword = await bcrypt.hash(dto.newPassword, 10);
@@ -1146,6 +1723,7 @@ export class AuthService {
 
     // Update email
     user.email = dto.email.toLowerCase();
+    user.emailVerified = true;
 
     // Customers completing setup may never have chosen a password (e.g. Google
     // signups). Issue a fresh random password so the emailed credentials are
@@ -1188,7 +1766,9 @@ export class AuthService {
 
     // Rotate to a fresh random temporary password instead of re-issuing the
     // legacy shared constant.
-    const tempPassword = randomBytes(9).toString('base64url').slice(0, 12);
+    const tempPassword = isPinRole(user.role)
+      ? Math.floor(100000 + Math.random() * 900000).toString()
+      : randomBytes(9).toString('base64url').slice(0, 12);
     user.password = await bcrypt.hash(tempPassword, 10);
     await this.usersService.create(user);
 
@@ -1199,80 +1779,5 @@ export class AuthService {
     );
 
     return { message: 'Temporary password sent successfully' };
-  }
-
-  private async handleB2BReferralAndPartnership(
-    referralCode: string,
-    referredUserId: string,
-  ) {
-    try {
-      const business = await this.businessesService.findByOwner(referredUserId);
-      if (!business) return;
-
-      // Check if referring code belongs to a business
-      let referringBusiness: Business | null = null;
-      try {
-        referringBusiness = await this.otpRepository.manager.findOne(Business, {
-          where: { uniqueCode: referralCode },
-          relations: ['branches'],
-        });
-      } catch (e) {
-        // Not a business
-      }
-
-      if (referringBusiness) {
-        // Record the referral code on the referred business
-        await this.businessesService.update(business.id, {
-          referralCode,
-        });
-
-        // Fetch fresh branches
-        const referredUser = await this.usersService.findOne(referredUserId);
-        const referringBranchId = referringBusiness.branches?.[0]?.id;
-        const referredBranchId = referredUser?.branchId;
-
-        if (referringBranchId && referredBranchId) {
-          const manager = this.otpRepository.manager;
-
-          // Check if partnership already exists
-          const existingPartnership = await manager.findOne('partnerships', {
-            where: [
-              {
-                initiatorBranchId: referringBranchId,
-                recipientBranchId: referredBranchId,
-              },
-              {
-                initiatorBranchId: referredBranchId,
-                recipientBranchId: referringBranchId,
-              },
-            ],
-          });
-
-          if (!existingPartnership) {
-            await manager.insert('partnerships', {
-              initiatorBranchId: referringBranchId,
-              recipientBranchId: referredBranchId,
-              status: 'Accepted',
-            });
-            console.log(
-              `[PARTNERSHIP] Auto-established B2B partnership between branch ${referringBranchId} and branch ${referredBranchId}`,
-            );
-          }
-        }
-      } else {
-        // Fallback to external affiliate validation
-        const externalAffiliate =
-          await this.externalAffiliateService.validateReferralCode(
-            referralCode,
-          );
-        if (externalAffiliate.valid) {
-          await this.businessesService.update(business.id, {
-            referralCode,
-          });
-        }
-      }
-    } catch (error) {
-      console.error('Error handling B2B referral and partnership:', error);
-    }
   }
 }

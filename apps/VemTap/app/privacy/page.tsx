@@ -37,7 +37,7 @@ export default function PrivacyPolicy() {
             <Navbar />
             
             <header className="pt-48 pb-20 bg-white border-b border-gray-100">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div className="vemtap-container">
                     <div className="max-w-3xl">
                         <div className="flex items-center gap-3 mb-6">
                             <span className="px-3 py-1 bg-primary/10 text-primary text-[10px] font-bold uppercase tracking-wider rounded-full">Legal Document</span>
@@ -54,14 +54,14 @@ export default function PrivacyPolicy() {
                             </div>
                             <div className="flex items-center gap-2">
                                 <div className="w-1.5 h-1.5 rounded-full bg-primary"></div>
-                                <span className="text-text-secondary font-medium italic">Last Updated: [Insert Date]</span>
+                                <span className="text-text-secondary font-medium italic">Last Updated: September 14, 2026</span>
                             </div>
                         </div>
                     </div>
                 </div>
             </header>
 
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
+            <div className="vemtap-container py-20">
                 <div className="flex flex-col lg:flex-row gap-20">
                     
                     <aside className="hidden lg:block w-64 flex-shrink-0">
@@ -428,12 +428,12 @@ export default function PrivacyPolicy() {
                                     <h2 className="text-3xl font-display font-bold text-text-main mb-6 uppercase tracking-tight italic">Contact Us</h2>
                                     <p className="text-text-secondary font-medium italic mb-10 max-w-sm mx-auto uppercase underline">For inquiries or complaints:</p>
                                     <div className="flex flex-col gap-2 mb-8 font-bold italic">
-                                        <a href="mailto:[Insert Email]" className="text-primary underline">Email: [Insert Email]</a>
-                                        <span className="text-text-secondary">Website: [Insert Website]</span>
+                                        <a href="mailto:support@vemtap.com" className="text-primary underline hover:opacity-80 transition-opacity">Email: support@vemtap.com</a>
+                                        <span className="text-text-secondary">Website: vemtap.com</span>
                                     </div>
                                     <a 
-                                        href="mailto:[Insert Email]" 
-                                        className="inline-flex items-center justify-center px-10 py-5 bg-text-main text-white font-bold uppercase tracking-wider text-xs rounded-full hover:bg-primary transition-all shadow-xl shadow-gray-200"
+                                        href="mailto:support@vemtap.com" 
+                                        className="inline-flex items-center justify-center px-10 py-5 bg-[#066CF4] text-white font-bold uppercase tracking-wider text-xs rounded-full hover:bg-primary transition-all shadow-xl shadow-gray-200 duration-300"
                                     >
                                         Message Privacy Team
                                     </a>

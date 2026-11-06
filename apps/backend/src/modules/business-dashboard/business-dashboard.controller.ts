@@ -4,6 +4,7 @@ import {
   ApiOperation,
   ApiBearerAuth,
   ApiQuery,
+  ApiResponse,
 } from '@nestjs/swagger';
 import { BusinessDashboardService } from './business-dashboard.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -24,8 +25,18 @@ export class BusinessDashboardController {
   @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF, UserRole.ADMIN)
   @ApiOperation({
     summary: 'Get business dashboard data (stats, visitors, devices, etc.)',
+    description:
+      'Full dashboard payload. `stats` carries lifetime totals plus 7-day ' +
+      'deltas (visitors/claims/revenue), `weekly` the last-7-day aggregates, ' +
+      '`insights` rules-based growth tips and `generatedAt` the payload time. ' +
+      'Optional `branchId` narrows visit/claim/revenue figures to one branch.',
   })
   @ApiQuery({ name: 'branchId', required: false })
+  @ApiResponse({
+    status: 200,
+    description: 'Business dashboard payload',
+    type: BusinessDashboardResponseDto,
+  })
   async getDashboard(
     @Req() req: Request,
     @Query('branchId') branchId?: string,

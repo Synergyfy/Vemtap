@@ -1,16 +1,14 @@
+import { CatalogueBranchPricingService } from '../catalogue/catalogue-branch-pricing.service';
 import { Test, TestingModule } from '@nestjs/testing';
 import { CatalogueCartService } from './catalogue-cart.service';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { CatalogueCart } from './entities/catalogue-cart.entity';
 import { CatalogueCartItem } from './entities/catalogue-cart-item.entity';
-import {
-  CatalogueItem,
-  CatalogueItemStatus,
-} from '../catalogue/entities/catalogue-item.entity';
+import { CatalogueItem } from '../catalogue/entities/catalogue-item.entity';
 import { CatalogueOffer } from '../catalogue/entities/catalogue-offer.entity';
 import { Branch } from '../branches/entities/branch.entity';
 import { CatalogueOrderService } from '../catalogue-orders/catalogue-orders.service';
-import { NotFoundException, BadRequestException } from '@nestjs/common';
+import { NotFoundException } from '@nestjs/common';
 
 describe('CatalogueCartService', () => {
   let service: CatalogueCartService;
@@ -70,6 +68,14 @@ describe('CatalogueCartService', () => {
         {
           provide: getRepositoryToken(Branch),
           useValue: mockBranchRepository,
+        },
+        {
+          provide: CatalogueBranchPricingService,
+          useValue: {
+            applyBranchPrices: jest.fn((items: unknown[]) =>
+              Promise.resolve(items),
+            ),
+          },
         },
         {
           provide: CatalogueOrderService,

@@ -57,7 +57,9 @@ export class PurchaseAddonDto {
     }
     if (Array.isArray(value)) {
       const mapped = value
-        .map((v) => (typeof v === 'number' ? v : parseInt(String(v).trim(), 10)))
+        .map((v) =>
+          typeof v === 'number' ? v : parseInt(String(v).trim(), 10),
+        )
         .filter((n) => !isNaN(n));
       return mapped.length > 0 ? mapped : undefined;
     }

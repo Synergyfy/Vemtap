@@ -5,7 +5,6 @@ import { Visit } from '../visitors/entities/visit.entity';
 import { User } from '../users/entities/user.entity';
 import { Device } from '../devices/entities/device.entity';
 import { MessageLog } from '../messaging/entities/message-log.entity';
-import { MessageStatus } from '../messaging/enums/message.enum';
 import { PointTransaction } from '../loyalty/entities/point-transaction.entity';
 import { RedemptionCode } from '../loyalty/entities/redemption-code.entity';
 import { Reward } from '../loyalty/entities/reward.entity';
@@ -273,17 +272,26 @@ export class AnalyticsService {
                 {
                   label: '< 15 mins',
                   p: under15Count.toLocaleString(),
-                  time: totalVisits > 0 ? `${Math.round((under15Count / totalVisits) * 100)}%` : '0%',
+                  time:
+                    totalVisits > 0
+                      ? `${Math.round((under15Count / totalVisits) * 100)}%`
+                      : '0%',
                 },
                 {
                   label: '15-45 mins',
                   p: midCount.toLocaleString(),
-                  time: totalVisits > 0 ? `${Math.round((midCount / totalVisits) * 100)}%` : '0%',
+                  time:
+                    totalVisits > 0
+                      ? `${Math.round((midCount / totalVisits) * 100)}%`
+                      : '0%',
                 },
                 {
                   label: '45+ mins',
                   p: longCount.toLocaleString(),
-                  time: totalVisits > 0 ? `${Math.round((longCount / totalVisits) * 100)}%` : '0%',
+                  time:
+                    totalVisits > 0
+                      ? `${Math.round((longCount / totalVisits) * 100)}%`
+                      : '0%',
                 },
               ],
             }

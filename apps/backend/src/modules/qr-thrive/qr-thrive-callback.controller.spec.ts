@@ -2,7 +2,6 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { QrThriveCallbackController } from './qr-thrive-callback.controller';
 import { IntegrationApiKeyGuard } from './guards/integration-api-key.guard';
 import { ConfigService } from '@nestjs/config';
-import { Logger } from '@nestjs/common';
 
 describe('QrThriveCallbackController', () => {
   let controller: QrThriveCallbackController;

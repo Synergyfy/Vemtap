@@ -12,6 +12,7 @@ interface DataTableProps<T> {
     onRowClick?: (item: T) => void;
     isLoading?: boolean;
     emptyState?: React.ReactNode;
+    renderMobileRow?: (item: T) => React.ReactNode;
 }
 
 export default function DataTable<T extends { id: string | number }>({
@@ -19,7 +20,8 @@ export default function DataTable<T extends { id: string | number }>({
     data,
     onRowClick,
     isLoading,
-    emptyState
+    emptyState,
+    renderMobileRow,
 }: DataTableProps<T>) {
     if (isLoading) {
         return (
@@ -72,46 +74,56 @@ export default function DataTable<T extends { id: string | number }>({
                 </div>
             </div>
 
-            {/* Mobile Card View */}
-            <div className="md:hidden space-y-3">
-                {data.map((item) => (
-                    <div
-                        key={item.id}
-                        onClick={() => onRowClick?.(item)}
-                        className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden active:scale-[0.98] transition-transform"
-                    >
-                        {/* Header Section (First Column) */}
-                        <div className="p-3 bg-gray-50/50 border-b border-gray-100">
-                            {typeof columns[0].accessor === 'function'
-                                ? columns[0].accessor(item)
-                                : (item[columns[0].accessor as keyof T] as React.ReactNode)}
+            {/* Mobile View */}
+            {renderMobileRow ? (
+                <div className="md:hidden space-y-2">
+                    {data.map((item) => (
+                        <div key={item.id} onClick={() => onRowClick?.(item)} className={onRowClick ? 'cursor-pointer' : ''}>
+                            {renderMobileRow(item)}
                         </div>
+                    ))}
+                </div>
+            ) : (
+                <div className="md:hidden space-y-3">
+                    {data.map((item) => (
+                        <div
+                            key={item.id}
+                            onClick={() => onRowClick?.(item)}
+                            className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden active:scale-[0.98] transition-transform"
+                        >
+                            {/* Header Section (First Column) */}
+                            <div className="p-3 bg-gray-50/50 border-b border-gray-100">
+                                {typeof columns[0].accessor === 'function'
+                                    ? columns[0].accessor(item)
+                                    : (item[columns[0].accessor as keyof T] as React.ReactNode)}
+                            </div>
 
-                        {/* Body Section (Remaining Columns) */}
-                        <div className="p-3 space-y-2">
-                            {columns.slice(1).map((column, index) => {
-                                const content = typeof column.accessor === 'function'
-                                    ? column.accessor(item)
-                                    : (item[column.accessor as keyof T] as React.ReactNode);
+                            {/* Body Section (Remaining Columns) */}
+                            <div className="p-3 space-y-2">
+                                {columns.slice(1).map((column, index) => {
+                                    const content = typeof column.accessor === 'function'
+                                        ? column.accessor(item)
+                                        : (item[column.accessor as keyof T] as React.ReactNode);
 
-                                // Skip if content is null/undefined or it's an action button (often Send/Send message)
-                                if (content === null || content === undefined) return null;
+                                    // Skip if content is null/undefined or it's an action button (often Send/Send message)
+                                    if (content === null || content === undefined) return null;
 
-                                return (
-                                    <div key={index} className="flex justify-between items-start gap-3">
-                                        <span className="text-[8px] font-black uppercase tracking-widest text-text-secondary mt-0.5 shrink-0">
-                                            {column.header}
-                                        </span>
-                                        <div className="text-[11px] font-bold text-text-main text-right break-words">
-                                            {content}
+                                    return (
+                                        <div key={index} className="flex justify-between items-start gap-3">
+                                            <span className="text-[8px] font-black uppercase tracking-widest text-text-secondary mt-0.5 shrink-0">
+                                                {column.header}
+                                            </span>
+                                            <div className="text-[11px] font-bold text-text-main text-right break-words">
+                                                {content}
+                                            </div>
                                         </div>
-                                    </div>
-                                );
-                            })}
+                                    );
+                                })}
+                            </div>
                         </div>
-                    </div>
-                ))}
-            </div>
+                    ))}
+                </div>
+            )}
         </div>
     );
 }

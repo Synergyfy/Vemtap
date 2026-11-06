@@ -94,8 +94,15 @@ export const fetchDeviceStats = async (branchId?: string, allBranches?: boolean)
     return await api.get(`/devices/stats?${params.toString()}`);
 };
 
-export const fetchDeviceDetail = async (id: string): Promise<Device> => {
-    return await api.get(`/devices/${id}`);
+export const fetchDeviceDetail = async (id: string, branchId?: string, allBranches?: boolean): Promise<Device> => {
+    const params = new URLSearchParams();
+    if (branchId) {
+        params.append('branchId', branchId);
+    } else if (allBranches) {
+        params.append('allBranches', 'true');
+    }
+    const query = params.toString();
+    return await api.get(`/devices/${id}${query ? `?${query}` : ''}`);
 };
 
 export const generateDevices = async (branchId?: string): Promise<Device[]> => {

@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Explore Categories - VEMTAP</title>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .material-symbols-outlined.fill-icon {
+            font-variation-settings: 'FILL' 1;
+        }
+    </style>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "inverse-primary": "#b0c6ff",
+                        "surface-bright": "#f7f9fb",
+                        "tertiary-fixed": "#dae2fd",
+                        "on-tertiary-fixed": "#131b2e",
+                        "surface-container-highest": "#e0e3e5",
+                        "primary-fixed": "#d9e2ff",
+                        "surface-container-high": "#e6e8ea",
+                        "on-primary": "#ffffff",
+                        "primary-fixed-dim": "#b0c6ff",
+                        "tertiary-fixed-dim": "#bec6e0",
+                        "background": "#f7f9fb",
+                        "outline": "#727786",
+                        "primary": "#0055c4",
+                        "inverse-on-surface": "#eff1f3",
+                        "surface-dim": "#d8dadc",
+                        "on-surface-variant": "#424655",
+                        "error": "#ba1a1a",
+                        "secondary-fixed": "#d3e4fe",
+                        "secondary-fixed-dim": "#b7c8e1",
+                        "on-primary-fixed-variant": "#00429b",
+                        "surface-variant": "#e0e3e5",
+                        "on-secondary-fixed-variant": "#38485d",
+                        "on-secondary-container": "#54647a",
+                        "surface-container": "#eceef0",
+                        "on-primary-container": "#fcfaff",
+                        "surface-container-low": "#f2f4f6",
+                        "on-secondary": "#ffffff",
+                        "tertiary-container": "#6b738a",
+                        "on-error-container": "#93000a",
+                        "outline-variant": "#c2c6d7",
+                        "error-container": "#ffdad6",
+                        "surface": "#f7f9fb",
+                        "on-secondary-fixed": "#0b1c30",
+                        "on-error": "#ffffff",
+                        "tertiary": "#535a71",
+                        "secondary": "#505f76",
+                        "primary-container": "#066cf4",
+                        "on-tertiary-container": "#fcfaff",
+                        "on-primary-fixed": "#001945",
+                        "inverse-surface": "#2d3133",
+                        "on-tertiary": "#ffffff",
+                        "on-surface": "#191c1e",
+                        "surface-container-lowest": "#ffffff",
+                        "surface-tint": "#0058cb",
+                        "on-tertiary-fixed-variant": "#3f465c",
+                        "on-background": "#191c1e",
+                        "secondary-container": "#d0e1fb"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "stack-md": "1rem",
+                        "touch-target-min": "44px",
+                        "stack-sm": "0.5rem",
+                        "stack-lg": "1.5rem",
+                        "margin-main": "1.25rem",
+                        "gutter-grid": "1rem"
+                    },
+                    "fontFamily": {
+                        "headline-md": ["Inter", "sans-serif"],
+                        "display-lg": ["Inter", "sans-serif"],
+                        "label-sm": ["Inter", "sans-serif"],
+                        "body-lg": ["Inter", "sans-serif"],
+                        "body-md": ["Inter", "sans-serif"],
+                        "headline-sm": ["Inter", "sans-serif"],
+                        "label-lg": ["Inter", "sans-serif"],
+                        "currency-display": ["Inter", "sans-serif"]
+                    },
+                    "fontSize": {
+                        "headline-md": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                        "display-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "label-sm": ["12px", { "lineHeight": "16px", "fontWeight": "500" }],
+                        "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "headline-sm": ["20px", { "lineHeight": "28px", "fontWeight": "600" }],
+                        "label-lg": ["14px", { "lineHeight": "20px", "letterSpacing": "0.01em", "fontWeight": "600" }],
+                        "currency-display": ["20px", { "lineHeight": "24px", "fontWeight": "700" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background min-h-screen flex flex-col font-sans antialiased">
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full z-50 bg-surface text-primary border-b border-outline-variant flex justify-between items-center px-margin-main py-stack-sm transition-colors duration-200">
+<button aria-label="Location" class="w-touch-target-min h-touch-target-min flex items-center justify-center hover:bg-surface-container-low rounded-full transition-colors duration-200">
+<span class="material-symbols-outlined text-primary" data-icon="location_on">location_on</span>
+</button>
+<div class="flex-1 text-center">
+<h1 class="text-headline-sm font-headline-sm font-bold text-primary">📍 Wuse 2, Abuja</h1>
+</div>
+<!-- Desktop Nav Cluster (Visible only on md+) -->
+<nav class="hidden md:flex items-center gap-stack-md mr-stack-md">
+<a class="text-label-lg font-label-lg text-on-surface-variant hover:bg-surface-container-low px-3 py-2 rounded-lg transition-colors duration-200" href="#">HOME</a>
+<a class="text-label-lg font-label-lg text-primary bg-primary-container/10 px-3 py-2 rounded-lg transition-colors duration-200" href="#">DISCOVER</a>
+<a class="text-label-lg font-label-lg text-on-surface-variant hover:bg-surface-container-low px-3 py-2 rounded-lg transition-colors duration-200" href="#">DEALS</a>
+<a class="text-label-lg font-label-lg text-on-surface-variant hover:bg-surface-container-low px-3 py-2 rounded-lg transition-colors duration-200" href="#">SAVED</a>
+</nav>
+<button aria-label="Search" class="w-touch-target-min h-touch-target-min flex items-center justify-center hover:bg-surface-container-low rounded-full transition-colors duration-200">
+<span class="material-symbols-outlined text-primary" data-icon="search">search</span>
+</button>
+</header>
+<!-- Main Content Canvas -->
+<main class="flex-1 pt-[72px] pb-[80px] md:pb-stack-lg px-margin-main max-w-7xl mx-auto w-full mt-stack-md">
+<!-- Header -->
+<div class="mb-stack-lg">
+<h2 class="text-display-lg font-display-lg text-on-background">Explore Categories</h2>
+<p class="text-body-lg font-body-lg text-on-surface-variant mt-2">Find exactly what you need in Wuse 2</p>
+</div>
+<!-- Bento Grid Layout for Categories -->
+<div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-gutter-grid">
+<a class="group relative overflow-hidden bg-surface-container-lowest border border-outline-variant rounded-xl p-stack-lg flex flex-col items-center justify-center text-center aspect-square transition-all duration-300 hover:shadow-lg hover:border-primary hover:-translate-y-1" href="#">
+<div class="w-16 h-16 rounded-full bg-secondary-container flex items-center justify-center mb-stack-md group-hover:bg-primary-container transition-colors duration-300">
+<span class="material-symbols-outlined text-3xl text-on-secondary-container group-hover:text-on-primary-container transition-colors duration-300" data-icon="restaurant">restaurant</span>
+</div>
+<span class="text-label-lg font-label-lg text-on-surface group-hover:text-primary transition-colors duration-300">Food &amp; Hospitality</span>
+</a>
+<a class="group relative overflow-hidden bg-surface-container-lowest border border-outline-variant rounded-xl p-stack-lg flex flex-col items-center justify-center text-center aspect-square transition-all duration-300 hover:shadow-lg hover:border-primary hover:-translate-y-1" href="#">
+<div class="w-16 h-16 rounded-full bg-secondary-container flex items-center justify-center mb-stack-md group-hover:bg-primary-container transition-colors duration-300">
+<span class="material-symbols-outlined text-3xl text-on-secondary-container group-hover:text-on-primary-container transition-colors duration-300" data-icon="storefront">storefront</span>
+</div>
+<span class="text-label-lg font-label-lg text-on-surface group-hover:text-primary transition-colors duration-300">Retail &amp; Shops</span>
+</a>
+<a class="group relative overflow-hidden bg-surface-container-lowest border border-outline-variant rounded-xl p-stack-lg flex flex-col items-center justify-center text-center aspect-square transition-all duration-300 hover:shadow-lg hover:border-primary hover:-translate-y-1" href="#">
+<div class="w-16 h-16 rounded-full bg-secondary-container flex items-center justify-center mb-stack-md group-hover:bg-primary-container transition-colors duration-300">
+<span class="material-symbols-outlined text-3xl text-on-secondary-container group-hover:text-on-primary-container transition-colors duration-300" data-icon="spa">spa</span>
+</div>
+<span class="text-label-lg font-label-lg text-on-surface group-hover:text-primary transition-colors duration-300">Beauty</span>
+</a>
+<a class="group relative overflow-hidden bg-surface-container-lowest border border-outline-variant rounded-xl p-stack-lg flex flex-col items-center justify-center text-center aspect-square transition-all duration-300 hover:shadow-lg hover:border-primary hover:-translate-y-1 md:col-span-2 lg:col-span-1" href="#">
+<div class="w-16 h-16 rounded-full bg-secondary-container flex items-center justify-center mb-stack-md group-hover:bg-primary-container transition-colors duration-300">
+<span class="material-symbols-outlined text-3xl text-on-secondary-container group-hover:text-on-primary-container transition-colors duration-300" data-icon="devices">devices</span>
+</div>
+<span class="text-label-lg font-label-lg text-on-surface group-hover:text-primary transition-colors duration-300">Technology</span>
+</a>
+<a class="group relative overflow-hidden bg-surface-container-lowest border border-outline-variant rounded-xl p-stack-lg flex flex-col items-center justify-center text-center aspect-square transition-all duration-300 hover:shadow-lg hover:border-primary hover:-translate-y-1" href="#">
+<div class="w-16 h-16 rounded-full bg-secondary-container flex items-center justify-center mb-stack-md group-hover:bg-primary-container transition-colors duration-300">
+<span class="material-symbols-outlined text-3xl text-on-secondary-container group-hover:text-on-primary-container transition-colors duration-300" data-icon="real_estate_agent">real_estate_agent</span>
+</div>
+<span class="text-label-lg font-label-lg text-on-surface group-hover:text-primary transition-colors duration-300">Real Estate</span>
+</a>
+<a class="group relative overflow-hidden bg-surface-container-lowest border border-outline-variant rounded-xl p-stack-lg flex flex-col items-center justify-center text-center aspect-square transition-all duration-300 hover:shadow-lg hover:border-primary hover:-translate-y-1" href="#">
+<div class="w-16 h-16 rounded-full bg-secondary-container flex items-center justify-center mb-stack-md group-hover:bg-primary-container transition-colors duration-300">
+<span class="material-symbols-outlined text-3xl text-on-secondary-container group-hover:text-on-primary-container transition-colors duration-300" data-icon="directions_car">directions_car</span>
+</div>
+<span class="text-label-lg font-label-lg text-on-surface group-hover:text-primary transition-colors duration-300">Automotive</span>
+</a>
+<a class="group relative overflow-hidden bg-surface-container-lowest border border-outline-variant rounded-xl p-stack-lg flex flex-col items-center justify-center text-center aspect-square transition-all duration-300 hover:shadow-lg hover:border-primary hover:-translate-y-1 md:col-span-2 lg:col-span-1" href="#">
+<div class="w-16 h-16 rounded-full bg-secondary-container flex items-center justify-center mb-stack-md group-hover:bg-primary-container transition-colors duration-300">
+<span class="material-symbols-outlined text-3xl text-on-secondary-container group-hover:text-on-primary-container transition-colors duration-300" data-icon="work">work</span>
+</div>
+<span class="text-label-lg font-label-lg text-on-surface group-hover:text-primary transition-colors duration-300">Professional Services</span>
+</a>
+<a class="group relative overflow-hidden bg-surface-container-lowest border border-outline-variant rounded-xl p-stack-lg flex flex-col items-center justify-center text-center aspect-square transition-all duration-300 hover:shadow-lg hover:border-primary hover:-translate-y-1" href="#">
+<div class="w-16 h-16 rounded-full bg-secondary-container flex items-center justify-center mb-stack-md group-hover:bg-primary-container transition-colors duration-300">
+<span class="material-symbols-outlined text-3xl text-on-secondary-container group-hover:text-on-primary-container transition-colors duration-300" data-icon="event">event</span>
+</div>
+<span class="text-label-lg font-label-lg text-on-surface group-hover:text-primary transition-colors duration-300">Events</span>
+</a>
+<a class="group relative overflow-hidden bg-surface-container-lowest border border-outline-variant rounded-xl p-stack-lg flex flex-col items-center justify-center text-center aspect-square transition-all duration-300 hover:shadow-lg hover:border-primary hover:-translate-y-1" href="#">
+<div class="w-16 h-16 rounded-full bg-secondary-container flex items-center justify-center mb-stack-md group-hover:bg-primary-container transition-colors duration-300">
+<span class="material-symbols-outlined text-3xl text-on-secondary-container group-hover:text-on-primary-container transition-colors duration-300" data-icon="local_hospital">local_hospital</span>
+</div>
+<span class="text-label-lg font-label-lg text-on-surface group-hover:text-primary transition-colors duration-300">Health</span>
+</a>
+<a class="group relative overflow-hidden bg-surface-container-lowest border border-outline-variant rounded-xl p-stack-lg flex flex-col items-center justify-center text-center aspect-square transition-all duration-300 hover:shadow-lg hover:border-primary hover:-translate-y-1" href="#">
+<div class="w-16 h-16 rounded-full bg-secondary-container flex items-center justify-center mb-stack-md group-hover:bg-primary-container transition-colors duration-300">
+<span class="material-symbols-outlined text-3xl text-on-secondary-container group-hover:text-on-primary-container transition-colors duration-300" data-icon="school">school</span>
+</div>
+<span class="text-label-lg font-label-lg text-on-surface group-hover:text-primary transition-colors duration-300">Education</span>
+</a>
+</div>
+</main>
+<!-- BottomNavBar (Mobile Only) -->
+<nav class="fixed bottom-0 w-full z-50 flex justify-around items-center px-4 h-touch-target-min bg-surface shadow-[0_-2px_10px_rgba(0,0,0,0.05)] rounded-t-xl md:hidden">
+<a class="flex flex-col items-center justify-center text-outline hover:opacity-80 active:scale-95 transition-transform duration-150 w-full py-2" href="#">
+<span class="material-symbols-outlined mb-1" data-icon="home">home</span>
+<span class="text-label-sm font-label-sm">HOME</span>
+</a>
+<a class="flex flex-col items-center justify-center text-primary font-bold hover:opacity-80 active:scale-95 transition-transform duration-150 w-full py-2 relative" href="#">
+<div class="absolute -top-3 w-10 h-1 bg-primary rounded-full"></div>
+<span class="material-symbols-outlined mb-1 fill-icon" data-icon="explore">explore</span>
+<span class="text-label-sm font-label-sm">DISCOVER</span>
+</a>
+<a class="flex flex-col items-center justify-center text-outline hover:opacity-80 active:scale-95 transition-transform duration-150 w-full py-2" href="#">
+<span class="material-symbols-outlined mb-1" data-icon="local_offer">local_offer</span>
+<span class="text-label-sm font-label-sm">DEALS</span>
+</a>
+<a class="flex flex-col items-center justify-center text-outline hover:opacity-80 active:scale-95 transition-transform duration-150 w-full py-2" href="#">
+<span class="material-symbols-outlined mb-1" data-icon="bookmark">bookmark</span>
+<span class="text-label-sm font-label-sm">SAVED</span>
+</a>
+<a class="flex flex-col items-center justify-center text-outline hover:opacity-80 active:scale-95 transition-transform duration-150 w-full py-2" href="#">
+<span class="material-symbols-outlined mb-1" data-icon="person">person</span>
+<span class="text-label-sm font-label-sm">ACCOUNT</span>
+</a>
+</nav>
+</body></html>

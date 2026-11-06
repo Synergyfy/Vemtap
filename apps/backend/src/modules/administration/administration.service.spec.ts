@@ -1,6 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
 import { AdministrationService } from './administration.service';
 import { User, UserRole, UserStatus } from '../users/entities/user.entity';
 import { ImpersonationToken } from './entities/impersonation-token.entity';
@@ -12,21 +11,13 @@ import {
   GenerateCustomerImpersonationTokenDto,
 } from './dto/administration.dto';
 import { BackendModule } from '../../common/enums/backend-module.enum';
-import {
-  BadRequestException,
-  NotFoundException,
-  ForbiddenException,
-} from '@nestjs/common';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 
 jest.mock('bcrypt');
 
 describe('AdministrationService', () => {
   let service: AdministrationService;
-  let userRepository: Repository<User>;
-  let tokenRepository: Repository<ImpersonationToken>;
-  let customerTokenRepository: Repository<CustomerImpersonationToken>;
-  let auditLogRepository: Repository<AuditLog>;
 
   const mockUserRepository = {
     findOne: jest.fn(),
@@ -77,16 +68,6 @@ describe('AdministrationService', () => {
     }).compile();
 
     service = module.get<AdministrationService>(AdministrationService);
-    userRepository = module.get<Repository<User>>(getRepositoryToken(User));
-    tokenRepository = module.get<Repository<ImpersonationToken>>(
-      getRepositoryToken(ImpersonationToken),
-    );
-    customerTokenRepository = module.get<
-      Repository<CustomerImpersonationToken>
-    >(getRepositoryToken(CustomerImpersonationToken));
-    auditLogRepository = module.get<Repository<AuditLog>>(
-      getRepositoryToken(AuditLog),
-    );
 
     process.env.MAX_IMPERSONATION_HOURS = '72';
   });
