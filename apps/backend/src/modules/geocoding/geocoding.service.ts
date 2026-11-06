@@ -1,6 +1,7 @@
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import type { Cache } from 'cache-manager';
+import { findNigerianArea, nameNigerianPoint } from './nigeria-areas';
 
 /** A place a customer can browse from: an area name plus its city. */
 export interface GeocodedPlace {
@@ -13,16 +14,6 @@ export interface GeocodedPlace {
 export interface GeocodedPoint extends GeocodedPlace {
   lat: number;
   lng: number;
-}
-
-interface GoogleComponent {
-  long_name: string;
-  types: string[];
-}
-
-interface GoogleResult {
-  address_components?: GoogleComponent[];
-  geometry?: { location?: { lat: number; lng: number } };
 }
 
 interface NominatimAddress {
@@ -44,6 +35,20 @@ interface NominatimResult {
   address?: NominatimAddress;
 }
 
+interface PhotonFeature {
+  geometry?: { coordinates?: [number, number] };
+  properties?: {
+    name?: string;
+    osm_key?: string;
+    district?: string;
+    locality?: string;
+    city?: string;
+    county?: string;
+    state?: string;
+    country?: string;
+  };
+}
+
 /** "Lagos State" → "Lagos", "Federal Capital Territory" → "Abuja". */
 const stateCity = (state?: string): string | undefined => {
   if (!state) return undefined;
@@ -51,12 +56,14 @@ const stateCity = (state?: string): string | undefined => {
   return state.replace(/\s+state$/i, '').trim() || undefined;
 };
 
-const GOOGLE_URL = 'https://maps.googleapis.com/maps/api/geocode/json';
 const NOMINATIM_URL = 'https://nominatim.openstreetmap.org';
 const NOMINATIM_HEADERS = {
   'Accept-Language': 'en',
-  'User-Agent': 'VemTap/1.0',
+  'User-Agent': 'VemTap/1.0 (https://vemtap.com)',
 };
+const PHOTON_URL = 'https://photon.komoot.io';
+/** Keeps typed areas inside Nigeria: west, south, east, north. */
+const NIGERIA_BBOX = '2.67,4.24,14.68,13.9';
 const REQUEST_TIMEOUT_MS = 8000;
 /** A day: areas don't move, and Nominatim allows about one request a second. */
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
@@ -64,9 +71,12 @@ const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 /**
  * Address ⇄ coordinates for businesses and customers.
  *
- * Uses Google Geocoding when `GOOGLE_MAPS_API_KEY` is set and OpenStreetMap
- * Nominatim otherwise (or when Google fails). Customer look-ups are cached by
- * coordinates rounded to ~100 m.
+ * Customer look-ups try the built-in list of Nigerian areas first, so naming a
+ * position or finding an area doesn't depend on an outside service. Anything it
+ * doesn't know goes to OpenStreetMap Nominatim, then Photon: Nominatim refuses
+ * shared server addresses without warning, so it can't be the last provider.
+ * Business addresses are street-level, so they skip the list. Customer look-ups
+ * are cached by coordinates rounded to ~100 m.
  */
 @Injectable()
 export class GeocodingService {
@@ -82,13 +92,20 @@ export class GeocodingService {
     const cached = await this.cache.get<GeocodedPlace>(key);
     if (cached) return cached;
 
-    const google = await this.tryGoogle(`latlng=${lat},${lng}`);
-    const nominatim = google
+    const listed = nameNigerianPoint(lat, lng);
+    const nominatim = listed
       ? null
       : await this.nominatim(
           `/reverse?lat=${lat}&lon=${lng}&format=jsonv2&zoom=16&addressdetails=1`,
         );
-    const source = google ?? (nominatim ? this.fromNominatim(nominatim) : null);
+    const photon =
+      listed || nominatim
+        ? null
+        : await this.photon(`/reverse?lat=${lat}&lon=${lng}&limit=1`);
+    const source =
+      listed ??
+      (nominatim ? this.fromNominatim(nominatim) : null) ??
+      (photon ? this.fromPhoton(photon) : null);
     const place: GeocodedPlace | null = source
       ? {
           district: source.district,
@@ -110,11 +127,11 @@ export class GeocodingService {
     const cached = await this.cache.get<GeocodedPoint>(key);
     if (cached) return cached;
 
-    const google = await this.tryGoogle(
-      `address=${encodeURIComponent(q)}&components=country:NG`,
-    );
     const point =
-      google && 'lat' in google ? google : await this.nominatimSearch(q, true);
+      findNigerianArea(q) ??
+      (await this.nominatimSearch(q, true)) ??
+      (await this.photonSearch(q, true)) ??
+      findNigerianArea(q, true);
 
     if (point) await this.cache.set(key, point, CACHE_TTL_MS);
     return point;
@@ -127,12 +144,10 @@ export class GeocodingService {
   async geocodeAddress(
     address: string,
   ): Promise<{ lat: number; lng: number } | null> {
-    const google = await this.tryGoogle(
-      `address=${encodeURIComponent(address)}`,
-    );
-    if (google && 'lat' in google) return { lat: google.lat, lng: google.lng };
-    const nominatim = await this.nominatimSearch(address, false);
-    return nominatim ? { lat: nominatim.lat, lng: nominatim.lng } : null;
+    const found =
+      (await this.nominatimSearch(address, false)) ??
+      (await this.photonSearch(address, false));
+    return found ? { lat: found.lat, lng: found.lng } : null;
   }
 
   private async nominatimSearch(
@@ -151,36 +166,25 @@ export class GeocodingService {
     };
   }
 
-  /** Google's first result, or null without a key or on any failure. */
-  private async tryGoogle(
-    params: string,
-  ): Promise<GeocodedPlace | GeocodedPoint | null> {
-    const apiKey = process.env.GOOGLE_MAPS_API_KEY?.trim();
-    if (!apiKey) return null;
-    try {
-      const res = await fetch(`${GOOGLE_URL}?${params}&key=${apiKey}`, {
-        signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
-      });
-      const data = (await res.json()) as {
-        status: string;
-        results?: GoogleResult[];
-      };
-      const first = data.results?.[0];
-      if (data.status !== 'OK' || !first) {
-        if (data.status !== 'ZERO_RESULTS') {
-          this.logger.warn(`Google geocoding returned ${data.status}`);
-        }
-        return null;
-      }
-      const place = this.fromGoogle(first);
-      const location = first.geometry?.location;
-      return location
-        ? { ...place, lat: location.lat, lng: location.lng }
-        : place;
-    } catch (error) {
-      this.logger.warn(`Google geocoding failed: ${(error as Error).message}`);
-      return null;
-    }
+  private async photonSearch(
+    q: string,
+    nigeriaOnly: boolean,
+  ): Promise<GeocodedPoint | null> {
+    const area = nigeriaOnly ? `&bbox=${NIGERIA_BBOX}&osm_tag=place` : '';
+    const feature = await this.photon(
+      `/api/?q=${encodeURIComponent(q)}&limit=1${area}`,
+    );
+    const [lng, lat] = feature?.geometry?.coordinates ?? [];
+    if (!feature || lat === undefined || lng === undefined) return null;
+    // Photon answers a miss with its nearest guess ("Wuse Zone 5" came back in
+    // Port Harcourt): a wrong place is worse than saying it wasn't found.
+    const firstWord = q
+      .trim()
+      .split(/[\s,]+/)[0]
+      .toLowerCase();
+    const name = feature.properties?.name?.toLowerCase() ?? '';
+    if (nigeriaOnly && !name.includes(firstWord)) return null;
+    return { lat, lng, ...this.fromPhoton(feature) };
   }
 
   /**
@@ -222,24 +226,23 @@ export class GeocodingService {
     }
   }
 
-  private fromGoogle(result: GoogleResult): GeocodedPlace {
-    const components = result.address_components ?? [];
-    const find = (...types: string[]) =>
-      types
-        .map(
-          (type) => components.find((c) => c.types.includes(type))?.long_name,
-        )
-        .find(Boolean) ?? null;
-    return {
-      district: find('sublocality_level_1', 'sublocality', 'neighborhood'),
-      city: find(
-        'locality',
-        'administrative_area_level_2',
-        'administrative_area_level_1',
-      ),
-      state: find('administrative_area_level_1'),
-      country: find('country'),
-    };
+  /** Photon's first match, or null when it has none or can't be reached. */
+  private async photon(path: string): Promise<PhotonFeature | null> {
+    try {
+      const res = await fetch(`${PHOTON_URL}${path}`, {
+        headers: NOMINATIM_HEADERS,
+        signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+      });
+      if (!res.ok) {
+        this.logger.warn(`Photon returned ${res.status}`);
+        return null;
+      }
+      const data = (await res.json()) as { features?: PhotonFeature[] };
+      return data.features?.[0] ?? null;
+    } catch (error) {
+      this.logger.warn(`Photon failed: ${(error as Error).message}`);
+      return null;
+    }
   }
 
   private fromNominatim(result: NominatimResult): GeocodedPlace {
@@ -257,6 +260,26 @@ export class GeocodingService {
       city: a.city ?? stateCity(a.state) ?? a.town ?? a.county ?? null,
       state: a.state ?? null,
       country: a.country ?? null,
+    };
+  }
+
+  private fromPhoton(feature: PhotonFeature): GeocodedPlace {
+    const p = feature.properties ?? {};
+    // Abuja and Lagos: OSM's "city" is really an area of the state's city.
+    const metro = /federal capital territory|^fct$|^lagos/i.test(p.state ?? '')
+      ? stateCity(p.state)
+      : undefined;
+    const place = p.osm_key === 'place' ? p.name : undefined;
+    return {
+      district:
+        p.district ??
+        p.locality ??
+        place ??
+        (metro ? p.city : undefined) ??
+        null,
+      city: metro ?? p.city ?? stateCity(p.state) ?? p.county ?? null,
+      state: p.state ?? null,
+      country: p.country ?? null,
     };
   }
 }

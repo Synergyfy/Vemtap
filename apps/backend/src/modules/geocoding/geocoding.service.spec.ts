@@ -20,47 +20,56 @@ const nominatimWuse = {
   },
 };
 
-const googleWuse = {
-  status: 'OK',
-  results: [
+const photonGwarinpa = {
+  features: [
     {
-      address_components: [
-        { long_name: 'Wuse II', types: ['sublocality_level_1', 'sublocality'] },
-        { long_name: 'Abuja', types: ['locality'] },
-        {
-          long_name: 'Federal Capital Territory',
-          types: ['administrative_area_level_1'],
-        },
-        { long_name: 'Nigeria', types: ['country'] },
-      ],
-      geometry: { location: { lat: 9.0765, lng: 7.4813 } },
+      geometry: { coordinates: [7.3986, 9.0765] },
+      properties: {
+        name: 'Adamu Fika Street',
+        osm_key: 'highway',
+        city: 'Gwarinpa',
+        state: 'Federal Capital Territory',
+        country: 'Nigeria',
+      },
     },
   ],
 };
 
+const photonJabi = {
+  features: [
+    {
+      geometry: { coordinates: [7.421, 9.0646] },
+      properties: {
+        name: 'Jabi',
+        osm_key: 'place',
+        state: 'Federal Capital Territory',
+        country: 'Nigeria',
+      },
+    },
+  ],
+};
+
+const urlOf = (call: unknown[]) => String(call[0]);
+
 describe('GeocodingService', () => {
   let service: GeocodingService;
   let fetchMock: jest.SpyInstance;
-  const originalKey = process.env.GOOGLE_MAPS_API_KEY;
 
   beforeEach(() => {
     service = new GeocodingService(createCache());
     Object.assign(service, { nominatimRetryDelayMs: 0 });
     fetchMock = jest.spyOn(global, 'fetch');
-    delete process.env.GOOGLE_MAPS_API_KEY;
   });
 
   afterEach(() => {
     fetchMock.mockRestore();
-    if (originalKey === undefined) delete process.env.GOOGLE_MAPS_API_KEY;
-    else process.env.GOOGLE_MAPS_API_KEY = originalKey;
   });
 
   describe('reverse', () => {
-    it('uses Nominatim without a Google key and maps area and city', async () => {
+    it('asks Nominatim about a point outside the list and maps area and city', async () => {
       fetchMock.mockImplementation(() => json(nominatimWuse));
 
-      const place = await service.reverse(9.0765, 7.4813);
+      const place = await service.reverse(51.5, -0.12);
 
       expect(place).toEqual({
         district: 'Wuse II',
@@ -69,38 +78,8 @@ describe('GeocodingService', () => {
         country: 'Nigeria',
       });
       expect(String(fetchMock.mock.calls[0][0])).toContain(
-        'nominatim.openstreetmap.org/reverse?lat=9.0765&lon=7.4813',
+        'nominatim.openstreetmap.org/reverse?lat=51.5&lon=-0.12',
       );
-    });
-
-    it('uses Google when GOOGLE_MAPS_API_KEY is set', async () => {
-      process.env.GOOGLE_MAPS_API_KEY = 'test-key';
-      fetchMock.mockImplementation(() => json(googleWuse));
-
-      const place = await service.reverse(9.0765, 7.4813);
-
-      expect(place).toEqual({
-        district: 'Wuse II',
-        city: 'Abuja',
-        state: 'Federal Capital Territory',
-        country: 'Nigeria',
-      });
-      expect(fetchMock).toHaveBeenCalledTimes(1);
-      expect(String(fetchMock.mock.calls[0][0])).toContain(
-        'maps.googleapis.com/maps/api/geocode/json?latlng=9.0765,7.4813&key=test-key',
-      );
-    });
-
-    it('falls back to Nominatim when Google fails', async () => {
-      process.env.GOOGLE_MAPS_API_KEY = 'test-key';
-      fetchMock
-        .mockImplementationOnce(() => json({ status: 'REQUEST_DENIED' }))
-        .mockImplementationOnce(() => json(nominatimWuse));
-
-      const place = await service.reverse(9.0765, 7.4813);
-
-      expect(place?.district).toBe('Wuse II');
-      expect(fetchMock).toHaveBeenCalledTimes(2);
     });
 
     it('names the city from the state when OSM has no city', async () => {
@@ -130,10 +109,10 @@ describe('GeocodingService', () => {
           }),
         );
 
-      expect(await service.reverse(6.52, 3.38)).toEqual(
+      expect(await service.reverse(51.52, 0.38)).toEqual(
         expect.objectContaining({ district: 'Igbobi', city: 'Lagos' }),
       );
-      expect(await service.reverse(9.03, 7.49)).toEqual(
+      expect(await service.reverse(51.03, 0.49)).toEqual(
         expect.objectContaining({ district: 'Garki', city: 'Abuja' }),
       );
     });
@@ -141,9 +120,9 @@ describe('GeocodingService', () => {
     it('caches by rounded coordinates', async () => {
       fetchMock.mockImplementation(() => json(nominatimWuse));
 
-      // Both round to 9.076, 7.481 (about 100 m).
-      await service.reverse(9.07612, 7.48121);
-      await service.reverse(9.07618, 7.48129);
+      // Both round to 51.076, 0.481 (about 100 m).
+      await service.reverse(51.07612, 0.48121);
+      await service.reverse(51.07618, 0.48129);
 
       expect(fetchMock).toHaveBeenCalledTimes(1);
     });
@@ -157,13 +136,73 @@ describe('GeocodingService', () => {
     });
   });
 
+  describe('built-in Nigerian areas', () => {
+    it('names a point without calling a provider', async () => {
+      await expect(service.reverse(9.0765, 7.476)).resolves.toEqual({
+        district: 'Wuse II',
+        city: 'Abuja',
+        state: 'Federal Capital Territory',
+        country: 'Nigeria',
+      });
+      expect(fetchMock).not.toHaveBeenCalled();
+    });
+
+    it('names the state capital as the city around it', async () => {
+      await expect(service.reverse(4.8156, 7.0498)).resolves.toMatchObject({
+        city: 'Port Harcourt',
+        state: 'Rivers State',
+      });
+    });
+
+    it.each([
+      ['Wuse 2', 'Wuse II', 'Abuja'],
+      ['Garki, Abuja', 'Garki', 'Abuja'],
+      ['Ogba Lagos', 'Ogba', 'Lagos'],
+      ['GRA Port Harcourt', 'GRA', 'Port Harcourt'],
+    ])('finds %s without calling a provider', async (query, district, city) => {
+      await expect(service.search(query)).resolves.toMatchObject({
+        district,
+        city,
+      });
+      expect(fetchMock).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      ['Ibadan', 'Oyo State'],
+      ['Enugu', 'Enugu State'],
+    ])('prefers the state capital for %s', async (query, state) => {
+      await expect(service.search(query)).resolves.toMatchObject({
+        district: null,
+        city: query,
+        state,
+      });
+    });
+
+    it('does not guess a village when the state is unknown', async () => {
+      fetchMock.mockImplementation(() => json([nominatimWuse]));
+
+      const point = await service.search('Madeko');
+
+      expect(point?.district).toBe('Wuse II');
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+    });
+
+    it('falls back to a village when no provider answers', async () => {
+      fetchMock.mockImplementation(() => Promise.reject(new Error('offline')));
+
+      await expect(service.search('Madeko')).resolves.toMatchObject({
+        district: 'Madeko',
+      });
+    });
+  });
+
   describe('Nominatim retry', () => {
     it.each([429, 503])('tries once more after a %i', async (status) => {
       fetchMock
         .mockImplementationOnce(() => json({}, false, status))
         .mockImplementationOnce(() => json(nominatimWuse));
 
-      const place = await service.reverse(9.0765, 7.4813);
+      const place = await service.reverse(51.5, -0.12);
 
       expect(place?.district).toBe('Wuse II');
       expect(fetchMock).toHaveBeenCalledTimes(2);
@@ -171,10 +210,12 @@ describe('GeocodingService', () => {
 
     it('tries once more after a dropped connection', async () => {
       fetchMock
-        .mockImplementationOnce(() => Promise.reject(new Error('socket hang up')))
+        .mockImplementationOnce(() =>
+          Promise.reject(new Error('socket hang up')),
+        )
         .mockImplementationOnce(() => json(nominatimWuse));
 
-      const place = await service.reverse(9.0765, 7.4813);
+      const place = await service.reverse(51.5, -0.12);
 
       expect(place?.district).toBe('Wuse II');
       expect(fetchMock).toHaveBeenCalledTimes(2);
@@ -183,8 +224,12 @@ describe('GeocodingService', () => {
     it('gives up after the second failure', async () => {
       fetchMock.mockImplementation(() => json({}, false, 503));
 
-      await expect(service.reverse(9.0765, 7.4813)).resolves.toBeNull();
-      expect(fetchMock).toHaveBeenCalledTimes(2);
+      await expect(service.reverse(51.5, -0.12)).resolves.toBeNull();
+      expect(
+        fetchMock.mock.calls.filter((call) =>
+          urlOf(call).includes('nominatim'),
+        ),
+      ).toHaveLength(2);
     });
 
     it('does not retry a timeout', async () => {
@@ -192,23 +237,67 @@ describe('GeocodingService', () => {
       timeout.name = 'TimeoutError';
       fetchMock.mockImplementation(() => Promise.reject(timeout));
 
-      await expect(service.reverse(9.0765, 7.4813)).resolves.toBeNull();
-      expect(fetchMock).toHaveBeenCalledTimes(1);
+      await expect(service.reverse(51.5, -0.12)).resolves.toBeNull();
+      expect(
+        fetchMock.mock.calls.filter((call) =>
+          urlOf(call).includes('nominatim'),
+        ),
+      ).toHaveLength(1);
     });
 
     it('does not retry a point Nominatim cannot name', async () => {
       fetchMock.mockImplementation(() => json({ error: 'Unable to geocode' }));
 
       await expect(service.reverse(3.9, 6.9)).resolves.toBeNull();
-      expect(fetchMock).toHaveBeenCalledTimes(1);
+      expect(
+        fetchMock.mock.calls.filter((call) =>
+          urlOf(call).includes('nominatim'),
+        ),
+      ).toHaveLength(1);
+    });
+  });
+
+  describe('Photon fallback', () => {
+    const nominatimRefuses = (photon: unknown) =>
+      fetchMock.mockImplementation((url: string) =>
+        url.includes('nominatim') ? json({}, false, 403) : json(photon),
+      );
+
+    it('names a point when Nominatim refuses the server', async () => {
+      nominatimRefuses(photonGwarinpa);
+
+      await expect(service.reverse(51.0765, 0.3986)).resolves.toEqual({
+        district: 'Gwarinpa',
+        city: 'Abuja',
+        state: 'Federal Capital Territory',
+        country: 'Nigeria',
+      });
+    });
+
+    it('finds a typed area inside Nigeria', async () => {
+      nominatimRefuses(photonJabi);
+
+      await expect(service.search('Jabi Xyz')).resolves.toMatchObject({
+        lat: 9.0646,
+        lng: 7.421,
+        district: 'Jabi',
+        city: 'Abuja',
+      });
+      expect(urlOf(fetchMock.mock.calls[1])).toContain('bbox=');
+    });
+
+    it('rejects a guess that is not the typed area', async () => {
+      nominatimRefuses(photonJabi);
+
+      await expect(service.search('Zuba Extension')).resolves.toBeNull();
     });
   });
 
   describe('search', () => {
-    it('finds a typed area in Nigeria with coordinates', async () => {
+    it('asks Nominatim about an area outside the list', async () => {
       fetchMock.mockImplementation(() => json([nominatimWuse]));
 
-      const point = await service.search('Wuse II');
+      const point = await service.search('Zuba Extension');
 
       expect(point).toEqual(
         expect.objectContaining({
