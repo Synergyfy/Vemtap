@@ -167,6 +167,12 @@ export class SavedServiceItemDto {
   @ApiProperty({ example: 'uuid-of-business' })
   businessId: string;
 
+  @ApiProperty({
+    nullable: true,
+    description: 'Business 9-character code for the service page link',
+  })
+  businessCode: string | null;
+
   @ApiProperty({ example: 'Patrick Ventures' })
   businessName: string;
 

@@ -32,7 +32,12 @@ import { UploadsService } from '../../uploads/uploads.service';
  * or the root `vemtap/avatars/{id}`.
  */
 const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
-const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+const ALLOWED_MIME_TYPES = [
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'application/pdf',
+];
 
 @ApiTags('customer messaging')
 @ApiBearerAuth()
@@ -51,7 +56,9 @@ export class CustomerMessagingMediaController {
       fileFilter: (_req, file, callback) => {
         if (!ALLOWED_MIME_TYPES.includes(file.mimetype)) {
           callback(
-            new BadRequestException('Only JPG, PNG or WebP images are allowed'),
+            new BadRequestException(
+              'Only JPG, PNG, WebP or PDF files are allowed',
+            ),
             false,
           );
           return;
@@ -68,9 +75,9 @@ export class CustomerMessagingMediaController {
     },
   })
   @ApiOperation({
-    summary: 'Upload an image to send in a chat',
+    summary: 'Upload an image or PDF to send in a chat',
     description:
-      'Accepts multipart/form-data `file` (JPG/PNG/WebP, max 10MB) and returns the hosted URL to pass as `mediaUrl` when replying.',
+      'Accepts multipart/form-data `file` (JPG/PNG/WebP/PDF, max 10MB) and returns the hosted URL to pass as `mediaUrl` when replying.',
   })
   @ApiResponse({
     status: 201,
