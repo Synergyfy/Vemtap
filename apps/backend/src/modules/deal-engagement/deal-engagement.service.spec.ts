@@ -315,13 +315,23 @@ describe('DealEngagementService', () => {
           {
             id: 'review-1',
             reviewerName: 'Ada L',
+            user: { avatar: 'https://cdn.test/ada.png' },
             comment: 'Great',
             rating: 5,
             likesCount: 2,
             createdAt: new Date(),
           },
+          {
+            id: 'review-2',
+            reviewerName: 'Guest',
+            user: null,
+            comment: 'Nice',
+            rating: 4,
+            likesCount: 0,
+            createdAt: new Date(),
+          },
         ],
-        1,
+        2,
       ]);
       mockReviewLikeRepository.find.mockResolvedValue([
         { reviewId: 'review-1' },
@@ -333,15 +343,17 @@ describe('DealEngagementService', () => {
         { id: 'user-1' },
       );
 
-      expect(result.total).toBe(1);
+      expect(result.total).toBe(2);
       expect(result.reviews[0]).toMatchObject({
         id: 'review-1',
         reviewerName: 'Ada L',
+        reviewerAvatar: 'https://cdn.test/ada.png',
         comment: 'Great',
         rating: 5,
         likesCount: 2,
         isLiked: true,
       });
+      expect(result.reviews[1].reviewerAvatar).toBeNull();
     });
   });
 
@@ -491,6 +503,7 @@ describe('DealEngagementService', () => {
     it('finds reviews for a business', async () => {
       const qb = {
         innerJoinAndSelect: jest.fn().mockReturnThis(),
+        leftJoinAndSelect: jest.fn().mockReturnThis(),
         where: jest.fn().mockReturnThis(),
         andWhere: jest.fn().mockReturnThis(),
         orderBy: jest.fn().mockReturnThis(),
@@ -502,6 +515,7 @@ describe('DealEngagementService', () => {
               id: 'review-1',
               offerId: 'offer-1',
               offer: { name: 'Burger Deal' },
+              user: { avatar: 'https://cdn.test/ada.png' },
               reviewerName: 'Ada',
               comment: 'Great',
               rating: 5,
@@ -525,6 +539,7 @@ describe('DealEngagementService', () => {
       expect(result.reviews[0]).toMatchObject({
         id: 'review-1',
         offerName: 'Burger Deal',
+        reviewerAvatar: 'https://cdn.test/ada.png',
         rating: 5,
       });
     });
