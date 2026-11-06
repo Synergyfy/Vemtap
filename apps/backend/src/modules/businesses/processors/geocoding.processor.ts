@@ -58,7 +58,7 @@ export class GeocodingProcessor extends WorkerHost {
       return;
     }
 
-    // Nominatim, then Photon when it fails.
+    // Google when GOOGLE_MAPS_API_KEY is set, then Nominatim, then Photon.
     const point = await this.geocodingService.geocodeAddress(fullAddress);
     if (!point) {
       throw new Error(`Could not geocode address for business ${businessId}`);
