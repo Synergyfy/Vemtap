@@ -45,6 +45,7 @@ describe('GeocodingService', () => {
 
   beforeEach(() => {
     service = new GeocodingService(createCache());
+    Object.assign(service, { nominatimRetryDelayMs: 0 });
     fetchMock = jest.spyOn(global, 'fetch');
     delete process.env.GOOGLE_MAPS_API_KEY;
   });
@@ -153,6 +154,53 @@ describe('GeocodingService', () => {
 
       fetchMock.mockImplementation(() => Promise.reject(new Error('offline')));
       expect(await service.reverse(1, 1)).toBeNull();
+    });
+  });
+
+  describe('Nominatim retry', () => {
+    it.each([429, 503])('tries once more after a %i', async (status) => {
+      fetchMock
+        .mockImplementationOnce(() => json({}, false, status))
+        .mockImplementationOnce(() => json(nominatimWuse));
+
+      const place = await service.reverse(9.0765, 7.4813);
+
+      expect(place?.district).toBe('Wuse II');
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+    });
+
+    it('tries once more after a dropped connection', async () => {
+      fetchMock
+        .mockImplementationOnce(() => Promise.reject(new Error('socket hang up')))
+        .mockImplementationOnce(() => json(nominatimWuse));
+
+      const place = await service.reverse(9.0765, 7.4813);
+
+      expect(place?.district).toBe('Wuse II');
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+    });
+
+    it('gives up after the second failure', async () => {
+      fetchMock.mockImplementation(() => json({}, false, 503));
+
+      await expect(service.reverse(9.0765, 7.4813)).resolves.toBeNull();
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+    });
+
+    it('does not retry a timeout', async () => {
+      const timeout = new Error('The operation timed out');
+      timeout.name = 'TimeoutError';
+      fetchMock.mockImplementation(() => Promise.reject(timeout));
+
+      await expect(service.reverse(9.0765, 7.4813)).resolves.toBeNull();
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not retry a point Nominatim cannot name', async () => {
+      fetchMock.mockImplementation(() => json({ error: 'Unable to geocode' }));
+
+      await expect(service.reverse(3.9, 6.9)).resolves.toBeNull();
+      expect(fetchMock).toHaveBeenCalledTimes(1);
     });
   });
 
