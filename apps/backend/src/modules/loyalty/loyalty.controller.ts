@@ -32,6 +32,8 @@ import {
   UpdateRewardTemplateDto,
   CreateRewardDto,
   GivePointsDto,
+  DeductPointsDto,
+  RegisterLoyaltyCustomerDto,
   GeneratePointCodeDto,
   UsePointCodeDto,
   GenerateRedemptionCodeDto,
@@ -374,6 +376,57 @@ export class LoyaltyController {
   })
   async givePoints(@Request() req: { user: User }, @Body() dto: GivePointsDto) {
     return this.loyaltyService.givePoints(req.user, dto);
+  }
+
+  @Post('points/deduct')
+  @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF)
+  @Permissions('pos')
+  @ApiOperation({
+    summary: 'Staff deducts points from a customer',
+    description:
+      "Removes points from the customer's balance at this business (never below zero), recorded as an `adjusted` transaction. Access: OWNER, MANAGER, STAFF",
+  })
+  @ApiBody({ type: DeductPointsDto })
+  @ApiResponse({
+    status: 201,
+    schema: { example: { success: true, newBalance: 350 } },
+  })
+  @ApiResponse({ status: 400, description: 'More points than the balance' })
+  async deductPoints(
+    @Request() req: { user: User },
+    @Body() dto: DeductPointsDto,
+  ) {
+    return this.loyaltyService.deductPoints(req.user, dto);
+  }
+
+  @Post('customers')
+  @Roles(UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF)
+  @Permissions('pos')
+  @ApiOperation({
+    summary: 'Staff adds a loyalty customer at the counter',
+    description:
+      'Finds the customer by email or phone, or creates a pending account they claim by signing up with the same email. Records a visit at the branch (so they join the customer list) and awards optional welcome points. Access: OWNER, MANAGER, STAFF',
+  })
+  @ApiBody({ type: RegisterLoyaltyCustomerDto })
+  @ApiResponse({
+    status: 201,
+    schema: {
+      example: {
+        userId: 'uuid',
+        name: 'Amina Bello',
+        phone: '+2348034567890',
+        email: null,
+        pointsBalance: 100,
+        tier: 'Bronze',
+        isNewCustomer: true,
+      },
+    },
+  })
+  async registerCustomer(
+    @Request() req: { user: User },
+    @Body() dto: RegisterLoyaltyCustomerDto,
+  ) {
+    return this.loyaltyService.registerCustomer(req.user, dto);
   }
 
   @Post('points/generate-code')
