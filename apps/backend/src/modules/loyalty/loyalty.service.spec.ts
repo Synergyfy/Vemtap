@@ -1,12 +1,16 @@
+import { BadRequestException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { LoyaltyService } from './loyalty.service';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { RewardTemplate } from './entities/reward-template.entity';
 import { Reward } from './entities/reward.entity';
-import { PointTransaction } from './entities/point-transaction.entity';
+import {
+  PointTransaction,
+  PointTransactionType,
+} from './entities/point-transaction.entity';
 import { PointCode } from './entities/point-code.entity';
 import { RedemptionCode } from './entities/redemption-code.entity';
-import { User, UserRole } from '../users/entities/user.entity';
+import { User, UserRole, UserStatus } from '../users/entities/user.entity';
 import { Branch } from '../branches/entities/branch.entity';
 import { Visit } from '../visitors/entities/visit.entity';
 import { LoyaltyRule } from './entities/loyalty-rule.entity';
@@ -326,6 +330,128 @@ describe('LoyaltyService', () => {
           businessId: branch.businessId,
           branchId: branch.id,
           amount: 25,
+        }),
+      );
+    });
+  });
+
+  describe('deductPoints', () => {
+    const branch = { id: 'b1', businessId: 'biz1' } as any;
+    const customer = { id: 'customer-1', role: UserRole.CUSTOMER } as any;
+    const withBalance = (sum: string) => ({
+      select: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
+      andWhere: jest.fn().mockReturnThis(),
+      getRawOne: jest.fn().mockResolvedValue({ sum }),
+    });
+
+    beforeEach(() => {
+      jest
+        .spyOn(module.get(getRepositoryToken(Branch)), 'findOne')
+        .mockResolvedValueOnce(branch);
+      jest
+        .spyOn(module.get(getRepositoryToken(User)), 'findOne')
+        .mockResolvedValueOnce(customer);
+      mockBranchesService.checkBranchAccess.mockResolvedValueOnce(true);
+    });
+
+    it('records an adjusted, negative transaction and returns the new balance', async () => {
+      const transactionRepo = module.get(getRepositoryToken(PointTransaction));
+      (transactionRepo.createQueryBuilder as jest.Mock).mockReturnValueOnce(
+        withBalance('300'),
+      );
+
+      const result = await service.deductPoints({ id: 'staff-1' } as any, {
+        customerId: customer.id,
+        branchId: branch.id,
+        points: 120,
+        reason: 'Manual Adjustment',
+      });
+
+      expect(transactionRepo.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          amount: -120,
+          type: PointTransactionType.ADJUSTED,
+          customerId: customer.id,
+          businessId: branch.businessId,
+          branchId: branch.id,
+          givenById: 'staff-1',
+        }),
+      );
+      expect(result).toEqual({ success: true, newBalance: 180 });
+    });
+
+    it('refuses to take a balance below zero', async () => {
+      const transactionRepo = module.get(getRepositoryToken(PointTransaction));
+      (transactionRepo.createQueryBuilder as jest.Mock).mockReturnValueOnce(
+        withBalance('50'),
+      );
+      (transactionRepo.create as jest.Mock).mockClear();
+
+      await expect(
+        service.deductPoints({ id: 'staff-1' } as any, {
+          customerId: customer.id,
+          branchId: branch.id,
+          points: 80,
+        }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(transactionRepo.create).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('registerCustomer', () => {
+    const branch = { id: 'b1', businessId: 'biz1' } as any;
+
+    it('creates a pending customer, records a visit and awards welcome points', async () => {
+      const userRepo = module.get(getRepositoryToken(User));
+      const visitRepo = module.get(getRepositoryToken(Visit));
+      jest
+        .spyOn(module.get(getRepositoryToken(Branch)), 'findOne')
+        .mockResolvedValueOnce(branch);
+      mockBranchesService.checkBranchAccess.mockResolvedValueOnce(true);
+      // No account by email, phone, or the generated customer code.
+      jest.spyOn(userRepo, 'findOne').mockResolvedValue(null);
+      const awardSpy = jest
+        .spyOn(service, 'awardPoints')
+        .mockResolvedValueOnce(undefined);
+
+      const result = await service.registerCustomer({ id: 'staff-1' } as any, {
+        firstName: 'Amina',
+        lastName: 'Bello',
+        phone: '+2348034567890',
+        welcomePoints: 100,
+        branchId: branch.id,
+      });
+
+      expect(userRepo.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          email: 'guest_2348034567890@vemtap.dummy',
+          phone: '+2348034567890',
+          role: UserRole.CUSTOMER,
+          status: UserStatus.PENDING,
+          password: undefined,
+        }),
+      );
+      expect(visitRepo.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          branchId: 'b1',
+          businessId: 'biz1',
+          status: 'new',
+        }),
+      );
+      expect(awardSpy).toHaveBeenCalledWith(
+        expect.any(String),
+        100,
+        'biz1',
+        'b1',
+        'Welcome bonus',
+        'staff-1',
+      );
+      expect(result).toEqual(
+        expect.objectContaining({
+          name: 'Amina Bello',
+          email: null,
+          isNewCustomer: true,
         }),
       );
     });

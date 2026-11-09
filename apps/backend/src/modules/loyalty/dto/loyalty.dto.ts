@@ -8,6 +8,11 @@ import {
   IsDateString,
   IsUUID,
   Min,
+  Max,
+  IsInt,
+  IsEmail,
+  IsNotEmpty,
+  MaxLength,
   NotEquals,
 } from 'class-validator';
 import { RewardCategory } from '../entities/reward-template.entity';
@@ -127,6 +132,68 @@ export class GivePointsDto {
   reason?: string;
 
   @ApiProperty()
+  @IsUUID()
+  branchId: string;
+}
+
+export class DeductPointsDto {
+  @ApiProperty({ description: 'Customer user ID' })
+  @IsUUID()
+  customerId: string;
+
+  @ApiProperty({ description: 'Branch the correction is made at' })
+  @IsUUID()
+  branchId: string;
+
+  @ApiProperty({
+    description: 'Points to remove (at most the balance at this business)',
+  })
+  @IsInt()
+  @Min(1)
+  points: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  reason?: string;
+}
+
+export class RegisterLoyaltyCustomerDto {
+  @ApiProperty({ example: 'Amina' })
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(80)
+  firstName: string;
+
+  @ApiPropertyOptional({ example: 'Bello' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(80)
+  lastName?: string;
+
+  @ApiProperty({ example: '+2348034567890' })
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(20)
+  phone: string;
+
+  @ApiPropertyOptional({ example: 'amina@example.com' })
+  @IsOptional()
+  @IsEmail()
+  email?: string;
+
+  @ApiPropertyOptional({
+    description: 'Welcome points given on joining',
+    example: 100,
+  })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(100000)
+  welcomePoints?: number;
+
+  @ApiProperty({ description: 'Branch the customer joins at' })
   @IsUUID()
   branchId: string;
 }

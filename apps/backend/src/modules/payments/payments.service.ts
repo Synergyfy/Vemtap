@@ -63,6 +63,17 @@ export class PaymentsService {
     private readonly httpService: HttpService,
   ) {}
 
+  /**
+   * Which Paystack account the server charges through, from the secret key's
+   * prefix: `test` (no real money moves), `live`, or `unconfigured`.
+   */
+  paymentMode(): 'test' | 'live' | 'unconfigured' {
+    const secretKey = process.env.PAYSTACK_SECRET_KEY?.trim() ?? '';
+    if (secretKey.startsWith('sk_live_')) return 'live';
+    if (secretKey.startsWith('sk_test_')) return 'test';
+    return 'unconfigured';
+  }
+
   verifyWebhookSignature(signature: string, rawBody: any): boolean {
     const secretKey = process.env.PAYSTACK_SECRET_KEY;
     if (!secretKey || !rawBody) return false;

@@ -18,7 +18,7 @@ import {
 } from 'typeorm';
 import { randomInt } from 'crypto';
 import * as bcrypt from 'bcrypt';
-import { User, UserRole } from '../users/entities/user.entity';
+import { User, UserRole, UserStatus } from '../users/entities/user.entity';
 import { RewardTemplate } from './entities/reward-template.entity';
 import { Reward } from './entities/reward.entity';
 import {
@@ -39,6 +39,8 @@ import {
   UpdateRewardTemplateDto,
   CreateRewardDto,
   GivePointsDto,
+  DeductPointsDto,
+  RegisterLoyaltyCustomerDto,
   GeneratePointCodeDto,
   UsePointCodeDto,
   GenerateRedemptionCodeDto,
@@ -492,6 +494,117 @@ export class LoyaltyService {
     });
 
     return this.pointTransactionRepo.save(transaction);
+  }
+
+  /** The branch, after checking the staff member may act there. */
+  private async staffBranch(staff: User, branchId: string) {
+    const branch = await this.branchRepo.findOne({ where: { id: branchId } });
+    if (!branch) throw new NotFoundException('Branch not found');
+    const hasAccess = await this.branchesService.checkBranchAccess(
+      staff,
+      branchId,
+    );
+    if (!hasAccess)
+      throw new ForbiddenException('You do not have access to this branch');
+    return branch;
+  }
+
+  /**
+   * Staff correction from the Rewards points desk: removes points from the
+   * customer's balance at this business, never below zero. Recorded as
+   * `adjusted`, so it does not count as a reward redemption.
+   */
+  async deductPoints(staff: User, dto: DeductPointsDto) {
+    const branch = await this.staffBranch(staff, dto.branchId);
+    const customer = await this.userRepo.findOne({
+      where: { id: dto.customerId, role: UserRole.CUSTOMER },
+    });
+    if (!customer) throw new NotFoundException('Customer not found');
+
+    const balance = await this.getBusinessPoints(
+      customer.id,
+      branch.businessId,
+    );
+    if (dto.points > balance) {
+      throw new BadRequestException(
+        `This customer has ${balance} points here, so at most ${balance} can be deducted.`,
+      );
+    }
+
+    await this.pointTransactionRepo.save(
+      this.pointTransactionRepo.create({
+        amount: -dto.points,
+        type: PointTransactionType.ADJUSTED,
+        reason: dto.reason || 'Points deducted by staff',
+        customerId: customer.id,
+        givenById: staff.id,
+        businessId: branch.businessId,
+        branchId: branch.id,
+      }),
+    );
+
+    return { success: true, newBalance: balance - dto.points };
+  }
+
+  /**
+   * "Add Customer" on the Rewards points desk: finds the customer by email or
+   * phone, or creates a pending account they can claim by signing up with the
+   * same email. A visit at the branch puts them in the business's customer
+   * list, and any welcome points are awarded straight away.
+   */
+  async registerCustomer(staff: User, dto: RegisterLoyaltyCustomerDto) {
+    const branch = await this.staffBranch(staff, dto.branchId);
+    const phone = dto.phone.trim();
+    const email = dto.email?.trim().toLowerCase();
+    // Every account needs an email; phone-only customers get the same
+    // placeholder the POS uses for walk-in guests.
+    const placeholderEmail = `guest_${phone.replace(/\D/g, '')}@vemtap.dummy`;
+
+    const { customer, isNewCustomer } =
+      await this.resolveOrCreateVisitorCustomer(
+        {
+          email: email || placeholderEmail,
+          phone,
+          firstName: dto.firstName.trim(),
+          lastName: dto.lastName?.trim() || '',
+        },
+        { pending: true },
+      );
+
+    await this.visitRepo.save(
+      this.visitRepo.create({
+        customerId: customer.id,
+        branchId: branch.id,
+        businessId: branch.businessId,
+        status: isNewCustomer ? 'new' : 'returning',
+        visitType: 'patronage',
+      }),
+    );
+
+    if (dto.welcomePoints && dto.welcomePoints > 0) {
+      await this.awardPoints(
+        customer.id,
+        dto.welcomePoints,
+        branch.businessId,
+        branch.id,
+        'Welcome bonus',
+        staff.id,
+      );
+    }
+
+    const pointsBalance = await this.getBusinessPoints(
+      customer.id,
+      branch.businessId,
+    );
+    return {
+      userId: customer.id,
+      name: [customer.firstName, customer.lastName].filter(Boolean).join(' '),
+      phone: customer.phone ?? null,
+      email: customer.email?.endsWith('@vemtap.dummy') ? null : customer.email,
+      pointsBalance,
+      tier: this.tierForPoints(pointsBalance),
+      isNewCustomer,
+    };
   }
 
   async awardPoints(
@@ -1173,12 +1286,15 @@ export class LoyaltyService {
     throw new BadRequestException('Unable to generate a customer code');
   }
 
-  private async resolveOrCreateVisitorCustomer(dto: {
-    email?: string;
-    phone?: string;
-    firstName?: string;
-    lastName?: string;
-  }): Promise<{ customer: User; isNewCustomer: boolean }> {
+  private async resolveOrCreateVisitorCustomer(
+    dto: {
+      email?: string;
+      phone?: string;
+      firstName?: string;
+      lastName?: string;
+    },
+    options: { pending?: boolean } = {},
+  ): Promise<{ customer: User; isNewCustomer: boolean }> {
     if (!dto.email && !dto.phone) {
       throw new BadRequestException(
         'At least one of email or phone is required to identify the customer',
@@ -1202,10 +1318,11 @@ export class LoyaltyService {
       return { customer, isNewCustomer: false };
     }
 
-    const hashedPassword = await bcrypt.hash(
-      randomInt(100000, 999999).toString(),
-      10,
-    );
+    // A pending account has no PIN yet: the customer finishes it by signing
+    // up with the same email, keeping the points already earned here.
+    const hashedPassword = options.pending
+      ? undefined
+      : await bcrypt.hash(randomInt(100000, 999999).toString(), 10);
     const created = this.userRepo.create({
       email: dto.email ? dto.email.toLowerCase() : undefined,
       phone: dto.phone,
@@ -1213,6 +1330,7 @@ export class LoyaltyService {
       lastName: dto.lastName || '',
       password: hashedPassword,
       role: UserRole.CUSTOMER,
+      ...(options.pending ? { status: UserStatus.PENDING } : {}),
       uniqueCode: await this.generateUniqueCustomerCode(),
     });
 

@@ -36,6 +36,16 @@ describe('PaymentsService', () => {
     jest.clearAllMocks();
   });
 
+  describe('paymentMode', () => {
+    it('reads test, live or unconfigured from the secret key prefix', () => {
+      expect(service.paymentMode()).toBe('test');
+      process.env.PAYSTACK_SECRET_KEY = 'sk_live_abc';
+      expect(service.paymentMode()).toBe('live');
+      process.env.PAYSTACK_SECRET_KEY = '';
+      expect(service.paymentMode()).toBe('unconfigured');
+    });
+  });
+
   describe('verifyTransaction', () => {
     it('should return success status if paystack status is success', async () => {
       mockHttpService.get.mockReturnValue(
