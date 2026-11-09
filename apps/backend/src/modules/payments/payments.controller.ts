@@ -41,6 +41,19 @@ export class PaymentsController {
     private readonly subscriptionsService: SubscriptionsService,
   ) {}
 
+  @Public()
+  @Get('config')
+  @SkipSubscriptionCheck()
+  @ApiOperation({
+    summary: 'Payment gateway mode',
+    description:
+      'Whether checkout runs on Paystack test keys (no real money), live keys, or is not configured. Never exposes a key.',
+  })
+  @ApiResponse({ status: 200, schema: { example: { provider: 'paystack', mode: 'live' } } })
+  config() {
+    return { provider: 'paystack', mode: this.paymentsService.paymentMode() };
+  }
+
   @Get('verify/:reference')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.OWNER, UserRole.ADMIN)
