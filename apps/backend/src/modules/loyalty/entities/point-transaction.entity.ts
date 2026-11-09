@@ -8,6 +8,8 @@ import { ApiProperty } from '@nestjs/swagger';
 export enum PointTransactionType {
   EARNED = 'earned',
   REDEEMED = 'redeemed',
+  /** A staff correction that removes points; never counted as a redemption. */
+  ADJUSTED = 'adjusted',
 }
 
 @Entity('point_transactions')
