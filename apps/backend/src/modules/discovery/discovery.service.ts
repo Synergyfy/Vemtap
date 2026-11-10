@@ -1153,10 +1153,10 @@ export class DiscoveryService {
         id: c.id,
         business: c.business?.name || 'Unknown',
         name: c.name,
-        radius: c.radius || '1km',
+        radius: c.radius || null,
         budget: c.budget,
         spent: c.spent,
-        duration: c.duration || '30 Days',
+        duration: c.duration || null,
         status: c.status,
         impressions: c.impressions,
         clicks: c.clicks,
@@ -1192,10 +1192,10 @@ export class DiscoveryService {
       id: campaign.id,
       business: campaign.business?.name || 'Unknown',
       name: campaign.name,
-      radius: campaign.radius || '1km',
+      radius: campaign.radius || null,
       budget: campaign.budget,
       spent: campaign.spent,
-      duration: campaign.duration || '30 Days',
+      duration: campaign.duration || null,
       status: campaign.status,
       impressions: campaign.impressions,
       clicks: campaign.clicks,
@@ -1211,14 +1211,8 @@ export class DiscoveryService {
         amount: t.amount,
         status: t.status,
       })),
-      auditLog: [
-        {
-          action: 'Campaign Approved',
-          admin: 'Admin',
-          time: campaign.createdAt?.toISOString() || '',
-          detail: 'Initial activation',
-        },
-      ],
+      // No admin actions are recorded against sponsored campaigns yet.
+      auditLog: [],
     };
   }
 
@@ -1372,6 +1366,62 @@ export class DiscoveryService {
     };
   }
 
+  /** Real per-customer counts from their visits (offers redeemed, referred visits, total). */
+  private async customerVisitStats(customerIds: string[]) {
+    const stats = new Map<
+      string,
+      { visits: number; redeemed: number; referrals: number }
+    >();
+    if (customerIds.length === 0) return stats;
+    const rows = await this.visitRepository
+      .createQueryBuilder('visit')
+      .select('visit.customerId', 'customerId')
+      .addSelect('COUNT(visit.id)', 'visits')
+      .addSelect(
+        'COUNT(visit.id) FILTER (WHERE visit.catalogueOfferId IS NOT NULL)',
+        'redeemed',
+      )
+      .addSelect(
+        'COUNT(visit.id) FILTER (WHERE visit.referredByBranchId IS NOT NULL)',
+        'referrals',
+      )
+      .where('visit.customerId IN (:...customerIds)', { customerIds })
+      .groupBy('visit.customerId')
+      .getRawMany<{
+        customerId: string;
+        visits: string;
+        redeemed: string;
+        referrals: string;
+      }>();
+    for (const row of rows) {
+      stats.set(row.customerId, {
+        visits: parseInt(row.visits, 10) || 0,
+        redeemed: parseInt(row.redeemed, 10) || 0,
+        referrals: parseInt(row.referrals, 10) || 0,
+      });
+    }
+    return stats;
+  }
+
+  /** City of the branch the customer last visited — the only location the platform knows. */
+  private async lastVisitedCity(customerId: string): Promise<string | null> {
+    const visit = await this.visitRepository.findOne({
+      where: { customerId },
+      relations: ['branch'],
+      order: { createdAt: 'DESC' },
+    });
+    const branch = visit?.branch;
+    return [branch?.city, branch?.state].filter(Boolean).join(', ') || null;
+  }
+
+  private customerName(user: User): string {
+    return (
+      [user.firstName, user.lastName].filter(Boolean).join(' ').trim() ||
+      user.email ||
+      ''
+    );
+  }
+
   async getAdminCustomers(query: AdminCustomerQueryDto) {
     const { page = 1, limit = 10, search, status } = query;
 
@@ -1401,15 +1451,18 @@ export class DiscoveryService {
 
     const users = result.data;
     const total = result.total;
+    const stats = await this.customerVisitStats(users.map((u) => u.id));
 
     return {
       data: users.map((u) => ({
-        id: u.id?.substring(0, 10) || u.id,
-        name: `${u.firstName} ${u.lastName}`,
-        location: 'Abuja, Nigeria',
+        // The full id: the detail endpoint looks customers up by it.
+        id: u.id,
+        name: this.customerName(u),
+        // Customers have no stored location; the detail view derives one from visits.
+        location: null,
         status: u.status || 'Active',
-        totalReferrals: 0,
-        redeemedOffers: 0,
+        totalReferrals: stats.get(u.id)?.referrals ?? 0,
+        redeemedOffers: stats.get(u.id)?.redeemed ?? 0,
         lastActive:
           u.updatedAt?.toISOString()?.replace('T', ' ')?.substring(0, 16) || '',
         preferences: [],
@@ -1426,33 +1479,39 @@ export class DiscoveryService {
     const user = await this.userRepository.findOne({ where: { id } });
     if (!user) throw new NotFoundException(`Customer with ID ${id} not found`);
 
-    const recentVisits = await this.visitRepository.find({
-      where: { customerId: id },
-      relations: ['branch', 'catalogueOffer'],
-      order: { createdAt: 'DESC' },
-      take: 5,
-    });
+    const [recentVisits, stats, location] = await Promise.all([
+      this.visitRepository.find({
+        where: { customerId: id },
+        relations: ['branch', 'catalogueOffer'],
+        order: { createdAt: 'DESC' },
+        take: 5,
+      }),
+      this.customerVisitStats([id]),
+      this.lastVisitedCity(id),
+    ]);
+    const counts = stats.get(id) ?? { visits: 0, redeemed: 0, referrals: 0 };
 
     return {
-      id: user.id?.substring(0, 10) || id,
-      name: `${user.firstName} ${user.lastName}`,
+      id: user.id,
+      name: this.customerName(user),
       email: user.email,
-      phone: user.phone || '+234 800 000 0000',
-      location: 'Abuja, Nigeria',
+      phone: user.phone || null,
+      location,
       optInDate: user.createdAt?.toISOString()?.split('T')[0] || '',
       status: user.status || 'Active',
-      totalReferrals: 0,
-      redeemedOffers: 0,
+      totalReferrals: counts.referrals,
+      redeemedOffers: counts.redeemed,
       lastActive:
         user.updatedAt?.toISOString()?.replace('T', ' ')?.substring(0, 16) ||
         '',
       preferences: [],
       stats: {
-        totalVisits: recentVisits.length,
-        offersReceived: 0,
-        offersRedeemed: 0,
-        totalReferrals: 0,
-        totalSpend: 0,
+        totalVisits: counts.visits,
+        // Offers sent to a customer and their spend are not tracked per customer.
+        offersReceived: null,
+        offersRedeemed: counts.redeemed,
+        totalReferrals: counts.referrals,
+        totalSpend: null,
       },
       activityTimeline: recentVisits.map((v) => ({
         action: v.visitType === 'patronage' ? 'Purchased at' : 'Visited',

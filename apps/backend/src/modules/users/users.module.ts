@@ -15,6 +15,7 @@ import { QrThriveModule } from '../qr-thrive/qr-thrive.module';
 import { EventsModule } from '../../common/gateways/events.module';
 
 import { Cluster } from '../clusters/entities/cluster.entity';
+import { AuthModule } from '../auth/auth.module';
 import { AccountDeletionRequest } from './entities/account-deletion-request.entity';
 @Module({
   imports: [
@@ -30,6 +31,8 @@ import { AccountDeletionRequest } from './entities/account-deletion-request.enti
     MailModule,
     forwardRef(() => SubscriptionsModule),
     forwardRef(() => QrThriveModule),
+    // The admin "send reset code" action reuses the auth reset flow.
+    forwardRef(() => AuthModule),
     EventsModule,
   ],
 

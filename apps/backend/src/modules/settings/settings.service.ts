@@ -4,6 +4,25 @@ import { Repository } from 'typeorm';
 import { Setting } from './entities/setting.entity';
 import { UpdateSettingDto } from './dto/update-setting.dto';
 
+/** Provider credentials: stored as-is for the services that use them, never sent to a browser. */
+export const SECRET_SETTING_FIELDS = [
+  'paystackSecretKey',
+  'termiiApiKey',
+  'whatsappApiToken',
+  'whatsappWebhookVerifyToken',
+] as const;
+
+const MASK_PREFIX = '••••';
+
+/** `••••1a2b` for a set value (enough to tell keys apart), null when unset. */
+export function maskSecret(value: string | null | undefined): string | null {
+  if (!value) return null;
+  return `${MASK_PREFIX}${value.slice(-4)}`;
+}
+
+const isMasked = (value: unknown) =>
+  typeof value === 'string' && value.startsWith(MASK_PREFIX);
+
 @Injectable()
 export class SettingsService implements OnModuleInit {
   constructor(
@@ -54,7 +73,21 @@ export class SettingsService implements OnModuleInit {
 
   async updateSettings(updateDto: UpdateSettingDto): Promise<Setting> {
     const settings = await this.getGlobalSettings();
-    Object.assign(settings, updateDto);
+    const changes: Record<string, unknown> = { ...updateDto };
+    // A form that loaded the masked value and saved it back leaves the stored key alone.
+    for (const field of SECRET_SETTING_FIELDS) {
+      if (isMasked(changes[field])) delete changes[field];
+    }
+    Object.assign(settings, changes);
     return this.settingRepository.save(settings);
+  }
+
+  /** The settings as an admin client may see them: provider secrets masked. */
+  toPublicView(settings: Setting): Setting {
+    const view = { ...settings } as Record<string, unknown>;
+    for (const field of SECRET_SETTING_FIELDS) {
+      view[field] = maskSecret(settings[field]);
+    }
+    return view as unknown as Setting;
   }
 }

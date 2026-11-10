@@ -6,6 +6,7 @@ import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { BranchesService } from '../branches/branches.service';
 import { BusinessesService } from '../businesses/businesses.service';
 import { QrThriveService } from '../qr-thrive/qr-thrive.service';
+import { AuthService } from '../auth/auth.service';
 
 describe('UsersController', () => {
   let controller: UsersController;
@@ -65,6 +66,7 @@ describe('UsersController', () => {
         { provide: BranchesService, useValue: mockBranchesService },
         { provide: BusinessesService, useValue: mockBusinessesService },
         { provide: QrThriveService, useValue: mockQrThriveService },
+        { provide: AuthService, useValue: { requestPasswordReset: jest.fn() } },
       ],
     }).compile();
 

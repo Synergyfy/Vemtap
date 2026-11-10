@@ -99,11 +99,11 @@ export default function DiscoverySponsoredPage() {
                                         <div className="flex flex-col gap-1 text-[11px] font-medium text-text-secondary">
                                             <div className="flex items-center gap-1.5">
                                                 <MapPin size={12} className="text-gray-400" />
-                                                {camp.radius} Radius
+                                                {camp.radius ? `${camp.radius} Radius` : '—'}
                                             </div>
                                             <div className="flex items-center gap-1.5">
                                                 <Calendar size={12} className="text-gray-400" />
-                                                {camp.duration}
+                                                {camp.duration ?? '—'}
                                             </div>
                                         </div>
                                     </td>

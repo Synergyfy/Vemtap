@@ -1,3 +1,4 @@
+import { AuthService } from '../auth/auth.service';
 import {
   Controller,
   Get,
@@ -69,6 +70,8 @@ export class UsersController {
     private readonly businessesService: BusinessesService,
     @Inject(forwardRef(() => QrThriveService))
     private readonly qrThriveService: QrThriveService,
+    @Inject(forwardRef(() => AuthService))
+    private readonly authService: AuthService,
   ) {}
 
   private getBranchId(req: any, queryBranchId?: string): string {
@@ -462,10 +465,14 @@ export class UsersController {
 
   @Post('admin/reset-password-link/:email')
   @Roles(UserRole.ADMIN)
-  @ApiOperation({ summary: 'Admin: Send password reset link to user email' })
+  @ApiOperation({
+    summary: 'Admin: Email the user a PIN/password reset code',
+    description:
+      'Starts the same reset flow as "forgot PIN": the user gets a 6-digit code by email (valid 10 minutes).',
+  })
   async adminResetPasswordLink(@Param('email') email: string) {
-    // Basic email validation if needed, but the service handles it.
-    // Usually better to have @IsEmail in a DTO but as a param we could use a custom validator or just let it pass to service.
-    return this.usersService.adminResetPasswordLink(email);
+    const user = await this.usersService.adminResetPasswordLink(email);
+    await this.authService.requestPasswordReset({ email: user.email });
+    return { message: `Reset code sent to ${user.email}` };
   }
 }

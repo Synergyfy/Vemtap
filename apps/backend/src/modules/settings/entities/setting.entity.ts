@@ -1,3 +1,4 @@
+import { numericTransformer } from '../../../common/transformers/numeric.transformer';
 import { Entity, Column } from 'typeorm';
 import { AbstractBaseEntity } from '../../../common/entities/base.entity';
 import { ApiProperty } from '@nestjs/swagger';
@@ -203,4 +204,111 @@ export class Setting extends AbstractBaseEntity {
   })
   @Column({ type: 'json', nullable: true })
   partnershipRewardTiers: any;
+
+  @ApiProperty({
+    example: 'https://www.youtube.com/watch?v=abc123',
+    description:
+      'Video shown under "See Referral Benefits" on the customer and business referral pages (null = app default)',
+    required: false,
+  })
+  @Column({ type: 'varchar', length: 500, nullable: true })
+  referralVideoUrl: string | null;
+
+  // ── Platform parameters edited on the admin Platform Settings page ──
+  @ApiProperty({
+    example: '₦ (NGN)',
+    description: 'Currency symbol shown across the admin console',
+  })
+  @Column({ type: 'varchar', length: 20, default: '₦ (NGN)' })
+  platformCurrencySymbol: string;
+  @ApiProperty({ example: 7.5, description: 'VAT rate in percent' })
+  @Column('decimal', {
+    precision: 5,
+    scale: 2,
+    default: 7.5,
+    transformer: numericTransformer,
+  })
+  platformVatRate: number;
+  @ApiProperty({
+    example: 5.0,
+    description: 'Withholding tax (WHT) rate in percent',
+  })
+  @Column('decimal', {
+    precision: 5,
+    scale: 2,
+    default: 5.0,
+    transformer: numericTransformer,
+  })
+  withholdingTaxRate: number;
+  @ApiProperty({
+    example: 1.5,
+    description: 'Default POS take rate in percent',
+  })
+  @Column('decimal', {
+    precision: 5,
+    scale: 2,
+    default: 1.5,
+    transformer: numericTransformer,
+  })
+  defaultPosTakeRate: number;
+  @ApiProperty({
+    example: 24,
+    description: 'Hours payouts are held before settlement',
+  })
+  @Column({ type: 'int', default: 24 })
+  escrowHoldingHours: number;
+  @ApiProperty({
+    example: 2000,
+    description: 'Default cluster geofence radius in metres',
+  })
+  @Column({ type: 'int', default: 2000 })
+  defaultGeofenceRadiusMeters: number;
+  @ApiProperty({
+    example: 10,
+    description: 'Most clusters one business may join',
+  })
+  @Column({ type: 'int', default: 10 })
+  maxClustersPerMerchant: number;
+  @ApiProperty({
+    example: 45,
+    description: 'Seconds between NFC device heartbeats',
+  })
+  @Column({ type: 'int', default: 45 })
+  nfcHeartbeatIntervalSec: number;
+  @ApiProperty({
+    example: false,
+    description: 'Platform-wide maintenance mode',
+  })
+  @Column({ default: false })
+  maintenanceMode: boolean;
+  @ApiProperty({
+    example: true,
+    description: 'Require KYB verification before a business goes live',
+  })
+  @Column({ default: true })
+  strictKybGate: boolean;
+  @ApiProperty({
+    example: true,
+    description: 'Require two admins to release escrow',
+  })
+  @Column({ default: true })
+  dualAuthorizerEscrow: boolean;
+  @ApiProperty({
+    example: true,
+    description: 'Send automatic dunning reminders for failed renewals',
+  })
+  @Column({ default: true })
+  autoDunningActive: boolean;
+  @ApiProperty({
+    example: true,
+    description: 'Fall back to a second SMS gateway when the first fails',
+  })
+  @Column({ default: true })
+  smsGatewayFallback: boolean;
+  @ApiProperty({
+    example: false,
+    description: 'Rate-limit realtime device telemetry',
+  })
+  @Column({ default: false })
+  realtimeTelemetryRateLimit: boolean;
 }

@@ -19,7 +19,7 @@ import { Otp } from './entities/otp.entity';
 
 @Module({
   imports: [
-    UsersModule,
+    forwardRef(() => UsersModule),
     forwardRef(() => BusinessesModule),
     forwardRef(() => DevicesModule),
     forwardRef(() => SubscriptionsModule),

@@ -69,8 +69,8 @@ export default function DiscoveryCustomerProfilePage() {
                         </div>
                         <div className="flex flex-wrap items-center gap-y-2 gap-x-6 mt-3 text-sm font-medium text-text-secondary">
                             <span className="flex items-center gap-1.5"><Mail size={14} className="text-gray-400" /> {cust.email}</span>
-                            <span className="flex items-center gap-1.5"><Smartphone size={14} className="text-gray-400" /> {cust.phone}</span>
-                            <span className="flex items-center gap-1.5"><MapPin size={14} className="text-gray-400" /> {cust.location}</span>
+                            <span className="flex items-center gap-1.5"><Smartphone size={14} className="text-gray-400" /> {cust.phone ?? '—'}</span>
+                            <span className="flex items-center gap-1.5"><MapPin size={14} className="text-gray-400" /> {cust.location ?? '—'}</span>
                         </div>
                     </div>
                 </div>
@@ -88,10 +88,10 @@ export default function DiscoveryCustomerProfilePage() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
                 {[
                     { label: 'Network Visits', value: cust.stats.totalVisits, icon: UserCheck, color: 'text-blue-500', bg: 'bg-blue-50' },
-                    { label: 'Offers Received', value: cust.stats.offersReceived, icon: Tag, color: 'text-purple-500', bg: 'bg-purple-50' },
+                    { label: 'Offers Received', value: cust.stats.offersReceived ?? '—', icon: Tag, color: 'text-purple-500', bg: 'bg-purple-50' },
                     { label: 'Offers Redeemed', value: cust.stats.offersRedeemed, icon: CheckCircle2, color: 'text-emerald-500', bg: 'bg-emerald-50' },
                     { label: 'Referral Chain', value: cust.stats.totalReferrals, icon: MousePointerClick, color: 'text-amber-500', bg: 'bg-amber-50' },
-                    { label: 'Total Value', value: `₦${cust.stats.totalSpend.toLocaleString()}`, icon: DollarSign, color: 'text-primary', bg: 'bg-primary/5' },
+                    { label: 'Total Value', value: cust.stats.totalSpend == null ? '—' : `₦${cust.stats.totalSpend.toLocaleString()}`, icon: DollarSign, color: 'text-primary', bg: 'bg-primary/5' },
                 ].map((stat) => (
                     <div key={stat.label} className="bg-white rounded-3xl border border-gray-100 p-6 shadow-sm">
                         <div className={`p-3 rounded-2xl w-fit mb-4 ${stat.bg} ${stat.color}`}>

@@ -110,7 +110,7 @@ export default function DiscoveryCustomersPage() {
                                     <td className="px-6 py-4 text-text-secondary font-medium">
                                         <div className="flex items-center gap-1.5">
                                             <MapPin size={12} className="text-gray-400" />
-                                            {cust.location}
+                                            {cust.location ?? '—'}
                                         </div>
                                     </td>
                                     <td className="px-6 py-4 text-center font-bold text-text-main">

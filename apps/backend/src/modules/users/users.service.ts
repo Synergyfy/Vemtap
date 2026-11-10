@@ -644,11 +644,11 @@ export class UsersService {
     return true;
   }
 
+  /** The account an admin is sending a reset code to; the controller starts the auth reset flow. */
   async adminResetPasswordLink(email: string) {
     const user = await this.findByEmail(email);
     if (!user) throw new NotFoundException('User not found');
-    // Logic to send email would go here
-    return { message: 'Reset link sent to ' + email };
+    return user;
   }
 
   // Missing methods for E2E tests

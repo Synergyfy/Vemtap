@@ -5,6 +5,12 @@ import {
   IsOptional,
   IsBoolean,
   IsNumber,
+  IsUrl,
+  MaxLength,
+  ValidateIf,
+  IsInt,
+  Min,
+  Max,
 } from 'class-validator';
 
 export class UpdateSettingDto {
@@ -125,4 +131,84 @@ export class UpdateSettingDto {
   @IsNumber()
   @IsOptional()
   affiliateRecurringCommission?: number;
+
+  @ApiProperty({
+    example: 'https://www.youtube.com/watch?v=abc123',
+    required: false,
+    nullable: true,
+    description: 'Referral programme video link; null restores the app default',
+  })
+  @IsOptional()
+  @ValidateIf((_, value) => value !== null)
+  @IsUrl({ protocols: ['https'], require_protocol: true })
+  @MaxLength(500)
+  referralVideoUrl?: string | null;
+
+  @ApiProperty({ example: '₦ (NGN)', required: false })
+  @IsOptional()
+  @IsString()
+  @MaxLength(20)
+  platformCurrencySymbol?: string;
+  @ApiProperty({ example: 7.5, required: false })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  @Max(100)
+  platformVatRate?: number;
+  @ApiProperty({ example: 5.0, required: false })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  @Max(100)
+  withholdingTaxRate?: number;
+  @ApiProperty({ example: 1.5, required: false })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  @Max(100)
+  defaultPosTakeRate?: number;
+  @ApiProperty({ example: 24, required: false })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  escrowHoldingHours?: number;
+  @ApiProperty({ example: 2000, required: false })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  defaultGeofenceRadiusMeters?: number;
+  @ApiProperty({ example: 10, required: false })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  maxClustersPerMerchant?: number;
+  @ApiProperty({ example: 45, required: false })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  nfcHeartbeatIntervalSec?: number;
+  @ApiProperty({ example: false, required: false })
+  @IsOptional()
+  @IsBoolean()
+  maintenanceMode?: boolean;
+  @ApiProperty({ example: true, required: false })
+  @IsOptional()
+  @IsBoolean()
+  strictKybGate?: boolean;
+  @ApiProperty({ example: true, required: false })
+  @IsOptional()
+  @IsBoolean()
+  dualAuthorizerEscrow?: boolean;
+  @ApiProperty({ example: true, required: false })
+  @IsOptional()
+  @IsBoolean()
+  autoDunningActive?: boolean;
+  @ApiProperty({ example: true, required: false })
+  @IsOptional()
+  @IsBoolean()
+  smsGatewayFallback?: boolean;
+  @ApiProperty({ example: false, required: false })
+  @IsOptional()
+  @IsBoolean()
+  realtimeTelemetryRateLimit?: boolean;
 }

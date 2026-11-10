@@ -59,7 +59,7 @@ export default function SponsoredCampaignDetailPage() {
                         </div>
                         <div className="flex items-center gap-4 mt-2 text-sm font-medium text-text-secondary">
                             <span className="flex items-center gap-1.5 font-bold text-text-main">@{camp.business}</span>
-                            <span className="flex items-center gap-1.5"><MapPin size={14} /> {camp.radius} Radius</span>
+                            <span className="flex items-center gap-1.5"><MapPin size={14} /> {camp.radius ? `${camp.radius} Radius` : '—'}</span>
                             <span className="flex items-center gap-1.5"><Calendar size={14} /> {camp.startDate} - {camp.endDate}</span>
                         </div>
                     </div>

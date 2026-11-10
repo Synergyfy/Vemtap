@@ -13,6 +13,7 @@ import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { UserRole } from '../users/entities/user.entity';
 import { Setting } from './entities/setting.entity';
+import { Public } from '../../common/decorators/public.decorator';
 
 @ApiTags('admin-settings')
 @ApiBearerAuth()
@@ -30,7 +31,9 @@ export class SettingsController {
     type: Setting,
   })
   async getSettings() {
-    return this.settingsService.getGlobalSettings();
+    return this.settingsService.toPublicView(
+      await this.settingsService.getGlobalSettings(),
+    );
   }
 
   @Patch()
@@ -43,6 +46,32 @@ export class SettingsController {
     type: Setting,
   })
   async updateSettings(@Body() updateDto: UpdateSettingDto) {
-    return this.settingsService.updateSettings(updateDto);
+    return this.settingsService.toPublicView(
+      await this.settingsService.updateSettings(updateDto),
+    );
+  }
+}
+
+/** Settings any visitor may read. */
+@Controller('settings')
+export class PublicSettingsController {
+  constructor(private readonly settingsService: SettingsService) {}
+
+  @Public()
+  @Get('referral-video')
+  @ApiOperation({
+    summary: 'The referral programme video link (null = use the app default)',
+  })
+  async getReferralVideo(): Promise<{
+    url: string | null;
+    updatedAt: string | null;
+  }> {
+    const settings = await this.settingsService.getGlobalSettings();
+    return {
+      url: settings?.referralVideoUrl ?? null,
+      updatedAt: settings?.referralVideoUrl
+        ? (settings.updatedAt?.toISOString() ?? null)
+        : null,
+    };
   }
 }
